@@ -225,7 +225,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <CloudSun className="h-4 w-4 text-amber-500" />
+          <CloudSun className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">Weather</span>
           <span className="text-muted-foreground">· Connect API</span>
         </div>
@@ -253,8 +253,8 @@ export default function DashboardPage() {
           icon={Package}
           trend={lowStockCount > 0 ? "down" : "stable"}
           trendLabel={lowStockCount > 0 ? "Action needed" : "All stocked"}
-          iconColor="text-blue-500"
-          iconBg="bg-blue-50"
+          iconColor="text-slate-600"
+          iconBg="bg-stone-100"
         />
         <MetricCard
           title="Today's Sales"
@@ -267,8 +267,8 @@ export default function DashboardPage() {
           icon={TrendingUp}
           trend="up"
           trendLabel="Live"
-          iconColor="text-emerald-500"
-          iconBg="bg-emerald-50"
+          iconColor="text-slate-600"
+          iconBg="bg-stone-100"
           progress={
             todayPredicted > 0
               ? Math.min(100, Math.round((todayActual / todayPredicted) * 100))
@@ -286,8 +286,8 @@ export default function DashboardPage() {
           icon={ShoppingBag}
           trend={productsAtRisk > 0 ? "down" : "stable"}
           trendLabel={productsAtRisk > 0 ? "Review needed" : "Healthy"}
-          iconColor="text-rose-500"
-          iconBg="bg-rose-50"
+          iconColor="text-slate-600"
+          iconBg="bg-stone-100"
         />
         <MetricCard
           title="Inventory Items"
@@ -296,8 +296,8 @@ export default function DashboardPage() {
           icon={Users}
           trend="stable"
           trendLabel="Tracked"
-          iconColor="text-violet-500"
-          iconBg="bg-violet-50"
+          iconColor="text-slate-600"
+          iconBg="bg-stone-100"
         />
       </div>
 
@@ -324,24 +324,24 @@ export default function DashboardPage() {
                 >
                   <defs>
                     <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#475569" stopOpacity={0.12} />
+                      <stop offset="95%" stopColor="#475569" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="predictedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.08} />
+                      <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                   <Tooltip
-                    contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
+                    contentStyle={{ borderRadius: "3px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
                     formatter={(v) => [`$${v}`, ""]}
                   />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
-                  <Area type="monotone" dataKey="predicted" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#predictedGrad)" name="Predicted" />
-                  <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={2} fill="url(#actualGrad)" name="Actual" />
+                  <Area type="monotone" dataKey="predicted" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#predictedGrad)" name="Predicted" />
+                  <Area type="monotone" dataKey="actual" stroke="#475569" strokeWidth={2} fill="url(#actualGrad)" name="Actual" />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -360,10 +360,10 @@ export default function DashboardPage() {
                     <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={1} />
                     <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                     <Tooltip
-                      contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
+                      contentStyle={{ borderRadius: "3px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
                     />
-                    <Bar dataKey="predicted" fill="#e0e7ff" name="Forecast" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="actual" fill="#6366f1" name="Actual" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="predicted" fill="#e2e8f0" name="Forecast" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="actual" fill="#64748b" name="Actual" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -392,15 +392,15 @@ export default function DashboardPage() {
                 {alerts.map((a, i) => (
                   <div
                     key={i}
-                    className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${
+                    className={`flex items-start gap-3 rounded border p-3 text-sm ${
                       a.severity === "high"
                         ? "border-destructive/30 bg-destructive/5"
-                        : "border-amber-500/30 bg-amber-50/50"
+                        : "border-stone-200 bg-stone-50"
                     }`}
                   >
                     <div
                       className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                        a.severity === "high" ? "bg-destructive" : "bg-amber-500"
+                        a.severity === "high" ? "bg-destructive" : "bg-stone-400"
                       }`}
                     />
                     <span className="text-foreground/80 leading-snug">{a.message}</span>
@@ -427,12 +427,12 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-medium truncate max-w-[180px]">{item.name}</span>
                         <span
-                          className={`text-xs font-medium ${
+                          className={`font-mono text-xs font-medium ${
                             item.status === "out_of_stock"
                               ? "text-destructive"
                               : item.status === "low_stock"
-                              ? "text-amber-600"
-                              : "text-emerald-600"
+                              ? "text-stone-500"
+                              : "text-foreground"
                           }`}
                         >
                           {item.currentStock} {item.unit}
@@ -440,12 +440,12 @@ export default function DashboardPage() {
                       </div>
                       <Progress
                         value={pct}
-                        className={`h-1.5 ${
+                        className={`h-1 ${
                           item.status === "out_of_stock"
                             ? "[&>div]:bg-destructive"
                             : item.status === "low_stock"
-                            ? "[&>div]:bg-amber-500"
-                            : "[&>div]:bg-emerald-500"
+                            ? "[&>div]:bg-stone-400"
+                            : "[&>div]:bg-slate-600"
                         }`}
                       />
                     </div>
@@ -487,31 +487,31 @@ function MetricCard({
     trend === "up" ? ArrowUpRight : trend === "down" ? ArrowDownRight : Minus;
   const trendColor =
     trend === "up"
-      ? "text-emerald-600"
+      ? "text-foreground"
       : trend === "down"
-      ? "text-rose-600"
+      ? "text-muted-foreground"
       : "text-muted-foreground";
 
   return (
     <Card>
-      <CardContent className="p-5">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className={`rounded-lg p-2 ${iconBg}`}>
+          <div className={`rounded p-1.5 ${iconBg}`}>
             <Icon className={`h-4 w-4 ${iconColor}`} />
           </div>
-          <div className={`flex items-center gap-0.5 text-xs font-medium ${trendColor}`}>
-            <TrendIcon className="h-3.5 w-3.5" />
+          <div className={`flex items-center gap-0.5 text-xs ${trendColor}`}>
+            <TrendIcon className="h-3 w-3" />
             {trendLabel}
           </div>
         </div>
         <div className="mt-3">
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="font-mono text-xl font-semibold tracking-tight tabular-nums">{value}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
         {progress !== undefined && (
-          <Progress value={progress} className="mt-3 h-1.5" />
+          <Progress value={progress} className="mt-3 h-1" />
         )}
-        <p className="text-[11px] text-muted-foreground mt-1.5 font-medium uppercase tracking-wide">
+        <p className="text-[10px] text-muted-foreground mt-2 font-semibold uppercase tracking-wider">
           {title}
         </p>
       </CardContent>
