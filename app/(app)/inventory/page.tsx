@@ -240,11 +240,11 @@ export default function InventoryPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SummaryCard icon={Package}      label="Total Items"   value={String(items.length)} iconBg="bg-blue-50"    iconColor="text-blue-500"  />
-        <SummaryCard icon={CheckCircle2} label="Total Value"   value={`$${totalValue.toFixed(0)}`} iconBg="bg-emerald-50" iconColor="text-emerald-500" />
-        <SummaryCard icon={AlertTriangle} label="Low Stock"    value={String(lowStockCount)} iconBg="bg-amber-50"  iconColor="text-amber-500"  urgent={lowStockCount > 0} />
-        <SummaryCard icon={XCircle}       label="Out of Stock" value={String(outCount)}      iconBg="bg-rose-50"   iconColor="text-rose-500"   urgent={outCount > 0} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SummaryCard icon={Package}      label="Total Items"   value={String(items.length)} />
+        <SummaryCard icon={CheckCircle2} label="Total Value"   value={`$${totalValue.toFixed(0)}`} />
+        <SummaryCard icon={AlertTriangle} label="Low Stock"    value={String(lowStockCount)} urgent={lowStockCount > 0} />
+        <SummaryCard icon={XCircle}       label="Out of Stock" value={String(outCount)}      urgent={outCount > 0} />
       </div>
 
       <Tabs defaultValue="items">
@@ -638,25 +638,21 @@ function SummaryCard({
   icon: Icon,
   label,
   value,
-  iconBg,
-  iconColor,
   urgent,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
-  iconBg: string;
-  iconColor: string;
   urgent?: boolean;
 }) {
   return (
-    <Card className={urgent ? "border-amber-300" : ""}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className={`rounded-lg p-2 ${iconBg}`}>
-          <Icon className={`h-4 w-4 ${iconColor}`} />
+    <Card className={urgent ? "border-red-300" : ""}>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div className="rounded-sm p-1.5 bg-stone-100">
+          <Icon className="h-4 w-4 text-stone-600" />
         </div>
         <div>
-          <p className="text-xl font-bold">{value}</p>
+          <p className="text-lg font-bold font-mono">{value}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       </CardContent>
