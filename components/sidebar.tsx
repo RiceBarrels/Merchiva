@@ -15,22 +15,33 @@ import {
   LogOut,
   Menu,
   X,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { usePermissions } from "@/lib/context/permissions";
+import type { Permissions } from "@/lib/types";
 
-const navItems = [
-  { label: "Dashboard",        href: "/dashboard",  icon: LayoutDashboard },
-  { label: "Inventory",        href: "/inventory",  icon: Package         },
-  { label: "Sales Prediction", href: "/sales",      icon: TrendingUp      },
-  { label: "Staffing",         href: "/staffing",   icon: Users           },
-  { label: "Products",         href: "/products",   icon: ShoppingBag     },
+type NavItem = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  permissionKey?: keyof Permissions;
+};
+
+const navItems: NavItem[] = [
+  { label: "Dashboard",        href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { label: "Inventory",        href: "/inventory",  icon: Package,         permissionKey: "inventory" },
+  { label: "Sales Prediction", href: "/sales",      icon: TrendingUp,      permissionKey: "sales"     },
+  { label: "Staffing",         href: "/staffing",   icon: Users,           permissionKey: "staffing"  },
+  { label: "Products",         href: "/products",   icon: ShoppingBag,     permissionKey: "products"  },
 ];
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router   = useRouter();
+  const { can, isOwner } = usePermissions();
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -42,6 +53,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const handleNavClick = () => {
     onClose?.();
   };
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (!item.permissionKey) return true;
+    return can(item.permissionKey, "view");
+  });
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-border bg-card">
@@ -70,7 +86,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         <p className="px-2 pb-1.5 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Daily Management
         </p>
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
           return (
@@ -104,19 +120,36 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Bottom links */}
       <div className="p-3 space-y-1">
-        <Link
-          href="/settings"
-          onClick={handleNavClick}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors min-h-[44px]",
-            pathname === "/settings"
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          )}
-        >
-          <Settings className="h-4 w-4 shrink-0" />
-          Settings
-        </Link>
+        {isOwner && (
+          <Link
+            href="/team"
+            onClick={handleNavClick}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors min-h-[44px]",
+              pathname === "/team"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            <UserCog className="h-4 w-4 shrink-0" />
+            Team
+          </Link>
+        )}
+        {can("settings", "view") && (
+          <Link
+            href="/settings"
+            onClick={handleNavClick}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors min-h-[44px]",
+              pathname === "/settings"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            Settings
+          </Link>
+        )}
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors min-h-[44px]"

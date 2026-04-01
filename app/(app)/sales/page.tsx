@@ -37,6 +37,7 @@ import {
 } from "recharts";
 import { getSalesHistory, getTodayHourlyRecords } from "@/lib/db/sales";
 import type { SalesRecord } from "@/lib/types";
+import { PermissionGuard } from "@/components/permission-guard";
 
 const weatherIcon = (w: string) => {
   if (w === "sunny") return <CloudSun className="h-4 w-4 text-amber-500" />;
@@ -50,13 +51,17 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getSalesHistory(30), getTodayHourlyRecords()]).then(
-      ([hist, hrly]) => {
+    Promise.all([getSalesHistory(30), getTodayHourlyRecords()])
+      .then(([hist, hrly]) => {
         setHistory(hist);
         setHourly(hrly);
+      })
+      .catch((err) => {
+        console.error("Failed to load sales:", err);
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    );
+      });
   }, []);
 
   if (loading) {
@@ -105,6 +110,7 @@ export default function SalesPage() {
   const isEmpty = history.length === 0 && hourly.length === 0;
 
   return (
+    <PermissionGuard section="sales">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -247,6 +253,7 @@ export default function SalesPage() {
         </Tabs>
       )}
     </div>
+    </PermissionGuard>
   );
 }
 

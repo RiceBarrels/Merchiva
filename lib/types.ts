@@ -1,3 +1,44 @@
+// ─── Permissions & Team ───────────────────────────────────────────────────────
+
+export interface PermissionSection {
+  view: boolean;
+  edit?: boolean;
+}
+
+export interface Permissions {
+  dashboard: PermissionSection;
+  inventory: PermissionSection;
+  sales: PermissionSection;
+  staffing: PermissionSection;
+  products: PermissionSection;
+  settings: PermissionSection;
+}
+
+export type OrgRole = "owner" | "manager" | "staff";
+export type MemberStatus = "active" | "disabled";
+
+export interface OrgMember {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: OrgRole;
+  displayName: string;
+  email: string;
+  permissions: Permissions;
+  status: MemberStatus;
+}
+
+export interface OrgInvitation {
+  id: string;
+  organizationId: string;
+  email: string;
+  role: OrgRole;
+  permissions: Permissions;
+  token: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+}
+
 // ─── Inventory ───────────────────────────────────────────────────────────────
 
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";

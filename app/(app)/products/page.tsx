@@ -63,6 +63,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { getProducts, addProduct, deleteProduct } from "@/lib/db/products";
 import type { Product } from "@/lib/types";
+import { PermissionGuard } from "@/components/permission-guard";
 
 const alertConfig = {
   none:           { label: "Healthy",         icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -103,10 +104,16 @@ export default function ProductsPage() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
-    getProducts().then((p) => {
-      setProducts(p);
-      setLoading(false);
-    });
+    getProducts()
+      .then((p) => {
+        setProducts(p);
+      })
+      .catch((err) => {
+        console.error("Failed to load products:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const CATEGORIES = ["All", ...Array.from(new Set(products.map((p) => p.category)))];
@@ -168,6 +175,7 @@ export default function ProductsPage() {
     }));
 
   return (
+    <PermissionGuard section="products">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -449,6 +457,7 @@ export default function ProductsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PermissionGuard>
   );
 }
 

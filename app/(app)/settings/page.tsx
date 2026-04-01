@@ -32,6 +32,7 @@ import {
   disconnectSquare,
   type UserSettings,
 } from "@/lib/db/settings";
+import { PermissionGuard } from "@/components/permission-guard";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -160,6 +161,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <PermissionGuard section="settings">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
@@ -392,5 +394,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+    </PermissionGuard>
   );
 }

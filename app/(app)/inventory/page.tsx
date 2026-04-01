@@ -60,6 +60,7 @@ import {
   getInventoryTransactions,
 } from "@/lib/db/inventory";
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
+import { PermissionGuard } from "@/components/permission-guard";
 
 const statusConfig: Record<
   InventoryStatus,
@@ -94,13 +95,17 @@ export default function InventoryPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserId(user?.id ?? null);
     });
-    Promise.all([getInventoryItems(), getInventoryTransactions()]).then(
-      ([inv, tx]) => {
+    Promise.all([getInventoryItems(), getInventoryTransactions()])
+      .then(([inv, tx]) => {
         setItems(inv);
         setTransactions(tx);
+      })
+      .catch((err) => {
+        console.error("Failed to load inventory:", err);
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    );
+      });
   }, []);
 
   const CATEGORIES = [
@@ -218,6 +223,7 @@ export default function InventoryPage() {
   }
 
   return (
+    <PermissionGuard section="inventory">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -622,6 +628,7 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PermissionGuard>
   );
 }
 

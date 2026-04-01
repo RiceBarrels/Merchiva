@@ -65,6 +65,7 @@ import {
   addShift,
 } from "@/lib/db/staffing";
 import type { StaffMember, Shift, ShiftType } from "@/lib/types";
+import { PermissionGuard } from "@/components/permission-guard";
 
 const shiftConfig: Record<ShiftType, { label: string; hours: string; color: string }> = {
   morning:   { label: "Morning",   hours: "7am–2pm",  color: "bg-amber-100 text-amber-700"  },
@@ -101,11 +102,17 @@ export default function StaffingPage() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
-    Promise.all([getStaffMembers(), getShifts()]).then(([s, sh]) => {
-      setStaff(s);
-      setShifts(sh);
-      setLoading(false);
-    });
+    Promise.all([getStaffMembers(), getShifts()])
+      .then(([s, sh]) => {
+        setStaff(s);
+        setShifts(sh);
+      })
+      .catch((err) => {
+        console.error("Failed to load staffing:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const handleAddStaff = async () => {
@@ -179,6 +186,7 @@ export default function StaffingPage() {
   const isEmpty = staff.length === 0 && shifts.length === 0;
 
   return (
+    <PermissionGuard section="staffing">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -538,6 +546,7 @@ export default function StaffingPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PermissionGuard>
   );
 }
 

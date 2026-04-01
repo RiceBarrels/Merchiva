@@ -53,11 +53,57 @@ export default function SignupPage() {
 
     // If email confirmation is disabled in Supabase, user is logged in immediately
     if (data.session) {
+      const userId = data.user!.id;
+      const orgName = businessName || email.split("@")[0];
+
       // Create initial settings row
       await supabase.from("settings").upsert({
-        user_id: data.user!.id,
+        user_id: userId,
         business_name: businessName,
       });
+
+      // Create organization + owner membership
+      const { data: org, error: orgError } = await supabase
+        .from("organizations")
+        .insert({ owner_id: userId, name: orgName })
+        .select("id")
+        .single();
+
+      if (!orgError && org) {
+        await supabase.from("org_members").insert({
+          organization_id: org.id,
+          user_id: userId,
+          role: "owner",
+          display_name: businessName || email.split("@")[0],
+          permissions: {
+            dashboard: { view: true },
+            inventory: { view: true, edit: true },
+            sales: { view: true },
+            staffing: { view: true, edit: true },
+            products: { view: true, edit: true },
+            settings: { view: true },
+          },
+          status: "active",
+        });
+
+        // Check for pending invitation (edge case: owner signed up via invite link)
+        const { data: invitation } = await supabase
+          .from("org_invitations")
+          .select("*")
+          .eq("email", email.toLowerCase())
+          .is("accepted_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .limit(1)
+          .single();
+
+        if (invitation) {
+          await supabase
+            .from("org_invitations")
+            .update({ accepted_at: new Date().toISOString() })
+            .eq("id", invitation.id);
+        }
+      }
+
       router.push("/dashboard");
       router.refresh();
     } else {
