@@ -120,9 +120,9 @@ function PermissionsEditor({
 // ─── Role Badge ────────────────────────────────────────────────────────────────
 
 function RoleBadge({ role }: { role: OrgRole }) {
-  if (role === "owner") return <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100">Owner</Badge>;
-  if (role === "manager") return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Manager</Badge>;
-  return <Badge variant="secondary">Staff</Badge>;
+  if (role === "owner") return <Badge className="bg-stone-900 text-white hover:bg-stone-900 text-xs">Owner</Badge>;
+  if (role === "manager") return <Badge className="bg-stone-200 text-stone-800 hover:bg-stone-200 text-xs">Manager</Badge>;
+  return <Badge variant="secondary" className="text-xs">Staff</Badge>;
 }
 
 // ─── Invite Dialog ─────────────────────────────────────────────────────────────

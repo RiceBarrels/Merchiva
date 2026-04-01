@@ -46,11 +46,11 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="w-full max-w-sm shadow-lg">
+    <Card className="w-full max-w-sm">
       <CardHeader className="space-y-3 pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Zap className="h-5 w-5" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-stone-900 text-white">
+            <Zap className="h-3.5 w-3.5" />
           </div>
           <div>
             <p className="font-bold text-base leading-none">BizOps</p>

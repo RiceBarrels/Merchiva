@@ -108,16 +108,13 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-sm shadow-lg">
+      <Card className="w-full max-w-sm">
         <CardHeader className="space-y-3 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Zap className="h-5 w-5" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-stone-900 text-white">
+              <Zap className="h-3.5 w-3.5" />
             </div>
-            <div>
-              <p className="font-bold text-base leading-none">BizOps</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">AI Business Manager</p>
-            </div>
+            <p className="font-bold text-sm leading-none text-stone-900">BizOps</p>
           </div>
           <div>
             <CardTitle className="text-xl">Set up your business</CardTitle>

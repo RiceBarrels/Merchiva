@@ -224,7 +224,7 @@ export default function DashboardPage() {
             · Live overview
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+        <div className="hidden sm:flex items-center gap-2 rounded-sm border border-stone-200 bg-white px-2.5 py-1.5 text-sm">
           <CloudSun className="h-4 w-4 text-amber-500" />
           <span className="font-medium">Weather</span>
           <span className="text-muted-foreground">· Connect API</span>
@@ -245,7 +245,7 @@ export default function DashboardPage() {
       )}
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard
           title="Inventory Value"
           value={fmt(inventoryValue)}
@@ -253,8 +253,6 @@ export default function DashboardPage() {
           icon={Package}
           trend={lowStockCount > 0 ? "down" : "stable"}
           trendLabel={lowStockCount > 0 ? "Action needed" : "All stocked"}
-          iconColor="text-blue-500"
-          iconBg="bg-blue-50"
         />
         <MetricCard
           title="Today's Sales"
@@ -267,8 +265,6 @@ export default function DashboardPage() {
           icon={TrendingUp}
           trend="up"
           trendLabel="Live"
-          iconColor="text-emerald-500"
-          iconBg="bg-emerald-50"
           progress={
             todayPredicted > 0
               ? Math.min(100, Math.round((todayActual / todayPredicted) * 100))
@@ -286,8 +282,6 @@ export default function DashboardPage() {
           icon={ShoppingBag}
           trend={productsAtRisk > 0 ? "down" : "stable"}
           trendLabel={productsAtRisk > 0 ? "Review needed" : "Healthy"}
-          iconColor="text-rose-500"
-          iconBg="bg-rose-50"
         />
         <MetricCard
           title="Inventory Items"
@@ -296,8 +290,6 @@ export default function DashboardPage() {
           icon={Users}
           trend="stable"
           trendLabel="Tracked"
-          iconColor="text-violet-500"
-          iconBg="bg-violet-50"
         />
       </div>
 
@@ -322,26 +314,16 @@ export default function DashboardPage() {
                   data={recentSales}
                   margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
                 >
-                  <defs>
-                    <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="predictedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                   <Tooltip
-                    contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
+                    contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }}
                     formatter={(v) => [`$${v}`, ""]}
                   />
                   <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
-                  <Area type="monotone" dataKey="predicted" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#predictedGrad)" name="Predicted" />
-                  <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={2} fill="url(#actualGrad)" name="Actual" />
+                  <Area type="monotone" dataKey="predicted" stroke="#a8a29e" strokeWidth={1.5} strokeDasharray="4 2" fill="none" name="Predicted" />
+                  <Area type="monotone" dataKey="actual" stroke="#44403c" strokeWidth={2} fill="none" name="Actual" />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -360,10 +342,10 @@ export default function DashboardPage() {
                     <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={1} />
                     <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                     <Tooltip
-                      contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
+                      contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }}
                     />
-                    <Bar dataKey="predicted" fill="#e0e7ff" name="Forecast" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="actual" fill="#6366f1" name="Actual" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="predicted" fill="#e7e5e4" name="Forecast" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="actual" fill="#44403c" name="Actual" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -392,15 +374,11 @@ export default function DashboardPage() {
                 {alerts.map((a, i) => (
                   <div
                     key={i}
-                    className={`flex items-start gap-3 rounded-lg border p-3 text-sm ${
-                      a.severity === "high"
-                        ? "border-destructive/30 bg-destructive/5"
-                        : "border-amber-500/30 bg-amber-50/50"
-                    }`}
+                    className="flex items-start gap-3 rounded-sm border border-stone-200 p-2 text-sm"
                   >
                     <div
-                      className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                        a.severity === "high" ? "bg-destructive" : "bg-amber-500"
+                      className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${
+                        a.severity === "high" ? "bg-red-600" : "bg-stone-500"
                       }`}
                     />
                     <span className="text-foreground/80 leading-snug">{a.message}</span>
@@ -469,8 +447,6 @@ function MetricCard({
   icon: Icon,
   trend,
   trendLabel,
-  iconColor,
-  iconBg,
   progress,
 }: {
   title: string;
@@ -479,39 +455,31 @@ function MetricCard({
   icon: React.ElementType;
   trend: "up" | "down" | "stable";
   trendLabel: string;
-  iconColor: string;
-  iconBg: string;
   progress?: number;
 }) {
   const TrendIcon =
     trend === "up" ? ArrowUpRight : trend === "down" ? ArrowDownRight : Minus;
   const trendColor =
-    trend === "up"
-      ? "text-emerald-600"
-      : trend === "down"
-      ? "text-rose-600"
-      : "text-muted-foreground";
+    trend === "down" ? "text-red-600" : "text-stone-500";
 
   return (
     <Card>
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div className={`rounded-lg p-2 ${iconBg}`}>
-            <Icon className={`h-4 w-4 ${iconColor}`} />
+      <CardContent className="p-3">
+        <div className="flex items-start justify-between mb-2">
+          <div className="rounded-sm p-1.5 bg-stone-100">
+            <Icon className="h-4 w-4 text-stone-600" />
           </div>
           <div className={`flex items-center gap-0.5 text-xs font-medium ${trendColor}`}>
             <TrendIcon className="h-3.5 w-3.5" />
             {trendLabel}
           </div>
         </div>
-        <div className="mt-3">
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-        </div>
+        <p className="text-xl font-bold font-mono tracking-tight">{value}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         {progress !== undefined && (
-          <Progress value={progress} className="mt-3 h-1.5" />
+          <Progress value={progress} className="mt-2 h-1" />
         )}
-        <p className="text-[11px] text-muted-foreground mt-1.5 font-medium uppercase tracking-wide">
+        <p className="text-[10px] text-stone-400 mt-1.5 font-medium uppercase tracking-wide">
           {title}
         </p>
       </CardContent>

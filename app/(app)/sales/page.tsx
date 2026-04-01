@@ -128,7 +128,7 @@ export default function SalesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Avg Daily Sales"   value={avgActual > 0 ? `$${avgActual}` : "—"} sub="Last 30 days"    trend="up"    />
         <StatCard label="Today (so far)"    value={todayTotal > 0 ? `$${todayTotal}` : "—"} sub="Hourly actuals" trend="stable" />
         <StatCard label="Forecast Accuracy" value={accuracy > 0 ? `${accuracy}%` : "—"} sub="vs actual results" trend="up"   />
@@ -168,26 +168,16 @@ export default function SalesPage() {
                     data={histChartData}
                     margin={{ top: 5, right: 10, left: -15, bottom: 5 }}
                   >
-                    <defs>
-                      <linearGradient id="gradActual" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.15} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="gradPredicted" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={4} />
                     <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                     <Tooltip
-                      contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
+                      contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }}
                       formatter={(v, name) => [`$${v}`, String(name)]}
                     />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
-                    <Area type="monotone" dataKey="predicted" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#gradPredicted)" name="Predicted" />
-                    <Area type="monotone" dataKey="actual" stroke="#10b981" strokeWidth={2} fill="url(#gradActual)" name="Actual" />
+                    <Area type="monotone" dataKey="predicted" stroke="#a8a29e" strokeWidth={1.5} strokeDasharray="4 2" fill="none" name="Predicted" />
+                    <Area type="monotone" dataKey="actual" stroke="#44403c" strokeWidth={2} fill="none" name="Actual" />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -196,19 +186,19 @@ export default function SalesPage() {
             {/* Factor cards */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <FactorCard
-                icon={<CloudSun className="h-5 w-5 text-amber-500" />}
+                icon={<CloudSun className="h-4 w-4 text-stone-600" />}
                 title="Weather Impact"
                 description="Sunny days typically drive 10–20% higher foot traffic. Connect a weather API to factor real-time conditions into forecasts."
                 badge="Weather API — pending"
               />
               <FactorCard
-                icon={<Users className="h-5 w-5 text-blue-500" />}
+                icon={<Users className="h-4 w-4 text-stone-600" />}
                 title="Foot Traffic"
                 description="Google Maps popularity data correlates strongly with sales. High-traffic hours: 8–10am and 12–2pm."
                 badge="Google Maps API — pending"
               />
               <FactorCard
-                icon={<CalendarDays className="h-5 w-5 text-violet-500" />}
+                icon={<CalendarDays className="h-4 w-4 text-stone-600" />}
                 title="Day & Holiday Effect"
                 description="Weekends and holidays show consistent demand spikes. Mark holidays in your sales records to improve forecast accuracy."
                 badge="Holiday calendar — ready"
@@ -234,12 +224,12 @@ export default function SalesPage() {
                       <XAxis dataKey="time" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                       <Tooltip
-                        contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
+                        contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }}
                         formatter={(v) => [`$${v}`, ""]}
                       />
                       <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
-                      <Bar dataKey="forecast" fill="#e0e7ff" name="Forecast" radius={[3, 3, 0, 0]} />
-                      <Line type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={2.5} dot={{ fill: "#6366f1", r: 4 }} name="Actual" connectNulls={false} />
+                      <Bar dataKey="forecast" fill="#e7e5e4" name="Forecast" radius={[2, 2, 0, 0]} />
+                      <Line type="monotone" dataKey="actual" stroke="#44403c" strokeWidth={2} dot={{ fill: "#44403c", r: 3 }} name="Actual" connectNulls={false} />
                     </ComposedChart>
                   </ResponsiveContainer>
                 ) : (
@@ -263,7 +253,6 @@ function StatCard({
   label,
   value,
   sub,
-  trend,
 }: {
   label: string;
   value: string;
@@ -272,21 +261,10 @@ function StatCard({
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
-        <p className="text-2xl font-bold">{value}</p>
+      <CardContent className="p-3">
+        <p className="text-lg font-bold font-mono">{value}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
-        <div
-          className={`flex items-center gap-1 mt-2 text-xs font-medium ${
-            trend === "up"
-              ? "text-emerald-600"
-              : trend === "down"
-              ? "text-rose-600"
-              : "text-muted-foreground"
-          }`}
-        >
-          <ArrowUpRight className="h-3.5 w-3.5" />
-          {label}
-        </div>
+        <p className="text-[10px] text-stone-400 mt-1.5 font-medium uppercase tracking-wide">{label}</p>
       </CardContent>
     </Card>
   );
