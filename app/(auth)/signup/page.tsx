@@ -15,15 +15,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { ownerPermissions } from "@/lib/db/team";
+
+type Step = "form" | "verify";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [step, setStep] = useState<Step>("form");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,81 +55,159 @@ export default function SignupPage() {
       return;
     }
 
-    // If email confirmation is disabled in Supabase, user is logged in immediately
+    // If email confirmation is disabled and a session is returned immediately,
+    // skip verification and create the org straight away.
     if (data.session) {
-      const userId = data.user!.id;
-      const orgName = businessName || email.split("@")[0];
-
-      // Create initial settings row
-      await supabase.from("settings").upsert({
-        user_id: userId,
-        business_name: businessName,
-      });
-
-      // Create organization + owner membership
-      const { data: org, error: orgError } = await supabase
-        .from("organizations")
-        .insert({ owner_id: userId, name: orgName })
-        .select("id")
-        .single();
-
-      if (!orgError && org) {
-        await supabase.from("org_members").insert({
-          organization_id: org.id,
-          user_id: userId,
-          role: "owner",
-          display_name: businessName || email.split("@")[0],
-          permissions: {
-            dashboard: { view: true },
-            inventory: { view: true, edit: true },
-            sales: { view: true },
-            staffing: { view: true, edit: true },
-            products: { view: true, edit: true },
-            settings: { view: true },
-          },
-          status: "active",
-        });
-
-        // Check for pending invitation (edge case: owner signed up via invite link)
-        const { data: invitation } = await supabase
-          .from("org_invitations")
-          .select("*")
-          .eq("email", email.toLowerCase())
-          .is("accepted_at", null)
-          .gt("expires_at", new Date().toISOString())
-          .limit(1)
-          .single();
-
-        if (invitation) {
-          await supabase
-            .from("org_invitations")
-            .update({ accepted_at: new Date().toISOString() })
-            .eq("id", invitation.id);
-        }
-      }
-
-      router.push("/dashboard");
-      router.refresh();
-    } else {
-      setSuccess(true);
-      setLoading(false);
+      await createOrgForUser(data.user!.id);
+      return;
     }
+
+    setStep("verify");
+    setLoading(false);
   };
 
-  if (success) {
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: code.trim(),
+      type: "signup",
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!data.user) {
+      setError("Verification succeeded but no user was returned. Please try signing in.");
+      setLoading(false);
+      return;
+    }
+
+    await createOrgForUser(data.user.id);
+  };
+
+  const createOrgForUser = async (userId: string) => {
+    const supabase = createClient();
+    const orgName = businessName.trim() || email.split("@")[0];
+
+    await supabase.from("settings").upsert({
+      user_id: userId,
+      business_name: orgName,
+    });
+
+    const { data: org, error: orgError } = await supabase
+      .from("organizations")
+      .insert({ owner_id: userId, name: orgName })
+      .select("id")
+      .single();
+
+    if (orgError || !org) {
+      setError(orgError?.message ?? "Failed to create organization.");
+      setLoading(false);
+      return;
+    }
+
+    await supabase.from("org_members").insert({
+      organization_id: org.id,
+      user_id: userId,
+      role: "owner",
+      display_name: orgName,
+      permissions: ownerPermissions(),
+      status: "active",
+    });
+
+    // Accept any pending invitation for this email
+    const { data: invitation } = await supabase
+      .from("org_invitations")
+      .select("id")
+      .eq("email", email.toLowerCase())
+      .is("accepted_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
+      .single();
+
+    if (invitation) {
+      await supabase
+        .from("org_invitations")
+        .update({ accepted_at: new Date().toISOString() })
+        .eq("id", invitation.id);
+    }
+
+    router.push("/dashboard");
+    router.refresh();
+  };
+
+  if (step === "verify") {
     return (
-      <Card className="w-full max-w-sm shadow-lg text-center">
-        <CardContent className="pt-8 pb-8 space-y-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 mx-auto">
-            <Zap className="h-6 w-6 text-emerald-600" />
+      <Card className="w-full max-w-sm shadow-lg">
+        <CardHeader className="space-y-3 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold text-base leading-none">BizOps</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">AI Business Manager</p>
+            </div>
           </div>
-          <h2 className="font-bold text-lg">Check your email</h2>
-          <p className="text-sm text-muted-foreground">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
-          </p>
-          <Link href="/login" className="text-sm font-medium underline underline-offset-4 text-muted-foreground">
-            Back to sign in
-          </Link>
+          <div>
+            <CardTitle className="text-xl">Check your email</CardTitle>
+            <CardDescription>
+              We sent a 6-digit verification code to <strong>{email}</strong>
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleVerify} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="code">Verification code</Label>
+              <Input
+                id="code"
+                placeholder="123456"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                required
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                autoFocus
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-destructive rounded-lg bg-destructive/10 px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading || code.length !== 6}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying…
+                </>
+              ) : (
+                "Verify and continue"
+              )}
+            </Button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Wrong email?{" "}
+              <button
+                type="button"
+                onClick={() => { setStep("form"); setError(null); setCode(""); }}
+                className="font-medium text-foreground underline underline-offset-4"
+              >
+                Go back
+              </button>
+            </p>
+          </form>
         </CardContent>
       </Card>
     );

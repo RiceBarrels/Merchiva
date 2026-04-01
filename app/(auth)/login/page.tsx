@@ -32,7 +32,11 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      setError(error.message);
+      if (error.message.toLowerCase().includes("email not confirmed")) {
+        setError("Your email isn't verified yet. Please check your inbox for a verification code and complete sign-up.");
+      } else {
+        setError(error.message);
+      }
       setLoading(false);
       return;
     }
