@@ -106,9 +106,9 @@ export async function POST(request: NextRequest) {
       .eq("id", organizationId)
       .single();
 
-    // Send the invite email
+    // Build invite URL — prefer signup flow with invite_code, fallback to /invite/:token
     const baseUrl = request.headers.get("origin") || request.headers.get("referer")?.replace(/\/[^/]*$/, "") || "http://localhost:3000";
-    const inviteUrl = `${baseUrl}/invite/${token}`;
+    const inviteUrl = `${baseUrl}/signup?invite_code=${token}`;
 
     try {
       await sendTeamInviteEmail({
@@ -123,7 +123,8 @@ export async function POST(request: NextRequest) {
       // Invitation was created — don't fail the request, just warn
     }
 
-    return NextResponse.json({ token: invitation.token, expiresAt });
+    const inviteSignupUrl = `${baseUrl}/signup?invite_code=${invitation.token}`;
+    return NextResponse.json({ token: invitation.token, expiresAt, inviteUrl: inviteSignupUrl });
   } catch (err) {
     console.error("[team/invite]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

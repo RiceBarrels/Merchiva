@@ -11,6 +11,8 @@ import {
   Trash2,
   PenLine,
   ShieldAlert,
+  Copy,
+  Check as CheckIcon,
 } from "lucide-react";
 import {
   Card,
@@ -393,6 +395,34 @@ function MemberActions({
   );
 }
 
+// ─── Copy Invite Link ──────────────────────────────────────────────────────────
+
+function CopyInviteLink({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const url = `${window.location.origin}/signup?invite_code=${token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="p-1.5 rounded-md hover:bg-accent text-muted-foreground"
+      title={copied ? "Copied!" : "Copy invite link"}
+    >
+      {copied ? (
+        <CheckIcon className="h-3.5 w-3.5 text-green-600" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TeamPage() {
@@ -610,6 +640,7 @@ export default function TeamPage() {
                   </div>
                   <RoleBadge role={inv.role} />
                   <div className="flex items-center gap-1">
+                    <CopyInviteLink token={inv.token} />
                     <button
                       onClick={() => handleResendInvitation(inv)}
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground"
