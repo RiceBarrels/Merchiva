@@ -2,55 +2,23 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-  Users,
-  Clock,
-  TrendingUp,
-  Zap,
-  Plus,
-  Loader2,
-  Trash2,
-  Shield,
-  Palette,
-  ChevronLeft,
-  ChevronRight,
-  X,
+  Plus, Loader2, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
 import {
-  getTeamForScheduling,
-  getShifts,
-  addShift,
-  deleteShift,
-  getStaffRoles,
-  addStaffRole,
-  updateStaffRole,
-  deleteStaffRole,
+  getTeamForScheduling, getShifts, addShift, deleteShift,
+  getStaffRoles, addStaffRole, updateStaffRole, deleteStaffRole,
 } from "@/lib/db/staffing";
 import type { OrgMember, Shift, ShiftType, StaffRole, StaffRolePermissions } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
@@ -84,72 +52,105 @@ const SHIFT_LABELS: Record<ShiftType, string> = {
   closing:   "Closing",
 };
 
-function getWeekDates(baseDate: Date): Date[] {
-  const d = new Date(baseDate);
+const AVATAR_BG = [
+  "bg-stone-200 text-stone-700",
+  "bg-cyan-100 text-cyan-800",
+  "bg-violet-100 text-violet-800",
+  "bg-rose-100 text-rose-800",
+  "bg-emerald-100 text-emerald-800",
+  "bg-amber-100 text-amber-800",
+];
+
+function strHash(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
+  return Math.abs(h);
+}
+
+function avatarBg(name: string): string {
+  return AVATAR_BG[strHash(name) % AVATAR_BG.length];
+}
+
+function formatTime(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+function getWeekDates(base: Date): Date[] {
+  const d = new Date(base);
   const day = d.getDay();
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  const mon = new Date(d);
+  mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  mon.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + i);
+    const date = new Date(mon);
+    date.setDate(mon.getDate() + i);
     return date;
   });
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
-function formatShortDay(d: Date): string {
-  return d.toLocaleDateString("en-US", { weekday: "short" });
-}
-
-function formatDayNum(d: Date): string {
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
+const DAY_ABBR = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+type MainTab = "myShifts" | "schedule" | "roles";
 
 export default function StaffingPage() {
-  const { organizationId } = usePermissions();
-  const [team, setTeam] = useState<OrgMember[]>([]);
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [roles, setRoles] = useState<StaffRole[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
+  const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
 
-  // Week navigation
+  const [team,    setTeam]    = useState<OrgMember[]>([]);
+  const [shifts,  setShifts]  = useState<Shift[]>([]);
+  const [roles,   setRoles]   = useState<StaffRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userId,  setUserId]  = useState<string | null>(null);
+  const [myMemberId, setMyMemberId] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<MainTab>("myShifts");
+
   const [weekStart, setWeekStart] = useState(() => {
     const now = new Date();
     const day = now.getDay();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-    monday.setHours(0, 0, 0, 0);
-    return monday;
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    mon.setHours(0, 0, 0, 0);
+    return mon;
   });
 
-  // Add shift popover
-  const [addTarget, setAddTarget] = useState<{ memberId: string; date: string } | null>(null);
+  const [selectedDay, setSelectedDay] = useState(() => isoDate(new Date()));
+
+  // Add shift dialog
+  const [addDialog, setAddDialog] = useState(false);
   const [shiftForm, setShiftForm] = useState({
+    memberId:  "",
+    date:      isoDate(new Date()),
     shiftType: "morning" as ShiftType,
     startTime: "07:00",
-    endTime: "14:00",
+    endTime:   "14:00",
   });
   const [saving, setSaving] = useState(false);
 
   // Role dialog
-  const [roleDialog, setRoleDialog] = useState(false);
-  const [editingRole, setEditingRole] = useState<StaffRole | null>(null);
-  const [roleForm, setRoleForm] = useState({
-    name: "",
-    color: "#44403c",
+  const [roleDialog,   setRoleDialog]   = useState(false);
+  const [editingRole,  setEditingRole]  = useState<StaffRole | null>(null);
+  const [roleForm,     setRoleForm]     = useState({
+    name:        "",
+    color:       "#44403c",
     permissions: {} as StaffRolePermissions,
   });
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+    createClient().auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
   }, []);
+
+  useEffect(() => {
+    if (!userId || team.length === 0) return;
+    setMyMemberId(team.find((m) => m.userId === userId)?.id ?? null);
+  }, [team, userId]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -162,43 +163,35 @@ export default function StaffingPage() {
 
   const prevWeek = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeek = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
-  const thisWeek = () => {
-    const now = new Date();
-    const day = now.getDay();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-    monday.setHours(0, 0, 0, 0);
-    setWeekStart(monday);
-  };
 
-  const handleShiftTypeChange = (type: ShiftType) => {
-    const timeMap: Record<ShiftType, { start: string; end: string }> = {
+  const applyShiftType = (type: ShiftType) => {
+    const map: Record<ShiftType, { start: string; end: string }> = {
       morning:   { start: "07:00", end: "14:00" },
       afternoon: { start: "13:00", end: "20:00" },
       evening:   { start: "14:00", end: "21:00" },
       closing:   { start: "18:00", end: "22:00" },
     };
-    setShiftForm({ shiftType: type, startTime: timeMap[type].start, endTime: timeMap[type].end });
+    setShiftForm((f) => ({ ...f, shiftType: type, startTime: map[type].start, endTime: map[type].end }));
   };
 
   const handleAddShift = async () => {
-    if (!addTarget || !userId) return;
-    const member = team.find((m) => m.id === addTarget.memberId);
+    if (!userId) return;
+    const member = team.find((m) => m.id === shiftForm.memberId);
     if (!member) return;
     setSaving(true);
     try {
       const sh = await addShift({
-        memberId: member.id,
-        staffName: member.displayName,
-        staffRole: member.role,
-        date: addTarget.date,
-        shiftType: shiftForm.shiftType,
-        startTime: shiftForm.startTime,
-        endTime: shiftForm.endTime,
+        memberId:        member.id,
+        staffName:       member.displayName,
+        staffRole:       member.role,
+        date:            shiftForm.date,
+        shiftType:       shiftForm.shiftType,
+        startTime:       shiftForm.startTime,
+        endTime:         shiftForm.endTime,
         predictedDemand: "medium",
       }, userId);
       setShifts((prev) => [...prev, sh]);
-      setAddTarget(null);
+      setAddDialog(false);
     } finally {
       setSaving(false);
     }
@@ -214,10 +207,10 @@ export default function StaffingPage() {
     setSaving(true);
     try {
       if (editingRole) {
-        await updateStaffRole(editingRole.id, { name: roleForm.name, color: roleForm.color, permissions: roleForm.permissions });
+        await updateStaffRole(editingRole.id, roleForm);
         setRoles((prev) => prev.map((r) => r.id === editingRole.id ? { ...r, ...roleForm } : r));
       } else {
-        const r = await addStaffRole({ name: roleForm.name, color: roleForm.color, permissions: roleForm.permissions }, userId);
+        const r = await addStaffRole(roleForm, userId);
         setRoles((prev) => [...prev, r]);
       }
       setRoleDialog(false);
@@ -233,18 +226,19 @@ export default function StaffingPage() {
     setRoles((prev) => prev.filter((r) => r.id !== id));
   };
 
-  // Stats
-  const weekShifts = shifts.filter((s) => {
-    const sd = s.date;
-    return sd >= formatDate(weekDates[0]) && sd <= formatDate(weekDates[6]);
-  });
-  const totalHours = weekShifts.reduce((sum, s) => {
-    const [sh, sm] = s.startTime.split(":").map(Number);
-    const [eh, em] = s.endTime.split(":").map(Number);
-    return sum + (eh + em / 60 - (sh + sm / 60));
-  }, 0);
+  const todayStr = isoDate(new Date());
+  const isToday  = (d: Date) => isoDate(d) === todayStr;
 
-  const isToday = (d: Date) => formatDate(d) === formatDate(new Date());
+  const monthYear = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  const weekShifts = shifts.filter(
+    (s) => s.date >= isoDate(weekDates[0]) && s.date <= isoDate(weekDates[6])
+  );
+  const myShifts = weekShifts.filter((s) => s.memberId === myMemberId);
+
+  const canEdit     = isOwner || can("staffing", "edit");
+  const isStaff     = role === "staff";
+  const visibleTabs: MainTab[] = isStaff ? ["myShifts", "roles"] : ["myShifts", "schedule", "roles"];
 
   if (loading) {
     return (
@@ -256,211 +250,227 @@ export default function StaffingPage() {
 
   return (
     <PermissionGuard section="staffing">
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Scheduling</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {team.length} team members &middot; {weekShifts.length} shifts this week &middot; {totalHours.toFixed(0)}h scheduled
-          </p>
+      <div className="p-3 sm:p-5 max-w-xl mx-auto">
+
+        {/* ─── Header ──────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold tracking-tight">Scheduling</h1>
+          {canEdit && (
+            <button
+              onClick={() => {
+                setShiftForm({
+                  memberId:  team[0]?.id ?? "",
+                  date:      selectedDay,
+                  shiftType: "morning",
+                  startTime: "07:00",
+                  endTime:   "14:00",
+                });
+                setAddDialog(true);
+              }}
+              className="h-8 w-8 flex items-center justify-center border border-border rounded hover:bg-stone-100 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
         </div>
-      </div>
 
-      <Tabs defaultValue="schedule">
-        <TabsList>
-          <TabsTrigger value="schedule">Schedule</TabsTrigger>
-          <TabsTrigger value="roles">Roles</TabsTrigger>
-        </TabsList>
+        {/* ─── Toggle Tabs ─────────────────────────────────────────── */}
+        <div className="flex border border-border overflow-hidden w-fit mb-5">
+          {visibleTabs.map((tab, i) => {
+            const labels: Record<MainTab, string> = {
+              myShifts: "My Shifts",
+              schedule: "Schedule",
+              roles:    "Roles",
+            };
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  i > 0 ? "border-l border-border" : ""
+                } ${
+                  activeTab === tab
+                    ? "bg-stone-900 text-white"
+                    : "bg-white text-stone-600 hover:bg-stone-50"
+                }`}
+              >
+                {labels[tab]}
+              </button>
+            );
+          })}
+        </div>
 
-        {/* ─── Schedule Tab (7shifts-style grid) ──────────────────── */}
-        <TabsContent value="schedule" className="mt-4 space-y-3">
-          {/* Week nav */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={prevWeek} className="h-8 w-8 p-0">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={thisWeek} className="h-8 text-xs">
-              Today
-            </Button>
-            <Button variant="outline" size="sm" onClick={nextWeek} className="h-8 w-8 p-0">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium ml-2">
-              {weekDates[0].toLocaleDateString("en-US", { month: "long", day: "numeric" })} — {weekDates[6].toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-            </span>
-          </div>
+        {/* ─── Week Calendar Strip (shown for My Shifts + Schedule) ── */}
+        {activeTab !== "roles" && (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <button onClick={prevWeek} className="p-1 rounded hover:bg-stone-100 transition-colors">
+                <ChevronLeft className="h-4 w-4 text-stone-600" />
+              </button>
+              <span className="text-sm font-semibold text-stone-800">{monthYear}</span>
+              <button onClick={nextWeek} className="p-1 rounded hover:bg-stone-100 transition-colors">
+                <ChevronRight className="h-4 w-4 text-stone-600" />
+              </button>
+            </div>
 
-          {/* Grid */}
-          <Card className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <div className="min-w-[800px]">
-                {/* Header row */}
-                <div className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-border">
-                  <div className="p-2 text-xs font-semibold text-muted-foreground border-r border-border flex items-center">
-                    <Users className="h-3.5 w-3.5 mr-1.5" /> Team
-                  </div>
-                  {weekDates.map((d) => (
-                    <div
-                      key={formatDate(d)}
-                      className={`p-2 text-center border-r border-border last:border-r-0 ${
-                        isToday(d) ? "bg-stone-900 text-white" : ""
+            <div className="grid grid-cols-7 mb-4">
+              {weekDates.map((d, i) => {
+                const ds        = isoDate(d);
+                const isTodayD  = isToday(d);
+                const isSelected = ds === selectedDay;
+                return (
+                  <button
+                    key={ds}
+                    onClick={() => setSelectedDay(ds)}
+                    className="flex flex-col items-center gap-1 py-1"
+                  >
+                    <span className="text-[10px] font-medium text-muted-foreground">{DAY_ABBR[i]}</span>
+                    <span
+                      className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                        isTodayD
+                          ? "bg-stone-900 text-white"
+                          : isSelected
+                          ? "bg-stone-200 text-stone-900"
+                          : "text-stone-700 hover:bg-stone-100"
                       }`}
                     >
-                      <p className="text-xs font-semibold">{formatShortDay(d)}</p>
-                      <p className={`text-[11px] ${isToday(d) ? "text-stone-300" : "text-muted-foreground"}`}>
-                        {formatDayNum(d)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                      {d.getDate()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-                {/* Member rows */}
-                {team.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-muted-foreground">
-                    No team members yet. Invite members from the Team page.
-                  </div>
-                ) : (
-                  team.map((member) => (
-                    <div
-                      key={member.id}
-                      className="grid grid-cols-[180px_repeat(7,1fr)] border-b border-border last:border-b-0 group/row"
-                    >
-                      {/* Member info */}
-                      <div className="p-2 border-r border-border flex items-center gap-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600">
-                          {member.displayName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate leading-tight">{member.displayName}</p>
-                          <p className="text-[10px] text-muted-foreground capitalize">{member.role}</p>
-                        </div>
-                      </div>
+            <div className="border-t border-border" />
+          </>
+        )}
 
-                      {/* Day cells */}
-                      {weekDates.map((d) => {
-                        const dateStr = formatDate(d);
-                        const dayShifts = shifts.filter(
-                          (s) => s.memberId === member.id && s.date === dateStr
-                        );
-                        const isAddOpen = addTarget?.memberId === member.id && addTarget.date === dateStr;
+        {/* ─── My Shifts ───────────────────────────────────────────── */}
+        {activeTab === "myShifts" && (
+          <div className="divide-y divide-border">
+            {weekDates.map((d) => {
+              const ds       = isoDate(d);
+              const dayShifts = myShifts.filter((s) => s.date === ds);
+              const isTodayD  = isToday(d);
+              const label     = isTodayD
+                ? "Today"
+                : d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 
-                        return (
-                          <div
-                            key={dateStr}
-                            className={`relative p-1 border-r border-border last:border-r-0 min-h-[64px] ${
-                              isToday(d) ? "bg-stone-50" : ""
-                            }`}
-                          >
-                            {/* Existing shifts */}
-                            {dayShifts.map((shift) => (
-                              <div
-                                key={shift.id}
-                                className="rounded px-1.5 py-1 mb-1 text-white text-[10px] leading-tight group/shift relative"
+              return (
+                <div key={ds} className="py-3">
+                  <p className={`text-xs font-semibold mb-2 ${isTodayD ? "text-stone-900" : "text-stone-500"}`}>
+                    {label}
+                  </p>
+                  {dayShifts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">You are not scheduled to work.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {dayShifts.map((shift) => (
+                        <div key={shift.id} className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-stone-900">
+                              {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span
+                                className="inline-block h-2 w-2 rounded-full shrink-0"
                                 style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
-                              >
-                                <p className="font-semibold">{SHIFT_LABELS[shift.shiftType]}</p>
-                                <p className="opacity-80">{shift.startTime}-{shift.endTime}</p>
-                                <button
-                                  onClick={() => handleDeleteShift(shift.id)}
-                                  className="absolute top-0.5 right-0.5 opacity-0 group-hover/shift:opacity-100 p-0.5 rounded bg-black/20 hover:bg-black/40 transition-opacity"
-                                >
-                                  <X className="h-2.5 w-2.5" />
-                                </button>
-                              </div>
-                            ))}
+                              />
+                              <span className="text-xs text-muted-foreground truncate">
+                                {currentOrg?.name ?? "Store"} &middot; {SHIFT_LABELS[shift.shiftType]}
+                              </span>
+                            </div>
+                          </div>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleDeleteShift(shift.id)}
+                              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-                            {/* Add shift button */}
-                            {!isAddOpen && (
+        {/* ─── Schedule (manager view) ──────────────────────────────── */}
+        {activeTab === "schedule" && !isStaff && (
+          <div className="divide-y divide-border">
+            {weekDates.map((d) => {
+              const ds        = isoDate(d);
+              const dayShifts = weekShifts.filter((s) => s.date === ds);
+              const isTodayD  = isToday(d);
+              const label     = isTodayD
+                ? `Today · ${d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" })}`
+                : d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+
+              return (
+                <div key={ds} className="py-3">
+                  <p className={`text-xs font-semibold mb-2 ${isTodayD ? "text-stone-900" : "text-stone-500"}`}>
+                    {label}
+                  </p>
+                  {dayShifts.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No shifts scheduled.</p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {dayShifts.map((shift) => {
+                        const initials = shift.staffName
+                          .split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+                        return (
+                          <div key={shift.id} className="flex items-center gap-3 group">
+                            <div
+                              className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg(shift.staffName)}`}
+                            >
+                              {initials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-stone-900 leading-snug">
+                                {shift.staffName}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span
+                                  className="inline-block h-2 w-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
+                                />
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {formatTime(shift.startTime)} – {formatTime(shift.endTime)} &middot; {SHIFT_LABELS[shift.shiftType]}
+                                </span>
+                              </div>
+                            </div>
+                            {canEdit && (
                               <button
-                                onClick={() => {
-                                  setAddTarget({ memberId: member.id, date: dateStr });
-                                  setShiftForm({ shiftType: "morning", startTime: "07:00", endTime: "14:00" });
-                                }}
-                                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity"
+                                onClick={() => handleDeleteShift(shift.id)}
+                                className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-destructive transition-all"
                               >
-                                <div className="rounded bg-stone-200 hover:bg-stone-300 p-0.5 transition-colors">
-                                  <Plus className="h-3.5 w-3.5 text-stone-600" />
-                                </div>
+                                <X className="h-3.5 w-3.5" />
                               </button>
-                            )}
-
-                            {/* Inline add form */}
-                            {isAddOpen && (
-                              <div className="absolute z-10 top-0 left-0 w-48 bg-white rounded-lg shadow-lg border border-border p-2 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-semibold">Add Shift</p>
-                                  <button onClick={() => setAddTarget(null)} className="p-0.5 rounded hover:bg-muted">
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-1">
-                                  {(Object.keys(SHIFT_LABELS) as ShiftType[]).map((t) => (
-                                    <button
-                                      key={t}
-                                      onClick={() => handleShiftTypeChange(t)}
-                                      className={`rounded px-2 py-1 text-[10px] font-semibold text-white transition-opacity ${
-                                        shiftForm.shiftType === t ? "opacity-100 ring-2 ring-offset-1 ring-stone-400" : "opacity-50"
-                                      }`}
-                                      style={{ backgroundColor: SHIFT_COLORS[t] }}
-                                    >
-                                      {SHIFT_LABELS[t]}
-                                    </button>
-                                  ))}
-                                </div>
-                                <div className="flex gap-1">
-                                  <Input
-                                    type="time"
-                                    value={shiftForm.startTime}
-                                    onChange={(e) => setShiftForm((f) => ({ ...f, startTime: e.target.value }))}
-                                    className="h-7 text-[10px] px-1"
-                                  />
-                                  <Input
-                                    type="time"
-                                    value={shiftForm.endTime}
-                                    onChange={(e) => setShiftForm((f) => ({ ...f, endTime: e.target.value }))}
-                                    className="h-7 text-[10px] px-1"
-                                  />
-                                </div>
-                                <Button
-                                  size="sm"
-                                  className="w-full h-7 text-xs"
-                                  onClick={handleAddShift}
-                                  disabled={saving}
-                                >
-                                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Add"}
-                                </Button>
-                              </div>
                             )}
                           </div>
                         );
                       })}
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Shift legend */}
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            {(Object.keys(SHIFT_LABELS) as ShiftType[]).map((t) => (
-              <div key={t} className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: SHIFT_COLORS[t] }} />
-                {SHIFT_LABELS[t]}
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* ─── Roles Tab ───────────────────────────────────────────── */}
-        <TabsContent value="roles" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Staff Roles</CardTitle>
-                  <CardDescription>Define roles with specific permissions for your team</CardDescription>
+                  )}
                 </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ─── Roles ───────────────────────────────────────────────── */}
+        {activeTab === "roles" && (
+          <div className="mt-1 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-sm">Staff Roles</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Define roles and permissions for your team</p>
+              </div>
+              {canEdit && (
                 <Button
                   size="sm"
                   onClick={() => {
@@ -472,78 +482,143 @@ export default function StaffingPage() {
                 >
                   <Plus className="h-3.5 w-3.5" /> Add Role
                 </Button>
+              )}
+            </div>
+
+            {roles.length === 0 ? (
+              <div className="text-center py-12 space-y-2">
+                <Shield className="h-8 w-8 mx-auto text-muted-foreground opacity-30" />
+                <p className="text-sm text-muted-foreground">
+                  No roles yet. Create roles like &quot;Barista&quot; or &quot;Shift Lead&quot;.
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
-              {roles.length === 0 ? (
-                <div className="text-center py-8 space-y-2">
-                  <Shield className="h-8 w-8 mx-auto text-muted-foreground opacity-40" />
-                  <p className="text-sm text-muted-foreground">
-                    No roles defined yet. Create roles like &quot;Barista&quot;, &quot;Cashier&quot;, or &quot;Shift Lead&quot;.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {roles.map((role) => {
-                    const activePerms = ROLE_PERMISSION_LABELS.filter((p) => role.permissions[p.key]);
-                    return (
-                      <div
-                        key={role.id}
-                        className="rounded-lg border border-border p-3 space-y-2 hover:border-stone-300 transition-colors cursor-pointer"
-                        onClick={() => {
-                          setEditingRole(role);
-                          setRoleForm({ name: role.name, color: role.color, permissions: role.permissions });
-                          setRoleDialog(true);
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: role.color }} />
-                            <span className="font-semibold text-sm">{role.name}</span>
-                          </div>
+            ) : (
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {roles.map((role) => {
+                  const activePerms = ROLE_PERMISSION_LABELS.filter((p) => role.permissions[p.key]);
+                  return (
+                    <div
+                      key={role.id}
+                      className="border border-border p-3 space-y-2 hover:border-stone-300 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setEditingRole(role);
+                        setRoleForm({ name: role.name, color: role.color, permissions: role.permissions });
+                        setRoleDialog(true);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: role.color }} />
+                          <span className="font-semibold text-sm">{role.name}</span>
+                        </div>
+                        {canEdit && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteRole(role.id); }}
                             className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {activePerms.length > 0 ? (
-                            activePerms.map((p) => (
-                              <span key={p.key} className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">{p.label}</span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No permissions set</span>
-                          )}
-                        </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                      <div className="flex flex-wrap gap-1">
+                        {activePerms.length > 0 ? (
+                          activePerms.map((p) => (
+                            <span key={p.key} className="bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                              {p.label}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No permissions set</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-      {/* AI Insight */}
-      {team.length > 0 && (
-        <Card>
-          <CardContent className="p-3 flex gap-2.5">
-            <Zap className="h-4 w-4 text-stone-500 mt-0.5 shrink-0" />
-            <div className="space-y-0.5">
-              <p className="text-sm font-semibold text-stone-800">AI Staffing Note</p>
-              <p className="text-sm text-stone-600 leading-relaxed">
-                Staffing recommendations are generated based on your sales forecast data.
-                Connect Square in Settings to get AI-powered scheduling suggestions.
-              </p>
+      {/* ─── Add Shift Dialog ─────────────────────────────────────── */}
+      <Dialog open={addDialog} onOpenChange={setAddDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add Shift</DialogTitle>
+            <DialogDescription>Schedule a shift for a team member.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <Label>Team Member</Label>
+              <Select
+                value={shiftForm.memberId}
+                onValueChange={(v) => setShiftForm((f) => ({ ...f, memberId: v ?? "" }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Select member" /></SelectTrigger>
+                <SelectContent>
+                  {team.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* ─── Role Dialog ──────────────────────────────────────────── */}
+            <div className="space-y-1.5">
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={shiftForm.date}
+                onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Shift Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(Object.keys(SHIFT_LABELS) as ShiftType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => applyShiftType(t)}
+                    className={`px-3 py-2 text-xs font-semibold text-white transition-opacity ${
+                      shiftForm.shiftType === t ? "opacity-100 ring-2 ring-offset-1 ring-stone-400" : "opacity-45"
+                    }`}
+                    style={{ backgroundColor: SHIFT_COLORS[t] }}
+                  >
+                    {SHIFT_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start</Label>
+                <Input
+                  type="time"
+                  value={shiftForm.startTime}
+                  onChange={(e) => setShiftForm((f) => ({ ...f, startTime: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End</Label>
+                <Input
+                  type="time"
+                  value={shiftForm.endTime}
+                  onChange={(e) => setShiftForm((f) => ({ ...f, endTime: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setAddDialog(false)}>Cancel</Button>
+            <Button onClick={handleAddShift} disabled={saving || !shiftForm.memberId}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Shift"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Role Dialog ─────────────────────────────────────────── */}
       <Dialog open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -552,7 +627,7 @@ export default function StaffingPage() {
               {editingRole ? "Update this role and its permissions." : "Define a new role with specific permissions."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-1">
             <div className="space-y-1.5">
               <Label>Role Name *</Label>
               <Input
@@ -561,6 +636,7 @@ export default function StaffingPage() {
                 placeholder="e.g. Barista, Shift Lead, Cashier"
               />
             </div>
+
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5">
                 <Palette className="h-3.5 w-3.5" /> Color
@@ -572,28 +648,31 @@ export default function StaffingPage() {
                     type="button"
                     onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
                     className={`h-7 w-7 rounded-full border-2 transition-all ${
-                      roleForm.color === c ? "border-foreground scale-110" : "border-transparent"
+                      roleForm.color === c ? "border-stone-900 scale-110" : "border-transparent"
                     }`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
             </div>
+
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5" /> Permissions
               </Label>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {ROLE_PERMISSION_LABELS.map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-2.5 rounded px-2 py-1.5 hover:bg-muted/50 cursor-pointer">
+                  <label key={key} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-muted/50 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={roleForm.permissions[key] === true}
-                      onChange={() => setRoleForm((f) => ({
-                        ...f,
-                        permissions: { ...f.permissions, [key]: !f.permissions[key] },
-                      }))}
-                      className="h-4 w-4 accent-primary cursor-pointer"
+                      onChange={() =>
+                        setRoleForm((f) => ({
+                          ...f,
+                          permissions: { ...f.permissions, [key]: !f.permissions[key] },
+                        }))
+                      }
+                      className="h-4 w-4 accent-stone-900 cursor-pointer"
                     />
                     <span className="text-sm">{label}</span>
                   </label>
@@ -601,7 +680,7 @@ export default function StaffingPage() {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setRoleDialog(false)}>Cancel</Button>
             <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? "Save" : "Add Role"}
@@ -609,7 +688,6 @@ export default function StaffingPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
     </PermissionGuard>
   );
 }
