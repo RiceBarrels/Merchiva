@@ -34,11 +34,13 @@ export default async function AppLayout({
     .limit(1)
     .single();
 
-  if (member) {
-    organizationId = member.organization_id as string;
-    role = member.role as OrgRole;
-    permissions = (member.permissions as Permissions) ?? (role === "owner" ? ownerPermissions() : defaultPermissions());
+  if (!member) {
+    redirect("/setup");
   }
+
+  organizationId = member.organization_id as string;
+  role = member.role as OrgRole;
+  permissions = (member.permissions as Permissions) ?? (role === "owner" ? ownerPermissions() : defaultPermissions());
 
   return (
     <PermissionsProvider role={role} permissions={permissions} organizationId={organizationId}>

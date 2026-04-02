@@ -198,11 +198,11 @@ export default function ProductsPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SummaryCard label="Products"       value={String(products.length)} icon={ShoppingBag} iconBg="bg-blue-50"    iconColor="text-blue-500"   />
-        <SummaryCard label="Revenue (month)"value={`$${totalRevenue.toLocaleString()}`} icon={TrendingUp} iconBg="bg-emerald-50" iconColor="text-emerald-500" />
-        <SummaryCard label="Avg Margin"     value={`${avgMargin}%`}         icon={ArrowUpRight} iconBg="bg-violet-50"  iconColor="text-violet-500" />
-        <SummaryCard label="Need Review"    value={String(atRisk)}          icon={AlertTriangle} iconBg="bg-rose-50"  iconColor="text-rose-500"   urgent={atRisk > 0} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SummaryCard label="Products"       value={String(products.length)} icon={ShoppingBag} />
+        <SummaryCard label="Revenue (month)"value={`$${totalRevenue.toLocaleString()}`} icon={TrendingUp} />
+        <SummaryCard label="Avg Margin"     value={`${avgMargin}%`}         icon={ArrowUpRight} />
+        <SummaryCard label="Need Review"    value={String(atRisk)}          icon={AlertTriangle} urgent={atRisk > 0} />
       </div>
 
       {products.length === 0 ? (
@@ -229,13 +229,13 @@ export default function ProductsPage() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
-                    <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }} formatter={(v) => [`$${v}`, "Revenue"]} />
-                    <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
+                    <Tooltip contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }} formatter={(v) => [`$${v}`, "Revenue"]} />
+                    <Bar dataKey="revenue" radius={[0, 2, 2, 0]}>
                       {chartData.map((entry, i) => (
-                        <Cell key={i} fill={entry.alert === "remove" ? "#f87171" : entry.alert === "underperforming" ? "#fbbf24" : "#6366f1"} />
+                        <Cell key={i} fill={entry.alert === "remove" ? "#dc2626" : entry.alert === "underperforming" ? "#78716c" : "#44403c"} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -244,12 +244,12 @@ export default function ProductsPage() {
             </Card>
 
             <div className="lg:col-span-2 space-y-3">
-              <Card className="border-violet-200 bg-violet-50/40">
-                <CardContent className="p-4 flex gap-3">
-                  <Zap className="h-5 w-5 text-violet-600 mt-0.5 shrink-0" />
-                  <div className="space-y-1.5">
-                    <p className="text-sm font-semibold text-violet-900">AI Product Insight</p>
-                    <p className="text-sm text-violet-800 leading-relaxed">
+              <Card>
+                <CardContent className="p-3 flex gap-2.5">
+                  <Zap className="h-4 w-4 text-stone-500 mt-0.5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-stone-800">AI Product Insight</p>
+                    <p className="text-sm text-stone-600 leading-relaxed">
                       {atRisk > 0
                         ? `${atRisk} product${atRisk > 1 ? "s need" : " needs"} attention. Review flagged items below and consider removing low-performing SKUs to reduce operational complexity.`
                         : "All products are performing within acceptable thresholds. Keep monitoring weekly trends for early signals."}
@@ -465,25 +465,21 @@ function SummaryCard({
   icon: Icon,
   label,
   value,
-  iconBg,
-  iconColor,
   urgent,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
-  iconBg: string;
-  iconColor: string;
   urgent?: boolean;
 }) {
   return (
-    <Card className={urgent ? "border-amber-300" : ""}>
-      <CardContent className="p-4 flex items-center gap-3">
-        <div className={`rounded-lg p-2 ${iconBg}`}>
-          <Icon className={`h-4 w-4 ${iconColor}`} />
+    <Card className={urgent ? "border-red-300" : ""}>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div className="rounded-sm p-1.5 bg-stone-100">
+          <Icon className="h-4 w-4 text-stone-600" />
         </div>
         <div>
-          <p className="text-xl font-bold">{value}</p>
+          <p className="text-lg font-bold font-mono">{value}</p>
           <p className="text-xs text-muted-foreground">{label}</p>
         </div>
       </CardContent>

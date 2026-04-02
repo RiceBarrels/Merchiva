@@ -68,10 +68,10 @@ import type { StaffMember, Shift, ShiftType } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 
 const shiftConfig: Record<ShiftType, { label: string; hours: string; color: string }> = {
-  morning:   { label: "Morning",   hours: "7am–2pm",  color: "bg-amber-100 text-amber-700"  },
-  afternoon: { label: "Afternoon", hours: "1pm–8pm",  color: "bg-blue-100 text-blue-700"    },
-  evening:   { label: "Evening",   hours: "2pm–9pm",  color: "bg-violet-100 text-violet-700" },
-  closing:   { label: "Closing",   hours: "6pm–10pm", color: "bg-slate-100 text-slate-700"  },
+  morning:   { label: "Morning",   hours: "7am–2pm",  color: "bg-stone-100 text-stone-700" },
+  afternoon: { label: "Afternoon", hours: "1pm–8pm",  color: "bg-stone-100 text-stone-700" },
+  evening:   { label: "Evening",   hours: "2pm–9pm",  color: "bg-stone-200 text-stone-800" },
+  closing:   { label: "Closing",   hours: "6pm–10pm", color: "bg-stone-200 text-stone-800" },
 };
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -206,11 +206,11 @@ export default function StaffingPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SummaryCard icon={Users}    label="Team Size"       value={String(staff.length)}     iconBg="bg-blue-50"    iconColor="text-blue-500"   />
-        <SummaryCard icon={Clock}    label="Upcoming Shifts" value={String(shifts.length)}    iconBg="bg-violet-50"  iconColor="text-violet-500" />
-        <SummaryCard icon={TrendingUp} label="Est. Labor Cost" value={`$${totalLaborCost.toFixed(0)}`} iconBg="bg-emerald-50" iconColor="text-emerald-500" />
-        <SummaryCard icon={Zap}      label="AI Scheduling"   value="Active"                   iconBg="bg-amber-50"   iconColor="text-amber-500"  />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SummaryCard icon={Users}    label="Team Size"       value={String(staff.length)}     />
+        <SummaryCard icon={Clock}    label="Upcoming Shifts" value={String(shifts.length)}    />
+        <SummaryCard icon={TrendingUp} label="Est. Labor Cost" value={`$${totalLaborCost.toFixed(0)}`} />
+        <SummaryCard icon={Zap}      label="AI Scheduling"   value="Active"                   />
       </div>
 
       {isEmpty ? (
@@ -243,11 +243,11 @@ export default function StaffingPage() {
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                       <XAxis dataKey="day" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                      <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", fontSize: "12px" }} />
-                      <Bar dataKey="scheduled" fill="#6366f1" name="Scheduled" radius={[3, 3, 0, 0]} />
+                      <Tooltip contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }} />
+                      <Bar dataKey="scheduled" fill="#44403c" name="Scheduled" radius={[2, 2, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -272,9 +272,9 @@ export default function StaffingPage() {
                       const cfg = shiftConfig[shift.shiftType];
                       const demand = shift.predictedDemand as "low" | "medium" | "high";
                       const demandCfg = {
-                        low:    "bg-slate-100 text-slate-600",
-                        medium: "bg-amber-100 text-amber-700",
-                        high:   "bg-rose-100 text-rose-700",
+                        low:    "bg-stone-100 text-stone-600",
+                        medium: "bg-stone-200 text-stone-700",
+                        high:   "bg-stone-800 text-white",
                       }[demand];
                       return (
                         <TableRow key={shift.id}>
@@ -370,12 +370,12 @@ export default function StaffingPage() {
 
       {/* AI Insight */}
       {staff.length > 0 && (
-        <Card className="border-violet-200 bg-violet-50/40">
-          <CardContent className="p-4 flex gap-3">
-            <Zap className="h-5 w-5 text-violet-600 mt-0.5 shrink-0" />
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-violet-900">Claude AI Staffing Note</p>
-              <p className="text-sm text-violet-800 leading-relaxed">
+        <Card>
+          <CardContent className="p-3 flex gap-2.5">
+            <Zap className="h-4 w-4 text-stone-500 mt-0.5 shrink-0" />
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-stone-800">AI Staffing Note</p>
+              <p className="text-sm text-stone-600 leading-relaxed">
                 Staffing recommendations are generated based on your sales forecast data.
                 Connect Square in Settings and enable sales syncing to get AI-powered
                 staffing suggestions aligned with predicted demand.
@@ -554,25 +554,21 @@ function SummaryCard({
   icon: Icon,
   label,
   value,
-  iconBg,
-  iconColor,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
-  iconBg: string;
-  iconColor: string;
 }) {
   return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className={`rounded-lg p-1.5 ${iconBg}`}>
-            <Icon className={`h-4 w-4 ${iconColor}`} />
-          </div>
+      <CardContent className="p-3 flex items-center gap-3">
+        <div className="rounded-sm p-1.5 bg-stone-100">
+          <Icon className="h-4 w-4 text-stone-600" />
         </div>
-        <p className="text-2xl font-bold">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <div>
+          <p className="text-lg font-bold font-mono">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
       </CardContent>
     </Card>
   );

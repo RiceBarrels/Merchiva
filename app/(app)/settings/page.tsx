@@ -247,17 +247,17 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           {settings?.squareConnected ? (
             <div className="space-y-4">
-              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 space-y-1">
-                <p className="text-sm font-medium text-emerald-800">
+              <div className="rounded-sm bg-stone-50 border border-stone-200 p-3 space-y-1">
+                <p className="text-sm font-medium text-stone-800">
                   Square is connected
                 </p>
                 {settings.squareLocationId && (
-                  <p className="text-xs text-emerald-700">
+                  <p className="text-xs text-stone-600">
                     Location ID: <code className="font-mono">{settings.squareLocationId}</code>
                   </p>
                 )}
                 {settings.squareLastSyncedAt && (
-                  <p className="text-xs text-emerald-700">
+                  <p className="text-xs text-stone-600">
                     Last synced:{" "}
                     {new Date(settings.squareLastSyncedAt).toLocaleString()}
                   </p>
@@ -377,17 +377,17 @@ export default function SettingsPage() {
       </Card>
 
       {/* AI Integration info */}
-      <Card className="border-violet-200 bg-violet-50/40">
-        <CardContent className="p-4 flex gap-3">
-          <Zap className="h-5 w-5 text-violet-600 mt-0.5 shrink-0" />
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-violet-900">Claude AI Integration</p>
-            <p className="text-sm text-violet-800 leading-relaxed">
+      <Card>
+        <CardContent className="p-3 flex gap-2.5">
+          <Zap className="h-4 w-4 text-stone-500 mt-0.5 shrink-0" />
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold text-stone-800">Claude AI Integration</p>
+            <p className="text-sm text-stone-600 leading-relaxed">
               BizOps uses Claude to analyze your sales history and inventory data to generate
               demand forecasts, staffing recommendations, and product performance alerts.
               No API key needed — AI features are built in.
             </p>
-            <p className="text-xs text-violet-600 mt-1">
+            <p className="text-xs text-stone-400 mt-1">
               Planned: Weather API · Google Maps foot traffic · Holiday calendar
             </p>
           </div>
