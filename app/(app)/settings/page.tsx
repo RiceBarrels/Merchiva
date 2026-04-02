@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Settings,
   Zap,
@@ -9,8 +10,9 @@ import {
   Loader2,
   RefreshCw,
   Unlink,
-  Link,
+  ExternalLink,
   Save,
+  MapPin,
 } from "lucide-react";
 import {
   Card,
@@ -28,13 +30,19 @@ import { createClient } from "@/lib/supabase/client";
 import {
   getSettings,
   upsertSettings,
-  saveSquareCredentials,
   disconnectSquare,
   type UserSettings,
 } from "@/lib/db/settings";
 import { PermissionGuard } from "@/components/permission-guard";
 
+interface SquareLocation {
+  id: string;
+  name: string;
+  address: string | null;
+}
+
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading]   = useState(true);
   const [userId, setUserId]     = useState<string | null>(null);
@@ -46,11 +54,15 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved]   = useState(false);
 
-  // Square form
-  const [accessToken, setAccessToken] = useState("");
-  const [locationId, setLocationId]   = useState("");
-  const [connectingSquare, setConnectingSquare] = useState(false);
-  const [squareError, setSquareError]  = useState<string | null>(null);
+  // Square OAuth feedback
+  const [squareMessage, setSquareMessage] = useState<string | null>(null);
+  const [squareError, setSquareError] = useState<string | null>(null);
+
+  // Location picker
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [locations, setLocations] = useState<SquareLocation[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [selectingLocation, setSelectingLocation] = useState(false);
 
   // Sync state
   const [syncing, setSyncing]   = useState(false);
@@ -74,6 +86,67 @@ export default function SettingsPage() {
     });
   }, []);
 
+  // Handle OAuth redirect query params
+  useEffect(() => {
+    if (searchParams.get("connected") === "true") {
+      setSquareMessage("Square connected successfully!");
+      setTimeout(() => setSquareMessage(null), 5000);
+    }
+    if (searchParams.get("error")) {
+      const err = searchParams.get("error");
+      const messages: Record<string, string> = {
+        oauth_denied: "Square authorization was denied.",
+        invalid_state: "Security check failed. Please try again.",
+        no_code: "No authorization code received.",
+        token_exchange_failed: "Failed to exchange authorization code.",
+        exchange_failed: "Connection failed. Please try again.",
+      };
+      setSquareError(messages[err!] ?? "An error occurred connecting to Square.");
+    }
+    if (searchParams.get("pickLocation") === "true") {
+      setShowLocationPicker(true);
+      fetchLocations();
+    }
+  }, [searchParams]);
+
+  const fetchLocations = async () => {
+    setLoadingLocations(true);
+    try {
+      const res = await fetch("/api/square/oauth/locations");
+      const json = await res.json();
+      setLocations(json.locations ?? []);
+    } catch {
+      setSquareError("Failed to load locations.");
+    } finally {
+      setLoadingLocations(false);
+    }
+  };
+
+  const handleSelectLocation = async (locationId: string) => {
+    setSelectingLocation(true);
+    try {
+      const res = await fetch("/api/square/oauth/select-location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locationId }),
+      });
+      if (res.ok) {
+        setShowLocationPicker(false);
+        setSquareMessage("Square connected successfully!");
+        setTimeout(() => setSquareMessage(null), 5000);
+        const updated = await getSettings();
+        setSettings(updated);
+      } else {
+        const err = await res.json();
+        setSquareError(err.error ?? "Failed to select location.");
+      }
+    } catch {
+      setSquareError("Failed to select location.");
+    } finally {
+      setSelectingLocation(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
     if (!userId) return;
     setSavingProfile(true);
@@ -89,46 +162,13 @@ export default function SettingsPage() {
     }
   };
 
-  const handleConnectSquare = async () => {
-    if (!userId || !accessToken || !locationId) {
-      setSquareError("Both Access Token and Location ID are required.");
-      return;
-    }
-    setConnectingSquare(true);
-    setSquareError(null);
-    try {
-      // Verify credentials before saving
-      const res = await fetch("/api/square/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken, locationId }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        setSquareError(err.error ?? "Invalid credentials. Check your token and location ID.");
-        return;
-      }
-      await saveSquareCredentials(userId, accessToken, locationId);
-      setSettings((prev) =>
-        prev
-          ? { ...prev, squareConnected: true, squareLocationId: locationId }
-          : null
-      );
-      setAccessToken("");
-      setLocationId("");
-    } catch {
-      setSquareError("Connection failed. Please try again.");
-    } finally {
-      setConnectingSquare(false);
-    }
-  };
-
   const handleDisconnectSquare = async () => {
     if (!userId) return;
     await disconnectSquare(userId);
     setSettings((prev) =>
-      prev ? { ...prev, squareConnected: false, squareLocationId: null, squareLastSyncedAt: null } : null
+      prev ? { ...prev, squareConnected: false, squareMerchantId: null, squareLocationId: null, squareLastSyncedAt: null } : null
     );
+    setShowLocationPicker(false);
   };
 
   const handleSync = async () => {
@@ -139,7 +179,6 @@ export default function SettingsPage() {
       const json = await res.json();
       if (json.success) {
         setSyncResult(json.message);
-        // Refresh last synced
         const updated = await getSettings();
         setSettings(updated);
       } else {
@@ -245,15 +284,69 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {settings?.squareConnected ? (
+          {squareMessage && (
+            <p className="text-sm font-medium rounded-lg px-3 py-2 bg-emerald-50 text-emerald-700 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              {squareMessage}
+            </p>
+          )}
+
+          {squareError && (
+            <p className="text-sm text-destructive rounded-lg bg-destructive/10 px-3 py-2 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              {squareError}
+            </p>
+          )}
+
+          {settings?.squareConnected && showLocationPicker ? (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm font-medium">Select a Location</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your Square account has multiple locations. Choose one to sync with BizOps.
+                </p>
+              </div>
+
+              {loadingLocations ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading locations…
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {locations.map((loc) => (
+                    <button
+                      key={loc.id}
+                      onClick={() => handleSelectLocation(loc.id)}
+                      disabled={selectingLocation}
+                      className="w-full text-left rounded-sm border border-stone-200 p-3 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                    >
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-stone-500" />
+                        {loc.name}
+                      </p>
+                      {loc.address && (
+                        <p className="text-xs text-stone-500 mt-0.5 ml-5.5">{loc.address}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : settings?.squareConnected ? (
             <div className="space-y-4">
               <div className="rounded-sm bg-stone-50 border border-stone-200 p-3 space-y-1">
                 <p className="text-sm font-medium text-stone-800">
                   Square is connected
                 </p>
+                {settings.squareMerchantId && (
+                  <p className="text-xs text-stone-600">
+                    Merchant: <code className="font-mono">{settings.squareMerchantId}</code>
+                  </p>
+                )}
                 {settings.squareLocationId && (
                   <p className="text-xs text-stone-600">
-                    Location ID: <code className="font-mono">{settings.squareLocationId}</code>
+                    Location: <code className="font-mono">{settings.squareLocationId}</code>
                   </p>
                 )}
                 {settings.squareLastSyncedAt && (
@@ -305,7 +398,7 @@ export default function SettingsPage() {
                 <div>
                   <p className="text-sm font-medium">Disconnect Square</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Removes credentials from BizOps. Your Square account is unaffected.
+                    Revokes access and removes credentials. Your Square account is unaffected.
                   </p>
                 </div>
                 <Button
@@ -321,56 +414,16 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-lg bg-muted/50 border border-border p-4 space-y-2 text-sm text-muted-foreground">
-                <p className="font-medium text-foreground">How to connect Square:</p>
-                <ol className="list-decimal list-inside space-y-1 text-xs">
-                  <li>Go to developer.squareup.com → Applications → your app</li>
-                  <li>Copy your <strong>Production Access Token</strong></li>
-                  <li>Find your <strong>Location ID</strong> in the Square dashboard → Locations</li>
-                  <li>Paste both below and click Connect</li>
-                </ol>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Connect your Square account to automatically sync products, inventory, and sales into BizOps.
+              </p>
 
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label>Production Access Token</Label>
-                  <Input
-                    type="password"
-                    value={accessToken}
-                    onChange={(e) => setAccessToken(e.target.value)}
-                    placeholder="sq0atp-…"
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Location ID</Label>
-                  <Input
-                    value={locationId}
-                    onChange={(e) => setLocationId(e.target.value)}
-                    placeholder="L…"
-                  />
-                </div>
-              </div>
-
-              {squareError && (
-                <p className="text-sm text-destructive rounded-lg bg-destructive/10 px-3 py-2 flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  {squareError}
-                </p>
-              )}
-
-              <Button
-                onClick={handleConnectSquare}
-                disabled={connectingSquare || !accessToken || !locationId}
-                className="gap-2"
-              >
-                {connectingSquare ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Link className="h-4 w-4" />
-                )}
-                {connectingSquare ? "Connecting…" : "Connect Square"}
-              </Button>
+              <a href="/api/square/oauth/authorize">
+                <Button className="gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Connect Square
+                </Button>
+              </a>
             </div>
           )}
         </CardContent>

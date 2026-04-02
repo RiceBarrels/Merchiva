@@ -6,6 +6,7 @@ export interface UserSettings {
   businessName: string | null;
   timezone: string;
   squareConnected: boolean;
+  squareMerchantId: string | null;
   squareLocationId: string | null;
   squareLastSyncedAt: string | null;
 }
@@ -18,6 +19,7 @@ function fromDb(row: any): UserSettings {
     businessName: row.business_name ?? null,
     timezone: row.timezone ?? "America/Los_Angeles",
     squareConnected: Boolean(row.square_connected),
+    squareMerchantId: row.square_merchant_id ?? null,
     squareLocationId: row.square_location_id ?? null,
     squareLastSyncedAt: row.square_last_synced_at ?? null,
   };
@@ -28,7 +30,7 @@ export async function getSettings(): Promise<UserSettings | null> {
   const { data, error } = await supabase
     .from("settings")
     // Exclude the raw access token — it's only readable via the secure RPC
-    .select("id, user_id, business_name, timezone, square_connected, square_location_id, square_last_synced_at")
+    .select("id, user_id, business_name, timezone, square_connected, square_merchant_id, square_location_id, square_last_synced_at")
     .maybeSingle();
   if (error) throw error;
   return data ? fromDb(data) : null;
@@ -57,33 +59,39 @@ export async function upsertSettings(
   if (error) throw error;
 }
 
-/** Store Square credentials — this column is intentionally not returned by getSettings() */
-export async function saveSquareCredentials(
-  userId: string,
-  accessToken: string,
-  locationId: string
-): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("settings")
-    .upsert(
-      {
-        user_id: userId,
-        square_access_token: accessToken,
-        square_location_id: locationId,
-        square_connected: true,
-      },
-      { onConflict: "user_id" }
-    );
-  if (error) throw error;
-}
-
 export async function disconnectSquare(userId: string): Promise<void> {
   const supabase = createClient();
+
+  // Revoke the token on Square's side
+  const { data: settings } = await supabase
+    .from("settings")
+    .select("square_access_token")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (settings?.square_access_token && process.env.SQUARE_APP_SECRET) {
+    try {
+      const { SquareClient, SquareEnvironment } = await import("square");
+      const square = new SquareClient({
+        token: process.env.SQUARE_APP_SECRET,
+        environment: SquareEnvironment.Production,
+      });
+      await square.oAuth.revokeToken({
+        clientId: process.env.SQUARE_APP_ID,
+        accessToken: settings.square_access_token,
+      });
+    } catch (err) {
+      console.error("[settings] Square token revoke failed:", err);
+    }
+  }
+
   const { error } = await supabase
     .from("settings")
     .update({
       square_access_token: null,
+      square_refresh_token: null,
+      square_token_expires_at: null,
+      square_merchant_id: null,
       square_location_id: null,
       square_connected: false,
       square_last_synced_at: null,

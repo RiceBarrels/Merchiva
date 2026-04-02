@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Permissions, OrgRole } from "@/lib/types";
 import { defaultPermissions } from "@/lib/db/team";
 import { randomBytes } from "crypto";
+import { sendTeamInviteEmail } from "@/lib/email/resend";
 
 /**
  * POST /api/team/invite
@@ -96,6 +97,30 @@ export async function POST(request: NextRequest) {
     if (invError) {
       console.error("[team/invite]", invError);
       return NextResponse.json({ error: "Failed to create invitation" }, { status: 500 });
+    }
+
+    // Fetch org name for the email
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", organizationId)
+      .single();
+
+    // Send the invite email
+    const baseUrl = request.headers.get("origin") || request.headers.get("referer")?.replace(/\/[^/]*$/, "") || "http://localhost:3000";
+    const inviteUrl = `${baseUrl}/invite/${token}`;
+
+    try {
+      await sendTeamInviteEmail({
+        to: email.toLowerCase(),
+        inviterEmail: user.email ?? "A team owner",
+        orgName: org?.name ?? "your team",
+        role,
+        inviteUrl,
+      });
+    } catch (emailErr) {
+      console.error("[team/invite] email failed:", emailErr);
+      // Invitation was created — don't fail the request, just warn
     }
 
     return NextResponse.json({ token: invitation.token, expiresAt });

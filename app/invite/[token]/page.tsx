@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
-import { getInvitationByToken, acceptInvitation } from "@/lib/db/team";
+import { getInvitationByToken } from "@/lib/db/team";
 import type { OrgInvitation } from "@/lib/types";
 
 export default function InvitePage({
@@ -76,22 +76,23 @@ export default function InvitePage({
   const handleAccept = async () => {
     if (!userId || !invitation) return;
 
-    // Email mismatch check
-    if (userEmail && invitation.email && userEmail.toLowerCase() !== invitation.email.toLowerCase()) {
-      setError(
-        `This invitation was sent to ${invitation.email}. You're signed in as ${userEmail}. Please sign in with the correct account.`
-      );
-      return;
-    }
-
     setAccepting(true);
     setError(null);
     try {
-      await acceptInvitation(token, userId, displayName);
+      const res = await fetch("/api/team/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, displayName }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "Failed to accept invitation");
+        return;
+      }
       setSuccess(true);
       setTimeout(() => router.push("/dashboard"), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to accept invitation");
+    } catch {
+      setError("Failed to accept invitation. Please try again.");
     } finally {
       setAccepting(false);
     }

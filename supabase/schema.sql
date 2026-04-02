@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS settings (
   timezone         text NOT NULL DEFAULT 'America/Los_Angeles',
   square_connected boolean NOT NULL DEFAULT false,
   square_access_token text,   -- store server-side only; never expose to client
+  square_refresh_token text,
+  square_token_expires_at timestamptz,
+  square_merchant_id  text,
   square_location_id  text,
   square_last_synced_at timestamptz,
   created_at       timestamptz NOT NULL DEFAULT now(),
@@ -98,6 +101,25 @@ CREATE POLICY "Users manage their own sales records"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+-- ─── Staff Roles (manager-defined) ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS staff_roles (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  name          text NOT NULL,
+  color         text NOT NULL DEFAULT '#44403c',
+  permissions   jsonb NOT NULL DEFAULT '{}',
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, name)
+);
+
+ALTER TABLE staff_roles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own roles"
+  ON staff_roles FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
 -- ─── Staff Members ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS staff_members (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -129,6 +151,7 @@ CREATE TABLE IF NOT EXISTS shifts (
   end_time         time NOT NULL,
   predicted_demand text NOT NULL DEFAULT 'medium'
                         CHECK (predicted_demand IN ('low', 'medium', 'high')),
+  staff_role       text,
   created_at       timestamptz NOT NULL DEFAULT now()
 );
 
@@ -186,6 +209,10 @@ CREATE TRIGGER trg_inventory_items_updated_at
   BEFORE UPDATE ON inventory_items
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+CREATE TRIGGER trg_staff_roles_updated_at
+  BEFORE UPDATE ON staff_roles
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
 CREATE TRIGGER trg_staff_members_updated_at
   BEFORE UPDATE ON staff_members
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -197,11 +224,12 @@ CREATE TRIGGER trg_products_updated_at
 -- ─── Secure RPC: get Square credentials (server-side only) ───────────────────
 -- Call via supabase.rpc('get_square_credentials') from your API routes.
 -- Returns null rows if the user has no credentials yet.
+DROP FUNCTION IF EXISTS get_square_credentials();
 CREATE OR REPLACE FUNCTION get_square_credentials()
-RETURNS TABLE(access_token text, location_id text)
+RETURNS TABLE(access_token text, location_id text, refresh_token text, token_expires_at timestamptz, merchant_id text)
 LANGUAGE sql SECURITY DEFINER
 AS $$
-  SELECT square_access_token, square_location_id
+  SELECT square_access_token, square_location_id, square_refresh_token, square_token_expires_at, square_merchant_id
   FROM settings
   WHERE user_id = auth.uid();
 $$;

@@ -96,18 +96,28 @@ export interface SalesForecast {
 
 export type ShiftType = "morning" | "afternoon" | "evening" | "closing";
 
-export interface StaffMember {
+export interface StaffRole {
   id: string;
   name: string;
-  role: string;
-  hourlyRate: number;
-  availability: string[]; // days of week
+  color: string;
+  permissions: StaffRolePermissions;
+}
+
+export interface StaffRolePermissions {
+  canViewSchedule?: boolean;
+  canEditSchedule?: boolean;
+  canViewInventory?: boolean;
+  canEditInventory?: boolean;
+  canViewSales?: boolean;
+  canHandleCash?: boolean;
+  canCloseStore?: boolean;
 }
 
 export interface Shift {
   id: string;
-  staffId: string;
+  memberId: string | null;
   staffName: string;
+  staffRole: string | null;
   date: string;
   shiftType: ShiftType;
   startTime: string;

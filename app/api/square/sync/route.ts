@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { SquareClient, SquareEnvironment } from "square";
 import { createClient as createSupabase } from "@/lib/supabase/server";
+import { getValidSquareToken } from "@/lib/square/token";
 
 /**
  * POST /api/square/sync
@@ -15,21 +16,22 @@ export async function POST() {
     } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: settings } = await supabase
-      .from("settings")
-      .select("square_access_token, square_location_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!settings?.square_access_token) {
+    const token = await getValidSquareToken(user.id);
+    if (!token) {
       return NextResponse.json(
         { error: "Square not connected." },
         { status: 400 }
       );
     }
 
+    const { data: settings } = await supabase
+      .from("settings")
+      .select("square_location_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
     const square = new SquareClient({
-      token: settings.square_access_token,
+      token,
       environment: SquareEnvironment.Production,
     });
 
@@ -91,8 +93,8 @@ export async function POST() {
       if (variationIds.length > 0) {
         const countsPage = await square.inventory.batchGetCounts({
           catalogObjectIds: variationIds.slice(0, 100),
-          locationIds: settings.square_location_id
-            ? [settings.square_location_id]
+          locationIds: settings?.square_location_id
+            ? [settings?.square_location_id]
             : undefined,
         });
 
@@ -130,12 +132,12 @@ export async function POST() {
 
     // ─── 3. Sync recent orders → sales_records ─────────────────────────────────
     try {
-      if (settings.square_location_id) {
+      if (settings?.square_location_id) {
         const since = new Date();
         since.setDate(since.getDate() - 30);
 
         const ordersResponse = await square.orders.search({
-          locationIds: [settings.square_location_id],
+          locationIds: [settings?.square_location_id],
           query: {
             filter: {
               dateTimeFilter: {

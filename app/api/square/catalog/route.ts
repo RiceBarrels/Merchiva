@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { SquareClient, SquareEnvironment } from "square";
 import { createClient as createSupabase } from "@/lib/supabase/server";
+import { getValidSquareToken } from "@/lib/square/token";
 
 export async function GET() {
   try {
@@ -10,22 +11,16 @@ export async function GET() {
     } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Fetch the user's Square credentials
-    const { data: settings } = await supabase
-      .from("settings")
-      .select("square_access_token, square_location_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!settings?.square_access_token) {
+    const token = await getValidSquareToken(user.id);
+    if (!token) {
       return NextResponse.json(
-        { error: "Square not connected. Add credentials in Settings." },
+        { error: "Square not connected. Connect in Settings." },
         { status: 400 }
       );
     }
 
     const square = new SquareClient({
-      token: settings.square_access_token,
+      token,
       environment: SquareEnvironment.Production,
     });
 

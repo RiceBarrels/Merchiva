@@ -3,7 +3,6 @@ import type {
   InventoryTransaction,
   SalesRecord,
   SalesForecast,
-  StaffMember,
   Shift,
   StaffingRecommendation,
   Product,
@@ -183,24 +182,15 @@ export const upcomingForecasts: SalesForecast[] = [
 
 // ─── Staffing ────────────────────────────────────────────────────────────────
 
-export const staffMembers: StaffMember[] = [
-  { id: "staff-001", name: "Alex Chen", role: "Barista", hourlyRate: 18, availability: ["Mon", "Tue", "Wed", "Thu", "Fri"] },
-  { id: "staff-002", name: "Maria Lopez", role: "Shift Lead", hourlyRate: 22, availability: ["Mon", "Tue", "Thu", "Fri", "Sat"] },
-  { id: "staff-003", name: "Jordan Kim", role: "Barista", hourlyRate: 18, availability: ["Wed", "Thu", "Fri", "Sat", "Sun"] },
-  { id: "staff-004", name: "Sam Patel", role: "Barista", hourlyRate: 17, availability: ["Mon", "Wed", "Fri", "Sat", "Sun"] },
-  { id: "staff-005", name: "Taylor Nguyen", role: "Cashier", hourlyRate: 17, availability: ["Tue", "Wed", "Thu", "Sat", "Sun"] },
-  { id: "staff-006", name: "Casey Brown", role: "Shift Lead", hourlyRate: 22, availability: ["Mon", "Tue", "Wed", "Thu", "Sun"] },
-];
-
 export const weeklySchedule: Shift[] = [
-  { id: "s-001", staffId: "staff-001", staffName: "Alex Chen", date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
-  { id: "s-002", staffId: "staff-002", staffName: "Maria Lopez", date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
-  { id: "s-003", staffId: "staff-005", staffName: "Taylor Nguyen", date: "2026-04-01", shiftType: "afternoon", startTime: "13:00", endTime: "20:00", predictedDemand: "medium" },
-  { id: "s-004", staffId: "staff-003", staffName: "Jordan Kim", date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
-  { id: "s-005", staffId: "staff-006", staffName: "Casey Brown", date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
-  { id: "s-006", staffId: "staff-004", staffName: "Sam Patel", date: "2026-04-03", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
-  { id: "s-007", staffId: "staff-002", staffName: "Maria Lopez", date: "2026-04-03", shiftType: "evening", startTime: "14:00", endTime: "21:00", predictedDemand: "medium" },
-  { id: "s-008", staffId: "staff-001", staffName: "Alex Chen", date: "2026-04-04", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-001", memberId: "m-001", staffName: "Alex Chen", staffRole: "Barista", date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-002", memberId: "m-002", staffName: "Maria Lopez", staffRole: "Shift Lead", date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
+  { id: "s-003", memberId: "m-005", staffName: "Taylor Nguyen", staffRole: "Barista", date: "2026-04-01", shiftType: "afternoon", startTime: "13:00", endTime: "20:00", predictedDemand: "medium" },
+  { id: "s-004", memberId: "m-003", staffName: "Jordan Kim", staffRole: "Cashier", date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-005", memberId: "m-006", staffName: "Casey Brown", staffRole: null, date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
+  { id: "s-006", memberId: "m-004", staffName: "Sam Patel", staffRole: "Barista", date: "2026-04-03", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-007", memberId: "m-002", staffName: "Maria Lopez", staffRole: "Shift Lead", date: "2026-04-03", shiftType: "evening", startTime: "14:00", endTime: "21:00", predictedDemand: "medium" },
+  { id: "s-008", memberId: "m-001", staffName: "Alex Chen", staffRole: "Barista", date: "2026-04-04", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
 ];
 
 export const staffingRecommendations: StaffingRecommendation[] = [
