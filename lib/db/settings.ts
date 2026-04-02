@@ -4,6 +4,7 @@ export interface UserSettings {
   id: string;
   userId: string;
   businessName: string | null;
+  businessType: string | null;
   timezone: string;
   squareConnected: boolean;
   squareMerchantId: string | null;
@@ -20,6 +21,7 @@ function fromDb(row: any): UserSettings {
     id: row.id,
     userId: row.user_id,
     businessName: row.business_name ?? null,
+    businessType: row.business_type ?? null,
     timezone: row.timezone ?? "America/Los_Angeles",
     squareConnected: Boolean(row.square_connected),
     squareMerchantId: row.square_merchant_id ?? null,
@@ -46,6 +48,7 @@ export async function upsertSettings(
   userId: string,
   updates: {
     businessName?: string;
+    businessType?: string | null;
     timezone?: string;
     squareConnected?: boolean;
     squareLocationId?: string | null;
@@ -55,6 +58,7 @@ export async function upsertSettings(
   const supabase = createClient();
   const payload: Record<string, unknown> = { user_id: userId };
   if (updates.businessName !== undefined) payload.business_name = updates.businessName;
+  if (updates.businessType !== undefined) payload.business_type = updates.businessType;
   if (updates.timezone !== undefined) payload.timezone = updates.timezone;
   if (updates.squareConnected !== undefined) payload.square_connected = updates.squareConnected;
   if (updates.squareLocationId !== undefined) payload.square_location_id = updates.squareLocationId;

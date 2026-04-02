@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS settings (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id          uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   business_name    text,
+  business_type    text,
   timezone         text NOT NULL DEFAULT 'America/Los_Angeles',
   square_connected boolean NOT NULL DEFAULT false,
   square_access_token text,   -- store server-side only; never expose to client
