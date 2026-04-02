@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Shift, StaffRole, OrgMember, RoleTask } from "@/lib/types";
+import type { Shift, ShiftType, StaffRole, OrgMember, RoleTask } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shiftFromDb(row: any): Shift {
@@ -105,6 +105,34 @@ export async function addShift(
     })
     .select()
     .single();
+  if (error) throw error;
+  return shiftFromDb(data);
+}
+
+export async function updateShift(
+  id: string,
+  updates: {
+    memberId?: string;
+    staffName?: string;
+    staffRole?: string | null;
+    date?: string;
+    shiftType?: ShiftType;
+    startTime?: string;
+    endTime?: string;
+  }
+): Promise<Shift> {
+  const supabase = createClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const patch: Record<string, any> = {};
+  if (updates.memberId   !== undefined) patch.member_id   = updates.memberId || null;
+  if (updates.staffName  !== undefined) patch.staff_name  = updates.staffName;
+  if (updates.staffRole  !== undefined) patch.staff_role  = updates.staffRole || null;
+  if (updates.date       !== undefined) patch.date        = updates.date;
+  if (updates.shiftType  !== undefined) patch.shift_type  = updates.shiftType;
+  if (updates.startTime  !== undefined) patch.start_time  = updates.startTime;
+  if (updates.endTime    !== undefined) patch.end_time    = updates.endTime;
+  const { data, error } = await supabase
+    .from("shifts").update(patch).eq("id", id).select().single();
   if (error) throw error;
   return shiftFromDb(data);
 }

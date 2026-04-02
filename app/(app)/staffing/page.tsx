@@ -24,7 +24,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
 import {
-  getTeamForScheduling, getShifts, addShift, deleteShift,
+  getTeamForScheduling, getShifts, addShift, updateShift, deleteShift,
   getStaffRoles, addStaffRole, updateStaffRole, deleteStaffRole,
   getRoleTasks, addRoleTask, updateRoleTask, deleteRoleTask,
 } from "@/lib/db/staffing";
@@ -188,14 +188,16 @@ export default function StaffingPage() {
 
   const [selectedDay, setSelectedDay] = useState(() => isoDate(new Date()));
 
-  // ─── Add Shift ───
-  const [addDialog, setAddDialog] = useState(false);
+  // ─── Add / Edit Shift ───
+  const [addDialog,     setAddDialog]     = useState(false);
+  const [editingShift,  setEditingShift]  = useState<Shift | null>(null);
   const [shiftForm, setShiftForm] = useState({
     memberId:  "",
     date:      isoDate(new Date()),
     shiftType: "morning" as ShiftType,
     startTime: "07:00",
     endTime:   "14:00",
+    roleName:  "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -364,22 +366,37 @@ export default function StaffingPage() {
 
   const handleAddShift = async () => {
     if (!userId) return;
-    const member = team.find((m) => m.id === shiftForm.memberId);
-    if (!member) return;
     setSaving(true);
     try {
-      const sh = await addShift({
-        memberId:        member.id,
-        staffName:       member.displayName,
-        staffRole:       member.role,
-        date:            shiftForm.date,
-        shiftType:       shiftForm.shiftType,
-        startTime:       shiftForm.startTime,
-        endTime:         shiftForm.endTime,
-        predictedDemand: "medium",
-      }, userId);
-      setShifts((prev) => [...prev, sh]);
+      if (editingShift) {
+        const member = team.find((m) => m.id === shiftForm.memberId);
+        const sh = await updateShift(editingShift.id, {
+          memberId:  shiftForm.memberId,
+          staffName: member?.displayName ?? editingShift.staffName,
+          staffRole: shiftForm.roleName || null,
+          date:      shiftForm.date,
+          shiftType: shiftForm.shiftType,
+          startTime: shiftForm.startTime,
+          endTime:   shiftForm.endTime,
+        });
+        setShifts((prev) => prev.map((s) => s.id === sh.id ? sh : s));
+      } else {
+        const member = team.find((m) => m.id === shiftForm.memberId);
+        if (!member) return;
+        const sh = await addShift({
+          memberId:        member.id,
+          staffName:       member.displayName,
+          staffRole:       shiftForm.roleName || null,
+          date:            shiftForm.date,
+          shiftType:       shiftForm.shiftType,
+          startTime:       shiftForm.startTime,
+          endTime:         shiftForm.endTime,
+          predictedDemand: "medium",
+        }, userId);
+        setShifts((prev) => [...prev, sh]);
+      }
       setAddDialog(false);
+      setEditingShift(null);
     } finally {
       setSaving(false);
     }
@@ -638,12 +655,14 @@ export default function StaffingPage() {
             {canEdit && (
               <button
                 onClick={() => {
+                  setEditingShift(null);
                   setShiftForm({
                     memberId:  team[0]?.id ?? "",
                     date:      selectedDay,
                     shiftType: "morning",
                     startTime: "07:00",
                     endTime:   "14:00",
+                    roleName:  "",
                   });
                   setAddDialog(true);
                 }}
@@ -805,15 +824,25 @@ export default function StaffingPage() {
                                   {currentOrg?.name ?? "Store"} &middot; {SHIFT_LABELS[shift.shiftType]}
                                 </span>
                                 {matchedRole && (
-                                  <button
-                                    onClick={async () => {
-                                      await loadRoleTasksFor(matchedRole.id);
-                                      setViewTasksDialog({ open: true, role: matchedRole });
-                                    }}
-                                    className="text-[11px] font-medium underline-offset-2 hover:underline text-stone-500 hover:text-stone-800 transition-colors"
-                                  >
-                                    View tasks
-                                  </button>
+                                  <>
+                                    <span className="text-stone-300">&middot;</span>
+                                    <span className="inline-flex items-center gap-1">
+                                      <span
+                                        className="inline-block h-2 w-2 rounded-full shrink-0"
+                                        style={{ backgroundColor: matchedRole.color }}
+                                      />
+                                      <span className="text-xs font-medium text-stone-600">{matchedRole.name}</span>
+                                    </span>
+                                    <button
+                                      onClick={async () => {
+                                        await loadRoleTasksFor(matchedRole.id);
+                                        setViewTasksDialog({ open: true, role: matchedRole });
+                                      }}
+                                      className="text-[11px] font-medium underline-offset-2 hover:underline text-stone-400 hover:text-stone-700 transition-colors"
+                                    >
+                                      View tasks
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -916,7 +945,11 @@ export default function StaffingPage() {
                       <p className="text-xs text-muted-foreground">No shifts scheduled.</p>
                     ) : (
                       <div className="space-y-2.5">
-                        {dayShifts.map((shift) => (
+                        {dayShifts.map((shift) => {
+                          const shiftRole = shift.staffRole
+                            ? roles.find((r) => r.name.toLowerCase() === shift.staffRole!.toLowerCase())
+                            : null;
+                          return (
                           <div key={shift.id} className="flex items-center gap-3 group">
                             <div
                               className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg(shift.staffName)}`}
@@ -924,9 +957,20 @@ export default function StaffingPage() {
                               {initials(shift.staffName)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-stone-900 leading-snug">
-                                {shift.staffName}
-                              </p>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-sm font-medium text-stone-900 leading-snug">
+                                  {shift.staffName}
+                                </p>
+                                {shiftRole && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <span
+                                      className="inline-block h-2 w-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: shiftRole.color }}
+                                    />
+                                    <span className="text-xs font-medium text-stone-500">{shiftRole.name}</span>
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 <span
                                   className="inline-block h-2 w-2 rounded-full shrink-0"
@@ -938,15 +982,35 @@ export default function StaffingPage() {
                               </div>
                             </div>
                             {canEdit && (
-                              <button
-                                onClick={() => handleDeleteShift(shift.id)}
-                                className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-muted text-muted-foreground hover:text-destructive transition-all"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                                <button
+                                  onClick={() => {
+                                    setEditingShift(shift);
+                                    setShiftForm({
+                                      memberId:  shift.memberId ?? team[0]?.id ?? "",
+                                      date:      shift.date,
+                                      shiftType: shift.shiftType,
+                                      startTime: shift.startTime,
+                                      endTime:   shift.endTime,
+                                      roleName:  shift.staffRole ?? "",
+                                    });
+                                    setAddDialog(true);
+                                  }}
+                                  className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteShift(shift.id)}
+                                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -1281,12 +1345,14 @@ export default function StaffingPage() {
         )}
       </div>
 
-      {/* ─── Add Shift Dialog ─────────────────────────────────────── */}
-      <Dialog open={addDialog} onOpenChange={setAddDialog}>
+      {/* ─── Add / Edit Shift Dialog ──────────────────────────────── */}
+      <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Add Shift</DialogTitle>
-            <DialogDescription>Schedule a shift for a team member.</DialogDescription>
+            <DialogTitle>{editingShift ? "Edit Shift" : "Add Shift"}</DialogTitle>
+            <DialogDescription>
+              {editingShift ? "Update shift details." : "Schedule a shift for a team member."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
@@ -1346,11 +1412,49 @@ export default function StaffingPage() {
                 />
               </div>
             </div>
+            {roles.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Role <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Select
+                  value={shiftForm.roleName}
+                  onValueChange={(v) => setShiftForm((f) => ({ ...f, roleName: v === "__none__" ? "" : v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="No role assigned">
+                      {shiftForm.roleName
+                        ? (() => {
+                            const r = roles.find((r) => r.name === shiftForm.roleName);
+                            return r ? (
+                              <span className="flex items-center gap-2">
+                                <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                                <RoleIconComp name={r.icon} className="h-3.5 w-3.5 shrink-0" />
+                                <span>{r.name}</span>
+                              </span>
+                            ) : shiftForm.roleName;
+                          })()
+                        : "No role assigned"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No role</SelectItem>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.name}>
+                        <span className="flex items-center gap-2">
+                          <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                          <RoleIconComp name={r.icon} className="h-3.5 w-3.5 shrink-0" />
+                          <span>{r.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setAddDialog(false)}>Cancel</Button>
-            <Button onClick={handleAddShift} disabled={saving || !shiftForm.memberId}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Shift"}
+            <Button variant="outline" onClick={() => { setAddDialog(false); setEditingShift(null); }}>Cancel</Button>
+            <Button onClick={handleAddShift} disabled={saving || (!editingShift && !shiftForm.memberId)}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? "Save" : "Add Shift"}
             </Button>
           </div>
         </DialogContent>
