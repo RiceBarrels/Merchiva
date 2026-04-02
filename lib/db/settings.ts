@@ -9,6 +9,9 @@ export interface UserSettings {
   squareMerchantId: string | null;
   squareLocationId: string | null;
   squareLastSyncedAt: string | null;
+  cloverConnected: boolean;
+  cloverMerchantId: string | null;
+  cloverLastSyncedAt: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,6 +25,9 @@ function fromDb(row: any): UserSettings {
     squareMerchantId: row.square_merchant_id ?? null,
     squareLocationId: row.square_location_id ?? null,
     squareLastSyncedAt: row.square_last_synced_at ?? null,
+    cloverConnected: Boolean(row.clover_connected),
+    cloverMerchantId: row.clover_merchant_id ?? null,
+    cloverLastSyncedAt: row.clover_last_synced_at ?? null,
   };
 }
 
@@ -30,7 +36,7 @@ export async function getSettings(): Promise<UserSettings | null> {
   const { data, error } = await supabase
     .from("settings")
     // Exclude the raw access token — it's only readable via the secure RPC
-    .select("id, user_id, business_name, timezone, square_connected, square_merchant_id, square_location_id, square_last_synced_at")
+    .select("id, user_id, business_name, timezone, square_connected, square_merchant_id, square_location_id, square_last_synced_at, clover_connected, clover_merchant_id, clover_last_synced_at")
     .maybeSingle();
   if (error) throw error;
   return data ? fromDb(data) : null;
@@ -95,6 +101,20 @@ export async function disconnectSquare(userId: string): Promise<void> {
       square_location_id: null,
       square_connected: false,
       square_last_synced_at: null,
+    })
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function disconnectClover(userId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({
+      clover_access_token: null,
+      clover_merchant_id: null,
+      clover_connected: false,
+      clover_last_synced_at: null,
     })
     .eq("user_id", userId);
   if (error) throw error;

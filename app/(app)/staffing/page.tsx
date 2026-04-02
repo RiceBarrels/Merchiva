@@ -1417,7 +1417,7 @@ export default function StaffingPage() {
                 <Label>Role <span className="text-muted-foreground font-normal">(optional)</span></Label>
                 <Select
                   value={shiftForm.roleName}
-                  onValueChange={(v) => setShiftForm((f) => ({ ...f, roleName: v === "__none__" ? "" : v }))}
+                  onValueChange={(v) => setShiftForm((f) => ({ ...f, roleName: v === "__none__" ? "" : (v ?? "") }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="No role assigned">

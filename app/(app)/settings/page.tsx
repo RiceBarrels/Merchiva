@@ -31,6 +31,7 @@ import {
   getSettings,
   upsertSettings,
   disconnectSquare,
+  disconnectClover,
   type UserSettings,
 } from "@/lib/db/settings";
 import { PermissionGuard } from "@/components/permission-guard";
@@ -64,9 +65,17 @@ export default function SettingsPage() {
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [selectingLocation, setSelectingLocation] = useState(false);
 
-  // Sync state
-  const [syncing, setSyncing]   = useState(false);
-  const [syncResult, setSyncResult] = useState<string | null>(null);
+  // Square sync
+  const [squareSyncing, setSquareSyncing] = useState(false);
+  const [squareSyncResult, setSquareSyncResult] = useState<string | null>(null);
+
+  // Clover OAuth feedback
+  const [cloverMessage, setCloverMessage] = useState<string | null>(null);
+  const [cloverError, setCloverError] = useState<string | null>(null);
+
+  // Clover sync
+  const [cloverSyncing, setCloverSyncing] = useState(false);
+  const [cloverSyncResult, setCloverSyncResult] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -76,18 +85,21 @@ export default function SettingsPage() {
         setUserEmail(user.email ?? "");
       }
     });
-    getSettings().then((s) => {
-      setSettings(s);
-      if (s) {
-        setBusinessName(s.businessName ?? "");
-        setTimezone(s.timezone);
-      }
-      setLoading(false);
-    });
+    getSettings()
+      .then((s) => {
+        setSettings(s);
+        if (s) {
+          setBusinessName(s.businessName ?? "");
+          setTimezone(s.timezone);
+        }
+      })
+      .catch((err) => console.error("Failed to load settings:", err))
+      .finally(() => setLoading(false));
   }, []);
 
   // Handle OAuth redirect query params
   useEffect(() => {
+    // Square
     if (searchParams.get("connected") === "true") {
       setSquareMessage("Square connected successfully!");
       setTimeout(() => setSquareMessage(null), 5000);
@@ -106,6 +118,26 @@ export default function SettingsPage() {
     if (searchParams.get("pickLocation") === "true") {
       setShowLocationPicker(true);
       fetchLocations();
+    }
+
+    // Clover
+    if (searchParams.get("clover_connected") === "true") {
+      setCloverMessage("Clover connected successfully!");
+      setTimeout(() => setCloverMessage(null), 5000);
+      // Reload settings to reflect new connection
+      getSettings()
+        .then(setSettings)
+        .catch((err) => console.error("Failed to reload settings:", err));
+    }
+    if (searchParams.get("clover_error")) {
+      const err = searchParams.get("clover_error");
+      const messages: Record<string, string> = {
+        no_code: "No authorization code received from Clover.",
+        token_exchange_failed: "Failed to exchange authorization code with Clover.",
+        missing_token: "Clover did not return a valid token.",
+        exchange_failed: "Connection failed. Please try again.",
+      };
+      setCloverError(messages[err!] ?? "An error occurred connecting to Clover.");
     }
   }, [searchParams]);
 
@@ -166,28 +198,62 @@ export default function SettingsPage() {
     if (!userId) return;
     await disconnectSquare(userId);
     setSettings((prev) =>
-      prev ? { ...prev, squareConnected: false, squareMerchantId: null, squareLocationId: null, squareLastSyncedAt: null } : null
+      prev
+        ? { ...prev, squareConnected: false, squareMerchantId: null, squareLocationId: null, squareLastSyncedAt: null }
+        : null
     );
     setShowLocationPicker(false);
+    setSquareSyncResult(null);
   };
 
-  const handleSync = async () => {
-    setSyncing(true);
-    setSyncResult(null);
+  const handleSquareSync = async () => {
+    setSquareSyncing(true);
+    setSquareSyncResult(null);
     try {
       const res = await fetch("/api/square/sync", { method: "POST" });
       const json = await res.json();
       if (json.success) {
-        setSyncResult(json.message);
+        setSquareSyncResult(json.message);
         const updated = await getSettings();
         setSettings(updated);
       } else {
-        setSyncResult(`Error: ${json.error}`);
+        setSquareSyncResult(`Error: ${json.error}`);
       }
     } catch {
-      setSyncResult("Sync failed. Check your connection and try again.");
+      setSquareSyncResult("Sync failed. Check your connection and try again.");
     } finally {
-      setSyncing(false);
+      setSquareSyncing(false);
+    }
+  };
+
+  const handleDisconnectClover = async () => {
+    if (!userId) return;
+    await disconnectClover(userId);
+    setSettings((prev) =>
+      prev
+        ? { ...prev, cloverConnected: false, cloverMerchantId: null, cloverLastSyncedAt: null }
+        : null
+    );
+    setCloverSyncResult(null);
+  };
+
+  const handleCloverSync = async () => {
+    setCloverSyncing(true);
+    setCloverSyncResult(null);
+    try {
+      const res = await fetch("/api/clover/sync", { method: "POST" });
+      const json = await res.json();
+      if (json.success) {
+        setCloverSyncResult(json.message);
+        const updated = await getSettings();
+        setSettings(updated);
+      } else {
+        setCloverSyncResult(`Error: ${json.error}`);
+      }
+    } catch {
+      setCloverSyncResult("Sync failed. Check your connection and try again.");
+    } finally {
+      setCloverSyncing(false);
     }
   };
 
@@ -262,174 +328,249 @@ export default function SettingsPage() {
 
       <Separator />
 
-      {/* Square Integration */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <div className="flex h-5 w-5 items-center justify-center rounded bg-black">
-              <span className="text-white text-[9px] font-bold">SQ</span>
-            </div>
-            Square Integration
-            {settings?.squareConnected ? (
-              <Badge className="ml-auto gap-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                <CheckCircle2 className="h-3 w-3" /> Connected
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="ml-auto">Not connected</Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Connect your Square account to automatically sync products, inventory
-            counts, and sales history into BizOps.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {squareMessage && (
-            <p className="text-sm font-medium rounded-lg px-3 py-2 bg-emerald-50 text-emerald-700 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              {squareMessage}
-            </p>
-          )}
+      {/* POS Integrations */}
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold">POS Integrations</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Connect your point-of-sale system to sync products, inventory, and sales.
+          </p>
+        </div>
 
-          {squareError && (
-            <p className="text-sm text-destructive rounded-lg bg-destructive/10 px-3 py-2 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              {squareError}
-            </p>
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-          {settings?.squareConnected && showLocationPicker ? (
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium">Select a Location</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Your Square account has multiple locations. Choose one to sync with BizOps.
+          {/* ── Square Card ── */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <div className="flex h-5 w-5 items-center justify-center rounded bg-black shrink-0">
+                  <span className="text-white text-[9px] font-bold">SQ</span>
+                </div>
+                Square
+                {settings?.squareConnected ? (
+                  <Badge className="ml-auto gap-1 text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
+                    Not connected
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Sync catalog, inventory counts, and orders.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              {squareMessage && (
+                <p className="text-xs font-medium rounded px-2.5 py-1.5 bg-emerald-50 text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  {squareMessage}
                 </p>
-              </div>
+              )}
+              {squareError && (
+                <p className="text-xs text-destructive rounded bg-destructive/10 px-2.5 py-1.5 flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  {squareError}
+                </p>
+              )}
 
-              {loadingLocations ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading locations…
+              {settings?.squareConnected && showLocationPicker ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium">Select a location</p>
+                  {loadingLocations ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading…
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {locations.map((loc) => (
+                        <button
+                          key={loc.id}
+                          onClick={() => handleSelectLocation(loc.id)}
+                          disabled={selectingLocation}
+                          className="w-full text-left rounded-sm border border-stone-200 px-2.5 py-2 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                        >
+                          <p className="text-xs font-medium flex items-center gap-1.5">
+                            <MapPin className="h-3 w-3 text-stone-500" />
+                            {loc.name}
+                          </p>
+                          {loc.address && (
+                            <p className="text-[10px] text-stone-500 mt-0.5 pl-4">{loc.address}</p>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : settings?.squareConnected ? (
+                <div className="space-y-3">
+                  <div className="rounded-sm bg-stone-50 border border-stone-200 px-2.5 py-2 space-y-0.5">
+                    {settings.squareMerchantId && (
+                      <p className="text-[11px] text-stone-600">
+                        Merchant: <code className="font-mono">{settings.squareMerchantId}</code>
+                      </p>
+                    )}
+                    {settings.squareLastSyncedAt && (
+                      <p className="text-[11px] text-stone-500">
+                        Synced {new Date(settings.squareLastSyncedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleSquareSync}
+                      disabled={squareSyncing}
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs h-7"
+                    >
+                      {squareSyncing ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                      {squareSyncing ? "Syncing…" : "Sync Now"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs h-7 text-destructive hover:text-destructive"
+                      onClick={handleDisconnectSquare}
+                    >
+                      <Unlink className="h-3 w-3" />
+                      Disconnect
+                    </Button>
+                  </div>
+                  {squareSyncResult && (
+                    <p
+                      className={`text-xs rounded px-2.5 py-1.5 ${
+                        squareSyncResult.startsWith("Error")
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {squareSyncResult}
+                    </p>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {locations.map((loc) => (
-                    <button
-                      key={loc.id}
-                      onClick={() => handleSelectLocation(loc.id)}
-                      disabled={selectingLocation}
-                      className="w-full text-left rounded-sm border border-stone-200 p-3 hover:bg-stone-50 transition-colors disabled:opacity-50"
-                    >
-                      <p className="text-sm font-medium flex items-center gap-2">
-                        <MapPin className="h-3.5 w-3.5 text-stone-500" />
-                        {loc.name}
-                      </p>
-                      {loc.address && (
-                        <p className="text-xs text-stone-500 mt-0.5 ml-5.5">{loc.address}</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                <a href="/api/square/oauth/authorize">
+                  <Button size="sm" className="gap-1.5 text-xs h-7">
+                    <ExternalLink className="h-3 w-3" />
+                    Connect Square
+                  </Button>
+                </a>
               )}
-            </div>
-          ) : settings?.squareConnected ? (
-            <div className="space-y-4">
-              <div className="rounded-sm bg-stone-50 border border-stone-200 p-3 space-y-1">
-                <p className="text-sm font-medium text-stone-800">
-                  Square is connected
+            </CardContent>
+          </Card>
+
+          {/* ── Clover Card ── */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <div className="flex h-5 w-5 items-center justify-center rounded bg-[#1DA462] shrink-0">
+                  <span className="text-white text-[9px] font-bold">CL</span>
+                </div>
+                Clover
+                {settings?.cloverConnected ? (
+                  <Badge className="ml-auto gap-1 text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0">
+                    Not connected
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Sync items, stock levels, and orders.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              {cloverMessage && (
+                <p className="text-xs font-medium rounded px-2.5 py-1.5 bg-emerald-50 text-emerald-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  {cloverMessage}
                 </p>
-                {settings.squareMerchantId && (
-                  <p className="text-xs text-stone-600">
-                    Merchant: <code className="font-mono">{settings.squareMerchantId}</code>
-                  </p>
-                )}
-                {settings.squareLocationId && (
-                  <p className="text-xs text-stone-600">
-                    Location: <code className="font-mono">{settings.squareLocationId}</code>
-                  </p>
-                )}
-                {settings.squareLastSyncedAt && (
-                  <p className="text-xs text-stone-600">
-                    Last synced:{" "}
-                    {new Date(settings.squareLastSyncedAt).toLocaleString()}
-                  </p>
-                )}
-              </div>
+              )}
+              {cloverError && (
+                <p className="text-xs text-destructive rounded bg-destructive/10 px-2.5 py-1.5 flex items-start gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  {cloverError}
+                </p>
+              )}
 
-              {/* Sync */}
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-medium">Sync Data</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Pull your latest catalog, inventory, and orders into BizOps.
-                  </p>
-                </div>
-                <Button
-                  onClick={handleSync}
-                  disabled={syncing}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {syncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
+              {settings?.cloverConnected ? (
+                <div className="space-y-3">
+                  <div className="rounded-sm bg-stone-50 border border-stone-200 px-2.5 py-2 space-y-0.5">
+                    {settings.cloverMerchantId && (
+                      <p className="text-[11px] text-stone-600">
+                        Merchant: <code className="font-mono">{settings.cloverMerchantId}</code>
+                      </p>
+                    )}
+                    {settings.cloverLastSyncedAt && (
+                      <p className="text-[11px] text-stone-500">
+                        Synced {new Date(settings.cloverLastSyncedAt).toLocaleString()}
+                      </p>
+                    )}
+                    {!settings.cloverLastSyncedAt && (
+                      <p className="text-[11px] text-stone-400 italic">Never synced</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleCloverSync}
+                      disabled={cloverSyncing}
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs h-7"
+                    >
+                      {cloverSyncing ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3" />
+                      )}
+                      {cloverSyncing ? "Syncing…" : "Sync Now"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs h-7 text-destructive hover:text-destructive"
+                      onClick={handleDisconnectClover}
+                    >
+                      <Unlink className="h-3 w-3" />
+                      Disconnect
+                    </Button>
+                  </div>
+                  {cloverSyncResult && (
+                    <p
+                      className={`text-xs rounded px-2.5 py-1.5 ${
+                        cloverSyncResult.startsWith("Error")
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {cloverSyncResult}
+                    </p>
                   )}
-                  {syncing ? "Syncing…" : "Sync Now"}
-                </Button>
-                {syncResult && (
-                  <p
-                    className={`text-sm font-medium rounded-lg px-3 py-2 ${
-                      syncResult.startsWith("Error")
-                        ? "bg-destructive/10 text-destructive"
-                        : "bg-emerald-50 text-emerald-700"
-                    }`}
-                  >
-                    {syncResult}
-                  </p>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* Disconnect */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Disconnect Square</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Revokes access and removes credentials. Your Square account is unaffected.
-                  </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-destructive hover:text-destructive"
-                  onClick={handleDisconnectSquare}
-                >
-                  <Unlink className="h-3.5 w-3.5" />
-                  Disconnect
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Connect your Square account to automatically sync products, inventory, and sales into BizOps.
-              </p>
+              ) : (
+                <a href="/api/clover/connect">
+                  <Button size="sm" className="gap-1.5 text-xs h-7">
+                    <ExternalLink className="h-3 w-3" />
+                    Connect Clover
+                  </Button>
+                </a>
+              )}
+            </CardContent>
+          </Card>
 
-              <a href="/api/square/oauth/authorize">
-                <Button className="gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  Connect Square
-                </Button>
-              </a>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* AI Integration info */}
+      {/* Claude AI info */}
       <Card>
         <CardContent className="p-3 flex gap-2.5">
           <Zap className="h-4 w-4 text-stone-500 mt-0.5 shrink-0" />
