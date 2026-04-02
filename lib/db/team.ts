@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { OrgMember, OrgInvitation, Permissions } from "@/lib/types";
+import type { OrgMember, OrgInvitation, OrgSummary, UserProfile, Permissions } from "@/lib/types";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
@@ -53,6 +53,58 @@ export function ownerPermissions(): Permissions {
     products: { view: true, edit: true },
     settings: { view: true },
   };
+}
+
+// ─── User Profile ─────────────────────────────────────────────────────────────
+
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("user_profiles")
+    .select("user_id, display_name, avatar_url, last_active_org_id")
+    .eq("user_id", userId)
+    .single();
+  if (!data) return null;
+  return {
+    userId: data.user_id,
+    displayName: data.display_name ?? null,
+    avatarUrl: data.avatar_url ?? null,
+    lastActiveOrgId: data.last_active_org_id ?? null,
+  };
+}
+
+export async function upsertUserProfile(
+  userId: string,
+  displayName: string,
+  lastActiveOrgId?: string
+): Promise<void> {
+  const supabase = createClient();
+  const payload: Record<string, unknown> = { user_id: userId, display_name: displayName };
+  if (lastActiveOrgId !== undefined) payload.last_active_org_id = lastActiveOrgId;
+  const { error } = await supabase.from("user_profiles").upsert(payload, { onConflict: "user_id" });
+  if (error) throw error;
+}
+
+export async function getUserOrganizations(userId: string): Promise<OrgSummary[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("org_members")
+    .select("organization_id, organizations(id, name)")
+    .eq("user_id", userId)
+    .eq("status", "active");
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({
+    id: row.organization_id as string,
+    name: row.organizations?.name ?? "Unknown",
+  }));
+}
+
+export async function switchActiveOrg(userId: string, orgId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("user_profiles")
+    .upsert({ user_id: userId, last_active_org_id: orgId }, { onConflict: "user_id" });
+  if (error) throw error;
 }
 
 // ─── Organization ─────────────────────────────────────────────────────────────

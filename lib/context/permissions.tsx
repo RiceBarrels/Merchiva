@@ -1,8 +1,10 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { Permissions, OrgRole } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 import { ownerPermissions } from "@/lib/db/team";
+import { createClient } from "@/lib/supabase/client";
 
 export interface PermissionsContextValue {
   role: OrgRole;
@@ -10,6 +12,9 @@ export interface PermissionsContextValue {
   organizationId: string | null;
   isOwner: boolean;
   can: (section: keyof Permissions, action: "view" | "edit") => boolean;
+  organizations: OrgSummary[];
+  currentOrg: OrgSummary | null;
+  switchOrg: (orgId: string) => Promise<void>;
 }
 
 const PermissionsContext = createContext<PermissionsContextValue>({
@@ -18,6 +23,9 @@ const PermissionsContext = createContext<PermissionsContextValue>({
   organizationId: null,
   isOwner: true,
   can: () => true,
+  organizations: [],
+  currentOrg: null,
+  switchOrg: async () => {},
 });
 
 export function PermissionsProvider({
@@ -25,12 +33,17 @@ export function PermissionsProvider({
   role,
   permissions,
   organizationId,
+  organizations,
+  currentOrg,
 }: {
   children: React.ReactNode;
   role: OrgRole;
   permissions: Permissions;
   organizationId: string | null;
+  organizations: OrgSummary[];
+  currentOrg: OrgSummary | null;
 }) {
+  const router = useRouter();
   const isOwner = role === "owner";
 
   function can(section: keyof Permissions, action: "view" | "edit"): boolean {
@@ -42,9 +55,19 @@ export function PermissionsProvider({
     return false;
   }
 
+  async function switchOrg(orgId: string) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase
+      .from("user_profiles")
+      .upsert({ user_id: user.id, last_active_org_id: orgId }, { onConflict: "user_id" });
+    router.refresh();
+  }
+
   return (
     <PermissionsContext.Provider
-      value={{ role, permissions, organizationId, isOwner, can }}
+      value={{ role, permissions, organizationId, isOwner, can, organizations, currentOrg, switchOrg }}
     >
       {children}
     </PermissionsContext.Provider>

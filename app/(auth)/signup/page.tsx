@@ -24,7 +24,8 @@ export default function SignupPage() {
   const [step, setStep] = useState<Step>("form");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [businessName, setBusinessName] = useState("");
+  const [yourName, setYourName] = useState("");
+  const [storeName, setStoreName] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        data: { business_name: businessName },
+        data: { display_name: yourName },
       },
     });
 
@@ -55,8 +56,6 @@ export default function SignupPage() {
       return;
     }
 
-    // If email confirmation is disabled and a session is returned immediately,
-    // skip verification and create the org straight away.
     if (data.session) {
       await createOrgForUser(data.user!.id);
       return;
@@ -95,7 +94,14 @@ export default function SignupPage() {
 
   const createOrgForUser = async (userId: string) => {
     const supabase = createClient();
-    const orgName = businessName.trim() || email.split("@")[0];
+    const displayName = yourName.trim() || email.split("@")[0];
+    const orgName = storeName.trim() || email.split("@")[0];
+
+    // Create user profile
+    await supabase.from("user_profiles").upsert(
+      { user_id: userId, display_name: displayName },
+      { onConflict: "user_id" }
+    );
 
     await supabase.from("settings").upsert({
       user_id: userId,
@@ -114,11 +120,14 @@ export default function SignupPage() {
       return;
     }
 
+    // Update last_active_org_id now that we have the org id
+    await supabase.from("user_profiles").update({ last_active_org_id: org.id }).eq("user_id", userId);
+
     await supabase.from("org_members").insert({
       organization_id: org.id,
       user_id: userId,
       role: "owner",
-      display_name: orgName,
+      display_name: displayName,
       permissions: ownerPermissions(),
       status: "active",
     });
@@ -233,12 +242,22 @@ export default function SignupPage() {
       <CardContent>
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="business">Business Name</Label>
+            <Label htmlFor="yourName">Your Name</Label>
             <Input
-              id="business"
+              id="yourName"
+              placeholder="Jane Smith"
+              value={yourName}
+              onChange={(e) => setYourName(e.target.value)}
+              autoComplete="name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="storeName">Store Name</Label>
+            <Input
+              id="storeName"
               placeholder="My Coffee Shop"
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
               autoComplete="organization"
             />
           </div>
