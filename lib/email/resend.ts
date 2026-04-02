@@ -1,7 +1,5 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = "BizOps <onboarding@resend.dev>";
 
 export async function sendTeamInviteEmail({
@@ -17,6 +15,7 @@ export async function sendTeamInviteEmail({
   role: string;
   inviteUrl: string;
 }) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
     from: FROM,
     to,
