@@ -61,6 +61,7 @@ import {
 } from "@/lib/db/inventory";
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 
 const statusConfig: Record<
   InventoryStatus,
@@ -197,6 +198,7 @@ export default function InventoryPage() {
         );
         setItems((prev) => [newItem, ...prev]);
       }
+      hapticSuccess();
       setDialogOpen(false);
     } catch (err) {
       console.error(err);
@@ -206,6 +208,7 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (id: string) => {
+    hapticWarning();
     await deleteInventoryItem(id);
     setItems((prev) => prev.filter((i) => i.id !== id));
   };

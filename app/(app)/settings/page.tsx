@@ -35,6 +35,7 @@ import {
   type UserSettings,
 } from "@/lib/db/settings";
 import { PermissionGuard } from "@/components/permission-guard";
+import { hapticSuccess } from "@/lib/haptics";
 
 interface SquareLocation {
   id: string;
@@ -187,6 +188,7 @@ export default function SettingsPage() {
       setSettings((prev) =>
         prev ? { ...prev, businessName, timezone } : null
       );
+      hapticSuccess();
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2500);
     } finally {

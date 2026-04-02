@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
+      hapticError();
       if (error.message.toLowerCase().includes("email not confirmed")) {
         setError("Your email isn't verified yet. Please check your inbox for a verification code and complete sign-up.");
       } else {
@@ -41,6 +43,7 @@ export default function LoginPage() {
       return;
     }
 
+    hapticSuccess();
     router.push("/dashboard");
     router.refresh();
   };
