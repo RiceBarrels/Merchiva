@@ -147,6 +147,50 @@ export interface StaffingRecommendation {
   reason: string;
 }
 
+export interface StaffAvailability {
+  id: string;
+  userId: string;
+  organizationId: string;
+  type: "permanent" | "temporary";
+  startDate: string | null;
+  endDate: string | null;
+  days: boolean[]; // 7 elements, Mon(0)–Sun(6)
+  status: string;
+  fullDay: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  comments: string;
+}
+
+export interface TimeOffRequest {
+  id: string;
+  userId: string;
+  organizationId: string;
+  startDate: string;
+  endDate: string;
+  fullDays: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  comments: string;
+  status: "pending" | "approved" | "denied";
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+}
+
+export interface ShiftTrade {
+  id: string;
+  organizationId: string;
+  shiftId: string;
+  requesterId: string;
+  targetId: string;
+  targetShiftId: string | null;
+  type: "trade" | "cover";
+  status: "pending" | "accepted" | "denied" | "cancelled";
+  managerApproved: boolean;
+  managerId: string | null;
+  comments: string;
+}
+
 // ─── Products ────────────────────────────────────────────────────────────────
 
 export type ProductAlert = "none" | "underperforming" | "remove";
