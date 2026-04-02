@@ -4,8 +4,13 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Plus, Loader2, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2,
   MoreHorizontal, ArrowLeftRight, UserPlus, CalendarX, Search, Check, Ban,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, User, Coffee, Utensils, ChefHat, Truck, Package,
+  Clipboard, Wrench, Headphones, Store, Banknote, Sparkles, Box,
+  ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera,
+  Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, ArrowLeft,
+  ClipboardList, Pencil,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +26,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import {
   getTeamForScheduling, getShifts, addShift, deleteShift,
   getStaffRoles, addStaffRole, updateStaffRole, deleteStaffRole,
+  getRoleTasks, addRoleTask, updateRoleTask, deleteRoleTask,
 } from "@/lib/db/staffing";
 import {
   getMyAvailability, upsertAvailability,
@@ -31,7 +37,7 @@ import {
 } from "@/lib/db/availability";
 import type {
   OrgMember, Shift, ShiftType, StaffRole, StaffRolePermissions,
-  StaffAvailability, TimeOffRequest, ShiftTrade,
+  StaffAvailability, TimeOffRequest, ShiftTrade, RoleTask,
 } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 
@@ -39,6 +45,32 @@ const ROLE_COLORS = [
   "#44403c", "#dc2626", "#ea580c", "#ca8a04",
   "#16a34a", "#0891b2", "#2563eb", "#7c3aed", "#db2777",
 ];
+
+const ROLE_ICON_MAP: Record<string, LucideIcon> = {
+  "user": User, "coffee": Coffee, "utensils": Utensils, "chef-hat": ChefHat,
+  "truck": Truck, "package": Package, "clipboard": Clipboard, "wrench": Wrench,
+  "headphones": Headphones, "store": Store, "banknote": Banknote,
+  "sparkles": Sparkles, "box": Box, "shopping-cart": ShoppingCart,
+  "receipt": Receipt, "heart-pulse": HeartPulse, "baby": Baby, "dog": Dog,
+  "leaf": Leaf, "music": Music, "camera": Camera, "palette": Palette,
+  "hammer": Hammer, "zap": Zap, "star": Star, "award": Award,
+  "briefcase": Briefcase, "phone": Phone, "mail": Mail, "clock": Clock,
+  "shield": Shield,
+};
+
+const ROLE_ICON_LIST = [
+  "coffee", "utensils", "chef-hat", "store", "receipt", "banknote",
+  "package", "box", "shopping-cart", "truck", "clipboard", "clipboard",
+  "wrench", "hammer", "sparkles", "headphones", "heart-pulse", "shield",
+  "briefcase", "award", "star", "clock", "phone", "mail",
+  "leaf", "music", "camera", "palette", "baby", "dog",
+  "zap", "user",
+].filter((v, i, a) => a.indexOf(v) === i); // deduplicate
+
+function RoleIconComp({ name, className }: { name: string; className?: string }) {
+  const Comp = ROLE_ICON_MAP[name] ?? User;
+  return <Comp className={className} />;
+}
 
 const ROLE_PERMISSION_LABELS: { key: keyof StaffRolePermissions; label: string }[] = [
   { key: "canViewSchedule", label: "View schedule" },
@@ -173,8 +205,19 @@ export default function StaffingPage() {
   const [roleForm,     setRoleForm]     = useState({
     name:        "",
     color:       "#44403c",
+    icon:        "user",
+    description: "",
     permissions: {} as StaffRolePermissions,
   });
+
+  // ─── Role Detail / Tasks ───
+  const [selectedRole,    setSelectedRole]    = useState<StaffRole | null>(null);
+  const [roleTasksCache,  setRoleTasksCache]  = useState<Record<string, RoleTask[]>>({});
+  const [loadingTasks,    setLoadingTasks]    = useState(false);
+  const [taskDialog,      setTaskDialog]      = useState<{ open: boolean; task: RoleTask | null }>({ open: false, task: null });
+  const [taskForm,        setTaskForm]        = useState({ title: "", description: "", startTime: "08:00", endTime: "10:00" });
+  const [savingTask,      setSavingTask]      = useState(false);
+  const [viewTasksDialog, setViewTasksDialog] = useState<{ open: boolean; role: StaffRole | null }>({ open: false, role: null });
 
   // ─── Shift card menu ───
   const [shiftMenuOpen, setShiftMenuOpen] = useState<string | null>(null);
@@ -353,17 +396,88 @@ export default function StaffingPage() {
     try {
       if (editingRole) {
         await updateStaffRole(editingRole.id, roleForm);
-        setRoles((prev) => prev.map((r) => r.id === editingRole.id ? { ...r, ...roleForm } : r));
+        const updated = { ...editingRole, ...roleForm };
+        setRoles((prev) => prev.map((r) => r.id === editingRole.id ? updated : r));
+        if (selectedRole?.id === editingRole.id) setSelectedRole(updated);
       } else {
-        const r = await addStaffRole(roleForm, userId);
+        const r = await addStaffRole(roleForm, userId, organizationId);
         setRoles((prev) => [...prev, r]);
       }
       setRoleDialog(false);
       setEditingRole(null);
-      setRoleForm({ name: "", color: "#44403c", permissions: {} });
+      setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} });
     } finally {
       setSaving(false);
     }
+  };
+
+  const loadRoleTasksFor = async (roleId: string) => {
+    if (roleTasksCache[roleId]) return;
+    setLoadingTasks(true);
+    try {
+      const tasks = await getRoleTasks(roleId);
+      setRoleTasksCache((prev) => ({ ...prev, [roleId]: tasks }));
+    } catch (err) {
+      console.error("Failed to load role tasks:", err);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  const handleSelectRole = (r: StaffRole) => {
+    setSelectedRole(r);
+    loadRoleTasksFor(r.id);
+  };
+
+  const handleSaveTask = async () => {
+    if (!taskForm.title || !selectedRole) return;
+    setSavingTask(true);
+    try {
+      const existing = roleTasksCache[selectedRole.id] ?? [];
+      if (taskDialog.task) {
+        await updateRoleTask(taskDialog.task.id, {
+          title: taskForm.title,
+          description: taskForm.description,
+          startTime: taskForm.startTime,
+          endTime: taskForm.endTime,
+        });
+        setRoleTasksCache((prev) => ({
+          ...prev,
+          [selectedRole.id]: existing.map((t) =>
+            t.id === taskDialog.task!.id
+              ? { ...t, title: taskForm.title, description: taskForm.description, startTime: taskForm.startTime, endTime: taskForm.endTime }
+              : t
+          ).sort((a, b) => a.startTime.localeCompare(b.startTime)),
+        }));
+      } else {
+        const t = await addRoleTask({
+          roleId: selectedRole.id,
+          organizationId: organizationId ?? null,
+          title: taskForm.title,
+          description: taskForm.description,
+          startTime: taskForm.startTime,
+          endTime: taskForm.endTime,
+          sortOrder: existing.length,
+        });
+        setRoleTasksCache((prev) => ({
+          ...prev,
+          [selectedRole.id]: [...existing, t].sort((a, b) => a.startTime.localeCompare(b.startTime)),
+        }));
+      }
+      setTaskDialog({ open: false, task: null });
+      setTaskForm({ title: "", description: "", startTime: "08:00", endTime: "10:00" });
+    } finally {
+      setSavingTask(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!selectedRole) return;
+    await deleteRoleTask(taskId);
+    setRoleTasksCache((prev) => ({
+      ...prev,
+      [selectedRole.id]: (prev[selectedRole.id] ?? []).filter((t) => t.id !== taskId),
+    }));
   };
 
   const handleDeleteRole = async (id: string) => {
@@ -672,20 +786,35 @@ export default function StaffingPage() {
                       <p className="text-sm text-muted-foreground">You are not scheduled to work.</p>
                     ) : (
                       <div className="space-y-2">
-                        {dayShifts.map((shift) => (
+                        {dayShifts.map((shift) => {
+                          const matchedRole = shift.staffRole
+                            ? roles.find((r) => r.name.toLowerCase() === shift.staffRole!.toLowerCase())
+                            : null;
+                          return (
                           <div key={shift.id} className="flex items-center gap-3">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-stone-900">
                                 {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
                               </p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <span
                                   className="inline-block h-2 w-2 rounded-full shrink-0"
                                   style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
                                 />
-                                <span className="text-xs text-muted-foreground truncate">
+                                <span className="text-xs text-muted-foreground">
                                   {currentOrg?.name ?? "Store"} &middot; {SHIFT_LABELS[shift.shiftType]}
                                 </span>
+                                {matchedRole && (
+                                  <button
+                                    onClick={async () => {
+                                      await loadRoleTasksFor(matchedRole.id);
+                                      setViewTasksDialog({ open: true, role: matchedRole });
+                                    }}
+                                    className="text-[11px] font-medium underline-offset-2 hover:underline text-stone-500 hover:text-stone-800 transition-colors"
+                                  >
+                                    View tasks
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-0.5">
@@ -724,7 +853,8 @@ export default function StaffingPage() {
                               )}
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     )}
                   </div>
@@ -947,76 +1077,204 @@ export default function StaffingPage() {
 
         {/* ─── Roles ───────────────────────────────────────────────── */}
         {activeTab === "roles" && (
-          <div className="mt-1 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-sm">Staff Roles</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Define roles and permissions for your team</p>
-              </div>
-              {canEdit && (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setEditingRole(null);
-                    setRoleForm({ name: "", color: "#44403c", permissions: {} });
-                    setRoleDialog(true);
-                  }}
-                  className="gap-1.5"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add Role
-                </Button>
-              )}
-            </div>
+          <div className="mt-1">
+            {/* ── Role detail view ── */}
+            {selectedRole ? (
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedRole(null)}
+                    className="p-1 rounded hover:bg-stone-100 transition-colors"
+                  >
+                    <ArrowLeft className="h-4 w-4 text-stone-600" />
+                  </button>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div
+                      className="h-8 w-8 shrink-0 flex items-center justify-center border"
+                      style={{ borderColor: selectedRole.color, color: selectedRole.color }}
+                    >
+                      <RoleIconComp name={selectedRole.icon} className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-sm text-stone-900">{selectedRole.name}</span>
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selectedRole.color }} />
+                      </div>
+                      {selectedRole.description && (
+                        <p className="text-xs text-muted-foreground truncate">{selectedRole.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setEditingRole(selectedRole);
+                          setRoleForm({
+                            name: selectedRole.name,
+                            color: selectedRole.color,
+                            icon: selectedRole.icon,
+                            description: selectedRole.description,
+                            permissions: selectedRole.permissions,
+                          });
+                          setRoleDialog(true);
+                        }}
+                        className="p-1.5 rounded hover:bg-stone-100 text-muted-foreground hover:text-stone-900 transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={async () => { await handleDeleteRole(selectedRole.id); setSelectedRole(null); }}
+                        className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-            {roles.length === 0 ? (
-              <div className="text-center py-12 space-y-2">
-                <Shield className="h-8 w-8 mx-auto text-muted-foreground opacity-30" />
-                <p className="text-sm text-muted-foreground">
-                  No roles yet. Create roles like &quot;Barista&quot; or &quot;Shift Lead&quot;.
-                </p>
+                {/* Task Timeline */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide">Task Timeline</p>
+                    {canEdit && (
+                      <button
+                        onClick={() => {
+                          setTaskForm({ title: "", description: "", startTime: "08:00", endTime: "10:00" });
+                          setTaskDialog({ open: true, task: null });
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-border hover:bg-stone-50 transition-colors"
+                      >
+                        <Plus className="h-3 w-3" /> Add Task
+                      </button>
+                    )}
+                  </div>
+
+                  {loadingTasks ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
+                    <div className="text-center py-10">
+                      <ClipboardList className="h-7 w-7 mx-auto text-muted-foreground opacity-25 mb-2" />
+                      <p className="text-sm text-muted-foreground">No tasks yet. Add time-based tasks for this role.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
+                      {(roleTasksCache[selectedRole.id] ?? []).map((task) => (
+                        <div key={task.id} className="relative pl-4 pb-4 group">
+                          <div
+                            className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-white"
+                            style={{ borderColor: selectedRole.color }}
+                          />
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5">
+                                {formatTime(task.startTime)} – {formatTime(task.endTime)}
+                              </p>
+                              <p className="text-sm font-semibold text-stone-900 leading-snug">{task.title}</p>
+                              {task.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
+                              )}
+                            </div>
+                            {canEdit && (
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                <button
+                                  onClick={() => {
+                                    setTaskForm({ title: task.title, description: task.description, startTime: task.startTime, endTime: task.endTime });
+                                    setTaskDialog({ open: true, task });
+                                  }}
+                                  className="p-1 rounded hover:bg-stone-100 text-muted-foreground hover:text-stone-700 transition-colors"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTask(task.id)}
+                                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="grid gap-2.5 sm:grid-cols-2">
-                {roles.map((r) => {
-                  const activePerms = ROLE_PERMISSION_LABELS.filter((p) => r.permissions[p.key]);
-                  return (
-                    <div
-                      key={r.id}
-                      className="border border-border p-3 space-y-2 hover:border-stone-300 transition-colors cursor-pointer"
+              /* ── Role grid ── */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">Staff Roles</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Define roles and task timelines for your team</p>
+                  </div>
+                  {canEdit && (
+                    <Button
+                      size="sm"
                       onClick={() => {
-                        setEditingRole(r);
-                        setRoleForm({ name: r.name, color: r.color, permissions: r.permissions });
+                        setEditingRole(null);
+                        setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} });
                         setRoleDialog(true);
                       }}
+                      className="gap-1.5"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: r.color }} />
-                          <span className="font-semibold text-sm">{r.name}</span>
+                      <Plus className="h-3.5 w-3.5" /> Add Role
+                    </Button>
+                  )}
+                </div>
+
+                {roles.length === 0 ? (
+                  <div className="text-center py-12 space-y-2">
+                    <Shield className="h-8 w-8 mx-auto text-muted-foreground opacity-30" />
+                    <p className="text-sm text-muted-foreground">
+                      No roles yet. Create roles like &quot;Barista&quot; or &quot;Shift Lead&quot;.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {roles.map((r) => (
+                      <div
+                        key={r.id}
+                        className="border border-border p-3 hover:border-stone-300 transition-colors cursor-pointer group"
+                        onClick={() => handleSelectRole(r)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div
+                              className="h-8 w-8 shrink-0 flex items-center justify-center border"
+                              style={{ borderColor: r.color, color: r.color }}
+                            >
+                              <RoleIconComp name={r.icon} className="h-4 w-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-sm text-stone-900">{r.name}</span>
+                                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                              </div>
+                              {r.description ? (
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{r.description}</p>
+                              ) : (
+                                <p className="text-xs text-stone-400 mt-0.5">No description</p>
+                              )}
+                            </div>
+                          </div>
+                          {canEdit && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
+                              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
-                        {canEdit && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
-                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
                       </div>
-                      <div className="flex flex-wrap gap-1">
-                        {activePerms.length > 0 ? (
-                          activePerms.map((p) => (
-                            <span key={p.key} className="bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-                              {p.label}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No permissions set</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1104,10 +1362,33 @@ export default function StaffingPage() {
           <DialogHeader>
             <DialogTitle>{editingRole ? "Edit Role" : "Add Role"}</DialogTitle>
             <DialogDescription>
-              {editingRole ? "Update this role and its permissions." : "Define a new role with specific permissions."}
+              {editingRole ? "Update this role's details and permissions." : "Define a new staff role."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
+            {/* Icon picker */}
+            <div className="space-y-1.5">
+              <Label>Icon</Label>
+              <div className="grid grid-cols-6 gap-1">
+                {ROLE_ICON_LIST.map((iconName) => (
+                  <button
+                    key={iconName}
+                    type="button"
+                    onClick={() => setRoleForm((f) => ({ ...f, icon: iconName }))}
+                    className={`h-8 w-8 flex items-center justify-center transition-colors ${
+                      roleForm.icon === iconName
+                        ? "border-2 border-stone-900 bg-stone-100"
+                        : "border border-transparent bg-stone-100 hover:bg-stone-200"
+                    }`}
+                    title={iconName}
+                  >
+                    <RoleIconComp name={iconName} className="h-4 w-4 text-stone-700" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Role name */}
             <div className="space-y-1.5">
               <Label>Role Name *</Label>
               <Input
@@ -1116,24 +1397,38 @@ export default function StaffingPage() {
                 placeholder="e.g. Barista, Shift Lead, Cashier"
               />
             </div>
+
+            {/* Color picker */}
             <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5">
-                <Palette className="h-3.5 w-3.5" /> Color
-              </Label>
-              <div className="flex gap-2 flex-wrap">
+              <Label>Color</Label>
+              <div className="flex gap-2">
                 {ROLE_COLORS.map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
-                    className={`h-7 w-7 rounded-full border-2 transition-all ${
-                      roleForm.color === c ? "border-stone-900 scale-110" : "border-transparent"
+                    className={`h-6 w-6 rounded-full transition-all ${
+                      roleForm.color === c ? "ring-2 ring-offset-1 ring-stone-900 scale-110" : ""
                     }`}
                     style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
             </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea
+                value={roleForm.description}
+                onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="What does this role do?"
+                className="resize-none text-sm"
+                rows={2}
+              />
+            </div>
+
+            {/* Permissions */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <Shield className="h-3.5 w-3.5" /> Permissions
@@ -1163,6 +1458,109 @@ export default function StaffingPage() {
             <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? "Save" : "Add Role"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Add/Edit Task Dialog ────────────────────────────────── */}
+      <Dialog open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{taskDialog.task ? "Edit Task" : "Add Task"}</DialogTitle>
+            <DialogDescription>
+              {taskDialog.task ? "Update this time-period task." : "Add a task for a specific time period in this role."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <Label>Task Title *</Label>
+              <Input
+                value={taskForm.title}
+                onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))}
+                placeholder="e.g. Open register, Prep station, Brief team"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Details <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Textarea
+                value={taskForm.description}
+                onChange={(e) => setTaskForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Step-by-step instructions or notes..."
+                className="resize-none text-sm"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start Time</Label>
+                <Input
+                  type="time"
+                  value={taskForm.startTime}
+                  onChange={(e) => setTaskForm((f) => ({ ...f, startTime: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End Time</Label>
+                <Input
+                  type="time"
+                  value={taskForm.endTime}
+                  onChange={(e) => setTaskForm((f) => ({ ...f, endTime: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>Cancel</Button>
+            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>
+              {savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? "Save" : "Add Task"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── View Role Tasks Dialog (read-only for staff) ─────────── */}
+      <Dialog open={viewTasksDialog.open} onOpenChange={(open) => { if (!open) setViewTasksDialog({ open: false, role: null }); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {viewTasksDialog.role && (
+                <div className="h-6 w-6 flex items-center justify-center" style={{ color: viewTasksDialog.role.color }}>
+                  <RoleIconComp name={viewTasksDialog.role.icon} className="h-4 w-4" />
+                </div>
+              )}
+              {viewTasksDialog.role?.name ?? "Role"} Tasks
+            </DialogTitle>
+            <DialogDescription>
+              {viewTasksDialog.role?.description || "Tasks for your shift role today."}
+            </DialogDescription>
+          </DialogHeader>
+          {viewTasksDialog.role && (
+            <div className="py-1">
+              {(roleTasksCache[viewTasksDialog.role.id] ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No tasks defined for this role yet.</p>
+              ) : (
+                <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: viewTasksDialog.role.color }}>
+                  {(roleTasksCache[viewTasksDialog.role.id] ?? []).map((task) => (
+                    <div key={task.id} className="relative pl-4 pb-4">
+                      <div
+                        className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-white"
+                        style={{ borderColor: viewTasksDialog.role!.color }}
+                      />
+                      <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5">
+                        {formatTime(task.startTime)} – {formatTime(task.endTime)}
+                      </p>
+                      <p className="text-sm font-semibold text-stone-900 leading-snug">{task.title}</p>
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="flex justify-end pt-1">
+            <Button variant="outline" onClick={() => setViewTasksDialog({ open: false, role: null })}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>
