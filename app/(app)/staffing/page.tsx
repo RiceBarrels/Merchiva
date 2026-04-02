@@ -1358,7 +1358,7 @@ export default function StaffingPage() {
 
       {/* ─── Role Dialog ─────────────────────────────────────────── */}
       <Dialog open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRole ? "Edit Role" : "Add Role"}</DialogTitle>
             <DialogDescription>
@@ -1369,7 +1369,7 @@ export default function StaffingPage() {
             {/* Icon picker */}
             <div className="space-y-1.5">
               <Label>Icon</Label>
-              <div className="grid grid-cols-6 gap-1">
+              <div className="grid grid-cols-8 gap-1">
                 {ROLE_ICON_LIST.map((iconName) => (
                   <button
                     key={iconName}
