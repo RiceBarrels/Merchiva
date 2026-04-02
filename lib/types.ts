@@ -114,7 +114,20 @@ export interface StaffRole {
   id: string;
   name: string;
   color: string;
+  icon: string;        // Lucide icon name e.g. "coffee", "chef-hat", "truck"
+  description: string; // What this role does
   permissions: StaffRolePermissions;
+}
+
+export interface RoleTask {
+  id: string;
+  roleId: string;
+  organizationId: string | null;
+  title: string;
+  description: string;
+  startTime: string; // "06:00"
+  endTime: string;   // "08:00"
+  sortOrder: number;
 }
 
 export interface StaffRolePermissions {

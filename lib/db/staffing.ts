@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Shift, StaffRole, OrgMember } from "@/lib/types";
+import type { Shift, StaffRole, OrgMember, RoleTask } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shiftFromDb(row: any): Shift {
@@ -22,7 +22,23 @@ function roleFromDb(row: any): StaffRole {
     id: row.id,
     name: row.name,
     color: row.color ?? "#44403c",
+    icon: row.icon ?? "user",
+    description: row.description ?? "",
     permissions: row.permissions ?? {},
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function roleTaskFromDb(row: any): RoleTask {
+  return {
+    id: row.id,
+    roleId: row.role_id,
+    organizationId: row.organization_id ?? null,
+    title: row.title,
+    description: row.description ?? "",
+    startTime: row.start_time,
+    endTime: row.end_time,
+    sortOrder: row.sort_order ?? 0,
   };
 }
 
@@ -113,15 +129,19 @@ export async function getStaffRoles(): Promise<StaffRole[]> {
 
 export async function addStaffRole(
   role: Omit<StaffRole, "id">,
-  userId: string
+  userId: string,
+  organizationId?: string | null
 ): Promise<StaffRole> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("staff_roles")
     .insert({
       user_id: userId,
+      organization_id: organizationId ?? null,
       name: role.name,
       color: role.color,
+      icon: role.icon,
+      description: role.description,
       permissions: role.permissions,
     })
     .select()
@@ -138,6 +158,8 @@ export async function updateStaffRole(
   const payload: Record<string, unknown> = {};
   if (updates.name !== undefined) payload.name = updates.name;
   if (updates.color !== undefined) payload.color = updates.color;
+  if (updates.icon !== undefined) payload.icon = updates.icon;
+  if (updates.description !== undefined) payload.description = updates.description;
   if (updates.permissions !== undefined) payload.permissions = updates.permissions;
   const { error } = await supabase.from("staff_roles").update(payload).eq("id", id);
   if (error) throw error;
@@ -146,5 +168,60 @@ export async function updateStaffRole(
 export async function deleteStaffRole(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("staff_roles").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ─── Role Tasks ───────────────────────────────────────────────────────────────
+
+export async function getRoleTasks(roleId: string): Promise<RoleTask[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("role_tasks")
+    .select("*")
+    .eq("role_id", roleId)
+    .order("start_time");
+  if (error) throw error;
+  return (data ?? []).map(roleTaskFromDb);
+}
+
+export async function addRoleTask(
+  task: Omit<RoleTask, "id">,
+): Promise<RoleTask> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("role_tasks")
+    .insert({
+      role_id: task.roleId,
+      organization_id: task.organizationId ?? null,
+      title: task.title,
+      description: task.description,
+      start_time: task.startTime,
+      end_time: task.endTime,
+      sort_order: task.sortOrder,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return roleTaskFromDb(data);
+}
+
+export async function updateRoleTask(
+  id: string,
+  updates: Partial<Pick<RoleTask, "title" | "description" | "startTime" | "endTime" | "sortOrder">>
+): Promise<void> {
+  const supabase = createClient();
+  const payload: Record<string, unknown> = {};
+  if (updates.title !== undefined) payload.title = updates.title;
+  if (updates.description !== undefined) payload.description = updates.description;
+  if (updates.startTime !== undefined) payload.start_time = updates.startTime;
+  if (updates.endTime !== undefined) payload.end_time = updates.endTime;
+  if (updates.sortOrder !== undefined) payload.sort_order = updates.sortOrder;
+  const { error } = await supabase.from("role_tasks").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteRoleTask(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("role_tasks").delete().eq("id", id);
   if (error) throw error;
 }
