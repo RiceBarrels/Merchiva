@@ -18,7 +18,8 @@ import { ownerPermissions } from "@/lib/db/team";
 
 export default function SetupPage() {
   const router = useRouter();
-  const [businessName, setBusinessName] = useState("");
+  const [yourName, setYourName] = useState("");
+  const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,6 @@ export default function SetupPage() {
         router.replace("/login");
         return;
       }
-      // If they already have an org, skip setup
       supabase
         .from("org_members")
         .select("id")
@@ -60,7 +60,14 @@ export default function SetupPage() {
       return;
     }
 
-    const orgName = businessName.trim() || user.email?.split("@")[0] || "My Business";
+    const displayName = yourName.trim() || user.email?.split("@")[0] || "Me";
+    const orgName = storeName.trim() || user.email?.split("@")[0] || "My Business";
+
+    // Create user profile
+    await supabase.from("user_profiles").upsert(
+      { user_id: user.id, display_name: displayName },
+      { onConflict: "user_id" }
+    );
 
     const { data: org, error: orgError } = await supabase
       .from("organizations")
@@ -74,11 +81,14 @@ export default function SetupPage() {
       return;
     }
 
+    // Set active org
+    await supabase.from("user_profiles").update({ last_active_org_id: org.id }).eq("user_id", user.id);
+
     const { error: memberError } = await supabase.from("org_members").insert({
       organization_id: org.id,
       user_id: user.id,
       role: "owner",
-      display_name: orgName,
+      display_name: displayName,
       permissions: ownerPermissions(),
       status: "active",
     });
@@ -118,20 +128,30 @@ export default function SetupPage() {
           </div>
           <div>
             <CardTitle className="text-xl">Set up your business</CardTitle>
-            <CardDescription>Enter your business name to get started</CardDescription>
+            <CardDescription>Tell us about yourself and your store</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSetup} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="business">Business Name</Label>
+              <Label htmlFor="yourName">Your Name</Label>
               <Input
-                id="business"
-                placeholder="My Coffee Shop"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                autoComplete="organization"
+                id="yourName"
+                placeholder="Jane Smith"
+                value={yourName}
+                onChange={(e) => setYourName(e.target.value)}
+                autoComplete="name"
                 autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="storeName">Store Name</Label>
+              <Input
+                id="storeName"
+                placeholder="My Coffee Shop"
+                value={storeName}
+                onChange={(e) => setStoreName(e.target.value)}
+                autoComplete="organization"
               />
             </div>
 

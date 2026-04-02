@@ -1,3 +1,17 @@
+// ─── User Profile & Org Summary ──────────────────────────────────────────────
+
+export interface UserProfile {
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  lastActiveOrgId: string | null;
+}
+
+export interface OrgSummary {
+  id: string;
+  name: string;
+}
+
 // ─── Permissions & Team ───────────────────────────────────────────────────────
 
 export interface PermissionSection {

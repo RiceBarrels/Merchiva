@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
-import type { Permissions, OrgRole } from "@/lib/types";
+import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
 export default async function AppLayout({
   children,
@@ -15,35 +15,56 @@ export default async function AppLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Belt-and-suspenders auth check (proxy.ts should already redirect, but
-  // this protects against direct Server Component rendering)
   if (!user) {
     redirect("/login");
   }
 
-  // Fetch the user's org membership to get role + permissions
-  let role: OrgRole = "owner";
-  let permissions: Permissions = ownerPermissions();
-  let organizationId: string | null = null;
-
-  const { data: member } = await supabase
+  // Fetch all active memberships with org names
+  const { data: memberships } = await supabase
     .from("org_members")
-    .select("organization_id, role, permissions")
+    .select("organization_id, role, permissions, organizations(id, name)")
     .eq("user_id", user.id)
-    .eq("status", "active")
-    .limit(1)
-    .single();
+    .eq("status", "active");
 
-  if (!member) {
+  if (!memberships || memberships.length === 0) {
     redirect("/setup");
   }
 
-  organizationId = member.organization_id as string;
-  role = member.role as OrgRole;
-  permissions = (member.permissions as Permissions) ?? (role === "owner" ? ownerPermissions() : defaultPermissions());
+  // Determine active org from user_profiles.last_active_org_id
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("last_active_org_id")
+    .eq("user_id", user.id)
+    .single();
+
+  const lastActiveOrgId = profile?.last_active_org_id ?? null;
+  const activeMembership =
+    memberships.find((m) => m.organization_id === lastActiveOrgId) ?? memberships[0];
+
+  const organizations: OrgSummary[] = memberships.map((m) => ({
+    id: m.organization_id as string,
+    name: (m.organizations as any)?.name ?? "Unknown",
+  }));
+
+  const currentOrg: OrgSummary = {
+    id: activeMembership.organization_id as string,
+    name: (activeMembership.organizations as any)?.name ?? "Unknown",
+  };
+
+  const organizationId = activeMembership.organization_id as string;
+  const role = activeMembership.role as OrgRole;
+  const permissions =
+    (activeMembership.permissions as Permissions) ??
+    (role === "owner" ? ownerPermissions() : defaultPermissions());
 
   return (
-    <PermissionsProvider role={role} permissions={permissions} organizationId={organizationId}>
+    <PermissionsProvider
+      role={role}
+      permissions={permissions}
+      organizationId={organizationId}
+      organizations={organizations}
+      currentOrg={currentOrg}
+    >
       <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
