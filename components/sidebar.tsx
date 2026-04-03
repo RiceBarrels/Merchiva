@@ -27,6 +27,11 @@ import { usePermissions } from "@/lib/context/permissions";
 import { createOrganization, addOwnerMember, upsertUserProfile } from "@/lib/db/team";
 import type { Permissions } from "@/lib/types";
 
+const SIDEBAR_WIDTH = 280;
+const EDGE_THRESHOLD = 20;
+const SNAP_THRESHOLD = 0.4;
+const VELOCITY_THRESHOLD = 0.3; // px/ms
+
 type NavItem = {
   label: string;
   href: string;
@@ -108,7 +113,6 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
 
       {open && (
         <div className="absolute left-3 right-3 top-full mt-1 z-50 rounded border border-border bg-card shadow-md">
-          {/* Store list */}
           <div className="py-1">
             {organizations.map((org) => (
               <button
@@ -188,7 +192,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   });
 
   return (
-    <aside className="flex h-full w-56 flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-full flex-col border-r border-border bg-card">
       {/* Logo */}
       <div className="flex h-12 items-center gap-2 px-4 border-b border-border">
         <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
@@ -200,7 +204,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {onClose && (
           <button
             onClick={onClose}
-            className="md:hidden p-1 rounded text-muted-foreground hover:bg-muted"
+            className="p-1 rounded text-muted-foreground hover:bg-muted"
             aria-label="Close menu"
           >
             <X className="h-4 w-4" />
@@ -284,65 +288,192 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
-export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
 
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Refs for touch tracking — avoids stale closures in the event listeners
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const startTime = useRef(0);
+  const lastX = useRef(0);
+  const isEdge = useRef(false);
+  const isHoriz = useRef<boolean | null>(null);
+  const isOpenRef = useRef(false);
+  const draggingRef = useRef(false);
+
+  // Keep refs in sync with state
+  isOpenRef.current = isOpen;
+  draggingRef.current = dragging;
+
+  // Close on navigation
   useEffect(() => {
-    setMobileOpen(false);
+    setIsOpen(false);
   }, [pathname]);
 
+  // Attach touch listeners with passive:false on touchmove for preventDefault
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+    const el = contentRef.current;
+    if (!el) return;
+
+    function onTouchStart(e: TouchEvent) {
+      const t = e.touches[0];
+      startX.current = t.clientX;
+      startY.current = t.clientY;
+      startTime.current = Date.now();
+      lastX.current = t.clientX;
+      isHoriz.current = null;
+      // Valid swipe: starting from left edge (to open) or sidebar already open (can close)
+      isEdge.current = isOpenRef.current || t.clientX <= EDGE_THRESHOLD;
     }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!isEdge.current) return;
+
+      const t = e.touches[0];
+      const dx = t.clientX - startX.current;
+      const dy = t.clientY - startY.current;
+
+      // Decide swipe axis on first meaningful movement
+      if (isHoriz.current === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+        isHoriz.current = Math.abs(dx) > Math.abs(dy);
+      }
+
+      // Let vertical scrolls pass through
+      if (isHoriz.current === false) return;
+
+      e.preventDefault();
+      lastX.current = t.clientX;
+
+      let offset: number;
+      if (isOpenRef.current) {
+        // Sidebar open: drag left to close (offset decreases from SIDEBAR_WIDTH toward 0)
+        offset = Math.max(0, Math.min(SIDEBAR_WIDTH, SIDEBAR_WIDTH + dx));
+      } else {
+        // Sidebar closed: drag right from edge to open (offset grows from 0 to SIDEBAR_WIDTH)
+        offset = Math.max(0, Math.min(SIDEBAR_WIDTH, dx));
+      }
+
+      setDragging(true);
+      setDragOffset(offset);
+    }
+
+    function onTouchEnd() {
+      if (!draggingRef.current) {
+        isEdge.current = false;
+        return;
+      }
+
+      const dx = lastX.current - startX.current;
+      const dt = Math.max(1, Date.now() - startTime.current);
+      const velocity = dx / dt; // positive = rightward
+
+      // Determine final offset to evaluate snap threshold
+      let currentOffset: number;
+      if (isOpenRef.current) {
+        currentOffset = Math.max(0, Math.min(SIDEBAR_WIDTH, SIDEBAR_WIDTH + dx));
+      } else {
+        currentOffset = Math.max(0, Math.min(SIDEBAR_WIDTH, dx));
+      }
+
+      let shouldOpen: boolean;
+      if (isOpenRef.current) {
+        // Currently open → close if dragged past 40% or fast leftward swipe
+        shouldOpen = !(
+          currentOffset < SIDEBAR_WIDTH * (1 - SNAP_THRESHOLD) ||
+          velocity < -VELOCITY_THRESHOLD
+        );
+      } else {
+        // Currently closed → open if dragged past 40% or fast rightward swipe
+        shouldOpen =
+          currentOffset > SIDEBAR_WIDTH * SNAP_THRESHOLD ||
+          velocity > VELOCITY_THRESHOLD;
+      }
+
+      setIsOpen(shouldOpen);
+      setDragging(false);
+      setDragOffset(0);
+      isEdge.current = false;
+      isHoriz.current = null;
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
     return () => {
-      document.body.style.overflow = "";
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
     };
-  }, [mobileOpen]);
+  }, []); // empty deps — all mutable values accessed via refs
+
+  const translateX = dragging ? dragOffset : isOpen ? SIDEBAR_WIDTH : 0;
 
   return (
     <>
-      {/* Mobile header bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex h-12 items-center gap-3 border-b border-border bg-card px-4">
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="p-1 rounded text-muted-foreground hover:bg-muted"
-          aria-label="Open menu"
+      {/* ── Mobile layout ── */}
+      <div className="md:hidden relative h-screen overflow-hidden bg-background">
+        {/* Sidebar: always rendered, fixed at left, sits behind content at z-10 */}
+        <div className="fixed inset-y-0 left-0 w-[280px] z-10">
+          <SidebarContent onClose={() => setIsOpen(false)} />
+        </div>
+
+        {/* Main content: slides right to reveal the sidebar (z-20) */}
+        <div
+          ref={contentRef}
+          className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden"
+          style={{
+            transform: `translateX(${translateX}px)`,
+            transition: dragging
+              ? "none"
+              : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+            ...(translateX > 0 && {
+              boxShadow: "-4px 0 16px rgba(0, 0, 0, 0.12)",
+            }),
+          }}
         >
-          <Menu className="h-4 w-4" />
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
-            <Zap className="h-3.5 w-3.5" />
+          {/* Mobile header bar */}
+          <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+            <button
+              onClick={() => setIsOpen((v) => !v)}
+              className="p-1 rounded text-muted-foreground hover:bg-muted"
+              aria-label={isOpen ? "Close menu" : "Open menu"}
+            >
+              {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
+                <Zap className="h-3.5 w-3.5" />
+              </div>
+              <p className="text-sm font-semibold tracking-tight">BizOps</p>
+            </div>
           </div>
-          <p className="text-sm font-semibold tracking-tight">BizOps</p>
+
+          {/* Invisible tap-to-close layer when sidebar is open */}
+          {isOpen && (
+            <div
+              className="absolute inset-0 z-10"
+              onClick={() => setIsOpen(false)}
+            />
+          )}
+
+          <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
 
-      {/* Mobile overlay backdrop */}
-      {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-40 bg-black/50"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Mobile drawer */}
-      <div
-        className={cn(
-          "md:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-200",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <SidebarContent onClose={() => setMobileOpen(false)} />
-      </div>
-
-      {/* Desktop sidebar */}
-      <div className="hidden md:flex h-full">
-        <SidebarContent />
+      {/* ── Desktop layout: unchanged flex sidebar ── */}
+      <div className="hidden md:flex h-screen overflow-hidden bg-background">
+        <div className="w-56 h-full shrink-0">
+          <SidebarContent />
+        </div>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
     </>
   );

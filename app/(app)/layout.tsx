@@ -1,4 +1,4 @@
-import { Sidebar } from "@/components/sidebar";
+import { MobileShell } from "@/components/sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PermissionsProvider } from "@/lib/context/permissions";
@@ -65,13 +65,7 @@ export default async function AppLayout({
       organizations={organizations}
       currentOrg={currentOrg}
     >
-      <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* On mobile, offset content below the fixed header bar */}
-          <main className="flex-1 overflow-y-auto pt-14 md:pt-0">{children}</main>
-        </div>
-      </div>
+      <MobileShell>{children}</MobileShell>
     </PermissionsProvider>
   );
 }
