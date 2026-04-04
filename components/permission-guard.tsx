@@ -8,7 +8,7 @@ import type { Permissions } from "@/lib/types";
 
 /**
  * Wraps page content with a permission check.
- * - If the user lacks `view` permission for the section, redirects to /dashboard.
+ * - If the user lacks `view` permission for the section, redirects to /.
  * - `editRequired` additionally blocks if the user only has view (not edit) access,
  *   but instead of redirect just shows a read-only notice — pages handle that themselves.
  */
@@ -25,7 +25,7 @@ export function PermissionGuard({
 
   useEffect(() => {
     if (!hasView) {
-      router.replace("/dashboard");
+      router.replace("/");
     }
   }, [hasView, router]);
 

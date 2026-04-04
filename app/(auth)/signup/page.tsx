@@ -168,7 +168,7 @@ function SignupForm() {
         .update({ last_active_org_id: invitation!.organizationId })
         .eq("user_id", userId);
 
-      router.push("/dashboard");
+      router.push("/");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join organization.");
@@ -237,7 +237,7 @@ function SignupForm() {
         .eq("id", pendingInvite.id);
     }
 
-    router.push("/dashboard");
+    router.push("/");
     router.refresh();
   };
 

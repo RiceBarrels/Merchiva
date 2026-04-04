@@ -41,7 +41,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Dashboard",        href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { label: "Dashboard",        href: "/",           icon: LayoutDashboard, permissionKey: "dashboard" },
   { label: "Inventory",        href: "/inventory",  icon: Package,         permissionKey: "inventory" },
   { label: "Sales Prediction", href: "/sales",      icon: TrendingUp,      permissionKey: "sales"     },
   { label: "Staffing",         href: "/staffing",   icon: Users,           permissionKey: "staffing"  },

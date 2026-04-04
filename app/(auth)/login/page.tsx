@@ -44,7 +44,7 @@ export default function LoginPage() {
     }
 
     hapticSuccess();
-    router.push("/dashboard");
+    router.push("/");
     router.refresh();
   };
 
