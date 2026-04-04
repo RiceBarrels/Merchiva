@@ -1,8 +1,25 @@
 import { createClient } from "@/lib/supabase/client";
-import type { StaffAvailability, TimeOffRequest, ShiftTrade } from "@/lib/types";
+import type { StaffAvailability, DayTime, TimeOffRequest, ShiftTrade } from "@/lib/types";
+
+const DEFAULT_DAY_TIME: DayTime = { enabled: false, fullDay: true, startTime: "09:00", endTime: "17:00" };
+export function defaultDayTimes(): DayTime[] {
+  // Sun(0)–Sat(6), Mon–Fri enabled by default
+  return [false, true, true, true, true, true, false].map((on) => ({ ...DEFAULT_DAY_TIME, enabled: on }));
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function availFromDb(row: any): StaffAvailability {
+  const days: boolean[] = row.days ?? [false, true, true, true, true, true, false];
+  // Migrate: if dayTimes missing, build from legacy fields
+  let dayTimes: DayTime[] = row.day_times;
+  if (!dayTimes || dayTimes.length !== 7) {
+    dayTimes = days.map((on) => ({
+      enabled: on,
+      fullDay: row.full_day ?? true,
+      startTime: row.start_time ?? "09:00",
+      endTime: row.end_time ?? "17:00",
+    }));
+  }
   return {
     id: row.id,
     userId: row.user_id,
@@ -10,7 +27,8 @@ function availFromDb(row: any): StaffAvailability {
     type: row.type ?? "permanent",
     startDate: row.start_date ?? null,
     endDate: row.end_date ?? null,
-    days: row.days ?? [true, true, true, true, true, false, false],
+    days,
+    dayTimes,
     status: row.status ?? "available",
     fullDay: row.full_day ?? true,
     startTime: row.start_time ?? null,
@@ -76,17 +94,21 @@ export async function upsertAvailability(
   avail: Omit<StaffAvailability, "id"> & { id?: string }
 ): Promise<StaffAvailability> {
   const supabase = createClient();
+  // Derive legacy fields from dayTimes for backward compat
+  const days = avail.dayTimes.map((dt) => dt.enabled);
+  const allFullDay = avail.dayTimes.every((dt) => dt.fullDay || !dt.enabled);
   const payload = {
     user_id: avail.userId,
     organization_id: avail.organizationId,
     type: avail.type,
     start_date: avail.startDate || null,
     end_date: avail.endDate || null,
-    days: avail.days,
+    days,
+    day_times: avail.dayTimes,
     status: avail.status,
-    full_day: avail.fullDay,
-    start_time: avail.fullDay ? null : avail.startTime,
-    end_time: avail.fullDay ? null : avail.endTime,
+    full_day: allFullDay,
+    start_time: null as string | null,
+    end_time: null as string | null,
     comments: avail.comments,
   };
   if (avail.id) {

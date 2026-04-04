@@ -183,14 +183,14 @@ export const upcomingForecasts: SalesForecast[] = [
 // ─── Staffing ────────────────────────────────────────────────────────────────
 
 export const weeklySchedule: Shift[] = [
-  { id: "s-001", memberId: "m-001", staffName: "Alex Chen", staffRole: "Barista", date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
-  { id: "s-002", memberId: "m-002", staffName: "Maria Lopez", staffRole: "Shift Lead", date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
-  { id: "s-003", memberId: "m-005", staffName: "Taylor Nguyen", staffRole: "Barista", date: "2026-04-01", shiftType: "afternoon", startTime: "13:00", endTime: "20:00", predictedDemand: "medium" },
-  { id: "s-004", memberId: "m-003", staffName: "Jordan Kim", staffRole: "Cashier", date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
-  { id: "s-005", memberId: "m-006", staffName: "Casey Brown", staffRole: null, date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
-  { id: "s-006", memberId: "m-004", staffName: "Sam Patel", staffRole: "Barista", date: "2026-04-03", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
-  { id: "s-007", memberId: "m-002", staffName: "Maria Lopez", staffRole: "Shift Lead", date: "2026-04-03", shiftType: "evening", startTime: "14:00", endTime: "21:00", predictedDemand: "medium" },
-  { id: "s-008", memberId: "m-001", staffName: "Alex Chen", staffRole: "Barista", date: "2026-04-04", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-001", memberId: "m-001", staffName: "Alex Chen", staffRole: "Barista", staffRoles: ["Barista"], date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-002", memberId: "m-002", staffName: "Maria Lopez", staffRole: "Shift Lead", staffRoles: ["Shift Lead"], date: "2026-04-01", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
+  { id: "s-003", memberId: "m-005", staffName: "Taylor Nguyen", staffRole: "Barista", staffRoles: ["Barista"], date: "2026-04-01", shiftType: "afternoon", startTime: "13:00", endTime: "20:00", predictedDemand: "medium" },
+  { id: "s-004", memberId: "m-003", staffName: "Jordan Kim", staffRole: "Cashier", staffRoles: ["Cashier"], date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-005", memberId: "m-006", staffName: "Casey Brown", staffRole: null, staffRoles: [], date: "2026-04-02", shiftType: "morning", startTime: "07:00", endTime: "15:00", predictedDemand: "high" },
+  { id: "s-006", memberId: "m-004", staffName: "Sam Patel", staffRole: "Barista", staffRoles: ["Barista"], date: "2026-04-03", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
+  { id: "s-007", memberId: "m-002", staffName: "Maria Lopez", staffRole: "Shift Lead", staffRoles: ["Shift Lead"], date: "2026-04-03", shiftType: "evening", startTime: "14:00", endTime: "21:00", predictedDemand: "medium" },
+  { id: "s-008", memberId: "m-001", staffName: "Alex Chen", staffRole: "Barista", staffRoles: ["Barista"], date: "2026-04-04", shiftType: "morning", startTime: "07:00", endTime: "14:00", predictedDemand: "high" },
 ];
 
 export const staffingRecommendations: StaffingRecommendation[] = [

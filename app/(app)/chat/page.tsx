@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  MessageSquare, Plus, Send, Loader2, Users, ArrowLeft, Search, X, UserPlus, ChevronDown, AlertTriangle,
+  MessageSquare, Plus, Send, Loader2, Users, ArrowLeft, Search, X, UserPlus, ChevronDown, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -769,7 +769,11 @@ function ChatView({
                     onTouchMove={handleTouchMove}
                     onContextMenu={(e) => handleContextMenu(msg, e)}
                     className={`max-w-[70vw] rounded-2xl px-3 py-2 text-sm select-none ${
-                      isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                      msg.content?.startsWith("[task:done] ")
+                        ? (isMe
+                          ? "bg-green-800 text-white border border-green-700"
+                          : "bg-green-50 text-foreground border border-green-200")
+                        : (isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")
                     } ${isMe ? (isLast ? "rounded-br-sm" : "") : (isLast ? "rounded-bl-sm" : "")}`}
                   >
                     {msg.replyToId && (() => {
@@ -791,17 +795,59 @@ function ChatView({
                     })()}
                     {/* Attachment */}
                     {msg.attachmentUrl && msg.attachmentType === "image" && (
-                      <img src={msg.attachmentUrl} alt={msg.attachmentName ?? "image"} className="rounded-lg max-w-full max-h-48 object-cover mt-1" />
+                      <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                        <img src={msg.attachmentUrl} alt={msg.attachmentName ?? "image"} className="rounded-lg max-w-full max-h-48 object-cover mt-1 cursor-pointer hover:opacity-90 transition-opacity" />
+                      </a>
                     )}
                     {msg.attachmentUrl && msg.attachmentType === "video" && (
-                      <video src={msg.attachmentUrl} controls className="rounded-lg max-w-full max-h-48 mt-1" />
+                      <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer">
+                        <video src={msg.attachmentUrl} className="rounded-lg max-w-full max-h-48 mt-1 cursor-pointer" />
+                      </a>
                     )}
                     {msg.attachmentUrl && msg.attachmentType === "file" && (
                       <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 mt-1 text-xs underline ${isMe ? "text-primary-foreground/80" : "text-foreground/60"}`}>
                         📎 {msg.attachmentName ?? "File"}
                       </a>
                     )}
-                    {msg.content && <span>{msg.content}</span>}
+                    {msg.content && (() => {
+                      if (msg.content.startsWith("[task:done] ")) {
+                        const lines = msg.content.split("\n");
+                        const headerLine = lines[0].slice("[task:done] ".length);
+                        const [title, rolePart] = headerLine.split(" | ");
+                        // Parse embedded media: [image](url) or [video](url)
+                        const media = lines.slice(1)
+                          .map((l) => {
+                            const m = l.match(/^\[(image|video)\]\((.+)\)$/);
+                            return m ? { type: m[1] as "image" | "video", url: m[2] } : null;
+                          })
+                          .filter(Boolean) as { type: "image" | "video"; url: string }[];
+                        return (
+                          <div>
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className={`h-4 w-4 shrink-0 mt-0.5 ${isMe ? "text-green-300" : "text-green-600"}`} />
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm leading-snug">{title}</p>
+                                {rolePart && <p className={`text-xs mt-0.5 ${isMe ? "text-white/60" : "text-muted-foreground"}`}>{rolePart}</p>}
+                              </div>
+                            </div>
+                            {media.length > 0 && (
+                              <div className="flex gap-1.5 mt-2 flex-wrap">
+                                {media.map((m, i) => (
+                                  <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="block">
+                                    {m.type === "image" ? (
+                                      <img src={m.url} alt="" className="rounded-lg h-24 w-24 object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+                                    ) : (
+                                      <video src={m.url} className="rounded-lg h-24 w-24 object-cover cursor-pointer" />
+                                    )}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return <span>{msg.content}</span>;
+                    })()}
                   </div>
                   {/* Reaction badges */}
                   {Object.keys(emojiCounts).length > 0 && (

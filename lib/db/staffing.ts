@@ -3,11 +3,16 @@ import type { Shift, ShiftType, StaffRole, OrgMember, RoleTask } from "@/lib/typ
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shiftFromDb(row: any): Shift {
+  // Migrate: build staffRoles from staff_roles array or legacy staff_role
+  const staffRoles: string[] = Array.isArray(row.staff_roles) && row.staff_roles.length > 0
+    ? row.staff_roles
+    : row.staff_role ? [row.staff_role] : [];
   return {
     id: row.id,
     memberId: row.member_id ?? null,
     staffName: row.staff_name,
-    staffRole: row.staff_role ?? null,
+    staffRole: staffRoles[0] ?? null,
+    staffRoles,
     date: row.date,
     shiftType: row.shift_type,
     startTime: row.start_time,
@@ -36,9 +41,11 @@ function roleTaskFromDb(row: any): RoleTask {
     organizationId: row.organization_id ?? null,
     title: row.title,
     description: row.description ?? "",
-    startTime: row.start_time,
-    endTime: row.end_time,
+    startTime: row.start_time ?? null,
+    endTime: row.end_time ?? null,
     sortOrder: row.sort_order ?? 0,
+    requiresEvidence: row.requires_evidence ?? false,
+    notifyChats: row.notify_chats ?? [],
   };
 }
 
@@ -87,16 +94,19 @@ export async function getShifts(weeksAhead = 2): Promise<Shift[]> {
 
 export async function addShift(
   shift: Omit<Shift, "id">,
-  userId: string
+  userId: string,
+  organizationId?: string
 ): Promise<Shift> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("shifts")
     .insert({
       user_id: userId,
+      organization_id: organizationId || null,
       member_id: shift.memberId || null,
       staff_name: shift.staffName,
-      staff_role: shift.staffRole || null,
+      staff_role: shift.staffRoles[0] || shift.staffRole || null,
+      staff_roles: shift.staffRoles,
       date: shift.date,
       shift_type: shift.shiftType,
       start_time: shift.startTime,
@@ -115,6 +125,7 @@ export async function updateShift(
     memberId?: string;
     staffName?: string;
     staffRole?: string | null;
+    staffRoles?: string[];
     date?: string;
     shiftType?: ShiftType;
     startTime?: string;
@@ -126,7 +137,12 @@ export async function updateShift(
   const patch: Record<string, any> = {};
   if (updates.memberId   !== undefined) patch.member_id   = updates.memberId || null;
   if (updates.staffName  !== undefined) patch.staff_name  = updates.staffName;
-  if (updates.staffRole  !== undefined) patch.staff_role  = updates.staffRole || null;
+  if (updates.staffRoles !== undefined) {
+    patch.staff_roles = updates.staffRoles;
+    patch.staff_role  = updates.staffRoles[0] || null;
+  } else if (updates.staffRole !== undefined) {
+    patch.staff_role  = updates.staffRole || null;
+  }
   if (updates.date       !== undefined) patch.date        = updates.date;
   if (updates.shiftType  !== undefined) patch.shift_type  = updates.shiftType;
   if (updates.startTime  !== undefined) patch.start_time  = updates.startTime;
@@ -223,9 +239,11 @@ export async function addRoleTask(
       organization_id: task.organizationId ?? null,
       title: task.title,
       description: task.description,
-      start_time: task.startTime,
-      end_time: task.endTime,
+      start_time: task.startTime || null,
+      end_time: task.endTime || null,
       sort_order: task.sortOrder,
+      requires_evidence: task.requiresEvidence,
+      notify_chats: task.notifyChats,
     })
     .select()
     .single();
@@ -235,7 +253,7 @@ export async function addRoleTask(
 
 export async function updateRoleTask(
   id: string,
-  updates: Partial<Pick<RoleTask, "title" | "description" | "startTime" | "endTime" | "sortOrder">>
+  updates: Partial<Pick<RoleTask, "title" | "description" | "startTime" | "endTime" | "sortOrder" | "requiresEvidence" | "notifyChats">>
 ): Promise<void> {
   const supabase = createClient();
   const payload: Record<string, unknown> = {};
@@ -244,6 +262,8 @@ export async function updateRoleTask(
   if (updates.startTime !== undefined) payload.start_time = updates.startTime;
   if (updates.endTime !== undefined) payload.end_time = updates.endTime;
   if (updates.sortOrder !== undefined) payload.sort_order = updates.sortOrder;
+  if (updates.requiresEvidence !== undefined) payload.requires_evidence = updates.requiresEvidence;
+  if (updates.notifyChats !== undefined) payload.notify_chats = updates.notifyChats;
   const { error } = await supabase.from("role_tasks").update(payload).eq("id", id);
   if (error) throw error;
 }

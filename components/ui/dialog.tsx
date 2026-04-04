@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { ArrowLeft, XIcon } from "lucide-react"
+import { motion, AnimatePresence } from "motion/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,114 @@ function DialogOverlay({
 
 // Track stacked mobile dialogs for iOS-like depth effect
 const MobileDialogDepthContext = React.createContext(0);
+// Global counter for open mobile dialogs
+let globalDialogCount = 0;
+const globalDialogIds: string[] = [];
+const dialogListeners = new Set<(count: number) => void>();
+export function useOpenDialogCount() {
+  const [count, setCount] = React.useState(globalDialogCount);
+  React.useEffect(() => {
+    dialogListeners.add(setCount);
+    setCount(globalDialogCount);
+    return () => { dialogListeners.delete(setCount); };
+  }, []);
+  return count;
+}
+function notifyDialogListeners() {
+  dialogListeners.forEach((fn) => fn(globalDialogCount));
+}
+// Global swipe progress for the topmost dialog (0 = fully open, 1 = fully swiped away)
+let globalSwipeProgress = 0;
+const swipeListeners = new Set<(p: number) => void>();
+export function useDialogSwipeProgress() {
+  const [p, setP] = React.useState(0);
+  React.useEffect(() => {
+    swipeListeners.add(setP);
+    return () => { swipeListeners.delete(setP); };
+  }, []);
+  return p;
+}
+function setGlobalSwipeProgress(p: number) {
+  globalSwipeProgress = p;
+  swipeListeners.forEach((fn) => fn(p));
+}
+// Title registry — immune to Strict Mode double-mount
+const titleRegistry = new Map<string, string>(); // instanceId → title
+let titleIdSeq = 0;
+const titleListeners = new Set<(title: string) => void>();
+
+function getTitles(): string[] { return Array.from(titleRegistry.values()); }
+function getTopTitle(): string { const t = getTitles(); return t[t.length - 1] ?? ""; }
+function notifyTitles() { const t = getTopTitle(); titleListeners.forEach((fn) => fn(t)); syncDialogsToUrl(); }
+
+export function useDialogTitle() {
+  const [title, setTitle] = React.useState(getTopTitle());
+  React.useEffect(() => {
+    titleListeners.add(setTitle);
+    setTitle(getTopTitle());
+    return () => { titleListeners.delete(setTitle); };
+  }, []);
+  return title;
+}
+
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let prevTitleCount = 0;
+// Track whether a popstate is being handled to avoid pushing during close
+let handlingPopstate = false;
+
+function syncDialogsToUrl() {
+  if (typeof window === "undefined") return;
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    const titles = [...new Set(getTitles())];
+    const url = new URL(window.location.href);
+    if (titles.length > 0) {
+      url.searchParams.set("dialogs", titles.map((t) => encodeURIComponent(t)).join(","));
+    } else {
+      url.searchParams.delete("dialogs");
+    }
+    // Push when a new dialog opens, replace otherwise (close / URL cleanup)
+    if (titles.length > prevTitleCount && !handlingPopstate) {
+      window.history.pushState({ dialogs: titles.length }, "", url.toString());
+    } else {
+      window.history.replaceState({ dialogs: titles.length }, "", url.toString());
+    }
+    prevTitleCount = titles.length;
+  }, 300);
+}
+
+// Listen for back button → close the topmost dialog
+if (typeof window !== "undefined") {
+  window.addEventListener("popstate", () => {
+    const titles = getTitles();
+    if (titles.length === 0) return;
+    handlingPopstate = true;
+    // Find and click the topmost dialog's back/close button
+    const topIdx = titles.length - 1;
+    const topDialog = document.getElementById(`mobile-dialog-${topIdx}`);
+    const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
+    if (backBtn) {
+      backBtn.click();
+    } else {
+      // Desktop: find the topmost open dialog's close button
+      const closeBtns = document.querySelectorAll('[data-slot="dialog-close"]');
+      const lastClose = closeBtns[closeBtns.length - 1] as HTMLButtonElement | null;
+      lastClose?.click();
+    }
+    setTimeout(() => { handlingPopstate = false; }, 100);
+  });
+}
+
+function registerTitle(title: string): string {
+  const id = `dt-${++titleIdSeq}`;
+  titleRegistry.set(id, title);
+  notifyTitles();
+  return id;
+}
+function unregisterTitle(id: string) {
+  titleRegistry.delete(id);
+  notifyTitles();
+}
 // Pass title to mobile header bar
 const MobileDialogTitleContext = React.createContext<{
   title: string;
@@ -54,9 +163,27 @@ function MobileDialogPage({
   noPadding = false,
   ...props
 }: DialogPrimitive.Popup.Props & { noPadding?: boolean }) {
-  const depth = React.useContext(MobileDialogDepthContext);
   const [mobileTitle, setMobileTitle] = React.useState("");
   const ref = React.useRef<HTMLDivElement>(null);
+  const myDepth = React.useRef(0);
+  const myId = React.useRef("");
+
+  // Register on mount, unregister on unmount
+  React.useEffect(() => {
+    myDepth.current = globalDialogCount;
+    myId.current = `mobile-dialog-${myDepth.current}`;
+    globalDialogIds.push(myId.current);
+    globalDialogCount++;
+    notifyDialogListeners();
+    return () => {
+      globalDialogCount--;
+      const idx = globalDialogIds.indexOf(myId.current);
+      if (idx >= 0) globalDialogIds.splice(idx, 1);
+      notifyDialogListeners();
+    };
+  }, []);
+
+  const depth = myDepth.current;
   const [offsetX, setOffsetX] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [entered, setEntered] = React.useState(false);
@@ -65,6 +192,12 @@ function MobileDialogPage({
   const startY = React.useRef(0);
   const axis = React.useRef<"h" | "v" | null>(null);
   const closeRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    return () => {
+      setGlobalSwipeProgress(0);
+    };
+  }, []);
 
   // Slide in on mount
   React.useEffect(() => {
@@ -91,6 +224,8 @@ function MobileDialogPage({
       e.preventDefault();
       setDragging(true);
       setOffsetX(dx);
+      const sw = window.innerWidth || 400;
+      setGlobalSwipeProgress(Math.min(1, dx / sw));
     }
     function onEnd(e: TouchEvent) {
       if (axis.current !== "h") { axis.current = null; return; }
@@ -98,10 +233,16 @@ function MobileDialogPage({
       if (dx > 80) {
         setDragging(false);
         setExiting(true);
-        setTimeout(() => closeRef.current?.click(), 250);
+        setGlobalSwipeProgress(1);
+        setTimeout(() => {
+          closeRef.current?.click();
+          // Reset after dialog is fully closed
+          setTimeout(() => setGlobalSwipeProgress(0), 50);
+        }, 250);
       } else {
         setDragging(false);
         setOffsetX(0);
+        setGlobalSwipeProgress(0);
       }
       axis.current = null;
     }
@@ -134,52 +275,56 @@ function MobileDialogPage({
 
   const transition = dragging ? "none" : "transform 500ms cubic-bezier(0.32, 0.72, 0, 1)";
 
-  // Move the actual page content behind this dialog
+  // Move the layer directly behind this dialog
   React.useEffect(() => {
-    const root = document.getElementById("mobile-content");
-    if (!root) return;
-    const prev = root.style.transition;
-    const prevTransform = root.style.transform;
-    root.style.transition = transition;
-    root.style.transform = `translateX(${bgShift}px)`;
+    const targetId = depth === 0 ? "mobile-content" : `mobile-dialog-${depth - 1}`;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    el.style.transition = transition;
+    el.style.transform = `translateX(${bgShift}px)`;
     return () => {
-      root.style.transition = prev;
-      root.style.transform = prevTransform;
+      el.style.transition = transition;
+      el.style.transform = "";
     };
-  });
+  }, [entered, exiting, bgShift, transition, depth]);
 
   return (
     <MobileDialogDepthContext.Provider value={depth + 1}>
       <MobileDialogTitleContext.Provider value={{ title: mobileTitle, setTitle: setMobileTitle }}>
       {/* Foreground dialog page */}
-      <DialogPrimitive.Popup
-        data-slot="dialog-content"
-        className="fixed inset-0 z-50 flex flex-col bg-background text-sm text-foreground outline-none w-full max-w-none"
+      <div
+        id={`mobile-dialog-${depth}`}
+        className="fixed inset-0"
         style={{
           transform: fgTransform,
           transition,
           zIndex: 50 + depth,
+        }}
+      >
+      <DialogPrimitive.Popup
+        data-slot="dialog-content"
+        className="absolute inset-0 flex flex-col bg-background text-sm text-foreground outline-none w-full max-w-none"
+        style={{
           borderRadius: (entered && !dragging && !exiting) ? "0" : "48px 0 0 48px",
           boxShadow: "-8px 0 30px rgba(0, 0, 0, 0.15)",
         }}
       >
         <div ref={ref} className="flex flex-col h-full">
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-            <DialogPrimitive.Close
-              ref={closeRef}
-              className="p-1 -ml-1 rounded-md text-muted-foreground hover:bg-muted"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </DialogPrimitive.Close>
-            {mobileTitle && (
-              <span className="text-base font-semibold truncate">{mobileTitle}</span>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: noPadding ? 0 : 16 }}>
+          <DialogPrimitive.Close ref={closeRef} className="hidden" />
+          <button
+            data-dialog-back
+            onClick={() => {
+              setExiting(true);
+              setTimeout(() => closeRef.current?.click(), 500);
+            }}
+            className="hidden"
+          />
+          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: noPadding ? 0 : 16, paddingTop: noPadding ? 64 : 64 }}>
             {children}
           </div>
         </div>
       </DialogPrimitive.Popup>
+      </div>
       </MobileDialogTitleContext.Provider>
     </MobileDialogDepthContext.Provider>
   );
@@ -195,8 +340,11 @@ function DialogContent({
   showCloseButton?: boolean
   noPadding?: boolean
 }) {
-  // Detect mobile via matchMedia
-  const [isMobile, setIsMobile] = React.useState(false);
+  // Detect mobile via matchMedia — initialize with correct value to avoid
+  // false→true transition that causes MobileDialogPage double-mount
+  const [isMobile, setIsMobile] = React.useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches
+  );
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
@@ -289,10 +437,25 @@ function DialogTitle({ className, children, mobileTitle, ...props }: DialogPrimi
   const { setTitle } = React.useContext(MobileDialogTitleContext);
   const text = mobileTitle || (typeof children === "string" ? children : "");
 
+  // Set mobile header title via context
   React.useEffect(() => {
     if (text) setTitle(text);
     return () => setTitle("");
   }, [text, setTitle]);
+
+  // Register title globally for URL sync (works for both desktop & mobile)
+  const titleIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (text && !titleIdRef.current) {
+      titleIdRef.current = registerTitle(text);
+    }
+    return () => {
+      if (titleIdRef.current) {
+        unregisterTitle(titleIdRef.current);
+        titleIdRef.current = null;
+      }
+    };
+  }, [text]);
 
   return (
     <DialogPrimitive.Title

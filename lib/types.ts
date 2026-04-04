@@ -110,6 +110,16 @@ export interface SalesForecast {
 
 export type ShiftType = "morning" | "afternoon" | "evening" | "closing";
 
+export interface ShiftPreset {
+  id: string;
+  organizationId: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  color: string;
+  sortOrder: number;
+}
+
 export interface StaffRole {
   id: string;
   name: string;
@@ -125,9 +135,11 @@ export interface RoleTask {
   organizationId: string | null;
   title: string;
   description: string;
-  startTime: string; // "06:00"
-  endTime: string;   // "08:00"
+  startTime: string | null; // "06:00" or null if no time constraint
+  endTime: string | null;   // "08:00" or null
   sortOrder: number;
+  requiresEvidence: boolean;
+  notifyChats: string[]; // conversation IDs to notify on completion
 }
 
 export interface StaffRolePermissions {
@@ -144,7 +156,8 @@ export interface Shift {
   id: string;
   memberId: string | null;
   staffName: string;
-  staffRole: string | null;
+  staffRole: string | null; // legacy single role
+  staffRoles: string[]; // multiple roles
   date: string;
   shiftType: ShiftType;
   startTime: string;
@@ -160,6 +173,13 @@ export interface StaffingRecommendation {
   reason: string;
 }
 
+export interface DayTime {
+  enabled: boolean;
+  fullDay: boolean;
+  startTime: string;
+  endTime: string;
+}
+
 export interface StaffAvailability {
   id: string;
   userId: string;
@@ -167,11 +187,12 @@ export interface StaffAvailability {
   type: "permanent" | "temporary";
   startDate: string | null;
   endDate: string | null;
-  days: boolean[]; // 7 elements, Mon(0)–Sun(6)
+  days: boolean[]; // 7 elements, Sun(0)–Sat(6) — kept for backward compat
+  dayTimes: DayTime[]; // 7 elements, Sun(0)–Sat(6) — per-day time config
   status: string;
-  fullDay: boolean;
-  startTime: string | null;
-  endTime: string | null;
+  fullDay: boolean; // legacy global toggle
+  startTime: string | null; // legacy global time
+  endTime: string | null; // legacy global time
   comments: string;
 }
 
@@ -202,6 +223,18 @@ export interface ShiftTrade {
   managerApproved: boolean;
   managerId: string | null;
   comments: string;
+}
+
+// ─── Todos ──────────────────────────────────────────────────────────────────
+
+export interface Todo {
+  id: string;
+  userId: string;
+  organizationId: string;
+  title: string;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
 }
 
 // ─── Chat ───────────────────────────────────────────────────────────────────

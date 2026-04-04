@@ -20,7 +20,11 @@ import {
   Loader2,
   Menu,
   MessageSquare,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
+import { useOpenDialogCount, useDialogTitle, useDialogSwipeProgress } from "@/components/ui/dialog";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
 import { Separator } from "@/components/ui/separator";
@@ -42,7 +46,7 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Dashboard",        href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { label: "Home",              href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
   { label: "Inventory",        href: "/inventory",  icon: Package,         permissionKey: "inventory" },
   { label: "Sales Prediction", href: "/sales",      icon: TrendingUp,      permissionKey: "sales"     },
   { label: "Staffing",         href: "/staffing",   icon: Users,           permissionKey: "staffing"  },
@@ -198,7 +202,7 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   });
 
   return (
-    <aside className="flex h-full w-full flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-full flex-col md:border-r md:border-border bg-card">
       {/* Logo */}
       <div className="flex h-12 items-center gap-2 px-4 border-b border-border">
         <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
@@ -218,8 +222,9 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
           Daily Management
         </p>
         {visibleNavItems.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
+          const hasQuery = item.href.includes("?");
+          const isActive = !hasQuery &&
+            (pathname === item.href || pathname.startsWith(item.href + "/"));
           return (
             <Link
               key={item.href}
@@ -243,36 +248,19 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Bottom links */}
       <div className="px-2 py-2 space-y-0.5">
-        {isOwner && (
-          <Link
-            href="/team"
-            onClick={handleNavClick}
-            className={cn(
-              "flex items-center gap-2.5 rounded px-2.5 py-2 text-sm transition-colors",
-              pathname === "/team"
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <UserCog className="h-4 w-4 shrink-0" />
-            Team
-          </Link>
-        )}
-        {can("settings", "view") && (
-          <Link
-            href="/settings"
-            onClick={handleNavClick}
-            className={cn(
-              "flex items-center gap-2.5 rounded px-2.5 py-2 text-sm transition-colors",
-              pathname === "/settings"
-                ? "bg-muted text-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            Settings
-          </Link>
-        )}
+        <Link
+          href="/settings"
+          onClick={handleNavClick}
+          className={cn(
+            "flex items-center gap-2.5 rounded px-2.5 py-2 text-sm transition-colors",
+            pathname === "/settings"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <Settings className="h-4 w-4 shrink-0" />
+          Settings
+        </Link>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -287,9 +275,25 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const openDialogs = useOpenDialogCount();
+  const hasDialog = openDialogs > 0;
+  const dialogTitle = useDialogTitle();
+  const dialogSwipe = useDialogSwipeProgress();
   const [isOpen, setIsOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+
+  // Detect mobile to render children only once (avoids double-mounting dialogs)
+  // Start null to avoid hydration mismatch — render children in both during SSR,
+  // then commit to one side after mount.
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -432,22 +436,75 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       <div className="md:hidden relative h-screen overflow-hidden bg-background">
         {/* Floating hamburger — follows content slide */}
         <button
-          onClick={() => setIsOpen((v) => !v)}
-          className="fixed z-50 p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+          onClick={() => {
+            if (hasDialog) {
+              // Find and click the topmost dialog's hidden close button
+              const topDialog = document.getElementById(`mobile-dialog-${openDialogs - 1}`);
+              const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
+              backBtn?.click();
+            } else {
+              setIsOpen((v) => !v);
+            }
+          }}
+          className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
           style={{
             left: 14,
             top: 14,
-            transform: `translateX(${translateX}px) rotate(${btnRotation}deg)`,
+            zIndex: hasDialog ? 200 : 50,
+            transform: hasDialog ? "none" : `translateX(${translateX}px)`,
             transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
             boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)",
           }}
-          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-label={hasDialog ? "Go back" : isOpen ? "Close menu" : "Open menu"}
         >
-          <span className="relative block h-5 w-5">
-            <Menu className="h-5 w-5 absolute inset-0" style={{ opacity: menuOpacity, transition: dragging ? "none" : "opacity 150ms" }} />
-            <X className="h-5 w-5 absolute inset-0" style={{ opacity: xOpacity, transition: dragging ? "none" : "opacity 150ms" }} />
-          </span>
+          <motion.span
+            className="relative block h-5 w-5"
+            animate={{
+              rotate: hasDialog
+                ? openDialogs > 1
+                  ? -180 // multiple dialogs: stay as back arrow
+                  : -180 + dialogSwipe * 180  // last dialog: rotate back to menu
+                : btnRotation
+            }}
+            transition={dragging || dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 300 }}
+          >
+            <ArrowRight className="h-5 w-5 absolute inset-0" style={{
+              opacity: hasDialog ? (openDialogs > 1 ? 1 : 1 - dialogSwipe) : 0,
+              transition: dialogSwipe > 0 ? "none" : "opacity 200ms",
+            }} />
+            <Menu className="h-5 w-5 absolute inset-0" style={{
+              opacity: hasDialog ? (openDialogs > 1 ? 0 : dialogSwipe) : menuOpacity,
+              transition: dialogSwipe > 0 || dragging ? "none" : "opacity 200ms",
+            }} />
+            <X className="h-5 w-5 absolute inset-0" style={{ opacity: hasDialog ? 0 : xOpacity, transition: dragging ? "none" : "opacity 200ms" }} />
+          </motion.span>
         </button>
+
+        {/* Floating dialog title pill */}
+        <AnimatePresence>
+          {hasDialog && dialogTitle && (
+            <motion.div
+              key={dialogTitle}
+              className="fixed"
+              style={{ top: 22, left: 64, zIndex: 201 }}
+              initial={{ opacity: 0, scale: 0.3, x: -30 }}
+              animate={{
+                opacity: 1 - dialogSwipe,
+                scale: 1 - dialogSwipe * 0.7,
+                x: -dialogSwipe * 30,
+              }}
+              exit={{ opacity: 0, scale: 0.3, x: -30 }}
+              transition={dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 400, delay: 0.1 }}
+            >
+              <div
+                className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-lg"
+                style={{ boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)" }}
+              >
+                {dialogTitle}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Sidebar: slides in from back with scale */}
         <div
@@ -484,7 +541,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             />
           )}
 
-          <main className="flex-1 overflow-y-auto"><div className="h-12" />{children}</main>
+          <main className="flex-1 overflow-y-auto"><div className="h-12" />{(isMobile === null || isMobile) && children}</main>
         </div>
       </div>
 
@@ -494,7 +551,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <SidebarContent />
         </div>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto">{(isMobile === null || !isMobile) && children}</main>
         </div>
       </div>
     </>

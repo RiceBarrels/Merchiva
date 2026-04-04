@@ -1,520 +1,668 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import {
-  Package,
-  TrendingUp,
-  Users,
-  ShoppingBag,
+  Clock,
+  MessageSquare,
   AlertTriangle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  CloudSun,
-  Zap,
   Loader2,
+  ChevronRight,
+  Calendar,
+  CheckCircle2,
+  Circle,
+  Plus,
+  X,
+  User,
+  Coffee,
+  Utensils,
+  ChefHat,
+  Truck,
+  Package,
+  Clipboard,
+  Wrench,
+  Headphones,
+  Store,
+  Banknote,
+  Sparkles,
+  Box,
+  ShoppingCart,
+  Receipt,
+  HeartPulse,
+  Baby,
+  Dog,
+  Leaf,
+  Music,
+  Camera,
+  Palette,
+  Hammer,
+  Zap,
+  Star,
+  Award,
+  Briefcase,
+  Phone,
+  Mail,
+  Shield,
+  Wine,
+  Bubbles,
+  MoonStar,
+  Sun,
+  ReceiptText,
+  HandPlatter,
+  type LucideIcon,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Legend,
-} from "recharts";
+
+const ROLE_ICON_MAP: Record<string, LucideIcon> = {
+  "user": User, "coffee": Coffee, "utensils": Utensils, "chef-hat": ChefHat,
+  "truck": Truck, "package": Package, "clipboard": Clipboard, "wrench": Wrench,
+  "headphones": Headphones, "store": Store, "banknote": Banknote,
+  "sparkles": Sparkles, "box": Box, "shopping-cart": ShoppingCart,
+  "receipt": Receipt, "heart-pulse": HeartPulse, "baby": Baby, "dog": Dog,
+  "leaf": Leaf, "music": Music, "camera": Camera, "palette": Palette,
+  "hammer": Hammer, "zap": Zap, "star": Star, "award": Award,
+  "briefcase": Briefcase, "phone": Phone, "mail": Mail, "clock": Clock,
+  "shield": Shield, "wine": Wine, "bubbles": Bubbles, "moon-star": MoonStar,
+  "sun": Sun, "receipt-text": ReceiptText, "hand-platter": HandPlatter,
+};
 import { createClient } from "@/lib/supabase/client";
-import type { InventoryItem, SalesRecord, Product } from "@/lib/types";
+import { getShifts, getRoleTasks, getStaffRoles } from "@/lib/db/staffing";
+import { getConversations } from "@/lib/db/chat";
+import { getTodos, addTodo, toggleTodo, deleteTodo } from "@/lib/db/todos";
+import { uploadEvidence } from "@/lib/db/evidence";
+import { sendMessage } from "@/lib/db/chat";
+import { getTodayCompletions, completeTask } from "@/lib/db/task-completions";
+import { usePermissions } from "@/lib/context/permissions";
+import type { Shift, ChatConversation, Todo, RoleTask, StaffRole } from "@/lib/types";
 
-const fmt = (n: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(n);
-
-export default function DashboardPage() {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [sales, setSales] = useState<SalesRecord[]>([]);
-  const [hourlySales, setHourlySales] = useState<SalesRecord[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const supabase = createClient();
-    const today = new Date().toISOString().split("T")[0];
-    const since = new Date();
-    since.setDate(since.getDate() - 14);
-
-    Promise.all([
-      supabase
-        .from("inventory_items")
-        .select("*")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("sales_records")
-        .select("*")
-        .is("hour", null)
-        .gte("date", since.toISOString().split("T")[0])
-        .order("date"),
-      supabase
-        .from("sales_records")
-        .select("*")
-        .eq("date", today)
-        .not("hour", "is", null)
-        .order("hour"),
-      supabase
-        .from("products")
-        .select("*")
-        .order("revenue", { ascending: false }),
-    ]).then(([inv, sal, hourly, prod]) => {
-      if (inv.data) {
-        setInventory(
-          inv.data.map((r) => ({
-            id: r.id,
-            name: r.name,
-            category: r.category,
-            currentStock: Number(r.current_stock),
-            minStock: Number(r.min_stock),
-            maxStock: Number(r.max_stock),
-            unit: r.unit,
-            costPerUnit: Number(r.cost_per_unit),
-            supplier: r.supplier ?? "",
-            lastRestocked: r.last_restocked ?? "",
-            status:
-              Number(r.current_stock) === 0
-                ? "out_of_stock"
-                : Number(r.current_stock) < Number(r.min_stock)
-                ? "low_stock"
-                : "in_stock",
-            lossRate: Number(r.loss_rate ?? 0),
-          }))
-        );
-      }
-      if (sal.data) {
-        setSales(
-          sal.data.map((r) => ({
-            date: r.date,
-            actual: Number(r.actual),
-            predicted: Number(r.predicted ?? 0),
-            weather: r.weather ?? "unknown",
-            footTraffic: Number(r.foot_traffic ?? 0),
-            isHoliday: Boolean(r.is_holiday),
-          }))
-        );
-      }
-      if (hourly.data) {
-        setHourlySales(
-          hourly.data.map((r) => ({
-            date: r.date,
-            hour: r.hour,
-            actual: Number(r.actual),
-            predicted: Number(r.predicted ?? 0),
-            weather: r.weather ?? "unknown",
-            footTraffic: Number(r.foot_traffic ?? 0),
-            isHoliday: Boolean(r.is_holiday),
-          }))
-        );
-      }
-      if (prod.data) {
-        setProducts(
-          prod.data.map((r) => ({
-            id: r.id,
-            name: r.name,
-            category: r.category,
-            price: Number(r.price),
-            cost: Number(r.cost),
-            unitsSoldThisMonth: Number(r.units_sold_this_month),
-            unitsSoldLastMonth: Number(r.units_sold_last_month),
-            revenue: Number(r.revenue),
-            margin: Number(r.margin),
-            rating: Number(r.rating),
-            trend: r.trend,
-            alert: r.alert,
-            alertReason: r.alert_reason ?? undefined,
-          }))
-        );
-      }
-      setLoading(false);
-    });
-  }, []);
-
-  const inventoryValue = inventory.reduce(
-    (s, i) => s + i.currentStock * i.costPerUnit,
-    0
-  );
-  const lowStockCount = inventory.filter(
-    (i) => i.status !== "in_stock"
-  ).length;
-  const todayActual = hourlySales.reduce((s, r) => s + r.actual, 0);
-  const todayPredicted =
-    hourlySales.length > 0
-      ? hourlySales.reduce((s, r) => s + r.predicted, 0)
-      : 0;
-  const productsAtRisk = products.filter((p) => p.alert !== "none").length;
-
-  const recentSales = sales.map((s) => ({
-    date: new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    }),
-    actual: s.actual,
-    predicted: s.predicted,
-  }));
-
-  const hourlyData = hourlySales.map((h) => ({
-    time: `${h.hour}:00`,
-    actual: h.actual || undefined,
-    predicted: h.predicted,
-  }));
-
-  const alerts = [
-    ...inventory
-      .filter((i) => i.status !== "in_stock")
-      .map((i) => ({
-        message: `${i.name} is ${
-          i.status === "out_of_stock" ? "out of stock" : "running low"
-        } (${i.currentStock} ${i.unit} left)`,
-        severity: i.status === "out_of_stock" ? "high" : "medium",
-      })),
-    ...products
-      .filter((p) => p.alert === "remove")
-      .map((p) => ({
-        message: `${p.name}: recommended for removal — ${p.alertReason}`,
-        severity: "medium" as const,
-      })),
-  ].slice(0, 5);
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const isEmpty =
-    inventory.length === 0 && sales.length === 0 && products.length === 0;
-
-  return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}{" "}
-            · Live overview
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <CloudSun className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">Weather</span>
-          <span className="text-muted-foreground">· Connect API</span>
-        </div>
-      </div>
-
-      {isEmpty && (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center space-y-2">
-            <Zap className="h-10 w-10 text-muted-foreground mx-auto" />
-            <h3 className="font-semibold text-lg">No data yet</h3>
-            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-              Start by adding inventory items, products, and staff in each module.
-              Connect Square in Settings to automatically import your data.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard
-          title="Inventory Value"
-          value={fmt(inventoryValue)}
-          subtitle={`${lowStockCount} item${lowStockCount !== 1 ? "s" : ""} need restocking`}
-          icon={Package}
-          trend={lowStockCount > 0 ? "down" : "stable"}
-          trendLabel={lowStockCount > 0 ? "Action needed" : "All stocked"}
-          iconColor="text-slate-600"
-          iconBg="bg-stone-100"
-        />
-        <MetricCard
-          title="Today's Sales"
-          value={fmt(todayActual)}
-          subtitle={
-            todayPredicted > 0
-              ? `${Math.round((todayActual / todayPredicted) * 100)}% of ${fmt(todayPredicted)} forecast`
-              : "No forecast yet"
-          }
-          icon={TrendingUp}
-          trend="up"
-          trendLabel="Live"
-          iconColor="text-slate-600"
-          iconBg="bg-stone-100"
-          progress={
-            todayPredicted > 0
-              ? Math.min(100, Math.round((todayActual / todayPredicted) * 100))
-              : undefined
-          }
-        />
-        <MetricCard
-          title="Products"
-          value={String(products.length)}
-          subtitle={
-            productsAtRisk > 0
-              ? `${productsAtRisk} flagged for review`
-              : "All performing well"
-          }
-          icon={ShoppingBag}
-          trend={productsAtRisk > 0 ? "down" : "stable"}
-          trendLabel={productsAtRisk > 0 ? "Review needed" : "Healthy"}
-          iconColor="text-slate-600"
-          iconBg="bg-stone-100"
-        />
-        <MetricCard
-          title="Inventory Items"
-          value={String(inventory.length)}
-          subtitle={`${inventory.filter((i) => i.status === "in_stock").length} in stock`}
-          icon={Users}
-          trend="stable"
-          trendLabel="Tracked"
-          iconColor="text-slate-600"
-          iconBg="bg-stone-100"
-        />
-      </div>
-
-      {/* Charts */}
-      {recentSales.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-          <Card className="lg:col-span-3">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Sales: Actual vs Predicted</CardTitle>
-                  <CardDescription>Last {recentSales.length} days</CardDescription>
-                </div>
-                <Badge variant="outline" className="gap-1.5">
-                  <Zap className="h-3 w-3" /> AI Forecast
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart
-                  data={recentSales}
-                  margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="actualGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#475569" stopOpacity={0.12} />
-                      <stop offset="95%" stopColor="#475569" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="predictedGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.08} />
-                      <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: "3px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
-                    formatter={(v) => [`$${v}`, ""]}
-                  />
-                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
-                  <Area type="monotone" dataKey="predicted" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 2" fill="url(#predictedGrad)" name="Predicted" />
-                  <Area type="monotone" dataKey="actual" stroke="#475569" strokeWidth={2} fill="url(#actualGrad)" name="Actual" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Today&apos;s Hourly Sales</CardTitle>
-              <CardDescription>Actual vs hourly forecast</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {hourlyData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={hourlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={1} />
-                    <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: "3px", border: "1px solid hsl(var(--border))", fontSize: "12px" }}
-                    />
-                    <Bar dataKey="predicted" fill="#e2e8f0" name="Forecast" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="actual" fill="#64748b" name="Actual" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-[220px] flex items-center justify-center text-sm text-muted-foreground">
-                  No hourly data for today yet
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Alerts + Inventory snapshot */}
-      {(alerts.length > 0 || inventory.length > 0) && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {alerts.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <CardTitle className="text-base">Active Alerts</CardTitle>
-                  <Badge variant="destructive" className="ml-auto">{alerts.length}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {alerts.map((a, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-start gap-3 rounded border p-3 text-sm ${
-                      a.severity === "high"
-                        ? "border-destructive/30 bg-destructive/5"
-                        : "border-stone-200 bg-stone-50"
-                    }`}
-                  >
-                    <div
-                      className={`mt-0.5 h-2 w-2 rounded-full shrink-0 ${
-                        a.severity === "high" ? "bg-destructive" : "bg-stone-400"
-                      }`}
-                    />
-                    <span className="text-foreground/80 leading-snug">{a.message}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {inventory.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Inventory Snapshot</CardTitle>
-                <CardDescription>Stock level vs capacity</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {inventory.slice(0, 6).map((item) => {
-                  const pct = Math.min(
-                    100,
-                    Math.round((item.currentStock / item.maxStock) * 100)
-                  );
-                  return (
-                    <div key={item.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium truncate max-w-[180px]">{item.name}</span>
-                        <span
-                          className={`font-mono text-xs font-medium ${
-                            item.status === "out_of_stock"
-                              ? "text-destructive"
-                              : item.status === "low_stock"
-                              ? "text-stone-500"
-                              : "text-foreground"
-                          }`}
-                        >
-                          {item.currentStock} {item.unit}
-                        </span>
-                      </div>
-                      <Progress
-                        value={pct}
-                        className={`h-1 ${
-                          item.status === "out_of_stock"
-                            ? "[&>div]:bg-destructive"
-                            : item.status === "low_stock"
-                            ? "[&>div]:bg-stone-400"
-                            : "[&>div]:bg-slate-600"
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-    </div>
-  );
+function formatTime(t: string) {
+  const [h, m] = t.split(":");
+  const hr = parseInt(h);
+  const ampm = hr >= 12 ? "PM" : "AM";
+  return `${hr === 0 ? 12 : hr > 12 ? hr - 12 : hr}:${m} ${ampm}`;
 }
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+function relativeTime(dateStr: string) {
+  const now = new Date();
+  const d = new Date(dateStr);
+  const diff = now.getTime() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
 
-function MetricCard({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  trend,
-  trendLabel,
-  iconColor,
-  iconBg,
-  progress,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  icon: React.ElementType;
-  trend: "up" | "down" | "stable";
-  trendLabel: string;
-  iconColor: string;
-  iconBg: string;
-  progress?: number;
-}) {
-  const TrendIcon =
-    trend === "up" ? ArrowUpRight : trend === "down" ? ArrowDownRight : Minus;
-  const trendColor =
-    trend === "up"
-      ? "text-foreground"
-      : trend === "down"
-      ? "text-muted-foreground"
-      : "text-muted-foreground";
+export default function HomePage() {
+  const { organizationId } = usePermissions();
+  const [loading, setLoading] = useState(true);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [alerts, setAlerts] = useState<{ message: string; severity: "high" | "medium" }[]>([]);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [roleTasks, setRoleTasks] = useState<(RoleTask & { roleName: string; roleColor: string; roleIcon: string; checked: boolean; checkedBy: string | null; requiresEvidence: boolean })[]>([]);
+  const [todoInput, setTodoInput] = useState("");
+  const [addingTodo, setAddingTodo] = useState(false);
+  // Evidence upload for role tasks
+  const [evidenceTaskId, setEvidenceTaskId] = useState<string | null>(null);
+  const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const evidenceInputRef = useRef<HTMLInputElement>(null);
+  const [userName, setUserName] = useState("");
+  const [userId, setUserId] = useState("");
+  const todoInputRef = useRef<HTMLInputElement>(null);
+
+  // Load user + todos first (fast, shown immediately)
+  const [userReady, setUserReady] = useState(false);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      setUserId(user.id);
+      if (user.user_metadata?.display_name) {
+        setUserName(user.user_metadata.display_name);
+      } else if (user.email) {
+        setUserName(user.email.split("@")[0]);
+      }
+      setUserReady(true);
+      if (organizationId) {
+        getTodos(user.id, organizationId).then(setTodos).catch(() => {});
+      }
+    });
+  }, [organizationId]);
+
+  // Load other data in the background
+  useEffect(() => {
+    if (!organizationId) return;
+    const supabase = createClient();
+
+    Promise.all([
+      // Load shifts, then fetch role tasks for today's user shifts
+      Promise.all([getShifts(1), getStaffRoles()]).then(async ([allShifts, roles]) => {
+        setShifts(allShifts);
+        // Find today's shifts for current user (match by memberId via org_members)
+        const supabaseInner = createClient();
+        const { data: { user } } = await supabaseInner.auth.getUser();
+        if (!user) return;
+        const { data: membership } = await supabaseInner
+          .from("org_members")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("organization_id", organizationId)
+          .eq("status", "active")
+          .maybeSingle();
+        if (!membership) return;
+        const today = new Date().toISOString().split("T")[0];
+        const myTodayShifts = allShifts.filter((s) => s.date === today && s.memberId === membership.id);
+        // Collect unique role names from today's shifts
+        const myRoleNames = [...new Set(myTodayShifts.flatMap((s) => s.staffRoles))];
+        if (myRoleNames.length === 0) return;
+        // Find role IDs and fetch tasks
+        const matchedRoles = myRoleNames
+          .map((name) => roles.find((r) => r.name.toLowerCase() === name.toLowerCase()))
+          .filter(Boolean) as StaffRole[];
+        const [allTaskArrays, completions] = await Promise.all([
+          Promise.all(matchedRoles.map((r) => getRoleTasks(r.id).then((tasks) =>
+            tasks.map((t) => ({ ...t, roleName: r.name, roleColor: r.color, roleIcon: r.icon, checked: false, checkedBy: null as string | null, requiresEvidence: t.requiresEvidence }))
+          ))),
+          getTodayCompletions(organizationId),
+        ]);
+        const flat = allTaskArrays.flat();
+        // Merge completions
+        for (const task of flat) {
+          const completion = completions.find((c) => c.roleTaskId === task.id);
+          if (completion) {
+            task.checked = true;
+            task.checkedBy = completion.userName;
+          }
+        }
+        setRoleTasks(flat);
+      }).catch(() => {}),
+      getConversations(organizationId).then(setConversations).catch(() => {}),
+      Promise.all([
+        supabase.from("inventory_items").select("*"),
+        supabase.from("products").select("*"),
+      ]).then(([inv, prod]) => {
+        const alertList: { message: string; severity: "high" | "medium" }[] = [];
+        if (inv.data) {
+          inv.data.forEach((r) => {
+            const stock = Number(r.current_stock);
+            const min = Number(r.min_stock);
+            if (stock === 0) {
+              alertList.push({ message: `${r.name} is out of stock`, severity: "high" });
+            } else if (stock < min) {
+              alertList.push({ message: `${r.name} is running low (${stock} ${r.unit} left)`, severity: "medium" });
+            }
+          });
+        }
+        if (prod.data) {
+          prod.data.forEach((r) => {
+            if (r.alert === "remove") {
+              alertList.push({ message: `${r.name}: recommended for removal`, severity: "medium" });
+            }
+          });
+        }
+        setAlerts(alertList.slice(0, 8));
+      }),
+    ]).finally(() => setLoading(false));
+  }, [organizationId]);
+
+  const handleAddTodo = async () => {
+    const title = todoInput.trim();
+    if (!title || !userId || !organizationId) return;
+    setAddingTodo(false);
+    setTodoInput("");
+    try {
+      const todo = await addTodo(userId, organizationId, title);
+      setTodos((prev) => [todo, ...prev]);
+    } catch (err) {
+      console.error("Failed to add todo:", err);
+    }
+  };
+
+  const handleToggleTodo = async (id: string, completed: boolean) => {
+    setTodos((prev) => prev.map((t) => t.id === id ? { ...t, completed } : t));
+    try {
+      await toggleTodo(id, completed);
+    } catch (err) {
+      console.error("Failed to toggle todo:", err);
+      setTodos((prev) => prev.map((t) => t.id === id ? { ...t, completed: !completed } : t));
+    }
+  };
+
+  const handleDeleteTodo = async (id: string) => {
+    const prev = todos;
+    setTodos((t) => t.filter((x) => x.id !== id));
+    try {
+      await deleteTodo(id);
+    } catch (err) {
+      console.error("Failed to delete todo:", err);
+      setTodos(prev);
+    }
+  };
+
+  const notifyChatsForTask = async (
+    task: typeof roleTasks[number],
+    evidenceUrls: { url: string; type: string; name: string }[] = []
+  ) => {
+    if (!task.notifyChats || task.notifyChats.length === 0) return;
+    const timeStr = task.startTime && task.endTime
+      ? ` · ${formatTime(task.startTime)}–${formatTime(task.endTime)}`
+      : "";
+    const msg = `[task:done] ${task.title} | ${task.roleName}${timeStr}`;
+    // Build message with all evidence URLs embedded
+    let fullMsg = msg;
+    if (evidenceUrls.length > 0) {
+      const urls = evidenceUrls.map((e) => `[${e.type}](${e.url})`).join("\n");
+      fullMsg = `${msg}\n${urls}`;
+    }
+    for (const chatId of task.notifyChats) {
+      try {
+        await sendMessage(chatId, fullMsg);
+      } catch { /* ignore send failures */ }
+    }
+  };
+
+  const handleEvidenceSubmit = async () => {
+    if (!evidenceTaskId || evidenceFiles.length === 0 || !organizationId) return;
+    setUploading(true);
+    try {
+      const uploaded = await Promise.all(
+        evidenceFiles.map((f) => uploadEvidence(f, evidenceTaskId, organizationId))
+      );
+      const evidenceUrls = uploaded.map((e) => ({
+        url: e.fileUrl,
+        type: e.fileType,
+        name: `evidence-${e.id}`,
+      }));
+      const task = roleTasks.find((rt) => rt.id === evidenceTaskId);
+      setRoleTasks((prev) => prev.map((rt) => rt.id === evidenceTaskId ? { ...rt, checked: true, checkedBy: userName || "You" } : rt));
+      if (organizationId) {
+        completeTask(evidenceTaskId, organizationId, userName || "Unknown").catch(() => {});
+      }
+      setEvidenceTaskId(null);
+      setEvidenceFiles([]);
+      if (task) notifyChatsForTask(task, evidenceUrls);
+    } catch (err) {
+      console.error("Failed to upload evidence:", err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const today = new Date().toISOString().split("T")[0];
+  const todayShifts = shifts.filter((s) => s.date === today);
+  const upcomingShifts = shifts.filter((s) => s.date > today).slice(0, 5);
+  const recentConvos = conversations.filter((c) => c.lastMessage).slice(0, 5);
+  const pendingTodos = todos.filter((t) => !t.completed);
+  const completedTodos = todos.filter((t) => t.completed);
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  })();
 
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className={`rounded p-1.5 ${iconBg}`}>
-            <Icon className={`h-4 w-4 ${iconColor}`} />
-          </div>
-          <div className={`flex items-center gap-0.5 text-xs ${trendColor}`}>
-            <TrendIcon className="h-3 w-3" />
-            {trendLabel}
-          </div>
-        </div>
-        <div className="mt-3">
-          <p className="font-mono text-xl font-semibold tracking-tight tabular-nums">{value}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-        </div>
-        {progress !== undefined && (
-          <Progress value={progress} className="mt-3 h-1" />
-        )}
-        <p className="text-[10px] text-muted-foreground mt-2 font-semibold uppercase tracking-wider">
-          {title}
+    <div className="p-3 sm:p-6 space-y-5">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+          {greeting}{userName ? `, ${userName}` : ""}
+        </h1>
+        <p className="text-muted-foreground text-sm mt-0.5">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
         </p>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Todos — rendered immediately, before other data loads */}
+      <section>
+        <div className="flex items-center gap-2 mb-2.5">
+          <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">To-Do</h2>
+          {(pendingTodos.length + roleTasks.filter((t) => !t.checked).length) > 0 && (
+            <span className="text-xs text-muted-foreground">{pendingTodos.length + roleTasks.filter((t) => !t.checked).length} remaining</span>
+          )}
+          <button
+            onClick={() => { setAddingTodo(true); setTimeout(() => todoInputRef.current?.focus(), 50); }}
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+          >
+            <Plus className="h-3 w-3" /> Add
+          </button>
+        </div>
+
+        {/* Add input */}
+        {addingTodo && (
+          <div className="flex gap-2 mb-2">
+            <input
+              ref={todoInputRef}
+              type="text"
+              value={todoInput}
+              onChange={(e) => setTodoInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddTodo();
+                if (e.key === "Escape") { setAddingTodo(false); setTodoInput(""); }
+              }}
+              placeholder="What needs to be done?"
+              className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button onClick={handleAddTodo} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+              Add
+            </button>
+          </div>
+        )}
+
+        {todos.length === 0 && roleTasks.length === 0 && !addingTodo ? (
+          <div className="rounded border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            No tasks yet
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {/* Role tasks for today's shifts */}
+            {roleTasks.filter((t) => !t.checked).map((t) => {
+              const Icon = ROLE_ICON_MAP[t.roleIcon] ?? User;
+              return (
+                <div key={`rt-${t.id}`} className="flex items-center gap-2.5 rounded border border-border px-3 py-2 group">
+                  <button
+                    onClick={() => {
+                      if (t.requiresEvidence) {
+                        setEvidenceTaskId(t.id);
+                        setEvidenceFiles([]);
+                      } else if (organizationId) {
+                        setRoleTasks((prev) => prev.map((rt) => rt.id === t.id ? { ...rt, checked: true, checkedBy: userName || "You" } : rt));
+                        completeTask(t.id, organizationId, userName || "Unknown").catch(() => {});
+                        notifyChatsForTask(t);
+                      }
+                    }}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                  >
+                    <Circle className="h-4 w-4" />
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{t.title}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Icon className="h-3 w-3" style={{ color: t.roleColor }} />
+                      <span className="text-[10px] text-muted-foreground">{t.roleName}</span>
+                      {t.startTime && t.endTime && (
+                        <span className="text-[10px] font-mono text-muted-foreground ml-1">
+                          {formatTime(t.startTime)}–{formatTime(t.endTime)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {/* Checked role tasks */}
+            {roleTasks.filter((t) => t.checked).map((t) => {
+              const Icon = ROLE_ICON_MAP[t.roleIcon] ?? User;
+              return (
+                <div key={`rt-${t.id}`} className="flex items-center gap-2.5 rounded border border-border/50 px-3 py-2 opacity-50">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate line-through">{t.title}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Icon className="h-3 w-3" style={{ color: t.roleColor }} />
+                      <span className="text-[10px] text-muted-foreground">{t.roleName}</span>
+                      {t.checkedBy && (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">&middot;</span>
+                          <span className="text-[10px] text-muted-foreground">Checked by {t.checkedBy}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {/* Personal todos */}
+            {pendingTodos.map((t) => (
+              <div key={t.id} className="flex items-center gap-2.5 rounded border border-border px-3 py-2 group">
+                <button onClick={() => handleToggleTodo(t.id, true)} className="shrink-0 text-muted-foreground hover:text-foreground">
+                  <Circle className="h-4 w-4" />
+                </button>
+                <span className="flex-1 text-sm truncate">{t.title}</span>
+                <button onClick={() => handleDeleteTodo(t.id)} className="shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+            {completedTodos.length > 0 && (
+              <div className="pt-1 space-y-1">
+                {completedTodos.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2.5 rounded border border-border/50 px-3 py-2 group opacity-50">
+                    <button onClick={() => handleToggleTodo(t.id, false)} className="shrink-0 text-foreground">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </button>
+                    <span className="flex-1 text-sm truncate line-through">{t.title}</span>
+                    <button onClick={() => handleDeleteTodo(t.id)} className="shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Rest of content — loads async */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+      <>
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <h2 className="text-sm font-semibold">Alerts</h2>
+            <span className="ml-auto text-xs text-muted-foreground">{alerts.length}</span>
+          </div>
+          <div className="space-y-1.5">
+            {alerts.map((a, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-2.5 rounded border px-3 py-2 text-sm ${
+                  a.severity === "high"
+                    ? "border-destructive/30 bg-destructive/5"
+                    : "border-border bg-muted/30"
+                }`}
+              >
+                <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                  a.severity === "high" ? "bg-destructive" : "bg-stone-400"
+                }`} />
+                <span className="text-foreground/80 text-sm">{a.message}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Today's Shifts */}
+      <section>
+        <div className="flex items-center gap-2 mb-2.5">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Today&apos;s Shifts</h2>
+          <Link href="/staffing" className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+            View all <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {todayShifts.length === 0 ? (
+          <div className="rounded border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            No shifts scheduled for today
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {todayShifts.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 rounded border border-border px-3 py-2.5">
+                <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-stone-500 shrink-0">
+                  {s.staffName[0]?.toUpperCase() ?? "?"}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{s.staffName}</p>
+                  <p className="text-xs text-muted-foreground">{s.staffRoles.length > 0 ? s.staffRoles.join(", ") : s.shiftType}</p>
+                </div>
+                <span className="text-xs font-mono text-muted-foreground shrink-0">
+                  {formatTime(s.startTime)}–{formatTime(s.endTime)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Upcoming Shifts */}
+      {upcomingShifts.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-2.5">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Upcoming Shifts</h2>
+          </div>
+          <div className="space-y-1.5">
+            {upcomingShifts.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 rounded border border-border px-3 py-2">
+                <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">
+                  {new Date(s.date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm truncate">{s.staffName}</span>
+                </div>
+                <span className="text-xs font-mono text-muted-foreground shrink-0">
+                  {formatTime(s.startTime)}–{formatTime(s.endTime)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Messages */}
+      <section>
+        <div className="flex items-center gap-2 mb-2.5">
+          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Recent Messages</h2>
+          <Link href="/chat" className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+            Open chat <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {recentConvos.length === 0 ? (
+          <div className="rounded border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            No messages yet
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {recentConvos.map((c) => (
+              <Link
+                key={c.id}
+                href="/chat"
+                className="flex items-center gap-3 rounded border border-border px-3 py-2.5 hover:bg-muted/50 transition-colors"
+              >
+                <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-stone-500 shrink-0">
+                  {(c.name ?? c.lastMessage?.senderName ?? "?")[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate">
+                      {c.name ?? c.lastMessage?.senderName ?? "Chat"}
+                    </p>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {c.lastMessage ? relativeTime(c.lastMessage.createdAt) : ""}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {c.lastMessage?.content ?? ""}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+      </>
+      )}
+
+      {/* Evidence upload modal */}
+      {evidenceTaskId && (() => {
+        const task = roleTasks.find((t) => t.id === evidenceTaskId);
+        if (!task) return null;
+        const TaskIcon = ROLE_ICON_MAP[task.roleIcon] ?? User;
+        return (
+          <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => { setEvidenceTaskId(null); setEvidenceFiles([]); }} />
+            <div className="relative w-full max-w-sm bg-background rounded-t-2xl sm:rounded-xl p-4 space-y-4 z-10">
+              <div className="flex items-center gap-2.5">
+                <TaskIcon className="h-4 w-4" style={{ color: task.roleColor }} />
+                <div>
+                  <p className="text-sm font-semibold">{task.title}</p>
+                  <p className="text-xs text-muted-foreground">{task.roleName}{task.startTime && task.endTime ? ` \u00b7 ${formatTime(task.startTime)}–${formatTime(task.endTime)}` : ""}</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">Upload at least one photo or video as evidence to complete this task.</p>
+
+              <input
+                ref={evidenceInputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length > 0) setEvidenceFiles((prev) => [...prev, ...files]);
+                  e.target.value = "";
+                }}
+              />
+
+              {/* Preview */}
+              {evidenceFiles.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {evidenceFiles.map((f, i) => (
+                    <div key={i} className="relative h-16 w-16 rounded border border-border overflow-hidden bg-muted">
+                      {f.type.startsWith("image/") ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={URL.createObjectURL(f)} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">Video</div>
+                      )}
+                      <button
+                        onClick={() => setEvidenceFiles((prev) => prev.filter((_, j) => j !== i))}
+                        className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-black/60 text-white flex items-center justify-center"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => evidenceInputRef.current?.click()}
+                  className="flex-1 rounded border border-border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  {evidenceFiles.length > 0 ? "Add more" : "Choose file"}
+                </button>
+                <button
+                  onClick={handleEvidenceSubmit}
+                  disabled={evidenceFiles.length === 0 || uploading}
+                  className="flex-1 rounded bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                >
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Complete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
   );
 }

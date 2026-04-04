@@ -40,7 +40,7 @@ export function defaultPermissions(): Permissions {
     sales: { view: true },
     staffing: { view: true, edit: false },
     products: { view: true, edit: false },
-    settings: { view: false },
+    settings: { view: true },
   };
 }
 
