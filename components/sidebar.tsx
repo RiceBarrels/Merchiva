@@ -331,8 +331,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       startTime.current = Date.now();
       lastX.current = t.clientX;
       isHoriz.current = null;
-      // Valid swipe: starting from left edge (to open) or sidebar already open (can close)
-      isEdge.current = isOpenRef.current || t.clientX <= EDGE_THRESHOLD;
+      // Always allow horizontal swipe — open from anywhere, close when open
+      isEdge.current = true;
     }
 
     function onTouchMove(e: TouchEvent) {
