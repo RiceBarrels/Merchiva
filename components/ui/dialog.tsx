@@ -8,8 +8,64 @@ import { motion, AnimatePresence } from "motion/react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+/**
+ * SafeDialog: waits for document.readyState === "complete" before allowing open.
+ * If the page is still loading, retries every 1s until ready, then opens.
+ */
+function Dialog({
+  open,
+  onOpenChange,
+  ...props
+}: DialogPrimitive.Root.Props) {
+  const [ready, setReady] = React.useState(false)
+  const [pendingOpen, setPendingOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return
+    if (document.readyState === "complete") {
+      setReady(true)
+      return
+    }
+    const onReady = () => setReady(true)
+    window.addEventListener("load", onReady)
+    // Fallback: poll every 1s
+    const interval = setInterval(() => {
+      if (document.readyState === "complete") {
+        setReady(true)
+        clearInterval(interval)
+      }
+    }, 1000)
+    return () => {
+      window.removeEventListener("load", onReady)
+      clearInterval(interval)
+    }
+  }, [])
+
+  // If caller tries to open before page is ready, queue it
+  React.useEffect(() => {
+    if (open && !ready) {
+      setPendingOpen(true)
+    }
+  }, [open, ready])
+
+  // When page becomes ready and there's a pending open, fire it
+  React.useEffect(() => {
+    if (ready && pendingOpen) {
+      setPendingOpen(false)
+      onOpenChange?.(true)
+    }
+  }, [ready, pendingOpen, onOpenChange])
+
+  const safeOpen = ready ? open : false
+
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      open={safeOpen}
+      onOpenChange={onOpenChange}
+      {...props}
+    />
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
