@@ -29,7 +29,7 @@ import { createOrganization, addOwnerMember, upsertUserProfile } from "@/lib/db/
 import type { Permissions } from "@/lib/types";
 
 const SIDEBAR_WIDTH = 280;
-const EDGE_THRESHOLD = 20;
+const EDGE_THRESHOLD = 40;
 const SNAP_THRESHOLD = 0.4;
 const VELOCITY_THRESHOLD = 0.3; // px/ms
 
