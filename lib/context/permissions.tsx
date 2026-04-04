@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 import { ownerPermissions } from "@/lib/db/team";
 import { createClient } from "@/lib/supabase/client";
+import { clearCache } from "@/lib/cache";
 
 export interface PermissionsContextValue {
   role: OrgRole;
@@ -62,6 +63,7 @@ export function PermissionsProvider({
     await supabase
       .from("user_profiles")
       .upsert({ user_id: user.id, last_active_org_id: orgId }, { onConflict: "user_id" });
+    clearCache(); // clear all cache on org switch
     router.refresh();
   }
 

@@ -15,6 +15,7 @@ import {
   Search,
   Plus,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -65,6 +66,9 @@ import { getProducts, addProduct, deleteProduct } from "@/lib/db/products";
 import type { Product } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { getCached, setCache } from "@/lib/cache";
+import { usePermissions } from "@/lib/context/permissions";
+import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton-loaders";
 
 const alertConfig = {
   none:           { label: "Healthy",         icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -92,8 +96,10 @@ const BLANK: Partial<Product> = {
 };
 
 export default function ProductsPage() {
+  const { organizationId } = usePermissions();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId]     = useState<string | null>(null);
   const [search, setSearch]     = useState("");
   const [category, setCategory] = useState("All");
@@ -103,19 +109,33 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!organizationId) return;
+    const cacheKey = `products_${organizationId}`;
+
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+
+    // Show cached data instantly
+    const cached = getCached<Product[]>(cacheKey);
+    if (cached) {
+      setProducts(cached);
+      setLoading(false);
+      setRefreshing(true);
+    }
+
     getProducts()
       .then((p) => {
         setProducts(p);
+        setCache(cacheKey, p);
       })
       .catch((err) => {
         console.error("Failed to load products:", err);
       })
       .finally(() => {
         setLoading(false);
+        setRefreshing(false);
       });
-  }, []);
+  }, [organizationId]);
 
   const CATEGORIES = ["All", ...Array.from(new Set(products.map((p) => p.category)))];
 
@@ -139,7 +159,9 @@ export default function ProductsPage() {
         userId
       );
       hapticSuccess();
-      setProducts((prev) => [newProd, ...prev]);
+      const newProducts = [newProd, ...products];
+      setProducts(newProducts);
+      if (organizationId) setCache(`products_${organizationId}`, newProducts);
       setDialogOpen(false);
       setForm(BLANK);
     } finally {
@@ -150,16 +172,10 @@ export default function ProductsPage() {
   const handleDelete = async (id: string) => {
     hapticWarning();
     await deleteProduct(id);
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    const newProducts = products.filter((p) => p.id !== id);
+    setProducts(newProducts);
+    if (organizationId) setCache(`products_${organizationId}`, newProducts);
   };
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   const totalRevenue  = products.reduce((s, p) => s + p.revenue, 0);
   const avgMargin     = products.length > 0
@@ -187,7 +203,8 @@ export default function ProductsPage() {
             Track performance, margins, and AI-flagged underperformers
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           {atRisk > 0 && (
             <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
               <Zap className="h-3.5 w-3.5 text-violet-500" />
@@ -200,8 +217,26 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {loading && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+          </div>
+          <div className="rounded-[0.3rem] border overflow-hidden">
+            <table className="w-full">
+              <tbody>
+                <SkeletonRow cols={10} />
+                <SkeletonRow cols={10} />
+                <SkeletonRow cols={10} />
+                <SkeletonRow cols={10} />
+                <SkeletonRow cols={10} />
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {!loading && <><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard label="Products"       value={String(products.length)} icon={ShoppingBag} />
         <SummaryCard label="Revenue (month)"value={`$${totalRevenue.toLocaleString()}`} icon={TrendingUp} />
         <SummaryCard label="Avg Margin"     value={`${avgMargin}%`}         icon={ArrowUpRight} />
@@ -394,6 +429,8 @@ export default function ProductsPage() {
           </Card>
         </>
       )}
+
+      </>}
 
       {/* Add Product Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

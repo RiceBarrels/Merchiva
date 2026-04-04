@@ -9,6 +9,7 @@ import {
   ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera,
   Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, ArrowLeft,
   ClipboardList, Pencil, Download, Wine, Bubbles, MoonStar, Sun, ReceiptText, HandPlatter,
+  RefreshCw,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ import type {
 } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { getCached, setCache } from "@/lib/cache";
 
 const ROLE_COLORS = [
   "#44403c", "#dc2626", "#ea580c", "#ca8a04",
@@ -186,6 +188,7 @@ export default function StaffingPage() {
   const [presetForm, setPresetForm] = useState({ name: "", startTime: "07:00", endTime: "14:00", color: "#44403c" });
   const [deletePresetConfirm, setDeletePresetConfirm] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId,  setUserId]  = useState<string | null>(null);
   const [myMemberId, setMyMemberId] = useState<string | null>(null);
 
@@ -297,7 +300,26 @@ export default function StaffingPage() {
 
   useEffect(() => {
     if (!organizationId || !userId) return;
-    setLoading(true);
+    const cacheKey = `staffing_${organizationId}_${userId}`;
+
+    // Show cached data instantly
+    type StaffCache = {
+      team: OrgMember[]; shifts: Shift[]; roles: StaffRole[];
+      conversations: ChatConversation[]; presets: ShiftPreset[];
+    };
+    const cached = getCached<StaffCache>(cacheKey);
+    if (cached) {
+      setTeam(cached.team);
+      setShifts(cached.shifts);
+      setRoles(cached.roles);
+      setChatOptions(cached.conversations);
+      setPresets(cached.presets);
+      setLoading(false);
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     const promises: Promise<unknown>[] = [
       getTeamForScheduling(organizationId),
       getShifts(4),
@@ -313,20 +335,30 @@ export default function StaffingPage() {
     }
     Promise.all(promises)
       .then((results) => {
-        setTeam(results[0] as OrgMember[]);
-        setShifts(results[1] as Shift[]);
-        setRoles(results[2] as StaffRole[]);
-        setChatOptions(results[3] as ChatConversation[]);
-        setPresets(results[4] as ShiftPreset[]);
+        const team = results[0] as OrgMember[];
+        const shifts = results[1] as Shift[];
+        const roles = results[2] as StaffRole[];
+        const conversations = results[3] as ChatConversation[];
+        const presets = results[4] as ShiftPreset[];
+        setTeam(team);
+        setShifts(shifts);
+        setRoles(roles);
+        setChatOptions(conversations);
+        setPresets(presets);
         setMyAvailability(results[5] as StaffAvailability | null);
         setMyTimeOffRequests(results[6] as TimeOffRequest[]);
         if (!isStaff) {
           setOrgTimeOffRequests(results[7] as TimeOffRequest[]);
           setOrgShiftTrades(results[8] as ShiftTrade[]);
         }
+        // Cache the core shared data
+        setCache(cacheKey, { team, shifts, roles, conversations, presets });
       })
       .catch((err) => console.error("Failed to load staffing:", err))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   }, [organizationId, userId, isStaff]);
 
   // Handle table drag-select via non-passive touchmove
@@ -1200,9 +1232,11 @@ export default function StaffingPage() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <PermissionGuard section="staffing">
+        <div className="flex h-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </PermissionGuard>
     );
   }
 
@@ -1212,7 +1246,10 @@ export default function StaffingPage() {
 
         {/* ─── Header ──────────────────────────────────────────────── */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold tracking-tight">Scheduling</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold tracking-tight">Scheduling</h1>
+            {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => { setDownloadRange({ start: isoDate(weekDates[0]), end: isoDate(weekDates[6]) }); setDownloadDialog(true); }}

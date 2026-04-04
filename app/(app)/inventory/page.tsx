@@ -14,6 +14,7 @@ import {
   XCircle,
   History,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -62,6 +63,9 @@ import {
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { getCached, setCache } from "@/lib/cache";
+import { usePermissions } from "@/lib/context/permissions";
+import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton-loaders";
 
 const statusConfig: Record<
   InventoryStatus,
@@ -76,10 +80,14 @@ const statusConfig: Record<
   out_of_stock: { label: "Out of Stock", icon: XCircle,       color: "text-destructive" },
 };
 
+type InvCache = { items: InventoryItem[]; transactions: InventoryTransaction[] };
+
 export default function InventoryPage() {
+  const { organizationId } = usePermissions();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
@@ -92,22 +100,37 @@ export default function InventoryPage() {
   const [form, setForm] = useState<Partial<InventoryItem>>({});
 
   useEffect(() => {
+    if (!organizationId) return;
+    const cacheKey = `inventory_${organizationId}`;
+
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserId(user?.id ?? null);
     });
+
+    // Show cached data instantly
+    const cached = getCached<InvCache>(cacheKey);
+    if (cached) {
+      setItems(cached.items);
+      setTransactions(cached.transactions);
+      setLoading(false);
+      setRefreshing(true);
+    }
+
     Promise.all([getInventoryItems(), getInventoryTransactions()])
       .then(([inv, tx]) => {
         setItems(inv);
         setTransactions(tx);
+        setCache(cacheKey, { items: inv, transactions: tx });
       })
       .catch((err) => {
         console.error("Failed to load inventory:", err);
       })
       .finally(() => {
         setLoading(false);
+        setRefreshing(false);
       });
-  }, []);
+  }, [organizationId]);
 
   const CATEGORIES = [
     "All",
@@ -160,24 +183,23 @@ export default function InventoryPage() {
     if (!form.name || !userId) return;
     setSaving(true);
     try {
+      let newItems: InventoryItem[];
       if (editItem) {
         await updateInventoryItem(editItem.id, form);
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === editItem.id
-              ? {
-                  ...i,
-                  ...form,
-                  status:
-                    (form.currentStock ?? i.currentStock) === 0
-                      ? "out_of_stock"
-                      : (form.currentStock ?? i.currentStock) <
-                        (form.minStock ?? i.minStock)
-                      ? "low_stock"
-                      : "in_stock",
-                }
-              : i
-          )
+        newItems = items.map((i) =>
+          i.id === editItem.id
+            ? {
+                ...i,
+                ...form,
+                status:
+                  (form.currentStock ?? i.currentStock) === 0
+                    ? "out_of_stock"
+                    : (form.currentStock ?? i.currentStock) <
+                      (form.minStock ?? i.minStock)
+                    ? "low_stock"
+                    : "in_stock",
+              }
+            : i
         );
       } else {
         const newItem = await addInventoryItem(
@@ -190,14 +212,15 @@ export default function InventoryPage() {
             unit: form.unit ?? "units",
             costPerUnit: form.costPerUnit ?? 0,
             supplier: form.supplier ?? "",
-            lastRestocked:
-              new Date().toISOString().split("T")[0],
+            lastRestocked: new Date().toISOString().split("T")[0],
             lossRate: form.lossRate ?? 0,
           },
           userId
         );
-        setItems((prev) => [newItem, ...prev]);
+        newItems = [newItem, ...items];
       }
+      setItems(newItems);
+      if (organizationId) setCache(`inventory_${organizationId}`, { items: newItems, transactions });
       hapticSuccess();
       setDialogOpen(false);
     } catch (err) {
@@ -210,20 +233,14 @@ export default function InventoryPage() {
   const handleDelete = async (id: string) => {
     hapticWarning();
     await deleteInventoryItem(id);
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    const newItems = items.filter((i) => i.id !== id);
+    setItems(newItems);
+    if (organizationId) setCache(`inventory_${organizationId}`, { items: newItems, transactions });
   };
 
   const lowStockCount = items.filter((i) => i.status === "low_stock").length;
   const outCount      = items.filter((i) => i.status === "out_of_stock").length;
   const totalValue    = items.reduce((s, i) => s + i.currentStock * i.costPerUnit, 0);
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <PermissionGuard section="inventory">
@@ -236,11 +253,33 @@ export default function InventoryPage() {
             Track stock levels, losses, and restocking needs
           </p>
         </div>
-        <Button onClick={openAdd} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          <Button onClick={openAdd} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Item
+          </Button>
+        </div>
       </div>
+
+      {loading ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+          </div>
+          <div className="rounded-[0.3rem] border overflow-hidden">
+            <table className="w-full">
+              <tbody>
+                <SkeletonRow cols={9} />
+                <SkeletonRow cols={9} />
+                <SkeletonRow cols={9} />
+                <SkeletonRow cols={9} />
+                <SkeletonRow cols={9} />
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (<>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -630,6 +669,7 @@ export default function InventoryPage() {
           </div>
         </DialogContent>
       </Dialog>
+      </>)}
     </div>
     </PermissionGuard>
   );

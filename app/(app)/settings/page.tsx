@@ -48,6 +48,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { PermissionGuard } from "@/components/permission-guard";
+import { getCached, setCache } from "@/lib/cache";
 import {
   getMyAvailability, upsertAvailability,
   getTimeOffRequests, createTimeOffRequest,
@@ -154,12 +155,23 @@ export default function SettingsPage() {
         if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
       }
     });
+
+    // Show cached settings instantly
+    const cached = getCached<UserSettings>("settings");
+    if (cached) {
+      setSettings(cached);
+      setBusinessName(cached.businessName ?? "");
+      setTimezone(cached.timezone);
+      setLoading(false);
+    }
+
     getSettings()
       .then((s) => {
         setSettings(s);
         if (s) {
           setBusinessName(s.businessName ?? "");
           setTimezone(s.timezone);
+          setCache("settings", s);
         }
       })
       .catch((err) => console.error("Failed to load settings:", err))
@@ -280,9 +292,11 @@ export default function SettingsPage() {
     setSavingProfile(true);
     try {
       await upsertSettings(userId, { businessName, timezone });
-      setSettings((prev) =>
-        prev ? { ...prev, businessName, timezone } : null
-      );
+      setSettings((prev) => {
+        const next = prev ? { ...prev, businessName, timezone } : null;
+        if (next) setCache("settings", next);
+        return next;
+      });
       hapticSuccess();
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2500);

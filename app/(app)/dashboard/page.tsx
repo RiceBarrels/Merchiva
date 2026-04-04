@@ -14,6 +14,7 @@ import {
   Plus,
   X,
   User,
+  RefreshCw,
   Coffee,
   Utensils,
   ChefHat,
@@ -65,6 +66,7 @@ const ROLE_ICON_MAP: Record<string, LucideIcon> = {
   "sun": Sun, "receipt-text": ReceiptText, "hand-platter": HandPlatter,
 };
 import { createClient } from "@/lib/supabase/client";
+import { getCached, setCache } from "@/lib/cache";
 import { getShifts, getRoleTasks, getStaffRoles } from "@/lib/db/staffing";
 import { getConversations } from "@/lib/db/chat";
 import { getTodos, addTodo, toggleTodo, deleteTodo } from "@/lib/db/todos";
@@ -94,9 +96,16 @@ function relativeTime(dateStr: string) {
   return `${days}d ago`;
 }
 
+type DashBgCache = {
+  shifts: Shift[];
+  conversations: ChatConversation[];
+  alerts: { message: string; severity: "high" | "medium" }[];
+};
+
 export default function HomePage() {
   const { organizationId } = usePermissions();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [alerts, setAlerts] = useState<{ message: string; severity: "high" | "medium" }[]>([]);
@@ -135,11 +144,28 @@ export default function HomePage() {
   // Load other data in the background
   useEffect(() => {
     if (!organizationId) return;
+    const cacheKey = `dashboard_bg_${organizationId}`;
     const supabase = createClient();
+
+    // Show cached background data instantly
+    const cachedBg = getCached<DashBgCache>(cacheKey);
+    if (cachedBg) {
+      setShifts(cachedBg.shifts);
+      setConversations(cachedBg.conversations);
+      setAlerts(cachedBg.alerts);
+      setLoading(false);
+      setRefreshing(true);
+    }
+
+    // Collect fetched values for caching after all resolve
+    let fetchedShifts: Shift[] = [];
+    let fetchedConversations: ChatConversation[] = [];
+    let fetchedAlerts: { message: string; severity: "high" | "medium" }[] = [];
 
     Promise.all([
       // Load shifts, then fetch role tasks for today's user shifts
       Promise.all([getShifts(1), getStaffRoles()]).then(async ([allShifts, roles]) => {
+        fetchedShifts = allShifts;
         setShifts(allShifts);
         // Find today's shifts for current user (match by memberId via org_members)
         const supabaseInner = createClient();
@@ -179,7 +205,7 @@ export default function HomePage() {
         }
         setRoleTasks(flat);
       }).catch(() => {}),
-      getConversations(organizationId).then(setConversations).catch(() => {}),
+      getConversations(organizationId).then((c) => { fetchedConversations = c; setConversations(c); }).catch(() => {}),
       Promise.all([
         supabase.from("inventory_items").select("*"),
         supabase.from("products").select("*"),
@@ -203,9 +229,15 @@ export default function HomePage() {
             }
           });
         }
-        setAlerts(alertList.slice(0, 8));
+        fetchedAlerts = alertList.slice(0, 8);
+        setAlerts(fetchedAlerts);
       }),
-    ]).finally(() => setLoading(false));
+    ]).then(() => {
+      setCache(cacheKey, { shifts: fetchedShifts, conversations: fetchedConversations, alerts: fetchedAlerts });
+    }).finally(() => {
+      setLoading(false);
+      setRefreshing(false);
+    });
   }, [organizationId]);
 
   const handleAddTodo = async () => {
@@ -308,17 +340,20 @@ export default function HomePage() {
   return (
     <div className="p-3 sm:p-6 space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-          {greeting}{userName ? `, ${userName}` : ""}
-        </h1>
-        <p className="text-muted-foreground text-sm mt-0.5">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+            {greeting}{userName ? `, ${userName}` : ""}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
+        </div>
+        {refreshing && <RefreshCw className="h-3.5 w-3.5 mt-1 animate-spin text-muted-foreground shrink-0" />}
       </div>
 
       {/* Todos — rendered immediately, before other data loads */}

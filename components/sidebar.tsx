@@ -31,6 +31,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
 import { createOrganization, addOwnerMember, upsertUserProfile } from "@/lib/db/team";
+import { clearCache } from "@/lib/cache";
 import type { Permissions } from "@/lib/types";
 
 const SIDEBAR_WIDTH = 280;
@@ -186,6 +187,7 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
 
   const handleLogout = async () => {
     const supabase = createClient();
+    clearCache(); // clear all cache on logout
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
