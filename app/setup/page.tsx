@@ -363,7 +363,7 @@ export default function SetupPage() {
                   value={state.businessType}
                   onValueChange={(v) => {
                     hapticLight();
-                    persist({ ...state, businessType: v });
+                    persist({ ...state, businessType: v ?? "" });
                   }}
                 >
                   <SelectTrigger id="businessType">
@@ -384,7 +384,7 @@ export default function SetupPage() {
                 <Select
                   value={state.employeeRange}
                   onValueChange={(v) =>
-                    persist({ ...state, employeeRange: v })
+                    persist({ ...state, employeeRange: v ?? "" })
                   }
                 >
                   <SelectTrigger id="employees">

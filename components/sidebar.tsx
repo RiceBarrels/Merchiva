@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut,
   UserCog,
+  X,
   ChevronDown,
   Plus,
   Check,
