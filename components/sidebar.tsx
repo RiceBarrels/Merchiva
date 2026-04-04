@@ -12,8 +12,6 @@ import {
   Zap,
   Settings,
   LogOut,
-  Menu,
-  X,
   UserCog,
   ChevronDown,
   Plus,
@@ -166,7 +164,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
   );
 }
 
-function SidebarContent({ onClose }: { onClose?: () => void }) {
+export function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router   = useRouter();
   const { can, isOwner } = usePermissions();
@@ -188,7 +186,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   });
 
   return (
-    <aside className="flex h-full w-56 flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-full flex-col border-r border-border bg-card">
       {/* Logo */}
       <div className="flex h-12 items-center gap-2 px-4 border-b border-border">
         <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
@@ -284,66 +282,3 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
-export function Sidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [mobileOpen]);
-
-  return (
-    <>
-      {/* Mobile header bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 flex h-12 items-center gap-3 border-b border-border bg-card px-4">
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="p-1 rounded text-muted-foreground hover:bg-muted"
-          aria-label="Open menu"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
-            <Zap className="h-3.5 w-3.5" />
-          </div>
-          <p className="text-sm font-semibold tracking-tight">BizOps</p>
-        </div>
-      </div>
-
-      {/* Mobile overlay backdrop */}
-      {mobileOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-40 bg-black/50"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Mobile drawer */}
-      <div
-        className={cn(
-          "md:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-200",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <SidebarContent onClose={() => setMobileOpen(false)} />
-      </div>
-
-      {/* Desktop sidebar */}
-      <div className="hidden md:flex h-full">
-        <SidebarContent />
-      </div>
-    </>
-  );
-}
