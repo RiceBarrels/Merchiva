@@ -417,6 +417,9 @@ export default function StaffingPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, [shiftMenuOpen]);
 
+  // ─── Shift Details Dialog ──────────────────────────────────────────────────
+  const [shiftDetailShift, setShiftDetailShift] = useState<Shift | null>(null);
+
   // ─── Computed ──────────────────────────────────────────────────────────────
 
   const weekShifts = shifts.filter(
@@ -1401,7 +1404,10 @@ export default function StaffingPage() {
                             .filter(Boolean) as typeof roles;
                           return (
                           <div key={shift.id} className="flex items-center gap-3">
-                            <div className="flex-1 min-w-0">
+                            <button
+                              className="flex-1 min-w-0 text-left"
+                              onClick={() => setShiftDetailShift(shift)}
+                            >
                               <p className="text-sm font-semibold text-stone-900">
                                 {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
                               </p>
@@ -1433,7 +1439,7 @@ export default function StaffingPage() {
                                   </span>
                                 ))}
                               </div>
-                            </div>
+                            </button>
                             <div className="flex items-center gap-0.5">
                               {/* Shift action menu */}
                               <div className="relative">
@@ -3362,6 +3368,109 @@ export default function StaffingPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Shift Details Dialog ─────────────────────────────── */}
+      {shiftDetailShift && (() => {
+        const s = shiftDetailShift;
+        const dateLabel = new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
+          weekday: "short", month: "short", day: "numeric",
+        });
+        const matchedRoles = (s.staffRoles ?? [])
+          .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
+          .filter(Boolean) as StaffRole[];
+        // Coworkers: same date, same org, different member
+        const coworkerShifts = shifts.filter(
+          (cs) => cs.date === s.date && cs.memberId !== myMemberId && cs.memberId !== null
+        );
+        return (
+          <Dialog open onOpenChange={(open) => { if (!open) setShiftDetailShift(null); }}>
+            <DialogContent className="max-w-sm p-0 overflow-hidden">
+              <DialogHeader className="sr-only">
+                <DialogTitle>Shift Details</DialogTitle>
+                <DialogDescription>Your shift on {dateLabel}</DialogDescription>
+              </DialogHeader>
+
+              {/* Top section */}
+              <div className="px-5 pt-5 pb-4 space-y-3">
+                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{dateLabel}</p>
+                <p className="text-3xl font-bold font-mono tracking-tight text-stone-900">
+                  {formatTime(s.startTime)}<span className="text-stone-400 mx-2">→</span>{formatTime(s.endTime)}
+                </p>
+
+                {/* Shift type + roles */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: SHIFT_COLORS[s.shiftType] }}
+                  />
+                  <span className="text-sm text-stone-700">{currentOrg?.name ?? "Store"} · {SHIFT_LABELS[s.shiftType]}</span>
+                  {matchedRoles.map((r) => (
+                    <span key={r.id} className="inline-flex items-center gap-1.5">
+                      <span className="text-stone-300">·</span>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
+                      <span className="text-xs font-medium text-stone-600">{r.name}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Working with */}
+              <div className="border-t border-border px-5 py-3">
+                <p className="text-xs font-semibold text-stone-500 mb-2.5">Working with</p>
+                {coworkerShifts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No other staff scheduled.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {coworkerShifts.map((cs) => {
+                      const member = team.find((m) => m.id === cs.memberId);
+                      const name = member?.displayName ?? cs.staffName ?? "Staff";
+                      const cwRoles = (cs.staffRoles ?? [])
+                        .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
+                        .filter(Boolean) as StaffRole[];
+                      return (
+                        <div key={cs.id} className="flex items-center gap-2.5">
+                          <div className={`h-7 w-7 rounded-sm flex items-center justify-center text-xs font-semibold shrink-0 ${avatarBg(name)}`}>
+                            {initials(name)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-stone-800 truncate">{name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs text-muted-foreground">{formatTime(cs.startTime)}–{formatTime(cs.endTime)}</span>
+                              {cwRoles.slice(0, 2).map((r) => (
+                                <span key={r.id} className="inline-flex items-center gap-1">
+                                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: r.color }} />
+                                  <span className="text-[11px] text-stone-500">{r.name}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="border-t border-border p-4 space-y-2">
+                <Button
+                  className="w-full"
+                  onClick={() => { setShiftDetailShift(null); openCoverDialog(s); }}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" /> Find Cover
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => { setShiftDetailShift(null); openTradeDialog(s); }}
+                >
+                  <ArrowLeftRight className="h-4 w-4 mr-2" /> Trade Shift
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
     </PermissionGuard>
   );
