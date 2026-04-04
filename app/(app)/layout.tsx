@@ -1,4 +1,4 @@
-import { MobileShell } from "@/components/mobile-shell";
+import { MobileShell } from "@/components/sidebar";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PermissionsProvider } from "@/lib/context/permissions";
