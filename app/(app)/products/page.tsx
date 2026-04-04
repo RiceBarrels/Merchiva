@@ -64,6 +64,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getProducts, addProduct, deleteProduct } from "@/lib/db/products";
 import type { Product } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 
 const alertConfig = {
   none:           { label: "Healthy",         icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -137,6 +138,7 @@ export default function ProductsPage() {
         { ...(BLANK as Omit<Product, "id">), ...form, margin } as Omit<Product, "id">,
         userId
       );
+      hapticSuccess();
       setProducts((prev) => [newProd, ...prev]);
       setDialogOpen(false);
       setForm(BLANK);
@@ -146,6 +148,7 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    hapticWarning();
     await deleteProduct(id);
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };

@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
@@ -64,6 +65,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
 
   const handleSwitch = async (orgId: string) => {
     if (orgId === currentOrg?.id) { setOpen(false); return; }
+    hapticMedium();
     setOpen(false);
     onClose?.();
     await switchOrg(orgId);
@@ -82,6 +84,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
       const orgId = await createOrganization(user.id, name);
       await addOwnerMember(user.id, orgId, name);
       await upsertUserProfile(user.id, name, orgId);
+      hapticSuccess();
       setOpen(false);
       setCreating(false);
       setNewStoreName("");
@@ -97,7 +100,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
   return (
     <div ref={dropdownRef} className="relative px-3 py-2 border-b border-border">
       <button
-        onClick={() => { setOpen((v) => !v); setCreating(false); setError(null); }}
+        onClick={() => { hapticLight(); setOpen((v) => !v); setCreating(false); setError(null); }}
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
       >
         <span className="flex-1 truncate text-left">{currentOrg?.name ?? "Select store"}</span>
@@ -177,6 +180,7 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   };
 
   const handleNavClick = () => {
+    hapticLight();
     onClose?.();
   };
 

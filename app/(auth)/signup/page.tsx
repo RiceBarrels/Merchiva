@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { ownerPermissions, getInvitationByToken, acceptInvitation } from "@/lib/db/team";
+import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import type { OrgInvitation } from "@/lib/types";
 
 type Step = "form" | "verify";
@@ -90,16 +91,19 @@ function SignupForm() {
     });
 
     if (error) {
+      hapticError();
       setError(error.message);
       setLoading(false);
       return;
     }
 
     if (data.session) {
+      hapticSuccess();
       await postSignup(data.user!.id);
       return;
     }
 
+    hapticLight();
     setStep("verify");
     setLoading(false);
   };
@@ -117,17 +121,20 @@ function SignupForm() {
     });
 
     if (error) {
+      hapticError();
       setError(error.message);
       setLoading(false);
       return;
     }
 
     if (!data.user) {
+      hapticError();
       setError("Verification succeeded but no user was returned. Please try signing in.");
       setLoading(false);
       return;
     }
 
+    hapticSuccess();
     await postSignup(data.user.id);
   };
 

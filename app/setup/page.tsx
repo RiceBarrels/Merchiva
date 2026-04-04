@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { ownerPermissions } from "@/lib/db/team";
+import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 
 const BUSINESS_TYPES = [
   "Restaurant",
@@ -160,6 +161,7 @@ export default function SetupPage() {
   };
 
   const goToStep = (step: number) => {
+    hapticLight();
     setError(null);
     persist({ ...state, step });
   };
@@ -276,9 +278,11 @@ export default function SetupPage() {
       }
 
       localStorage.removeItem(STORAGE_KEY);
+      hapticSuccess();
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
+      hapticError();
       setError(err instanceof Error ? err.message : "Setup failed.");
       setLoading(false);
     }
@@ -357,9 +361,10 @@ export default function SetupPage() {
                 <Label htmlFor="businessType">Business Type</Label>
                 <Select
                   value={state.businessType}
-                  onValueChange={(v) =>
-                    persist({ ...state, businessType: v })
-                  }
+                  onValueChange={(v) => {
+                    hapticLight();
+                    persist({ ...state, businessType: v });
+                  }}
                 >
                   <SelectTrigger id="businessType">
                     <SelectValue placeholder="Select type…" />
@@ -423,12 +428,13 @@ export default function SetupPage() {
                   <button
                     key={pos.id}
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      hapticLight();
                       persist({
                         ...state,
                         posSystem: state.posSystem === pos.id ? "" : pos.id,
-                      })
-                    }
+                      });
+                    }}
                     className={`w-full flex items-center gap-3 rounded-sm border px-3 py-2.5 text-left transition-colors ${
                       state.posSystem === pos.id
                         ? "border-stone-900 bg-stone-50"

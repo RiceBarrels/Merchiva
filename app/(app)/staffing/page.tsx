@@ -40,6 +40,7 @@ import type {
   StaffAvailability, TimeOffRequest, ShiftTrade, RoleTask,
 } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 
 const ROLE_COLORS = [
   "#44403c", "#dc2626", "#ea580c", "#ca8a04",
@@ -351,8 +352,8 @@ export default function StaffingPage() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  const prevWeek = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
-  const nextWeek = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
+  const prevWeek = () => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; }); };
+  const nextWeek = () => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; }); };
 
   const applyShiftType = (type: ShiftType) => {
     const map: Record<ShiftType, { start: string; end: string }> = {
@@ -395,6 +396,7 @@ export default function StaffingPage() {
         }, userId);
         setShifts((prev) => [...prev, sh]);
       }
+      hapticSuccess();
       setAddDialog(false);
       setEditingShift(null);
     } finally {
@@ -403,6 +405,7 @@ export default function StaffingPage() {
   };
 
   const handleDeleteShift = async (id: string) => {
+    hapticWarning();
     await deleteShift(id);
     setShifts((prev) => prev.filter((s) => s.id !== id));
   };
@@ -420,6 +423,7 @@ export default function StaffingPage() {
         const r = await addStaffRole(roleForm, userId, organizationId);
         setRoles((prev) => [...prev, r]);
       }
+      hapticSuccess();
       setRoleDialog(false);
       setEditingRole(null);
       setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} });
@@ -498,6 +502,7 @@ export default function StaffingPage() {
   };
 
   const handleDeleteRole = async (id: string) => {
+    hapticWarning();
     await deleteStaffRole(id);
     setRoles((prev) => prev.filter((r) => r.id !== id));
   };
@@ -531,6 +536,7 @@ export default function StaffingPage() {
         type:          "trade",
         comments:      "",
       });
+      hapticSuccess();
       setTradeDialog({ open: false, shift: null });
     } finally {
       setSavingTrade(false);
@@ -550,6 +556,7 @@ export default function StaffingPage() {
         type:          "cover",
         comments:      "",
       });
+      hapticSuccess();
       setCoverDialog({ open: false, shift: null });
     } finally {
       setSavingCover(false);
@@ -685,7 +692,7 @@ export default function StaffingPage() {
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => { hapticLight(); setActiveTab(tab); }}
                 className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${
                   i > 0 ? "border-l border-border" : ""
                 } ${
