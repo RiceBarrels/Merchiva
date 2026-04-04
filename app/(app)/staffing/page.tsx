@@ -355,6 +355,76 @@ export default function StaffingPage() {
   const prevWeek = () => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; }); };
   const nextWeek = () => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; }); };
 
+  // Swipe left/right — 3-panel slide carousel
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const [slideAnim, setSlideAnim] = useState(false);
+  const swipeStartX = useRef(0);
+  const swipeStartY = useRef(0);
+  const swipeAxis = useRef<"h" | "v" | null>(null);
+  const panelW = useRef(0);
+  const prevWeekRef = useRef(prevWeek);
+  const nextWeekRef = useRef(nextWeek);
+  prevWeekRef.current = prevWeek;
+  nextWeekRef.current = nextWeek;
+
+  const calendarRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    panelW.current = el.offsetWidth;
+
+    function onStart(e: TouchEvent) {
+      if (slideAnim) return;
+      swipeStartX.current = e.touches[0].clientX;
+      swipeStartY.current = e.touches[0].clientY;
+      swipeAxis.current = null;
+      panelW.current = el!.offsetWidth;
+    }
+
+    function onMove(e: TouchEvent) {
+      if (slideAnim) return;
+      const dx = e.touches[0].clientX - swipeStartX.current;
+      const dy = e.touches[0].clientY - swipeStartY.current;
+
+      if (swipeAxis.current === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        swipeAxis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      }
+      if (swipeAxis.current !== "h") return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      setSwiping(true);
+      setSwipeOffset(dx);
+    }
+
+    function onEnd(e: TouchEvent) {
+      if (swipeAxis.current !== "h") { swipeAxis.current = null; return; }
+
+      const dx = e.changedTouches[0].clientX - swipeStartX.current;
+      const w = panelW.current || 300;
+
+      if (Math.abs(dx) > w * 0.2) {
+        // Animate to full panel width, then swap data
+        const target = dx < 0 ? -w : w;
+        setSwiping(false);
+        setSlideAnim(true);
+        setSwipeOffset(target);
+        setTimeout(() => {
+          if (dx < 0) nextWeekRef.current(); else prevWeekRef.current();
+          setSwipeOffset(0);
+          setSlideAnim(false);
+        }, 200);
+      } else {
+        setSwiping(false);
+        setSwipeOffset(0);
+      }
+      swipeAxis.current = null;
+    }
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+  }, [slideAnim]);
+
   const applyShiftType = (type: ShiftType) => {
     const map: Record<ShiftType, { start: string; end: string }> = {
       morning:   { start: "07:00", end: "14:00" },
@@ -643,6 +713,14 @@ export default function StaffingPage() {
   const isToday  = (d: Date) => isoDate(d) === todayStr;
   const monthYear = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
+  const prevWeekDates = useMemo(() => {
+    const d = new Date(weekStart); d.setDate(d.getDate() - 7); return getWeekDates(d);
+  }, [weekStart]);
+  const nextWeekDates = useMemo(() => {
+    const d = new Date(weekStart); d.setDate(d.getDate() + 7); return getWeekDates(d);
+  }, [weekStart]);
+
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -712,9 +790,9 @@ export default function StaffingPage() {
           })}
         </div>
 
-        {/* ─── Week Calendar Strip ─────────────────────────────────── */}
+        {/* ─── Week Calendar Strip (swipe left/right to change weeks) ── */}
         {activeTab !== "roles" && (
-          <>
+          <div ref={calendarRef}>
             <div className="flex items-center justify-between mb-3">
               <button onClick={prevWeek} className="p-1 rounded hover:bg-stone-100 transition-colors">
                 <ChevronLeft className="h-4 w-4 text-stone-600" />
@@ -725,36 +803,53 @@ export default function StaffingPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-7 mb-4">
-              {weekDates.map((d, i) => {
-                const ds         = isoDate(d);
-                const isTodayD   = isToday(d);
-                const isSelected = ds === selectedDay;
-                return (
-                  <button
-                    key={ds}
-                    onClick={() => setSelectedDay(ds)}
-                    className="flex flex-col items-center gap-1 py-1"
-                  >
-                    <span className="text-[10px] font-medium text-muted-foreground">{DAY_ABBR[i]}</span>
-                    <span
-                      className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                        isTodayD
-                          ? "bg-stone-900 text-white"
-                          : isSelected
-                          ? "bg-stone-200 text-stone-900"
-                          : "text-stone-700 hover:bg-stone-100"
-                      }`}
-                    >
-                      {d.getDate()}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="relative overflow-hidden mb-4" style={{ height: 56 }}>
+              {[
+                { dates: prevWeekDates, offset: -1, current: false },
+                { dates: weekDates,     offset:  0, current: true  },
+                { dates: nextWeekDates, offset:  1, current: false },
+              ].map(({ dates, offset, current }) => (
+                <div
+                  key={offset}
+                  className="absolute inset-0 grid grid-cols-7"
+                  style={{
+                    transform: `translateX(calc(${offset * 100}% + ${swipeOffset}px))`,
+                    transition: swiping ? "none" : slideAnim ? "transform 200ms ease-out" : "none",
+                  }}
+                >
+                  {dates.map((d, i) => {
+                    const ds = isoDate(d);
+                    const isTodayD = isToday(d);
+                    const isSelected = current && ds === selectedDay;
+                    return (
+                      <button
+                        key={ds}
+                        onClick={current ? () => setSelectedDay(ds) : undefined}
+                        className="flex flex-col items-center gap-1 py-1"
+                      >
+                        <span className="text-[10px] font-medium text-muted-foreground">{DAY_ABBR[i]}</span>
+                        <span
+                          className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-semibold ${
+                            !current
+                              ? "text-stone-400"
+                              : isTodayD
+                              ? "bg-stone-900 text-white"
+                              : isSelected
+                              ? "bg-stone-200 text-stone-900"
+                              : "text-stone-700"
+                          }`}
+                        >
+                          {d.getDate()}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
 
             <div className="border-t border-border" />
-          </>
+          </div>
         )}
 
         {/* ─── My Shifts ───────────────────────────────────────────── */}

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Save,
   MapPin,
+  Camera,
 } from "lucide-react";
 import {
   Card,
@@ -56,6 +57,10 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved]   = useState(false);
 
+  // Avatar
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   // Square OAuth feedback
   const [squareMessage, setSquareMessage] = useState<string | null>(null);
   const [squareError, setSquareError] = useState<string | null>(null);
@@ -80,10 +85,17 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
         setUserEmail(user.email ?? "");
+        // Load avatar
+        const { data: profile } = await supabase
+          .from("user_profiles")
+          .select("avatar_url")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
       }
     });
     getSettings()
@@ -196,6 +208,50 @@ export default function SettingsPage() {
     }
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+
+    // Validate
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 5 * 1024 * 1024) return; // 5MB max
+
+    setUploadingAvatar(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${userId}/avatar.${ext}`;
+
+      // Upload (upsert)
+      const { error: uploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+
+      if (uploadErr) throw uploadErr;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(path);
+
+      // Add cache buster
+      const url = `${publicUrl}?t=${Date.now()}`;
+
+      // Save to profile
+      await supabase
+        .from("user_profiles")
+        .update({ avatar_url: url })
+        .eq("user_id", userId);
+
+      setAvatarUrl(url);
+      hapticSuccess();
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleDisconnectSquare = async () => {
     if (!userId) return;
     await disconnectSquare(userId);
@@ -286,9 +342,39 @@ export default function SettingsPage() {
           <CardDescription>Your profile and business details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Email</Label>
-            <Input value={userEmail} disabled className="bg-muted text-muted-foreground" />
+          {/* Avatar */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="h-16 w-16 rounded-full object-cover border border-border"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground">
+                  {userEmail?.[0]?.toUpperCase() ?? "?"}
+                </div>
+              )}
+              <label className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 shadow-sm">
+                {uploadingAvatar ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Camera className="h-3 w-3" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={uploadingAvatar}
+                />
+              </label>
+            </div>
+            <div>
+              <p className="text-sm font-medium">{userEmail}</p>
+              <p className="text-xs text-muted-foreground">Click the camera icon to upload a photo</p>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Business Name</Label>

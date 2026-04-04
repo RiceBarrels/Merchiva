@@ -19,6 +19,7 @@ import {
   Check,
   Loader2,
   Menu,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
@@ -46,6 +47,7 @@ const navItems: NavItem[] = [
   { label: "Sales Prediction", href: "/sales",      icon: TrendingUp,      permissionKey: "sales"     },
   { label: "Staffing",         href: "/staffing",   icon: Users,           permissionKey: "staffing"  },
   { label: "Products",         href: "/products",   icon: ShoppingBag,     permissionKey: "products"  },
+  { label: "Chat",             href: "/chat",       icon: MessageSquare,   permissionKey: "staffing"  },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {
@@ -205,15 +207,6 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
         <div className="flex-1">
           <p className="text-sm font-semibold leading-none tracking-tight">BizOps</p>
         </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1 rounded text-muted-foreground hover:bg-muted"
-            aria-label="Close menu"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {/* Store switcher */}
@@ -417,48 +410,73 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   }, []); // empty deps — all mutable values accessed via refs
 
   const translateX = dragging ? dragOffset : isOpen ? SIDEBAR_WIDTH : 0;
+  const progress = Math.min(1, Math.max(0, translateX / SIDEBAR_WIDTH)); // 0 → 1
+  const btnRotation = progress * 180;                       // 0° → 180°
+  // Icon swap at 90° (progress 0.5), opacity fade starts at ~20° (progress 0.11)
+  const showX = progress >= 0.5;
+  const iconFadeStart = 20 / 180; // ~0.11
+  const menuOpacity = progress < iconFadeStart ? 1 : showX ? 0 : Math.max(0, 1 - (progress - iconFadeStart) / (0.5 - iconFadeStart));
+  const xOpacity = progress < 0.5 ? 0 : Math.min(1, (progress - 0.5) / (1 - 0.5 - iconFadeStart));
+  const overlayOpacity = progress * 0.4;
+  // Sidebar: starts slightly scaled down & shifted left, animates to full size
+  const sidebarScale = 0.92 + progress * 0.08;       // 0.92 → 1
+  const sidebarTranslateX = -30 + progress * 30;      // -30px → 0
+  const sidebarOpacity = progress;                      // 0 → 1
+  const transitionStyle = dragging
+    ? "none"
+    : "all 220ms cubic-bezier(0.4, 0, 0.2, 1)";
 
   return (
     <>
       {/* ── Mobile layout ── */}
       <div className="md:hidden relative h-screen overflow-hidden bg-background">
-        {/* Sidebar: always rendered, fixed at left, sits behind content at z-10 */}
-        <div className="fixed inset-y-0 left-0 w-[280px] z-10">
+        {/* Floating hamburger — follows content slide */}
+        <button
+          onClick={() => setIsOpen((v) => !v)}
+          className="fixed z-50 p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+          style={{
+            left: 14,
+            top: 14,
+            transform: `translateX(${translateX}px) rotate(${btnRotation}deg)`,
+            transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)",
+          }}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+        >
+          <span className="relative block h-5 w-5">
+            <Menu className="h-5 w-5 absolute inset-0" style={{ opacity: menuOpacity, transition: dragging ? "none" : "opacity 150ms" }} />
+            <X className="h-5 w-5 absolute inset-0" style={{ opacity: xOpacity, transition: dragging ? "none" : "opacity 150ms" }} />
+          </span>
+        </button>
+
+        {/* Sidebar: slides in from back with scale */}
+        <div
+          className="fixed inset-y-0 left-0 w-[280px] z-10"
+          style={{
+            transform: `translateX(${sidebarTranslateX}px) scale(${sidebarScale})`,
+            opacity: sidebarOpacity,
+            transformOrigin: "left center",
+            transition: transitionStyle,
+          }}
+        >
           <SidebarContent onClose={() => setIsOpen(false)} />
         </div>
 
         {/* Main content: slides right to reveal the sidebar (z-20) */}
         <div
+          id="mobile-content"
           ref={contentRef}
           className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden"
           style={{
             transform: `translateX(${translateX}px)`,
-            transition: dragging
-              ? "none"
-              : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+            transition: transitionStyle,
             ...(translateX > 0 && {
-              boxShadow: "-4px 0 16px rgba(0, 0, 0, 0.12)",
+              boxShadow: "-4px 0 16px rgba(0, 0, 0, 0.15)",
+              borderRadius: "38px 0 0 38px",
             }),
           }}
         >
-          {/* Mobile header bar */}
-          <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-            <button
-              onClick={() => setIsOpen((v) => !v)}
-              className="p-1 rounded text-muted-foreground hover:bg-muted"
-              aria-label={isOpen ? "Close menu" : "Open menu"}
-            >
-              {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
-                <Zap className="h-3.5 w-3.5" />
-              </div>
-              <p className="text-sm font-semibold tracking-tight">BizOps</p>
-            </div>
-          </div>
-
-          {/* Invisible tap-to-close layer when sidebar is open */}
+          {/* Tap-to-close layer when sidebar is open */}
           {isOpen && (
             <div
               className="absolute inset-0 z-10"
@@ -466,7 +484,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             />
           )}
 
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto"><div className="h-12" />{children}</main>
         </div>
       </div>
 

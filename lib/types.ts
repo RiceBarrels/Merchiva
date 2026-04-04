@@ -204,6 +204,43 @@ export interface ShiftTrade {
   comments: string;
 }
 
+// ─── Chat ───────────────────────────────────────────────────────────────────
+
+export interface ChatConversation {
+  id: string;
+  organizationId: string;
+  type: "direct" | "group";
+  name: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  // Joined fields
+  members?: ChatMember[];
+  lastMessage?: ChatMessage | null;
+}
+
+export interface ChatMember {
+  id: string;
+  conversationId: string;
+  userId: string;
+  joinedAt: string;
+  // Joined
+  displayName?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  replyToId: string | null;
+  attachmentUrl: string | null;
+  attachmentType: string | null;
+  attachmentName: string | null;
+  // Joined
+  senderName?: string;
+}
+
 // ─── Products ────────────────────────────────────────────────────────────────
 
 export type ProductAlert = "none" | "underperforming" | "remove";

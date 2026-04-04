@@ -160,7 +160,16 @@ function SignupForm() {
           { onConflict: "user_id" }
         );
 
-      await acceptInvitation(inviteCode!, userId, displayName);
+      const res = await fetch("/api/team/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: inviteCode, displayName }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error ?? "Failed to join organization.");
+      }
 
       // Set active org
       await supabase
