@@ -18,7 +18,6 @@ import {
   Plus,
   Check,
   Loader2,
-  X,
   Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
