@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Plus, Loader2, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2,
-  MoreHorizontal, ArrowLeftRight, UserPlus, CalendarX, Search, Check, Ban,
+  ArrowLeftRight, UserPlus, CalendarX, Search, Check, Ban,
   ChevronDown, ChevronUp, User, Coffee, Utensils, ChefHat, Truck, Package,
   Clipboard, Wrench, Headphones, Store, Banknote, Sparkles, Box,
   ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera,
@@ -239,10 +239,6 @@ export default function StaffingPage() {
   const [savingTask,      setSavingTask]      = useState(false);
   const [viewTasksDialog, setViewTasksDialog] = useState<{ open: boolean; role: StaffRole | null }>({ open: false, role: null });
 
-  // ─── Shift card menu ───
-  const [shiftMenuOpen, setShiftMenuOpen] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
   // ─── Trade Dialog ───
   const [tradeDialog, setTradeDialog] = useState<{ open: boolean; shift: Shift | null }>({ open: false, shift: null });
   const [tradeSearch, setTradeSearch] = useState("");
@@ -404,18 +400,6 @@ export default function StaffingPage() {
     el.addEventListener("touchmove", handler, { passive: false });
     return () => el.removeEventListener("touchmove", handler);
   });
-
-  // Close shift menu on outside click
-  useEffect(() => {
-    if (!shiftMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShiftMenuOpen(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [shiftMenuOpen]);
 
   // ─── Shift Details Dialog ──────────────────────────────────────────────────
   const [shiftDetailShift, setShiftDetailShift] = useState<Shift | null>(null);
@@ -1380,7 +1364,7 @@ export default function StaffingPage() {
         {/* ─── My Shifts ───────────────────────────────────────────── */}
         {activeTab === "myShifts" && (
           <>
-            <div className="divide-y divide-border" ref={menuRef}>
+            <div className="divide-y divide-border">
               {weekDates.map((d) => {
                 const ds        = isoDate(d);
                 const dayShifts = myShifts.filter((s) => s.date === ds);
@@ -1403,11 +1387,12 @@ export default function StaffingPage() {
                             .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
                             .filter(Boolean) as typeof roles;
                           return (
-                          <div key={shift.id} className="flex items-center gap-3">
-                            <button
-                              className="flex-1 min-w-0 text-left"
-                              onClick={() => setShiftDetailShift(shift)}
-                            >
+                          <div
+                            key={shift.id}
+                            className="flex items-center gap-3 cursor-pointer hover:bg-stone-50 -mx-1 px-1 py-0.5 rounded"
+                            onClick={() => setShiftDetailShift(shift)}
+                          >
+                            <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-stone-900">
                                 {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
                               </p>
@@ -1428,7 +1413,8 @@ export default function StaffingPage() {
                                     />
                                     <span className="text-xs font-medium text-stone-600">{matchedRole.name}</span>
                                     <button
-                                      onClick={async () => {
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
                                         await loadRoleTasksFor(matchedRole.id);
                                         setViewTasksDialog({ open: true, role: matchedRole });
                                       }}
@@ -1439,42 +1425,15 @@ export default function StaffingPage() {
                                   </span>
                                 ))}
                               </div>
-                            </button>
-                            <div className="flex items-center gap-0.5">
-                              {/* Shift action menu */}
-                              <div className="relative">
-                                <button
-                                  onClick={() => setShiftMenuOpen(shiftMenuOpen === shift.id ? null : shift.id)}
-                                  className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
-                                >
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </button>
-                                {shiftMenuOpen === shift.id && (
-                                  <div className="absolute right-0 top-full mt-0.5 z-50 w-36 border border-border bg-white shadow-sm">
-                                    <button
-                                      onClick={() => { setShiftMenuOpen(null); openTradeDialog(shift); }}
-                                      className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-stone-50 text-stone-700"
-                                    >
-                                      <ArrowLeftRight className="h-3.5 w-3.5" /> Trade Shift
-                                    </button>
-                                    <button
-                                      onClick={() => { setShiftMenuOpen(null); openCoverDialog(shift); }}
-                                      className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-stone-50 text-stone-700 border-t border-border"
-                                    >
-                                      <UserPlus className="h-3.5 w-3.5" /> Find Cover
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                              {canEdit && (
-                                <button
-                                  onClick={() => handleDeleteShift(shift.id)}
-                                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              )}
                             </div>
+                            {canEdit && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteShift(shift.id); }}
+                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                         );
                         })}
