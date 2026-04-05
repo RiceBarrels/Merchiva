@@ -454,6 +454,7 @@ export default function StaffingPage() {
   const swipeStartY = useRef(0);
   const swipeAxis = useRef<"h" | "v" | null>(null);
   const panelW = useRef(0);
+  const swipeStartTime = useRef(0);
   const prevWeekRef = useRef(prevWeek);
   const nextWeekRef = useRef(nextWeek);
   prevWeekRef.current = prevWeek;
@@ -468,6 +469,7 @@ export default function StaffingPage() {
       swipeStartX.current = e.touches[0].clientX;
       swipeStartY.current = e.touches[0].clientY;
       swipeAxis.current = null;
+      swipeStartTime.current = Date.now();
       panelW.current = el!.offsetWidth;
     }
 
@@ -491,23 +493,63 @@ export default function StaffingPage() {
       if (swipeAxis.current !== "h") { swipeAxis.current = null; return; }
 
       const dx = e.changedTouches[0].clientX - swipeStartX.current;
-      const w = panelW.current || 300;
+      const elapsed = Math.max(1, Date.now() - swipeStartTime.current);
+      const velocity = Math.abs(dx) / elapsed; // px/ms
 
-      if (Math.abs(dx) > w * 0.2) {
-        // Animate to full panel width, then swap data
-        const target = dx < 0 ? -w : w;
-        setSwiping(false);
-        setSlideAnim(true);
-        setSwipeOffset(target);
-        setTimeout(() => {
-          if (dx < 0) nextWeekRef.current(); else prevWeekRef.current();
-          setSwipeOffset(0);
-          setSlideAnim(false);
-        }, 200);
-      } else {
-        setSwiping(false);
-        setSwipeOffset(0);
+      setSwiping(false);
+      setSlideAnim(true);
+      if (Math.abs(dx) > 50 || velocity > 0.5) {
+        if (dx < 0) nextWeekRef.current(); else prevWeekRef.current();
       }
+      setSwipeOffset(0);
+      setTimeout(() => setSlideAnim(false), 400);
+      swipeAxis.current = null;
+    }
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+  }, [slideAnim]);
+
+  // Swipe handler for content area below calendar
+  const contentRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+
+    function onStart(e: TouchEvent) {
+      if (slideAnim) return;
+      swipeStartX.current = e.touches[0].clientX;
+      swipeStartY.current = e.touches[0].clientY;
+      swipeAxis.current = null;
+      swipeStartTime.current = Date.now();
+      panelW.current = el!.offsetWidth;
+    }
+
+    function onMove(e: TouchEvent) {
+      if (slideAnim) return;
+      const dx = e.touches[0].clientX - swipeStartX.current;
+      const dy = e.touches[0].clientY - swipeStartY.current;
+      if (swipeAxis.current === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        swipeAxis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      }
+      if (swipeAxis.current !== "h") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setSwiping(true);
+      setSwipeOffset(dx);
+    }
+
+    function onEnd(e: TouchEvent) {
+      if (swipeAxis.current !== "h") { swipeAxis.current = null; return; }
+      const dx = e.changedTouches[0].clientX - swipeStartX.current;
+      const elapsed = Math.max(1, Date.now() - swipeStartTime.current);
+      const velocity = Math.abs(dx) / elapsed;
+      setSwiping(false);
+      setSlideAnim(true);
+      if (Math.abs(dx) > 50 || velocity > 0.5) {
+        if (dx < 0) nextWeekRef.current(); else prevWeekRef.current();
+      }
+      setSwipeOffset(0);
+      setTimeout(() => setSlideAnim(false), 400);
       swipeAxis.current = null;
     }
 
@@ -1448,7 +1490,7 @@ export default function StaffingPage() {
                   className="absolute inset-0 grid grid-cols-7"
                   style={{
                     transform: `translateX(calc(${offset * 100}% + ${swipeOffset}px))`,
-                    transition: swiping ? "none" : slideAnim ? "transform 200ms ease-out" : "none",
+                    transition: swiping ? "none" : slideAnim ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
                   }}
                 >
                   {dates.map((d, i) => {
@@ -1488,7 +1530,13 @@ export default function StaffingPage() {
 
         {/* ─── My Shifts ───────────────────────────────────────────── */}
         {activeTab === "myShifts" && (
-          <>
+          <div
+            ref={contentRef}
+            style={{
+              transform: `translateX(${swipeOffset}px)`,
+              transition: swiping ? "none" : slideAnim ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
+          >
             <div className="divide-y divide-border">
               {weekDates.map((d) => {
                 const ds        = isoDate(d);
@@ -1598,12 +1646,18 @@ export default function StaffingPage() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ─── Schedule (manager view) ──────────────────────────────── */}
         {activeTab === "schedule" && !isStaff && (
-          <>
+          <div
+            ref={contentRef}
+            style={{
+              transform: `translateX(${swipeOffset}px)`,
+              transition: swiping ? "none" : slideAnim ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+            }}
+          >
             <div id="schedule-grid" className="divide-y divide-border">
               {weekDates.map((d) => {
                 const ds        = isoDate(d);
@@ -1833,7 +1887,7 @@ export default function StaffingPage() {
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
 
         {/* ─── Table View (Excel-like grid) ────────────────────────── */}
