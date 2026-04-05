@@ -52,3 +52,9 @@ This is **BizOps**, a Next.js 16 + Supabase + Square app for small business dail
 - Check if `useEffect` has `.catch()` and `.finally(() => setLoading(false))`
 - Check RLS policies — user must match `user_id` or be an active org member
 - Check if the Supabase client is correct (server vs browser)
+
+### Build Native App (Capacitor)
+1. `npx cap sync` — sync web assets to native projects
+2. `npx cap open ios` — open in Xcode
+3. `npx cap open android` — open in Android Studio
+4. The app loads from the Vercel deployment URL, not a local build
