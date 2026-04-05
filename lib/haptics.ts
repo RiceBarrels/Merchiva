@@ -1,28 +1,82 @@
-import { WebHaptics } from "web-haptics";
+import { Capacitor } from '@capacitor/core';
 
-let instance: WebHaptics | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let nativeHaptics: any = null;
 
-function get(): WebHaptics | null {
-  if (typeof window === "undefined") return null;
-  if (!instance) instance = new WebHaptics();
-  return instance;
+async function getNativeHaptics() {
+  if (Capacitor.isNativePlatform()) {
+    const { Haptics } = await import('@capacitor/haptics');
+    return Haptics;
+  }
+  return null;
 }
 
-export function hapticLight() {
-  try { get()?.trigger(40); } catch {}
+if (typeof window !== 'undefined') {
+  getNativeHaptics().then(h => { nativeHaptics = h; });
 }
-export function hapticMedium() {
-  try { get()?.trigger("nudge"); } catch {}
+
+export async function hapticLight() {
+  try {
+    if (nativeHaptics) {
+      await nativeHaptics.impact({ style: 'LIGHT' });
+    } else {
+      const { WebHaptics } = await import('web-haptics');
+      new WebHaptics().trigger(40);
+    }
+  } catch {}
 }
-export function hapticHeavy() {
-  try { get()?.trigger([{ duration: 100, intensity: 1 }, { delay: 50, duration: 100, intensity: 1 }]); } catch {}
+
+export async function hapticMedium() {
+  try {
+    if (nativeHaptics) {
+      await nativeHaptics.impact({ style: 'MEDIUM' });
+    } else {
+      const { WebHaptics } = await import('web-haptics');
+      new WebHaptics().trigger('nudge');
+    }
+  } catch {}
 }
-export function hapticSuccess() {
-  try { get()?.trigger("success"); } catch {}
+
+export async function hapticHeavy() {
+  try {
+    if (nativeHaptics) {
+      await nativeHaptics.impact({ style: 'HEAVY' });
+    } else {
+      const { WebHaptics } = await import('web-haptics');
+      new WebHaptics().trigger([{ duration: 100, intensity: 1 }, { delay: 50, duration: 100, intensity: 1 }]);
+    }
+  } catch {}
 }
-export function hapticError() {
-  try { get()?.trigger("error"); } catch {}
+
+export async function hapticSuccess() {
+  try {
+    if (nativeHaptics) {
+      await nativeHaptics.notification({ type: 'SUCCESS' });
+    } else {
+      const { WebHaptics } = await import('web-haptics');
+      new WebHaptics().trigger('success');
+    }
+  } catch {}
 }
-export function hapticWarning() {
-  try { get()?.trigger([{ duration: 60, intensity: 0.7 }, { delay: 70, duration: 60, intensity: 0.7 }]); } catch {}
+
+export async function hapticError() {
+  try {
+    if (nativeHaptics) {
+      await nativeHaptics.notification({ type: 'ERROR' });
+    } else {
+      const { WebHaptics } = await import('web-haptics');
+      new WebHaptics().trigger('error');
+    }
+  } catch {}
+}
+
+export async function hapticWarning() {
+  try {
+    if (nativeHaptics) {
+      await nativeHaptics.notification({ type: 'WARNING' });
+    } else {
+      const { WebHaptics } = await import('web-haptics');
+      new WebHaptics().trigger([{ duration: 60, intensity: 0.7 }, { delay: 70, duration: 60, intensity: 0.7 }]);
+    }
+  } catch {}
 }
