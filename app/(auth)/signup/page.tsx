@@ -177,7 +177,7 @@ function SignupForm() {
         .update({ last_active_org_id: invitation!.organizationId })
         .eq("user_id", userId);
 
-      router.push("/");
+      router.push("/dashboard");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join organization.");

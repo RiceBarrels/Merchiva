@@ -90,7 +90,7 @@ export default function InvitePage({
         return;
       }
       setSuccess(true);
-      setTimeout(() => router.push("/"), 2000);
+      setTimeout(() => router.push("/dashboard"), 2000);
     } catch {
       setError("Failed to accept invitation. Please try again.");
     } finally {

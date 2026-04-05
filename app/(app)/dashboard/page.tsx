@@ -102,7 +102,7 @@ type DashBgCache = {
   alerts: { message: string; severity: "high" | "medium" }[];
 };
 
-export default function HomePage() {
+export default function DashboardPage() {
   const { organizationId } = usePermissions();
   const [refreshing, setRefreshing] = useState(false);
   const [shifts, setShifts] = useState<Shift[]>([]);
