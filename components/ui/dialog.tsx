@@ -52,7 +52,7 @@ function Dialog({
   React.useEffect(() => {
     if (ready && pendingOpen) {
       setPendingOpen(false)
-      onOpenChange?.(true)
+      onOpenChange?.(true, undefined as never)
     }
   }, [ready, pendingOpen, onOpenChange])
 
