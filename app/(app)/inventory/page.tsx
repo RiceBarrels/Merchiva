@@ -65,7 +65,6 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
 import { usePermissions } from "@/lib/context/permissions";
-import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton-loaders";
 
 const statusConfig: Record<
   InventoryStatus,
@@ -86,7 +85,6 @@ export default function InventoryPage() {
   const { organizationId } = usePermissions();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -113,7 +111,6 @@ export default function InventoryPage() {
     if (cached) {
       setItems(cached.items);
       setTransactions(cached.transactions);
-      setLoading(false);
       setRefreshing(true);
     }
 
@@ -127,7 +124,6 @@ export default function InventoryPage() {
         console.error("Failed to load inventory:", err);
       })
       .finally(() => {
-        setLoading(false);
         setRefreshing(false);
       });
   }, [organizationId]);
@@ -262,24 +258,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {loading ? (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
-          </div>
-          <div className="rounded-[0.3rem] border overflow-hidden">
-            <table className="w-full">
-              <tbody>
-                <SkeletonRow cols={9} />
-                <SkeletonRow cols={9} />
-                <SkeletonRow cols={9} />
-                <SkeletonRow cols={9} />
-                <SkeletonRow cols={9} />
-              </tbody>
-            </table>
-          </div>
-        </>
-      ) : (<>
+      <>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -669,7 +648,7 @@ export default function InventoryPage() {
           </div>
         </DialogContent>
       </Dialog>
-      </>)}
+      </>
     </div>
     </PermissionGuard>
   );
