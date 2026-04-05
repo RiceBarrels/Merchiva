@@ -239,6 +239,11 @@ export default function StaffingPage() {
   const [savingTask,      setSavingTask]      = useState(false);
   const [viewTasksDialog, setViewTasksDialog] = useState<{ open: boolean; role: StaffRole | null }>({ open: false, role: null });
 
+  // ─── Today's Tasks ───
+  const [todayTasks,       setTodayTasks]       = useState<RoleTask[]>([]);
+  const [taskCompletions,  setTaskCompletions]  = useState<Record<string, boolean>>({});
+  const [loadingTodayTasks, setLoadingTodayTasks] = useState(false);
+
   // ─── Shift card menu ───
   const [shiftMenuOpen, setShiftMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -635,6 +640,7 @@ export default function StaffingPage() {
     try {
       const tasks = await getRoleTasks(roleId);
       setRoleTasksCache((prev) => ({ ...prev, [roleId]: tasks }));
+      setCache(`role_tasks_${roleId}`, tasks);
     } catch (err) {
       console.error("Failed to load role tasks:", err);
     } finally {
@@ -847,6 +853,74 @@ export default function StaffingPage() {
   const todayStr = isoDate(new Date());
   const isToday  = (d: Date) => isoDate(d) === todayStr;
   const monthYear = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  // ─── Load today's role tasks (cache-first, then fresh) ────────────────────
+  useEffect(() => {
+    if (!myMemberId || shifts.length === 0) return;
+    const todayShifts = shifts.filter((s) => s.memberId === myMemberId && s.date === todayStr);
+    if (todayShifts.length === 0) { setTodayTasks([]); return; }
+
+    const roleNames = [...new Set(todayShifts.flatMap((s) => s.staffRoles ?? []))];
+    const roleIds = roleNames
+      .map((name) => roles.find((r) => r.name.toLowerCase() === name.toLowerCase())?.id)
+      .filter(Boolean) as string[];
+
+    if (roleIds.length === 0) { setTodayTasks([]); return; }
+
+    // Show cached tasks immediately
+    const cachedAll: RoleTask[] = [];
+    for (const roleId of roleIds) {
+      const cached = getCached<RoleTask[]>(`role_tasks_${roleId}`);
+      if (cached) cachedAll.push(...cached);
+    }
+    cachedAll.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
+    setTodayTasks(cachedAll);
+
+    // Load completions from localStorage
+    const completions: Record<string, boolean> = {};
+    for (const task of cachedAll) {
+      completions[task.id] = getCached<boolean>(`task_done_${task.id}_${todayStr}`) ?? false;
+    }
+    setTaskCompletions(completions);
+
+    // Fetch fresh in background
+    setLoadingTodayTasks(true);
+    Promise.all(
+      roleIds.map((roleId) =>
+        getRoleTasks(roleId).then((tasks) => {
+          setCache(`role_tasks_${roleId}`, tasks);
+          setRoleTasksCache((prev) => ({ ...prev, [roleId]: tasks }));
+          return tasks;
+        })
+      )
+    )
+      .then((results) => {
+        const fresh = results.flat().sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
+        setTodayTasks(fresh);
+        // Merge completions for any new tasks
+        setTaskCompletions((prev) => {
+          const next = { ...prev };
+          for (const task of fresh) {
+            if (!(task.id in next)) {
+              next[task.id] = getCached<boolean>(`task_done_${task.id}_${todayStr}`) ?? false;
+            }
+          }
+          return next;
+        });
+      })
+      .catch((err) => console.error("Failed to load today tasks:", err))
+      .finally(() => setLoadingTodayTasks(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shifts, myMemberId, roles]);
+
+  const toggleTaskDone = (taskId: string) => {
+    hapticLight();
+    setTaskCompletions((prev) => {
+      const next = { ...prev, [taskId]: !prev[taskId] };
+      setCache(`task_done_${taskId}_${todayStr}`, next[taskId]);
+      return next;
+    });
+  };
 
   const prevWeekDates = useMemo(() => {
     const d = new Date(weekStart); d.setDate(d.getDate() - 7); return getWeekDates(d);
@@ -1314,6 +1388,62 @@ export default function StaffingPage() {
             );
           })}
         </div>
+
+        {/* ─── Today's Tasks ──────────────────────────────────────── */}
+        {activeTab === "myShifts" && (() => {
+          const todayShifts = shifts.filter((s) => s.memberId === myMemberId && s.date === todayStr);
+          if (todayShifts.length === 0) return null;
+
+          const doneCount = todayTasks.filter((t) => taskCompletions[t.id]).length;
+
+          return (
+            <div className="border border-border p-3 mb-4">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <Sun className="h-4 w-4 text-stone-500" />
+                  <span className="text-sm font-semibold text-stone-900">Today&apos;s Tasks</span>
+                </div>
+                {todayTasks.length > 0 && (
+                  <span className="text-xs font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200">
+                    {doneCount}/{todayTasks.length} done
+                  </span>
+                )}
+              </div>
+              {todayTasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {loadingTodayTasks ? "Loading tasks…" : "No tasks assigned for today"}
+                </p>
+              ) : (
+                <div className="space-y-0.5">
+                  {todayTasks.map((task) => {
+                    const done = !!taskCompletions[task.id];
+                    return (
+                      <button
+                        key={task.id}
+                        onClick={() => toggleTaskDone(task.id)}
+                        className="flex items-start gap-2.5 w-full text-left py-1 hover:bg-stone-50 -mx-1 px-1 transition-colors"
+                      >
+                        <div className={`mt-0.5 h-4 w-4 shrink-0 border flex items-center justify-center transition-colors ${done ? "bg-stone-900 border-stone-900" : "border-stone-400"}`}>
+                          {done && <Check className="h-2.5 w-2.5 text-white" />}
+                        </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {task.startTime && task.endTime && (
+                            <span className="font-mono text-[11px] text-stone-400 shrink-0 tabular-nums">
+                              {task.startTime.slice(0, 5)}–{task.endTime.slice(0, 5)}
+                            </span>
+                          )}
+                          <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-stone-800"}`}>
+                            {task.title}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ─── Week Calendar Strip (swipe left/right to change weeks) ── */}
         {activeTab !== "roles" && activeTab !== "table" && (
