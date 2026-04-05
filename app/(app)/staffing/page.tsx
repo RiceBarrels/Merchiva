@@ -1307,16 +1307,6 @@ export default function StaffingPage() {
   const [batchDialog, setBatchDialog] = useState(false);
   const [batchForm, setBatchForm] = useState({ startTime: "09:00", endTime: "17:00", roleNames: [] as string[] });
 
-  if (loading) {
-    return (
-      <PermissionGuard section="staffing">
-        <div className="flex h-full items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </PermissionGuard>
-    );
-  }
-
   return (
     <PermissionGuard section="staffing">
       <div className={`p-3 sm:p-5 mx-auto ${activeTab === "table" ? "max-w-5xl" : "max-w-xl"}`}>
@@ -1557,15 +1547,6 @@ export default function StaffingPage() {
                                       style={{ backgroundColor: matchedRole.color }}
                                     />
                                     <span className="text-xs font-medium text-stone-600">{matchedRole.name}</span>
-                                    <button
-                                      onClick={async () => {
-                                        await loadRoleTasksFor(matchedRole.id);
-                                        setViewTasksDialog({ open: true, role: matchedRole });
-                                      }}
-                                      className="text-[11px] font-medium underline-offset-2 hover:underline text-stone-400 hover:text-stone-700 transition-colors"
-                                    >
-                                      View tasks
-                                    </button>
                                   </span>
                                 ))}
                               </div>
@@ -3580,6 +3561,44 @@ export default function StaffingPage() {
                   </div>
                 )}
               </div>
+
+              {/* Today's tasks for this shift */}
+              {s.date === todayStr && todayTasks.length > 0 && (
+                <div className="border-t border-border px-5 py-3">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-xs font-semibold text-stone-500">Tasks</p>
+                    <span className="text-xs font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200">
+                      {todayTasks.filter((t) => taskCompletions[t.id]).length}/{todayTasks.length} done
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {todayTasks.map((task) => {
+                      const done = !!taskCompletions[task.id];
+                      return (
+                        <button
+                          key={task.id}
+                          onClick={() => toggleTaskDone(task.id)}
+                          className="flex items-start gap-2.5 w-full text-left py-1 hover:bg-stone-50 -mx-1 px-1 transition-colors"
+                        >
+                          <div className={`mt-0.5 h-4 w-4 shrink-0 border flex items-center justify-center transition-colors ${done ? "bg-stone-900 border-stone-900" : "border-stone-400"}`}>
+                            {done && <Check className="h-2.5 w-2.5 text-white" />}
+                          </div>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {task.startTime && task.endTime && (
+                              <span className="font-mono text-[11px] text-stone-400 shrink-0 tabular-nums">
+                                {task.startTime.slice(0, 5)}–{task.endTime.slice(0, 5)}
+                              </span>
+                            )}
+                            <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-stone-800"}`}>
+                              {task.title}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Action buttons */}
               <div className="border-t border-border p-4 space-y-2">

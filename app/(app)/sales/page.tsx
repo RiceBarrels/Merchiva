@@ -10,7 +10,7 @@ import {
   CalendarDays,
   Zap,
   ArrowUpRight,
-  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -38,6 +38,7 @@ import {
 import { getSalesHistory, getTodayHourlyRecords } from "@/lib/db/sales";
 import type { SalesRecord } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { getCached, setCache } from "@/lib/cache";
 
 const weatherIcon = (w: string) => {
   if (w === "sunny") return <CloudSun className="h-4 w-4 text-amber-500" />;
@@ -45,32 +46,28 @@ const weatherIcon = (w: string) => {
   return <Cloud className="h-4 w-4 text-slate-400" />;
 };
 
+type SalesCache = { history: SalesRecord[]; hourly: SalesRecord[] };
+
 export default function SalesPage() {
-  const [history, setHistory] = useState<SalesRecord[]>([]);
-  const [hourly, setHourly] = useState<SalesRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<SalesRecord[]>(() => getCached<SalesCache>("sales_30d")?.history ?? []);
+  const [hourly, setHourly] = useState<SalesRecord[]>(() => getCached<SalesCache>("sales_30d")?.hourly ?? []);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
+    setRefreshing(true);
     Promise.all([getSalesHistory(30), getTodayHourlyRecords()])
       .then(([hist, hrly]) => {
         setHistory(hist);
         setHourly(hrly);
+        setCache("sales_30d", { history: hist, hourly: hrly });
       })
       .catch((err) => {
         console.error("Failed to load sales:", err);
       })
       .finally(() => {
-        setLoading(false);
+        setRefreshing(false);
       });
   }, []);
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   const histChartData = history.map((s) => ({
     date: new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
@@ -113,11 +110,14 @@ export default function SalesPage() {
     <PermissionGuard section="sales">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Sales Prediction</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            AI-powered forecasting using weather, foot traffic, and historical patterns
-          </p>
+        <div className="flex items-center gap-2">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Sales Prediction</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              AI-powered forecasting using weather, foot traffic, and historical patterns
+            </p>
+          </div>
+          {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
         </div>
         {accuracy > 0 && (
           <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">

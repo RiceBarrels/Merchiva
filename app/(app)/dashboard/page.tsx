@@ -104,7 +104,6 @@ type DashBgCache = {
 
 export default function HomePage() {
   const { organizationId } = usePermissions();
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -153,7 +152,6 @@ export default function HomePage() {
       setShifts(cachedBg.shifts);
       setConversations(cachedBg.conversations);
       setAlerts(cachedBg.alerts);
-      setLoading(false);
       setRefreshing(true);
     }
 
@@ -235,7 +233,6 @@ export default function HomePage() {
     ]).then(() => {
       setCache(cacheKey, { shifts: fetchedShifts, conversations: fetchedConversations, alerts: fetchedAlerts });
     }).finally(() => {
-      setLoading(false);
       setRefreshing(false);
     });
   }, [organizationId]);
@@ -487,13 +484,6 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Rest of content — loads async */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-      <>
       {/* Alerts */}
       {alerts.length > 0 && (
         <section>
@@ -622,8 +612,6 @@ export default function HomePage() {
           </div>
         )}
       </section>
-      </>
-      )}
 
       {/* Evidence upload modal */}
       {evidenceTaskId && (() => {

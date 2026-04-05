@@ -68,7 +68,6 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
 import { usePermissions } from "@/lib/context/permissions";
-import { SkeletonCard, SkeletonRow } from "@/components/ui/skeleton-loaders";
 
 const alertConfig = {
   none:           { label: "Healthy",         icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -98,7 +97,6 @@ const BLANK: Partial<Product> = {
 export default function ProductsPage() {
   const { organizationId } = usePermissions();
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId]     = useState<string | null>(null);
   const [search, setSearch]     = useState("");
@@ -119,7 +117,6 @@ export default function ProductsPage() {
     const cached = getCached<Product[]>(cacheKey);
     if (cached) {
       setProducts(cached);
-      setLoading(false);
       setRefreshing(true);
     }
 
@@ -132,7 +129,6 @@ export default function ProductsPage() {
         console.error("Failed to load products:", err);
       })
       .finally(() => {
-        setLoading(false);
         setRefreshing(false);
       });
   }, [organizationId]);
@@ -217,26 +213,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {loading && (
-        <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
-          </div>
-          <div className="rounded-[0.3rem] border overflow-hidden">
-            <table className="w-full">
-              <tbody>
-                <SkeletonRow cols={10} />
-                <SkeletonRow cols={10} />
-                <SkeletonRow cols={10} />
-                <SkeletonRow cols={10} />
-                <SkeletonRow cols={10} />
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-
-      {!loading && <><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard label="Products"       value={String(products.length)} icon={ShoppingBag} />
         <SummaryCard label="Revenue (month)"value={`$${totalRevenue.toLocaleString()}`} icon={TrendingUp} />
         <SummaryCard label="Avg Margin"     value={`${avgMargin}%`}         icon={ArrowUpRight} />
@@ -430,7 +407,7 @@ export default function ProductsPage() {
         </>
       )}
 
-      </>}
+      </>
 
       {/* Add Product Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
