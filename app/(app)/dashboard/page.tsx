@@ -136,7 +136,12 @@ export default function HomePage() {
       }
       setUserReady(true);
       if (organizationId) {
-        getTodos(user.id, organizationId).then(setTodos).catch(() => {});
+        const cachedTodos = getCached<Todo[]>(`todos_${organizationId}`);
+        if (cachedTodos) setTodos(cachedTodos);
+        getTodos(user.id, organizationId).then((fetched) => {
+          setTodos(fetched);
+          setCache(`todos_${organizationId}`, fetched);
+        }).catch(() => {});
       }
     });
   }, [organizationId]);
@@ -195,12 +200,17 @@ export default function HomePage() {
           getTodayCompletions(organizationId),
         ]);
         const flat = allTaskArrays.flat();
-        // Merge completions
+        // Merge completions — localStorage first (shared with staffing), then Supabase
         for (const task of flat) {
+          const lsChecked = getCached<boolean>(`task_done_${task.id}_${today}`) ?? false;
           const completion = completions.find((c) => c.roleTaskId === task.id);
           if (completion) {
             task.checked = true;
             task.checkedBy = completion.userName;
+            setCache(`task_done_${task.id}_${today}`, true);
+          } else if (lsChecked) {
+            task.checked = true;
+            task.checkedBy = "You";
           }
         }
         setRoleTasks(flat);
@@ -311,6 +321,7 @@ export default function HomePage() {
       const task = roleTasks.find((rt) => rt.id === evidenceTaskId);
       setRoleTasks((prev) => prev.map((rt) => rt.id === evidenceTaskId ? { ...rt, checked: true, checkedBy: userName || "You" } : rt));
       if (organizationId) {
+        setCache(`task_done_${evidenceTaskId}_${today}`, true);
         completeTask(evidenceTaskId, organizationId, userName || "Unknown").catch(() => {});
       }
       setEvidenceTaskId(null);
@@ -410,6 +421,7 @@ export default function HomePage() {
                         setEvidenceTaskId(t.id);
                         setEvidenceFiles([]);
                       } else if (organizationId) {
+                        setCache(`task_done_${t.id}_${today}`, true);
                         setRoleTasks((prev) => prev.map((rt) => rt.id === t.id ? { ...rt, checked: true, checkedBy: userName || "You" } : rt));
                         completeTask(t.id, organizationId, userName || "Unknown").catch(() => {});
                         notifyChatsForTask(t);
@@ -487,12 +499,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Rest of content — loads async */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
+      {/* Rest of content — loads async, shown immediately with empty/cached state */}
       <>
       {/* Alerts */}
       {alerts.length > 0 && (
@@ -623,7 +630,6 @@ export default function HomePage() {
         )}
       </section>
       </>
-      )}
 
       {/* Evidence upload modal */}
       {evidenceTaskId && (() => {
