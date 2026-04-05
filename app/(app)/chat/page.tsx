@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/drawer";
 import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
+import { getCached, setCache } from "@/lib/cache";
 import {
   getConversations, getMessages, sendMessage, addMembersToConversation,
   getReactions, addReaction, removeReaction, deleteMessage, uploadChatFile,
@@ -62,7 +63,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -97,26 +98,34 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!organizationId) return;
+    // Show cached conversations immediately
+    const cachedConvs = getCached<ChatConversation[]>(`conversations_${organizationId}`);
+    if (cachedConvs) setConversations(cachedConvs);
+    setLoading(false);
+
     Promise.all([
       getConversations(organizationId),
       getTeamForScheduling(organizationId),
     ])
       .then(async ([convs, t]) => {
         setConversations(convs);
+        setCache(`conversations_${organizationId}`, convs);
         setTeam(t);
         const userIds = t.map((m) => m.userId);
         const avMap = await getAvatarMap(userIds);
         setAvatars(avMap);
       })
-      .catch((err) => console.error("Chat load failed:", err))
-      .finally(() => setLoading(false));
+      .catch((err) => console.error("Chat load failed:", err));
   }, [organizationId]);
 
   // Load messages when conversation changes
   useEffect(() => {
     if (!activeConv) return;
+    const cachedMsgs = getCached<ChatMessage[]>(`messages_${activeConv.id}`);
+    if (cachedMsgs) setMessages(cachedMsgs);
     getMessages(activeConv.id).then(async (msgs) => {
       setMessages(msgs);
+      setCache(`messages_${activeConv.id}`, msgs.slice(-30));
       const rxns = await getReactions(msgs.map((m) => m.id));
       setReactions(rxns);
     }).catch(console.error);
@@ -151,7 +160,9 @@ export default function ChatPage() {
           };
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
-            return [...prev, msg];
+            const updated = [...prev, msg];
+            setCache(`messages_${activeConv.id}`, updated.slice(-30));
+            return updated;
           });
         }
       )
