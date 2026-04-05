@@ -132,7 +132,7 @@ export default function SetupPage() {
           .single()
           .then(({ data }) => {
             if (data) {
-              router.replace("/dashboard");
+              router.replace("/");
             } else {
               // Restore state saved before OAuth redirect
               try {
@@ -279,7 +279,7 @@ export default function SetupPage() {
 
       localStorage.removeItem(STORAGE_KEY);
       hapticSuccess();
-      router.push("/dashboard");
+      router.push("/");
       router.refresh();
     } catch (err) {
       hapticError();
