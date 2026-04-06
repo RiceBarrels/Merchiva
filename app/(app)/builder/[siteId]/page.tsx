@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Copy,
   Eye,
   Globe,
@@ -35,6 +36,9 @@ import {
   Navigation,
   Footprints,
   Minus,
+  ShoppingCart,
+  Gift,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage } from "@/lib/db/sites";
@@ -73,6 +77,9 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "login-form":         return { title: "Sign In", redirectUrl: "/dashboard" };
     case "code-block":         return { language: "html", code: "<h1>Hello World</h1>", execute: false, height: "300px" };
     case "membership-widget":  return { title: "Member Benefits", tierName: "Gold Member", tierColor: "#f59e0b", tierIcon: "⭐", showPoints: true, previewPerks: ["Free drink every 3 hours", "10% off weekends", "Priority seating"] };
+    case "cart":               return { title: "Your Cart", emptyText: "Your cart is empty.", checkoutLabel: "Checkout" };
+    case "checkout":           return { title: "Checkout", submitLabel: "Place Order" };
+    case "reward":             return { title: "Earn Rewards", description: "Earn points on every purchase!", pointsLabel: "Points", backgroundColor: "#f0fdf4", textColor: "#166534" };
     default:                   return {};
   }
 }
@@ -80,40 +87,51 @@ function defaultProps(type: ElementType): Record<string, unknown> {
 // ─── Element palette config ───────────────────────────────────────────────────
 
 const PALETTE: { label: string; icon: React.ReactNode; type: ElementType }[][] = [
+  // Layout
   [
     { label: "Text",      icon: <Type className="h-3.5 w-3.5" />,             type: "text" },
     { label: "Image",     icon: <Image className="h-3.5 w-3.5" />,            type: "image" },
     { label: "Button",    icon: <MousePointerClick className="h-3.5 w-3.5" />, type: "button" },
-    { label: "Divider",   icon: <Minus className="h-3.5 w-3.5" />,            type: "divider" },
-    { label: "Spacer",    icon: <SeparatorHorizontal className="h-3.5 w-3.5" />, type: "spacer" },
     { label: "Container", icon: <Square className="h-3.5 w-3.5" />,           type: "container" },
     { label: "Columns",   icon: <Columns2 className="h-3.5 w-3.5" />,         type: "columns" },
+    { label: "Divider",   icon: <Minus className="h-3.5 w-3.5" />,            type: "divider" },
+    { label: "Spacer",    icon: <SeparatorHorizontal className="h-3.5 w-3.5" />, type: "spacer" },
   ],
+  // Sections
   [
     { label: "Hero",      icon: <LayoutDashboard className="h-3.5 w-3.5" />,  type: "hero" },
     { label: "Nav",       icon: <Navigation className="h-3.5 w-3.5" />,       type: "nav" },
     { label: "Footer",    icon: <Footprints className="h-3.5 w-3.5" />,       type: "footer" },
   ],
-  [
-    { label: "Product",   icon: <ShoppingBag className="h-3.5 w-3.5" />,      type: "product-card" },
-    { label: "Booking",   icon: <CalendarDays className="h-3.5 w-3.5" />,     type: "booking-form" },
-    { label: "Coupon",    icon: <Tag className="h-3.5 w-3.5" />,              type: "coupon-banner" },
-    { label: "Pricing",   icon: <CreditCard className="h-3.5 w-3.5" />,       type: "pricing-table" },
-  ],
+  // Content
   [
     { label: "Review",    icon: <MessageSquare className="h-3.5 w-3.5" />,    type: "testimonial" },
     { label: "FAQ",       icon: <HelpCircle className="h-3.5 w-3.5" />,       type: "faq" },
     { label: "Gallery",   icon: <GalleryHorizontal className="h-3.5 w-3.5" />, type: "gallery" },
+    { label: "Pricing",   icon: <CreditCard className="h-3.5 w-3.5" />,       type: "pricing-table" },
   ],
+  // Commerce
+  [
+    { label: "Product",   icon: <ShoppingBag className="h-3.5 w-3.5" />,      type: "product-card" },
+    { label: "Booking",   icon: <CalendarDays className="h-3.5 w-3.5" />,     type: "booking-form" },
+    { label: "Coupon",    icon: <Tag className="h-3.5 w-3.5" />,              type: "coupon-banner" },
+    { label: "Cart",      icon: <ShoppingCart className="h-3.5 w-3.5" />,     type: "cart" },
+    { label: "Checkout",  icon: <CreditCard className="h-3.5 w-3.5" />,       type: "checkout" },
+  ],
+  // Account
   [
     { label: "Login",      icon: <LogIn className="h-3.5 w-3.5" />,            type: "login-form" },
+    { label: "Membership", icon: <Star className="h-3.5 w-3.5" />,             type: "membership-widget" },
+    { label: "Reward",     icon: <Gift className="h-3.5 w-3.5" />,             type: "reward" },
+  ],
+  // Advanced
+  [
     { label: "HTML",       icon: <Code2 className="h-3.5 w-3.5" />,            type: "custom-html" },
     { label: "Code",       icon: <Code2 className="h-3.5 w-3.5" />,            type: "code-block" },
-    { label: "Membership", icon: <CreditCard className="h-3.5 w-3.5" />,       type: "membership-widget" },
   ],
 ];
 
-const PALETTE_LABELS = ["Basic", "Layout", "Commerce", "Content", "Advanced"];
+const PALETTE_LABELS = ["Layout", "Sections", "Content", "Commerce", "Account", "Advanced"];
 
 // ─── Properties panel components ─────────────────────────────────────────────
 
@@ -163,6 +181,82 @@ function PropTextarea({ value, onChange, rows = 3 }: { value: string; onChange: 
       rows={rows}
       className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring resize-y font-mono"
     />
+  );
+}
+
+function Section({ label, children, defaultOpen = true }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-t border-border/50 mt-2 pt-1">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+      >
+        {label}
+        <ChevronRight className={cn("h-3 w-3 transition-transform", open && "rotate-90")} />
+      </button>
+      {open && <div className="pt-0.5">{children}</div>}
+    </div>
+  );
+}
+
+// Universal style panel — edits props.style (React.CSSProperties as Record)
+function StyleProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  const style = (props.style as Record<string, string>) || {};
+  const s = (key: string) => style[key] || "";
+  const set = (key: string, val: string) => {
+    const next = { ...style };
+    if (val) next[key] = val; else delete next[key];
+    onChange("style", next);
+  };
+
+  return (
+    <>
+      <Section label="Spacing" defaultOpen={false}>
+        <PropRow label="Padding"><PropInput value={s("padding")} onChange={(v) => set("padding", v)} placeholder="1rem" /></PropRow>
+        <PropRow label="Margin"><PropInput value={s("margin")} onChange={(v) => set("margin", v)} placeholder="0 auto" /></PropRow>
+      </Section>
+      <Section label="Size" defaultOpen={false}>
+        <PropRow label="Width"><PropInput value={s("width")} onChange={(v) => set("width", v)} placeholder="100%" /></PropRow>
+        <PropRow label="Height"><PropInput value={s("height")} onChange={(v) => set("height", v)} placeholder="auto" /></PropRow>
+        <PropRow label="Max-width"><PropInput value={s("maxWidth")} onChange={(v) => set("maxWidth", v)} placeholder="1200px" /></PropRow>
+        <PropRow label="Min-height"><PropInput value={s("minHeight")} onChange={(v) => set("minHeight", v)} placeholder="200px" /></PropRow>
+      </Section>
+      <Section label="Background" defaultOpen={false}>
+        <PropRow label="Color">
+          <div className="flex gap-1">
+            <input type="color" value={s("backgroundColor") || "#ffffff"} onChange={(e) => set("backgroundColor", e.target.value)} className="h-7 w-8 rounded border border-border cursor-pointer shrink-0" />
+            <input type="text" value={s("backgroundColor")} onChange={(e) => set("backgroundColor", e.target.value)} placeholder="transparent" className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring" />
+          </div>
+        </PropRow>
+        <PropRow label="Image"><PropInput value={s("backgroundImage")} onChange={(v) => set("backgroundImage", v)} placeholder="url(https://…)" /></PropRow>
+        <PropRow label="Size">
+          <select value={s("backgroundSize")} onChange={(e) => set("backgroundSize", e.target.value)} className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring">
+            <option value="">–</option>
+            <option value="cover">Cover</option>
+            <option value="contain">Contain</option>
+            <option value="auto">Auto</option>
+          </select>
+        </PropRow>
+      </Section>
+      <Section label="Border" defaultOpen={false}>
+        <PropRow label="Border"><PropInput value={s("border")} onChange={(v) => set("border", v)} placeholder="1px solid #e5e7eb" /></PropRow>
+        <PropRow label="Radius"><PropInput value={s("borderRadius")} onChange={(v) => set("borderRadius", v)} placeholder="8px" /></PropRow>
+        <PropRow label="Shadow"><PropInput value={s("boxShadow")} onChange={(v) => set("boxShadow", v)} placeholder="0 2px 8px rgba(0,0,0,0.1)" /></PropRow>
+      </Section>
+      <Section label="Effects" defaultOpen={false}>
+        <PropRow label="Opacity"><PropInput value={s("opacity")} onChange={(v) => set("opacity", v)} placeholder="1" /></PropRow>
+        <PropRow label="Overflow">
+          <select value={s("overflow")} onChange={(e) => set("overflow", e.target.value)} className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring">
+            <option value="">–</option>
+            <option value="visible">Visible</option>
+            <option value="hidden">Hidden</option>
+            <option value="scroll">Scroll</option>
+            <option value="auto">Auto</option>
+          </select>
+        </PropRow>
+      </Section>
+    </>
   );
 }
 
@@ -502,6 +596,37 @@ function MembershipWidgetProps({ props, onChange }: { props: Record<string, unkn
   );
 }
 
+function CartProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  return (
+    <>
+      <PropRow label="Title"><PropInput value={(props.title as string) || ""} onChange={(v) => onChange("title", v)} placeholder="Your Cart" /></PropRow>
+      <PropRow label="Empty text"><PropInput value={(props.emptyText as string) || ""} onChange={(v) => onChange("emptyText", v)} placeholder="Your cart is empty." /></PropRow>
+      <PropRow label="Checkout btn"><PropInput value={(props.checkoutLabel as string) || ""} onChange={(v) => onChange("checkoutLabel", v)} placeholder="Checkout" /></PropRow>
+    </>
+  );
+}
+
+function CheckoutProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  return (
+    <>
+      <PropRow label="Title"><PropInput value={(props.title as string) || ""} onChange={(v) => onChange("title", v)} placeholder="Checkout" /></PropRow>
+      <PropRow label="Submit btn"><PropInput value={(props.submitLabel as string) || ""} onChange={(v) => onChange("submitLabel", v)} placeholder="Place Order" /></PropRow>
+    </>
+  );
+}
+
+function RewardProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  return (
+    <>
+      <PropRow label="Title"><PropInput value={(props.title as string) || ""} onChange={(v) => onChange("title", v)} placeholder="Earn Rewards" /></PropRow>
+      <PropRow label="Description"><PropTextarea value={(props.description as string) || ""} onChange={(v) => onChange("description", v)} rows={2} /></PropRow>
+      <PropRow label="Points label"><PropInput value={(props.pointsLabel as string) || ""} onChange={(v) => onChange("pointsLabel", v)} placeholder="Points" /></PropRow>
+      <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#f0fdf4"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
+      <PropRow label="Text color"><PropInput type="color" value={(props.textColor as string) || "#166534"} onChange={(v) => onChange("textColor", v)} /></PropRow>
+    </>
+  );
+}
+
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
 function PropertiesPanel({ element, onChange, products }: { element: SiteElement; onChange: (k: string, v: unknown) => void; products: Product[] }) {
@@ -512,6 +637,7 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
     "coupon-banner": "Coupon Banner", "pricing-table": "Pricing Table", testimonial: "Testimonial",
     faq: "FAQ", gallery: "Gallery", "custom-html": "Custom HTML", "login-form": "Login Form",
     "code-block": "Code Block", "membership-widget": "Membership Widget",
+    cart: "Cart", checkout: "Checkout", reward: "Reward",
   };
 
   return (
@@ -542,6 +668,10 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
         {element.type === "login-form"         && <LoginFormProps props={element.props} onChange={onChange} />}
         {element.type === "code-block"         && <CodeBlockProps props={element.props} onChange={onChange} />}
         {element.type === "membership-widget"  && <MembershipWidgetProps props={element.props} onChange={onChange} />}
+        {element.type === "cart"               && <CartProps props={element.props} onChange={onChange} />}
+        {element.type === "checkout"           && <CheckoutProps props={element.props} onChange={onChange} />}
+        {element.type === "reward"             && <RewardProps props={element.props} onChange={onChange} />}
+        <StyleProps props={element.props} onChange={onChange} />
       </div>
     </div>
   );
