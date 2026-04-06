@@ -281,6 +281,8 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // Builder subpages (/builder/[siteId]/...) need full viewport — force drawer mode
+  const isBuilderPage = pathname.startsWith("/builder/");
   const openDialogs = useOpenDialogCount();
   const hasDialog = openDialogs > 0;
   const dialogTitle = useDialogTitle();
@@ -438,53 +440,56 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* ── Mobile layout ── */}
-      <div className="md:hidden relative h-screen overflow-hidden bg-background">
-        {/* Floating hamburger — follows content slide */}
-        <button
-          onClick={() => {
-            if (hasDialog) {
-              // Find and click the topmost dialog's hidden close button
-              const topDialog = document.getElementById(`mobile-dialog-${openDialogs - 1}`);
-              const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
-              backBtn?.click();
-            } else {
-              setIsOpen((v) => !v);
-            }
-          }}
-          className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
-          style={{
-            left: 14,
-            top: 14,
-            zIndex: hasDialog ? 200 : 50,
-            transform: hasDialog ? "none" : `translateX(${translateX}px)`,
-            transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
-            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)",
-          }}
-          aria-label={hasDialog ? "Go back" : isOpen ? "Close menu" : "Open menu"}
-        >
-          <motion.span
-            className="relative block h-5 w-5"
-            animate={{
-              rotate: hasDialog
-                ? openDialogs > 1
-                  ? -180 // multiple dialogs: stay as back arrow
-                  : -180 + dialogSwipe * 180  // last dialog: rotate back to menu
-                : btnRotation
+      {/* ── Mobile layout + builder full-viewport drawer ── */}
+      {/* On builder pages this renders on ALL screen sizes; elsewhere only on mobile (<md) */}
+      <div className={cn("relative h-screen overflow-hidden bg-background", isBuilderPage ? "flex" : "flex md:hidden")}>
+        {/* Floating hamburger — hidden on builder pages (conflicts with builder's own toolbar back-button;
+            swipe-from-left gesture still opens the sidebar on touch, desktop builder users navigate via back→site list) */}
+        {!isBuilderPage && (
+          <button
+            onClick={() => {
+              if (hasDialog) {
+                const topDialog = document.getElementById(`mobile-dialog-${openDialogs - 1}`);
+                const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
+                backBtn?.click();
+              } else {
+                setIsOpen((v) => !v);
+              }
             }}
-            transition={dragging || dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 300 }}
+            className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+            style={{
+              left: 14,
+              top: 14,
+              zIndex: hasDialog ? 200 : 50,
+              transform: hasDialog ? "none" : `translateX(${translateX}px)`,
+              transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+              boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)",
+            }}
+            aria-label={hasDialog ? "Go back" : isOpen ? "Close menu" : "Open menu"}
           >
-            <ArrowRight className="h-5 w-5 absolute inset-0" style={{
-              opacity: hasDialog ? (openDialogs > 1 ? 1 : 1 - dialogSwipe) : 0,
-              transition: dialogSwipe > 0 ? "none" : "opacity 200ms",
-            }} />
-            <Menu className="h-5 w-5 absolute inset-0" style={{
-              opacity: hasDialog ? (openDialogs > 1 ? 0 : dialogSwipe) : menuOpacity,
-              transition: dialogSwipe > 0 || dragging ? "none" : "opacity 200ms",
-            }} />
-            <X className="h-5 w-5 absolute inset-0" style={{ opacity: hasDialog ? 0 : xOpacity, transition: dragging ? "none" : "opacity 200ms" }} />
-          </motion.span>
-        </button>
+            <motion.span
+              className="relative block h-5 w-5"
+              animate={{
+                rotate: hasDialog
+                  ? openDialogs > 1
+                    ? -180
+                    : -180 + dialogSwipe * 180
+                  : btnRotation
+              }}
+              transition={dragging || dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 300 }}
+            >
+              <ArrowRight className="h-5 w-5 absolute inset-0" style={{
+                opacity: hasDialog ? (openDialogs > 1 ? 1 : 1 - dialogSwipe) : 0,
+                transition: dialogSwipe > 0 ? "none" : "opacity 200ms",
+              }} />
+              <Menu className="h-5 w-5 absolute inset-0" style={{
+                opacity: hasDialog ? (openDialogs > 1 ? 0 : dialogSwipe) : menuOpacity,
+                transition: dialogSwipe > 0 || dragging ? "none" : "opacity 200ms",
+              }} />
+              <X className="h-5 w-5 absolute inset-0" style={{ opacity: hasDialog ? 0 : xOpacity, transition: dragging ? "none" : "opacity 200ms" }} />
+            </motion.span>
+          </button>
+        )}
 
         {/* Floating dialog title pill */}
         <AnimatePresence>
@@ -547,19 +552,31 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             />
           )}
 
-          <main className="flex-1 overflow-y-auto"><div className="h-12" />{(isMobile === null || isMobile) && children}</main>
+          {/* Builder pages: no top spacer, no scroll wrapper — builder manages its own layout */}
+          {isBuilderPage ? (
+            <main className="flex-1 overflow-hidden">
+              {children}
+            </main>
+          ) : (
+            <main className="flex-1 overflow-y-auto">
+              <div className="h-12" />
+              {(isMobile === null || isMobile) && children}
+            </main>
+          )}
         </div>
       </div>
 
-      {/* ── Desktop layout: unchanged flex sidebar ── */}
-      <div className="hidden md:flex h-screen overflow-hidden bg-background">
-        <div className="w-56 h-full shrink-0">
-          <SidebarContent />
+      {/* ── Desktop layout: fixed sidebar — never shown on builder pages ── */}
+      {!isBuilderPage && (
+        <div className="hidden md:flex h-screen overflow-hidden bg-background">
+          <div className="w-56 h-full shrink-0">
+            <SidebarContent />
+          </div>
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <main className="flex-1 overflow-y-auto">{(isMobile === null || !isMobile) && children}</main>
+          </div>
         </div>
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <main className="flex-1 overflow-y-auto">{(isMobile === null || !isMobile) && children}</main>
-        </div>
-      </div>
+      )}
     </>
   );
 }
