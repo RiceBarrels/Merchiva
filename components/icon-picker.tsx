@@ -5,18 +5,94 @@ import * as LucideIcons from "lucide-react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Curated list of popular Lucide icons by category
+// Curated list of 200+ Lucide icons organized by category
 const ICON_CATEGORIES: Record<string, string[]> = {
-  Navigation: ["Home", "Menu", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "ChevronLeft", "ChevronRight", "ChevronUp", "ChevronDown", "ExternalLink", "Link", "Link2", "Navigation", "Compass", "Map", "MapPin"],
-  UI: ["Search", "Bell", "Settings", "Filter", "Grid", "List", "LayoutDashboard", "Sidebar", "PanelLeft", "PanelRight", "Maximize", "Minimize", "Eye", "EyeOff", "Check", "X", "Plus", "Minus", "Edit", "Edit2", "Edit3", "Trash", "Trash2", "Copy", "Clipboard", "Download", "Upload", "Share", "Share2", "Bookmark", "BookmarkCheck", "Star", "StarHalf", "Heart", "ThumbsUp", "ThumbsDown", "Flag", "Loader2", "RefreshCw", "ZoomIn", "ZoomOut"],
-  Commerce: ["ShoppingBag", "ShoppingCart", "CreditCard", "DollarSign", "Tag", "Percent", "Gift", "Package", "Truck", "Store", "BarChart", "BarChart2", "TrendingUp", "TrendingDown", "Wallet", "Receipt", "QrCode", "Barcode"],
-  Social: ["User", "Users", "UserPlus", "UserCheck", "MessageCircle", "MessageSquare", "Mail", "Phone", "Globe", "Instagram", "Twitter", "Facebook", "Linkedin", "Youtube", "Github", "Slack", "Twitch"],
-  Content: ["Image", "FileText", "File", "FileImage", "Video", "Music", "Mic", "Camera", "PlayCircle", "PauseCircle", "Volume2", "VolumeX", "AlignLeft", "AlignCenter", "AlignRight", "Bold", "Italic", "Underline", "Type", "Heading1", "Heading2"],
-  Misc: ["Sun", "Moon", "Cloud", "Coffee", "Utensils", "Pizza", "Apple", "Leaf", "Tree", "Flame", "Zap", "Battery", "Wifi", "Lock", "Unlock", "Shield", "Key", "Award", "Trophy", "Medal", "Sparkles", "Crown", "Diamond", "Gem"],
+  Navigation: [
+    "Home", "Menu", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+    "ChevronLeft", "ChevronRight", "ChevronUp", "ChevronDown",
+    "ChevronsUp", "ChevronsDown", "ExternalLink", "Link", "Link2",
+    "Navigation", "Compass", "Map", "MapPin", "CornerDownRight",
+    "MoveHorizontal", "Undo", "Redo",
+  ],
+  UI: [
+    "Search", "Bell", "BellRing", "Settings", "Filter", "SortAsc", "SortDesc",
+    "Grid", "List", "Layers", "Box", "LayoutDashboard", "Sidebar",
+    "Maximize", "Minimize", "Eye", "EyeOff", "Check", "X", "Plus", "Minus",
+    "Edit", "Edit2", "Trash", "Trash2", "Copy", "Clipboard",
+    "Download", "Upload", "Share", "Share2", "Bookmark", "BookmarkCheck",
+    "Star", "Heart", "ThumbsUp", "ThumbsDown", "Flag", "Tag", "Hash",
+    "Loader2", "RefreshCw", "RotateCcw", "ZoomIn", "ZoomOut",
+    "MoreHorizontal", "MoreVertical", "Circle", "Square", "Triangle",
+  ],
+  Commerce: [
+    "ShoppingBag", "ShoppingCart", "CreditCard", "DollarSign", "Coins",
+    "Wallet", "PiggyBank", "Receipt", "Tag", "Percent", "Gift",
+    "Package", "Truck", "Store", "Warehouse", "Factory",
+    "BarChart", "BarChart2", "PieChart", "LineChart",
+    "TrendingUp", "TrendingDown", "QrCode", "Barcode",
+  ],
+  Business: [
+    "Briefcase", "Building", "Building2", "Target", "Crosshair",
+    "Award", "Trophy", "Clipboard", "FileText", "File", "FolderOpen",
+    "CalendarDays", "Calendar", "Clock", "Timer", "Timer",
+    "Handshake", "HeartHandshake",
+  ],
+  People: [
+    "User", "Users", "UserPlus", "UserCheck", "UserX",
+    "Baby", "PersonStanding", "Accessibility",
+    "MessageCircle", "MessageSquare", "AtSign",
+    "Mail", "MailOpen", "Send", "Phone", "PhoneCall",
+    "Megaphone",
+  ],
+  Transport: [
+    "Car", "CarFront", "Truck", "Bus", "Bike",
+    "Ship", "Plane", "Train", "Ambulance",
+  ],
+  Nature: [
+    "Sun", "Moon", "Cloud", "CloudRain", "Snowflake", "Wind",
+    "Thermometer", "Droplets", "Flower", "Leaf", "TreePine",
+    "Mountain", "Waves", "Flame", "Zap", "Sparkles",
+  ],
+  "Food & Drink": [
+    "Coffee", "UtensilsCrossed", "Sandwich", "Pizza", "IceCream",
+    "Cake", "Wine", "Beer", "CookingPot", "Salad", "Soup",
+    "Cherry", "Apple", "Banana", "Grape", "Egg", "Fish", "Beef",
+    "Utensils",
+  ],
+  Tech: [
+    "Monitor", "Laptop", "Smartphone", "Tablet",
+    "Wifi", "Bluetooth", "Cpu", "HardDrive", "Server", "Database",
+    "Globe", "QrCode", "Battery", "Camera", "Video",
+  ],
+  Health: [
+    "Heart", "HeartPulse", "Stethoscope", "Pill", "Syringe",
+    "Activity", "Cross", "Shield", "ShieldCheck",
+  ],
+  Home: [
+    "Home", "Bed", "Bath", "Lamp", "Sofa",
+    "DoorOpen", "Key", "Lock", "Unlock",
+  ],
+  Tools: [
+    "Wrench", "Hammer", "Screwdriver", "Scissors", "Paintbrush",
+    "Ruler", "Pen", "Pencil", "Eraser",
+  ],
+  Media: [
+    "Camera", "Video", "Film", "Music", "Mic",
+    "Volume2", "VolumeX", "Play", "Pause", "SkipForward",
+    "PlayCircle", "PauseCircle", "Image", "FileImage",
+  ],
+  Social: [
+    "Globe", "Instagram", "Twitter", "Facebook", "Linkedin",
+    "Youtube", "Github", "Slack", "Twitch",
+  ],
+  Content: [
+    "Type", "Heading1", "Heading2", "AlignLeft", "AlignCenter", "AlignRight",
+    "Bold", "Italic", "Underline", "FileText", "BookOpen",
+  ],
 };
 
-// All icons flat list for search
-const ALL_ICONS = Object.values(ICON_CATEGORIES).flat();
+// All icons flat list for search (deduplicated)
+const ALL_ICONS = Array.from(new Set(Object.values(ICON_CATEGORIES).flat()));
 
 export interface IconPickerProps {
   value: string;           // icon name e.g. "Star"

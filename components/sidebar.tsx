@@ -303,7 +303,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // then commit to one side after mount.
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
+    const mq = window.matchMedia("(max-width: 1023px)");
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
