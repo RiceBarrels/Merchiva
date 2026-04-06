@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { SiteElement, SiteTheme, ElementType } from "@/lib/types";
 import type { Product } from "@/lib/types";
+import { DynamicIcon } from "@/components/icon-picker";
 
 // ─── Theme CSS vars ───────────────────────────────────────────────────────────
 
@@ -483,6 +484,19 @@ function RenderLoginForm({ props }: { props: Record<string, unknown> }) {
   );
 }
 
+function RenderIcon({ props }: { props: Record<string, unknown> }) {
+  const name = (props.name as string) || "Star";
+  const size = Number(props.size) || 32;
+  const color = (props.color as string) || "var(--sr-primary)";
+  const align = (props.align as string) || "left";
+
+  return (
+    <div style={{ textAlign: align as React.CSSProperties["textAlign"] }}>
+      <DynamicIcon name={name} size={size} color={color} />
+    </div>
+  );
+}
+
 function RenderCart({ props }: { props: Record<string, unknown> }) {
   const title = (props.title as string) || "Your Cart";
   const emptyText = (props.emptyText as string) || "Your cart is empty.";
@@ -591,6 +605,7 @@ export function SiteElementRenderer({
       case "cart":       return <RenderCart props={props} />;
       case "checkout":   return <RenderCheckout props={props} />;
       case "reward":     return <RenderReward props={props} />;
+      case "icon":       return <RenderIcon props={props} />;
       default:           return null;
     }
   })();

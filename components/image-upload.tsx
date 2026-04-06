@@ -1,0 +1,143 @@
+"use client";
+
+import { useRef, useState, DragEvent } from "react";
+import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { uploadSiteImage } from "@/lib/storage";
+import { cn } from "@/lib/utils";
+
+const ACCEPTED = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"];
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
+interface ImageUploadProps {
+  value: string;          // current URL (or empty string)
+  orgId: string;
+  onChange: (url: string) => void;
+  className?: string;
+}
+
+export function ImageUpload({ value, orgId, onChange, className }: ImageUploadProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  async function handleFile(file: File) {
+    setError(null);
+
+    if (!ACCEPTED.includes(file.type)) {
+      setError("Unsupported file type.");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setError("File exceeds 5 MB limit.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const url = await uploadSiteImage(file, orgId);
+      onChange(url);
+      // Subtle haptic on supported devices
+      if (navigator.vibrate) navigator.vibrate(30);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    // Reset so same file can be re-selected
+    e.target.value = "";
+  }
+
+  function onDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  function onDragOver(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(true);
+  }
+
+  function onDragLeave() {
+    setDragging(false);
+  }
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      {/* Drop zone / preview */}
+      <div
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        className={cn(
+          "relative rounded border border-dashed border-border transition-colors",
+          dragging && "border-blue-400 bg-blue-50/40",
+          value ? "h-24" : "h-16 flex items-center justify-center"
+        )}
+      >
+        {value ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt="Preview"
+              className="h-full w-full object-contain rounded"
+            />
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
+              title="Remove image"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-1 text-muted-foreground">
+            <ImageIcon className="h-5 w-5 opacity-40" />
+            <span className="text-[10px]">Drop image here</span>
+          </div>
+        )}
+
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center rounded bg-background/70">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      {/* Upload button */}
+      <button
+        type="button"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+        className="flex w-full items-center justify-center gap-1.5 rounded border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
+      >
+        {uploading ? (
+          <><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</>
+        ) : (
+          <><Upload className="h-3 w-3" /> Upload image</>
+        )}
+      </button>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPTED.join(",")}
+        className="hidden"
+        onChange={onInputChange}
+      />
+
+      {error && (
+        <p className="text-[11px] text-destructive">{error}</p>
+      )}
+    </div>
+  );
+}
