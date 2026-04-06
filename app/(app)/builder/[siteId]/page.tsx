@@ -1087,28 +1087,32 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     setDirty(false);
   };
 
-  // Auto-save (debounced)
-  const saveCurrentPage = useCallback(async () => {
-    if (!activePageId || !dirty) return;
-    setSaving(true);
-    try {
-      await updatePage(activePageId, { elements });
-      // Sync page cache
-      setPages((prev) => prev.map((p) => p.id === activePageId ? { ...p, elements } : p));
-      setDirty(false);
-      setSavedAt(Date.now());
-    } catch (err) {
-      console.error("Auto-save failed:", err);
-    } finally {
-      setSaving(false);
-    }
-  }, [activePageId, elements, dirty]);
+  // Auto-save (debounced) — use refs to avoid re-creating the callback on every elements change
+  const elementsRef = useRef(elements);
+  const activePageIdRef = useRef(activePageId);
+  elementsRef.current = elements;
+  activePageIdRef.current = activePageId;
 
   useEffect(() => {
     if (!dirty) return;
-    const timer = setTimeout(saveCurrentPage, 1500);
+    const timer = setTimeout(async () => {
+      const pageId = activePageIdRef.current;
+      const els = elementsRef.current;
+      if (!pageId) return;
+      setSaving(true);
+      try {
+        await updatePage(pageId, { elements: els });
+        setPages((prev) => prev.map((p) => p.id === pageId ? { ...p, elements: els } : p));
+        setDirty(false);
+        setSavedAt(Date.now());
+      } catch (err) {
+        console.error("Auto-save failed:", err);
+      } finally {
+        setSaving(false);
+      }
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [dirty, saveCurrentPage]);
+  }, [dirty]);
 
   // Element operations
   const addElement = (type: ElementType) => {
