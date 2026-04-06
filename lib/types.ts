@@ -482,3 +482,17 @@ export interface SiteBooking {
 
 // SiteElementType alias for backward compatibility
 export type SiteElementType = ElementType;
+
+// ─── Component Library ────────────────────────────────────────────────────────
+
+export interface SiteComponent {
+  id: string;
+  organizationId: string;
+  siteId: string | null;
+  name: string;
+  description: string | null;
+  elementData: SiteElement;
+  category: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
