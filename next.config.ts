@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     ? {
         output: "export",
         images: { unoptimized: true },
+        // Trailing slash ensures /dashboard → /dashboard/index.html (works with local file servers)
+        trailingSlash: true,
       }
     : {}),
 };
