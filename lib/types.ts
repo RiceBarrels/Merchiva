@@ -292,6 +292,9 @@ export interface Product {
   trend: "up" | "down" | "stable";
   alert: ProductAlert;
   alertReason?: string;
+  description?: string;
+  images?: string[];
+  pageTemplate?: SiteElement[] | null;
 }
 
 // ─── Site Builder ────────────────────────────────────────────────────────────

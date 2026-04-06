@@ -45,6 +45,20 @@ import {
   BookMarked,
   GripVertical,
   LayoutGrid,
+  MoveHorizontal,
+  Maximize,
+  Maximize2,
+  ArrowLeftRight,
+  ArrowUpDown,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Bold,
+  Link as LinkIcon,
+  Layers,
+  Sparkles,
+  Frame,
+  BoxSelect,
 } from "lucide-react";
 import {
   DndContext,
@@ -289,10 +303,13 @@ const PALETTE_LABELS = ["Layout", "Sections", "Content", "Commerce", "Account", 
 
 // ─── Properties panel components ─────────────────────────────────────────────
 
-function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
+function PropRow({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[90px_1fr] items-start gap-2 py-1.5 border-b border-border/50 last:border-0">
-      <span className="text-[11px] text-muted-foreground pt-1.5 leading-none">{label}</span>
+      <span className="text-[11px] text-muted-foreground pt-1.5 leading-none flex items-center gap-1">
+        {icon && <span className="opacity-60 shrink-0">{icon}</span>}
+        {label}
+      </span>
       <div>{children}</div>
     </div>
   );
@@ -334,7 +351,7 @@ function PropTextarea({ value, onChange, rows = 3 }: { value: string; onChange: 
   );
 }
 
-function Section({ label, children, defaultOpen = true }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function Section({ label, icon, children, defaultOpen = true }: { label: string; icon?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-t border-border/50 mt-2 pt-1">
@@ -342,7 +359,10 @@ function Section({ label, children, defaultOpen = true }: { label: string; child
         onClick={() => setOpen(!open)}
         className="flex items-center justify-between w-full py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
       >
-        {label}
+        <span className="flex items-center gap-1.5">
+          {icon && <span className="opacity-70">{icon}</span>}
+          {label}
+        </span>
         <ChevronRight className={cn("h-3 w-3 transition-transform", open && "rotate-90")} />
       </button>
       {open && <div className="pt-0.5">{children}</div>}
@@ -447,8 +467,8 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
   return (
     <>
       {/* Spacing */}
-      <Section label="Spacing" defaultOpen={false}>
-        <PropRow label="Padding">
+      <Section label="Spacing" icon={<MoveHorizontal className="h-3 w-3" />} defaultOpen={false}>
+        <PropRow label="Padding" icon={<BoxSelect className="h-3 w-3" />}>
           <div className="flex items-center gap-1">
             <input
               type="number"
@@ -471,7 +491,7 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
             </div>
           )}
         </PropRow>
-        <PropRow label="Margin">
+        <PropRow label="Margin" icon={<Maximize2 className="h-3 w-3" />}>
           <div className="flex items-center gap-1">
             <input
               type="number"
@@ -497,8 +517,8 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
       </Section>
 
       {/* Size */}
-      <Section label="Size" defaultOpen={false}>
-        <PropRow label="Width">
+      <Section label="Size" icon={<Maximize className="h-3 w-3" />} defaultOpen={false}>
+        <PropRow label="Width" icon={<ArrowLeftRight className="h-3 w-3" />}>
           <div className="flex flex-wrap gap-1 mb-1">
             {WIDTH_PRESETS.map((p) => (
               <button key={p.value} onClick={() => set("width", p.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("width") === p.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{p.label}</button>
@@ -506,7 +526,7 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
           </div>
           <PropInput value={s("width")} onChange={(v) => set("width", v)} placeholder="Custom: 300px" />
         </PropRow>
-        <PropRow label="Height">
+        <PropRow label="Height" icon={<ArrowUpDown className="h-3 w-3" />}>
           <div className="flex gap-1 mb-1">
             <button onClick={() => set("height", "auto")} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("height") === "auto" || !s("height") ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>Auto</button>
           </div>
@@ -560,8 +580,8 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
       </Section>
 
       {/* Background */}
-      <Section label="Background" defaultOpen={false}>
-        <PropRow label="Color">
+      <Section label="Background" icon={<Paintbrush className="h-3 w-3" />} defaultOpen={false}>
+        <PropRow label="Color" icon={<Palette className="h-3 w-3" />}>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {BG_SWATCHES.map((sw) => (
               <button
@@ -579,8 +599,8 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
       </Section>
 
       {/* Border */}
-      <Section label="Border" defaultOpen={false}>
-        <PropRow label="Border">
+      <Section label="Border" icon={<Frame className="h-3 w-3" />} defaultOpen={false}>
+        <PropRow label="Border" icon={<Square className="h-3 w-3" />}>
           <label className="flex items-center gap-2 cursor-pointer">
             <div
               onClick={() => {
@@ -599,7 +619,7 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
             <span className="text-xs">{hasBorder ? "On" : "Off"}</span>
           </label>
         </PropRow>
-        <PropRow label="Rounded">
+        <PropRow label="Rounded" icon={<Minus className="h-3 w-3 rotate-90 opacity-50" />}>
           <div className="flex flex-wrap gap-1">
             {ROUNDED.map((r) => (
               <button key={r.value} onClick={() => set("borderRadius", r.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("borderRadius") === r.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{r.label}</button>
@@ -609,15 +629,15 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
       </Section>
 
       {/* Effects */}
-      <Section label="Effects" defaultOpen={false}>
-        <PropRow label="Shadow">
+      <Section label="Effects" icon={<Sparkles className="h-3 w-3" />} defaultOpen={false}>
+        <PropRow label="Shadow" icon={<Layers className="h-3 w-3" />}>
           <div className="flex flex-wrap gap-1">
             {SHADOWS.map((sh) => (
               <button key={sh.label} onClick={() => set("boxShadow", sh.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("boxShadow") === sh.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{sh.label}</button>
             ))}
           </div>
         </PropRow>
-        <PropRow label="Transparency">
+        <PropRow label="Transparency" icon={<Eye className="h-3 w-3" />}>
           <div className="flex items-center gap-2">
             <input
               type="range"
@@ -687,14 +707,14 @@ function TextProps({ props, onChange }: { props: Record<string, unknown>; onChan
       <PropRow label="Tag">
         <PropSelect value={(props.tag as string) || "p"} onChange={(v) => onChange("tag", v)} options={[{ label: "Heading 1", value: "h1" }, { label: "Heading 2", value: "h2" }, { label: "Heading 3", value: "h3" }, { label: "Heading 4", value: "h4" }, { label: "Paragraph", value: "p" }, { label: "Span", value: "span" }]} />
       </PropRow>
-      <PropRow label="Align">
+      <PropRow label="Align" icon={<AlignLeft className="h-3 w-3" />}>
         <PropSelect value={(props.align as string) || "left"} onChange={(v) => onChange("align", v)} options={[{ label: "Left", value: "left" }, { label: "Center", value: "center" }, { label: "Right", value: "right" }]} />
       </PropRow>
-      <PropRow label="Font size"><PropInput value={(props.fontSize as string) || ""} onChange={(v) => onChange("fontSize", v)} placeholder="1rem" /></PropRow>
-      <PropRow label="Weight">
+      <PropRow label="Font size" icon={<Type className="h-3 w-3" />}><PropInput value={(props.fontSize as string) || ""} onChange={(v) => onChange("fontSize", v)} placeholder="1rem" /></PropRow>
+      <PropRow label="Weight" icon={<Bold className="h-3 w-3" />}>
         <PropSelect value={(props.fontWeight as string) || "normal"} onChange={(v) => onChange("fontWeight", v)} options={[{ label: "Normal", value: "normal" }, { label: "Medium", value: "500" }, { label: "Semibold", value: "600" }, { label: "Bold", value: "bold" }]} />
       </PropRow>
-      <PropRow label="Color"><PropColorInput value={(props.color as string) || "#000000"} onChange={(v) => onChange("color", v)} /></PropRow>
+      <PropRow label="Color" icon={<Palette className="h-3 w-3" />}><PropColorInput value={(props.color as string) || "#000000"} onChange={(v) => onChange("color", v)} /></PropRow>
       <PropRow label="Padding"><PropInput value={(props.padding as string) || ""} onChange={(v) => onChange("padding", v)} placeholder="0.5rem 1rem" /></PropRow>
     </>
   );
@@ -706,10 +726,10 @@ function ImageProps({ props, onChange, orgId }: { props: Record<string, unknown>
       <PropRow label="Upload">
         <ImageUpload value={(props.src as string) || ""} orgId={orgId} onChange={(url) => onChange("src", url)} />
       </PropRow>
-      <PropRow label="URL"><PropInput value={(props.src as string) || ""} onChange={(v) => onChange("src", v)} placeholder="https://…" /></PropRow>
+      <PropRow label="URL" icon={<Image className="h-3 w-3" />}><PropInput value={(props.src as string) || ""} onChange={(v) => onChange("src", v)} placeholder="https://…" /></PropRow>
       <PropRow label="Alt text"><PropInput value={(props.alt as string) || ""} onChange={(v) => onChange("alt", v)} placeholder="Image description" /></PropRow>
-      <PropRow label="Width"><PropInput value={(props.width as string) || "100%"} onChange={(v) => onChange("width", v)} placeholder="100%" /></PropRow>
-      <PropRow label="Height"><PropInput value={(props.height as string) || "auto"} onChange={(v) => onChange("height", v)} placeholder="auto" /></PropRow>
+      <PropRow label="Width" icon={<ArrowLeftRight className="h-3 w-3" />}><PropInput value={(props.width as string) || "100%"} onChange={(v) => onChange("width", v)} placeholder="100%" /></PropRow>
+      <PropRow label="Height" icon={<ArrowUpDown className="h-3 w-3" />}><PropInput value={(props.height as string) || "auto"} onChange={(v) => onChange("height", v)} placeholder="auto" /></PropRow>
       <PropRow label="Fit">
         <PropSelect value={(props.objectFit as string) || "cover"} onChange={(v) => onChange("objectFit", v)} options={[{ label: "Cover", value: "cover" }, { label: "Contain", value: "contain" }, { label: "Fill", value: "fill" }, { label: "None", value: "none" }]} />
       </PropRow>
@@ -721,8 +741,8 @@ function ImageProps({ props, onChange, orgId }: { props: Record<string, unknown>
 function ButtonProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   return (
     <>
-      <PropRow label="Label"><PropInput value={(props.label as string) || ""} onChange={(v) => onChange("label", v)} placeholder="Click me" /></PropRow>
-      <PropRow label="Link"><PropInput value={(props.href as string) || "#"} onChange={(v) => onChange("href", v)} placeholder="/page or https://…" /></PropRow>
+      <PropRow label="Label" icon={<MousePointerClick className="h-3 w-3" />}><PropInput value={(props.label as string) || ""} onChange={(v) => onChange("label", v)} placeholder="Click me" /></PropRow>
+      <PropRow label="Link" icon={<LinkIcon className="h-3 w-3" />}><PropInput value={(props.href as string) || "#"} onChange={(v) => onChange("href", v)} placeholder="/page or https://…" /></PropRow>
       <PropRow label="Style">
         <PropSelect value={(props.variant as string) || "primary"} onChange={(v) => onChange("variant", v)} options={[{ label: "Primary", value: "primary" }, { label: "Secondary", value: "secondary" }, { label: "Outline", value: "outline" }, { label: "Accent", value: "accent" }]} />
       </PropRow>

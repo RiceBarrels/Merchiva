@@ -240,7 +240,7 @@ function RenderColumns({ props }: { props: Record<string, unknown> }) {
   );
 }
 
-function RenderProductCard({ props, products }: { props: Record<string, unknown>; products?: Product[] }) {
+function RenderProductCard({ props, products, siteSlug }: { props: Record<string, unknown>; products?: Product[]; siteSlug?: string }) {
   const productId = props.productId as string;
   const showPrice = props.showPrice !== false;
   const showDescription = props.showDescription === true;
@@ -249,15 +249,16 @@ function RenderProductCard({ props, products }: { props: Record<string, unknown>
   const name = product?.name || "Product Name";
   const price = product?.price ?? 0;
   const category = product?.category || "Category";
+  const productPageHref = siteSlug && productId ? `/s/${siteSlug}/product/${productId}` : "#";
 
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: "var(--sr-radius)", overflow: "hidden", maxWidth: "320px" }}>
-      <div style={{ background: "#f9fafb", height: "180px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3rem" }}>🛍️</div>
+      <a href={productPageHref} style={{ display: "flex", background: "#f9fafb", height: "180px", alignItems: "center", justifyContent: "center", fontSize: "3rem", textDecoration: "none" }}>🛍️</a>
       <div style={{ padding: "1rem" }}>
         <h3 style={{ fontFamily: "var(--sr-font-heading)", fontWeight: 700, marginBottom: "0.5rem", fontSize: "1rem" }}>{name}</h3>
         {showDescription && <p style={{ fontSize: "0.8125rem", color: "var(--sr-secondary)", marginBottom: "0.5rem" }}>{category}</p>}
         {showPrice && <p style={{ fontWeight: 700, color: "var(--sr-accent)", marginBottom: "0.75rem", fontSize: "1.125rem" }}>${price.toFixed(2)}</p>}
-        <a href="#" style={{ display: "block", textAlign: "center", background: "var(--sr-primary)", color: "#fff", padding: "0.5rem", borderRadius: "var(--sr-radius)", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>Add to Cart</a>
+        <a href={productPageHref} style={{ display: "block", textAlign: "center", background: "var(--sr-primary)", color: "#fff", padding: "0.5rem", borderRadius: "var(--sr-radius)", textDecoration: "none", fontWeight: 600, fontSize: "0.875rem" }}>View Product</a>
       </div>
     </div>
   );
@@ -595,9 +596,11 @@ function RenderReward({ props }: { props: Record<string, unknown> }) {
 export function SiteElementRenderer({
   element,
   products,
+  siteSlug,
 }: {
   element: SiteElement;
   products?: Product[];
+  siteSlug?: string;
 }) {
   const { type, props, children } = element;
   const customStyle = (props.style as React.CSSProperties | undefined) || {};
@@ -616,7 +619,7 @@ export function SiteElementRenderer({
       case "layout":
       case "container": return <RenderLayout props={props} children={children} />;
       case "columns":   return <RenderColumns props={props} />;
-      case "product-card":   return <RenderProductCard props={props} products={products} />;
+      case "product-card":   return <RenderProductCard props={props} products={products} siteSlug={siteSlug} />;
       case "booking-form":   return <RenderBookingForm props={props} />;
       case "coupon-banner":  return <RenderCouponBanner props={props} />;
       case "pricing-table":  return <RenderPricingTable props={props} />;
@@ -639,21 +642,42 @@ export function SiteElementRenderer({
   return <div style={customStyle}>{rendered}</div>;
 }
 
+// ─── Google Fonts loader ──────────────────────────────────────────────────────
+
+function buildGoogleFontsUrl(theme: SiteTheme): string | null {
+  const SYSTEM_FONTS = new Set(["Inter", "system-ui", "sans-serif", "serif", "monospace", "-apple-system"]);
+  const families = [theme.headingFont, theme.bodyFont]
+    .filter(Boolean)
+    .map((f) => f.split(",")[0].trim().replace(/['"]/g, ""))
+    .filter((f) => !SYSTEM_FONTS.has(f));
+  const unique = [...new Set(families)];
+  if (!unique.length) return null;
+  const query = unique.map((f) => `family=${f.replace(/\s+/g, "+")}:wght@400;500;600;700;800`).join("&");
+  return `https://fonts.googleapis.com/css2?${query}&display=swap`;
+}
+
 // ─── Full page renderer ───────────────────────────────────────────────────────
 
 export function SiteRenderer({
   elements,
   theme,
   products,
+  siteSlug,
 }: {
   elements: SiteElement[];
   theme: SiteTheme;
   products?: Product[];
+  siteSlug?: string;
 }) {
+  const googleFontsUrl = buildGoogleFontsUrl(theme);
   return (
     <div style={themeVars(theme)}>
+      {googleFontsUrl && (
+        // eslint-disable-next-line @next/next/no-page-custom-font
+        <link rel="stylesheet" href={googleFontsUrl} />
+      )}
       {elements.map((el) => (
-        <SiteElementRenderer key={el.id} element={el} products={products} />
+        <SiteElementRenderer key={el.id} element={el} products={products} siteSlug={siteSlug} />
       ))}
     </div>
   );

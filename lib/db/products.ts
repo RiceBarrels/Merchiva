@@ -17,6 +17,9 @@ function fromDb(row: any): Product {
     trend: row.trend,
     alert: row.alert,
     alertReason: row.alert_reason ?? undefined,
+    description: row.description ?? undefined,
+    images: row.images ?? undefined,
+    pageTemplate: row.page_template ?? null,
   };
 }
 
@@ -28,6 +31,17 @@ export async function getProducts(): Promise<Product[]> {
     .order("revenue", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(fromDb);
+}
+
+export async function getProductById(id: string): Promise<Product | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) return null;
+  return fromDb(data);
 }
 
 export async function addProduct(
@@ -51,6 +65,9 @@ export async function addProduct(
       trend: product.trend,
       alert: product.alert,
       alert_reason: product.alertReason ?? null,
+      description: product.description ?? null,
+      images: product.images ?? null,
+      page_template: product.pageTemplate ?? null,
     })
     .select()
     .single();
@@ -76,6 +93,9 @@ export async function updateProduct(
   if (updates.trend !== undefined) payload.trend = updates.trend;
   if (updates.alert !== undefined) payload.alert = updates.alert;
   if (updates.alertReason !== undefined) payload.alert_reason = updates.alertReason;
+  if (updates.description !== undefined) payload.description = updates.description;
+  if (updates.images !== undefined) payload.images = updates.images;
+  if (updates.pageTemplate !== undefined) payload.page_template = updates.pageTemplate;
   const { error } = await supabase.from("products").update(payload).eq("id", id);
   if (error) throw error;
 }

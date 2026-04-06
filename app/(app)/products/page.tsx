@@ -62,6 +62,7 @@ import {
   Cell,
 } from "recharts";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { getProducts, addProduct, deleteProduct } from "@/lib/db/products";
 import type { Product } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
@@ -96,6 +97,7 @@ const BLANK: Partial<Product> = {
 
 export default function ProductsPage() {
   const { organizationId } = usePermissions();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId]     = useState<string | null>(null);
@@ -342,7 +344,11 @@ export default function ProductsPage() {
                       ? Math.round(((p.unitsSoldThisMonth - p.unitsSoldLastMonth) / p.unitsSoldLastMonth) * 100)
                       : 0;
                     return (
-                      <TableRow key={p.id}>
+                      <TableRow
+                        key={p.id}
+                        className="cursor-pointer"
+                        onClick={() => router.push(`/products/${p.id}`)}
+                      >
                         <TableCell>
                           <p className="font-medium">{p.name}</p>
                           {p.alertReason && (
@@ -387,7 +393,7 @@ export default function ProductsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(p.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}>
                             <XCircle className="h-3.5 w-3.5" />
                           </Button>
                         </TableCell>
