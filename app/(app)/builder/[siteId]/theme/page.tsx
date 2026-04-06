@@ -1,13 +1,77 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef, useMemo } from "react";
 import { hapticLight } from "@/lib/haptics";
 import { ProductCard } from "@/components/site-elements/product-card";
 import { BookingForm } from "@/components/site-elements/booking-form";
 import { CouponBanner } from "@/components/site-elements/coupon-banner";
 import { PricingTable } from "@/components/site-elements/pricing-table";
 import { Testimonial } from "@/components/site-elements/testimonial";
+import { buildGoogleFontsUrl } from "@/components/site-renderer";
 import type { SiteTheme } from "@/lib/types";
+import { ChevronDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// ─── Font options ───────────────────────────────────────────────────────────
+
+interface FontOption {
+  label: string;
+  value: string;  // CSS font-family value
+  google: boolean; // true = load via Google Fonts
+}
+
+const GOOGLE_FONT_LIST: FontOption[] = [
+  { label: "Inter",              value: "Inter, sans-serif",              google: true },
+  { label: "Poppins",            value: "Poppins, sans-serif",            google: true },
+  { label: "Montserrat",         value: "Montserrat, sans-serif",         google: true },
+  { label: "Roboto",             value: "Roboto, sans-serif",             google: true },
+  { label: "Open Sans",          value: "Open Sans, sans-serif",          google: true },
+  { label: "Lato",               value: "Lato, sans-serif",               google: true },
+  { label: "Raleway",            value: "Raleway, sans-serif",            google: true },
+  { label: "Nunito",             value: "Nunito, sans-serif",             google: true },
+  { label: "Work Sans",          value: "Work Sans, sans-serif",          google: true },
+  { label: "DM Sans",            value: "DM Sans, sans-serif",            google: true },
+  { label: "Outfit",             value: "Outfit, sans-serif",             google: true },
+  { label: "Space Grotesk",      value: "Space Grotesk, sans-serif",      google: true },
+  { label: "Plus Jakarta Sans",  value: "Plus Jakarta Sans, sans-serif",  google: true },
+  { label: "Manrope",            value: "Manrope, sans-serif",            google: true },
+  { label: "Figtree",            value: "Figtree, sans-serif",            google: true },
+  { label: "Mulish",             value: "Mulish, sans-serif",             google: true },
+  { label: "Rubik",              value: "Rubik, sans-serif",              google: true },
+  { label: "Karla",              value: "Karla, sans-serif",              google: true },
+  { label: "Cabin",              value: "Cabin, sans-serif",              google: true },
+  { label: "Barlow",             value: "Barlow, sans-serif",             google: true },
+  { label: "Quicksand",          value: "Quicksand, sans-serif",          google: true },
+  { label: "Josefin Sans",       value: "Josefin Sans, sans-serif",       google: true },
+  { label: "Oswald",             value: "Oswald, sans-serif",             google: true },
+  { label: "PT Sans",            value: "PT Sans, sans-serif",            google: true },
+  { label: "Source Sans 3",      value: "Source Sans 3, sans-serif",      google: true },
+  // Serif
+  { label: "Playfair Display",   value: "Playfair Display, serif",        google: true },
+  { label: "Lora",               value: "Lora, serif",                    google: true },
+  { label: "Merriweather",       value: "Merriweather, serif",            google: true },
+  { label: "Libre Baskerville",  value: "Libre Baskerville, serif",       google: true },
+  { label: "Crimson Text",       value: "Crimson Text, serif",            google: true },
+  { label: "Bitter",             value: "Bitter, serif",                  google: true },
+];
+
+const SYSTEM_FONT_LIST: FontOption[] = [
+  { label: "Georgia (Serif)",     value: "Georgia, serif",                    google: false },
+  { label: "Courier New (Mono)",  value: "Courier New, monospace",            google: false },
+  { label: "System UI",           value: "system-ui, sans-serif",             google: false },
+  { label: "Helvetica",           value: "Helvetica Neue, Helvetica, sans-serif", google: false },
+];
+
+const FONT_OPTIONS: FontOption[] = [...GOOGLE_FONT_LIST, ...SYSTEM_FONT_LIST];
+
+// Build a Google Fonts URL that loads ALL Google fonts for dropdown preview
+function buildAllPreviewFontsUrl(): string {
+  const names = GOOGLE_FONT_LIST.map((f) => f.value.split(",")[0].trim());
+  const query = names.map((n) => `family=${encodeURIComponent(n)}:wght@400;700`).join("&");
+  return `https://fonts.googleapis.com/css2?${query}&display=swap`;
+}
+
+const ALL_PREVIEW_FONTS_URL = buildAllPreviewFontsUrl();
 
 // ─── Presets ───────────────────────────────────────────────────────────────
 
@@ -40,8 +104,8 @@ const PRESETS: Record<string, SiteTheme> = {
     accent: "#b45309",
     background: "#fdf6ee",
     text: "#292524",
-    headingFont: "Georgia, serif",
-    bodyFont: "Inter, sans-serif",
+    headingFont: "Playfair Display, serif",
+    bodyFont: "Lato, sans-serif",
     borderRadius: 4,
     presetName: "Warm Coffee",
   },
@@ -51,8 +115,8 @@ const PRESETS: Record<string, SiteTheme> = {
     accent: "#0891b2",
     background: "#f0f9ff",
     text: "#0f172a",
-    headingFont: "Inter, sans-serif",
-    bodyFont: "Inter, sans-serif",
+    headingFont: "Montserrat, sans-serif",
+    bodyFont: "Open Sans, sans-serif",
     borderRadius: 8,
     presetName: "Ocean Blue",
   },
@@ -62,8 +126,8 @@ const PRESETS: Record<string, SiteTheme> = {
     accent: "#16a34a",
     background: "#f0fdf4",
     text: "#14532d",
-    headingFont: "Georgia, serif",
-    bodyFont: "Inter, sans-serif",
+    headingFont: "Lora, serif",
+    bodyFont: "Nunito, sans-serif",
     borderRadius: 6,
     presetName: "Forest Green",
   },
@@ -82,15 +146,7 @@ const PRESETS: Record<string, SiteTheme> = {
 
 const DEFAULT_THEME: SiteTheme = PRESETS["Clean Light"];
 
-const FONT_OPTIONS = [
-  { label: "Inter (Sans-serif)", value: "Inter, sans-serif" },
-  { label: "Georgia (Serif)", value: "Georgia, serif" },
-  { label: "Courier New (Mono)", value: "Courier New, monospace" },
-  { label: "System UI", value: "system-ui, sans-serif" },
-  { label: "Helvetica", value: "Helvetica Neue, Helvetica, sans-serif" },
-];
-
-// ─── Color picker row ─────────────────────────────────────────────────────
+// ─── Color picker row ──────────────────────────────────────────────────────
 
 function ColorRow({
   label,
@@ -123,9 +179,97 @@ function ColorRow({
   );
 }
 
+// ─── Font selector (custom dropdown that renders each option in its own font) ─
+
+function FontSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = FONT_OPTIONS.find((f) => f.value === value) ?? FONT_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    function onClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full border border-border rounded px-2.5 py-1.5 text-sm text-stone-800 bg-white flex items-center justify-between gap-2 hover:border-stone-400 transition-colors"
+        style={{ fontFamily: value }}
+      >
+        <span className="truncate">{selected.label}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-stone-400 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-border rounded shadow-xl max-h-56 overflow-y-auto">
+          {/* Google fonts section */}
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 bg-stone-50 border-b border-border sticky top-0">
+            Google Fonts
+          </div>
+          {GOOGLE_FONT_LIST.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => { onChange(f.value); setOpen(false); }}
+              className={cn(
+                "w-full text-left px-2.5 py-1.5 text-sm hover:bg-stone-50 transition-colors flex items-center justify-between",
+                value === f.value && "bg-stone-100"
+              )}
+              style={{ fontFamily: f.value }}
+            >
+              {f.label}
+              {value === f.value && <Check className="h-3 w-3 text-stone-600 shrink-0" />}
+            </button>
+          ))}
+          {/* System fonts section */}
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 bg-stone-50 border-t border-b border-border sticky top-0">
+            System Fonts
+          </div>
+          {SYSTEM_FONT_LIST.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => { onChange(f.value); setOpen(false); }}
+              className={cn(
+                "w-full text-left px-2.5 py-1.5 text-sm hover:bg-stone-50 transition-colors flex items-center justify-between",
+                value === f.value && "bg-stone-100"
+              )}
+              style={{ fontFamily: f.value }}
+            >
+              {f.label}
+              {value === f.value && <Check className="h-3 w-3 text-stone-600 shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Live preview mini-site ───────────────────────────────────────────────
 
 function Preview({ theme }: { theme: SiteTheme }) {
+  // Load fonts for the preview
+  const fontsUrl = useMemo(
+    () => buildGoogleFontsUrl([theme.headingFont, theme.bodyFont]),
+    [theme.headingFont, theme.bodyFont]
+  );
+
   return (
     <div
       style={{
@@ -139,6 +283,12 @@ function Preview({ theme }: { theme: SiteTheme }) {
         gap: 24,
       }}
     >
+      {/* Load fonts */}
+      {fontsUrl && (
+        // eslint-disable-next-line @next/next/no-page-custom-font
+        <link rel="stylesheet" href={fontsUrl} />
+      )}
+
       {/* Hero */}
       <div
         style={{
@@ -243,203 +393,199 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
   };
 
   return (
-    <div className="flex h-[calc(100vh-56px)] overflow-hidden">
-      {/* ─── Left panel: controls ─────────────────────────────── */}
-      <div className="w-72 shrink-0 border-r border-border bg-white flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-sm font-bold tracking-tight">Theme Editor</h2>
-          <button
-            onClick={save}
-            className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-              saved
-                ? "bg-green-600 text-white"
-                : "bg-stone-900 text-white hover:bg-stone-700"
-            }`}
-          >
-            {saved ? "Saved ✓" : "Save"}
-          </button>
+    <>
+      {/* Preload ALL Google Fonts for dropdown preview */}
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link rel="stylesheet" href={ALL_PREVIEW_FONTS_URL} />
+
+      <div className="flex h-[calc(100vh-56px)] overflow-hidden">
+        {/* ─── Left panel: controls ─────────────────────────────── */}
+        <div className="w-72 shrink-0 border-r border-border bg-white flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <h2 className="text-sm font-bold tracking-tight">Theme Editor</h2>
+            <button
+              onClick={save}
+              className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
+                saved
+                  ? "bg-green-600 text-white"
+                  : "bg-stone-900 text-white hover:bg-stone-700"
+              }`}
+            >
+              {saved ? "Saved ✓" : "Save"}
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5">
+            {/* Presets */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Presets</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {Object.entries(PRESETS).map(([name, p]) => (
+                  <button
+                    key={name}
+                    onClick={() => applyPreset(name)}
+                    className={`text-left px-2.5 py-2 border rounded text-xs font-medium transition-all ${
+                      theme.presetName === name
+                        ? "border-stone-900 bg-stone-900 text-white"
+                        : "border-stone-200 hover:border-stone-400 text-stone-700"
+                    }`}
+                    style={{ borderRadius: 4 }}
+                  >
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full mr-1.5"
+                      style={{ background: p.accent }}
+                    />
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Colors */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">Colors</p>
+              <div className="border border-border rounded divide-y divide-border px-3">
+                <ColorRow label="Background" value={theme.background} onChange={(v) => update({ background: v })} />
+                <ColorRow label="Text" value={theme.text} onChange={(v) => update({ text: v })} />
+                <ColorRow label="Accent / CTA" value={theme.accent} onChange={(v) => update({ accent: v })} />
+                <ColorRow label="Secondary" value={theme.secondary} onChange={(v) => update({ secondary: v })} />
+                <ColorRow label="Primary" value={theme.primary} onChange={(v) => update({ primary: v })} />
+              </div>
+            </div>
+
+            {/* Fonts */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Fonts</p>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-medium text-stone-600 block mb-1">Heading font</label>
+                  <FontSelect
+                    value={theme.headingFont}
+                    onChange={(v) => { hapticLight(); update({ headingFont: v }); }}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-stone-600 block mb-1">Body font</label>
+                  <FontSelect
+                    value={theme.bodyFont}
+                    onChange={(v) => { hapticLight(); update({ bodyFont: v }); }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Border radius */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
+                Border Radius
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={0}
+                  max={20}
+                  value={theme.borderRadius}
+                  onChange={(e) => update({ borderRadius: Number(e.target.value) })}
+                  className="flex-1 accent-stone-900"
+                />
+                <span className="font-mono text-xs text-stone-500 w-8 text-right">{theme.borderRadius}px</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-stone-400 mt-0.5">
+                <span>Sharp</span>
+                <span>Rounded</span>
+              </div>
+            </div>
+
+            {/* Preview tokens */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Preview tokens</p>
+              <div className="flex gap-2 flex-wrap">
+                {[theme.background, theme.text, theme.accent, theme.secondary, theme.primary].map((c, i) => (
+                  <div
+                    key={i}
+                    className="h-7 w-7 border border-stone-200"
+                    style={{ background: c, borderRadius: theme.borderRadius }}
+                    title={c}
+                  />
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  style={{
+                    background: theme.accent,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: theme.borderRadius,
+                    padding: "5px 12px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: theme.bodyFont,
+                    cursor: "default",
+                  }}
+                >
+                  Button
+                </button>
+                <div
+                  style={{
+                    border: `1px solid ${theme.secondary}40`,
+                    borderRadius: theme.borderRadius,
+                    padding: "5px 12px",
+                    fontSize: 11,
+                    fontFamily: theme.headingFont,
+                    color: theme.text,
+                    background: theme.background,
+                  }}
+                >
+                  Card
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5">
-          {/* Presets */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Presets</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {Object.entries(PRESETS).map(([name, p]) => (
+        {/* ─── Right panel: live preview ────────────────────────── */}
+        <div className="flex-1 flex flex-col bg-stone-100 overflow-hidden">
+          {/* Preview toolbar */}
+          <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-white">
+            <div className="flex border border-border overflow-hidden rounded">
+              {(["desktop", "mobile"] as const).map((tab) => (
                 <button
-                  key={name}
-                  onClick={() => applyPreset(name)}
-                  className={`text-left px-2.5 py-2 border rounded text-xs font-medium transition-all ${
-                    theme.presetName === name
-                      ? "border-stone-900 bg-stone-900 text-white"
-                      : "border-stone-200 hover:border-stone-400 text-stone-700"
+                  key={tab}
+                  onClick={() => setPreviewTab(tab)}
+                  className={`px-3 py-1 text-xs font-medium capitalize transition-colors ${
+                    previewTab === tab
+                      ? "bg-stone-900 text-white"
+                      : "bg-white text-stone-600 hover:bg-stone-50"
                   }`}
-                  style={{ borderRadius: 4 }}
                 >
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full mr-1.5"
-                    style={{ background: p.accent }}
-                  />
-                  {name}
+                  {tab}
                 </button>
               ))}
             </div>
+            <span className="text-xs text-stone-400">Site ID: {siteId}</span>
+            <span className="ml-auto text-xs text-stone-400 font-mono">
+              Preview updates live
+            </span>
           </div>
 
-          {/* Colors */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">Colors</p>
-            <div className="border border-border rounded divide-y divide-border px-3">
-              <ColorRow label="Background" value={theme.background} onChange={(v) => update({ background: v })} />
-              <ColorRow label="Text" value={theme.text} onChange={(v) => update({ text: v })} />
-              <ColorRow label="Accent / CTA" value={theme.accent} onChange={(v) => update({ accent: v })} />
-              <ColorRow label="Secondary" value={theme.secondary} onChange={(v) => update({ secondary: v })} />
-              <ColorRow label="Primary" value={theme.primary} onChange={(v) => update({ primary: v })} />
-            </div>
-          </div>
-
-          {/* Fonts */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">Fonts</p>
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs font-medium text-stone-600 block mb-1">Heading</label>
-                <select
-                  value={theme.headingFont}
-                  onChange={(e) => { hapticLight(); update({ headingFont: e.target.value }); }}
-                  className="w-full border border-border rounded px-2.5 py-1.5 text-sm text-stone-800 outline-none bg-white"
-                >
-                  {FONT_OPTIONS.map((f) => (
-                    <option key={f.value} value={f.value}>{f.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-stone-600 block mb-1">Body</label>
-                <select
-                  value={theme.bodyFont}
-                  onChange={(e) => { hapticLight(); update({ bodyFont: e.target.value }); }}
-                  className="w-full border border-border rounded px-2.5 py-1.5 text-sm text-stone-800 outline-none bg-white"
-                >
-                  {FONT_OPTIONS.map((f) => (
-                    <option key={f.value} value={f.value}>{f.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Border radius */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
-              Border Radius
-            </p>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min={0}
-                max={20}
-                value={theme.borderRadius}
-                onChange={(e) => update({ borderRadius: Number(e.target.value) })}
-                className="flex-1 accent-stone-900"
-              />
-              <span className="font-mono text-xs text-stone-500 w-8 text-right">{theme.borderRadius}px</span>
-            </div>
-            <div className="flex justify-between text-[10px] text-stone-400 mt-0.5">
-              <span>Sharp</span>
-              <span>Rounded</span>
-            </div>
-          </div>
-
-          {/* Preview of key tokens */}
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Preview tokens</p>
-            <div className="flex gap-2 flex-wrap">
-              {[theme.background, theme.text, theme.accent, theme.secondary, theme.primary].map((c, i) => (
-                <div
-                  key={i}
-                  className="h-7 w-7 border border-stone-200"
-                  style={{ background: c, borderRadius: theme.borderRadius }}
-                  title={c}
-                />
-              ))}
-            </div>
-            <div className="mt-2 flex gap-2">
-              <button
-                style={{
-                  background: theme.accent,
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: theme.borderRadius,
-                  padding: "5px 12px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  fontFamily: theme.bodyFont,
-                  cursor: "default",
-                }}
-              >
-                Button
-              </button>
-              <div
-                style={{
-                  border: `1px solid ${theme.secondary}40`,
-                  borderRadius: theme.borderRadius,
-                  padding: "5px 12px",
-                  fontSize: 11,
-                  fontFamily: theme.headingFont,
-                  color: theme.text,
-                  background: theme.background,
-                }}
-              >
-                Card
-              </div>
+          {/* Preview frame */}
+          <div className="flex-1 overflow-auto p-6 flex justify-center">
+            <div
+              className="overflow-auto shadow-lg"
+              style={{
+                width: previewTab === "mobile" ? 375 : "100%",
+                maxWidth: previewTab === "mobile" ? 375 : 900,
+                minHeight: 600,
+                background: theme.background,
+                borderRadius: 8,
+                border: "1px solid #e7e5e4",
+              }}
+            >
+              <Preview theme={theme} />
             </div>
           </div>
         </div>
       </div>
-
-      {/* ─── Right panel: live preview ────────────────────────── */}
-      <div className="flex-1 flex flex-col bg-stone-100 overflow-hidden">
-        {/* Preview toolbar */}
-        <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-white">
-          <div className="flex border border-border overflow-hidden rounded">
-            {(["desktop", "mobile"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setPreviewTab(tab)}
-                className={`px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                  previewTab === tab
-                    ? "bg-stone-900 text-white"
-                    : "bg-white text-stone-600 hover:bg-stone-50"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <span className="text-xs text-stone-400">Site ID: {siteId}</span>
-          <span className="ml-auto text-xs text-stone-400 font-mono">
-            Preview updates live
-          </span>
-        </div>
-
-        {/* Preview frame */}
-        <div className="flex-1 overflow-auto p-6 flex justify-center">
-          <div
-            className="overflow-auto shadow-lg"
-            style={{
-              width: previewTab === "mobile" ? 375 : "100%",
-              maxWidth: previewTab === "mobile" ? 375 : 900,
-              minHeight: 600,
-              background: theme.background,
-              borderRadius: 8,
-              border: "1px solid #e7e5e4",
-            }}
-          >
-            <Preview theme={theme} />
-          </div>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

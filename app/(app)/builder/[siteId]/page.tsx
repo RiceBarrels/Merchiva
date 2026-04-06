@@ -83,7 +83,7 @@ import { cn } from "@/lib/utils";
 import { useSidebarOpen } from "@/components/sidebar";
 import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage, getSavedComponents, saveComponent, deleteComponent } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
-import { SiteElementRenderer } from "@/components/site-renderer";
+import { SiteElementRenderer, buildGoogleFontsUrl } from "@/components/site-renderer";
 import { ImageUpload } from "@/components/image-upload";
 import { Combobox } from "@/components/ui/combobox";
 import { IconPicker } from "@/components/icon-picker";
@@ -2254,6 +2254,12 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               </div>
             ) : (
               <div className="bg-white min-h-full shadow-sm mx-auto" style={{ maxWidth: "900px" }}>
+                {/* Load theme fonts so the canvas preview is accurate */}
+                {site.theme && (() => {
+                  const url = buildGoogleFontsUrl([site.theme.headingFont, site.theme.bodyFont]);
+                  // eslint-disable-next-line @next/next/no-page-custom-font
+                  return url ? <link rel="stylesheet" href={url} /> : null;
+                })()}
                 <SortableContext items={elements.map((e) => e.id)} strategy={verticalListSortingStrategy}>
                   {elements.map((el, idx) => (
                     <CanvasElement
