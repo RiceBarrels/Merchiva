@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
+
+// ─── Sidebar open context — allows child components (e.g. builder toolbar) to open the sidebar ──
+const SidebarOpenContext = createContext<(() => void) | null>(null);
+export function useSidebarOpen(): () => void {
+  const fn = useContext(SidebarOpenContext);
+  return fn ?? (() => {});
+}
 import {
   LayoutDashboard,
   Package,
@@ -435,9 +442,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     : "all 220ms cubic-bezier(0.4, 0, 0.2, 1)";
 
   return (
+    <SidebarOpenContext.Provider value={() => setIsOpen(true)}>
     <>
-      {/* ── Mobile layout ── */}
-      <div className="md:hidden relative h-screen overflow-hidden bg-background">
+      {/* ── Mobile + tablet layout (< 1024px) ── */}
+      <div className="lg:hidden relative h-screen overflow-hidden bg-background">
         {/* Floating hamburger — follows content slide */}
         <button
           onClick={() => {
@@ -549,8 +557,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* ── Desktop layout: unchanged flex sidebar ── */}
-      <div className="hidden md:flex h-screen overflow-hidden bg-background">
+      {/* ── Desktop layout (1024px+): permanent sidebar ── */}
+      <div className="hidden lg:flex h-screen overflow-hidden bg-background">
         <div className="w-56 h-full shrink-0">
           <SidebarContent />
         </div>
@@ -559,5 +567,6 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </>
+    </SidebarOpenContext.Provider>
   );
 }

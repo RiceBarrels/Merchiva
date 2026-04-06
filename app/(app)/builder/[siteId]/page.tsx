@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, use, createContext, useContext } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
+  Menu,
   ChevronDown,
   ChevronUp,
   ChevronRight,
@@ -66,6 +66,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
+import { useSidebarOpen } from "@/components/sidebar";
 import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage, getSavedComponents, saveComponent, deleteComponent } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { SiteElementRenderer } from "@/components/site-renderer";
@@ -1623,6 +1624,7 @@ function ThemeModal({ theme, onSave, onClose }: { theme: SiteTheme; onSave: (t: 
 export default function BuilderEditorPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { organizationId } = usePermissions();
+  const openSidebar = useSidebarOpen();
 
   const [site, setSite] = useState<Site | null>(null);
   const [pages, setPages] = useState<SitePage[]>([]);
@@ -1755,28 +1757,40 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     setDirty(false);
   };
 
-  // Auto-save (debounced)
-  const saveCurrentPage = useCallback(async () => {
-    if (!activePageId || !dirty) return;
-    setSaving(true);
-    try {
-      await updatePage(activePageId, { elements });
-      // Sync page cache
-      setPages((prev) => prev.map((p) => p.id === activePageId ? { ...p, elements } : p));
-      setDirty(false);
-      setSavedAt(Date.now());
-    } catch (err) {
-      console.error("Auto-save failed:", err);
-    } finally {
-      setSaving(false);
-    }
-  }, [activePageId, elements, dirty]);
+  // Auto-save (debounced) — use refs to avoid re-creating the callback on every elements change
+  const elementsRef = useRef(elements);
+  const activePageIdRef = useRef(activePageId);
+  elementsRef.current = elements;
+  activePageIdRef.current = activePageId;
 
+  const saveRetries = useRef(0);
   useEffect(() => {
-    if (!dirty) return;
-    const timer = setTimeout(saveCurrentPage, 1500);
+    if (!dirty) { saveRetries.current = 0; return; }
+    if (saveRetries.current >= 3) {
+      console.warn("Auto-save: giving up after 3 retries");
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const pageId = activePageIdRef.current;
+      const els = elementsRef.current;
+      if (!pageId) return;
+      setSaving(true);
+      try {
+        await updatePage(pageId, { elements: els });
+        setPages((prev) => prev.map((p) => p.id === pageId ? { ...p, elements: els } : p));
+        setDirty(false);
+        setSavedAt(Date.now());
+        saveRetries.current = 0;
+      } catch (err) {
+        console.error("Auto-save failed:", err);
+        saveRetries.current += 1;
+        if (saveRetries.current >= 3) setDirty(false);
+      } finally {
+        setSaving(false);
+      }
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [dirty, saveCurrentPage]);
+  }, [dirty]);
 
   // Element operations (tree-aware for nested layout support)
   const addElement = (type: ElementType) => {
@@ -2043,9 +2057,13 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     <div className="flex flex-col h-screen overflow-hidden bg-muted/20">
       {/* ── Toolbar ── */}
       <header className="flex items-center gap-2 px-3 h-11 border-b border-border bg-background shrink-0">
-        <Link href="/builder" className="text-muted-foreground hover:text-foreground mr-1">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
+        <button
+          onClick={openSidebar}
+          className="text-muted-foreground hover:text-foreground mr-1 p-0.5 rounded hover:bg-muted"
+          aria-label="Open menu"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
         <span className="text-sm font-semibold truncate max-w-[140px]">{site.name}</span>
         <span className="text-border">|</span>
 
@@ -2099,7 +2117,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               Saved
             </span>
           )}
-          {dirty && !saving && <span className="text-[10px] text-muted-foreground">Saving…</span>}
+          {saving && <span className="text-[10px] text-muted-foreground">Saving…</span>}
           <button
             onClick={() => setShowTheme(true)}
             className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ServiceWorkerRegistrar } from "@/components/service-worker";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -28,7 +29,17 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full bg-background text-foreground">{children}</body>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#18181b" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="BizOps" />
+      </head>
+      <body className="h-full bg-background text-foreground">
+        <ServiceWorkerRegistrar />
+        {children}
+      </body>
     </html>
   );
 }
