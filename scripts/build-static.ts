@@ -136,12 +136,22 @@ for (const dir of topLevel) {
 const apiRoutes = findFilesRecursive(join(APP_DIR, "api"), (n) => n === "route.ts");
 
 const swappedStatic: { staticPath: string; pagePath: string }[] = [];
+const dirsHidden: { original: string; hidden: string }[] = [];
+
+// Determine which top-level dynamic dirs to hide entirely (no page.static.tsx inside)
+const dirsToHide: { original: string; hidden: string }[] = [];
+for (const dir of topLevel) {
+  const hasStaticPage = findFilesRecursive(dir, (n) => /^page\.static\.(tsx|ts)$/.test(n)).length > 0;
+  if (!hasStaticPage) {
+    const hidden = dir.replace(/\[/g, "_").replace(/\]/g, "_") + ".__hidden__";
+    dirsToHide.push({ original: dir, hidden });
+  }
+}
 
 console.log(`
 📦 build:static${dryRun ? " (dry run)" : ""}
    ${staticPages.length} page.static.tsx swap(s)
-   ${dynamicPagesNoStatic.length} dynamic page(s) to remove
-   ${dynamicLayouts.length} dynamic layout(s) to remove
+   ${dirsToHide.length} dynamic dir(s) to hide
    ${apiRoutes.length} API route(s) to remove
 `);
 
@@ -149,16 +159,12 @@ console.log(`
 
 try {
   // Swap page.static.tsx → page.tsx (anywhere)
-  // For dynamic routes, inject generateStaticParams() returning []
   for (const staticPath of staticPages) {
     const pagePath = staticPath.replace(/page\.static\.(tsx|ts)$/, "page.$1");
     console.log(`  ✦ ${rel(pagePath)} → swap with ${staticPath.split("/").pop()}`);
     if (!dryRun) {
       if (existsSync(pagePath)) backupFile(pagePath);
-      // Read static file content
       let content = readFileSync(staticPath, "utf-8");
-      // If path has dynamic segments and no generateStaticParams, inject it
-      // Must go after "use client" directive if present
       if (isDynamicPath(staticPath) && !content.includes("generateStaticParams")) {
         const gsp = `\nexport function generateStaticParams() { return []; }\n`;
         const useClientMatch = content.match(/^(['"])use client\1;?\s*\n/);
@@ -168,30 +174,19 @@ try {
           content = gsp + content;
         }
       }
-      // Write as page.tsx (don't rename, write new content)
       writeFileSync(pagePath, content);
-      // Keep static file for restore — backup it too
       backupFile(staticPath);
       unlinkSync(staticPath);
       swappedStatic.push({ staticPath, pagePath });
     }
   }
 
-  // Remove dynamic pages with no static fallback
-  for (const pagePath of dynamicPagesNoStatic) {
-    console.log(`  ✕ ${rel(pagePath)} → remove (dynamic, no fallback)`);
+  // Hide entire dynamic directories (rename so Next.js ignores them)
+  for (const { original, hidden } of dirsToHide) {
+    console.log(`  ✕ ${rel(original)}/ → hide`);
     if (!dryRun) {
-      backupFile(pagePath);
-      unlinkSync(pagePath);
-    }
-  }
-
-  // Remove layouts inside dynamic routes
-  for (const layoutPath of dynamicLayouts) {
-    console.log(`  ✕ ${rel(layoutPath)} → remove (dynamic layout)`);
-    if (!dryRun) {
-      backupFile(layoutPath);
-      unlinkSync(layoutPath);
+      renameSync(original, hidden);
+      dirsHidden.push({ original, hidden });
     }
   }
 
@@ -223,6 +218,10 @@ try {
 } finally {
   if (!dryRun) {
     console.log("🔄 Restoring original files...");
+    // Un-hide directories first
+    for (const { original, hidden } of dirsHidden) {
+      if (existsSync(hidden)) renameSync(hidden, original);
+    }
     // Delete generated page.tsx files from swaps
     for (const { pagePath } of swappedStatic) {
       if (existsSync(pagePath)) unlinkSync(pagePath);
