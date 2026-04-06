@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { SiteElement, SiteTheme, ElementType } from "@/lib/types";
 import type { Product } from "@/lib/types";
 import { DynamicIcon } from "@/components/icon-picker";
@@ -644,15 +644,21 @@ export function SiteElementRenderer({
 
 // ─── Google Fonts loader ──────────────────────────────────────────────────────
 
-function buildGoogleFontsUrl(theme: SiteTheme): string | null {
-  const SYSTEM_FONTS = new Set(["Inter", "system-ui", "sans-serif", "serif", "monospace", "-apple-system"]);
-  const families = [theme.headingFont, theme.bodyFont]
+// Fonts that are always available without a Google Fonts request
+const NATIVE_FONTS = new Set([
+  "system-ui", "sans-serif", "serif", "monospace", "-apple-system",
+  "Georgia", "Courier New", "Helvetica Neue", "Helvetica", "Arial",
+  "Times New Roman", "Verdana", "Tahoma",
+]);
+
+export function buildGoogleFontsUrl(fonts: string[]): string | null {
+  const googleFamilies = fonts
     .filter(Boolean)
     .map((f) => f.split(",")[0].trim().replace(/['"]/g, ""))
-    .filter((f) => !SYSTEM_FONTS.has(f));
-  const unique = [...new Set(families)];
+    .filter((f) => !NATIVE_FONTS.has(f) && f !== "");
+  const unique = [...new Set(googleFamilies)];
   if (!unique.length) return null;
-  const query = unique.map((f) => `family=${f.replace(/\s+/g, "+")}:wght@400;500;600;700;800`).join("&");
+  const query = unique.map((f) => `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800`).join("&");
   return `https://fonts.googleapis.com/css2?${query}&display=swap`;
 }
 
@@ -669,7 +675,10 @@ export function SiteRenderer({
   products?: Product[];
   siteSlug?: string;
 }) {
-  const googleFontsUrl = buildGoogleFontsUrl(theme);
+  const googleFontsUrl = useMemo(
+    () => buildGoogleFontsUrl([theme.headingFont, theme.bodyFont]),
+    [theme.headingFont, theme.bodyFont]
+  );
   return (
     <div style={themeVars(theme)}>
       {googleFontsUrl && (
