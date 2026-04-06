@@ -343,12 +343,13 @@ export interface FaqItem {
 }
 
 export type ElementType =
-  | "text" | "image" | "button" | "container" | "divider"
+  | "text" | "image" | "button" | "layout" | "divider"
   | "hero" | "nav" | "footer" | "spacer" | "columns"
   | "product-card" | "booking-form" | "coupon-banner"
   | "pricing-table" | "testimonial" | "faq" | "gallery"
   | "custom-html" | "login-form" | "code-block" | "membership-widget"
-  | "cart" | "checkout" | "reward" | "icon";
+  | "cart" | "checkout" | "reward" | "icon"
+  | "container"; // legacy alias — do not use in new code
 
 export interface SiteElement {
   id: string;

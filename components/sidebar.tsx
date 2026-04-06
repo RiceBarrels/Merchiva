@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
+
+// ─── Sidebar open context — allows child components (e.g. builder toolbar) to open the sidebar ──
+const SidebarOpenContext = createContext<(() => void) | null>(null);
+export function useSidebarOpen(): () => void {
+  const fn = useContext(SidebarOpenContext);
+  return fn ?? (() => {});
+}
 import {
   LayoutDashboard,
   Package,
@@ -439,12 +446,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     : "all 220ms cubic-bezier(0.4, 0, 0.2, 1)";
 
   return (
+    <SidebarOpenContext.Provider value={() => setIsOpen(true)}>
     <>
-      {/* ── Mobile layout + builder full-viewport drawer ── */}
-      {/* On builder pages this renders on ALL screen sizes; elsewhere only on mobile (<md) */}
-      <div className={cn("relative h-screen overflow-hidden bg-background", isBuilderPage ? "flex" : "flex md:hidden")}>
-        {/* Floating hamburger — hidden on builder pages (conflicts with builder's own toolbar back-button;
-            swipe-from-left gesture still opens the sidebar on touch, desktop builder users navigate via back→site list) */}
+      {/* ── Mobile + tablet layout (< 1024px) + builder full-viewport ── */}
+      <div className={cn("relative h-screen overflow-hidden bg-background", isBuilderPage ? "flex" : "flex lg:hidden")}>
+        {/* Floating hamburger — hidden on builder pages (builder has its own Menu button in toolbar) */}
         {!isBuilderPage && (
           <button
             onClick={() => {
@@ -566,9 +572,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* ── Desktop layout: fixed sidebar — never shown on builder pages ── */}
+      {/* ── Desktop layout (1024px+): permanent sidebar — not shown on builder pages ── */}
       {!isBuilderPage && (
-        <div className="hidden md:flex h-screen overflow-hidden bg-background">
+        <div className="hidden lg:flex h-screen overflow-hidden bg-background">
           <div className="w-56 h-full shrink-0">
             <SidebarContent />
           </div>
@@ -578,5 +584,6 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
     </>
+    </SidebarOpenContext.Provider>
   );
 }
