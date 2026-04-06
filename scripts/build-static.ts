@@ -97,6 +97,23 @@ function restoreAll() {
 
 // ─── Collect ────────────────────────────────────────────────────────────────
 
+// Find top-level dynamic route directories
+const allDynamicDirs = findFilesRecursive(APP_DIR, () => false); // dummy — use findDirsRecursive
+const dynamicDirs: string[] = [];
+function collectDynamicDirs(dir: string) {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (!statSync(full).isDirectory()) continue;
+    if (entry.includes("[")) dynamicDirs.push(full);
+    collectDynamicDirs(full);
+  }
+}
+collectDynamicDirs(APP_DIR);
+const topLevel = dynamicDirs.filter((d) =>
+  !dynamicDirs.some((other) => other !== d && d.startsWith(other + "/"))
+);
+
 // 1. Find ALL page.static.tsx files (any directory)
 const staticPages = findFilesRecursive(APP_DIR, (n) => /^page\.static\.(tsx|ts)$/.test(n));
 
@@ -109,7 +126,13 @@ const dynamicPagesNoStatic = allPages.filter((p) => {
   return !existsSync(staticVersion);
 });
 
-// 3. API routes
+// 3. Layout files inside dynamic route trees
+const dynamicLayouts: string[] = [];
+for (const dir of topLevel) {
+  dynamicLayouts.push(...findFilesRecursive(dir, (n) => /^layout\.(tsx|ts)$/.test(n)));
+}
+
+// 4. API routes
 const apiRoutes = findFilesRecursive(join(APP_DIR, "api"), (n) => n === "route.ts");
 
 const swappedStatic: { staticPath: string; pagePath: string }[] = [];
@@ -118,6 +141,7 @@ console.log(`
 📦 build:static${dryRun ? " (dry run)" : ""}
    ${staticPages.length} page.static.tsx swap(s)
    ${dynamicPagesNoStatic.length} dynamic page(s) to remove
+   ${dynamicLayouts.length} dynamic layout(s) to remove
    ${apiRoutes.length} API route(s) to remove
 `);
 
@@ -125,12 +149,30 @@ console.log(`
 
 try {
   // Swap page.static.tsx → page.tsx (anywhere)
+  // For dynamic routes, inject generateStaticParams() returning []
   for (const staticPath of staticPages) {
     const pagePath = staticPath.replace(/page\.static\.(tsx|ts)$/, "page.$1");
     console.log(`  ✦ ${rel(pagePath)} → swap with ${staticPath.split("/").pop()}`);
     if (!dryRun) {
       if (existsSync(pagePath)) backupFile(pagePath);
-      renameSync(staticPath, pagePath);
+      // Read static file content
+      let content = readFileSync(staticPath, "utf-8");
+      // If path has dynamic segments and no generateStaticParams, inject it
+      // Must go after "use client" directive if present
+      if (isDynamicPath(staticPath) && !content.includes("generateStaticParams")) {
+        const gsp = `\nexport function generateStaticParams() { return []; }\n`;
+        const useClientMatch = content.match(/^(['"])use client\1;?\s*\n/);
+        if (useClientMatch) {
+          content = useClientMatch[0] + gsp + content.slice(useClientMatch[0].length);
+        } else {
+          content = gsp + content;
+        }
+      }
+      // Write as page.tsx (don't rename, write new content)
+      writeFileSync(pagePath, content);
+      // Keep static file for restore — backup it too
+      backupFile(staticPath);
+      unlinkSync(staticPath);
       swappedStatic.push({ staticPath, pagePath });
     }
   }
@@ -141,6 +183,15 @@ try {
     if (!dryRun) {
       backupFile(pagePath);
       unlinkSync(pagePath);
+    }
+  }
+
+  // Remove layouts inside dynamic routes
+  for (const layoutPath of dynamicLayouts) {
+    console.log(`  ✕ ${rel(layoutPath)} → remove (dynamic layout)`);
+    if (!dryRun) {
+      backupFile(layoutPath);
+      unlinkSync(layoutPath);
     }
   }
 
@@ -172,11 +223,11 @@ try {
 } finally {
   if (!dryRun) {
     console.log("🔄 Restoring original files...");
-    // Restore swapped static files
-    for (const { staticPath, pagePath } of swappedStatic) {
-      if (existsSync(pagePath)) renameSync(pagePath, staticPath);
+    // Delete generated page.tsx files from swaps
+    for (const { pagePath } of swappedStatic) {
+      if (existsSync(pagePath)) unlinkSync(pagePath);
     }
-    // Restore backed up originals
+    // restoreAll handles both page.tsx originals and page.static.tsx files
     restoreAll();
     console.log("✅ All files restored.\n");
   }
