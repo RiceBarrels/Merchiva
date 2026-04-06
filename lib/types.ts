@@ -342,6 +342,42 @@ export interface FaqItem {
   answer: string;
 }
 
+export type ElementType =
+  | "text" | "image" | "button" | "container" | "divider"
+  | "hero" | "nav" | "footer" | "spacer" | "columns"
+  | "product-card" | "booking-form" | "coupon-banner"
+  | "pricing-table" | "testimonial" | "faq" | "gallery"
+  | "custom-html" | "login-form";
+
+export interface SiteElement {
+  id: string;
+  type: ElementType;
+  props: Record<string, unknown>;
+  children?: SiteElement[];
+}
+
+export interface SitePage {
+  id: string;
+  siteId: string;
+  name: string;
+  slug: string;
+  elements: SiteElement[];
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface Site {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  theme: SiteTheme;
+  published: boolean;
+  customDomain: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface DashboardMetrics {

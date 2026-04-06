@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Users,
   ShoppingBag,
+  Globe,
   Zap,
   Settings,
   LogOut,
@@ -48,11 +49,12 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Home",              href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
-  { label: "Inventory",        href: "/inventory",  icon: Package,         permissionKey: "inventory" },
-  { label: "Sales Prediction", href: "/sales",      icon: TrendingUp,      permissionKey: "sales"     },
-  { label: "Staffing",         href: "/staffing",   icon: Users,           permissionKey: "staffing"  },
-  { label: "Products",         href: "/products",   icon: ShoppingBag,     permissionKey: "products"  },
-  { label: "Chat",             href: "/chat",       icon: MessageSquare,   permissionKey: "staffing"  },
+  { label: "Inventory",        href: "/inventory",   icon: Package,         permissionKey: "inventory" },
+  { label: "Sales Prediction", href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
+  { label: "Staffing",         href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
+  { label: "Products",         href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
+  { label: "Chat",             href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
+  { label: "Website",          href: "/builder",     icon: Globe },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {
