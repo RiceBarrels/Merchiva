@@ -348,7 +348,7 @@ export type ElementType =
   | "product-card" | "booking-form" | "coupon-banner"
   | "pricing-table" | "testimonial" | "faq" | "gallery"
   | "custom-html" | "login-form" | "code-block" | "membership-widget"
-  | "cart" | "checkout" | "reward";
+  | "cart" | "checkout" | "reward" | "icon";
 
 export interface SiteElement {
   id: string;

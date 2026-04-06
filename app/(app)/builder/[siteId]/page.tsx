@@ -44,6 +44,10 @@ import { cn } from "@/lib/utils";
 import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { SiteElementRenderer } from "@/components/site-renderer";
+import { ImageUpload } from "@/components/image-upload";
+import { Combobox } from "@/components/ui/combobox";
+import { IconPicker } from "@/components/icon-picker";
+import * as LucideIcons from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
 import type { Site, SitePage, SiteElement, ElementType, SiteTheme } from "@/lib/types";
 import type { Product } from "@/lib/types";
@@ -80,6 +84,7 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "cart":               return { title: "Your Cart", emptyText: "Your cart is empty.", checkoutLabel: "Checkout" };
     case "checkout":           return { title: "Checkout", submitLabel: "Place Order" };
     case "reward":             return { title: "Earn Rewards", description: "Earn points on every purchase!", pointsLabel: "Points", backgroundColor: "#f0fdf4", textColor: "#166534" };
+    case "icon":               return { name: "Star", size: 32, color: "", align: "left" };
     default:                   return {};
   }
 }
@@ -96,6 +101,7 @@ const PALETTE: { label: string; icon: React.ReactNode; type: ElementType }[][] =
     { label: "Columns",   icon: <Columns2 className="h-3.5 w-3.5" />,         type: "columns" },
     { label: "Divider",   icon: <Minus className="h-3.5 w-3.5" />,            type: "divider" },
     { label: "Spacer",    icon: <SeparatorHorizontal className="h-3.5 w-3.5" />, type: "spacer" },
+    { label: "Icon",      icon: <Star className="h-3.5 w-3.5" />,             type: "icon" },
   ],
   // Sections
   [
@@ -157,11 +163,7 @@ function PropInput({ value, onChange, placeholder, type = "text" }: { value: str
 }
 
 function PropSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { label: string; value: string }[] }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring">
-      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  );
+  return <Combobox value={value} onValueChange={onChange} options={options} />;
 }
 
 function PropToggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -284,9 +286,12 @@ function TextProps({ props, onChange }: { props: Record<string, unknown>; onChan
   );
 }
 
-function ImageProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+function ImageProps({ props, onChange, orgId }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void; orgId: string }) {
   return (
     <>
+      <PropRow label="Upload">
+        <ImageUpload value={(props.src as string) || ""} orgId={orgId} onChange={(url) => onChange("src", url)} />
+      </PropRow>
       <PropRow label="URL"><PropInput value={(props.src as string) || ""} onChange={(v) => onChange("src", v)} placeholder="https://…" /></PropRow>
       <PropRow label="Alt text"><PropInput value={(props.alt as string) || ""} onChange={(v) => onChange("alt", v)} placeholder="Image description" /></PropRow>
       <PropRow label="Width"><PropInput value={(props.width as string) || "100%"} onChange={(v) => onChange("width", v)} placeholder="100%" /></PropRow>
@@ -315,7 +320,7 @@ function ButtonProps({ props, onChange }: { props: Record<string, unknown>; onCh
   );
 }
 
-function HeroProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+function HeroProps({ props, onChange, orgId }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void; orgId: string }) {
   return (
     <>
       <PropRow label="Title"><PropInput value={(props.title as string) || ""} onChange={(v) => onChange("title", v)} placeholder="Welcome" /></PropRow>
@@ -327,7 +332,10 @@ function HeroProps({ props, onChange }: { props: Record<string, unknown>; onChan
       </PropRow>
       <PropRow label="Height"><PropInput value={(props.height as string) || "480px"} onChange={(v) => onChange("height", v)} placeholder="480px" /></PropRow>
       <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#f9fafb"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
-      <PropRow label="Bg image"><PropInput value={(props.backgroundImage as string) || ""} onChange={(v) => onChange("backgroundImage", v)} placeholder="https://…" /></PropRow>
+      <PropRow label="Bg image">
+        <ImageUpload value={(props.backgroundImage as string) || ""} orgId={orgId} onChange={(url) => onChange("backgroundImage", url)} />
+        <PropInput value={(props.backgroundImage as string) || ""} onChange={(v) => onChange("backgroundImage", v)} placeholder="https://…" />
+      </PropRow>
       <PropRow label="Text color"><PropInput type="color" value={(props.textColor as string) || "#09090b"} onChange={(v) => onChange("textColor", v)} /></PropRow>
     </>
   );
@@ -513,7 +521,7 @@ function FaqProps({ props, onChange }: { props: Record<string, unknown>; onChang
   );
 }
 
-function GalleryProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+function GalleryProps({ props, onChange, orgId }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void; orgId: string }) {
   const images = (props.images as { src: string; alt: string }[]) || [];
   return (
     <>
@@ -522,11 +530,18 @@ function GalleryProps({ props, onChange }: { props: Record<string, unknown>; onC
       </PropRow>
       <PropRow label="Gap"><PropInput value={(props.gap as string) || "0.5rem"} onChange={(v) => onChange("gap", v)} placeholder="0.5rem" /></PropRow>
       <PropRow label="Images">
-        <div className="space-y-1">
+        <div className="space-y-2">
           {images.map((img, i) => (
-            <div key={i} className="flex gap-1">
-              <input value={img.src} onChange={(e) => { const n = [...images]; n[i] = { ...n[i], src: e.target.value }; onChange("images", n); }} placeholder="https://…" className="flex-1 rounded border border-border bg-background px-2 py-0.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
-              <button onClick={() => onChange("images", images.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+            <div key={i} className="space-y-1 rounded border border-border p-1.5">
+              <ImageUpload
+                value={img.src}
+                orgId={orgId}
+                onChange={(url) => { const n = [...images]; n[i] = { ...n[i], src: url }; onChange("images", n); }}
+              />
+              <div className="flex gap-1">
+                <input value={img.src} onChange={(e) => { const n = [...images]; n[i] = { ...n[i], src: e.target.value }; onChange("images", n); }} placeholder="https://…" className="flex-1 rounded border border-border bg-background px-2 py-0.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
+                <button onClick={() => onChange("images", images.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+              </div>
             </div>
           ))}
           <button onClick={() => onChange("images", [...images, { src: "", alt: "" }])} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"><Plus className="h-3 w-3" /> Add image</button>
@@ -596,6 +611,48 @@ function MembershipWidgetProps({ props, onChange }: { props: Record<string, unkn
   );
 }
 
+function IconProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const CurrentIcon = (LucideIcons as any)[(props.name as string) || "Star"];
+
+  return (
+    <>
+      <PropRow label="Icon">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setPickerOpen((p) => !p)}
+            className="flex items-center gap-2 w-full rounded border border-border bg-background px-2 py-1 text-xs hover:bg-muted transition-colors"
+          >
+            {CurrentIcon && <CurrentIcon className="h-4 w-4 shrink-0 text-muted-foreground" />}
+            <span className="flex-1 text-left truncate">{(props.name as string) || "Star"}</span>
+          </button>
+          {pickerOpen && (
+            <IconPicker
+              value={(props.name as string) || "Star"}
+              onValueChange={(name) => onChange("name", name)}
+              onClose={() => setPickerOpen(false)}
+            />
+          )}
+        </div>
+      </PropRow>
+      <PropRow label="Size">
+        <PropInput value={String(Number(props.size) || 32)} onChange={(v) => onChange("size", Number(v) || 32)} placeholder="32" type="number" />
+      </PropRow>
+      <PropRow label="Color">
+        <div className="flex gap-1">
+          <input type="color" value={(props.color as string) || "#000000"} onChange={(e) => onChange("color", e.target.value)} className="h-7 w-8 rounded border border-border cursor-pointer shrink-0" />
+          <PropInput value={(props.color as string) || ""} onChange={(v) => onChange("color", v)} placeholder="Theme primary" />
+        </div>
+      </PropRow>
+      <PropRow label="Align">
+        <PropSelect value={(props.align as string) || "left"} onChange={(v) => onChange("align", v)} options={[{ label: "Left", value: "left" }, { label: "Center", value: "center" }, { label: "Right", value: "right" }]} />
+      </PropRow>
+    </>
+  );
+}
+
 function CartProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   return (
     <>
@@ -629,7 +686,7 @@ function RewardProps({ props, onChange }: { props: Record<string, unknown>; onCh
 
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
-function PropertiesPanel({ element, onChange, products }: { element: SiteElement; onChange: (k: string, v: unknown) => void; products: Product[] }) {
+function PropertiesPanel({ element, onChange, products, orgId }: { element: SiteElement; onChange: (k: string, v: unknown) => void; products: Product[]; orgId: string }) {
   const typeLabels: Record<string, string> = {
     text: "Text", image: "Image", button: "Button", hero: "Hero", nav: "Navigation",
     footer: "Footer", divider: "Divider", spacer: "Spacer", container: "Container",
@@ -637,7 +694,7 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
     "coupon-banner": "Coupon Banner", "pricing-table": "Pricing Table", testimonial: "Testimonial",
     faq: "FAQ", gallery: "Gallery", "custom-html": "Custom HTML", "login-form": "Login Form",
     "code-block": "Code Block", "membership-widget": "Membership Widget",
-    cart: "Cart", checkout: "Checkout", reward: "Reward",
+    cart: "Cart", checkout: "Checkout", reward: "Reward", icon: "Icon",
   };
 
   return (
@@ -648,9 +705,9 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
       </div>
       <div className="flex-1 overflow-y-auto p-3">
         {element.type === "text"          && <TextProps props={element.props} onChange={onChange} />}
-        {element.type === "image"         && <ImageProps props={element.props} onChange={onChange} />}
+        {element.type === "image"         && <ImageProps props={element.props} onChange={onChange} orgId={orgId} />}
         {element.type === "button"        && <ButtonProps props={element.props} onChange={onChange} />}
-        {element.type === "hero"          && <HeroProps props={element.props} onChange={onChange} />}
+        {element.type === "hero"          && <HeroProps props={element.props} onChange={onChange} orgId={orgId} />}
         {element.type === "nav"           && <NavProps props={element.props} onChange={onChange} />}
         {element.type === "footer"        && <FooterProps props={element.props} onChange={onChange} />}
         {element.type === "divider"       && <DividerProps props={element.props} onChange={onChange} />}
@@ -663,7 +720,7 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
         {element.type === "pricing-table" && <PricingProps props={element.props} onChange={onChange} />}
         {element.type === "testimonial"   && <TestimonialProps props={element.props} onChange={onChange} />}
         {element.type === "faq"           && <FaqProps props={element.props} onChange={onChange} />}
-        {element.type === "gallery"       && <GalleryProps props={element.props} onChange={onChange} />}
+        {element.type === "gallery"       && <GalleryProps props={element.props} onChange={onChange} orgId={orgId} />}
         {element.type === "custom-html"        && <HtmlProps props={element.props} onChange={onChange} />}
         {element.type === "login-form"         && <LoginFormProps props={element.props} onChange={onChange} />}
         {element.type === "code-block"         && <CodeBlockProps props={element.props} onChange={onChange} />}
@@ -671,6 +728,7 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
         {element.type === "cart"               && <CartProps props={element.props} onChange={onChange} />}
         {element.type === "checkout"           && <CheckoutProps props={element.props} onChange={onChange} />}
         {element.type === "reward"             && <RewardProps props={element.props} onChange={onChange} />}
+        {element.type === "icon"               && <IconProps props={element.props} onChange={onChange} />}
         <StyleProps props={element.props} onChange={onChange} />
       </div>
     </div>
@@ -758,6 +816,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   const [showAddPage, setShowAddPage] = useState(false);
   const [newPageName, setNewPageName] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -800,6 +859,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       // Sync page cache
       setPages((prev) => prev.map((p) => p.id === activePageId ? { ...p, elements } : p));
       setDirty(false);
+      setSavedAt(Date.now());
     } catch (err) {
       console.error("Auto-save failed:", err);
     } finally {
@@ -977,8 +1037,17 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
 
         {/* Right actions */}
         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-          {dirty && <span className="text-[10px] text-muted-foreground">Unsaved…</span>}
           {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+          {!saving && savedAt && !dirty && (
+            <span
+              key={savedAt}
+              className="text-[10px] text-green-600 animate-[fadeout_2s_ease-in-out_forwards]"
+              style={{ animation: "fadeout 2s ease-in-out forwards" }}
+            >
+              Saved
+            </span>
+          )}
+          {dirty && !saving && <span className="text-[10px] text-muted-foreground">Saving…</span>}
           <button
             onClick={() => setShowTheme(true)}
             className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
@@ -1089,6 +1158,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               element={selectedElement}
               onChange={(k, v) => updateElementProp(selectedElement.id, k, v)}
               products={products}
+              orgId={organizationId ?? ""}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
