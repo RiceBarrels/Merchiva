@@ -294,6 +294,54 @@ export interface Product {
   alertReason?: string;
 }
 
+// ─── Site Builder ────────────────────────────────────────────────────────────
+
+export interface SiteTheme {
+  primary: string;      // hex — buttons, headings accent
+  secondary: string;    // hex — muted text, borders
+  accent: string;       // hex — highlights, CTAs
+  background: string;   // hex — page bg
+  text: string;         // hex — body text
+  headingFont: string;  // CSS font-family value
+  bodyFont: string;     // CSS font-family value
+  borderRadius: number; // px applied to cards/buttons
+  presetName?: string;
+}
+
+export interface SiteConfig {
+  id: string;
+  organizationId: string;
+  name: string;
+  subdomain: string;
+  published: boolean;
+  theme: SiteTheme;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PricingItem {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  badge?: string;   // e.g. "Popular", "New"
+  category?: string;
+}
+
+export interface TestimonialData {
+  id: string;
+  authorName: string;
+  rating: number;       // 1–5
+  content: string;
+  date?: string;        // ISO date string
+}
+
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export interface DashboardMetrics {
