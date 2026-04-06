@@ -347,7 +347,8 @@ export type ElementType =
   | "hero" | "nav" | "footer" | "spacer" | "columns"
   | "product-card" | "booking-form" | "coupon-banner"
   | "pricing-table" | "testimonial" | "faq" | "gallery"
-  | "custom-html" | "login-form" | "code-block" | "membership-widget";
+  | "custom-html" | "login-form" | "code-block" | "membership-widget"
+  | "cart" | "checkout" | "reward";
 
 export interface SiteElement {
   id: string;

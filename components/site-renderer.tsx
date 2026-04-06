@@ -483,6 +483,75 @@ function RenderLoginForm({ props }: { props: Record<string, unknown> }) {
   );
 }
 
+function RenderCart({ props }: { props: Record<string, unknown> }) {
+  const title = (props.title as string) || "Your Cart";
+  const emptyText = (props.emptyText as string) || "Your cart is empty.";
+  const checkoutLabel = (props.checkoutLabel as string) || "Checkout";
+
+  return (
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: "var(--sr-radius)", padding: "1.5rem", maxWidth: "480px" }}>
+      <h2 style={{ fontFamily: "var(--sr-font-heading)", fontWeight: 700, fontSize: "1.25rem", marginBottom: "1rem" }}>{title}</h2>
+      <div style={{ padding: "2rem 0", textAlign: "center", color: "var(--sr-secondary)", fontSize: "0.875rem", borderTop: "1px solid #e5e7eb", borderBottom: "1px solid #e5e7eb", marginBottom: "1rem" }}>
+        {emptyText}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem", fontWeight: 600 }}>
+        <span>Total</span>
+        <span>$0.00</span>
+      </div>
+      <button type="button" style={{ width: "100%", background: "var(--sr-primary)", color: "#fff", padding: "0.625rem", borderRadius: "var(--sr-radius)", fontWeight: 600, border: "none", cursor: "pointer", fontSize: "0.875rem" }}>
+        {checkoutLabel}
+      </button>
+    </div>
+  );
+}
+
+function RenderCheckout({ props }: { props: Record<string, unknown> }) {
+  const title = (props.title as string) || "Checkout";
+  const submitLabel = (props.submitLabel as string) || "Place Order";
+  const inputStyle: React.CSSProperties = { width: "100%", padding: "0.5rem 0.75rem", border: "1px solid #d1d5db", borderRadius: "var(--sr-radius)", fontSize: "0.875rem", boxSizing: "border-box" };
+  const labelStyle: React.CSSProperties = { display: "block", fontSize: "0.8125rem", fontWeight: 500, marginBottom: "0.25rem" };
+
+  return (
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: "var(--sr-radius)", padding: "2rem", maxWidth: "540px" }}>
+      <h2 style={{ fontFamily: "var(--sr-font-heading)", fontWeight: 700, marginBottom: "1.5rem", fontSize: "1.25rem" }}>{title}</h2>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div><label style={labelStyle}>First Name</label><input type="text" placeholder="Jane" style={inputStyle} readOnly /></div>
+          <div><label style={labelStyle}>Last Name</label><input type="text" placeholder="Smith" style={inputStyle} readOnly /></div>
+        </div>
+        <div><label style={labelStyle}>Email</label><input type="email" placeholder="jane@example.com" style={inputStyle} readOnly /></div>
+        <div><label style={labelStyle}>Address</label><input type="text" placeholder="123 Main St" style={inputStyle} readOnly /></div>
+        <div><label style={labelStyle}>Card Number</label><input type="text" placeholder="4242 4242 4242 4242" style={inputStyle} readOnly /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div><label style={labelStyle}>Expiry</label><input type="text" placeholder="MM/YY" style={inputStyle} readOnly /></div>
+          <div><label style={labelStyle}>CVC</label><input type="text" placeholder="123" style={inputStyle} readOnly /></div>
+        </div>
+        <button type="button" style={{ background: "var(--sr-primary)", color: "#fff", padding: "0.625rem 1.5rem", borderRadius: "var(--sr-radius)", fontWeight: 600, border: "none", cursor: "pointer", fontSize: "0.875rem" }}>{submitLabel}</button>
+      </div>
+    </div>
+  );
+}
+
+function RenderReward({ props }: { props: Record<string, unknown> }) {
+  const title = (props.title as string) || "Earn Rewards";
+  const description = (props.description as string) || "Earn points on every purchase!";
+  const pointsLabel = (props.pointsLabel as string) || "Points";
+  const bgColor = (props.backgroundColor as string) || "#f0fdf4";
+  const textColor = (props.textColor as string) || "#166534";
+
+  return (
+    <div style={{ background: bgColor, color: textColor, borderRadius: "var(--sr-radius)", padding: "1.5rem 2rem", textAlign: "center", border: `1px solid ${textColor}30` }}>
+      <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>🎁</div>
+      <h3 style={{ fontFamily: "var(--sr-font-heading)", fontWeight: 800, fontSize: "1.25rem", marginBottom: "0.375rem" }}>{title}</h3>
+      <p style={{ fontSize: "0.9rem", opacity: 0.85, marginBottom: "1rem" }}>{description}</p>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "rgba(255,255,255,0.6)", padding: "0.5rem 1rem", borderRadius: "var(--sr-radius)", border: `1px solid ${textColor}40` }}>
+        <span style={{ fontWeight: 700, fontFamily: "monospace", fontSize: "1.5rem" }}>0</span>
+        <span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{pointsLabel}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Element dispatcher ───────────────────────────────────────────────────────
 
 export function SiteElementRenderer({
@@ -493,31 +562,41 @@ export function SiteElementRenderer({
   products?: Product[];
 }) {
   const { type, props, children } = element;
+  const customStyle = (props.style as React.CSSProperties | undefined) || {};
+  const hasCustomStyle = Object.keys(customStyle).length > 0;
 
-  switch (type as ElementType) {
-    case "text":      return <RenderText props={props} />;
-    case "image":     return <RenderImage props={props} />;
-    case "button":    return <RenderButton props={props} />;
-    case "hero":      return <RenderHero props={props} />;
-    case "nav":       return <RenderNav props={props} />;
-    case "footer":    return <RenderFooter props={props} />;
-    case "divider":   return <RenderDivider props={props} />;
-    case "spacer":    return <RenderSpacer props={props} />;
-    case "container": return <RenderContainer props={props} children={children} />;
-    case "columns":   return <RenderColumns props={props} />;
-    case "product-card":   return <RenderProductCard props={props} products={products} />;
-    case "booking-form":   return <RenderBookingForm props={props} />;
-    case "coupon-banner":  return <RenderCouponBanner props={props} />;
-    case "pricing-table":  return <RenderPricingTable props={props} />;
-    case "testimonial":    return <RenderTestimonial props={props} />;
-    case "faq":            return <RenderFaq props={props} />;
-    case "gallery":        return <RenderGallery props={props} />;
-    case "custom-html":    return <RenderCustomHtml props={props} />;
-    case "login-form":         return <RenderLoginForm props={props} />;
-    case "code-block":         return <RenderCodeBlock props={props} />;
-    case "membership-widget":  return <RenderMembershipWidget props={props} />;
-    default:                   return null;
-  }
+  const rendered = (() => {
+    switch (type as ElementType) {
+      case "text":      return <RenderText props={props} />;
+      case "image":     return <RenderImage props={props} />;
+      case "button":    return <RenderButton props={props} />;
+      case "hero":      return <RenderHero props={props} />;
+      case "nav":       return <RenderNav props={props} />;
+      case "footer":    return <RenderFooter props={props} />;
+      case "divider":   return <RenderDivider props={props} />;
+      case "spacer":    return <RenderSpacer props={props} />;
+      case "container": return <RenderContainer props={props} children={children} />;
+      case "columns":   return <RenderColumns props={props} />;
+      case "product-card":   return <RenderProductCard props={props} products={products} />;
+      case "booking-form":   return <RenderBookingForm props={props} />;
+      case "coupon-banner":  return <RenderCouponBanner props={props} />;
+      case "pricing-table":  return <RenderPricingTable props={props} />;
+      case "testimonial":    return <RenderTestimonial props={props} />;
+      case "faq":            return <RenderFaq props={props} />;
+      case "gallery":        return <RenderGallery props={props} />;
+      case "custom-html":    return <RenderCustomHtml props={props} />;
+      case "login-form":         return <RenderLoginForm props={props} />;
+      case "code-block":         return <RenderCodeBlock props={props} />;
+      case "membership-widget":  return <RenderMembershipWidget props={props} />;
+      case "cart":       return <RenderCart props={props} />;
+      case "checkout":   return <RenderCheckout props={props} />;
+      case "reward":     return <RenderReward props={props} />;
+      default:           return null;
+    }
+  })();
+
+  if (!hasCustomStyle) return rendered;
+  return <div style={customStyle}>{rendered}</div>;
 }
 
 // ─── Full page renderer ───────────────────────────────────────────────────────
