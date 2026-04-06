@@ -90,6 +90,7 @@ import { IconPicker } from "@/components/icon-picker";
 import * as LucideIcons from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
 import { createClient } from "@/lib/supabase/client";
+import { hapticLight } from "@/lib/haptics";
 import type { Site, SitePage, SiteElement, ElementType, SiteTheme, SiteComponent } from "@/lib/types";
 import type { Product } from "@/lib/types";
 
@@ -105,45 +106,262 @@ const THEME_SWATCH_KEYS: { key: keyof SiteTheme; label: string }[] = [
   { key: "text",       label: "Text" },
 ];
 
-function ThemeSwatches({ onPick }: { onPick: (color: string) => void }) {
+// ─── Custom color picker (no native <input type="color">) ────────────────────
+
+const PRESET_COLORS = [
+  // Grayscale (12)
+  "#ffffff","#f5f5f4","#e7e5e4","#d6d3d1","#a8a29e","#78716c",
+  "#57534e","#44403c","#292524","#1c1917","#0c0a09","#000000",
+  // Red
+  "#fef2f2","#fecaca","#f87171","#ef4444","#dc2626","#991b1b",
+  // Orange
+  "#fff7ed","#fed7aa","#fb923c","#f97316","#ea580c","#9a3412",
+  // Amber
+  "#fffbeb","#fde68a","#fbbf24","#f59e0b","#d97706","#92400e",
+  // Green
+  "#f0fdf4","#bbf7d0","#4ade80","#22c55e","#16a34a","#166534",
+  // Blue
+  "#eff6ff","#bfdbfe","#60a5fa","#3b82f6","#2563eb","#1e40af",
+  // Purple
+  "#faf5ff","#e9d5ff","#a78bfa","#8b5cf6","#7c3aed","#5b21b6",
+  // Pink
+  "#fdf2f8","#fbcfe8","#f472b6","#ec4899","#db2777","#9d174d",
+];
+
+// Light-colored swatches that need a subtle inset border to show against white bg
+const LIGHT_SWATCHES = new Set([
+  "#ffffff","#f5f5f4","#e7e5e4","#d6d3d1",
+  "#fef2f2","#fff7ed","#fffbeb","#f0fdf4","#eff6ff","#faf5ff","#fdf2f8",
+]);
+
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return mobile;
+}
+
+function ColorSwatchGrid({
+  value,
+  onSelect,
+  onChange,
+  circleSize,
+}: {
+  value: string;
+  onSelect: (v: string) => void; // swatch click: apply + close
+  onChange: (v: string) => void; // hex input: apply only
+  circleSize: number;
+}) {
   const theme = useContext(ThemeContext);
-  if (!theme) return null;
+  const [hexInput, setHexInput] = useState(
+    value && value !== "transparent" ? value.replace("#", "") : ""
+  );
+
+  useEffect(() => {
+    if (value && value !== "transparent") setHexInput(value.replace("#", ""));
+    else if (value === "transparent") setHexInput("");
+  }, [value]);
+
+  const isSelected = (c: string) => value?.toLowerCase() === c.toLowerCase();
+
+  const swatchCls = (c: string) =>
+    cn(
+      "rounded-full border-2 transition-transform hover:scale-110 cursor-pointer flex-shrink-0",
+      isSelected(c) ? "border-foreground scale-110" : "border-transparent"
+    );
+
+  const swatchStyle = (c: string, sz: number): React.CSSProperties => ({
+    width: sz, height: sz,
+    backgroundColor: c,
+    boxShadow: LIGHT_SWATCHES.has(c) ? "inset 0 0 0 1px rgba(0,0,0,0.1)" : undefined,
+  });
+
+  const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9a-fA-F]/g, "").slice(0, 6);
+    setHexInput(raw);
+    if (raw.length === 6) onChange("#" + raw);
+  };
+
+  const sz = circleSize;
+
   return (
-    <div className="flex gap-1 mb-1">
-      {THEME_SWATCH_KEYS.map(({ key, label }) => (
-        <button
-          key={key}
-          type="button"
-          title={label}
-          onClick={() => onPick(theme[key] as string)}
-          className="h-4 w-4 rounded-full border border-black/20 shadow-sm hover:scale-110 transition-transform"
-          style={{ backgroundColor: theme[key] as string }}
+    <div className="space-y-2.5 p-3">
+      {/* Theme colors */}
+      {theme && (
+        <div>
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Theme</p>
+          <div className="flex gap-1.5 flex-wrap">
+            {THEME_SWATCH_KEYS.map(({ key, label }) => {
+              const c = theme[key] as string;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  title={label}
+                  onClick={() => onSelect(c)}
+                  className={swatchCls(c)}
+                  style={swatchStyle(c, sz)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Preset grid */}
+      <div>
+        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Colors</p>
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(6, ${sz}px)` }}>
+          {PRESET_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              title={c}
+              onClick={() => onSelect(c)}
+              className={swatchCls(c)}
+              style={swatchStyle(c, sz)}
+            />
+          ))}
+          {/* Transparent */}
+          <button
+            type="button"
+            title="Transparent"
+            onClick={() => onSelect("transparent")}
+            className={cn(
+              "rounded-full border-2 cursor-pointer flex-shrink-0 transition-transform hover:scale-110",
+              value === "transparent" ? "border-foreground scale-110" : "border-transparent"
+            )}
+            style={{
+              width: sz, height: sz,
+              background: "repeating-linear-gradient(45deg,#e5e7eb 0px,#e5e7eb 2px,#fff 2px,#fff 5px)",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Hex input */}
+      <div className="flex items-center gap-1.5">
+        <div
+          className="rounded border border-border shrink-0"
+          style={{
+            width: 24, height: 24,
+            backgroundColor: value && value !== "transparent" ? value : "#ffffff",
+            backgroundImage: value === "transparent"
+              ? "repeating-linear-gradient(45deg,#e5e7eb 0px,#e5e7eb 2px,#fff 2px,#fff 5px)"
+              : undefined,
+          }}
         />
-      ))}
+        <span className="text-xs text-muted-foreground font-mono">#</span>
+        <input
+          type="text"
+          value={hexInput}
+          onChange={handleHexChange}
+          placeholder="000000"
+          spellCheck={false}
+          maxLength={6}
+          className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono outline-none focus:ring-1 focus:ring-ring min-w-0"
+        />
+      </div>
     </div>
   );
 }
 
-// Color input with theme swatches
 function PropColorInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Close desktop popover on outside click
+  useEffect(() => {
+    if (!open || isMobile) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open, isMobile]);
+
+  const handleSelect = (color: string) => {
+    hapticLight();
+    onChange(color);
+    setOpen(false);
+  };
+
+  const isTransparent = value === "transparent";
+  const displayColor = !isTransparent && value ? value : undefined;
+
   return (
-    <div>
-      <ThemeSwatches onPick={onChange} />
-      <div className="flex gap-1">
-        <input
-          type="color"
-          value={value || "#000000"}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-7 w-8 rounded border border-border cursor-pointer shrink-0"
+    <div className="relative">
+      {/* Trigger button */}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 rounded border border-border px-2 py-1 text-xs hover:bg-muted transition-colors"
+      >
+        <span
+          className="h-4 w-4 rounded border border-black/10 shrink-0"
+          style={{
+            backgroundColor: displayColor ?? "#ffffff",
+            backgroundImage: isTransparent
+              ? "repeating-linear-gradient(45deg,#e5e7eb 0px,#e5e7eb 2px,#fff 2px,#fff 5px)"
+              : undefined,
+          }}
         />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="#000000"
-          className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono outline-none focus:ring-1 focus:ring-ring"
-        />
-      </div>
+        <span className="font-mono truncate" style={{ maxWidth: 64 }}>
+          {value || "—"}
+        </span>
+      </button>
+
+      {/* Desktop popover */}
+      {open && !isMobile && (
+        <div
+          ref={popoverRef}
+          className="absolute z-50 top-full left-0 mt-1 rounded border border-border bg-background shadow-lg"
+          style={{ width: 180 }}
+        >
+          <ColorSwatchGrid
+            value={value}
+            onSelect={handleSelect}
+            onChange={onChange}
+            circleSize={20}
+          />
+        </div>
+      )}
+
+      {/* Mobile bottom sheet */}
+      {open && isMobile && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-xl border-t border-border bg-background"
+            style={{ animation: "slideUp 0.2s ease-out" }}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+            </div>
+            <div className="pb-6">
+              <ColorSwatchGrid
+                value={value}
+                onSelect={handleSelect}
+                onChange={onChange}
+                circleSize={24}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
