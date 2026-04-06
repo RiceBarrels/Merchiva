@@ -2,11 +2,13 @@
 /**
  * build:static — Static export for Capacitor/native builds.
  *
- * 1. Any page.static.tsx found anywhere replaces its page.tsx during build
- * 2. Dynamic route folders ([param]): page.tsx removed if no page.static.tsx
- * 3. API routes (app/api/): temporarily removed
- * 4. Runs `next build` with output: "export"
- * 5. Restores all original files (even on failure)
+ * 1. Auto-generates page.static.tsx + fallback components for dynamic routes
+ *    (same as generate:static — no need to run separately)
+ * 2. Swaps page.static.tsx → page.tsx everywhere
+ * 3. Hides dynamic route dirs that have no static fallback
+ * 4. Removes API routes
+ * 5. Runs `next build` with output: "export"
+ * 6. Restores all original files (even on failure)
  *
  * Usage:
  *   bun scripts/build-static.ts [options]
@@ -14,12 +16,13 @@
  * Options:
  *   --dry-run    Show what would be done without modifying files
  *   --verbose    Print detailed file operations
+ *   --generate   Only generate static pages, don't build
  *   --help       Show this help message
  */
 
 import { execSync } from "child_process";
 import { existsSync, renameSync, unlinkSync, writeFileSync, readFileSync, readdirSync, statSync, mkdirSync } from "fs";
-import { join, relative } from "path";
+import { join, relative, dirname } from "path";
 
 const ROOT = join(import.meta.dir, "..");
 const APP_DIR = join(ROOT, "app");
@@ -27,6 +30,7 @@ const APP_DIR = join(ROOT, "app");
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const verbose = args.includes("--verbose");
+const generateOnly = args.includes("--generate");
 if (args.includes("--help")) {
   console.log(`
   build:static — Static export for Capacitor/native builds
@@ -36,14 +40,16 @@ if (args.includes("--help")) {
   Options:
     --dry-run    Show what would be done without modifying files
     --verbose    Print detailed file operations
+    --generate   Only generate static pages, don't build
     --help       Show this help message
 
   How it works:
-    • page.static.tsx: if found anywhere, replaces page.tsx during build.
-    • Dynamic routes ([param] folders): page.tsx removed if no static fallback.
-    • API routes (app/api/): temporarily removed for static export.
-    • All files are restored after build (even on failure).
-    • Output goes to ./out/
+    1. Generates page.static.tsx for dynamic routes (if missing)
+    2. Swaps page.static.tsx → page.tsx during build
+    3. Hides dynamic dirs with no static fallback
+    4. Removes API routes
+    5. Runs next build → ./out/
+    6. Restores all files
   `);
   process.exit(0);
 }
@@ -64,11 +70,24 @@ function findFilesRecursive(dir: string, match: (name: string) => boolean): stri
   return results;
 }
 
-function isDynamicPath(filePath: string): boolean {
-  return filePath.includes("[");
+function isDynamicPath(p: string): boolean { return p.includes("["); }
+function rel(p: string) { return relative(ROOT, p); }
+
+function extractParams(filePath: string): string[] {
+  const matches = filePath.match(/\[([a-zA-Z]+)\]/g);
+  return matches ? matches.map((m) => m.slice(1, -1)) : [];
 }
 
-function rel(p: string) { return relative(ROOT, p); }
+function findParentRoute(filePath: string): string {
+  const parts = relative(APP_DIR, dirname(filePath)).split("/");
+  const staticParts: string[] = [];
+  for (const part of parts) {
+    if (part.includes("[")) break;
+    if (part.startsWith("(") && part.endsWith(")")) continue;
+    staticParts.push(part);
+  }
+  return "/" + staticParts.join("/") || "/";
+}
 
 // ─── Backup/Restore ─────────────────────────────────────────────────────────
 
@@ -95,10 +114,120 @@ function restoreAll() {
   try { execSync(`rm -rf "${BACKUP_DIR}"`, { stdio: "ignore" }); } catch {}
 }
 
-// ─── Collect ────────────────────────────────────────────────────────────────
+// ─── Step 1: Generate static pages ─────────────────────────────────────────
 
-// Find top-level dynamic route directories
-const allDynamicDirs = findFilesRecursive(APP_DIR, () => false); // dummy — use findDirsRecursive
+console.log("\n📄 Step 1: Generate static pages for dynamic routes\n");
+
+const allPages = findFilesRecursive(APP_DIR, (n) => n === "page.tsx" || n === "page.ts");
+const dynamicPages = allPages.filter((p) => isDynamicPath(p));
+let generated = 0;
+const generatedFiles: string[] = [];
+
+for (const pagePath of dynamicPages) {
+  const dir = dirname(pagePath);
+  const ext = pagePath.endsWith(".ts") ? "ts" : "tsx";
+  const staticPath = join(dir, `page.static.${ext}`);
+  const contentPath = join(dir, "page-content.tsx");
+  const params = extractParams(pagePath);
+  const parentRoute = findParentRoute(pagePath);
+  const paramType = `{ ${params.map((p) => `${p}: string`).join("; ")} }`;
+
+  if (existsSync(staticPath)) {
+    if (verbose) console.log(`  · ${rel(staticPath)} — exists, skip`);
+    continue;
+  }
+
+  const hasContent = existsSync(contentPath);
+  let pageCode: string;
+  let helperPath: string;
+  let helperCode: string;
+
+  if (hasContent) {
+    pageCode = `// Auto-generated by build:static
+import { Suspense } from "react";
+import Content from "./page-content-static";
+
+export function generateStaticParams() { return []; }
+export const dynamicParams = false;
+
+export default function StaticPage() {
+  return <Suspense><Content /></Suspense>;
+}
+`;
+    helperPath = join(dir, "page-content-static.tsx");
+    helperCode = `"use client";
+import { useRouteParams } from "@/lib/use-route-params";
+import PageContent from "./page-content";
+
+export default function Wrapper() {
+  const params = useRouteParams<${paramType}>();
+${params.map((p) => `  const ${p} = params.${p};`).join("\n")}
+  if (${params.map((p) => `!${p}`).join(" || ")}) return null;
+  return <PageContent ${params.map((p) => `${p}={${p}}`).join(" ")} />;
+}
+`;
+  } else {
+    pageCode = `// Auto-generated by build:static
+import { Suspense } from "react";
+import Fallback from "./static-fallback";
+
+export function generateStaticParams() { return []; }
+export const dynamicParams = false;
+
+export default function StaticPage() {
+  return <Suspense><Fallback /></Suspense>;
+}
+`;
+    helperPath = join(dir, "static-fallback.tsx");
+    helperCode = `"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useRouteParams } from "@/lib/use-route-params";
+
+export default function StaticFallback() {
+  const router = useRouter();
+  const params = useRouteParams<${paramType}>();
+${params.map((p) => `  const ${p} = params.${p};`).join("\n")}
+
+  useEffect(() => {
+    if (${params.map((p) => `!${p}`).join(" && ")}) {
+      router.replace("${parentRoute}");
+    }
+  }, [${params.join(", ")}, router]);
+
+  if (${params.map((p) => `!${p}`).join(" && ")}) return null;
+
+  return (
+    <div className="flex h-full items-center justify-center text-muted-foreground text-sm p-4 text-center">
+      <p>This page requires a server. Open in browser to access.</p>
+    </div>
+  );
+}
+`;
+  }
+
+  console.log(`  ${hasContent ? "✦" : "○"} ${rel(staticPath)} — ${hasContent ? "page-content.tsx" : "fallback"} (${params.join(", ")})`);
+  if (!dryRun) {
+    writeFileSync(staticPath, pageCode);
+    writeFileSync(helperPath, helperCode);
+    generatedFiles.push(staticPath, helperPath);
+  }
+  generated++;
+}
+
+console.log(`  ${generated} generated, ${dynamicPages.length - generated} already exist`);
+
+if (generateOnly) {
+  console.log("\n  --generate flag: skipping build.\n");
+  process.exit(0);
+}
+
+// ─── Step 2: Collect files to process ───────────────────────────────────────
+
+// Re-scan after generation
+const staticPages = findFilesRecursive(APP_DIR, (n) => /^page\.static\.(tsx|ts)$/.test(n));
+
+// Find top-level dynamic dirs
 const dynamicDirs: string[] = [];
 function collectDynamicDirs(dir: string) {
   if (!existsSync(dir)) return;
@@ -114,65 +243,39 @@ const topLevel = dynamicDirs.filter((d) =>
   !dynamicDirs.some((other) => other !== d && d.startsWith(other + "/"))
 );
 
-// 1. Find ALL page.static.tsx files (any directory)
-const staticPages = findFilesRecursive(APP_DIR, (n) => /^page\.static\.(tsx|ts)$/.test(n));
-
-// 2. Find dynamic route pages WITHOUT a page.static.tsx
-const allPages = findFilesRecursive(APP_DIR, (n) => /^page\.(tsx|ts)$/.test(n));
-const dynamicPagesNoStatic = allPages.filter((p) => {
-  if (!isDynamicPath(p)) return false;
-  const ext = p.endsWith(".ts") ? "ts" : "tsx";
-  const staticVersion = p.replace(/page\.(tsx|ts)$/, `page.static.${ext}`);
-  return !existsSync(staticVersion);
-});
-
-// 3. Layout files inside dynamic route trees
-const dynamicLayouts: string[] = [];
+// Hide ALL top-level dynamic dirs — Next.js can't handle nested routes
+// under dynamic segments in static export even with generateStaticParams
+const dirsToHide: { original: string; hidden: string }[] = [];
 for (const dir of topLevel) {
-  dynamicLayouts.push(...findFilesRecursive(dir, (n) => /^layout\.(tsx|ts)$/.test(n)));
+  dirsToHide.push({ original: dir, hidden: dir.replace(/\[/g, "_").replace(/\]/g, "_") + ".__hidden__" });
 }
 
-// 4. API routes
+// API routes
 const apiRoutes = findFilesRecursive(join(APP_DIR, "api"), (n) => n === "route.ts");
 
 const swappedStatic: { staticPath: string; pagePath: string }[] = [];
 const dirsHidden: { original: string; hidden: string }[] = [];
 
-// Determine which top-level dynamic dirs to hide entirely (no page.static.tsx inside)
-const dirsToHide: { original: string; hidden: string }[] = [];
-for (const dir of topLevel) {
-  const hasStaticPage = findFilesRecursive(dir, (n) => /^page\.static\.(tsx|ts)$/.test(n)).length > 0;
-  if (!hasStaticPage) {
-    const hidden = dir.replace(/\[/g, "_").replace(/\]/g, "_") + ".__hidden__";
-    dirsToHide.push({ original: dir, hidden });
-  }
-}
-
 console.log(`
-📦 build:static${dryRun ? " (dry run)" : ""}
+📦 Step 2: Build static${dryRun ? " (dry run)" : ""}
    ${staticPages.length} page.static.tsx swap(s)
    ${dirsToHide.length} dynamic dir(s) to hide
    ${apiRoutes.length} API route(s) to remove
 `);
 
-// ─── Execute ────────────────────────────────────────────────────────────────
+// ─── Step 3: Execute ────────────────────────────────────────────────────────
 
 try {
-  // Swap page.static.tsx → page.tsx (anywhere)
+  // Swap page.static.tsx → page.tsx
   for (const staticPath of staticPages) {
     const pagePath = staticPath.replace(/page\.static\.(tsx|ts)$/, "page.$1");
-    console.log(`  ✦ ${rel(pagePath)} → swap with ${staticPath.split("/").pop()}`);
+    console.log(`  ✦ ${rel(pagePath)} → swap`);
     if (!dryRun) {
       if (existsSync(pagePath)) backupFile(pagePath);
       let content = readFileSync(staticPath, "utf-8");
       if (isDynamicPath(staticPath) && !content.includes("generateStaticParams")) {
         const gsp = `\nexport function generateStaticParams() { return []; }\n`;
-        const useClientMatch = content.match(/^(['"])use client\1;?\s*\n/);
-        if (useClientMatch) {
-          content = useClientMatch[0] + gsp + content.slice(useClientMatch[0].length);
-        } else {
-          content = gsp + content;
-        }
+        content = gsp + content;
       }
       writeFileSync(pagePath, content);
       backupFile(staticPath);
@@ -181,7 +284,7 @@ try {
     }
   }
 
-  // Hide entire dynamic directories (rename so Next.js ignores them)
+  // Hide dynamic dirs
   for (const { original, hidden } of dirsToHide) {
     console.log(`  ✕ ${rel(original)}/ → hide`);
     if (!dryRun) {
@@ -200,11 +303,11 @@ try {
   }
 
   if (dryRun) {
-    console.log("\n  (dry run — no files modified, no build executed)\n");
+    console.log("\n  (dry run — no build executed)\n");
     process.exit(0);
   }
 
-  console.log(`\n🔨 Running next build with output: "export"...\n`);
+  console.log(`\n🔨 Step 3: next build (output: export)...\n`);
   execSync("bun next build", {
     cwd: ROOT,
     stdio: "inherit",
@@ -218,16 +321,20 @@ try {
 } finally {
   if (!dryRun) {
     console.log("🔄 Restoring original files...");
-    // Un-hide directories first
+    // Un-hide directories
     for (const { original, hidden } of dirsHidden) {
       if (existsSync(hidden)) renameSync(hidden, original);
     }
-    // Delete generated page.tsx files from swaps
+    // Delete swapped page.tsx files
     for (const { pagePath } of swappedStatic) {
       if (existsSync(pagePath)) unlinkSync(pagePath);
     }
-    // restoreAll handles both page.tsx originals and page.static.tsx files
+    // Restore backed up originals
     restoreAll();
+    // Delete generated static files (page.static.tsx, static-fallback.tsx, etc.)
+    for (const f of generatedFiles) {
+      if (existsSync(f)) { unlinkSync(f); if (verbose) console.log(`  deleted: ${rel(f)}`); }
+    }
     console.log("✅ All files restored.\n");
   }
 }
