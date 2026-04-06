@@ -306,3 +306,70 @@ export interface DashboardMetrics {
   productsAtRisk: number;
   totalProducts: number;
 }
+
+// ─── Site Builder ─────────────────────────────────────────────────────────────
+
+export interface SiteTheme {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  textColor: string;
+  headingFont: string;
+  bodyFont: string;
+  baseFontSize: number; // px, 14–20
+  borderRadius: number; // px, 0–24
+  maxContentWidth: number; // px, 800–1400
+  sectionPadding: number; // px, 16–80
+}
+
+export type SiteElementType =
+  | "text"
+  | "image"
+  | "button"
+  | "container"
+  | "divider"
+  | "hero"
+  | "nav"
+  | "footer"
+  | "spacer"
+  | "columns"
+  | "video"
+  | "gallery"
+  | "custom-html";
+
+export interface SiteElement {
+  id: string;
+  siteId: string;
+  pageId: string;
+  parentId: string | null;
+  type: SiteElementType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props: Record<string, any>;
+  sortOrder: number;
+  children?: SiteElement[];
+}
+
+export interface SitePage {
+  id: string;
+  siteId: string;
+  title: string;
+  slug: string;
+  isHome: boolean;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  elements?: SiteElement[];
+}
+
+export interface Site {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  published: boolean;
+  theme: SiteTheme;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
