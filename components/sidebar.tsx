@@ -10,6 +10,7 @@ import {
   Users,
   ShoppingBag,
   Globe,
+  Crown,
   Zap,
   Settings,
   LogOut,
@@ -55,6 +56,7 @@ const navItems: NavItem[] = [
   { label: "Products",         href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
   { label: "Chat",             href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { label: "Website",          href: "/builder",     icon: Globe },
+  { label: "Membership",       href: "/membership",  icon: Crown },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {

@@ -458,9 +458,9 @@ export interface SiteOrder {
   items: { name: string; price: number; quantity: number }[];
   total: number;
   status: "pending" | "confirmed" | "completed" | "cancelled";
-  customerName: string | null;
-  customerEmail: string | null;
-  notes: string | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  notes?: string | null;
   createdAt: string;
 }
 
@@ -472,12 +472,32 @@ export interface SiteBooking {
   time: string;
   partySize: number;
   name: string;
-  phone: string | null;
-  email: string | null;
-  notes: string | null;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
   status: "pending" | "confirmed" | "cancelled";
   createdAt: string;
 }
 
 // SiteElementType alias for backward compatibility
 export type SiteElementType = ElementType;
+
+// ─── Site Membership (simple plan-based, distinct from MembershipTier system) ──
+
+export interface SiteMembership {
+  id: string;
+  siteId: string;
+  customerId: string;
+  plan: string;
+  startedAt: string;
+  expiresAt: string | null;
+}
+
+// ─── Cart ─────────────────────────────────────────────────────────────────────
+
+export interface CartItem {
+  productId: string;
+  name: string;
+  price: number;
+  qty: number;
+}
