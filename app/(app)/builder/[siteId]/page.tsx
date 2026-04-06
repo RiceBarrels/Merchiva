@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, use } from "react";
+import { useCallback, useEffect, useRef, useState, use, createContext, useContext } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -39,9 +39,13 @@ import {
   ShoppingCart,
   Gift,
   Star,
+  Library,
+  Blocks,
+  Paintbrush,
+  BookMarked,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage } from "@/lib/db/sites";
+import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage, getSavedComponents, saveComponent, deleteComponent } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { SiteElementRenderer } from "@/components/site-renderer";
 import { ImageUpload } from "@/components/image-upload";
@@ -49,13 +53,78 @@ import { Combobox } from "@/components/ui/combobox";
 import { IconPicker } from "@/components/icon-picker";
 import * as LucideIcons from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
-import type { Site, SitePage, SiteElement, ElementType, SiteTheme } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import type { Site, SitePage, SiteElement, ElementType, SiteTheme, SiteComponent } from "@/lib/types";
 import type { Product } from "@/lib/types";
+
+// ─── Theme context (for color swatches in properties panel) ──────────────────
+
+const ThemeContext = createContext<SiteTheme | null>(null);
+
+const THEME_SWATCH_KEYS: { key: keyof SiteTheme; label: string }[] = [
+  { key: "primary",    label: "Primary" },
+  { key: "secondary",  label: "Secondary" },
+  { key: "accent",     label: "Accent" },
+  { key: "background", label: "Background" },
+  { key: "text",       label: "Text" },
+];
+
+function ThemeSwatches({ onPick }: { onPick: (color: string) => void }) {
+  const theme = useContext(ThemeContext);
+  if (!theme) return null;
+  return (
+    <div className="flex gap-1 mb-1">
+      {THEME_SWATCH_KEYS.map(({ key, label }) => (
+        <button
+          key={key}
+          type="button"
+          title={label}
+          onClick={() => onPick(theme[key] as string)}
+          className="h-4 w-4 rounded-full border border-black/20 shadow-sm hover:scale-110 transition-transform"
+          style={{ backgroundColor: theme[key] as string }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Color input with theme swatches
+function PropColorInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <ThemeSwatches onPick={onChange} />
+      <div className="flex gap-1">
+        <input
+          type="color"
+          value={value || "#000000"}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-7 w-8 rounded border border-border cursor-pointer shrink-0"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#000000"
+          className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono outline-none focus:ring-1 focus:ring-ring"
+        />
+      </div>
+    </div>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function deepCopyElement(el: SiteElement): SiteElement {
+  return {
+    ...el,
+    id: uid(),
+    props: { ...el.props },
+    children: el.children?.map(deepCopyElement),
+  };
 }
 
 function defaultProps(type: ElementType): Record<string, unknown> {
@@ -226,10 +295,7 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
       </Section>
       <Section label="Background" defaultOpen={false}>
         <PropRow label="Color">
-          <div className="flex gap-1">
-            <input type="color" value={s("backgroundColor") || "#ffffff"} onChange={(e) => set("backgroundColor", e.target.value)} className="h-7 w-8 rounded border border-border cursor-pointer shrink-0" />
-            <input type="text" value={s("backgroundColor")} onChange={(e) => set("backgroundColor", e.target.value)} placeholder="transparent" className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring" />
-          </div>
+          <PropColorInput value={s("backgroundColor")} onChange={(v) => set("backgroundColor", v)} />
         </PropRow>
         <PropRow label="Image"><PropInput value={s("backgroundImage")} onChange={(v) => set("backgroundImage", v)} placeholder="url(https://…)" /></PropRow>
         <PropRow label="Size">
@@ -280,7 +346,7 @@ function TextProps({ props, onChange }: { props: Record<string, unknown>; onChan
       <PropRow label="Weight">
         <PropSelect value={(props.fontWeight as string) || "normal"} onChange={(v) => onChange("fontWeight", v)} options={[{ label: "Normal", value: "normal" }, { label: "Medium", value: "500" }, { label: "Semibold", value: "600" }, { label: "Bold", value: "bold" }]} />
       </PropRow>
-      <PropRow label="Color"><PropInput type="color" value={(props.color as string) || "#000000"} onChange={(v) => onChange("color", v)} /></PropRow>
+      <PropRow label="Color"><PropColorInput value={(props.color as string) || "#000000"} onChange={(v) => onChange("color", v)} /></PropRow>
       <PropRow label="Padding"><PropInput value={(props.padding as string) || ""} onChange={(v) => onChange("padding", v)} placeholder="0.5rem 1rem" /></PropRow>
     </>
   );
@@ -331,12 +397,12 @@ function HeroProps({ props, onChange, orgId }: { props: Record<string, unknown>;
         <PropSelect value={(props.align as string) || "center"} onChange={(v) => onChange("align", v)} options={[{ label: "Left", value: "left" }, { label: "Center", value: "center" }, { label: "Right", value: "right" }]} />
       </PropRow>
       <PropRow label="Height"><PropInput value={(props.height as string) || "480px"} onChange={(v) => onChange("height", v)} placeholder="480px" /></PropRow>
-      <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#f9fafb"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
+      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || "#f9fafb"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
       <PropRow label="Bg image">
         <ImageUpload value={(props.backgroundImage as string) || ""} orgId={orgId} onChange={(url) => onChange("backgroundImage", url)} />
         <PropInput value={(props.backgroundImage as string) || ""} onChange={(v) => onChange("backgroundImage", v)} placeholder="https://…" />
       </PropRow>
-      <PropRow label="Text color"><PropInput type="color" value={(props.textColor as string) || "#09090b"} onChange={(v) => onChange("textColor", v)} /></PropRow>
+      <PropRow label="Text color"><PropColorInput value={(props.textColor as string) || "#09090b"} onChange={(v) => onChange("textColor", v)} /></PropRow>
     </>
   );
 }
@@ -346,8 +412,8 @@ function NavProps({ props, onChange }: { props: Record<string, unknown>; onChang
   return (
     <>
       <PropRow label="Logo"><PropInput value={(props.logo as string) || ""} onChange={(v) => onChange("logo", v)} placeholder="My Site" /></PropRow>
-      <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#ffffff"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
-      <PropRow label="Text color"><PropInput type="color" value={(props.textColor as string) || "#09090b"} onChange={(v) => onChange("textColor", v)} /></PropRow>
+      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || "#ffffff"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
+      <PropRow label="Text color"><PropColorInput value={(props.textColor as string) || "#09090b"} onChange={(v) => onChange("textColor", v)} /></PropRow>
       <PropRow label="Sticky"><PropToggle value={props.sticky === true} onChange={(v) => onChange("sticky", v)} label="Sticky on scroll" /></PropRow>
       <PropRow label="Links">
         <div className="space-y-1">
@@ -370,8 +436,8 @@ function FooterProps({ props, onChange }: { props: Record<string, unknown>; onCh
   return (
     <>
       <PropRow label="Text"><PropTextarea value={(props.text as string) || ""} onChange={(v) => onChange("text", v)} rows={2} /></PropRow>
-      <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#18181b"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
-      <PropRow label="Text color"><PropInput type="color" value={(props.textColor as string) || "#9ca3af"} onChange={(v) => onChange("textColor", v)} /></PropRow>
+      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || "#18181b"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
+      <PropRow label="Text color"><PropColorInput value={(props.textColor as string) || "#9ca3af"} onChange={(v) => onChange("textColor", v)} /></PropRow>
       <PropRow label="Links">
         <div className="space-y-1">
           {links.map((l, i) => (
@@ -391,7 +457,7 @@ function FooterProps({ props, onChange }: { props: Record<string, unknown>; onCh
 function DividerProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   return (
     <>
-      <PropRow label="Color"><PropInput type="color" value={(props.color as string) || "#e5e7eb"} onChange={(v) => onChange("color", v)} /></PropRow>
+      <PropRow label="Color"><PropColorInput value={(props.color as string) || "#e5e7eb"} onChange={(v) => onChange("color", v)} /></PropRow>
       <PropRow label="Thickness"><PropInput value={(props.thickness as string) || "1px"} onChange={(v) => onChange("thickness", v)} placeholder="1px" /></PropRow>
       <PropRow label="Margin"><PropInput value={(props.margin as string) || "1.5rem 0"} onChange={(v) => onChange("margin", v)} placeholder="1.5rem 0" /></PropRow>
     </>
@@ -405,7 +471,7 @@ function SpacerProps({ props, onChange }: { props: Record<string, unknown>; onCh
 function ContainerProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   return (
     <>
-      <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#ffffff"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
+      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || "#ffffff"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
       <PropRow label="Padding"><PropInput value={(props.padding as string) || "2rem"} onChange={(v) => onChange("padding", v)} placeholder="2rem" /></PropRow>
       <PropRow label="Max width"><PropInput value={(props.maxWidth as string) || "100%"} onChange={(v) => onChange("maxWidth", v)} placeholder="1200px" /></PropRow>
       <PropRow label="Radius"><PropInput value={(props.borderRadius as string) || "0"} onChange={(v) => onChange("borderRadius", v)} placeholder="8px" /></PropRow>
@@ -460,8 +526,8 @@ function CouponProps({ props, onChange }: { props: Record<string, unknown>; onCh
     <>
       <PropRow label="Code"><PropInput value={(props.code as string) || ""} onChange={(v) => onChange("code", v)} placeholder="SAVE10" /></PropRow>
       <PropRow label="Description"><PropInput value={(props.description as string) || ""} onChange={(v) => onChange("description", v)} placeholder="Get 10% off!" /></PropRow>
-      <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#fef3c7"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
-      <PropRow label="Text color"><PropInput type="color" value={(props.textColor as string) || "#92400e"} onChange={(v) => onChange("textColor", v)} /></PropRow>
+      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || "#fef3c7"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
+      <PropRow label="Text color"><PropColorInput value={(props.textColor as string) || "#92400e"} onChange={(v) => onChange("textColor", v)} /></PropRow>
     </>
   );
 }
@@ -593,7 +659,7 @@ function MembershipWidgetProps({ props, onChange }: { props: Record<string, unkn
     <>
       <PropRow label="Title"><PropInput value={(props.title as string) || ""} onChange={(v) => onChange("title", v)} placeholder="Member Benefits" /></PropRow>
       <PropRow label="Tier name"><PropInput value={(props.tierName as string) || ""} onChange={(v) => onChange("tierName", v)} placeholder="Gold Member" /></PropRow>
-      <PropRow label="Tier color"><PropInput type="color" value={(props.tierColor as string) || "#f59e0b"} onChange={(v) => onChange("tierColor", v)} /></PropRow>
+      <PropRow label="Tier color"><PropColorInput value={(props.tierColor as string) || "#f59e0b"} onChange={(v) => onChange("tierColor", v)} /></PropRow>
       <PropRow label="Tier icon"><PropInput value={(props.tierIcon as string) || "⭐"} onChange={(v) => onChange("tierIcon", v)} placeholder="⭐" /></PropRow>
       <PropRow label="Show points"><PropToggle value={props.showPoints !== false} onChange={(v) => onChange("showPoints", v)} label="Show points balance" /></PropRow>
       <PropRow label="Perks">
@@ -641,10 +707,7 @@ function IconProps({ props, onChange }: { props: Record<string, unknown>; onChan
         <PropInput value={String(Number(props.size) || 32)} onChange={(v) => onChange("size", Number(v) || 32)} placeholder="32" type="number" />
       </PropRow>
       <PropRow label="Color">
-        <div className="flex gap-1">
-          <input type="color" value={(props.color as string) || "#000000"} onChange={(e) => onChange("color", e.target.value)} className="h-7 w-8 rounded border border-border cursor-pointer shrink-0" />
-          <PropInput value={(props.color as string) || ""} onChange={(v) => onChange("color", v)} placeholder="Theme primary" />
-        </div>
+        <PropColorInput value={(props.color as string) || ""} onChange={(v) => onChange("color", v)} />
       </PropRow>
       <PropRow label="Align">
         <PropSelect value={(props.align as string) || "left"} onChange={(v) => onChange("align", v)} options={[{ label: "Left", value: "left" }, { label: "Center", value: "center" }, { label: "Right", value: "right" }]} />
@@ -678,15 +741,26 @@ function RewardProps({ props, onChange }: { props: Record<string, unknown>; onCh
       <PropRow label="Title"><PropInput value={(props.title as string) || ""} onChange={(v) => onChange("title", v)} placeholder="Earn Rewards" /></PropRow>
       <PropRow label="Description"><PropTextarea value={(props.description as string) || ""} onChange={(v) => onChange("description", v)} rows={2} /></PropRow>
       <PropRow label="Points label"><PropInput value={(props.pointsLabel as string) || ""} onChange={(v) => onChange("pointsLabel", v)} placeholder="Points" /></PropRow>
-      <PropRow label="Bg color"><PropInput type="color" value={(props.backgroundColor as string) || "#f0fdf4"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
-      <PropRow label="Text color"><PropInput type="color" value={(props.textColor as string) || "#166534"} onChange={(v) => onChange("textColor", v)} /></PropRow>
+      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || "#f0fdf4"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
+      <PropRow label="Text color"><PropColorInput value={(props.textColor as string) || "#166534"} onChange={(v) => onChange("textColor", v)} /></PropRow>
     </>
   );
 }
 
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
-function PropertiesPanel({ element, onChange, products, orgId }: { element: SiteElement; onChange: (k: string, v: unknown) => void; products: Product[]; orgId: string }) {
+function PropertiesPanel({
+  element, onChange, products, orgId, onSaveToLibrary, onApplyFromLibrary, savedComponents,
+}: {
+  element: SiteElement;
+  onChange: (k: string, v: unknown) => void;
+  products: Product[];
+  orgId: string;
+  onSaveToLibrary: () => void;
+  onApplyFromLibrary: (comp: SiteComponent) => void;
+  savedComponents: SiteComponent[];
+}) {
+  const [showApplyPicker, setShowApplyPicker] = useState(false);
   const typeLabels: Record<string, string> = {
     text: "Text", image: "Image", button: "Button", hero: "Hero", nav: "Navigation",
     footer: "Footer", divider: "Divider", spacer: "Spacer", container: "Container",
@@ -697,11 +771,55 @@ function PropertiesPanel({ element, onChange, products, orgId }: { element: Site
     cart: "Cart", checkout: "Checkout", reward: "Reward", icon: "Icon",
   };
 
+  const compatibleComponents = savedComponents.filter(
+    (c) => c.elementData.type === element.type
+  );
+
   return (
     <div className="h-full flex flex-col">
       <div className="px-3 py-2.5 border-b border-border shrink-0">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Properties</span>
-        <p className="text-xs font-medium mt-0.5">{typeLabels[element.type] || element.type}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Properties</span>
+            <p className="text-xs font-medium mt-0.5">{typeLabels[element.type] || element.type}</p>
+          </div>
+          <div className="flex items-center gap-1">
+            {compatibleComponents.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowApplyPicker((p) => !p)}
+                  title="Apply from Library"
+                  className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <Paintbrush className="h-3 w-3" />
+                </button>
+                {showApplyPicker && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded border border-border bg-background shadow-md py-1">
+                    <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border mb-1">Apply from Library</p>
+                    {compatibleComponents.map((comp) => (
+                      <button
+                        key={comp.id}
+                        onClick={() => { onApplyFromLibrary(comp); setShowApplyPicker(false); }}
+                        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted text-left"
+                      >
+                        <BookMarked className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{comp.name}</span>
+                        {comp.category && <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{comp.category}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={onSaveToLibrary}
+              title="Save to Library"
+              className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <BookMarked className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-3">
         {element.type === "text"          && <TextProps props={element.props} onChange={onChange} />}
@@ -737,6 +855,25 @@ function PropertiesPanel({ element, onChange, products, orgId }: { element: Site
 
 // ─── Theme editor modal ────────────────────────────────────────────────────────
 
+// ─── Theme presets ────────────────────────────────────────────────────────────
+
+const THEME_PRESETS: (SiteTheme & { presetName: string })[] = [
+  { presetName: "Default",     primary: "#18181b", secondary: "#71717a", accent: "#3b82f6", background: "#ffffff", text: "#09090b", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 6  },
+  { presetName: "Modern Dark", primary: "#3b82f6", secondary: "#6b7280", accent: "#60a5fa", background: "#09090b", text: "#f9fafb", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 8  },
+  { presetName: "Warm Earth",  primary: "#92400e", secondary: "#a16207", accent: "#d97706", background: "#fefce8", text: "#1c1917", headingFont: "Georgia, serif",             bodyFont: "Inter, sans-serif",          borderRadius: 4  },
+  { presetName: "Ocean",       primary: "#0369a1", secondary: "#64748b", accent: "#06b6d4", background: "#f0f9ff", text: "#0c4a6e", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 8  },
+  { presetName: "Forest",      primary: "#166534", secondary: "#4b7c5e", accent: "#22c55e", background: "#f0fdf4", text: "#14532d", headingFont: "Georgia, serif",             bodyFont: "Inter, sans-serif",          borderRadius: 6  },
+  { presetName: "Sunset",      primary: "#c2410c", secondary: "#9a3412", accent: "#f97316", background: "#fff7ed", text: "#1c1917", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 10 },
+  { presetName: "Minimal",     primary: "#000000", secondary: "#737373", accent: "#000000", background: "#ffffff", text: "#000000", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 0  },
+  { presetName: "Lavender",    primary: "#7c3aed", secondary: "#a78bfa", accent: "#8b5cf6", background: "#faf5ff", text: "#2e1065", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 12 },
+  { presetName: "Coffee",      primary: "#6f4e37", secondary: "#a0785a", accent: "#c9956c", background: "#fdf8f0", text: "#2d1b0e", headingFont: "Georgia, serif",             bodyFont: "Inter, sans-serif",          borderRadius: 6  },
+  { presetName: "Neon",        primary: "#a3e635", secondary: "#4b5563", accent: "#facc15", background: "#030712", text: "#f9fafb", headingFont: "'Courier New', monospace",  bodyFont: "'Courier New', monospace",   borderRadius: 4  },
+  { presetName: "Pastel",      primary: "#f9a8d4", secondary: "#a5b4fc", accent: "#86efac", background: "#fdf4ff", text: "#374151", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 16 },
+  { presetName: "Corporate",   primary: "#1e3a5f", secondary: "#4b6a8a", accent: "#2563eb", background: "#f8fafc", text: "#1e293b", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 4  },
+  { presetName: "Candy",       primary: "#db2777", secondary: "#ec4899", accent: "#f472b6", background: "#fff0f6", text: "#831843", headingFont: "Inter, sans-serif",          bodyFont: "Inter, sans-serif",          borderRadius: 20 },
+  { presetName: "Retro",       primary: "#854d0e", secondary: "#a16207", accent: "#ca8a04", background: "#fefce8", text: "#1c1917", headingFont: "'Courier New', monospace",  bodyFont: "'Courier New', monospace",   borderRadius: 0  },
+];
+
 function ThemeModal({ theme, onSave, onClose }: { theme: SiteTheme; onSave: (t: SiteTheme) => void; onClose: () => void }) {
   const [draft, setDraft] = useState<SiteTheme>(theme);
 
@@ -751,6 +888,30 @@ function ThemeModal({ theme, onSave, onClose }: { theme: SiteTheme; onSave: (t: 
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
         <div className="p-4 space-y-4">
+          {/* Presets */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Browse Presets</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {THEME_PRESETS.map((preset) => (
+                <button
+                  key={preset.presetName}
+                  onClick={() => setDraft({ ...preset })}
+                  className={cn(
+                    "flex items-center gap-2 rounded border p-2 text-left transition-colors hover:bg-muted",
+                    draft.presetName === preset.presetName ? "border-foreground" : "border-border"
+                  )}
+                >
+                  {/* Color swatches */}
+                  <div className="flex gap-0.5 shrink-0">
+                    {[preset.background, preset.primary, preset.accent].map((c, i) => (
+                      <div key={i} className="h-4 w-2 rounded-sm border border-black/10" style={{ backgroundColor: c }} />
+                    ))}
+                  </div>
+                  <span className="text-[11px] truncate">{preset.presetName}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Colors</p>
             {[
@@ -817,6 +978,12 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   const [newPageName, setNewPageName] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [savedComponents, setSavedComponents] = useState<SiteComponent[]>([]);
+  const [leftTab, setLeftTab] = useState<"elements" | "library">("elements");
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveDialogName, setSaveDialogName] = useState("");
+  const [saveDialogCategory, setSaveDialogCategory] = useState("");
+  const [savingComponent, setSavingComponent] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -839,6 +1006,76 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [siteId]);
+
+  // Load saved components when orgId is available
+  useEffect(() => {
+    if (!organizationId) return;
+    getSavedComponents(organizationId)
+      .then(setSavedComponents)
+      .catch(console.error);
+  }, [organizationId]);
+
+  // Save selected element to component library
+  const handleSaveToLibrary = async () => {
+    const el = elements.find((e) => e.id === selectedId);
+    if (!el || !organizationId || !siteId) return;
+    setSavingComponent(true);
+    try {
+      const { data: { user } } = await createClient().auth.getUser();
+      const comp = await saveComponent(
+        organizationId,
+        siteId,
+        saveDialogName.trim() || el.type,
+        saveDialogCategory.trim() || null,
+        el,
+        user?.id ?? ""
+      );
+      setSavedComponents((prev) => [comp, ...prev]);
+      setShowSaveDialog(false);
+      setSaveDialogName("");
+      setSaveDialogCategory("");
+      if (navigator.vibrate) navigator.vibrate(30);
+    } catch (err) {
+      console.error("Failed to save component:", err);
+    } finally {
+      setSavingComponent(false);
+    }
+  };
+
+  // Insert a saved component onto the canvas (deep copy with new IDs)
+  const insertFromLibrary = (comp: SiteComponent) => {
+    const el = deepCopyElement(comp.elementData);
+    const idx = selectedId ? elements.findIndex((e) => e.id === selectedId) : -1;
+    const newEls = idx >= 0
+      ? [...elements.slice(0, idx + 1), el, ...elements.slice(idx + 1)]
+      : [...elements, el];
+    setElements(newEls);
+    setSelectedId(el.id);
+    setDirty(true);
+  };
+
+  // Apply library component style to selected element (keep ID, replace props/children)
+  const applyFromLibrary = (comp: SiteComponent) => {
+    if (!selectedId) return;
+    setElements((prev) => prev.map((e) =>
+      e.id === selectedId
+        ? { ...e, props: { ...comp.elementData.props }, children: comp.elementData.children }
+        : e
+    ));
+    setDirty(true);
+  };
+
+  // Delete a saved component
+  const handleDeleteComponent = async (id: string) => {
+    if (!confirm("Delete this saved component?")) return;
+    try {
+      await deleteComponent(id);
+      setSavedComponents((prev) => prev.filter((c) => c.id !== id));
+      if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+    } catch (err) {
+      console.error("Failed to delete component:", err);
+    }
+  };
 
   // Sync elements when page changes
   const handlePageSwitch = (pageId: string) => {
@@ -988,6 +1225,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   }
 
   return (
+    <ThemeContext.Provider value={site?.theme ?? null}>
     <div className="flex flex-col h-screen overflow-hidden bg-muted/20">
       {/* ── Toolbar ── */}
       <header className="flex items-center gap-2 px-3 h-11 border-b border-border bg-background shrink-0">
@@ -1080,27 +1318,88 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
 
       {/* ── Three-column layout ── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Element palette */}
-        <aside className="w-48 border-r border-border bg-background overflow-y-auto shrink-0">
-          {PALETTE.map((group, gi) => (
-            <div key={gi}>
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/50">
-                {PALETTE_LABELS[gi]}
-              </div>
-              <div className="p-1.5 grid grid-cols-2 gap-1">
-                {group.map((item) => (
-                  <button
-                    key={item.type}
-                    onClick={() => addElement(item.type)}
-                    className="flex flex-col items-center gap-1 p-2 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border/80 transition-colors text-center"
-                  >
-                    {item.icon}
-                    <span className="text-[10px] leading-none">{item.label}</span>
-                  </button>
-                ))}
-              </div>
+        {/* Left: Element palette + Library */}
+        <aside className="w-48 border-r border-border bg-background overflow-hidden shrink-0 flex flex-col">
+          {/* Tab switcher */}
+          <div className="flex border-b border-border shrink-0">
+            <button
+              onClick={() => setLeftTab("elements")}
+              className={cn("flex-1 flex items-center justify-center gap-1 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors", leftTab === "elements" ? "bg-background text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:bg-muted/50")}
+            >
+              <Blocks className="h-3 w-3" /> Elements
+            </button>
+            <button
+              onClick={() => setLeftTab("library")}
+              className={cn("flex-1 flex items-center justify-center gap-1 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors", leftTab === "library" ? "bg-background text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:bg-muted/50")}
+            >
+              <Library className="h-3 w-3" /> Library
+              {savedComponents.length > 0 && (
+                <span className="ml-0.5 rounded-full bg-foreground text-background text-[9px] px-1 leading-4">{savedComponents.length}</span>
+              )}
+            </button>
+          </div>
+
+          {/* Elements tab */}
+          {leftTab === "elements" && (
+            <div className="flex-1 overflow-y-auto">
+              {PALETTE.map((group, gi) => (
+                <div key={gi}>
+                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/50">
+                    {PALETTE_LABELS[gi]}
+                  </div>
+                  <div className="p-1.5 grid grid-cols-2 gap-1">
+                    {group.map((item) => (
+                      <button
+                        key={item.type}
+                        onClick={() => addElement(item.type)}
+                        className="flex flex-col items-center gap-1 p-2 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border/80 transition-colors text-center"
+                      >
+                        {item.icon}
+                        <span className="text-[10px] leading-none">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Library tab */}
+          {leftTab === "library" && (
+            <div className="flex-1 overflow-y-auto">
+              {savedComponents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center px-3 py-8">
+                  <Library className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-[11px] text-muted-foreground">No saved components yet</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1">Select an element and click Save to Library</p>
+                </div>
+              ) : (
+                <div className="p-1.5 space-y-1">
+                  {savedComponents.map((comp) => (
+                    <div
+                      key={comp.id}
+                      className="group flex items-start gap-2 rounded border border-border p-2 hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => insertFromLibrary(comp)}
+                      title={`Insert "${comp.name}"`}
+                    >
+                      <BookMarked className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{comp.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{comp.elementData.type}{comp.category ? ` · ${comp.category}` : ""}</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteComponent(comp.id); }}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </aside>
 
         {/* Center: Canvas */}
@@ -1159,6 +1458,9 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               onChange={(k, v) => updateElementProp(selectedElement.id, k, v)}
               products={products}
               orgId={organizationId ?? ""}
+              onSaveToLibrary={() => { setSaveDialogName(selectedElement.type); setShowSaveDialog(true); }}
+              onApplyFromLibrary={applyFromLibrary}
+              savedComponents={savedComponents}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
@@ -1172,6 +1474,55 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       {showTheme && site && (
         <ThemeModal theme={site.theme} onSave={handleThemeSave} onClose={() => setShowTheme(false)} />
       )}
+
+      {/* Save to Library dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSaveDialog(false)} />
+          <div className="relative bg-background border border-border rounded-sm w-full max-w-xs shadow-lg z-10 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-sm flex items-center gap-2"><BookMarked className="h-4 w-4" /> Save to Library</h2>
+              <button onClick={() => setShowSaveDialog(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium mb-1">Component name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={saveDialogName}
+                  onChange={(e) => setSaveDialogName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSaveToLibrary(); }}
+                  placeholder="My Button Style"
+                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Category <span className="text-muted-foreground font-normal">(optional)</span></label>
+                <input
+                  type="text"
+                  value={saveDialogCategory}
+                  onChange={(e) => setSaveDialogCategory(e.target.value)}
+                  placeholder="e.g. Buttons, Heroes, Cards"
+                  className="w-full rounded border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowSaveDialog(false)} className="flex-1 rounded border border-border px-3 py-2 text-sm hover:bg-muted">Cancel</button>
+              <button
+                onClick={handleSaveToLibrary}
+                disabled={savingComponent || !saveDialogName.trim()}
+                className="flex-1 rounded bg-foreground px-3 py-2 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {savingComponent ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookMarked className="h-3.5 w-3.5" />}
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </ThemeContext.Provider>
   );
 }

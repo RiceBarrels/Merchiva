@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Site, SitePage, SiteElement, SiteTheme } from "@/lib/types";
+import type { Site, SitePage, SiteElement, SiteTheme, SiteComponent } from "@/lib/types";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
@@ -189,5 +189,64 @@ export async function updatePage(
 export async function deletePage(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("site_pages").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// ─── Component Library ────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function componentFromDb(row: any): SiteComponent {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    siteId: row.site_id ?? null,
+    name: row.name,
+    description: row.description ?? null,
+    elementData: row.element_data as SiteElement,
+    category: row.category ?? null,
+    createdBy: row.created_by ?? null,
+    createdAt: row.created_at,
+  };
+}
+
+export async function getSavedComponents(orgId: string): Promise<SiteComponent[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("site_components")
+    .select("*")
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(componentFromDb);
+}
+
+export async function saveComponent(
+  orgId: string,
+  siteId: string,
+  name: string,
+  category: string | null,
+  elementData: SiteElement,
+  userId: string
+): Promise<SiteComponent> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("site_components")
+    .insert({
+      organization_id: orgId,
+      site_id: siteId,
+      name,
+      category: category || null,
+      element_data: elementData,
+      created_by: userId,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return componentFromDb(data);
+}
+
+export async function deleteComponent(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("site_components").delete().eq("id", id);
   if (error) throw error;
 }
