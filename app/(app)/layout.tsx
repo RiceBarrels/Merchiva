@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
 import { MobileShell } from "@/components/sidebar";
+import { LoginForm } from "@/components/login-form";
 import { createClient } from "@/lib/supabase/client";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
@@ -17,20 +17,20 @@ interface AuthState {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const [authState, setAuthState] = useState<AuthState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsLogin, setNeedsLogin] = useState(false);
 
-  useEffect(() => {
+  const loadAuth = useCallback(async () => {
+    setLoading(true);
+    setNeedsLogin(false);
     const supabase = createClient();
 
-    async function init() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        router.replace("/login");
+        setNeedsLogin(true);
         return;
       }
 
@@ -41,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         .eq("status", "active");
 
       if (!memberships || memberships.length === 0) {
-        router.replace("/setup");
+        setNeedsLogin(true);
         return;
       }
 
@@ -80,10 +80,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         organizations,
         currentOrg,
       });
+    } catch (err) {
+      console.error("Auth init failed:", err);
+      setNeedsLogin(true);
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    init().catch(console.error).finally(() => setLoading(false));
-  }, [router]);
+  useEffect(() => {
+    loadAuth();
+  }, [loadAuth]);
 
   if (loading) {
     return (
@@ -91,6 +98,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
       </div>
     );
+  }
+
+  if (needsLogin) {
+    return <LoginForm onSuccess={loadAuth} />;
   }
 
   if (!authState) return null;

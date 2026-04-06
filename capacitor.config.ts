@@ -4,12 +4,12 @@ const config: CapacitorConfig = {
   appId: 'com.bizops.app',
   appName: 'BizOps',
   webDir: 'out',
-  server: {
-    // For production: point to Vercel deployment
-    // For local dev: comment out url to use local files
-    url: 'https://project-management-phi-red.vercel.app',
-    cleartext: true,
-  },
+  // Local mode: no server URL, loads from webDir
+  // To use Vercel: uncomment server.url below
+  // server: {
+  //   url: 'https://project-management-phi-red.vercel.app',
+  //   cleartext: true,
+  // },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
