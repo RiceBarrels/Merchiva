@@ -20,6 +20,7 @@ import {
   Loader2,
   Menu,
   MessageSquare,
+  Globe,
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { label: "Staffing",         href: "/staffing",   icon: Users,           permissionKey: "staffing"  },
   { label: "Products",         href: "/products",   icon: ShoppingBag,     permissionKey: "products"  },
   { label: "Chat",             href: "/chat",       icon: MessageSquare,   permissionKey: "staffing"  },
+  { label: "Website",          href: "/builder",    icon: Globe,           permissionKey: "settings"  },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {

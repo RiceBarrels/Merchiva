@@ -306,3 +306,71 @@ export interface DashboardMetrics {
   productsAtRisk: number;
   totalProducts: number;
 }
+
+// ─── Website Builder ──────────────────────────────────────────────────────────
+
+export type ElementType =
+  | "text"
+  | "image"
+  | "button"
+  | "container"
+  | "divider"
+  | "hero"
+  | "nav"
+  | "footer"
+  | "spacer"
+  | "columns"
+  | "video"
+  | "gallery"
+  | "product-card"
+  | "booking-form"
+  | "coupon-banner"
+  | "login-form"
+  | "pricing-table"
+  | "testimonial"
+  | "faq"
+  | "custom-html";
+
+export interface SiteTheme {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  bgColor: string;
+  textColor: string;
+  headingFont: string;
+  bodyFont: string;
+  borderRadius: string;
+}
+
+export interface SiteElement {
+  id: string;
+  pageId: string;
+  siteId: string;
+  organizationId: string;
+  type: ElementType;
+  props: Record<string, unknown>;
+  sortOrder: number;
+}
+
+export interface SitePage {
+  id: string;
+  siteId: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  elements?: SiteElement[];
+}
+
+export interface Site {
+  id: string;
+  organizationId: string;
+  userId: string;
+  name: string;
+  slug: string;
+  status: "draft" | "published";
+  theme: SiteTheme;
+  createdAt: string;
+  updatedAt: string;
+  pages?: SitePage[];
+}
