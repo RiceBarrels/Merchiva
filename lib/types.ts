@@ -306,3 +306,52 @@ export interface DashboardMetrics {
   productsAtRisk: number;
   totalProducts: number;
 }
+
+// ─── Website Builder ─────────────────────────────────────────────────────────
+export interface Site {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  published: boolean;
+  theme: SiteTheme;
+  customCss: string;
+  faviconUrl: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+}
+
+export interface SiteTheme {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  fontHeading: string;
+  fontBody: string;
+  borderRadius: string;
+  backgroundColor: string;
+  textColor: string;
+}
+
+export interface SitePage {
+  id: string;
+  siteId: string;
+  title: string;
+  slug: string;
+  sortOrder: number;
+  isHome: boolean;
+}
+
+export type ElementType = 'text' | 'image' | 'button' | 'container' | 'divider' | 'hero' | 'nav' | 'footer' | 'product-card' | 'booking-form' | 'coupon-banner' | 'login-form' | 'custom-html' | 'spacer' | 'columns' | 'video' | 'map' | 'social-links' | 'testimonial' | 'pricing-table' | 'faq' | 'gallery';
+
+export interface SiteElement {
+  id: string;
+  pageId: string;
+  parentId: string | null;
+  type: ElementType;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  styles: Record<string, any>;
+  sortOrder: number;
+  children?: SiteElement[];
+}

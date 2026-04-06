@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Users,
   ShoppingBag,
+  Globe,
   Zap,
   Settings,
   LogOut,
@@ -52,6 +53,7 @@ const navItems: NavItem[] = [
   { label: "Sales Prediction", href: "/sales",      icon: TrendingUp,      permissionKey: "sales"     },
   { label: "Staffing",         href: "/staffing",   icon: Users,           permissionKey: "staffing"  },
   { label: "Products",         href: "/products",   icon: ShoppingBag,     permissionKey: "products"  },
+  { label: "Website",          href: "/builder",    icon: Globe                                       },
   { label: "Chat",             href: "/chat",       icon: MessageSquare,   permissionKey: "staffing"  },
 ];
 
