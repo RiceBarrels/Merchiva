@@ -184,15 +184,39 @@ function RenderSpacer({ props }: { props: Record<string, unknown> }) {
   return <div style={{ height: (props.height as string) || "48px" }} />;
 }
 
-function RenderContainer({ props, children }: { props: Record<string, unknown>; children?: SiteElement[] }) {
+function RenderLayout({ props, children }: { props: Record<string, unknown>; children?: SiteElement[] }) {
+  const direction = (props.direction as string) || "stack";
+  const spacing = (props.spacing as string) || "medium";
+  const GAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
+  const gridCols = Number(props.columns) || 2;
+
+  const style: React.CSSProperties = {
+    backgroundColor: (props.backgroundColor as string) || undefined,
+    padding: (props.padding as string) || "1rem",
+    borderRadius: (props.borderRadius as string) || undefined,
+    minHeight: "40px",
+  };
+
+  if (direction === "row") {
+    style.display = "flex";
+    style.flexDirection = "row";
+    style.flexWrap = "wrap";
+    style.gap = GAP[spacing] ?? spacing;
+    style.alignItems = (props.align as string) || "flex-start";
+  } else if (direction === "grid") {
+    style.display = "grid";
+    style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+    style.gap = GAP[spacing] ?? spacing;
+  } else {
+    // stack (default)
+    style.display = "flex";
+    style.flexDirection = "column";
+    style.gap = GAP[spacing] ?? spacing;
+    style.alignItems = (props.align as string) || "stretch";
+  }
+
   return (
-    <div style={{
-      backgroundColor: (props.backgroundColor as string) || undefined,
-      padding: (props.padding as string) || "2rem",
-      maxWidth: (props.maxWidth as string) || "100%",
-      margin: "0 auto",
-      borderRadius: (props.borderRadius as string) || undefined,
-    }}>
+    <div style={style}>
       {children?.map((child) => (
         <SiteElementRenderer key={child.id} element={child} />
       ))}
@@ -589,7 +613,8 @@ export function SiteElementRenderer({
       case "footer":    return <RenderFooter props={props} />;
       case "divider":   return <RenderDivider props={props} />;
       case "spacer":    return <RenderSpacer props={props} />;
-      case "container": return <RenderContainer props={props} children={children} />;
+      case "layout":
+      case "container": return <RenderLayout props={props} children={children} />;
       case "columns":   return <RenderColumns props={props} />;
       case "product-card":   return <RenderProductCard props={props} products={products} />;
       case "booking-form":   return <RenderBookingForm props={props} />;

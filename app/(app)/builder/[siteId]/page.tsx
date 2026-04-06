@@ -43,7 +43,28 @@ import {
   Blocks,
   Paintbrush,
   BookMarked,
+  GripVertical,
+  LayoutGrid,
 } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage, getSavedComponents, saveComponent, deleteComponent } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
@@ -127,6 +148,62 @@ function deepCopyElement(el: SiteElement): SiteElement {
   };
 }
 
+// ─── Tree helpers for nested elements ────────────────────────────────────────
+
+function findInTree(roots: SiteElement[], id: string): SiteElement | null {
+  for (const el of roots) {
+    if (el.id === id) return el;
+    if (el.children) {
+      const found = findInTree(el.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function removeFromTree(roots: SiteElement[], id: string): [SiteElement[], SiteElement | null] {
+  let removed: SiteElement | null = null;
+  const next = roots.filter((el) => {
+    if (el.id === id) { removed = el; return false; }
+    return true;
+  }).map((el) => {
+    if (el.children) {
+      const [newChildren, r] = removeFromTree(el.children, id);
+      if (r) removed = r;
+      return { ...el, children: newChildren };
+    }
+    return el;
+  });
+  return [next, removed];
+}
+
+function updateInTree(roots: SiteElement[], id: string, updater: (el: SiteElement) => SiteElement): SiteElement[] {
+  return roots.map((el) => {
+    if (el.id === id) return updater(el);
+    if (el.children) return { ...el, children: updateInTree(el.children, id, updater) };
+    return el;
+  });
+}
+
+function addToLayout(roots: SiteElement[], layoutId: string, el: SiteElement): SiteElement[] {
+  return updateInTree(roots, layoutId, (layout) => ({
+    ...layout,
+    children: [...(layout.children ?? []), el],
+  }));
+}
+
+// Find parent ID of an element in the tree
+function findParentId(roots: SiteElement[], id: string, parentId: string | null = null): string | null {
+  for (const el of roots) {
+    if (el.id === id) return parentId;
+    if (el.children) {
+      const found = findParentId(el.children, id, el.id);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined as unknown as string | null;
+}
+
 function defaultProps(type: ElementType): Record<string, unknown> {
   switch (type) {
     case "text":       return { content: "Your text here", tag: "p", align: "left", fontSize: "1rem", fontWeight: "normal", color: "", padding: "0" };
@@ -137,7 +214,8 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "footer":     return { text: "© 2024 My Site. All rights reserved.", links: [], backgroundColor: "#18181b", textColor: "#9ca3af" };
     case "divider":    return { color: "#e5e7eb", thickness: "1px", margin: "1.5rem 0" };
     case "spacer":     return { height: "48px" };
-    case "container":  return { backgroundColor: "", padding: "2rem", maxWidth: "100%", borderRadius: "0" };
+    case "layout":     return { direction: "stack", spacing: "medium", align: "stretch", padding: "1rem", backgroundColor: "", columns: 2, children: [] };
+    case "container":  return { direction: "stack", spacing: "medium", align: "stretch", padding: "1rem", backgroundColor: "" }; // legacy
     case "columns":    return { columns: 2, gap: "1.5rem", columnContent: ["", ""] };
     case "product-card":  return { productId: "", showPrice: true, showDescription: false };
     case "booking-form":  return { title: "Book an Appointment", submitLabel: "Book Now" };
@@ -166,7 +244,7 @@ const PALETTE: { label: string; icon: React.ReactNode; type: ElementType }[][] =
     { label: "Text",      icon: <Type className="h-3.5 w-3.5" />,             type: "text" },
     { label: "Image",     icon: <Image className="h-3.5 w-3.5" />,            type: "image" },
     { label: "Button",    icon: <MousePointerClick className="h-3.5 w-3.5" />, type: "button" },
-    { label: "Container", icon: <Square className="h-3.5 w-3.5" />,           type: "container" },
+    { label: "Layout",    icon: <LayoutGrid className="h-3.5 w-3.5" />,        type: "layout" },
     { label: "Columns",   icon: <Columns2 className="h-3.5 w-3.5" />,         type: "columns" },
     { label: "Divider",   icon: <Minus className="h-3.5 w-3.5" />,            type: "divider" },
     { label: "Spacer",    icon: <SeparatorHorizontal className="h-3.5 w-3.5" />, type: "spacer" },
@@ -271,9 +349,22 @@ function Section({ label, children, defaultOpen = true }: { label: string; child
   );
 }
 
-// Universal style panel — edits props.style (React.CSSProperties as Record)
+// ─── Universal style panel (simplified for non-technical users) ──────────────
+
+// Helper: parse a single px/rem number out of a shorthand like "16px" or "1rem"
+function parseSingleNum(val: string): string {
+  if (!val) return "";
+  const m = val.match(/^(\d+(?:\.\d+)?)(px|rem)?$/);
+  if (m) return m[1];
+  return "";
+}
+
 function StyleProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  const theme = useContext(ThemeContext);
   const style = (props.style as Record<string, string>) || {};
+  const [showAdvancedPad, setShowAdvancedPad] = useState(false);
+  const [showAdvancedMar, setShowAdvancedMar] = useState(false);
+
   const s = (key: string) => style[key] || "";
   const set = (key: string, val: string) => {
     const next = { ...style };
@@ -281,47 +372,266 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
     onChange("style", next);
   };
 
+  // Padding: single value → sets all 4 sides as Npx
+  const padNum = parseSingleNum(s("padding"));
+  const marNum = parseSingleNum(s("margin"));
+
+  // Border toggle: on = "1px solid <theme.secondary>" off = remove
+  const hasBorder = !!s("border");
+
+  // Rounded presets
+  const ROUNDED = [
+    { label: "None", value: "0" },
+    { label: "Small", value: "4px" },
+    { label: "Medium", value: "8px" },
+    { label: "Large", value: "16px" },
+    { label: "Full", value: "9999px" },
+  ];
+
+  // Shadow presets
+  const SHADOWS = [
+    { label: "None", value: "" },
+    { label: "Small", value: "0 1px 3px rgba(0,0,0,0.12)" },
+    { label: "Medium", value: "0 4px 12px rgba(0,0,0,0.15)" },
+    { label: "Large", value: "0 8px 30px rgba(0,0,0,0.18)" },
+  ];
+
+  // Width presets
+  const WIDTH_PRESETS = [
+    { label: "Full", value: "100%" },
+    { label: "Half", value: "50%" },
+    { label: "Auto", value: "auto" },
+  ];
+
+  // Layout presets for containers
+  const LAYOUT_PRESETS = [
+    { label: "Stack (vertical)", value: "flex|column" },
+    { label: "Row (horizontal)", value: "flex|row" },
+    { label: "Grid 2 cols", value: "grid|2" },
+    { label: "Grid 3 cols", value: "grid|3" },
+  ];
+
+  const currentLayout = (() => {
+    if (s("display") === "grid") return s("gridTemplateColumns").includes("3") ? "grid|3" : "grid|2";
+    if (s("display") === "flex") return s("flexDirection") === "row" ? "flex|row" : "flex|column";
+    return "";
+  })();
+
+  const SPACING_PRESETS = [
+    { label: "Small", value: "8px" },
+    { label: "Medium", value: "16px" },
+    { label: "Large", value: "24px" },
+  ];
+
+  const ALIGN_OPTIONS = [
+    { label: "Left", value: "flex-start" },
+    { label: "Center", value: "center" },
+    { label: "Right", value: "flex-end" },
+  ];
+
+  // Quick background swatches including extras
+  const BG_SWATCHES = [
+    { label: "White",       color: "#ffffff" },
+    { label: "Light Gray",  color: "#f5f5f5" },
+    { label: "Dark",        color: "#18181b" },
+    { label: "Transparent", color: "" },
+    ...(theme ? [
+      { label: "Primary",    color: theme.primary },
+      { label: "Secondary",  color: theme.secondary },
+      { label: "Accent",     color: theme.accent },
+      { label: "Background", color: theme.background },
+    ] : []),
+  ];
+
   return (
     <>
+      {/* Spacing */}
       <Section label="Spacing" defaultOpen={false}>
-        <PropRow label="Padding"><PropInput value={s("padding")} onChange={(v) => set("padding", v)} placeholder="1rem" /></PropRow>
-        <PropRow label="Margin"><PropInput value={s("margin")} onChange={(v) => set("margin", v)} placeholder="0 auto" /></PropRow>
+        <PropRow label="Padding">
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              value={padNum}
+              onChange={(e) => set("padding", e.target.value ? `${e.target.value}px` : "")}
+              placeholder="0"
+              className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-[10px] text-muted-foreground shrink-0">px</span>
+            <button onClick={() => setShowAdvancedPad(p => !p)} className="shrink-0 text-muted-foreground hover:text-foreground text-[10px] px-1">···</button>
+          </div>
+          {showAdvancedPad && (
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              {(["paddingTop","paddingRight","paddingBottom","paddingLeft"] as const).map((k) => (
+                <div key={k} className="flex items-center gap-0.5">
+                  <span className="text-[9px] text-muted-foreground w-6 shrink-0">{k.replace("padding","").charAt(0)}</span>
+                  <input type="number" value={parseSingleNum(s(k))} onChange={(e) => set(k, e.target.value ? `${e.target.value}px` : "")} className="w-full rounded border border-border bg-background px-1 py-0.5 text-xs outline-none" />
+                </div>
+              ))}
+            </div>
+          )}
+        </PropRow>
+        <PropRow label="Margin">
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              value={marNum}
+              onChange={(e) => set("margin", e.target.value ? `${e.target.value}px` : "")}
+              placeholder="0"
+              className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-[10px] text-muted-foreground shrink-0">px</span>
+            <button onClick={() => setShowAdvancedMar(p => !p)} className="shrink-0 text-muted-foreground hover:text-foreground text-[10px] px-1">···</button>
+          </div>
+          {showAdvancedMar && (
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              {(["marginTop","marginRight","marginBottom","marginLeft"] as const).map((k) => (
+                <div key={k} className="flex items-center gap-0.5">
+                  <span className="text-[9px] text-muted-foreground w-6 shrink-0">{k.replace("margin","").charAt(0)}</span>
+                  <input type="number" value={parseSingleNum(s(k))} onChange={(e) => set(k, e.target.value ? `${e.target.value}px` : "")} className="w-full rounded border border-border bg-background px-1 py-0.5 text-xs outline-none" />
+                </div>
+              ))}
+            </div>
+          )}
+        </PropRow>
       </Section>
+
+      {/* Size */}
       <Section label="Size" defaultOpen={false}>
-        <PropRow label="Width"><PropInput value={s("width")} onChange={(v) => set("width", v)} placeholder="100%" /></PropRow>
-        <PropRow label="Height"><PropInput value={s("height")} onChange={(v) => set("height", v)} placeholder="auto" /></PropRow>
-        <PropRow label="Max-width"><PropInput value={s("maxWidth")} onChange={(v) => set("maxWidth", v)} placeholder="1200px" /></PropRow>
-        <PropRow label="Min-height"><PropInput value={s("minHeight")} onChange={(v) => set("minHeight", v)} placeholder="200px" /></PropRow>
+        <PropRow label="Width">
+          <div className="flex flex-wrap gap-1 mb-1">
+            {WIDTH_PRESETS.map((p) => (
+              <button key={p.value} onClick={() => set("width", p.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("width") === p.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{p.label}</button>
+            ))}
+          </div>
+          <PropInput value={s("width")} onChange={(v) => set("width", v)} placeholder="Custom: 300px" />
+        </PropRow>
+        <PropRow label="Height">
+          <div className="flex gap-1 mb-1">
+            <button onClick={() => set("height", "auto")} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("height") === "auto" || !s("height") ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>Auto</button>
+          </div>
+          <PropInput value={s("height") === "auto" ? "" : s("height")} onChange={(v) => set("height", v)} placeholder="Custom: 200px" />
+        </PropRow>
       </Section>
+
+      {/* Layout (for container-like elements) */}
+      <Section label="Layout" defaultOpen={false}>
+        <PropRow label="Arrange">
+          <div className="grid grid-cols-2 gap-1">
+            {LAYOUT_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => {
+                  const [disp, sub] = p.value.split("|");
+                  if (disp === "flex") {
+                    set("display", "flex");
+                    set("flexDirection", sub);
+                    const next = { ...style, display: "flex", flexDirection: sub };
+                    delete (next as Record<string, string>).gridTemplateColumns;
+                    onChange("style", next);
+                  } else {
+                    const cols = sub === "3" ? "repeat(3, 1fr)" : "repeat(2, 1fr)";
+                    const next = { ...style, display: "grid", gridTemplateColumns: cols };
+                    delete (next as Record<string, string>).flexDirection;
+                    onChange("style", next);
+                  }
+                }}
+                className={cn("rounded border px-1.5 py-1 text-[10px] text-center transition-colors", currentLayout === p.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </PropRow>
+        <PropRow label="Spacing">
+          <div className="flex flex-wrap gap-1 mb-1">
+            {SPACING_PRESETS.map((p) => (
+              <button key={p.value} onClick={() => set("gap", p.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("gap") === p.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{p.label}</button>
+            ))}
+          </div>
+        </PropRow>
+        <PropRow label="Align">
+          <div className="flex gap-1">
+            {ALIGN_OPTIONS.map((a) => (
+              <button key={a.value} onClick={() => set("alignItems", a.value)} className={cn("flex-1 rounded border py-1 text-[11px] transition-colors", s("alignItems") === a.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{a.label}</button>
+            ))}
+          </div>
+        </PropRow>
+      </Section>
+
+      {/* Background */}
       <Section label="Background" defaultOpen={false}>
         <PropRow label="Color">
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {BG_SWATCHES.map((sw) => (
+              <button
+                key={sw.label}
+                title={sw.label}
+                onClick={() => set("backgroundColor", sw.color)}
+                className={cn("h-5 w-5 rounded-full border-2 transition-transform hover:scale-110", s("backgroundColor") === sw.color ? "border-foreground" : "border-transparent")}
+                style={{ backgroundColor: sw.color || "transparent", backgroundImage: !sw.color ? "linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%)" : undefined, backgroundSize: "6px 6px" }}
+              />
+            ))}
+          </div>
           <PropColorInput value={s("backgroundColor")} onChange={(v) => set("backgroundColor", v)} />
         </PropRow>
-        <PropRow label="Image"><PropInput value={s("backgroundImage")} onChange={(v) => set("backgroundImage", v)} placeholder="url(https://…)" /></PropRow>
-        <PropRow label="Size">
-          <select value={s("backgroundSize")} onChange={(e) => set("backgroundSize", e.target.value)} className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring">
-            <option value="">–</option>
-            <option value="cover">Cover</option>
-            <option value="contain">Contain</option>
-            <option value="auto">Auto</option>
-          </select>
+        <PropRow label="Image"><PropInput value={s("backgroundImage")} onChange={(v) => { set("backgroundImage", v); if (v) { set("backgroundSize", "cover"); set("backgroundPosition", "center"); } }} placeholder="https://…" /></PropRow>
+      </Section>
+
+      {/* Border */}
+      <Section label="Border" defaultOpen={false}>
+        <PropRow label="Border">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div
+              onClick={() => {
+                if (hasBorder) {
+                  const next = { ...style };
+                  delete next.border;
+                  onChange("style", next);
+                } else {
+                  set("border", `1px solid ${theme?.secondary || "#e5e7eb"}`);
+                }
+              }}
+              className={cn("relative h-5 w-9 rounded-full transition-colors cursor-pointer", hasBorder ? "bg-foreground" : "bg-muted border border-border")}
+            >
+              <div className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform", hasBorder ? "left-[18px]" : "left-0.5")} />
+            </div>
+            <span className="text-xs">{hasBorder ? "On" : "Off"}</span>
+          </label>
+        </PropRow>
+        <PropRow label="Rounded">
+          <div className="flex flex-wrap gap-1">
+            {ROUNDED.map((r) => (
+              <button key={r.value} onClick={() => set("borderRadius", r.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("borderRadius") === r.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{r.label}</button>
+            ))}
+          </div>
         </PropRow>
       </Section>
-      <Section label="Border" defaultOpen={false}>
-        <PropRow label="Border"><PropInput value={s("border")} onChange={(v) => set("border", v)} placeholder="1px solid #e5e7eb" /></PropRow>
-        <PropRow label="Radius"><PropInput value={s("borderRadius")} onChange={(v) => set("borderRadius", v)} placeholder="8px" /></PropRow>
-        <PropRow label="Shadow"><PropInput value={s("boxShadow")} onChange={(v) => set("boxShadow", v)} placeholder="0 2px 8px rgba(0,0,0,0.1)" /></PropRow>
-      </Section>
+
+      {/* Effects */}
       <Section label="Effects" defaultOpen={false}>
-        <PropRow label="Opacity"><PropInput value={s("opacity")} onChange={(v) => set("opacity", v)} placeholder="1" /></PropRow>
-        <PropRow label="Overflow">
-          <select value={s("overflow")} onChange={(e) => set("overflow", e.target.value)} className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring">
-            <option value="">–</option>
-            <option value="visible">Visible</option>
-            <option value="hidden">Hidden</option>
-            <option value="scroll">Scroll</option>
-            <option value="auto">Auto</option>
-          </select>
+        <PropRow label="Shadow">
+          <div className="flex flex-wrap gap-1">
+            {SHADOWS.map((sh) => (
+              <button key={sh.label} onClick={() => set("boxShadow", sh.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("boxShadow") === sh.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{sh.label}</button>
+            ))}
+          </div>
+        </PropRow>
+        <PropRow label="Transparency">
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={s("opacity") ? Math.round(parseFloat(s("opacity")) * 100) : 100}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (v === 100) { const n = { ...style }; delete n.opacity; onChange("style", n); }
+                else set("opacity", String(v / 100));
+              }}
+              className="flex-1"
+            />
+            <span className="text-[11px] text-muted-foreground w-8 text-right">{s("opacity") ? Math.round(parseFloat(s("opacity")) * 100) : 100}%</span>
+          </div>
         </PropRow>
       </Section>
     </>
@@ -330,9 +640,46 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
 
 // ─── Type-specific property panels ───────────────────────────────────────────
 
+const TEXT_STYLES = [
+  { label: "Heading 1", tag: "h1", fontSize: "36px", fontWeight: "bold",    font: "heading", muted: false },
+  { label: "Heading 2", tag: "h2", fontSize: "28px", fontWeight: "bold",    font: "heading", muted: false },
+  { label: "Heading 3", tag: "h3", fontSize: "22px", fontWeight: "600",     font: "heading", muted: false },
+  { label: "Body",      tag: "p",  fontSize: "16px", fontWeight: "normal",  font: "body",    muted: false },
+  { label: "Small",     tag: "p",  fontSize: "14px", fontWeight: "normal",  font: "body",    muted: true  },
+  { label: "Caption",   tag: "p",  fontSize: "12px", fontWeight: "normal",  font: "body",    muted: true  },
+];
+
 function TextProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  const theme = useContext(ThemeContext);
+
+  const applyTextStyle = (style: typeof TEXT_STYLES[number]) => {
+    onChange("tag", style.tag);
+    onChange("fontSize", style.fontSize);
+    onChange("fontWeight", style.fontWeight);
+    onChange("color", style.muted
+      ? (theme?.secondary || "#71717a")
+      : (theme?.text || "#09090b"));
+    // font family
+    const font = style.font === "heading" ? (theme?.headingFont || "Inter, sans-serif") : (theme?.bodyFont || "Inter, sans-serif");
+    onChange("fontFamily", font);
+  };
+
   return (
     <>
+      <PropRow label="Style">
+        <div className="flex flex-col gap-1">
+          {TEXT_STYLES.map((s) => (
+            <button
+              key={s.label}
+              onClick={() => applyTextStyle(s)}
+              className="w-full text-left rounded border border-border px-2 py-1 text-xs hover:bg-muted transition-colors"
+              style={{ fontSize: Math.min(parseInt(s.fontSize), 16) + "px", fontWeight: s.fontWeight }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </PropRow>
       <PropRow label="Content">
         <PropTextarea value={(props.content as string) || ""} onChange={(v) => onChange("content", v)} />
       </PropRow>
@@ -468,16 +815,67 @@ function SpacerProps({ props, onChange }: { props: Record<string, unknown>; onCh
   return <PropRow label="Height"><PropInput value={(props.height as string) || "48px"} onChange={(v) => onChange("height", v)} placeholder="48px" /></PropRow>;
 }
 
-function ContainerProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+function LayoutProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  const DIRECTIONS = [
+    { label: "Stack", value: "stack" },
+    { label: "Row", value: "row" },
+    { label: "Grid", value: "grid" },
+  ];
+  const SPACINGS = [
+    { label: "Small", value: "small" },
+    { label: "Medium", value: "medium" },
+    { label: "Large", value: "large" },
+  ];
+  const ALIGNS = [
+    { label: "Start", value: "flex-start" },
+    { label: "Center", value: "center" },
+    { label: "End", value: "flex-end" },
+    { label: "Stretch", value: "stretch" },
+  ];
+  const dir = (props.direction as string) || "stack";
+  const spacing = (props.spacing as string) || "medium";
+  const align = (props.align as string) || "stretch";
+
   return (
     <>
-      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || "#ffffff"} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
-      <PropRow label="Padding"><PropInput value={(props.padding as string) || "2rem"} onChange={(v) => onChange("padding", v)} placeholder="2rem" /></PropRow>
-      <PropRow label="Max width"><PropInput value={(props.maxWidth as string) || "100%"} onChange={(v) => onChange("maxWidth", v)} placeholder="1200px" /></PropRow>
-      <PropRow label="Radius"><PropInput value={(props.borderRadius as string) || "0"} onChange={(v) => onChange("borderRadius", v)} placeholder="8px" /></PropRow>
+      <PropRow label="Direction">
+        <div className="flex gap-1">
+          {DIRECTIONS.map((d) => (
+            <button key={d.value} onClick={() => onChange("direction", d.value)} className={cn("flex-1 rounded border py-1 text-[11px] transition-colors", dir === d.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{d.label}</button>
+          ))}
+        </div>
+      </PropRow>
+      {dir === "grid" && (
+        <PropRow label="Columns">
+          <div className="flex gap-1">
+            {[2, 3, 4].map((n) => (
+              <button key={n} onClick={() => onChange("columns", n)} className={cn("flex-1 rounded border py-1 text-[11px] transition-colors", (props.columns ?? 2) === n ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{n}</button>
+            ))}
+          </div>
+        </PropRow>
+      )}
+      <PropRow label="Spacing">
+        <div className="flex gap-1">
+          {SPACINGS.map((s) => (
+            <button key={s.value} onClick={() => onChange("spacing", s.value)} className={cn("flex-1 rounded border py-1 text-[11px] transition-colors", spacing === s.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{s.label}</button>
+          ))}
+        </div>
+      </PropRow>
+      <PropRow label="Align">
+        <div className="grid grid-cols-2 gap-1">
+          {ALIGNS.map((a) => (
+            <button key={a.value} onClick={() => onChange("align", a.value)} className={cn("rounded border py-1 text-[11px] transition-colors", align === a.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{a.label}</button>
+          ))}
+        </div>
+      </PropRow>
+      <PropRow label="Padding"><PropInput value={(props.padding as string) || "1rem"} onChange={(v) => onChange("padding", v)} placeholder="1rem" /></PropRow>
+      <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || ""} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
     </>
   );
 }
+
+// Legacy alias
+const ContainerProps = LayoutProps;
 
 function ColumnsProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   const count = Math.min(6, Math.max(1, Number(props.columns) || 2));
@@ -747,6 +1145,268 @@ function RewardProps({ props, onChange }: { props: Record<string, unknown>; onCh
   );
 }
 
+// ─── DnD canvas components ────────────────────────────────────────────────────
+
+const GAP_MAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
+
+interface CanvasElementProps {
+  el: SiteElement;
+  idx: number;
+  total: number;
+  selectedId: string | null;
+  overLayoutId: string | null;
+  parentId: string | null;
+  products: Product[];
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onMove: (id: string, dir: "up" | "down") => void;
+  onAddChild: (layoutId: string) => void;
+  updateProp: (id: string, key: string, value: unknown) => void;
+}
+
+function CanvasElement({ el, idx, total, selectedId, overLayoutId, parentId, products, onSelect, onDelete, onDuplicate, onMove, onAddChild, updateProp }: CanvasElementProps) {
+  const isLayout = el.type === "layout" || el.type === "container";
+  const isSelected = selectedId === el.id;
+  const isDropTarget = overLayoutId === el.id;
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: el.id,
+    data: { source: "canvas", parentId: parentId ?? "root", isLayout },
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  const noPad = ["nav", "hero", "footer", "divider", "spacer"].includes(el.type);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "relative group cursor-pointer",
+        isSelected && "outline outline-2 outline-blue-500 outline-offset-[-2px] z-10",
+        isLayout && isDropTarget && !isSelected && "outline outline-2 outline-dashed outline-blue-400 z-10",
+      )}
+      onClick={(e) => { e.stopPropagation(); onSelect(el.id); }}
+    >
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute left-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing p-0.5 rounded bg-white/80 border border-border shadow-sm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-3 w-3 text-muted-foreground" />
+      </div>
+
+      {/* Hover/select overlay */}
+      <div className={cn("absolute inset-0 z-10 pointer-events-none", selectedId !== el.id && "group-hover:ring-1 group-hover:ring-blue-300 group-hover:ring-inset")} />
+
+      {/* Element controls */}
+      <div className={cn("absolute top-1 right-1 z-20 flex gap-0.5", isSelected ? "flex" : "hidden group-hover:flex")}>
+        {parentId === null && (
+          <>
+            <button onClick={(e) => { e.stopPropagation(); onMove(el.id, "up"); }} disabled={idx === 0} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronUp className="h-3 w-3" /></button>
+            <button onClick={(e) => { e.stopPropagation(); onMove(el.id, "down"); }} disabled={idx === total - 1} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronDown className="h-3 w-3" /></button>
+          </>
+        )}
+        <button onClick={(e) => { e.stopPropagation(); onDuplicate(el.id); }} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground"><Copy className="h-3 w-3" /></button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(el.id); }} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+      </div>
+
+      {/* Type badge */}
+      {isSelected && (
+        <div className="absolute top-1 left-6 z-20 px-1.5 py-0.5 text-[10px] font-medium bg-blue-500 text-white rounded-sm">{el.type}</div>
+      )}
+
+      {/* Content */}
+      {isLayout ? (
+        <LayoutDropZone
+          el={el}
+          isSelected={isSelected}
+          isDropTarget={isDropTarget}
+          selectedId={selectedId}
+          overLayoutId={overLayoutId}
+          products={products}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onDuplicate={onDuplicate}
+          onMove={onMove}
+          onAddChild={onAddChild}
+          updateProp={updateProp}
+        />
+      ) : (
+        <div style={{ padding: noPad ? 0 : "0.75rem" }}>
+          <SiteElementRenderer element={el} products={products} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LayoutDropZone({
+  el, isSelected, isDropTarget, selectedId, overLayoutId, products, onSelect, onDelete, onDuplicate, onMove, onAddChild, updateProp,
+}: {
+  el: SiteElement; isSelected: boolean; isDropTarget: boolean; selectedId: string | null; overLayoutId: string | null;
+  products: Product[]; onSelect: (id: string) => void; onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void; onMove: (id: string, dir: "up" | "down") => void;
+  onAddChild: (layoutId: string) => void; updateProp: (id: string, key: string, value: unknown) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `layout-drop-${el.id}`,
+    data: { type: "layout-drop", layoutId: el.id },
+  });
+
+  const children = el.children ?? [];
+  const dir = (el.props.direction as string) || "stack";
+  const spacing = (el.props.spacing as string) || "medium";
+  const gridCols = Number(el.props.columns) || 2;
+
+  const containerStyle: React.CSSProperties = {
+    backgroundColor: (el.props.backgroundColor as string) || undefined,
+    padding: (el.props.padding as string) || "1rem",
+    minHeight: "80px",
+  };
+  if (dir === "row") {
+    containerStyle.display = "flex";
+    containerStyle.flexDirection = "row";
+    containerStyle.flexWrap = "wrap";
+    containerStyle.gap = GAP_MAP[spacing] ?? spacing;
+    containerStyle.alignItems = (el.props.align as string) || "flex-start";
+  } else if (dir === "grid") {
+    containerStyle.display = "grid";
+    containerStyle.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+    containerStyle.gap = GAP_MAP[spacing] ?? spacing;
+  } else {
+    containerStyle.display = "flex";
+    containerStyle.flexDirection = "column";
+    containerStyle.gap = GAP_MAP[spacing] ?? spacing;
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={containerStyle}
+      className={cn(
+        "transition-colors relative",
+        (isOver || isDropTarget) && "bg-blue-50/50",
+        children.length === 0 && "border-2 border-dashed border-stone-200",
+        isSelected && children.length === 0 && "border-blue-300",
+      )}
+    >
+      <SortableContext items={children.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+        {children.map((child, cidx) => (
+          <CanvasElement
+            key={child.id}
+            el={child}
+            idx={cidx}
+            total={children.length}
+            selectedId={selectedId}
+            overLayoutId={overLayoutId}
+            parentId={el.id}
+            products={products}
+            onSelect={onSelect}
+            onDelete={onDelete}
+            onDuplicate={onDuplicate}
+            onMove={onMove}
+            onAddChild={onAddChild}
+            updateProp={updateProp}
+          />
+        ))}
+      </SortableContext>
+      {children.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-4 gap-1">
+          <p className="text-[11px] text-muted-foreground/50">Drop elements here</p>
+          {isSelected && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddChild(el.id); }}
+              className="flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
+              <Plus className="h-3 w-3" /> Add element
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Draggable palette item
+function DraggablePaletteItem({ item, onAdd }: { item: { label: string; icon: React.ReactNode; type: ElementType }; onAdd: (type: ElementType) => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `palette-${item.type}`,
+    data: { source: "palette", elementType: item.type },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={() => onAdd(item.type)}
+      className={cn(
+        "flex flex-col items-center gap-1 p-2 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border/80 transition-colors text-center cursor-grab active:cursor-grabbing select-none",
+        isDragging && "opacity-40",
+      )}
+    >
+      {item.icon}
+      <span className="text-[10px] leading-tight">{item.label}</span>
+    </div>
+  );
+}
+
+// Draggable library card
+function DraggableLibraryCard({ comp, onInsert, onDelete }: { comp: SiteComponent; onInsert: (comp: SiteComponent) => void; onDelete: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `library-${comp.id}`,
+    data: { source: "library", comp },
+  });
+
+  // Mini preview text
+  const preview = (() => {
+    const t = comp.elementData.type;
+    const p = comp.elementData.props;
+    if (t === "text") return String(p.content || "").slice(0, 40) || "Text";
+    if (t === "button") return String(p.label || "Button");
+    if (t === "image") return String(p.alt || "Image");
+    if (t === "layout" || t === "container") return `Layout · ${(comp.elementData.children ?? []).length} children`;
+    if (t === "hero") return String(p.title || "Hero");
+    return t.replace(/-/g, " ");
+  })();
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        "group flex items-start gap-2 rounded border border-border p-2 hover:bg-muted cursor-grab active:cursor-grabbing transition-colors select-none",
+        isDragging && "opacity-40",
+      )}
+      onClick={() => onInsert(comp)}
+      title={`Insert "${comp.name}"`}
+    >
+      <BookMarked className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium truncate">{comp.name}</p>
+        <p className="text-[10px] text-muted-foreground truncate">{preview}{comp.category ? ` · ${comp.category}` : ""}</p>
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(comp.id); }}
+        className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+        title="Delete"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
 function PropertiesPanel({
@@ -763,7 +1423,7 @@ function PropertiesPanel({
   const [showApplyPicker, setShowApplyPicker] = useState(false);
   const typeLabels: Record<string, string> = {
     text: "Text", image: "Image", button: "Button", hero: "Hero", nav: "Navigation",
-    footer: "Footer", divider: "Divider", spacer: "Spacer", container: "Container",
+    footer: "Footer", divider: "Divider", spacer: "Spacer", layout: "Layout", container: "Layout",
     columns: "Columns", "product-card": "Product Card", "booking-form": "Booking Form",
     "coupon-banner": "Coupon Banner", "pricing-table": "Pricing Table", testimonial: "Testimonial",
     faq: "FAQ", gallery: "Gallery", "custom-html": "Custom HTML", "login-form": "Login Form",
@@ -830,7 +1490,7 @@ function PropertiesPanel({
         {element.type === "footer"        && <FooterProps props={element.props} onChange={onChange} />}
         {element.type === "divider"       && <DividerProps props={element.props} onChange={onChange} />}
         {element.type === "spacer"        && <SpacerProps props={element.props} onChange={onChange} />}
-        {element.type === "container"     && <ContainerProps props={element.props} onChange={onChange} />}
+        {(element.type === "layout" || element.type === "container") && <LayoutProps props={element.props} onChange={onChange} />}
         {element.type === "columns"       && <ColumnsProps props={element.props} onChange={onChange} />}
         {element.type === "product-card"  && <ProductCardProps props={element.props} onChange={onChange} products={products} />}
         {element.type === "booking-form"  && <BookingFormProps props={element.props} onChange={onChange} />}
@@ -984,6 +1644,14 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   const [saveDialogName, setSaveDialogName] = useState("");
   const [saveDialogCategory, setSaveDialogCategory] = useState("");
   const [savingComponent, setSavingComponent] = useState(false);
+  // DnD state
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overLayoutId, setOverLayoutId] = useState<string | null>(null);
+  const [activeDragData, setActiveDragData] = useState<{ source: string; elementType?: ElementType; comp?: SiteComponent; element?: SiteElement } | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
 
   // Load initial data
   useEffect(() => {
@@ -1057,11 +1725,11 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   // Apply library component style to selected element (keep ID, replace props/children)
   const applyFromLibrary = (comp: SiteComponent) => {
     if (!selectedId) return;
-    setElements((prev) => prev.map((e) =>
-      e.id === selectedId
-        ? { ...e, props: { ...comp.elementData.props }, children: comp.elementData.children }
-        : e
-    ));
+    setElements((prev) => updateInTree(prev, selectedId, (el) => ({
+      ...el,
+      props: { ...comp.elementData.props },
+      children: comp.elementData.children,
+    })));
     setDirty(true);
   };
 
@@ -1110,9 +1778,10 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     return () => clearTimeout(timer);
   }, [dirty, saveCurrentPage]);
 
-  // Element operations
+  // Element operations (tree-aware for nested layout support)
   const addElement = (type: ElementType) => {
     const el: SiteElement = { id: uid(), type, props: defaultProps(type) };
+    if (type === "layout") el.children = [];
     const idx = selectedId ? elements.findIndex((e) => e.id === selectedId) : -1;
     const newEls = idx >= 0 ? [...elements.slice(0, idx + 1), el, ...elements.slice(idx + 1)] : [...elements, el];
     setElements(newEls);
@@ -1120,19 +1789,40 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     setDirty(true);
   };
 
+  const addChildElement = (layoutId: string) => {
+    const el: SiteElement = { id: uid(), type: "text", props: defaultProps("text") };
+    setElements((prev) => addToLayout(prev, layoutId, el));
+    setSelectedId(el.id);
+    setDirty(true);
+  };
+
   const deleteElement = (id: string) => {
-    setElements((prev) => prev.filter((e) => e.id !== id));
+    const [newRoots] = removeFromTree(elements, id);
+    setElements(newRoots);
     setSelectedId(null);
     setDirty(true);
   };
 
   const duplicateElement = (id: string) => {
-    const el = elements.find((e) => e.id === id);
+    const el = findInTree(elements, id);
     if (!el) return;
-    const clone: SiteElement = { ...el, id: uid(), props: { ...el.props } };
-    const idx = elements.findIndex((e) => e.id === id);
-    const newEls = [...elements.slice(0, idx + 1), clone, ...elements.slice(idx + 1)];
-    setElements(newEls);
+    const clone = deepCopyElement(el);
+    // Find parent context and insert after
+    const parentId = findParentId(elements, id);
+    if (parentId === null) {
+      // Root level
+      const idx = elements.findIndex((e) => e.id === id);
+      const newEls = [...elements.slice(0, idx + 1), clone, ...elements.slice(idx + 1)];
+      setElements(newEls);
+    } else {
+      // Inside a layout
+      setElements((prev) => updateInTree(prev, parentId, (layout) => {
+        const children = [...(layout.children ?? [])];
+        const idx = children.findIndex((c) => c.id === id);
+        children.splice(idx + 1, 0, clone);
+        return { ...layout, children };
+      }));
+    }
     setSelectedId(clone.id);
     setDirty(true);
   };
@@ -1150,9 +1840,133 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   };
 
   const updateElementProp = (id: string, key: string, value: unknown) => {
-    setElements((prev) => prev.map((e) => e.id === id ? { ...e, props: { ...e.props, [key]: value } } : e));
+    setElements((prev) => updateInTree(prev, id, (el) => ({ ...el, props: { ...el.props, [key]: value } })));
     setDirty(true);
   };
+
+  // DnD handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const { active } = event;
+    const data = active.data.current as { source: string; elementType?: ElementType; comp?: SiteComponent; parentId?: string } | undefined;
+    setActiveId(active.id as string);
+    const el = data?.source === "canvas" ? findInTree(elements, active.id as string) : undefined;
+    setActiveDragData({
+      source: data?.source ?? "canvas",
+      elementType: data?.elementType,
+      comp: data?.comp,
+      element: el ?? undefined,
+    });
+  }, [elements]);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event;
+    if (!over) { setOverLayoutId(null); return; }
+    const overData = over.data.current as { type?: string; layoutId?: string } | undefined;
+    if (overData?.type === "layout-drop") {
+      setOverLayoutId(overData.layoutId ?? null);
+    } else {
+      setOverLayoutId(null);
+    }
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setOverLayoutId(null);
+    setActiveDragData(null);
+
+    if (!over) return;
+
+    const activeData = active.data.current as { source: string; elementType?: ElementType; comp?: SiteComponent; parentId?: string; isLayout?: boolean } | undefined;
+    const overData = over.data.current as { type?: string; layoutId?: string; source?: string; parentId?: string } | undefined;
+
+    // From palette → canvas
+    if (activeData?.source === "palette" && activeData.elementType) {
+      const el: SiteElement = { id: uid(), type: activeData.elementType, props: defaultProps(activeData.elementType) };
+      if (activeData.elementType === "layout") el.children = [];
+      if (overData?.type === "layout-drop") {
+        setElements((prev) => addToLayout(prev, overData.layoutId!, el));
+      } else {
+        // Insert at root, near the drop target
+        const overIdx = elements.findIndex((e) => e.id === over.id);
+        setElements((prev) => {
+          const idx = overIdx >= 0 ? overIdx + 1 : prev.length;
+          return [...prev.slice(0, idx), el, ...prev.slice(idx)];
+        });
+      }
+      setSelectedId(el.id);
+      setDirty(true);
+      return;
+    }
+
+    // From library → canvas
+    if (activeData?.source === "library" && activeData.comp) {
+      const el = deepCopyElement(activeData.comp.elementData);
+      if (overData?.type === "layout-drop") {
+        setElements((prev) => addToLayout(prev, overData.layoutId!, el));
+      } else {
+        const overIdx = elements.findIndex((e) => e.id === over.id);
+        setElements((prev) => {
+          const idx = overIdx >= 0 ? overIdx + 1 : prev.length;
+          return [...prev.slice(0, idx), el, ...prev.slice(idx)];
+        });
+      }
+      setSelectedId(el.id);
+      setDirty(true);
+      return;
+    }
+
+    // Canvas element reorder/move
+    if (active.id === over.id) return;
+
+    const activeParent = activeData?.parentId ?? "root";
+
+    // Dropped into a layout drop zone
+    if (overData?.type === "layout-drop") {
+      const layoutId = overData.layoutId!;
+      if (activeParent === layoutId) return; // already in this layout
+      const [newRoots, removed] = removeFromTree(elements, active.id as string);
+      if (!removed) return;
+      setElements(addToLayout(newRoots, layoutId, removed));
+      setDirty(true);
+      return;
+    }
+
+    const overParent = overData?.parentId ?? "root";
+
+    if (activeParent === overParent) {
+      // Same list reorder
+      if (activeParent === "root") {
+        const oldIdx = elements.findIndex((e) => e.id === active.id);
+        const newIdx = elements.findIndex((e) => e.id === over.id);
+        if (oldIdx !== -1 && newIdx !== -1) {
+          setElements(arrayMove(elements, oldIdx, newIdx));
+          setDirty(true);
+        }
+      } else {
+        setElements((prev) => updateInTree(prev, activeParent, (layout) => {
+          const children = [...(layout.children ?? [])];
+          const oldIdx = children.findIndex((c) => c.id === active.id);
+          const newIdx = children.findIndex((c) => c.id === over.id);
+          if (oldIdx === -1 || newIdx === -1) return layout;
+          return { ...layout, children: arrayMove(children, oldIdx, newIdx) };
+        }));
+        setDirty(true);
+      }
+    } else {
+      // Cross-list move
+      const [newRoots, removed] = removeFromTree(elements, active.id as string);
+      if (!removed) return;
+      if (overParent === "root") {
+        const overIdx = newRoots.findIndex((e) => e.id === over.id);
+        const insertIdx = overIdx >= 0 ? overIdx + 1 : newRoots.length;
+        setElements([...newRoots.slice(0, insertIdx), removed, ...newRoots.slice(insertIdx)]);
+      } else {
+        setElements(addToLayout(newRoots, overParent, removed));
+      }
+      setDirty(true);
+    }
+  }, [elements]);
 
   const handleAddPage = async () => {
     if (!newPageName.trim()) return;
@@ -1205,7 +2019,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     }
   };
 
-  const selectedElement = elements.find((e) => e.id === selectedId);
+  const selectedElement = findInTree(elements, selectedId ?? "");
 
   if (loading) {
     return (
@@ -1349,14 +2163,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
                   </div>
                   <div className="p-1.5 grid grid-cols-2 gap-1">
                     {group.map((item) => (
-                      <button
-                        key={item.type}
-                        onClick={() => addElement(item.type)}
-                        className="flex flex-col items-center gap-1 p-2 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border/80 transition-colors text-center"
-                      >
-                        {item.icon}
-                        <span className="text-[10px] leading-none">{item.label}</span>
-                      </button>
+                      <DraggablePaletteItem key={item.type} item={item} onAdd={addElement} />
                     ))}
                   </div>
                 </div>
@@ -1376,25 +2183,12 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               ) : (
                 <div className="p-1.5 space-y-1">
                   {savedComponents.map((comp) => (
-                    <div
+                    <DraggableLibraryCard
                       key={comp.id}
-                      className="group flex items-start gap-2 rounded border border-border p-2 hover:bg-muted cursor-pointer transition-colors"
-                      onClick={() => insertFromLibrary(comp)}
-                      title={`Insert "${comp.name}"`}
-                    >
-                      <BookMarked className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{comp.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{comp.elementData.type}{comp.category ? ` · ${comp.category}` : ""}</p>
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteComponent(comp.id); }}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
+                      comp={comp}
+                      onInsert={insertFromLibrary}
+                      onDelete={handleDeleteComponent}
+                    />
                   ))}
                 </div>
               )}
@@ -1402,53 +2196,71 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
           )}
         </aside>
 
-        {/* Center: Canvas */}
-        <main
-          className="flex-1 overflow-y-auto bg-stone-100"
-          onClick={(e) => { if (e.target === e.currentTarget) setSelectedId(null); }}
+        {/* Center: Canvas (DnD-enabled) */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
         >
-          {elements.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-full text-center px-8 py-16">
-              <Globe className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-sm font-medium text-muted-foreground">Empty page</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Click elements in the left panel to add them</p>
-            </div>
-          ) : (
-            <div className="bg-white min-h-full shadow-sm mx-auto" style={{ maxWidth: "900px" }}>
-              {elements.map((el, idx) => (
-                <div
-                  key={el.id}
-                  className={cn(
-                    "relative group cursor-pointer",
-                    selectedId === el.id && "outline outline-2 outline-blue-500 outline-offset-[-2px] z-10"
-                  )}
-                  onClick={(e) => { e.stopPropagation(); setSelectedId(el.id); }}
-                >
-                  {/* Hover/select overlay */}
-                  <div className={cn("absolute inset-0 z-10 pointer-events-none", selectedId !== el.id && "group-hover:ring-1 group-hover:ring-blue-300 group-hover:ring-inset")} />
+          <main
+            className="flex-1 overflow-y-auto bg-stone-100"
+            onClick={(e) => { if (e.target === e.currentTarget) setSelectedId(null); }}
+          >
+            {elements.length === 0 ? (
+              <div className="flex flex-col items-center justify-center min-h-full text-center px-8 py-16">
+                <Globe className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-sm font-medium text-muted-foreground">Empty page</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Click or drag elements from the left panel</p>
+              </div>
+            ) : (
+              <div className="bg-white min-h-full shadow-sm mx-auto" style={{ maxWidth: "900px" }}>
+                <SortableContext items={elements.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+                  {elements.map((el, idx) => (
+                    <CanvasElement
+                      key={el.id}
+                      el={el}
+                      idx={idx}
+                      total={elements.length}
+                      selectedId={selectedId}
+                      overLayoutId={overLayoutId}
+                      parentId={null}
+                      products={products}
+                      onSelect={setSelectedId}
+                      onDelete={deleteElement}
+                      onDuplicate={duplicateElement}
+                      onMove={moveElement}
+                      onAddChild={addChildElement}
+                      updateProp={updateElementProp}
+                    />
+                  ))}
+                </SortableContext>
+              </div>
+            )}
+          </main>
 
-                  {/* Element controls */}
-                  <div className={cn("absolute top-1 right-1 z-20 flex gap-0.5", selectedId === el.id ? "flex" : "hidden group-hover:flex")}>
-                    <button onClick={(e) => { e.stopPropagation(); moveElement(el.id, "up"); }} disabled={idx === 0} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronUp className="h-3 w-3" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); moveElement(el.id, "down"); }} disabled={idx === elements.length - 1} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronDown className="h-3 w-3" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); duplicateElement(el.id); }} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground"><Copy className="h-3 w-3" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteElement(el.id); }} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
-                  </div>
-
-                  {/* Element type badge */}
-                  {selectedId === el.id && (
-                    <div className="absolute top-1 left-1 z-20 px-1.5 py-0.5 text-[10px] font-medium bg-blue-500 text-white rounded-sm">{el.type}</div>
-                  )}
-
-                  {/* Rendered element */}
-                  <div style={{ padding: ["nav", "hero", "footer", "divider", "spacer"].includes(el.type) ? 0 : "0.75rem" }}>
-                    <SiteElementRenderer element={el} products={products} />
-                  </div>
+          {/* Drag overlay */}
+          <DragOverlay dropAnimation={null}>
+            {activeDragData?.source === "canvas" && activeDragData.element ? (
+              <div className="opacity-70 shadow-xl pointer-events-none scale-95 bg-white rounded border border-blue-300" style={{ maxWidth: "860px" }}>
+                <div style={{ padding: ["nav", "hero", "footer", "divider", "spacer"].includes(activeDragData.element.type) ? 0 : "0.75rem" }}>
+                  <SiteElementRenderer element={activeDragData.element} products={products} />
                 </div>
-              ))}
-            </div>
-          )}
-        </main>
+              </div>
+            ) : activeDragData?.source === "palette" && activeDragData.elementType ? (
+              <div className="flex items-center gap-2 bg-white border border-blue-300 px-3 py-2 rounded-sm shadow-lg text-sm font-medium text-blue-700">
+                <Plus className="h-4 w-4" />
+                <span>{PALETTE.flat().find((p) => p.type === activeDragData.elementType)?.label ?? activeDragData.elementType}</span>
+              </div>
+            ) : activeDragData?.source === "library" && activeDragData.comp ? (
+              <div className="flex items-center gap-2 bg-white border border-stone-200 px-3 py-2 rounded-sm shadow-lg text-sm">
+                <BookMarked className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{activeDragData.comp.name}</span>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
 
         {/* Right: Properties panel */}
         <aside className="w-60 border-l border-border bg-background overflow-hidden shrink-0 flex flex-col">
