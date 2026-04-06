@@ -38,7 +38,8 @@ function RenderText({ props }: { props: Record<string, unknown> }) {
     lineHeight: 1.6,
   };
 
-  const Tag = tag as keyof JSX.IntrinsicElements;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Tag = tag as any;
   return <Tag style={style}>{content}</Tag>;
 }
 
@@ -389,6 +390,82 @@ function RenderCustomHtml({ props }: { props: Record<string, unknown> }) {
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
+function RenderCodeBlock({ props }: { props: Record<string, unknown> }) {
+  const language = (props.language as string) || "html";
+  const code = (props.code as string) || "";
+  const execute = props.execute === true;
+
+  if (!execute) {
+    // Display mode: syntax-highlighted code block
+    return (
+      <div style={{ borderRadius: "var(--sr-radius)", overflow: "hidden", border: "1px solid #e5e7eb" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.5rem 1rem", background: "#18181b", color: "#a1a1aa", fontSize: "0.75rem", fontFamily: "monospace" }}>
+          <span>{language.toUpperCase()}</span>
+        </div>
+        <pre style={{ margin: 0, padding: "1rem", background: "#09090b", color: "#e4e4e7", fontFamily: "'Geist Mono', 'Fira Code', monospace", fontSize: "0.8125rem", overflowX: "auto", lineHeight: 1.6 }}>
+          <code>{code}</code>
+        </pre>
+      </div>
+    );
+  }
+
+  // Execute mode: sandboxed iframe
+  const buildSrcdoc = () => {
+    if (language === "html") return code;
+    if (language === "css") return `<!DOCTYPE html><html><head><style>${code}</style></head><body><p>CSS applied</p></body></html>`;
+    if (language === "javascript") return `<!DOCTYPE html><html><body><script>${code}<\/script></body></html>`;
+    return code;
+  };
+
+  const height = (props.height as string) || "300px";
+  return (
+    <iframe
+      srcDoc={buildSrcdoc()}
+      sandbox="allow-scripts"
+      style={{ width: "100%", height, border: "1px solid #e5e7eb", borderRadius: "var(--sr-radius)" }}
+      title="Code output"
+    />
+  );
+}
+
+function RenderMembershipWidget({ props }: { props: Record<string, unknown> }) {
+  const title = (props.title as string) || "Member Benefits";
+  const tierName = (props.tierName as string) || "Gold Member";
+  const tierColor = (props.tierColor as string) || "#f59e0b";
+  const tierIcon = (props.tierIcon as string) || "⭐";
+  const showPoints = props.showPoints !== false;
+  const perks = (props.previewPerks as string[]) || ["Free drink every 3 hours", "10% off weekends", "Priority seating"];
+
+  return (
+    <div style={{ border: `2px solid ${tierColor}`, borderRadius: "var(--sr-radius)", padding: "1.5rem", maxWidth: "400px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+        <span style={{ fontSize: "2rem" }}>{tierIcon}</span>
+        <div>
+          <p style={{ fontFamily: "var(--sr-font-heading)", fontWeight: 800, fontSize: "1.125rem", margin: 0, color: tierColor }}>{tierName}</p>
+          <p style={{ fontSize: "0.8125rem", color: "var(--sr-secondary)", margin: 0 }}>{title}</p>
+        </div>
+      </div>
+      {showPoints && (
+        <div style={{ background: `${tierColor}15`, border: `1px solid ${tierColor}40`, borderRadius: "4px", padding: "0.625rem 1rem", marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 600 }}>Your Points</span>
+          <span style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "1.25rem", color: tierColor }}>0</span>
+        </div>
+      )}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {perks.map((perk, i) => (
+          <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", fontSize: "0.875rem" }}>
+            <span style={{ color: tierColor, fontWeight: 700, flexShrink: 0 }}>✓</span>
+            {perk}
+          </li>
+        ))}
+      </ul>
+      <button style={{ marginTop: "1rem", width: "100%", padding: "0.625rem", background: tierColor, color: "#fff", border: "none", borderRadius: "var(--sr-radius)", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}>
+        Claim a Perk
+      </button>
+    </div>
+  );
+}
+
 function RenderLoginForm({ props }: { props: Record<string, unknown> }) {
   const title = (props.title as string) || "Sign In";
   const inputStyle: React.CSSProperties = { width: "100%", padding: "0.5rem 0.75rem", border: "1px solid #d1d5db", borderRadius: "var(--sr-radius)", fontSize: "0.875rem", boxSizing: "border-box" };
@@ -436,8 +513,10 @@ export function SiteElementRenderer({
     case "faq":            return <RenderFaq props={props} />;
     case "gallery":        return <RenderGallery props={props} />;
     case "custom-html":    return <RenderCustomHtml props={props} />;
-    case "login-form":     return <RenderLoginForm props={props} />;
-    default:               return null;
+    case "login-form":         return <RenderLoginForm props={props} />;
+    case "code-block":         return <RenderCodeBlock props={props} />;
+    case "membership-widget":  return <RenderMembershipWidget props={props} />;
+    default:                   return null;
   }
 }
 

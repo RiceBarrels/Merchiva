@@ -69,9 +69,11 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "testimonial":   return { quote: "This product is amazing!", author: "Jane D.", role: "Happy Customer", avatar: "", rating: 5 };
     case "faq":           return { items: [{ question: "What is your return policy?", answer: "We offer a 30-day return policy on all items." }, { question: "How do I contact support?", answer: "Email us at hello@example.com anytime." }] };
     case "gallery":       return { images: [], columns: 3, gap: "0.5rem" };
-    case "custom-html":   return { html: "<p>Your custom HTML here</p>" };
-    case "login-form":    return { title: "Sign In", redirectUrl: "/dashboard" };
-    default:              return {};
+    case "custom-html":        return { html: "<p>Your custom HTML here</p>" };
+    case "login-form":         return { title: "Sign In", redirectUrl: "/dashboard" };
+    case "code-block":         return { language: "html", code: "<h1>Hello World</h1>", execute: false, height: "300px" };
+    case "membership-widget":  return { title: "Member Benefits", tierName: "Gold Member", tierColor: "#f59e0b", tierIcon: "⭐", showPoints: true, previewPerks: ["Free drink every 3 hours", "10% off weekends", "Priority seating"] };
+    default:                   return {};
   }
 }
 
@@ -104,8 +106,10 @@ const PALETTE: { label: string; icon: React.ReactNode; type: ElementType }[][] =
     { label: "Gallery",   icon: <GalleryHorizontal className="h-3.5 w-3.5" />, type: "gallery" },
   ],
   [
-    { label: "Login",     icon: <LogIn className="h-3.5 w-3.5" />,            type: "login-form" },
-    { label: "HTML",      icon: <Code2 className="h-3.5 w-3.5" />,            type: "custom-html" },
+    { label: "Login",      icon: <LogIn className="h-3.5 w-3.5" />,            type: "login-form" },
+    { label: "HTML",       icon: <Code2 className="h-3.5 w-3.5" />,            type: "custom-html" },
+    { label: "Code",       icon: <Code2 className="h-3.5 w-3.5" />,            type: "code-block" },
+    { label: "Membership", icon: <CreditCard className="h-3.5 w-3.5" />,       type: "membership-widget" },
   ],
 ];
 
@@ -451,6 +455,53 @@ function LoginFormProps({ props, onChange }: { props: Record<string, unknown>; o
   );
 }
 
+function CodeBlockProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  return (
+    <>
+      <PropRow label="Language">
+        <PropSelect
+          value={(props.language as string) || "html"}
+          onChange={(v) => onChange("language", v)}
+          options={[
+            { label: "HTML", value: "html" },
+            { label: "CSS", value: "css" },
+            { label: "JavaScript", value: "javascript" },
+          ]}
+        />
+      </PropRow>
+      <PropRow label="Code"><PropTextarea value={(props.code as string) || ""} onChange={(v) => onChange("code", v)} rows={8} /></PropRow>
+      <PropRow label="Execute"><PropToggle value={props.execute === true} onChange={(v) => onChange("execute", v)} label="Run in iframe sandbox" /></PropRow>
+      {props.execute && (
+        <PropRow label="Height"><PropInput value={(props.height as string) || "300px"} onChange={(v) => onChange("height", v)} placeholder="300px" /></PropRow>
+      )}
+    </>
+  );
+}
+
+function MembershipWidgetProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
+  const perks = (props.previewPerks as string[]) || [];
+  return (
+    <>
+      <PropRow label="Title"><PropInput value={(props.title as string) || ""} onChange={(v) => onChange("title", v)} placeholder="Member Benefits" /></PropRow>
+      <PropRow label="Tier name"><PropInput value={(props.tierName as string) || ""} onChange={(v) => onChange("tierName", v)} placeholder="Gold Member" /></PropRow>
+      <PropRow label="Tier color"><PropInput type="color" value={(props.tierColor as string) || "#f59e0b"} onChange={(v) => onChange("tierColor", v)} /></PropRow>
+      <PropRow label="Tier icon"><PropInput value={(props.tierIcon as string) || "⭐"} onChange={(v) => onChange("tierIcon", v)} placeholder="⭐" /></PropRow>
+      <PropRow label="Show points"><PropToggle value={props.showPoints !== false} onChange={(v) => onChange("showPoints", v)} label="Show points balance" /></PropRow>
+      <PropRow label="Perks">
+        <div className="space-y-1">
+          {perks.map((perk, i) => (
+            <div key={i} className="flex gap-1">
+              <input value={perk} onChange={(e) => { const n = [...perks]; n[i] = e.target.value; onChange("previewPerks", n); }} className="flex-1 rounded border border-border bg-background px-2 py-0.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
+              <button onClick={() => onChange("previewPerks", perks.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+            </div>
+          ))}
+          <button onClick={() => onChange("previewPerks", [...perks, "New perk"])} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"><Plus className="h-3 w-3" /> Add perk</button>
+        </div>
+      </PropRow>
+    </>
+  );
+}
+
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
 function PropertiesPanel({ element, onChange, products }: { element: SiteElement; onChange: (k: string, v: unknown) => void; products: Product[] }) {
@@ -460,6 +511,7 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
     columns: "Columns", "product-card": "Product Card", "booking-form": "Booking Form",
     "coupon-banner": "Coupon Banner", "pricing-table": "Pricing Table", testimonial: "Testimonial",
     faq: "FAQ", gallery: "Gallery", "custom-html": "Custom HTML", "login-form": "Login Form",
+    "code-block": "Code Block", "membership-widget": "Membership Widget",
   };
 
   return (
@@ -486,8 +538,10 @@ function PropertiesPanel({ element, onChange, products }: { element: SiteElement
         {element.type === "testimonial"   && <TestimonialProps props={element.props} onChange={onChange} />}
         {element.type === "faq"           && <FaqProps props={element.props} onChange={onChange} />}
         {element.type === "gallery"       && <GalleryProps props={element.props} onChange={onChange} />}
-        {element.type === "custom-html"   && <HtmlProps props={element.props} onChange={onChange} />}
-        {element.type === "login-form"    && <LoginFormProps props={element.props} onChange={onChange} />}
+        {element.type === "custom-html"        && <HtmlProps props={element.props} onChange={onChange} />}
+        {element.type === "login-form"         && <LoginFormProps props={element.props} onChange={onChange} />}
+        {element.type === "code-block"         && <CodeBlockProps props={element.props} onChange={onChange} />}
+        {element.type === "membership-widget"  && <MembershipWidgetProps props={element.props} onChange={onChange} />}
       </div>
     </div>
   );
@@ -801,6 +855,12 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
           >
             <Palette className="h-3.5 w-3.5" /> Theme
           </button>
+          <Link
+            href={`/builder/${siteId}/membership`}
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
+          >
+            <CreditCard className="h-3.5 w-3.5" /> Members
+          </Link>
           <Link
             href={`/s/${site.slug}`}
             target="_blank"

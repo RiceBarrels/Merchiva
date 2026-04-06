@@ -21,7 +21,6 @@ import {
   Loader2,
   Menu,
   MessageSquare,
-  Globe,
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";

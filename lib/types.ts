@@ -347,7 +347,7 @@ export type ElementType =
   | "hero" | "nav" | "footer" | "spacer" | "columns"
   | "product-card" | "booking-form" | "coupon-banner"
   | "pricing-table" | "testimonial" | "faq" | "gallery"
-  | "custom-html" | "login-form";
+  | "custom-html" | "login-form" | "code-block" | "membership-widget";
 
 export interface SiteElement {
   id: string;
@@ -391,69 +391,93 @@ export interface DashboardMetrics {
   totalProducts: number;
 }
 
-// ─── Site Builder ─────────────────────────────────────────────────────────────
+// ─── Membership ───────────────────────────────────────────────────────────────
 
-export interface SiteTheme {
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  backgroundColor: string;
-  textColor: string;
-  headingFont: string;
-  bodyFont: string;
-  baseFontSize: number; // px, 14–20
-  borderRadius: number; // px, 0–24
-  maxContentWidth: number; // px, 800–1400
-  sectionPadding: number; // px, 16–80
-}
-
-export type SiteElementType =
-  | "text"
-  | "image"
-  | "button"
-  | "container"
-  | "divider"
-  | "hero"
-  | "nav"
-  | "footer"
-  | "spacer"
-  | "columns"
-  | "video"
-  | "gallery"
-  | "custom-html";
-
-export interface SiteElement {
+export interface MembershipTier {
   id: string;
   siteId: string;
-  pageId: string;
-  parentId: string | null;
-  type: SiteElementType;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  props: Record<string, any>;
-  sortOrder: number;
-  children?: SiteElement[];
-}
-
-export interface SitePage {
-  id: string;
-  siteId: string;
-  title: string;
-  slug: string;
-  isHome: boolean;
-  metaTitle: string | null;
-  metaDescription: string | null;
-  elements?: SiteElement[];
-}
-
-export interface Site {
-  id: string;
-  organizationId: string;
   name: string;
-  slug: string;
-  published: boolean;
-  theme: SiteTheme;
-  metaTitle: string | null;
-  metaDescription: string | null;
+  description: string | null;
+  price: number;
+  pricePeriod: "monthly" | "yearly" | "one-time" | "free";
+  color: string;
+  icon: string;
+  sortOrder: number;
+  isDefault: boolean;
   createdAt: string;
-  updatedAt: string;
 }
+
+export interface MembershipPerk {
+  id: string;
+  tierId: string;
+  type: "discount" | "freebie" | "coupon" | "points-multiplier" | "custom";
+  name: string;
+  description: string | null;
+  couponCode: string | null;
+  discountValue: number | null;
+  discountType: "percent" | "fixed" | null;
+  cooldownHours: number | null;
+  frequency: number | null;
+  minPurchase: number | null;
+  validDays: number[] | null;   // 0=Sun…6=Sat, null=any day
+  validHours: [number, number] | null; // [startHour, endHour], null=any time
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface PerkClaim {
+  id: string;
+  perkId: string;
+  customerId: string;
+  claimedAt: string;
+  usedAt: string | null;
+  couponCode: string | null;
+  expiresAt: string | null;
+}
+
+export interface SiteCustomer {
+  id: string;
+  siteId: string;
+  email: string;
+  name: string | null;
+  phone: string | null;
+  createdAt: string;
+}
+
+export interface CustomerPoints {
+  customerId: string;
+  siteId: string;
+  points: number;
+  lifetimePoints: number;
+}
+
+export interface SiteOrder {
+  id: string;
+  siteId: string;
+  customerId: string | null;
+  items: { name: string; price: number; quantity: number }[];
+  total: number;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  customerName: string | null;
+  customerEmail: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface SiteBooking {
+  id: string;
+  siteId: string;
+  customerId: string | null;
+  date: string;
+  time: string;
+  partySize: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  status: "pending" | "confirmed" | "cancelled";
+  createdAt: string;
+}
+
+// SiteElementType alias for backward compatibility
+export type SiteElementType = ElementType;

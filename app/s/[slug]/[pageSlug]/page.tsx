@@ -1,40 +1,56 @@
-import { notFound } from "next/navigation";
-import type { Metadata } from "next";
-import { getSiteBySlugServer, getSitePagesServer, getPageElementsServer } from "@/lib/db/sites";
+"use client";
+
+import { useEffect, useState, use } from "react";
+import { getSiteBySlug, getPages, getPageBySlug } from "@/lib/db/sites";
 import { SiteRenderer } from "@/components/site-renderer";
+import type { Site, SitePage } from "@/lib/types";
+import { Loader2 } from "lucide-react";
 
 interface Props {
   params: Promise<{ slug: string; pageSlug: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug, pageSlug } = await params;
-  const site = await getSiteBySlugServer(slug);
-  if (!site) return {};
+export default function PublishedSiteSubPage({ params }: Props) {
+  const { slug, pageSlug } = use(params);
 
-  const pages = await getSitePagesServer(site.id);
-  const page = pages.find((p) => p.slug === pageSlug);
+  const [site, setSite] = useState<Site | null>(null);
+  const [page, setPage] = useState<SitePage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  return {
-    title: page?.metaTitle ?? `${page?.title ?? pageSlug} — ${site.name}`,
-    description: page?.metaDescription ?? site.metaDescription ?? undefined,
-  };
-}
+  useEffect(() => {
+    getSiteBySlug(slug)
+      .then(async (foundSite) => {
+        if (!foundSite) { setNotFound(true); return; }
+        setSite(foundSite);
+        const foundPage = await getPageBySlug(foundSite.id, pageSlug);
+        if (!foundPage) { setNotFound(true); return; }
+        setPage(foundPage);
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [slug, pageSlug]);
 
-export default async function PublishedSiteSubPage({ params }: Props) {
-  const { slug, pageSlug } = await params;
-  const site = await getSiteBySlugServer(slug);
-  if (!site) notFound();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-  const pages = await getSitePagesServer(site.id);
-  const page = pages.find((p) => p.slug === pageSlug);
-  if (!page) notFound();
-
-  const elements = await getPageElementsServer(page.id);
+  if (notFound || !site || !page) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
+        <h1 className="text-2xl font-bold mb-2">Page not found</h1>
+        <p className="text-muted-foreground text-sm">This page doesn&apos;t exist.</p>
+      </div>
+    );
+  }
 
   return (
     <main style={{ minHeight: "100vh" }}>
-      <SiteRenderer elements={elements} theme={site.theme} />
+      <SiteRenderer elements={page.elements} theme={site.theme} />
     </main>
   );
 }
