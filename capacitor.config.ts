@@ -1,17 +1,15 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const useLocal = process.env.CAP_LOCAL === '1';
-
 const config: CapacitorConfig = {
   appId: 'com.bizops.app',
   appName: 'BizOps',
   webDir: 'out',
-  ...(useLocal ? {} : {
-    server: {
-      url: 'https://project-management-phi-red.vercel.app',
-      cleartext: true,
-    },
-  }),
+  server: {
+    // For production: point to Vercel deployment
+    // For local dev: comment out url to use local files
+    url: 'https://project-management-phi-red.vercel.app',
+    cleartext: true,
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

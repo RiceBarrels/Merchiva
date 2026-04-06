@@ -313,24 +313,9 @@ try {
     stdio: "inherit",
     env: { ...process.env, NEXT_OUTPUT: "static" },
   });
-  // Post-process: rewrite absolute paths to relative so files work locally
-  console.log("📝 Step 4: Rewriting paths to relative...\n");
+  // Post-process HTML files
+  console.log("📝 Step 4: Post-processing HTML...\n");
   const outDir = join(ROOT, "out");
-  const htmlFiles = findFilesRecursive(outDir, (n) => n.endsWith(".html"));
-  for (const htmlFile of htmlFiles) {
-    let html = readFileSync(htmlFile, "utf-8");
-    // Calculate depth from out/ root to determine relative prefix
-    const depth = relative(outDir, dirname(htmlFile)).split("/").filter(Boolean).length;
-    const prefix = depth > 0 ? "../".repeat(depth) : "./";
-    // Replace absolute paths: /_next/ → ./_next/ (or ../_next/ for nested pages)
-    html = html.replace(/(\s(?:src|href))="\/_next\//g, `$1="${prefix}_next/`);
-    html = html.replace(/(\s(?:src|href))="\/manifest\.json/g, `$1="${prefix}manifest.json`);
-    html = html.replace(/(\s(?:src|href))="\/favicon/g, `$1="${prefix}favicon`);
-    html = html.replace(/(\s(?:src|href))="\/sw\.js/g, `$1="${prefix}sw.js`);
-    writeFileSync(htmlFile, html);
-    if (verbose) console.log(`  ${rel(htmlFile)}`);
-  }
-  console.log(`  ${htmlFiles.length} HTML files rewritten`);
 
   console.log(`\n✅ Static build complete! Output in ./out/\n`);
 

@@ -178,7 +178,6 @@ function SignupForm() {
         .eq("user_id", userId);
 
       router.push("/dashboard");
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join organization.");
       setLoading(false);

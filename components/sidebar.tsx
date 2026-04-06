@@ -201,7 +201,6 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
     clearCache(); // clear all cache on logout
     await supabase.auth.signOut();
     router.push("/login");
-    router.refresh();
   };
 
   const handleNavClick = () => {
