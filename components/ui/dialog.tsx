@@ -4,6 +4,7 @@ import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { ArrowLeft, XIcon } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
+import { getSafeAreaInsets } from "@/lib/safe-area";
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -161,7 +162,7 @@ function syncDialogsToUrl() {
     const titles = [...new Set(getTitles())];
     const url = new URL(window.location.href);
     if (titles.length > 0) {
-      url.searchParams.set("dialogs", titles.map((t) => encodeURIComponent(t)).join(","));
+      url.searchParams.set("dialogs", titles.join(","));
     } else {
       url.searchParams.delete("dialogs");
     }
@@ -175,26 +176,78 @@ function syncDialogsToUrl() {
   }, 300);
 }
 
-// Listen for back button → close the topmost dialog
+// Listen for back/forward button → close or reopen dialogs
 if (typeof window !== "undefined") {
   window.addEventListener("popstate", () => {
-    const titles = getTitles();
-    if (titles.length === 0) return;
-    handlingPopstate = true;
-    // Find and click the topmost dialog's back/close button
-    const topIdx = titles.length - 1;
-    const topDialog = document.getElementById(`mobile-dialog-${topIdx}`);
-    const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
-    if (backBtn) {
-      backBtn.click();
-    } else {
-      // Desktop: find the topmost open dialog's close button
-      const closeBtns = document.querySelectorAll('[data-slot="dialog-close"]');
-      const lastClose = closeBtns[closeBtns.length - 1] as HTMLButtonElement | null;
-      lastClose?.click();
+    const urlDialogs = getDialogsFromUrl();
+    const openDialogs = getTitles();
+
+    if (urlDialogs.length > openDialogs.length) {
+      // Forward navigation — reopen dialogs that are in URL but not open
+      handlingPopstate = true;
+      urlDialogs.forEach((title) => {
+        if (!openDialogs.includes(title)) {
+          requestDialogOpen(title);
+        }
+      });
+      setTimeout(() => { handlingPopstate = false; }, 100);
+    } else if (openDialogs.length > 0) {
+      // Back navigation — close the topmost dialog
+      handlingPopstate = true;
+      const topIdx = openDialogs.length - 1;
+      const topDialog = document.getElementById(`mobile-dialog-${topIdx}`);
+      const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
+      if (backBtn) {
+        backBtn.click();
+      } else {
+        const closeBtns = document.querySelectorAll('[data-slot="dialog-close"]');
+        const lastClose = closeBtns[closeBtns.length - 1] as HTMLButtonElement | null;
+        lastClose?.click();
+      }
+      setTimeout(() => { handlingPopstate = false; }, 100);
     }
-    setTimeout(() => { handlingPopstate = false; }, 100);
   });
+}
+
+/** Parse dialog titles from the current URL's ?dialogs= param */
+function getDialogsFromUrl(): string[] {
+  if (typeof window === "undefined") return [];
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("dialogs");
+  if (!raw) return [];
+  return raw.split(",").map((t) => decodeURIComponent(t));
+}
+
+// Event system for forward-navigation dialog reopening
+const dialogOpenListeners = new Map<string, Set<() => void>>(); // title → callbacks
+
+function requestDialogOpen(title: string) {
+  dialogOpenListeners.get(title)?.forEach((fn) => fn());
+}
+
+/**
+ * Hook: use instead of useState(false) for dialog open state.
+ * Auto-opens the dialog if its title is in the URL's ?dialogs= param on mount.
+ * Also reopens when the user presses the browser forward button.
+ */
+export function useDialogUrl(title: string): [boolean, React.Dispatch<React.SetStateAction<boolean>>] {
+  const [open, setOpen] = React.useState(() => getDialogsFromUrl().includes(title));
+
+  React.useEffect(() => {
+    const cb = () => setOpen(true);
+    let set = dialogOpenListeners.get(title);
+    if (!set) {
+      set = new Set();
+      dialogOpenListeners.set(title, set);
+    }
+    set.add(cb);
+    return () => {
+      set!.delete(cb);
+      if (set!.size === 0) dialogOpenListeners.delete(title);
+    };
+  }, [title]);
+
+  return [open, setOpen];
 }
 
 function registerTitle(title: string): string {
@@ -414,6 +467,7 @@ function DialogContent({
     return (
       <DialogPortal>
         <MobileDialogPage className={className} noPadding={noPadding} {...props}>
+          <div className="w-full" style={{ height: getSafeAreaInsets().top }} />
           {children}
         </MobileDialogPage>
       </DialogPortal>

@@ -998,7 +998,7 @@ function ChatView({
       })()}
       </AnimatePresence>
 
-      <div className="border-t border-border">
+      <div className="border-t border-border" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         {/* Reply preview bar */}
         <AnimatePresence>
           {replyTo && (

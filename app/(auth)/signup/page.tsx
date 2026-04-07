@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Zap, Loader2, Users } from "lucide-react";
+import { Zap, Loader2, Users, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,7 @@ import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import type { OrgInvitation } from "@/lib/types";
 
 type Step = "form" | "verify";
+type MobileStep = "name" | "store" | "email" | "password";
 
 function SignupForm() {
   const router = useRouter();
@@ -35,6 +36,11 @@ function SignupForm() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileStep, setMobileStep] = useState<MobileStep>("name");
+  const fieldRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setIsMobile(window.innerWidth < 640); }, []);
 
   // Invitation state
   const [invitation, setInvitation] = useState<OrgInvitation | null>(null);
@@ -70,9 +76,45 @@ function SignupForm() {
       .catch(() => setInviteStatus("invalid"));
   }, [inviteCode]);
 
+  // Mobile: determine next step
+  const mobileSteps: MobileStep[] = inviteStatus === "valid"
+    ? ["name", "email", "password"]           // invited: skip store name
+    : ["name", "store", "email", "password"]; // normal: include store name
+  const mobileStepIdx = mobileSteps.indexOf(mobileStep);
+
+  const advanceMobileStep = () => {
+    if (mobileStepIdx < mobileSteps.length - 1) {
+      setMobileStep(mobileSteps[mobileStepIdx + 1]);
+      setTimeout(() => fieldRef.current?.focus(), 100);
+      return true;
+    }
+    return false; // last step, proceed to submit
+  };
+
+  const retreatMobileStep = () => {
+    if (mobileStepIdx > 0) {
+      setMobileStep(mobileSteps[mobileStepIdx - 1]);
+      setError(null);
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Mobile: advance steps until last
+    if (isMobile && step === "form") {
+      if (mobileStep === "name" && !yourName.trim()) {
+        setError("Please enter your name.");
+        return;
+      }
+      if (mobileStep === "email" && !email.trim()) {
+        setError("Please enter your email.");
+        return;
+      }
+      if (advanceMobileStep()) return;
+    }
+
     setLoading(true);
 
     if (password.length < 6) {
@@ -347,14 +389,19 @@ function SignupForm() {
           <div>
             <CardTitle className="text-xl">Create account</CardTitle>
             <CardDescription>
-              You&apos;ve been invited to join{" "}
-              <strong>{orgName}</strong>
+              {isMobile && mobileStep !== "name"
+                ? { store: "Name your store", email: "Enter your email", password: "Choose a password" }[mobileStep]
+                : <>You&apos;ve been invited to join <strong>{orgName}</strong></>}
             </CardDescription>
           </div>
         ) : (
           <div>
             <CardTitle className="text-xl">Create account</CardTitle>
-            <CardDescription>Start managing your business with AI</CardDescription>
+            <CardDescription>
+              {isMobile
+                ? { name: "What's your name?", store: "Name your store", email: "Enter your email", password: "Choose a password" }[mobileStep]
+                : "Start managing your business with AI"}
+            </CardDescription>
           </div>
         )}
       </CardHeader>
@@ -385,58 +432,140 @@ function SignupForm() {
         )}
 
         <form onSubmit={handleSignup} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="yourName">Your Name</Label>
-            <Input
-              id="yourName"
-              placeholder="Jane Smith"
-              value={yourName}
-              onChange={(e) => setYourName(e.target.value)}
-              autoComplete="name"
-            />
-          </div>
+          {isMobile ? (
+            <>
+              {mobileStepIdx > 0 && (
+                <button
+                  type="button"
+                  onClick={retreatMobileStep}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors -mt-1"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
+                </button>
+              )}
 
-          {/* Only show store name for non-invited signups */}
-          {inviteStatus !== "valid" && (
-            <div className="space-y-1.5">
-              <Label htmlFor="storeName">Store Name</Label>
-              <Input
-                id="storeName"
-                placeholder="My Coffee Shop"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                autoComplete="organization"
-              />
-            </div>
+              {mobileStep === "name" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="yourName">Your Name</Label>
+                  <Input
+                    ref={fieldRef}
+                    id="yourName"
+                    placeholder="Jane Smith"
+                    value={yourName}
+                    onChange={(e) => setYourName(e.target.value)}
+                    autoComplete="name"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {mobileStep === "store" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="storeName">Store Name</Label>
+                  <Input
+                    ref={fieldRef}
+                    id="storeName"
+                    placeholder="My Coffee Shop"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    autoComplete="organization"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {mobileStep === "email" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    ref={fieldRef}
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    readOnly={inviteStatus === "valid"}
+                    className={inviteStatus === "valid" ? "bg-muted text-muted-foreground" : ""}
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {mobileStep === "password" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    ref={fieldRef}
+                    id="password"
+                    type="password"
+                    placeholder="At least 6 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    autoFocus
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="yourName">Your Name</Label>
+                <Input
+                  id="yourName"
+                  placeholder="Jane Smith"
+                  value={yourName}
+                  onChange={(e) => setYourName(e.target.value)}
+                  autoComplete="name"
+                />
+              </div>
+
+              {inviteStatus !== "valid" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="storeName">Store Name</Label>
+                  <Input
+                    id="storeName"
+                    placeholder="My Coffee Shop"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    autoComplete="organization"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  readOnly={inviteStatus === "valid"}
+                  className={inviteStatus === "valid" ? "bg-muted text-muted-foreground" : ""}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+            </>
           )}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              readOnly={inviteStatus === "valid"}
-              className={inviteStatus === "valid" ? "bg-muted text-muted-foreground" : ""}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="At least 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-            />
-          </div>
 
           {error && (
             <p className="text-sm text-destructive rounded-sm bg-destructive/10 px-3 py-2">
@@ -448,7 +577,12 @@ function SignupForm() {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating account…
+                {mobileStep === "password" || !isMobile ? "Creating account…" : ""}
+              </>
+            ) : isMobile && mobileStep !== "password" ? (
+              <>
+                Continue
+                <ArrowRight className="ml-2 h-4 w-4" />
               </>
             ) : (
               "Create account"

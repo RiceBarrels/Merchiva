@@ -20,7 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, useDialogUrl,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -1321,7 +1321,7 @@ export default function StaffingPage() {
     a.click();
   };
 
-  const [downloadDialog, setDownloadDialog] = useState(false);
+  const [downloadDialog, setDownloadDialog] = useDialogUrl("Export Schedule");
   const [downloadRange, setDownloadRange] = useState({ start: "", end: "" });
   const [downloadFormat, setDownloadFormat] = useState<"pdf" | "png" | "csv">("pdf");
 
