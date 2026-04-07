@@ -59,6 +59,12 @@ import {
   Sparkles,
   Frame,
   BoxSelect,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical,
+  Rows3,
+  Columns3,
+  Grid3X3,
 } from "lucide-react";
 import {
   DndContext,
@@ -569,7 +575,7 @@ function PropTextarea({ value, onChange, rows = 3 }: { value: string; onChange: 
   );
 }
 
-function Section({ label, icon, children, defaultOpen = true }: { label: string; icon?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
+function Section({ label, icon, children, defaultOpen = true, actions }: { label: string; icon?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; actions?: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-t border-border/50 mt-2 pt-1">
@@ -581,7 +587,10 @@ function Section({ label, icon, children, defaultOpen = true }: { label: string;
           {icon && <span className="opacity-70">{icon}</span>}
           {label}
         </span>
-        <ChevronRight className={cn("h-3 w-3 transition-transform", open && "rotate-90")} />
+        <span className="flex items-center gap-1">
+          {actions && <span onClick={(e) => e.stopPropagation()}>{actions}</span>}
+          <ChevronRight className={cn("h-3 w-3 transition-transform", open && "rotate-90")} />
+        </span>
       </button>
       {open && <div className="pt-0.5">{children}</div>}
     </div>
@@ -598,11 +607,44 @@ function parseSingleNum(val: string): string {
   return "";
 }
 
+// Figma-style compact input with label
+function FigmaInput({ label, value, onChange, suffix, className }: { label: string; value: string; onChange: (v: string) => void; suffix?: string; className?: string }) {
+  return (
+    <div className={cn("flex items-center gap-1 rounded border border-border bg-muted/30 px-2 py-1", className)}>
+      <span className="text-[10px] text-muted-foreground shrink-0 font-medium">{label}</span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex-1 min-w-0 bg-transparent text-xs outline-none text-right"
+      />
+      {suffix && <span className="text-[10px] text-muted-foreground shrink-0">{suffix}</span>}
+    </div>
+  );
+}
+
+// Figma-style icon toggle group
+function FigmaToggleGroup({ options, value, onChange }: { options: { icon: React.ReactNode; value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="inline-flex rounded border border-border bg-muted/30 overflow-hidden">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          title={opt.label}
+          onClick={() => onChange(opt.value)}
+          className={cn("p-1.5 transition-colors", value === opt.value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted")}
+        >
+          {opt.icon}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function StyleProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   const theme = useContext(ThemeContext);
   const style = (props.style as Record<string, string>) || {};
   const [showAdvancedPad, setShowAdvancedPad] = useState(false);
-  const [showAdvancedMar, setShowAdvancedMar] = useState(false);
 
   const s = (key: string) => style[key] || "";
   const set = (key: string, val: string) => {
@@ -611,44 +653,13 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
     onChange("style", next);
   };
 
-  // Padding: single value → sets all 4 sides as Npx
   const padNum = parseSingleNum(s("padding"));
-  const marNum = parseSingleNum(s("margin"));
-
-  // Border toggle: on = "1px solid <theme.secondary>" off = remove
   const hasBorder = !!s("border");
 
-  // Rounded presets
-  const ROUNDED = [
-    { label: "None", value: "0" },
-    { label: "Small", value: "4px" },
-    { label: "Medium", value: "8px" },
-    { label: "Large", value: "16px" },
-    { label: "Full", value: "9999px" },
-  ];
-
-  // Shadow presets
-  const SHADOWS = [
-    { label: "None", value: "" },
-    { label: "Small", value: "0 1px 3px rgba(0,0,0,0.12)" },
-    { label: "Medium", value: "0 4px 12px rgba(0,0,0,0.15)" },
-    { label: "Large", value: "0 8px 30px rgba(0,0,0,0.18)" },
-  ];
-
-  // Width presets
-  const WIDTH_PRESETS = [
-    { label: "Full", value: "100%" },
-    { label: "Half", value: "50%" },
-    { label: "Auto", value: "auto" },
-  ];
-
-  // Layout presets for containers
-  const LAYOUT_PRESETS = [
-    { label: "Stack (vertical)", value: "flex|column" },
-    { label: "Row (horizontal)", value: "flex|row" },
-    { label: "Grid 2 cols", value: "grid|2" },
-    { label: "Grid 3 cols", value: "grid|3" },
-  ];
+  // Parse border parts
+  const borderParts = s("border").match(/^(\d+)px\s+(\w+)\s+(.+)$/);
+  const borderWidth = borderParts?.[1] || "1";
+  const borderColor = borderParts?.[3] || theme?.secondary || "#e5e7eb";
 
   const currentLayout = (() => {
     if (s("display") === "grid") return s("gridTemplateColumns").includes("3") ? "grid|3" : "grid|2";
@@ -656,222 +667,229 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
     return "";
   })();
 
-  const SPACING_PRESETS = [
-    { label: "Small", value: "8px" },
-    { label: "Medium", value: "16px" },
-    { label: "Large", value: "24px" },
-  ];
-
-  const ALIGN_OPTIONS = [
-    { label: "Left", value: "flex-start" },
-    { label: "Center", value: "center" },
-    { label: "Right", value: "flex-end" },
-  ];
-
-  // Quick background swatches including extras
-  const BG_SWATCHES = [
-    { label: "White",       color: "#ffffff" },
-    { label: "Light Gray",  color: "#f5f5f5" },
-    { label: "Dark",        color: "#18181b" },
-    { label: "Transparent", color: "" },
-    ...(theme ? [
-      { label: "Primary",    color: theme.primary },
-      { label: "Secondary",  color: theme.secondary },
-      { label: "Accent",     color: theme.accent },
-      { label: "Background", color: theme.background },
-    ] : []),
-  ];
+  const opacityPct = s("opacity") ? Math.round(parseFloat(s("opacity")) * 100) : 100;
+  const bgColor = s("backgroundColor") || "";
+  const bgHex = bgColor.replace("#", "").toUpperCase();
 
   return (
     <>
-      {/* Spacing */}
-      <Section label="Spacing" icon={<MoveHorizontal className="h-3 w-3" />} defaultOpen={false}>
-        <PropRow label="Padding" icon={<BoxSelect className="h-3 w-3" />}>
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              value={padNum}
-              onChange={(e) => set("padding", e.target.value ? `${e.target.value}px` : "")}
-              placeholder="0"
-              className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
-            />
-            <span className="text-[10px] text-muted-foreground shrink-0">px</span>
-            <button onClick={() => setShowAdvancedPad(p => !p)} className="shrink-0 text-muted-foreground hover:text-foreground text-[10px] px-1">···</button>
-          </div>
-          {showAdvancedPad && (
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              {(["paddingTop","paddingRight","paddingBottom","paddingLeft"] as const).map((k) => (
-                <div key={k} className="flex items-center gap-0.5">
-                  <span className="text-[9px] text-muted-foreground w-6 shrink-0">{k.replace("padding","").charAt(0)}</span>
-                  <input type="number" value={parseSingleNum(s(k))} onChange={(e) => set(k, e.target.value ? `${e.target.value}px` : "")} className="w-full rounded border border-border bg-background px-1 py-0.5 text-xs outline-none" />
-                </div>
-              ))}
-            </div>
-          )}
-        </PropRow>
-        <PropRow label="Margin" icon={<Maximize2 className="h-3 w-3" />}>
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              value={marNum}
-              onChange={(e) => set("margin", e.target.value ? `${e.target.value}px` : "")}
-              placeholder="0"
-              className="w-full rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
-            />
-            <span className="text-[10px] text-muted-foreground shrink-0">px</span>
-            <button onClick={() => setShowAdvancedMar(p => !p)} className="shrink-0 text-muted-foreground hover:text-foreground text-[10px] px-1">···</button>
-          </div>
-          {showAdvancedMar && (
-            <div className="mt-1 grid grid-cols-2 gap-1">
-              {(["marginTop","marginRight","marginBottom","marginLeft"] as const).map((k) => (
-                <div key={k} className="flex items-center gap-0.5">
-                  <span className="text-[9px] text-muted-foreground w-6 shrink-0">{k.replace("margin","").charAt(0)}</span>
-                  <input type="number" value={parseSingleNum(s(k))} onChange={(e) => set(k, e.target.value ? `${e.target.value}px` : "")} className="w-full rounded border border-border bg-background px-1 py-0.5 text-xs outline-none" />
-                </div>
-              ))}
-            </div>
-          )}
-        </PropRow>
-      </Section>
-
-      {/* Size */}
-      <Section label="Size" icon={<Maximize className="h-3 w-3" />} defaultOpen={false}>
-        <PropRow label="Width" icon={<ArrowLeftRight className="h-3 w-3" />}>
-          <div className="flex flex-wrap gap-1 mb-1">
-            {WIDTH_PRESETS.map((p) => (
-              <button key={p.value} onClick={() => set("width", p.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("width") === p.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{p.label}</button>
-            ))}
-          </div>
-          <PropInput value={s("width")} onChange={(v) => set("width", v)} placeholder="Custom: 300px" />
-        </PropRow>
-        <PropRow label="Height" icon={<ArrowUpDown className="h-3 w-3" />}>
-          <div className="flex gap-1 mb-1">
-            <button onClick={() => set("height", "auto")} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("height") === "auto" || !s("height") ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>Auto</button>
-          </div>
-          <PropInput value={s("height") === "auto" ? "" : s("height")} onChange={(v) => set("height", v)} placeholder="Custom: 200px" />
-        </PropRow>
-      </Section>
-
-      {/* Layout (for container-like elements) */}
-      <Section label="Layout" defaultOpen={false}>
-        <PropRow label="Arrange">
-          <div className="grid grid-cols-2 gap-1">
-            {LAYOUT_PRESETS.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => {
-                  const [disp, sub] = p.value.split("|");
-                  if (disp === "flex") {
-                    set("display", "flex");
-                    set("flexDirection", sub);
-                    const next = { ...style, display: "flex", flexDirection: sub };
-                    delete (next as Record<string, string>).gridTemplateColumns;
-                    onChange("style", next);
-                  } else {
-                    const cols = sub === "3" ? "repeat(3, 1fr)" : "repeat(2, 1fr)";
-                    const next = { ...style, display: "grid", gridTemplateColumns: cols };
-                    delete (next as Record<string, string>).flexDirection;
-                    onChange("style", next);
-                  }
-                }}
-                className={cn("rounded border px-1.5 py-1 text-[10px] text-center transition-colors", currentLayout === p.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </PropRow>
-        <PropRow label="Spacing">
-          <div className="flex flex-wrap gap-1 mb-1">
-            {SPACING_PRESETS.map((p) => (
-              <button key={p.value} onClick={() => set("gap", p.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("gap") === p.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{p.label}</button>
-            ))}
-          </div>
-        </PropRow>
-        <PropRow label="Align">
-          <div className="flex gap-1">
-            {ALIGN_OPTIONS.map((a) => (
-              <button key={a.value} onClick={() => set("alignItems", a.value)} className={cn("flex-1 rounded border py-1 text-[11px] transition-colors", s("alignItems") === a.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{a.label}</button>
-            ))}
-          </div>
-        </PropRow>
-      </Section>
-
-      {/* Background */}
-      <Section label="Background" icon={<Paintbrush className="h-3 w-3" />} defaultOpen={false}>
-        <PropRow label="Color" icon={<Palette className="h-3 w-3" />}>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {BG_SWATCHES.map((sw) => (
-              <button
-                key={sw.label}
-                title={sw.label}
-                onClick={() => set("backgroundColor", sw.color)}
-                className={cn("h-5 w-5 rounded-full border-2 transition-transform hover:scale-110", s("backgroundColor") === sw.color ? "border-foreground" : "border-transparent")}
-                style={{ backgroundColor: sw.color || "transparent", backgroundImage: !sw.color ? "linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%)" : undefined, backgroundSize: "6px 6px" }}
+      {/* Position / Spacing */}
+      <Section label="Position" defaultOpen={false}>
+        <div className="space-y-2">
+          {/* Alignment */}
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Alignment</span>
+            <div className="flex gap-2">
+              <FigmaToggleGroup
+                value={s("textAlign") || "left"}
+                onChange={(v) => set("textAlign", v)}
+                options={[
+                  { icon: <AlignLeft className="h-3 w-3" />, value: "left", label: "Left" },
+                  { icon: <AlignCenter className="h-3 w-3" />, value: "center", label: "Center" },
+                  { icon: <AlignRight className="h-3 w-3" />, value: "right", label: "Right" },
+                ]}
               />
-            ))}
+              <FigmaToggleGroup
+                value={s("alignItems") || "flex-start"}
+                onChange={(v) => set("alignItems", v)}
+                options={[
+                  { icon: <AlignStartVertical className="h-3 w-3" />, value: "flex-start", label: "Top" },
+                  { icon: <AlignCenterVertical className="h-3 w-3" />, value: "center", label: "Center" },
+                  { icon: <AlignEndVertical className="h-3 w-3" />, value: "flex-end", label: "Bottom" },
+                ]}
+              />
+            </div>
           </div>
-          <PropColorInput value={s("backgroundColor")} onChange={(v) => set("backgroundColor", v)} />
-        </PropRow>
-        <PropRow label="Image"><PropInput value={s("backgroundImage")} onChange={(v) => { set("backgroundImage", v); if (v) { set("backgroundSize", "cover"); set("backgroundPosition", "center"); } }} placeholder="https://…" /></PropRow>
+          {/* Padding */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">Padding</span>
+              <button onClick={() => setShowAdvancedPad(p => !p)} className="text-[10px] text-muted-foreground hover:text-foreground">
+                {showAdvancedPad ? "Simple" : "···"}
+              </button>
+            </div>
+            {showAdvancedPad ? (
+              <div className="grid grid-cols-2 gap-1">
+                {(["paddingTop","paddingRight","paddingBottom","paddingLeft"] as const).map((k) => (
+                  <FigmaInput key={k} label={k.replace("padding","").charAt(0)} value={parseSingleNum(s(k))} onChange={(v) => set(k, v ? `${v}px` : "")} />
+                ))}
+              </div>
+            ) : (
+              <FigmaInput label="All" value={padNum} onChange={(v) => set("padding", v ? `${v}px` : "")} suffix="px" />
+            )}
+          </div>
+          {/* Margin */}
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Margin</span>
+            <FigmaInput label="All" value={parseSingleNum(s("margin"))} onChange={(v) => set("margin", v ? `${v}px` : "")} suffix="px" />
+          </div>
+        </div>
       </Section>
 
-      {/* Border */}
-      <Section label="Border" icon={<Frame className="h-3 w-3" />} defaultOpen={false}>
-        <PropRow label="Border" icon={<Square className="h-3 w-3" />}>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <div
-              onClick={() => {
-                if (hasBorder) {
-                  const next = { ...style };
-                  delete next.border;
+      {/* Layout + Dimensions */}
+      <Section label="Layout" defaultOpen={false}>
+        <div className="space-y-2">
+          {/* Flow */}
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Flow</span>
+            <FigmaToggleGroup
+              value={currentLayout}
+              onChange={(v) => {
+                const [disp, sub] = v.split("|");
+                if (disp === "flex") {
+                  const next = { ...style, display: "flex", flexDirection: sub };
+                  delete (next as Record<string, string>).gridTemplateColumns;
                   onChange("style", next);
                 } else {
-                  set("border", `1px solid ${theme?.secondary || "#e5e7eb"}`);
+                  const cols = sub === "3" ? "repeat(3, 1fr)" : "repeat(2, 1fr)";
+                  const next = { ...style, display: "grid", gridTemplateColumns: cols };
+                  delete (next as Record<string, string>).flexDirection;
+                  onChange("style", next);
                 }
               }}
-              className={cn("relative h-5 w-9 rounded-full transition-colors cursor-pointer", hasBorder ? "bg-foreground" : "bg-muted border border-border")}
-            >
-              <div className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform", hasBorder ? "left-[18px]" : "left-0.5")} />
+              options={[
+                { icon: <Rows3 className="h-3 w-3" />, value: "flex|column", label: "Stack" },
+                { icon: <Columns3 className="h-3 w-3" />, value: "flex|row", label: "Row" },
+                { icon: <LayoutGrid className="h-3 w-3" />, value: "grid|2", label: "Grid 2" },
+                { icon: <Grid3X3 className="h-3 w-3" />, value: "grid|3", label: "Grid 3" },
+              ]}
+            />
+          </div>
+          {/* Dimensions */}
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Dimensions</span>
+            <div className="grid grid-cols-2 gap-1">
+              <FigmaInput label="W" value={s("width") || "auto"} onChange={(v) => set("width", v)} />
+              <FigmaInput label="H" value={s("height") || "auto"} onChange={(v) => set("height", v)} />
             </div>
-            <span className="text-xs">{hasBorder ? "On" : "Off"}</span>
-          </label>
-        </PropRow>
-        <PropRow label="Rounded" icon={<Minus className="h-3 w-3 rotate-90 opacity-50" />}>
-          <div className="flex flex-wrap gap-1">
-            {ROUNDED.map((r) => (
-              <button key={r.value} onClick={() => set("borderRadius", r.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("borderRadius") === r.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{r.label}</button>
+          </div>
+          {/* Gap */}
+          <FigmaInput label="Gap" value={parseSingleNum(s("gap"))} onChange={(v) => set("gap", v ? `${v}px` : "")} suffix="px" />
+        </div>
+      </Section>
+
+      {/* Appearance */}
+      <Section label="Appearance" defaultOpen={false}>
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-1">
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground">Opacity</span>
+              <FigmaInput label="" value={`${opacityPct}%`} onChange={(v) => {
+                const n = parseInt(v.replace("%",""));
+                if (isNaN(n)) return;
+                if (n >= 100) { const next = { ...style }; delete next.opacity; onChange("style", next); }
+                else set("opacity", String(Math.max(0, Math.min(100, n)) / 100));
+              }} />
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground">Corner radius</span>
+              <FigmaInput label="" value={parseSingleNum(s("borderRadius")) || "0"} onChange={(v) => set("borderRadius", v ? `${v}px` : "")} suffix="px" />
+            </div>
+          </div>
+          {/* Quick radius presets */}
+          <div className="flex gap-1">
+            {[{ l: "0", v: "0" }, { l: "4", v: "4px" }, { l: "8", v: "8px" }, { l: "16", v: "16px" }, { l: "Full", v: "9999px" }].map((r) => (
+              <button key={r.v} onClick={() => set("borderRadius", r.v)} className={cn("flex-1 rounded border py-0.5 text-[10px] transition-colors", s("borderRadius") === r.v ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{r.l}</button>
             ))}
           </div>
-        </PropRow>
+        </div>
+      </Section>
+
+      {/* Fill */}
+      <Section label="Fill" defaultOpen={false} actions={
+        <button onClick={() => set("backgroundColor", bgColor ? "" : "#ffffff")} className="text-muted-foreground hover:text-foreground">
+          {bgColor ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+        </button>
+      }>
+        {bgColor !== "" && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <div className="relative">
+                <div
+                  className="h-6 w-6 rounded border border-border shrink-0"
+                  style={{ backgroundColor: bgColor || "transparent", backgroundImage: !bgColor ? "linear-gradient(45deg,#ccc 25%,transparent 25%,transparent 75%,#ccc 75%)" : undefined, backgroundSize: "6px 6px" }}
+                />
+                <input
+                  type="color"
+                  value={bgColor || "#ffffff"}
+                  onChange={(e) => set("backgroundColor", e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+              <FigmaInput label="" value={bgHex || "transparent"} onChange={(v) => set("backgroundColor", v.startsWith("#") ? v : `#${v}`)} className="flex-1" />
+              <FigmaInput label="" value={`${opacityPct}`} onChange={(v) => {
+                const n = parseInt(v);
+                if (isNaN(n)) return;
+                if (n >= 100) { const next = { ...style }; delete next.opacity; onChange("style", next); }
+                else set("opacity", String(Math.max(0, n) / 100));
+              }} suffix="%" className="w-20" />
+            </div>
+            {/* Background image */}
+            {s("backgroundImage") && (
+              <FigmaInput label="Image" value={s("backgroundImage")} onChange={(v) => { set("backgroundImage", v); if (v) { set("backgroundSize", "cover"); set("backgroundPosition", "center"); } }} />
+            )}
+            {/* Quick swatches */}
+            <div className="flex flex-wrap gap-1.5">
+              {(theme ? [
+                { c: "#ffffff" }, { c: "#f5f5f5" }, { c: "#18181b" },
+                { c: theme.primary }, { c: theme.secondary }, { c: theme.accent }, { c: theme.background },
+              ] : [
+                { c: "#ffffff" }, { c: "#f5f5f5" }, { c: "#18181b" }, { c: "#3b82f6" }, { c: "#ef4444" }, { c: "#22c55e" },
+              ]).map((sw) => (
+                <button
+                  key={sw.c}
+                  onClick={() => set("backgroundColor", sw.c)}
+                  className={cn("h-4 w-4 rounded-full border transition-transform hover:scale-125", bgColor === sw.c ? "border-foreground border-2" : "border-border")}
+                  style={{ backgroundColor: sw.c }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </Section>
+
+      {/* Stroke */}
+      <Section label="Stroke" defaultOpen={false} actions={
+        <button onClick={() => {
+          if (hasBorder) { const next = { ...style }; delete next.border; onChange("style", next); }
+          else set("border", `1px solid ${theme?.secondary || "#e5e7eb"}`);
+        }} className="text-muted-foreground hover:text-foreground">
+          {hasBorder ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+        </button>
+      }>
+        {hasBorder && (
+          <div className="flex items-center gap-1.5">
+            <div className="relative">
+              <div className="h-6 w-6 rounded border border-border shrink-0" style={{ backgroundColor: borderColor }} />
+              <input
+                type="color"
+                value={borderColor}
+                onChange={(e) => set("border", `${borderWidth}px solid ${e.target.value}`)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </div>
+            <FigmaInput label="" value={borderColor.replace("#","").toUpperCase()} onChange={(v) => set("border", `${borderWidth}px solid #${v}`)} className="flex-1" />
+            <FigmaInput label="" value={borderWidth} onChange={(v) => set("border", `${v || "1"}px solid ${borderColor}`)} suffix="px" className="w-16" />
+          </div>
+        )}
       </Section>
 
       {/* Effects */}
-      <Section label="Effects" icon={<Sparkles className="h-3 w-3" />} defaultOpen={false}>
-        <PropRow label="Shadow" icon={<Layers className="h-3 w-3" />}>
-          <div className="flex flex-wrap gap-1">
-            {SHADOWS.map((sh) => (
-              <button key={sh.label} onClick={() => set("boxShadow", sh.value)} className={cn("rounded border px-2 py-0.5 text-[11px] transition-colors", s("boxShadow") === sh.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{sh.label}</button>
-            ))}
-          </div>
-        </PropRow>
-        <PropRow label="Transparency" icon={<Eye className="h-3 w-3" />}>
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={s("opacity") ? Math.round(parseFloat(s("opacity")) * 100) : 100}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (v === 100) { const n = { ...style }; delete n.opacity; onChange("style", n); }
-                else set("opacity", String(v / 100));
-              }}
-              className="flex-1"
-            />
-            <span className="text-[11px] text-muted-foreground w-8 text-right">{s("opacity") ? Math.round(parseFloat(s("opacity")) * 100) : 100}%</span>
-          </div>
-        </PropRow>
+      <Section label="Effects" icon={<Sparkles className="h-3 w-3" />} defaultOpen={false} actions={
+        <button onClick={() => set("boxShadow", s("boxShadow") ? "" : "0 1px 3px rgba(0,0,0,0.12)")} className="text-muted-foreground hover:text-foreground">
+          {s("boxShadow") ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+        </button>
+      }>
+        <div className="flex flex-wrap gap-1">
+          {[
+            { label: "None", value: "" },
+            { label: "S", value: "0 1px 3px rgba(0,0,0,0.12)" },
+            { label: "M", value: "0 4px 12px rgba(0,0,0,0.15)" },
+            { label: "L", value: "0 8px 30px rgba(0,0,0,0.18)" },
+          ].map((sh) => (
+            <button key={sh.label} onClick={() => set("boxShadow", sh.value)} className={cn("flex-1 rounded border py-0.5 text-[10px] transition-colors", s("boxShadow") === sh.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{sh.label}</button>
+          ))}
+        </div>
       </Section>
     </>
   );
@@ -1944,7 +1962,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       setSaveDialogCategory("");
       if (navigator.vibrate) navigator.vibrate(30);
     } catch (err) {
-      console.error("Failed to save component:", err);
+      console.error("Failed to save component:", err instanceof Error ? err.message : JSON.stringify(err));
     } finally {
       setSavingComponent(false);
     }
@@ -1995,13 +2013,24 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     setDirty(false);
   };
 
-  // Auto-save (debounced) — use refs to avoid re-creating the callback on every elements change
+  // Auto-save (debounced) — tracks a revision counter so every edit resets the timer
   const elementsRef = useRef(elements);
   const activePageIdRef = useRef(activePageId);
   elementsRef.current = elements;
   activePageIdRef.current = activePageId;
 
+  const [saveRevision, setSaveRevision] = useState(0);
   const saveRetries = useRef(0);
+
+  // Bump revision whenever elements change and dirty is true
+  const prevElementsRef = useRef(elements);
+  useEffect(() => {
+    if (elements !== prevElementsRef.current && dirty) {
+      setSaveRevision((r) => r + 1);
+    }
+    prevElementsRef.current = elements;
+  }, [elements, dirty]);
+
   useEffect(() => {
     if (!dirty) { saveRetries.current = 0; return; }
     if (saveRetries.current >= 3) {
@@ -2028,7 +2057,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       }
     }, 1500);
     return () => clearTimeout(timer);
-  }, [dirty]);
+  }, [dirty, saveRevision]);
 
   // Element operations (tree-aware for nested layout support)
   const addElement = (type: ElementType) => {
