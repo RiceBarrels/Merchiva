@@ -6,10 +6,12 @@ const config: CapacitorConfig = {
   webDir: 'out',
   // Local mode: no server URL, loads from webDir
   // To use Vercel: uncomment server.url below
-  // server: {
-  //   url: 'https://project-management-phi-red.vercel.app',
-  //   cleartext: true,
-  // },
+  server: {
+    url: 'http://localhost:3000',
+    cleartext: true,
+    iosScheme: 'bizops',
+    androidScheme: 'bizops',
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

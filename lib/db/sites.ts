@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Site, SitePage, SiteElement, SiteTheme, SiteComponent } from "@/lib/types";
+import type { Site, SitePage, SiteElement, SiteTheme, SiteComponent, SiteFeatures } from "@/lib/types";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
@@ -11,6 +11,7 @@ function siteFromDb(row: any): Site {
     name: row.name,
     slug: row.slug,
     theme: row.theme ?? defaultTheme(),
+    features: { ...defaultFeatures(), ...(row.features ?? {}) },
     published: row.published ?? false,
     customDomain: row.custom_domain ?? null,
     createdAt: row.created_at,
@@ -23,7 +24,7 @@ function pageFromDb(row: any): SitePage {
   return {
     id: row.id,
     siteId: row.site_id,
-    name: row.name,
+    name: row.name ?? row.title ?? "Untitled",
     slug: row.slug ?? "index",
     elements: (row.elements as SiteElement[]) ?? [],
     sortOrder: row.sort_order ?? 0,
@@ -44,6 +45,10 @@ export function defaultTheme(): SiteTheme {
     bodyFont: "Inter, sans-serif",
     borderRadius: 6,
   };
+}
+
+export function defaultFeatures(): SiteFeatures {
+  return { auth: false, cart: false, checkout: false, products: false, subscriptions: false, rewards: false, booking: false, account: false };
 }
 
 // ─── Sites ────────────────────────────────────────────────────────────────────
@@ -105,13 +110,14 @@ export async function createSite(
 
 export async function updateSite(
   id: string,
-  updates: Partial<Pick<Site, "name" | "slug" | "theme" | "published" | "customDomain">>
+  updates: Partial<Pick<Site, "name" | "slug" | "theme" | "features" | "published" | "customDomain">>
 ): Promise<void> {
   const supabase = createClient();
   const payload: Record<string, unknown> = {};
   if (updates.name !== undefined) payload.name = updates.name;
   if (updates.slug !== undefined) payload.slug = updates.slug;
   if (updates.theme !== undefined) payload.theme = updates.theme;
+  if (updates.features !== undefined) payload.features = updates.features;
   if (updates.published !== undefined) payload.published = updates.published;
   if (updates.customDomain !== undefined) payload.custom_domain = updates.customDomain;
   payload.updated_at = new Date().toISOString();
@@ -162,6 +168,7 @@ export async function createPage(
     .insert({
       site_id: siteId,
       name,
+      title: name,
       slug,
       elements: [],
       sort_order: sortOrder,

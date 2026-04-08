@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, use, createContext, useContext } from "react";
+import React, { useCallback, useEffect, useRef, useState, use, createContext, useContext } from "react";
 import Link from "next/link";
 import {
+  Check,
   Menu,
   ChevronDown,
   ChevronUp,
@@ -43,7 +44,6 @@ import {
   Blocks,
   Paintbrush,
   BookMarked,
-  GripVertical,
   LayoutGrid,
   MoveHorizontal,
   Maximize,
@@ -65,6 +65,8 @@ import {
   Rows3,
   Columns3,
   Grid3X3,
+  Lock,
+  Settings,
 } from "lucide-react";
 import {
   DndContext,
@@ -77,19 +79,14 @@ import {
   type DragOverEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { useSidebarOpen } from "@/components/sidebar";
 import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage, getSavedComponents, saveComponent, deleteComponent } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
-import { SiteElementRenderer, buildGoogleFontsUrl } from "@/components/site-renderer";
+import { getBuiltInPages } from "@/lib/db/site-templates";
+import type { SiteFeatures } from "@/lib/types";
+import { SiteElementRenderer, buildGoogleFontsUrl, themeVars } from "@/components/site-renderer";
 import { ImageUpload } from "@/components/image-upload";
 import { Combobox } from "@/components/ui/combobox";
 import { IconPicker } from "@/components/icon-picker";
@@ -99,6 +96,11 @@ import { createClient } from "@/lib/supabase/client";
 import { hapticLight } from "@/lib/haptics";
 import type { Site, SitePage, SiteElement, ElementType, SiteTheme, SiteComponent } from "@/lib/types";
 import type { Product } from "@/lib/types";
+import { CanvasViewport } from "@/components/builder/canvas-viewport";
+import { SelectionOutline, ResizeHandles, ElementHitArea } from "@/components/builder/selection-controls";
+import { useCanvasDrag, type DragOffset } from "@/components/builder/use-canvas-drag";
+import { normalizeElements, getDefaultSize, screenToCanvas, viewportCenter, clampZoom } from "@/components/builder/canvas-utils";
+import { CanvasContextMenu, buildElementMenuItems, buildCanvasMenuItems } from "@/components/builder/context-menu";
 
 // ─── Theme context (for color swatches in properties panel) ──────────────────
 
@@ -471,8 +473,36 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "checkout":           return { title: "Checkout", submitLabel: "Place Order" };
     case "reward":             return { title: "Earn Rewards", description: "Earn points on every purchase!", pointsLabel: "Points", backgroundColor: "#f0fdf4", textColor: "#166534" };
     case "icon":               return { name: "Star", size: 32, color: "", align: "left" };
+    case "viewport":           return { viewportName: "Desktop", viewportWidth: 1280, direction: "stack", spacing: "0px", align: "stretch", padding: "0", backgroundColor: "#ffffff" };
     default:                   return {};
   }
+}
+
+const VIEWPORT_PRESETS = [
+  { name: "Desktop", width: 1280, icon: "Monitor" },
+  { name: "Tablet", width: 800, icon: "Tablet" },
+  { name: "Mobile", width: 375, icon: "Smartphone" },
+  { name: "Custom...", width: 0, icon: "Grid3X3" },
+] as const;
+
+// ─── Multi-page canvas layout ────────────────────────────────────────────────
+const PAGE_FRAME_MIN_HEIGHT = 600;
+const PAGE_GAP = 300;
+const VIEWPORT_GAP = 40;
+
+function getPageWidth(pageEls: SiteElement[]): number {
+  const viewports = pageEls.filter((e) => e.type === "viewport");
+  if (viewports.length === 0) return 1280; // default single viewport width
+  return viewports.reduce((sum, v) => sum + (Number(v.props.viewportWidth) || 1280), 0) + VIEWPORT_GAP * (viewports.length - 1);
+}
+
+function getPageFrameX(pgs: SitePage[], pageIndex: number): number {
+  let x = 0;
+  for (let i = 0; i < pageIndex; i++) {
+    const els = normalizeElements(pgs[i].elements ?? []);
+    x += getPageWidth(els) + PAGE_GAP;
+  }
+  return x;
 }
 
 // ─── Element palette config ───────────────────────────────────────────────────
@@ -482,25 +512,18 @@ const PALETTE: { label: string; icon: React.ReactNode; type: ElementType }[][] =
   [
     { label: "Text",      icon: <Type className="h-3.5 w-3.5" />,             type: "text" },
     { label: "Image",     icon: <Image className="h-3.5 w-3.5" />,            type: "image" },
-    { label: "Button",    icon: <MousePointerClick className="h-3.5 w-3.5" />, type: "button" },
     { label: "Layout",    icon: <LayoutGrid className="h-3.5 w-3.5" />,        type: "layout" },
     { label: "Columns",   icon: <Columns2 className="h-3.5 w-3.5" />,         type: "columns" },
-    { label: "Divider",   icon: <Minus className="h-3.5 w-3.5" />,            type: "divider" },
-    { label: "Spacer",    icon: <SeparatorHorizontal className="h-3.5 w-3.5" />, type: "spacer" },
     { label: "Icon",      icon: <Star className="h-3.5 w-3.5" />,             type: "icon" },
   ],
   // Sections
   [
     { label: "Hero",      icon: <LayoutDashboard className="h-3.5 w-3.5" />,  type: "hero" },
-    { label: "Nav",       icon: <Navigation className="h-3.5 w-3.5" />,       type: "nav" },
-    { label: "Footer",    icon: <Footprints className="h-3.5 w-3.5" />,       type: "footer" },
   ],
   // Content
   [
     { label: "Review",    icon: <MessageSquare className="h-3.5 w-3.5" />,    type: "testimonial" },
-    { label: "FAQ",       icon: <HelpCircle className="h-3.5 w-3.5" />,       type: "faq" },
     { label: "Gallery",   icon: <GalleryHorizontal className="h-3.5 w-3.5" />, type: "gallery" },
-    { label: "Pricing",   icon: <CreditCard className="h-3.5 w-3.5" />,       type: "pricing-table" },
   ],
   // Commerce
   [
@@ -578,21 +601,20 @@ function PropTextarea({ value, onChange, rows = 3 }: { value: string; onChange: 
 function Section({ label, icon, children, defaultOpen = true, actions }: { label: string; icon?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; actions?: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-t border-border/50 mt-2 pt-1">
-      <button
+    <div className="border-t border-border">
+      <div
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        className="flex items-center justify-between w-full px-3 py-2 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
+        role="button"
       >
         <span className="flex items-center gap-1.5">
+          <ChevronRight className={cn("h-3 w-3 transition-transform shrink-0", open && "rotate-90")} />
           {icon && <span className="opacity-70">{icon}</span>}
           {label}
         </span>
-        <span className="flex items-center gap-1">
-          {actions && <span onClick={(e) => e.stopPropagation()}>{actions}</span>}
-          <ChevronRight className={cn("h-3 w-3 transition-transform", open && "rotate-90")} />
-        </span>
-      </button>
-      {open && <div className="pt-0.5">{children}</div>}
+        {actions && <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>{actions}</span>}
+      </div>
+      {open && <div className="px-3 pb-2.5">{children}</div>}
     </div>
   );
 }
@@ -608,17 +630,54 @@ function parseSingleNum(val: string): string {
 }
 
 // Figma-style compact input with label
-function FigmaInput({ label, value, onChange, suffix, className }: { label: string; value: string; onChange: (v: string) => void; suffix?: string; className?: string }) {
+const CSS_UNITS = ["px", "%", "rem", "em", "vw", "vh", "auto"] as const;
+
+function parseValueUnit(val: string): { num: string; unit: string } {
+  if (val === "auto") return { num: "", unit: "auto" };
+  const m = val.match(/^(-?\d*\.?\d+)\s*(px|%|rem|em|vw|vh)?$/);
+  if (m) return { num: m[1], unit: m[2] || "px" };
+  return { num: val, unit: "" };
+}
+
+function FigmaInput({ label, value, onChange, suffix, className, showUnit = false }: {
+  label: string; value: string; onChange: (v: string) => void; suffix?: string; className?: string; showUnit?: boolean;
+}) {
+  const { num, unit } = showUnit ? parseValueUnit(value) : { num: value, unit: "" };
+
   return (
-    <div className={cn("flex items-center gap-1 rounded border border-border bg-muted/30 px-2 py-1", className)}>
-      <span className="text-[10px] text-muted-foreground shrink-0 font-medium">{label}</span>
+    <div className={cn("flex items-center gap-0.5 rounded-sm bg-muted/50 px-1.5 py-1 hover:bg-muted transition-colors group", className)}>
+      {label && <span className="text-[10px] text-muted-foreground shrink-0 font-medium min-w-[14px]">{label}</span>}
       <input
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 min-w-0 bg-transparent text-xs outline-none text-right"
+        value={showUnit ? num : value}
+        onChange={(e) => {
+          if (showUnit) {
+            const v = e.target.value;
+            const u = unit || "px";
+            if (u === "auto") onChange(v ? `${v}px` : "auto");
+            else onChange(v ? `${v}${u}` : "");
+          } else {
+            onChange(e.target.value);
+          }
+        }}
+        className="flex-1 min-w-0 bg-transparent text-[11px] outline-none text-right font-mono"
       />
-      {suffix && <span className="text-[10px] text-muted-foreground shrink-0">{suffix}</span>}
+      {showUnit ? (
+        <select
+          value={unit || "px"}
+          onChange={(e) => {
+            const u = e.target.value;
+            if (u === "auto") onChange("auto");
+            else onChange(num ? `${num}${u}` : "");
+          }}
+          className="bg-transparent text-[9px] text-muted-foreground outline-none cursor-pointer font-mono appearance-none pr-0"
+          style={{ width: unit === "auto" ? 32 : 20 }}
+        >
+          {CSS_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+      ) : suffix ? (
+        <span className="text-[10px] text-muted-foreground shrink-0">{suffix}</span>
+      ) : null}
     </div>
   );
 }
@@ -626,7 +685,7 @@ function FigmaInput({ label, value, onChange, suffix, className }: { label: stri
 // Figma-style icon toggle group
 function FigmaToggleGroup({ options, value, onChange }: { options: { icon: React.ReactNode; value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="inline-flex rounded border border-border bg-muted/30 overflow-hidden">
+    <div className="inline-flex rounded-sm bg-muted/50 overflow-hidden">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -674,11 +733,39 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
   return (
     <>
       {/* Position / Spacing */}
-      <Section label="Position" defaultOpen={false}>
+      <Section label="Position" defaultOpen>
         <div className="space-y-2">
+          {/* CSS Position mode */}
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Frame className="h-3 w-3" /> Position</span>
+            <select
+              value={s("position") || ""}
+              onChange={(e) => set("position", e.target.value)}
+              className="w-full rounded-sm bg-muted/50 px-2 py-1 text-[11px] font-mono outline-none hover:bg-muted cursor-pointer"
+            >
+              <option value="">Default</option>
+              <option value="relative">Relative</option>
+              <option value="absolute">Absolute</option>
+              <option value="fixed">Fixed</option>
+              <option value="sticky">Sticky</option>
+            </select>
+          </div>
+          {/* Top/Right/Bottom/Left for positioned elements */}
+          {s("position") && s("position") !== "static" && (
+            <div className="grid grid-cols-2 gap-1">
+              <FigmaInput label="T" value={s("top") || "auto"} onChange={(v) => set("top", v)} showUnit />
+              <FigmaInput label="R" value={s("right") || "auto"} onChange={(v) => set("right", v)} showUnit />
+              <FigmaInput label="B" value={s("bottom") || "auto"} onChange={(v) => set("bottom", v)} showUnit />
+              <FigmaInput label="L" value={s("left") || "auto"} onChange={(v) => set("left", v)} showUnit />
+            </div>
+          )}
+          {/* Z-index for positioned elements */}
+          {s("position") && s("position") !== "static" && (
+            <FigmaInput label="Z" value={s("zIndex") || "auto"} onChange={(v) => set("zIndex", v)} />
+          )}
           {/* Alignment */}
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Alignment</span>
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><AlignLeft className="h-3 w-3" /> Align</span>
             <div className="flex gap-2">
               <FigmaToggleGroup
                 value={s("textAlign") || "left"}
@@ -703,7 +790,7 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
           {/* Padding */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground">Padding</span>
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1"><BoxSelect className="h-3 w-3" /> Pad</span>
               <button onClick={() => setShowAdvancedPad(p => !p)} className="text-[10px] text-muted-foreground hover:text-foreground">
                 {showAdvancedPad ? "Simple" : "···"}
               </button>
@@ -711,27 +798,27 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
             {showAdvancedPad ? (
               <div className="grid grid-cols-2 gap-1">
                 {(["paddingTop","paddingRight","paddingBottom","paddingLeft"] as const).map((k) => (
-                  <FigmaInput key={k} label={k.replace("padding","").charAt(0)} value={parseSingleNum(s(k))} onChange={(v) => set(k, v ? `${v}px` : "")} />
+                  <FigmaInput key={k} label={k.replace("padding","").charAt(0)} value={s(k) || "0px"} onChange={(v) => set(k, v)} showUnit />
                 ))}
               </div>
             ) : (
-              <FigmaInput label="All" value={padNum} onChange={(v) => set("padding", v ? `${v}px` : "")} suffix="px" />
+              <FigmaInput label="All" value={s("padding") || "0px"} onChange={(v) => set("padding", v)} showUnit />
             )}
           </div>
           {/* Margin */}
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Margin</span>
-            <FigmaInput label="All" value={parseSingleNum(s("margin"))} onChange={(v) => set("margin", v ? `${v}px` : "")} suffix="px" />
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Maximize className="h-3 w-3" /> Margin</span>
+            <FigmaInput label="All" value={s("margin") || "0px"} onChange={(v) => set("margin", v)} showUnit />
           </div>
         </div>
       </Section>
 
       {/* Layout + Dimensions */}
-      <Section label="Layout" defaultOpen={false}>
+      <Section label="Layout" defaultOpen>
         <div className="space-y-2">
           {/* Flow */}
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Flow</span>
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Rows3 className="h-3 w-3" /> Flow</span>
             <FigmaToggleGroup
               value={currentLayout}
               onChange={(v) => {
@@ -757,23 +844,23 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
           </div>
           {/* Dimensions */}
           <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Dimensions</span>
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1"><ArrowUpDown className="h-3 w-3" /> Size</span>
             <div className="grid grid-cols-2 gap-1">
-              <FigmaInput label="W" value={s("width") || "auto"} onChange={(v) => set("width", v)} />
-              <FigmaInput label="H" value={s("height") || "auto"} onChange={(v) => set("height", v)} />
+              <FigmaInput label="W" value={s("width") || "auto"} onChange={(v) => set("width", v)} showUnit />
+              <FigmaInput label="H" value={s("height") || "auto"} onChange={(v) => set("height", v)} showUnit />
             </div>
           </div>
           {/* Gap */}
-          <FigmaInput label="Gap" value={parseSingleNum(s("gap"))} onChange={(v) => set("gap", v ? `${v}px` : "")} suffix="px" />
+          <FigmaInput label="Gap" value={s("gap") || "0px"} onChange={(v) => set("gap", v)} showUnit />
         </div>
       </Section>
 
       {/* Appearance */}
-      <Section label="Appearance" defaultOpen={false}>
+      <Section label="Appearance" defaultOpen>
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-1">
             <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground">Opacity</span>
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Eye className="h-3 w-3" /></span>
               <FigmaInput label="" value={`${opacityPct}%`} onChange={(v) => {
                 const n = parseInt(v.replace("%",""));
                 if (isNaN(n)) return;
@@ -782,8 +869,8 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
               }} />
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] text-muted-foreground">Corner radius</span>
-              <FigmaInput label="" value={parseSingleNum(s("borderRadius")) || "0"} onChange={(v) => set("borderRadius", v ? `${v}px` : "")} suffix="px" />
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1"><Square className="h-3 w-3" /></span>
+              <FigmaInput label="" value={s("borderRadius") || "0px"} onChange={(v) => set("borderRadius", v)} showUnit />
             </div>
           </div>
           {/* Quick radius presets */}
@@ -796,7 +883,7 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
       </Section>
 
       {/* Fill */}
-      <Section label="Fill" defaultOpen={false} actions={
+      <Section label="Fill" defaultOpen actions={
         <button onClick={() => set("backgroundColor", bgColor ? "" : "#ffffff")} className="text-muted-foreground hover:text-foreground">
           {bgColor ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
         </button>
@@ -869,7 +956,7 @@ function StyleProps({ props, onChange }: { props: Record<string, unknown>; onCha
               />
             </div>
             <FigmaInput label="" value={borderColor.replace("#","").toUpperCase()} onChange={(v) => set("border", `${borderWidth}px solid #${v}`)} className="flex-1" />
-            <FigmaInput label="" value={borderWidth} onChange={(v) => set("border", `${v || "1"}px solid ${borderColor}`)} suffix="px" className="w-16" />
+            <FigmaInput label="" value={`${borderWidth}px`} onChange={(v) => { const n = parseValueUnit(v); set("border", `${n.num || "1"}px solid ${borderColor}`); }} showUnit className="w-20" />
           </div>
         )}
       </Section>
@@ -1074,20 +1161,16 @@ function SpacerProps({ props, onChange }: { props: Record<string, unknown>; onCh
 
 function LayoutProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   const DIRECTIONS = [
-    { label: "Stack", value: "stack" },
-    { label: "Row", value: "row" },
-    { label: "Grid", value: "grid" },
-  ];
-  const SPACINGS = [
-    { label: "Small", value: "small" },
-    { label: "Medium", value: "medium" },
-    { label: "Large", value: "large" },
+    { label: <Maximize2 className="h-3 w-3" />, value: "free", title: "Free" },
+    { label: <Rows3 className="h-3 w-3" />, value: "stack", title: "Stack" },
+    { label: <Columns3 className="h-3 w-3" />, value: "row", title: "Row" },
+    { label: <Grid3X3 className="h-3 w-3" />, value: "grid", title: "Grid" },
   ];
   const ALIGNS = [
-    { label: "Start", value: "flex-start" },
-    { label: "Center", value: "center" },
-    { label: "End", value: "flex-end" },
-    { label: "Stretch", value: "stretch" },
+    { label: <AlignStartVertical className="h-3 w-3" />, value: "flex-start", title: "Start" },
+    { label: <AlignCenterVertical className="h-3 w-3" />, value: "center", title: "Center" },
+    { label: <AlignEndVertical className="h-3 w-3" />, value: "flex-end", title: "End" },
+    { label: <ArrowLeftRight className="h-3 w-3" />, value: "stretch", title: "Stretch" },
   ];
   const dir = (props.direction as string) || "stack";
   const spacing = (props.spacing as string) || "medium";
@@ -1098,7 +1181,7 @@ function LayoutProps({ props, onChange }: { props: Record<string, unknown>; onCh
       <PropRow label="Direction">
         <div className="flex gap-1">
           {DIRECTIONS.map((d) => (
-            <button key={d.value} onClick={() => onChange("direction", d.value)} className={cn("flex-1 rounded border py-1 text-[11px] transition-colors", dir === d.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{d.label}</button>
+            <button key={d.value} title={d.title} onClick={() => onChange("direction", d.value)} className={cn("flex-1 flex items-center justify-center rounded border py-1.5 transition-colors", dir === d.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{d.label}</button>
           ))}
         </div>
       </PropRow>
@@ -1111,20 +1194,20 @@ function LayoutProps({ props, onChange }: { props: Record<string, unknown>; onCh
           </div>
         </PropRow>
       )}
-      <PropRow label="Spacing">
-        <div className="flex gap-1">
-          {SPACINGS.map((s) => (
-            <button key={s.value} onClick={() => onChange("spacing", s.value)} className={cn("flex-1 rounded border py-1 text-[11px] transition-colors", spacing === s.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{s.label}</button>
-          ))}
-        </div>
-      </PropRow>
-      <PropRow label="Align">
-        <div className="grid grid-cols-2 gap-1">
-          {ALIGNS.map((a) => (
-            <button key={a.value} onClick={() => onChange("align", a.value)} className={cn("rounded border py-1 text-[11px] transition-colors", align === a.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{a.label}</button>
-          ))}
-        </div>
-      </PropRow>
+      {dir !== "free" && (
+        <>
+          <PropRow label="Spacing">
+            <PropInput value={spacing} onChange={(v) => onChange("spacing", v)} placeholder="16px" />
+          </PropRow>
+          <PropRow label="Align">
+            <div className="flex gap-1">
+              {ALIGNS.map((a) => (
+                <button key={a.value} title={a.title} onClick={() => onChange("align", a.value)} className={cn("flex-1 flex items-center justify-center rounded border py-1.5 transition-colors", align === a.value ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted")}>{a.label}</button>
+              ))}
+            </div>
+          </PropRow>
+        </>
+      )}
       <PropRow label="Padding"><PropInput value={(props.padding as string) || "1rem"} onChange={(v) => onChange("padding", v)} placeholder="1rem" /></PropRow>
       <PropRow label="Bg color"><PropColorInput value={(props.backgroundColor as string) || ""} onChange={(v) => onChange("backgroundColor", v)} /></PropRow>
     </>
@@ -1402,196 +1485,7 @@ function RewardProps({ props, onChange }: { props: Record<string, unknown>; onCh
   );
 }
 
-// ─── DnD canvas components ────────────────────────────────────────────────────
-
-const GAP_MAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
-
-interface CanvasElementProps {
-  el: SiteElement;
-  idx: number;
-  total: number;
-  selectedId: string | null;
-  overLayoutId: string | null;
-  parentId: string | null;
-  products: Product[];
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void;
-  onMove: (id: string, dir: "up" | "down") => void;
-  onAddChild: (layoutId: string) => void;
-  updateProp: (id: string, key: string, value: unknown) => void;
-}
-
-function CanvasElement({ el, idx, total, selectedId, overLayoutId, parentId, products, onSelect, onDelete, onDuplicate, onMove, onAddChild, updateProp }: CanvasElementProps) {
-  const isLayout = el.type === "layout" || el.type === "container";
-  const isSelected = selectedId === el.id;
-  const isDropTarget = overLayoutId === el.id;
-
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: el.id,
-    data: { source: "canvas", parentId: parentId ?? "root", isLayout },
-  });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.3 : 1,
-  };
-
-  const noPad = ["nav", "hero", "footer", "divider", "spacer"].includes(el.type);
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "relative group cursor-pointer",
-        isSelected && "outline outline-2 outline-blue-500 outline-offset-[-2px] z-10",
-        isLayout && isDropTarget && !isSelected && "outline outline-2 outline-dashed outline-blue-400 z-10",
-      )}
-      onClick={(e) => { e.stopPropagation(); onSelect(el.id); }}
-    >
-      {/* Drag handle */}
-      <div
-        {...attributes}
-        {...listeners}
-        className="absolute left-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing p-0.5 rounded bg-white/80 border border-border shadow-sm"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="h-3 w-3 text-muted-foreground" />
-      </div>
-
-      {/* Hover/select overlay */}
-      <div className={cn("absolute inset-0 z-10 pointer-events-none", selectedId !== el.id && "group-hover:ring-1 group-hover:ring-blue-300 group-hover:ring-inset")} />
-
-      {/* Element controls */}
-      <div className={cn("absolute top-1 right-1 z-20 flex gap-0.5", isSelected ? "flex" : "hidden group-hover:flex")}>
-        {parentId === null && (
-          <>
-            <button onClick={(e) => { e.stopPropagation(); onMove(el.id, "up"); }} disabled={idx === 0} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronUp className="h-3 w-3" /></button>
-            <button onClick={(e) => { e.stopPropagation(); onMove(el.id, "down"); }} disabled={idx === total - 1} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronDown className="h-3 w-3" /></button>
-          </>
-        )}
-        <button onClick={(e) => { e.stopPropagation(); onDuplicate(el.id); }} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-foreground"><Copy className="h-3 w-3" /></button>
-        <button onClick={(e) => { e.stopPropagation(); onDelete(el.id); }} className="p-1 rounded bg-white border border-border shadow-sm text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
-      </div>
-
-      {/* Type badge */}
-      {isSelected && (
-        <div className="absolute top-1 left-6 z-20 px-1.5 py-0.5 text-[10px] font-medium bg-blue-500 text-white rounded-sm">{el.type}</div>
-      )}
-
-      {/* Content */}
-      {isLayout ? (
-        <LayoutDropZone
-          el={el}
-          isSelected={isSelected}
-          isDropTarget={isDropTarget}
-          selectedId={selectedId}
-          overLayoutId={overLayoutId}
-          products={products}
-          onSelect={onSelect}
-          onDelete={onDelete}
-          onDuplicate={onDuplicate}
-          onMove={onMove}
-          onAddChild={onAddChild}
-          updateProp={updateProp}
-        />
-      ) : (
-        <div style={{ padding: noPad ? 0 : "0.75rem" }}>
-          <SiteElementRenderer element={el} products={products} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LayoutDropZone({
-  el, isSelected, isDropTarget, selectedId, overLayoutId, products, onSelect, onDelete, onDuplicate, onMove, onAddChild, updateProp,
-}: {
-  el: SiteElement; isSelected: boolean; isDropTarget: boolean; selectedId: string | null; overLayoutId: string | null;
-  products: Product[]; onSelect: (id: string) => void; onDelete: (id: string) => void;
-  onDuplicate: (id: string) => void; onMove: (id: string, dir: "up" | "down") => void;
-  onAddChild: (layoutId: string) => void; updateProp: (id: string, key: string, value: unknown) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `layout-drop-${el.id}`,
-    data: { type: "layout-drop", layoutId: el.id },
-  });
-
-  const children = el.children ?? [];
-  const dir = (el.props.direction as string) || "stack";
-  const spacing = (el.props.spacing as string) || "medium";
-  const gridCols = Number(el.props.columns) || 2;
-
-  const containerStyle: React.CSSProperties = {
-    backgroundColor: (el.props.backgroundColor as string) || undefined,
-    padding: (el.props.padding as string) || "1rem",
-    minHeight: "80px",
-  };
-  if (dir === "row") {
-    containerStyle.display = "flex";
-    containerStyle.flexDirection = "row";
-    containerStyle.flexWrap = "wrap";
-    containerStyle.gap = GAP_MAP[spacing] ?? spacing;
-    containerStyle.alignItems = (el.props.align as string) || "flex-start";
-  } else if (dir === "grid") {
-    containerStyle.display = "grid";
-    containerStyle.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
-    containerStyle.gap = GAP_MAP[spacing] ?? spacing;
-  } else {
-    containerStyle.display = "flex";
-    containerStyle.flexDirection = "column";
-    containerStyle.gap = GAP_MAP[spacing] ?? spacing;
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={containerStyle}
-      className={cn(
-        "transition-colors relative",
-        (isOver || isDropTarget) && "bg-blue-50/50",
-        children.length === 0 && "border-2 border-dashed border-stone-200",
-        isSelected && children.length === 0 && "border-blue-300",
-      )}
-    >
-      <SortableContext items={children.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-        {children.map((child, cidx) => (
-          <CanvasElement
-            key={child.id}
-            el={child}
-            idx={cidx}
-            total={children.length}
-            selectedId={selectedId}
-            overLayoutId={overLayoutId}
-            parentId={el.id}
-            products={products}
-            onSelect={onSelect}
-            onDelete={onDelete}
-            onDuplicate={onDuplicate}
-            onMove={onMove}
-            onAddChild={onAddChild}
-            updateProp={updateProp}
-          />
-        ))}
-      </SortableContext>
-      {children.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-4 gap-1">
-          <p className="text-[11px] text-muted-foreground/50">Drop elements here</p>
-          {isSelected && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onAddChild(el.id); }}
-              className="flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <Plus className="h-3 w-3" /> Add element
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+// ─── DnD palette/library components ───────────────────────────────────────────
 
 // Draggable palette item
 function DraggablePaletteItem({ item, onAdd }: { item: { label: string; icon: React.ReactNode; type: ElementType }; onAdd: (type: ElementType) => void }) {
@@ -1667,10 +1561,11 @@ function DraggableLibraryCard({ comp, onInsert, onDelete }: { comp: SiteComponen
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
 function PropertiesPanel({
-  element, onChange, products, orgId, onSaveToLibrary, onApplyFromLibrary, savedComponents,
+  element, onChange, onPositionChange, products, orgId, onSaveToLibrary, onApplyFromLibrary, savedComponents,
 }: {
   element: SiteElement;
   onChange: (k: string, v: unknown) => void;
+  onPositionChange: (updates: Partial<Pick<SiteElement, "x" | "y" | "width" | "height">>) => void;
   products: Product[];
   orgId: string;
   onSaveToLibrary: () => void;
@@ -1694,77 +1589,147 @@ function PropertiesPanel({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-3 py-2.5 border-b border-border shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Properties</span>
-            <p className="text-xs font-medium mt-0.5">{typeLabels[element.type] || element.type}</p>
-          </div>
-          <div className="flex items-center gap-1">
-            {compatibleComponents.length > 0 && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowApplyPicker((p) => !p)}
-                  title="Apply from Library"
-                  className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <Paintbrush className="h-3 w-3" />
-                </button>
-                {showApplyPicker && (
-                  <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded border border-border bg-background shadow-md py-1">
-                    <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border mb-1">Apply from Library</p>
-                    {compatibleComponents.map((comp) => (
-                      <button
-                        key={comp.id}
-                        onClick={() => { onApplyFromLibrary(comp); setShowApplyPicker(false); }}
-                        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted text-left"
-                      >
-                        <BookMarked className="h-3 w-3 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{comp.name}</span>
-                        {comp.category && <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{comp.category}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            <button
-              onClick={onSaveToLibrary}
-              title="Save to Library"
-              className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <BookMarked className="h-3 w-3" />
-            </button>
+      {/* Figma-style header with Design tab */}
+      <div className="flex items-center border-b border-border shrink-0">
+        <span className="px-3 py-2 text-[11px] font-medium text-foreground border-b-2 border-foreground">Design</span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {/* Element type info */}
+        <div className="px-3 py-2.5 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Frame className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[11px] font-medium">{typeLabels[element.type] || element.type}</span>
+            </div>
+            <div className="flex items-center gap-0.5">
+              {compatibleComponents.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowApplyPicker((p) => !p)}
+                    title="Apply from Library"
+                    className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Paintbrush className="h-3 w-3" />
+                  </button>
+                  {showApplyPicker && (
+                    <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-sm border border-border bg-background shadow-md py-1">
+                      <p className="px-2.5 py-1 text-[10px] font-medium text-muted-foreground border-b border-border mb-1">Apply from Library</p>
+                      {compatibleComponents.map((comp) => (
+                        <button
+                          key={comp.id}
+                          onClick={() => { onApplyFromLibrary(comp); setShowApplyPicker(false); }}
+                          className="flex w-full items-center gap-2 px-2.5 py-1.5 text-[11px] hover:bg-muted text-left"
+                        >
+                          <BookMarked className="h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{comp.name}</span>
+                          {comp.category && <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{comp.category}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={onSaveToLibrary}
+                title="Save to Library"
+                className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <BookMarked className="h-3 w-3" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-3">
-        {element.type === "text"          && <TextProps props={element.props} onChange={onChange} />}
-        {element.type === "image"         && <ImageProps props={element.props} onChange={onChange} orgId={orgId} />}
-        {element.type === "button"        && <ButtonProps props={element.props} onChange={onChange} />}
-        {element.type === "hero"          && <HeroProps props={element.props} onChange={onChange} orgId={orgId} />}
-        {element.type === "nav"           && <NavProps props={element.props} onChange={onChange} />}
-        {element.type === "footer"        && <FooterProps props={element.props} onChange={onChange} />}
-        {element.type === "divider"       && <DividerProps props={element.props} onChange={onChange} />}
-        {element.type === "spacer"        && <SpacerProps props={element.props} onChange={onChange} />}
-        {(element.type === "layout" || element.type === "container") && <LayoutProps props={element.props} onChange={onChange} />}
-        {element.type === "columns"       && <ColumnsProps props={element.props} onChange={onChange} />}
-        {element.type === "product-card"  && <ProductCardProps props={element.props} onChange={onChange} products={products} />}
-        {element.type === "booking-form"  && <BookingFormProps props={element.props} onChange={onChange} />}
-        {element.type === "coupon-banner" && <CouponProps props={element.props} onChange={onChange} />}
-        {element.type === "pricing-table" && <PricingProps props={element.props} onChange={onChange} />}
-        {element.type === "testimonial"   && <TestimonialProps props={element.props} onChange={onChange} />}
-        {element.type === "faq"           && <FaqProps props={element.props} onChange={onChange} />}
-        {element.type === "gallery"       && <GalleryProps props={element.props} onChange={onChange} orgId={orgId} />}
-        {element.type === "custom-html"        && <HtmlProps props={element.props} onChange={onChange} />}
-        {element.type === "login-form"         && <LoginFormProps props={element.props} onChange={onChange} />}
-        {element.type === "code-block"         && <CodeBlockProps props={element.props} onChange={onChange} />}
-        {element.type === "membership-widget"  && <MembershipWidgetProps props={element.props} onChange={onChange} />}
-        {element.type === "cart"               && <CartProps props={element.props} onChange={onChange} />}
-        {element.type === "checkout"           && <CheckoutProps props={element.props} onChange={onChange} />}
-        {element.type === "reward"             && <RewardProps props={element.props} onChange={onChange} />}
-        {element.type === "icon"               && <IconProps props={element.props} onChange={onChange} />}
-        <StyleProps props={element.props} onChange={onChange} />
+
+        {/* Layer section (opacity) */}
+        <Section label="Layer" defaultOpen>
+          <div className="flex items-center gap-1.5">
+            <FigmaInput
+              label="%"
+              value={String(Math.round(parseFloat(String((element.props.style as Record<string,string>)?.opacity ?? "1")) * 100))}
+              onChange={(v) => {
+                const n = parseInt(v);
+                if (isNaN(n)) return;
+                const style = ((element.props.style as Record<string,string>) || {});
+                if (n >= 100) { const next = { ...style }; delete next.opacity; onChange("style", next); }
+                else onChange("style", { ...style, opacity: String(Math.max(0, Math.min(100, n)) / 100) });
+              }}
+              suffix="%"
+              className="flex-1"
+            />
+          </div>
+        </Section>
+
+        {/* Measures section (X, Y, W, H) — like Penpot */}
+        <Section label="Measures" defaultOpen>
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-1">
+              <FigmaInput label="W" value={String(Math.round(element.width ?? 100))} onChange={(v) => { const n = parseInt(v); if (!isNaN(n) && n > 0) onPositionChange({ width: n }); }} />
+              <FigmaInput label="H" value={String(Math.round(element.height ?? 100))} onChange={(v) => { const n = parseInt(v); if (!isNaN(n) && n > 0) onPositionChange({ height: n }); }} />
+            </div>
+            <div className="grid grid-cols-2 gap-1">
+              <FigmaInput label="X" value={String(Math.round(element.x ?? 0))} onChange={(v) => { const n = parseInt(v); if (!isNaN(n)) onPositionChange({ x: n }); }} />
+              <FigmaInput label="Y" value={String(Math.round(element.y ?? 0))} onChange={(v) => { const n = parseInt(v); if (!isNaN(n)) onPositionChange({ y: n }); }} />
+            </div>
+          </div>
+        </Section>
+
+        {/* Link section */}
+        <Section label="Link" defaultOpen={!!(element.props.href)} actions={
+          <button
+            onClick={() => onChange("href", element.props.href ? "" : "#")}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {element.props.href ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+          </button>
+        }>
+          {element.props.href !== undefined && element.props.href !== "" && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  value={String(element.props.href ?? "")}
+                  onChange={(e) => onChange("href", e.target.value)}
+                  placeholder="https://..."
+                  className="flex-1 rounded-sm bg-muted/50 px-2 py-1 text-[11px] font-mono outline-none focus:ring-1 focus:ring-ring min-w-0"
+                />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!element.props.openInNewTab}
+                  onChange={(e) => onChange("openInNewTab", e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-[11px]">Open in new tab</span>
+              </label>
+            </div>
+          )}
+        </Section>
+
+        {/* Content-specific properties */}
+        <div>
+          {element.type === "text"          && <TextProps props={element.props} onChange={onChange} />}
+          {element.type === "image"         && <ImageProps props={element.props} onChange={onChange} orgId={orgId} />}
+          {element.type === "hero"          && <HeroProps props={element.props} onChange={onChange} orgId={orgId} />}
+          {(element.type === "layout" || element.type === "container") && <LayoutProps props={element.props} onChange={onChange} />}
+          {element.type === "columns"       && <ColumnsProps props={element.props} onChange={onChange} />}
+          {element.type === "product-card"  && <ProductCardProps props={element.props} onChange={onChange} products={products} />}
+          {element.type === "booking-form"  && <BookingFormProps props={element.props} onChange={onChange} />}
+          {element.type === "coupon-banner" && <CouponProps props={element.props} onChange={onChange} />}
+          {element.type === "testimonial"   && <TestimonialProps props={element.props} onChange={onChange} />}
+          {element.type === "gallery"       && <GalleryProps props={element.props} onChange={onChange} orgId={orgId} />}
+          {element.type === "custom-html"        && <HtmlProps props={element.props} onChange={onChange} />}
+          {element.type === "login-form"         && <LoginFormProps props={element.props} onChange={onChange} />}
+          {element.type === "code-block"         && <CodeBlockProps props={element.props} onChange={onChange} />}
+          {element.type === "membership-widget"  && <MembershipWidgetProps props={element.props} onChange={onChange} />}
+          {element.type === "cart"               && <CartProps props={element.props} onChange={onChange} />}
+          {element.type === "checkout"           && <CheckoutProps props={element.props} onChange={onChange} />}
+          {element.type === "reward"             && <RewardProps props={element.props} onChange={onChange} />}
+          {element.type === "icon"               && <IconProps props={element.props} onChange={onChange} />}
+          <StyleProps props={element.props} onChange={onChange} />
+        </div>
       </div>
     </div>
   );
@@ -1891,6 +1856,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showTheme, setShowTheme] = useState(false);
   const [showAddPage, setShowAddPage] = useState(false);
   const [newPageName, setNewPageName] = useState("");
@@ -1902,7 +1868,57 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   const [saveDialogName, setSaveDialogName] = useState("");
   const [saveDialogCategory, setSaveDialogCategory] = useState("");
   const [savingComponent, setSavingComponent] = useState(false);
-  // DnD state
+  const [viewportDropdownPage, setViewportDropdownPage] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [setupStep, setSetupStep] = useState<"features" | "theme" | null>(null);
+  const [collapsedPages, setCollapsedPages] = useState<Set<string>>(new Set());
+
+  // Add a viewport to the active page
+  const addViewport = (name: string, width: number) => {
+    if (width <= 0) {
+      // Custom — prompt for width
+      const input = prompt("Enter viewport width (px):", "1024");
+      if (!input) return;
+      width = parseInt(input);
+      if (isNaN(width) || width <= 0) return;
+      name = `${width}px`;
+    }
+    // Calculate x offset for new viewport (after existing viewports)
+    const existingViewports = elements.filter((e) => e.type === "viewport");
+    let vpX = 0;
+    for (const v of existingViewports) {
+      vpX += (Number(v.props.viewportWidth) || 1280) + VIEWPORT_GAP;
+    }
+    const el: SiteElement = {
+      id: uid(),
+      type: "viewport",
+      props: { ...defaultProps("viewport"), viewportName: name, viewportWidth: width },
+      children: [],
+      x: vpX,
+      y: 0,
+      width,
+      height: PAGE_FRAME_MIN_HEIGHT,
+    };
+    pushUndo();
+    setElements((prev) => [...prev, el]);
+    setDirty(true);
+    setViewportDropdownPage(null);
+  };
+
+  // Canvas state (zoom/pan)
+  const [zoom, setZoom] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [dragOffset, setDragOffset] = useState<DragOffset | null>(null);
+  const [dragElementId, setDragElementId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [enteredLayoutStack, setEnteredLayoutStack] = useState<string[]>([]);
+  const enteredLayoutId = enteredLayoutStack.length > 0 ? enteredLayoutStack[enteredLayoutStack.length - 1] : null;
+  const pushEnteredLayout = (id: string) => setEnteredLayoutStack((prev) => [...prev, id]);
+  const popEnteredLayout = () => setEnteredLayoutStack((prev) => prev.slice(0, -1));
+  const clearEnteredLayout = () => setEnteredLayoutStack([]);
+
+  // DnD state (palette/library drops)
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overLayoutId, setOverLayoutId] = useState<string | null>(null);
   const [activeDragData, setActiveDragData] = useState<{ source: string; elementType?: ElementType; comp?: SiteComponent; element?: SiteElement } | null>(null);
@@ -1911,6 +1927,105 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
+  // Canvas drag hook (move/resize elements on canvas)
+  const canvasDrag = useCanvasDrag({
+    zoom,
+    onDragMove: (id, offset) => {
+      setDragElementId(id);
+      setDragOffset(offset);
+    },
+    onDragEnd: (id, offset) => {
+      pushUndo();
+      setElements((prev) => {
+        // Apply the position change (check root and children)
+        let updated = prev.map((el) => {
+          if (el.id === id) {
+            return { ...el, x: (el.x ?? 0) + offset.dx, y: (el.y ?? 0) + offset.dy, width: (el.width ?? 100) + offset.dw, height: (el.height ?? 100) + offset.dh };
+          }
+          // Check if it's a child
+          if (el.children?.some((c) => c.id === id)) {
+            return {
+              ...el,
+              children: el.children.map((c) =>
+                c.id === id
+                  ? { ...c, x: (c.x ?? 0) + offset.dx, y: (c.y ?? 0) + offset.dy, width: (c.width ?? 100) + offset.dw, height: (c.height ?? 100) + offset.dh }
+                  : c
+              ),
+            };
+          }
+          return el;
+        });
+
+        // Only check reparenting on move (not resize)
+        if (offset.dw === 0 && offset.dh === 0) {
+          const movedEl = updated.find((e) => e.id === id);
+          if (movedEl) {
+            const cx = (movedEl.x ?? 0) + (movedEl.width ?? 100) / 2;
+            const cy = (movedEl.y ?? 0) + (movedEl.height ?? 100) / 2;
+
+            // Check if center falls inside a layout element
+            const targetLayout = updated.find((el) =>
+              el.id !== id &&
+              (el.type === "layout" || el.type === "container" || el.type === "viewport") &&
+              cx >= (el.x ?? 0) && cx <= (el.x ?? 0) + (el.width ?? 0) &&
+              cy >= (el.y ?? 0) && cy <= (el.y ?? 0) + (el.height ?? 0)
+            );
+
+            // Check if element is currently a child of a layout
+            const currentParent = updated.find((el) =>
+              (el.type === "layout" || el.type === "container" || el.type === "viewport") &&
+              el.children?.some((c) => c.id === id)
+            );
+
+            if (targetLayout && targetLayout.id !== currentParent?.id) {
+              // Reparent: convert to relative position inside layout
+              const relX = (movedEl.x ?? 0) - (targetLayout.x ?? 0);
+              const relY = (movedEl.y ?? 0) - (targetLayout.y ?? 0);
+              const childEl = { ...movedEl, x: relX, y: relY };
+
+              // Remove from root or current parent
+              if (currentParent) {
+                updated = updated.map((el) =>
+                  el.id === currentParent.id
+                    ? { ...el, children: (el.children ?? []).filter((c) => c.id !== id) }
+                    : el
+                );
+              } else {
+                updated = updated.filter((el) => el.id !== id);
+              }
+
+              // Add to target layout's children
+              updated = updated.map((el) =>
+                el.id === targetLayout.id
+                  ? { ...el, children: [...(el.children ?? []), childEl] }
+                  : el
+              );
+            } else if (!targetLayout && currentParent) {
+              // Unparent: moved outside all layouts → convert to absolute position
+              const absX = (currentParent.x ?? 0) + (movedEl.x ?? 0);
+              const absY = (currentParent.y ?? 0) + (movedEl.y ?? 0);
+              const freedEl = { ...movedEl, x: absX, y: absY };
+
+              // Remove from parent
+              updated = updated.map((el) =>
+                el.id === currentParent.id
+                  ? { ...el, children: (el.children ?? []).filter((c) => c.id !== id) }
+                  : el
+              );
+              // Add to root
+              updated = [...updated, freedEl];
+            }
+          }
+        }
+
+        return updated;
+      });
+      setDragElementId(null);
+      setDragOffset(null);
+      setDirty(true);
+    },
+  });
+
   // Load initial data
   useEffect(() => {
     Promise.all([
@@ -1918,15 +2033,42 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       getPages(siteId),
       getProducts(),
     ])
-      .then(([s, pgs, prods]) => {
+      .then(async ([s, pgs, prods]) => {
         if (!s) return;
         setSite(s);
-        setPages(pgs);
         setProducts(prods);
-        const first = pgs[0];
+        // Ensure a Home page always exists
+        let allPages = pgs;
+        if (!allPages.some((p) => p.slug === "index" || p.name === "Home")) {
+          try {
+            const home = await createPage(siteId, "Home", "index", 0);
+            // Give home page a default desktop viewport
+            const defaultVp: SiteElement = {
+              id: uid(), type: "viewport",
+              props: { ...defaultProps("viewport"), viewportName: "Desktop", viewportWidth: 1280 },
+              children: [
+                { id: uid(), type: "text", props: { ...defaultProps("text"), content: "Welcome to your website", tag: "h1", fontSize: "2.5rem", fontWeight: "bold", align: "center", locked: true } },
+              ],
+              x: 0, y: 0, width: 1280, height: 600,
+            };
+            await updatePage(home.id, { elements: [defaultVp] });
+            home.elements = [defaultVp];
+            allPages = [home, ...allPages];
+          } catch (err: unknown) {
+            console.error("Failed to create home page:", err);
+          }
+        }
+        setPages(allPages);
+        const first = allPages[0];
         if (first) {
           setActivePageId(first.id);
-          setElements(first.elements ?? []);
+          setElements(normalizeElements(first.elements ?? []));
+        }
+        // Show setup wizard if no features enabled yet
+        const feats = s.features ?? {};
+        const hasAnyFeature = Object.values(feats).some(Boolean);
+        if (!hasAnyFeature && allPages.length <= 1) {
+          setSetupStep("features");
         }
       })
       .catch(console.error)
@@ -2003,69 +2145,382 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     }
   };
 
-  // Sync elements when page changes
+  // Sync elements when page changes — save current elements back to pages first
   const handlePageSwitch = (pageId: string) => {
+    // Persist current page's elements in pages state
+    setPages((prev) => prev.map((p) => p.id === activePageId ? { ...p, elements } : p));
     const page = pages.find((p) => p.id === pageId);
     if (!page) return;
     setActivePageId(pageId);
-    setElements(page.elements ?? []);
+    setElements(normalizeElements(page.elements ?? []));
     setSelectedId(null);
+    clearEnteredLayout();
     setDirty(false);
+    // Smooth pan to center the page's frame in viewport
+    const pageIdx = pages.findIndex((p) => p.id === pageId);
+    if (pageIdx >= 0) {
+      const fx = getPageFrameX(pages, pageIdx);
+      const pw = getPageWidth(normalizeElements(page.elements ?? []));
+      // Center horizontally: pan so page center aligns with viewport center
+      const pageEls = normalizeElements(page.elements ?? []);
+      const maxY = pageEls.length > 0
+        ? Math.max(...pageEls.map((e) => (e.y ?? 0) + (e.height ?? 100))) + 40
+        : PAGE_FRAME_MIN_HEIGHT;
+      const ph = Math.max(PAGE_FRAME_MIN_HEIGHT, maxY);
+      const viewW = (window.innerWidth - 56 - 240) / zoom;
+      const viewH = (window.innerHeight - 40) / zoom;
+      const targetX = fx + pw / 2 - viewW / 2;
+      const targetY = ph / 2 - viewH / 2;
+      smoothPanTo(targetX, targetY);
+    }
   };
 
-  // Auto-save (debounced) — tracks a revision counter so every edit resets the timer
+  // Smooth pan animation
+  const animRef = useRef<number | null>(null);
+  const smoothPanTo = useCallback((targetX: number, targetY: number) => {
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+    const startX = panX;
+    const startY = panY;
+    const startTime = performance.now();
+    const duration = 400; // ms
+
+    function tick(now: number) {
+      const t = Math.min(1, (now - startTime) / duration);
+      // ease-out cubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      setPanX(startX + (targetX - startX) * ease);
+      setPanY(startY + (targetY - startY) * ease);
+      if (t < 1) {
+        animRef.current = requestAnimationFrame(tick);
+      } else {
+        animRef.current = null;
+      }
+    }
+    animRef.current = requestAnimationFrame(tick);
+  }, [panX, panY]);
+
+  // Auto-save (debounced) — saves whenever elements change after a short delay
   const elementsRef = useRef(elements);
   const activePageIdRef = useRef(activePageId);
   elementsRef.current = elements;
   activePageIdRef.current = activePageId;
 
-  const [saveRevision, setSaveRevision] = useState(0);
-  const saveRetries = useRef(0);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Bump revision whenever elements change and dirty is true
-  const prevElementsRef = useRef(elements);
+  // Trigger auto-save whenever elements change and page is dirty
   useEffect(() => {
-    if (elements !== prevElementsRef.current && dirty) {
-      setSaveRevision((r) => r + 1);
-    }
-    prevElementsRef.current = elements;
-  }, [elements, dirty]);
+    if (!dirty) return;
 
-  useEffect(() => {
-    if (!dirty) { saveRetries.current = 0; return; }
-    if (saveRetries.current >= 3) {
-      console.warn("Auto-save: giving up after 3 retries");
-      return;
-    }
-    const timer = setTimeout(async () => {
+    // Clear any pending save
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    saveTimerRef.current = setTimeout(async () => {
       const pageId = activePageIdRef.current;
       const els = elementsRef.current;
       if (!pageId) return;
       setSaving(true);
+      setSaveError(null);
       try {
         await updatePage(pageId, { elements: els });
         setPages((prev) => prev.map((p) => p.id === pageId ? { ...p, elements: els } : p));
         setDirty(false);
         setSavedAt(Date.now());
-        saveRetries.current = 0;
-      } catch (err) {
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Save failed";
         console.error("Auto-save failed:", err);
-        saveRetries.current += 1;
-        if (saveRetries.current >= 3) setDirty(false);
+        setSaveError(msg);
       } finally {
         setSaving(false);
       }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [dirty, saveRevision]);
+    }, 800);
 
-  // Element operations (tree-aware for nested layout support)
-  const addElement = (type: ElementType) => {
-    const el: SiteElement = { id: uid(), type, props: defaultProps(type) };
-    if (type === "layout") el.children = [];
-    const idx = selectedId ? elements.findIndex((e) => e.id === selectedId) : -1;
-    const newEls = idx >= 0 ? [...elements.slice(0, idx + 1), el, ...elements.slice(idx + 1)] : [...elements, el];
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [dirty, elements]);
+
+  // Manual save
+  const handleManualSave = async () => {
+    const pageId = activePageIdRef.current;
+    const els = elementsRef.current;
+    if (!pageId) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await updatePage(pageId, { elements: els });
+      setPages((prev) => prev.map((p) => p.id === pageId ? { ...p, elements: els } : p));
+      setDirty(false);
+      setSavedAt(Date.now());
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Save failed";
+      console.error("Manual save failed:", err);
+      setSaveError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Undo / Redo ──
+  const undoStack = useRef<SiteElement[][]>([]);
+  const redoStack = useRef<SiteElement[][]>([]);
+  const MAX_UNDO = 50;
+
+  const pushUndo = useCallback(() => {
+    undoStack.current = [...undoStack.current.slice(-(MAX_UNDO - 1)), elements];
+    redoStack.current = [];
+  }, [elements]);
+
+  const undo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    redoStack.current = [...redoStack.current, elements];
+    const prev = undoStack.current[undoStack.current.length - 1];
+    undoStack.current = undoStack.current.slice(0, -1);
+    setElements(prev);
+    setDirty(true);
+  }, [elements]);
+
+  const redo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    undoStack.current = [...undoStack.current, elements];
+    const next = redoStack.current[redoStack.current.length - 1];
+    redoStack.current = redoStack.current.slice(0, -1);
+    setElements(next);
+    setDirty(true);
+  }, [elements]);
+
+  // ── Clipboard ──
+  const clipboard = useRef<SiteElement | null>(null);
+
+  const copyElement = useCallback(() => {
+    const el = findInTree(elements, selectedId ?? "");
+    if (el) clipboard.current = el;
+  }, [elements, selectedId]);
+
+  const cutElement = useCallback(() => {
+    copyElement();
+    if (!selectedId) return;
+    pushUndo();
+    const [newEls] = removeFromTree(elements, selectedId);
     setElements(newEls);
+    setSelectedId(null);
+    setDirty(true);
+  }, [copyElement, selectedId, elements, pushUndo]);
+
+  const pasteElement = useCallback(() => {
+    if (!clipboard.current) return;
+    pushUndo();
+    const copy = deepCopyElement(clipboard.current);
+    copy.x = (copy.x ?? 0) + 20;
+    copy.y = (copy.y ?? 0) + 20;
+    setElements((prev) => [...prev, copy]);
+    setSelectedId(copy.id);
+    setDirty(true);
+  }, [pushUndo]);
+
+  // ── Z-order ──
+  const bringForward = useCallback(() => {
+    if (!selectedId) return;
+    pushUndo();
+    setElements((prev) => {
+      const idx = prev.findIndex((e) => e.id === selectedId);
+      if (idx < 0 || idx >= prev.length - 1) return prev;
+      const arr = [...prev];
+      [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+      return arr;
+    });
+    setDirty(true);
+  }, [selectedId, pushUndo]);
+
+  const sendBackward = useCallback(() => {
+    if (!selectedId) return;
+    pushUndo();
+    setElements((prev) => {
+      const idx = prev.findIndex((e) => e.id === selectedId);
+      if (idx <= 0) return prev;
+      const arr = [...prev];
+      [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+      return arr;
+    });
+    setDirty(true);
+  }, [selectedId, pushUndo]);
+
+  const bringToFront = useCallback(() => {
+    if (!selectedId) return;
+    pushUndo();
+    setElements((prev) => {
+      const idx = prev.findIndex((e) => e.id === selectedId);
+      if (idx < 0) return prev;
+      const el = prev[idx];
+      return [...prev.slice(0, idx), ...prev.slice(idx + 1), el];
+    });
+    setDirty(true);
+  }, [selectedId, pushUndo]);
+
+  const sendToBack = useCallback(() => {
+    if (!selectedId) return;
+    pushUndo();
+    setElements((prev) => {
+      const idx = prev.findIndex((e) => e.id === selectedId);
+      if (idx < 0) return prev;
+      const el = prev[idx];
+      return [el, ...prev.slice(0, idx), ...prev.slice(idx + 1)];
+    });
+    setDirty(true);
+  }, [selectedId, pushUndo]);
+
+  // ── Context menu ──
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // ── Keyboard shortcuts ──
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip when typing in inputs
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target as HTMLElement).isContentEditable) return;
+
+      const mod = e.metaKey || e.ctrlKey;
+
+      // Delete / Backspace
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        e.preventDefault();
+        const selEl = findInTree(elements, selectedId);
+        if (selEl?.props?.locked) return; // locked elements can't be deleted
+        pushUndo();
+        const [newEls] = removeFromTree(elements, selectedId);
+        setElements(newEls);
+        setSelectedId(null);
+        setDirty(true);
+        return;
+      }
+
+      // Escape → exit entered layout or deselect
+      if (e.key === "Escape") {
+        if (enteredLayoutId) {
+          setSelectedId(enteredLayoutId);
+          popEnteredLayout();
+        } else {
+          setSelectedId(null);
+        }
+        setContextMenu(null);
+        return;
+      }
+
+      // Cmd+D → duplicate
+      if (mod && e.key === "d" && selectedId) {
+        e.preventDefault();
+        const el = findInTree(elements, selectedId);
+        if (!el) return;
+        pushUndo();
+        const copy = deepCopyElement(el);
+        copy.x = (copy.x ?? 0) + 20;
+        copy.y = (copy.y ?? 0) + 20;
+        setElements((prev) => [...prev, copy]);
+        setSelectedId(copy.id);
+        setDirty(true);
+        return;
+      }
+
+      // Cmd+C → copy
+      if (mod && e.key === "c") { copyElement(); return; }
+      // Cmd+X → cut
+      if (mod && e.key === "x") { e.preventDefault(); cutElement(); return; }
+      // Cmd+V → paste
+      if (mod && e.key === "v") { e.preventDefault(); pasteElement(); return; }
+      // Cmd+Z → undo, Cmd+Shift+Z → redo
+      if (mod && e.key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) redo(); else undo();
+        return;
+      }
+      // Cmd+A → select all (no-op for now, could implement multi-select later)
+      if (mod && e.key === "a") {
+        e.preventDefault();
+        return;
+      }
+
+      // Cmd+ArrowUp → bring forward, Cmd+ArrowDown → send backward
+      if (mod && e.key === "ArrowUp") { e.preventDefault(); bringForward(); return; }
+      if (mod && e.key === "ArrowDown") { e.preventDefault(); sendBackward(); return; }
+
+      // Arrow keys → nudge selected element
+      if (selectedId && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key) && !mod) {
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        const dx = e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0;
+        const dy = e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0;
+        pushUndo();
+        setElements((prev) =>
+          prev.map((el) => el.id === selectedId ? { ...el, x: (el.x ?? 0) + dx, y: (el.y ?? 0) + dy } : el)
+        );
+        setDirty(true);
+        return;
+      }
+
+      // Zoom: + / = → zoom in, - → zoom out
+      if (e.key === "=" || e.key === "+") { e.preventDefault(); setZoom((z) => clampZoom(z * 1.2)); return; }
+      if (e.key === "-" || e.key === "_") { e.preventDefault(); setZoom((z) => clampZoom(z / 1.2)); return; }
+      // Shift+0 → reset zoom, Shift+1 → fit all
+      if (e.shiftKey && e.key === ")") { e.preventDefault(); setZoom(1); setPanX(0); setPanY(0); return; } // Shift+0
+      if (e.shiftKey && e.key === "!") { // Shift+1 → fit all
+        e.preventDefault();
+        if (elements.length === 0) return;
+        const minX = Math.min(...elements.map((el) => el.x ?? 0));
+        const minY = Math.min(...elements.map((el) => el.y ?? 0));
+        const maxX = Math.max(...elements.map((el) => (el.x ?? 0) + (el.width ?? 100)));
+        const maxY = Math.max(...elements.map((el) => (el.y ?? 0) + (el.height ?? 100)));
+        const pad = 60;
+        const contentW = maxX - minX + pad * 2;
+        const contentH = maxY - minY + pad * 2;
+        const vw = window.innerWidth * 0.6;
+        const vh = window.innerHeight * 0.8;
+        const fitZoom = clampZoom(Math.min(vw / contentW, vh / contentH));
+        setZoom(fitZoom);
+        setPanX(minX - pad);
+        setPanY(minY - pad);
+        return;
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedId, elements, enteredLayoutId, pushUndo, undo, redo, copyElement, cutElement, pasteElement, bringForward, sendBackward]);
+
+  // Element operations
+  const addElement = (type: ElementType) => {
+    const size = getDefaultSize(type);
+    const el: SiteElement = {
+      id: uid(),
+      type,
+      props: defaultProps(type),
+      x: 20,
+      y: 20,
+      width: size.w,
+      height: size.h,
+    };
+    if (type === "layout") el.children = [];
+
+    // Check if we should add inside a selected layout/viewport
+    const targetId = enteredLayoutId ?? selectedId;
+    if (targetId) {
+      const target = findInTree(elements, targetId);
+      if (target && (target.type === "layout" || target.type === "container" || target.type === "viewport")) {
+        pushUndo();
+        setElements((prev) => updateInTree(prev, targetId, (layout) => ({
+          ...layout,
+          children: [...(layout.children ?? []), el],
+        })));
+        setSelectedId(el.id);
+        setDirty(true);
+        return;
+      }
+    }
+
+    // Default: add at root level at viewport center
+    const center = viewportCenter(window.innerWidth * 0.6, window.innerHeight * 0.8, zoom, panX, panY);
+    el.x = center.x - size.w / 2;
+    el.y = center.y - size.h / 2;
+    pushUndo();
+    setElements((prev) => [...prev, el]);
     setSelectedId(el.id);
     setDirty(true);
   };
@@ -2161,20 +2616,16 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     const activeData = active.data.current as { source: string; elementType?: ElementType; comp?: SiteComponent; parentId?: string; isLayout?: boolean } | undefined;
     const overData = over.data.current as { type?: string; layoutId?: string; source?: string; parentId?: string } | undefined;
 
-    // From palette → canvas
+    // From palette → canvas (assign position at center of viewport)
     if (activeData?.source === "palette" && activeData.elementType) {
-      const el: SiteElement = { id: uid(), type: activeData.elementType, props: defaultProps(activeData.elementType) };
+      const size = getDefaultSize(activeData.elementType);
+      const center = viewportCenter(window.innerWidth * 0.6, window.innerHeight * 0.8, zoom, panX, panY);
+      const el: SiteElement = {
+        id: uid(), type: activeData.elementType, props: defaultProps(activeData.elementType),
+        x: center.x - size.w / 2, y: center.y - size.h / 2, width: size.w, height: size.h,
+      };
       if (activeData.elementType === "layout") el.children = [];
-      if (overData?.type === "layout-drop") {
-        setElements((prev) => addToLayout(prev, overData.layoutId!, el));
-      } else {
-        // Insert at root, near the drop target
-        const overIdx = elements.findIndex((e) => e.id === over.id);
-        setElements((prev) => {
-          const idx = overIdx >= 0 ? overIdx + 1 : prev.length;
-          return [...prev.slice(0, idx), el, ...prev.slice(idx)];
-        });
-      }
+      setElements((prev) => [...prev, el]);
       setSelectedId(el.id);
       setDirty(true);
       return;
@@ -2183,71 +2634,18 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     // From library → canvas
     if (activeData?.source === "library" && activeData.comp) {
       const el = deepCopyElement(activeData.comp.elementData);
-      if (overData?.type === "layout-drop") {
-        setElements((prev) => addToLayout(prev, overData.layoutId!, el));
-      } else {
-        const overIdx = elements.findIndex((e) => e.id === over.id);
-        setElements((prev) => {
-          const idx = overIdx >= 0 ? overIdx + 1 : prev.length;
-          return [...prev.slice(0, idx), el, ...prev.slice(idx)];
-        });
-      }
+      const size = getDefaultSize(el.type);
+      const center = viewportCenter(window.innerWidth * 0.6, window.innerHeight * 0.8, zoom, panX, panY);
+      el.x = center.x - size.w / 2;
+      el.y = center.y - size.h / 2;
+      el.width = el.width ?? size.w;
+      el.height = el.height ?? size.h;
+      setElements((prev) => [...prev, el]);
       setSelectedId(el.id);
       setDirty(true);
       return;
     }
-
-    // Canvas element reorder/move
-    if (active.id === over.id) return;
-
-    const activeParent = activeData?.parentId ?? "root";
-
-    // Dropped into a layout drop zone
-    if (overData?.type === "layout-drop") {
-      const layoutId = overData.layoutId!;
-      if (activeParent === layoutId) return; // already in this layout
-      const [newRoots, removed] = removeFromTree(elements, active.id as string);
-      if (!removed) return;
-      setElements(addToLayout(newRoots, layoutId, removed));
-      setDirty(true);
-      return;
-    }
-
-    const overParent = overData?.parentId ?? "root";
-
-    if (activeParent === overParent) {
-      // Same list reorder
-      if (activeParent === "root") {
-        const oldIdx = elements.findIndex((e) => e.id === active.id);
-        const newIdx = elements.findIndex((e) => e.id === over.id);
-        if (oldIdx !== -1 && newIdx !== -1) {
-          setElements(arrayMove(elements, oldIdx, newIdx));
-          setDirty(true);
-        }
-      } else {
-        setElements((prev) => updateInTree(prev, activeParent, (layout) => {
-          const children = [...(layout.children ?? [])];
-          const oldIdx = children.findIndex((c) => c.id === active.id);
-          const newIdx = children.findIndex((c) => c.id === over.id);
-          if (oldIdx === -1 || newIdx === -1) return layout;
-          return { ...layout, children: arrayMove(children, oldIdx, newIdx) };
-        }));
-        setDirty(true);
-      }
-    } else {
-      // Cross-list move
-      const [newRoots, removed] = removeFromTree(elements, active.id as string);
-      if (!removed) return;
-      if (overParent === "root") {
-        const overIdx = newRoots.findIndex((e) => e.id === over.id);
-        const insertIdx = overIdx >= 0 ? overIdx + 1 : newRoots.length;
-        setElements([...newRoots.slice(0, insertIdx), removed, ...newRoots.slice(insertIdx)]);
-      } else {
-        setElements(addToLayout(newRoots, overParent, removed));
-      }
-      setDirty(true);
-    }
-  }, [elements]);
+  }, [elements, zoom, panX, panY]);
 
   const handleAddPage = async () => {
     if (!newPageName.trim()) return;
@@ -2258,13 +2656,17 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       setShowAddPage(false);
       setNewPageName("");
       handlePageSwitch(page.id);
-    } catch (err) {
-      console.error("Failed to create page:", err);
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : JSON.stringify(err);
+      console.error("Failed to create page:", msg, err);
+      alert(`Failed to create page: ${msg}`);
     }
   };
 
   const handleDeletePage = async (pageId: string) => {
     if (pages.length <= 1) { alert("Cannot delete the last page."); return; }
+    const page = pages.find((p) => p.id === pageId);
+    if (page?.slug === "index" || page?.name === "Home") { alert("Cannot delete the home page."); return; }
     if (!confirm("Delete this page?")) return;
     try {
       await deletePage(pageId);
@@ -2302,6 +2704,38 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
 
   const selectedElement = findInTree(elements, selectedId ?? "");
 
+  // Measure actual DOM position of selected element for the outline
+  const [measuredRect, setMeasuredRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  useEffect(() => {
+    if (!selectedId) { setMeasuredRect(null); return; }
+    // Wait a frame for layout to settle
+    const raf = requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-element-id="${selectedId}"]`) as HTMLElement | null;
+      const canvas = document.querySelector("[data-canvas-transform]") as HTMLElement | null;
+      if (el && canvas) {
+        const elRect = el.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        setMeasuredRect({
+          x: (elRect.left - canvasRect.left) / zoom,
+          y: (elRect.top - canvasRect.top) / zoom,
+          width: elRect.width / zoom,
+          height: elRect.height / zoom,
+        });
+      } else {
+        setMeasuredRect(null);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedId, elements, zoom, panX, panY, dragOffset]);
+
+  const selectedAbsolute = selectedElement && measuredRect ? {
+    ...selectedElement,
+    x: measuredRect.x,
+    y: measuredRect.y,
+    width: measuredRect.width,
+    height: measuredRect.height,
+  } : selectedElement;
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -2319,239 +2753,826 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     );
   }
 
+  // ── Setup wizard ──
+  if (setupStep) {
+    const setupFeatures = site.features ?? { auth: false, cart: false, checkout: false, products: false, subscriptions: false, rewards: false, booking: false, account: false };
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="w-full max-w-lg px-6">
+          {setupStep === "features" && (
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <h1 className="text-xl font-bold">Set up your website</h1>
+                <p className="text-sm text-muted-foreground">Choose which features you need. You can change these later in settings.</p>
+              </div>
+              <div className="space-y-2">
+                {([
+                  { key: "auth" as const, label: "Authentication", desc: "Login, Signup, Forgot Password" },
+                  { key: "products" as const, label: "Products", desc: "Product listing & catalog" },
+                  { key: "cart" as const, label: "Shopping Cart", desc: "Cart page" },
+                  { key: "checkout" as const, label: "Checkout", desc: "Checkout flow" },
+                  { key: "subscriptions" as const, label: "Subscriptions", desc: "Membership plans" },
+                  { key: "rewards" as const, label: "Rewards", desc: "Points & rewards" },
+                  { key: "booking" as const, label: "Booking", desc: "Reservations" },
+                  { key: "account" as const, label: "Customer Account", desc: "Dashboard" },
+                ]).map((feat) => (
+                  <label key={feat.key} className="flex items-center gap-3 p-3 rounded border border-border hover:bg-muted/50 cursor-pointer transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={setupFeatures[feat.key]}
+                      onChange={(e) => {
+                        const newFeatures = { ...setupFeatures, [feat.key]: e.target.checked };
+                        setSite((prev) => prev ? { ...prev, features: newFeatures } : prev);
+                      }}
+                      className="rounded accent-blue-500 h-4 w-4"
+                    />
+                    <div>
+                      <span className="text-sm font-medium">{feat.label}</span>
+                      <p className="text-xs text-muted-foreground">{feat.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-between">
+                <button onClick={() => setSetupStep(null)} className="text-sm text-muted-foreground hover:text-foreground">Skip</button>
+                <button
+                  onClick={() => setSetupStep("theme")}
+                  className="px-6 py-2 rounded bg-foreground text-background text-sm font-medium hover:bg-foreground/90"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+
+          {setupStep === "theme" && (
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <h1 className="text-xl font-bold">Choose a theme</h1>
+                <p className="text-sm text-muted-foreground">Pick a visual style for your website.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {THEME_PRESETS.map((preset) => (
+                  <button
+                    key={preset.presetName}
+                    onClick={() => setSite((prev) => prev ? { ...prev, theme: { ...preset } } : prev)}
+                    className={cn(
+                      "flex items-center gap-3 rounded border p-3 text-left transition-colors hover:bg-muted",
+                      site.theme.presetName === preset.presetName ? "border-foreground ring-1 ring-foreground" : "border-border"
+                    )}
+                  >
+                    <div className="flex gap-0.5 shrink-0">
+                      {[preset.background, preset.primary, preset.accent].map((c, i) => (
+                        <div key={i} className="h-6 w-3 rounded-sm border border-black/10" style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                    <span className="text-xs">{preset.presetName}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex justify-between">
+                <button onClick={() => setSetupStep("features")} className="text-sm text-muted-foreground hover:text-foreground">Back</button>
+                <button
+                  onClick={async () => {
+                    // Save features + theme, create built-in pages
+                    try {
+                      await updateSite(siteId, { features: site.features, theme: site.theme });
+                      const templates = getBuiltInPages().filter((t) => site.features[t.featureKey]);
+                      for (const tmpl of templates) {
+                        if (!pages.some((p) => p.slug === tmpl.slug)) {
+                          try {
+                            const page = await createPage(siteId, tmpl.name, tmpl.slug, pages.length);
+                            await updatePage(page.id, { elements: tmpl.elements });
+                            setPages((prev) => [...prev, { ...page, elements: tmpl.elements }]);
+                          } catch (err) { console.error(err); }
+                        }
+                      }
+                    } catch (err) { console.error(err); }
+                    setSetupStep(null);
+                  }}
+                  className="px-6 py-2 rounded bg-foreground text-background text-sm font-medium hover:bg-foreground/90"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ThemeContext.Provider value={site?.theme ?? null}>
     <div className="flex flex-col h-screen overflow-hidden bg-muted/20">
-      {/* ── Toolbar ── */}
-      <header className="flex items-center gap-2 px-3 h-11 border-b border-border bg-background shrink-0">
-        <button
-          onClick={openSidebar}
-          className="text-muted-foreground hover:text-foreground mr-1 p-0.5 rounded hover:bg-muted"
-          aria-label="Open menu"
-        >
+      {/* ── Compact toolbar ── */}
+      <header className="flex items-center gap-2 px-3 h-10 border-b border-border bg-background shrink-0">
+        <button onClick={openSidebar} className="text-muted-foreground hover:text-foreground p-0.5 rounded hover:bg-muted" aria-label="Open menu">
           <Menu className="h-4 w-4" />
         </button>
-        <span className="text-sm font-semibold truncate max-w-[140px]">{site.name}</span>
-        <span className="text-border">|</span>
 
-        {/* Page tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto flex-1">
-          {pages.map((p) => (
-            <div key={p.id} className="relative group shrink-0">
-              <button
-                onClick={() => handlePageSwitch(p.id)}
-                className={cn("px-2.5 py-1 text-xs rounded font-medium transition-colors", p.id === activePageId ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50")}
-              >
-                {p.name}
-              </button>
-              {pages.length > 1 && (
-                <button onClick={() => handleDeletePage(p.id)} className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive/80 text-white items-center justify-center hidden group-hover:flex">
-                  <X className="h-2 w-2" />
-                </button>
-              )}
-            </div>
-          ))}
-          {showAddPage ? (
-            <div className="flex items-center gap-1 shrink-0">
-              <input
-                autoFocus
-                type="text"
-                value={newPageName}
-                onChange={(e) => setNewPageName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAddPage(); if (e.key === "Escape") { setShowAddPage(false); setNewPageName(""); } }}
-                placeholder="Page name"
-                className="rounded border border-border bg-background px-2 py-0.5 text-xs outline-none focus:ring-1 focus:ring-ring w-28"
-              />
-              <button onClick={handleAddPage} disabled={!newPageName.trim()} className="text-xs font-medium text-foreground disabled:opacity-50">Add</button>
-              <button onClick={() => { setShowAddPage(false); setNewPageName(""); }} className="text-muted-foreground"><X className="h-3 w-3" /></button>
-            </div>
-          ) : (
-            <button onClick={() => setShowAddPage(true)} className="shrink-0 text-muted-foreground hover:text-foreground px-1.5 py-1 rounded hover:bg-muted/50">
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+        <div className="flex-1" />
 
-        {/* Right actions */}
-        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-          {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-          {!saving && savedAt && !dirty && (
-            <span
-              key={savedAt}
-              className="text-[10px] text-green-600 animate-[fadeout_2s_ease-in-out_forwards]"
-              style={{ animation: "fadeout 2s ease-in-out forwards" }}
-            >
-              Saved
-            </span>
-          )}
-          {saving && <span className="text-[10px] text-muted-foreground">Saving…</span>}
-          <button
-            onClick={() => setShowTheme(true)}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
-          >
-            <Palette className="h-3.5 w-3.5" /> Theme
+        {/* Save status */}
+        {saveError ? (
+          <button onClick={handleManualSave} className="flex items-center gap-1 text-[10px] text-red-500" title={saveError}>
+            <X className="h-3 w-3" /> Failed
           </button>
-          <Link
-            href={`/builder/${siteId}/membership`}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
-          >
-            <CreditCard className="h-3.5 w-3.5" /> Members
-          </Link>
-          <Link
-            href={`/s/${site.slug}`}
-            target="_blank"
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-border hover:bg-muted transition-colors"
-          >
-            <Eye className="h-3.5 w-3.5" /> Preview
-          </Link>
-          <button
-            onClick={handleTogglePublish}
-            disabled={publishing}
-            className={cn("flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition-colors", site.published ? "bg-green-600 text-white hover:bg-green-700" : "bg-foreground text-background hover:bg-foreground/90")}
-          >
-            {publishing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
-            {site.published ? "Published" : "Publish"}
+        ) : saving ? (
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /></span>
+        ) : dirty ? (
+          <button onClick={handleManualSave} className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
           </button>
-        </div>
+        ) : savedAt ? (
+          <Check className="h-3 w-3 text-green-600" />
+        ) : null}
+
+        <button onClick={() => setShowTheme(true)} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Theme">
+          <Palette className="h-3.5 w-3.5" />
+        </button>
+        <Link href={`/s/${site.slug}`} target="_blank" className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Preview">
+          <Eye className="h-3.5 w-3.5" />
+        </Link>
+        <Link href={`/builder/${siteId}/membership`} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Members">
+          <CreditCard className="h-3.5 w-3.5" />
+        </Link>
+        <button onClick={() => setShowSettings(true)} className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Settings">
+          <Settings className="h-3.5 w-3.5" />
+        </button>
       </header>
 
       {/* ── Three-column layout ── */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Element palette + Library */}
-        <aside className="w-48 border-r border-border bg-background overflow-hidden shrink-0 flex flex-col">
-          {/* Tab switcher */}
-          <div className="flex border-b border-border shrink-0">
+        {/* Left: Framer-style panel */}
+        <aside className="w-56 border-r border-border bg-card overflow-hidden shrink-0 flex flex-col">
+          {/* Site header */}
+          <div className="px-3 pt-3 pb-2 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold truncate">{site.name}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded border border-border text-muted-foreground">Beta</span>
+              </div>
+            </div>
             <button
-              onClick={() => setLeftTab("elements")}
-              className={cn("flex-1 flex items-center justify-center gap-1 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors", leftTab === "elements" ? "bg-background text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:bg-muted/50")}
-            >
-              <Blocks className="h-3 w-3" /> Elements
-            </button>
-            <button
-              onClick={() => setLeftTab("library")}
-              className={cn("flex-1 flex items-center justify-center gap-1 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors", leftTab === "library" ? "bg-background text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:bg-muted/50")}
-            >
-              <Library className="h-3 w-3" /> Library
-              {savedComponents.length > 0 && (
-                <span className="ml-0.5 rounded-full bg-foreground text-background text-[9px] px-1 leading-4">{savedComponents.length}</span>
+              onClick={handleTogglePublish}
+              disabled={publishing}
+              className={cn(
+                "w-full flex items-center justify-center gap-1.5 rounded py-1.5 text-xs font-medium transition-colors",
+                site.published
+                  ? "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-muted text-foreground hover:bg-muted/80"
               )}
+            >
+              {publishing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+              {site.published ? "Published" : "Publish..."}
             </button>
           </div>
 
-          {/* Elements tab */}
-          {leftTab === "elements" && (
-            <div className="flex-1 overflow-y-auto">
-              {PALETTE.map((group, gi) => (
-                <div key={gi}>
-                  <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/50">
-                    {PALETTE_LABELS[gi]}
+          {/* Webpages section */}
+          <div className="border-t border-border">
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className="text-[11px] font-semibold">Webpages</span>
+              <button
+                onClick={() => setShowAddPage(true)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            {showAddPage && (
+              <div className="px-3 pb-2 flex items-center gap-1">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newPageName}
+                  onChange={(e) => setNewPageName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAddPage(); if (e.key === "Escape") { setShowAddPage(false); setNewPageName(""); } }}
+                  placeholder="Page name"
+                  className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
+                />
+                <button onClick={handleAddPage} disabled={!newPageName.trim()} className="text-xs font-medium text-foreground disabled:opacity-50">Add</button>
+              </div>
+            )}
+            <div className="px-2 pb-2 space-y-0.5">
+              {pages.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => handlePageSwitch(p.id)}
+                  className={cn(
+                    "group flex items-center gap-2.5 rounded px-2 py-1.5 cursor-pointer transition-colors",
+                    p.id === activePageId ? "bg-muted" : "hover:bg-muted/50"
+                  )}
+                >
+                  <div className="w-12 h-8 rounded-sm bg-muted border border-border/50 shrink-0 flex items-center justify-center overflow-hidden">
+                    <Globe className="h-3 w-3 text-muted-foreground/40" />
                   </div>
-                  <div className="p-1.5 grid grid-cols-2 gap-1">
-                    {group.map((item) => (
-                      <DraggablePaletteItem key={item.type} item={item} onAdd={addElement} />
-                    ))}
-                  </div>
+                  <span className="text-xs truncate flex-1">{p.name === "Home" ? "Home" : `/${p.slug}`}</span>
+                  {(() => {
+                    const builtInSlugs = getBuiltInPages().map((t) => t.slug);
+                    const isBuiltIn = builtInSlugs.includes(p.slug) || p.slug === "index" || p.name === "Home";
+                    if (isBuiltIn) return <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/40" />;
+                    return pages.length > 1 ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeletePage(p.id); }}
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    ) : null;
+                  })()}
                 </div>
               ))}
             </div>
-          )}
+          </div>
 
-          {/* Library tab */}
-          {leftTab === "library" && (
-            <div className="flex-1 overflow-y-auto">
-              {savedComponents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center px-3 py-8">
-                  <Library className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                  <p className="text-[11px] text-muted-foreground">No saved components yet</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1">Select an element and click Save to Library</p>
-                </div>
-              ) : (
-                <div className="p-1.5 space-y-1">
-                  {savedComponents.map((comp) => (
-                    <DraggableLibraryCard
-                      key={comp.id}
-                      comp={comp}
-                      onInsert={insertFromLibrary}
-                      onDelete={handleDeleteComponent}
-                    />
-                  ))}
-                </div>
-              )}
+          {/* Layers section — all pages */}
+          <div className="border-t border-border flex-1 flex flex-col min-h-0">
+            <div className="px-3 py-2 shrink-0">
+              <span className="text-[11px] font-semibold">Layers</span>
             </div>
-          )}
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
+              {pages.map((page) => {
+                const isActive = page.id === activePageId;
+                const pageEls = isActive ? elements : (page.elements ?? []);
+                return (
+                  <React.Fragment key={page.id}>
+                    {/* Page header */}
+                    <button
+                      onClick={() => { if (!isActive) handlePageSwitch(page.id); setSelectedId(null); }}
+                      className={cn(
+                        "flex items-center gap-2 w-full rounded px-2 py-1.5 text-xs font-medium transition-colors text-left",
+                        isActive ? "bg-blue-500/10 text-blue-500" : "text-muted-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      <Globe className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{page.name === "Home" ? "Home" : `/${page.slug}`}</span>
+                    </button>
+                    {/* Page elements (only show active page's elements expanded) */}
+                    {isActive && pageEls.map((el) => (
+                      <React.Fragment key={el.id}>
+                        <button
+                          onClick={() => setSelectedId(el.id)}
+                          className={cn(
+                            "flex items-center gap-2 w-full rounded pl-5 pr-2 py-1 text-xs transition-colors text-left",
+                            selectedId === el.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                          )}
+                        >
+                          {el.type === "viewport" ? <Frame className="h-3 w-3 shrink-0" /> : <Layers className="h-3 w-3 shrink-0" />}
+                          <span className="truncate">{el.type === "viewport" ? String(el.props.viewportName || "Viewport") : el.type}</span>
+                          {!!el.props?.locked && <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50" />}
+                          {(el.children?.length ?? 0) > 0 && (
+                            <span className="ml-auto text-[9px] text-muted-foreground">{el.children!.length}</span>
+                          )}
+                        </button>
+                        {(el.children ?? []).map((child) => (
+                          <button
+                            key={child.id}
+                            onClick={() => setSelectedId(child.id)}
+                            className={cn(
+                              "flex items-center gap-2 w-full rounded pl-9 pr-2 py-1 text-xs transition-colors text-left",
+                              selectedId === child.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                            )}
+                          >
+                            <Layers className="h-2.5 w-2.5 shrink-0" />
+                            <span className="truncate">{child.type}</span>
+                          </button>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
         </aside>
 
-        {/* Center: Canvas (DnD-enabled) */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-        >
-          <main
-            className="flex-1 overflow-y-auto bg-stone-100"
-            onClick={(e) => { if (e.target === e.currentTarget) setSelectedId(null); }}
-          >
-            {elements.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-full text-center px-8 py-16">
-                <Globe className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-                <p className="text-sm font-medium text-muted-foreground">Empty page</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Click or drag elements from the left panel</p>
-              </div>
-            ) : (
-              <div className="bg-white min-h-full shadow-sm mx-auto" style={{ maxWidth: "900px" }}>
-                {/* Load theme fonts so the canvas preview is accurate */}
-                {site.theme && (() => {
-                  const url = buildGoogleFontsUrl([site.theme.headingFont, site.theme.bodyFont]);
-                  // eslint-disable-next-line @next/next/no-page-custom-font
-                  return url ? <link rel="stylesheet" href={url} /> : null;
-                })()}
-                <SortableContext items={elements.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-                  {elements.map((el, idx) => (
-                    <CanvasElement
+        {/* Center: Free-form Canvas */}
+        <CanvasViewport
+          className="flex-1 bg-stone-100"
+          zoom={zoom}
+          panX={panX}
+          panY={panY}
+          onZoomChange={setZoom}
+          onPanChange={(x, y) => { setPanX(x); setPanY(y); }}
+          onCanvasClick={() => { setSelectedId(null); setContextMenu(null); clearEnteredLayout(); }}
+          onPointerMove={canvasDrag.onPointerMove}
+          onPointerUp={canvasDrag.onPointerUp}
+          onContextMenu={(e) => setContextMenu({ x: e.clientX, y: e.clientY })}
+          controls={
+            <>
+              {/* Hit areas — offset by active page frame position */}
+              {(() => {
+                const activePageIdx = pages.findIndex((p) => p.id === activePageId);
+                const frameX = getPageFrameX(pages, activePageIdx >= 0 ? activePageIdx : 0);
+                // Helper: offset element position by frame X
+                const offsetEl = (el: SiteElement) => ({ ...el, x: frameX + (el.x ?? 0) });
+
+                return enteredLayoutId ? (
+                <>
+                  {/* Dimmed hit area for the entered layout (click exits) */}
+                  {elements.filter((el) => el.id !== enteredLayoutId).map((el) => (
+                    <ElementHitArea
                       key={el.id}
-                      el={el}
-                      idx={idx}
-                      total={elements.length}
-                      selectedId={selectedId}
-                      overLayoutId={overLayoutId}
-                      parentId={null}
-                      products={products}
-                      onSelect={setSelectedId}
-                      onDelete={deleteElement}
-                      onDuplicate={duplicateElement}
-                      onMove={moveElement}
-                      onAddChild={addChildElement}
-                      updateProp={updateElementProp}
+                      element={offsetEl(el)}
+                      isSelected={false}
+                      isHovered={false}
+                      zoom={zoom}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        clearEnteredLayout();
+                        setSelectedId(el.id);
+                        canvasDrag.startMove(e, el.id, el.x ?? 0, el.y ?? 0, el.width ?? 100, el.height ?? 100);
+                      }}
+                      onPointerEnter={() => {}}
+                      onPointerLeave={() => {}}
                     />
                   ))}
-                </SortableContext>
-              </div>
-            )}
-          </main>
+                  {/* Child hit areas (measured from DOM) */}
+                  {(() => {
+                    const layout = findInTree(elements, enteredLayoutId!);
+                    if (!layout) return null;
+                    return (layout.children ?? []).map((child) => {
+                      const childDom = document.querySelector(`[data-element-id="${child.id}"]`);
+                      const canvasDom = document.querySelector("[data-canvas-transform]");
+                      if (!childDom || !canvasDom) return null;
+                      const cr = childDom.getBoundingClientRect();
+                      const tr = canvasDom.getBoundingClientRect();
+                      const absEl = {
+                        ...child,
+                        x: (cr.left - tr.left) / zoom,
+                        y: (cr.top - tr.top) / zoom,
+                        width: cr.width / zoom,
+                        height: cr.height / zoom,
+                      };
+                      const isChildLayout = child.type === "layout" || child.type === "container";
+                      const grandchildren = child.children ?? [];
+                      return (
+                        <ElementHitArea
+                          key={child.id}
+                          element={absEl}
+                          isSelected={selectedId === child.id}
+                          isHovered={hoveredId === child.id}
+                          zoom={zoom}
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            setSelectedId(child.id);
+                            canvasDrag.startMove(e, child.id, child.x ?? 0, child.y ?? 0, child.width ?? 100, child.height ?? 100);
+                          }}
+                          onDoubleClick={isChildLayout && grandchildren.length > 0 ? ((e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            pushEnteredLayout(child.id);
+                            for (const gc of grandchildren) {
+                              const gcDom = document.querySelector(`[data-element-id="${gc.id}"]`);
+                              if (!gcDom) continue;
+                              const rect = gcDom.getBoundingClientRect();
+                              if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                                setSelectedId(gc.id);
+                                return;
+                              }
+                            }
+                            if (grandchildren.length > 0) setSelectedId(grandchildren[0].id);
+                          }) : undefined}
+                          onPointerEnter={() => setHoveredId(child.id)}
+                          onPointerLeave={() => setHoveredId((prev) => prev === child.id ? null : prev)}
+                        />
+                      );
+                    });
+                  })()}
+                </>
+              ) : (
+                /* Normal mode: hit areas for root elements */
+                elements.map((el) => {
+                  const isLayout = el.type === "layout" || el.type === "container" || el.type === "viewport";
+                  const children = el.children ?? [];
+                  return (
+                    <React.Fragment key={el.id}>
+                      <ElementHitArea
+                        element={offsetEl(el)}
+                        isSelected={selectedId === el.id}
+                        isHovered={hoveredId === el.id}
+                        zoom={zoom}
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          setSelectedId(el.id);
+                          if (el.type !== "viewport") {
+                            canvasDrag.startMove(e, el.id, el.x ?? 0, el.y ?? 0, el.width ?? 100, el.height ?? 100);
+                          }
+                        }}
+                        onDoubleClick={isLayout && children.length > 0 ? ((e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          pushEnteredLayout(el.id);
+                          for (const child of children) {
+                            const childDom = document.querySelector(`[data-element-id="${child.id}"]`);
+                            if (!childDom) continue;
+                            const rect = childDom.getBoundingClientRect();
+                            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                              setSelectedId(child.id);
+                              return;
+                            }
+                          }
+                          if (children.length > 0) setSelectedId(children[0].id);
+                        }) : undefined}
+                        onPointerEnter={() => setHoveredId(el.id)}
+                        onPointerLeave={() => setHoveredId((prev) => prev === el.id ? null : prev)}
+                      />
+                    </React.Fragment>
+                  );
+                })
+              );
+              })()}
+              {/* Clickable areas for inactive page frames */}
+              {pages.map((page, pageIdx) => {
+                if (page.id === activePageId) return null;
+                const fx = getPageFrameX(pages, pageIdx);
+                const pw = getPageWidth(normalizeElements(page.elements ?? []));
+                return (
+                  <div
+                    key={`page-hit-${page.id}`}
+                    className="absolute"
+                    style={{ pointerEvents: "auto", left: fx, top: 0, width: pw, height: PAGE_FRAME_MIN_HEIGHT, cursor: "pointer" }}
+                    onPointerDown={(e) => { e.stopPropagation(); handlePageSwitch(page.id); }}
+                  />
+                );
+              })}
+              {/* Selection outline + resize handles for selected element */}
+              {selectedAbsolute && selectedElement && (
+                <>
+                  <SelectionOutline
+                    element={selectedAbsolute}
+                    zoom={zoom}
+                    offset={null}
+                  />
+                  <ResizeHandles
+                    element={selectedAbsolute}
+                    zoom={zoom}
+                    offset={null}
+                    onResizeStart={(e, handle) => {
+                      canvasDrag.startResize(
+                        e, selectedElement.id, handle,
+                        selectedElement.x ?? 0, selectedElement.y ?? 0,
+                        selectedElement.width ?? 100, selectedElement.height ?? 100
+                      );
+                    }}
+                  />
+                </>
+              )}
+            </>
+          }
+        >
+          {/* Load theme fonts */}
+          {site.theme && (() => {
+            const url = buildGoogleFontsUrl([site.theme.headingFont, site.theme.bodyFont]);
+            // eslint-disable-next-line @next/next/no-page-custom-font
+            return url ? <link rel="stylesheet" href={url} /> : null;
+          })()}
 
-          {/* Drag overlay */}
-          <DragOverlay dropAnimation={null}>
-            {activeDragData?.source === "canvas" && activeDragData.element ? (
-              <div className="opacity-70 shadow-xl pointer-events-none scale-95 bg-white rounded border border-blue-300" style={{ maxWidth: "860px" }}>
-                <div style={{ padding: ["nav", "hero", "footer", "divider", "spacer"].includes(activeDragData.element.type) ? 0 : "0.75rem" }}>
-                  <SiteElementRenderer element={activeDragData.element} products={products} />
+          {/* ── Page frames for ALL pages ── */}
+          {pages.map((page, pageIdx) => {
+            const frameX = getPageFrameX(pages, pageIdx);
+            const isActivePage = page.id === activePageId;
+            const pageEls = isActivePage ? elements : normalizeElements(page.elements ?? []);
+            // Compute frame height from elements
+            const maxY = pageEls.length > 0
+              ? Math.max(...pageEls.map((e) => (e.y ?? 0) + (e.height ?? 100))) + 40
+              : PAGE_FRAME_MIN_HEIGHT;
+            const frameH = Math.max(PAGE_FRAME_MIN_HEIGHT, maxY);
+
+            const pageWidth = getPageWidth(pageEls);
+
+            // Collapsed pages state
+            const isCollapsed = collapsedPages.has(page.id);
+            const pageName = page.name === "Home" ? "Home" : `/${page.slug}`;
+            // Font size: 14px on screen regardless of zoom, clamped to min 10px canvas-coords
+            const labelFontSize = Math.max(10, 14 / zoom);
+            // Max width for label truncation
+            const labelMaxWidth = Math.max(40, pageWidth - 60);
+
+            return (
+              <React.Fragment key={page.id}>
+                {/* Page outer frame border */}
+                {(() => {
+                  const pad = 12 / zoom;
+                  const titleH = Math.max(24, 32 / zoom);
+                  const borderW = Math.max(1, 2 / zoom);
+                  return (
+                    <>
+                    <div
+                      className={cn("absolute rounded-sm pointer-events-none", isActivePage ? "border-blue-500/40" : "border-border/30")}
+                      style={{
+                        borderWidth: borderW,
+                        left: frameX - pad,
+                        top: -(titleH + pad),
+                        width: pageWidth + pad * 2,
+                        height: isCollapsed ? titleH + pad : frameH + titleH + pad * 2,
+                      }}
+                    />
+
+                    {/* Page title bar */}
+                    <div
+                      className="absolute flex items-center justify-between pointer-events-auto"
+                      style={{ left: frameX - pad + 4, top: -(titleH + pad - 4), width: pageWidth + pad * 2 - 8, height: titleH }}
+                    >
+                  <div className="flex items-center gap-1 cursor-pointer min-w-0 flex-1" onClick={() => { if (!isActivePage) handlePageSwitch(page.id); }}>
+                    {/* Collapse toggle */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCollapsedPages((prev) => { const next = new Set(prev); if (next.has(page.id)) next.delete(page.id); else next.add(page.id); return next; }); }}
+                      className="shrink-0 text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronRight className={cn("transition-transform", !isCollapsed && "rotate-90")} style={{ width: labelFontSize, height: labelFontSize }} />
+                    </button>
+                    <span
+                      className={cn("font-semibold truncate", isActivePage ? "text-blue-400" : "text-muted-foreground")}
+                      style={{ fontSize: labelFontSize, maxWidth: labelMaxWidth }}
+                      title={pageName}
+                    >
+                      {pageName}
+                    </span>
+                  </div>
+                  {/* + button to add viewport */}
+                  {isActivePage && !isCollapsed && (
+                    <div className="relative shrink-0">
+                      <button
+                        onClick={() => setViewportDropdownPage(viewportDropdownPage === page.id ? null : page.id)}
+                        className="rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                        style={{ padding: 2 / zoom }}
+                      >
+                        <Plus style={{ width: labelFontSize, height: labelFontSize }} />
+                      </button>
+                      {viewportDropdownPage === page.id && (
+                        <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded border border-border bg-background shadow-lg py-1 pointer-events-auto">
+                          {VIEWPORT_PRESETS.map((preset) => (
+                            <button
+                              key={preset.name}
+                              onClick={() => addViewport(preset.name, preset.width)}
+                              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors text-left"
+                            >
+                              <span className="flex-1">{preset.name}</span>
+                              {preset.width > 0 && <span className="text-muted-foreground font-mono">{preset.width}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+                    </>
+                  );
+                })()}
+
+                {/* Page content (hidden when collapsed) */}
+                {!isCollapsed && !isActivePage && pageEls.filter((e) => e.type === "viewport").map((vp) => (
+                  <div
+                    key={vp.id}
+                    className="absolute border border-border/20 bg-white/40 overflow-hidden"
+                    style={{
+                      left: frameX + (vp.x ?? 0),
+                      top: vp.y ?? 0,
+                      width: Number(vp.props.viewportWidth) || 1280,
+                      height: vp.height ?? PAGE_FRAME_MIN_HEIGHT,
+                      ...(site.theme ? themeVars(site.theme) : {}),
+                    }}
+                  >
+                    <div className="opacity-50">
+                      <SiteElementRenderer element={vp} products={products} />
+                    </div>
+                  </div>
+                ))}
+                {!isCollapsed && !isActivePage && pageEls.filter((e) => e.type !== "viewport").map((el) => (
+                  <div
+                    key={el.id}
+                    className="absolute overflow-hidden opacity-50"
+                    style={{
+                      ...(site.theme ? themeVars(site.theme) : {}),
+                      left: frameX + (el.x ?? 0),
+                      top: el.y ?? 0,
+                      width: el.width ?? 100,
+                      height: el.height ?? 100,
+                    }}
+                  >
+                    <SiteElementRenderer element={el} products={products} />
+                  </div>
+                ))}
+              </React.Fragment>
+            );
+          })}
+
+          {/* ── Active page elements (editable) ── */}
+          {(() => {
+            if (collapsedPages.has(activePageId)) return null;
+            const activePageIdx = pages.findIndex((p) => p.id === activePageId);
+            const frameX = getPageFrameX(pages, activePageIdx >= 0 ? activePageIdx : 0);
+            return elements.map((el) => {
+              const isBeingDragged = dragElementId === el.id;
+              const ox = isBeingDragged ? (dragOffset?.dx ?? 0) : 0;
+              const oy = isBeingDragged ? (dragOffset?.dy ?? 0) : 0;
+              const ow = isBeingDragged ? (dragOffset?.dw ?? 0) : 0;
+              const oh = isBeingDragged ? (dragOffset?.dh ?? 0) : 0;
+              const isLayout = el.type === "layout" || el.type === "container" || el.type === "viewport";
+              const isViewport = el.type === "viewport";
+              return (
+                <React.Fragment key={el.id}>
+                  {/* Viewport label above the frame */}
+                  {isViewport && (
+                    <div
+                      className="absolute pointer-events-none"
+                      style={{
+                        left: frameX + (el.x ?? 0) + ox,
+                        top: (el.y ?? 0) + oy - 20,
+                        fontSize: 10,
+                      }}
+                    >
+                      <span className="text-muted-foreground font-medium">{String(el.props.viewportName || "Viewport")} — {String(el.props.viewportWidth || 1280)}</span>
+                    </div>
+                  )}
+                <div
+                  data-element-id={el.id}
+                  className={cn(
+                    "absolute shadow-sm",
+                    isViewport ? "border border-blue-500/20" :
+                    isLayout ? "border border-dashed border-stone-300" :
+                    "overflow-hidden"
+                  )}
+                  style={{
+                    ...(site.theme ? themeVars(site.theme) : {}),
+                    backgroundColor: isViewport ? (site.theme?.background ?? "#fff") : isLayout ? undefined : (site.theme?.background ?? "#fff"),
+                    left: frameX + (el.x ?? 0) + ox,
+                    top: (el.y ?? 0) + oy,
+                    width: (el.width ?? 100) + ow,
+                    height: (el.height ?? 100) + oh,
+                }}
+              >
+                {/* Frame label for layouts */}
+                {isLayout && (
+                  <div className="absolute -top-4 left-0 text-[10px] text-muted-foreground font-medium pointer-events-none">
+                    {String(el.props.name || "Frame")}
+                  </div>
+                )}
+                {isLayout ? (
+                  // Render children inside the frame using layout props (flex/grid)
+                  (() => {
+                    const dir = (el.props.direction as string) || "stack";
+                    const spacingRaw = (el.props.spacing as string) || "16px";
+                    // Support legacy named values or direct CSS values
+                    const gapMap: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
+                    const gap = gapMap[spacingRaw] ?? spacingRaw;
+                    const align = (el.props.align as string) || "stretch";
+                    const gridCols = Number(el.props.columns) || 2;
+
+                    const containerStyle: React.CSSProperties = {
+                      ...(site.theme ? themeVars(site.theme) : {}),
+                      backgroundColor: (el.props.backgroundColor as string) || (site.theme?.background ?? "#fff"),
+                      padding: (el.props.padding as string) || "1rem",
+                      width: "100%",
+                      height: "100%",
+                      overflow: "hidden",
+                    };
+
+                    if (dir === "free") {
+                      containerStyle.position = "relative";
+                    } else if (dir === "row") {
+                      containerStyle.display = "flex";
+                      containerStyle.flexDirection = "row";
+                      containerStyle.flexWrap = "wrap";
+                      containerStyle.gap = gap;
+                      containerStyle.alignItems = align;
+                    } else if (dir === "grid") {
+                      containerStyle.display = "grid";
+                      containerStyle.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+                      containerStyle.gap = gap;
+                    } else {
+                      // stack
+                      containerStyle.display = "flex";
+                      containerStyle.flexDirection = "column";
+                      containerStyle.gap = gap;
+                      containerStyle.alignItems = align;
+                    }
+
+                    return (
+                      <div style={containerStyle}>
+                        {(el.children ?? []).map((child) => {
+                          if (dir === "free") {
+                            // Absolute positioning within the frame
+                            const childDragged = dragElementId === child.id;
+                            const cox = childDragged ? (dragOffset?.dx ?? 0) : 0;
+                            const coy = childDragged ? (dragOffset?.dy ?? 0) : 0;
+                            return (
+                              <div
+                                key={child.id}
+                                data-element-id={child.id}
+                                className="absolute overflow-hidden"
+                                style={{
+                                  left: (child.x ?? 0) + cox,
+                                  top: (child.y ?? 0) + coy,
+                                  width: child.width ?? 100,
+                                  height: child.height ?? 100,
+                                  pointerEvents: "auto",
+                                  cursor: "default",
+                                }}
+                                onClick={(e) => { e.stopPropagation(); setSelectedId(child.id); }}
+                              >
+                                <SiteElementRenderer element={child} products={products} />
+                              </div>
+                            );
+                          }
+                          return (
+                            <div
+                              key={child.id}
+                              data-element-id={child.id}
+                              className="overflow-hidden"
+                              style={{
+                                flex: dir === "row" ? "1 1 0%" : undefined,
+                                minWidth: dir === "row" ? 0 : undefined,
+                                minHeight: child.height ?? undefined,
+                                pointerEvents: "auto",
+                                cursor: "default",
+                              }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedId(child.id); }}
+                            >
+                              <SiteElementRenderer element={child} products={products} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <SiteElementRenderer element={el} products={products} />
+                )}
               </div>
-            ) : activeDragData?.source === "palette" && activeDragData.elementType ? (
-              <div className="flex items-center gap-2 bg-white border border-blue-300 px-3 py-2 rounded-sm shadow-lg text-sm font-medium text-blue-700">
-                <Plus className="h-4 w-4" />
-                <span>{PALETTE.flat().find((p) => p.type === activeDragData.elementType)?.label ?? activeDragData.elementType}</span>
-              </div>
-            ) : activeDragData?.source === "library" && activeDragData.comp ? (
-              <div className="flex items-center gap-2 bg-white border border-stone-200 px-3 py-2 rounded-sm shadow-lg text-sm">
-                <BookMarked className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{activeDragData.comp.name}</span>
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+              </React.Fragment>
+            );
+              });
+          })()}
+        </CanvasViewport>
+
+        {/* Drag overlay (palette/library drops) */}
+        <DragOverlay dropAnimation={null}>
+          {activeDragData?.source === "palette" && activeDragData.elementType ? (
+            <div className="flex items-center gap-2 bg-white border border-blue-300 px-3 py-2 rounded-sm shadow-lg text-sm font-medium text-blue-700">
+              <Plus className="h-4 w-4" />
+              <span>{PALETTE.flat().find((p) => p.type === activeDragData.elementType)?.label ?? activeDragData.elementType}</span>
+            </div>
+          ) : activeDragData?.source === "library" && activeDragData.comp ? (
+            <div className="flex items-center gap-2 bg-white border border-stone-200 px-3 py-2 rounded-sm shadow-lg text-sm">
+              <BookMarked className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{activeDragData.comp.name}</span>
+            </div>
+          ) : null}
+        </DragOverlay>
+
+        {/* Context menu */}
+        {contextMenu && (
+          <CanvasContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            onClose={() => setContextMenu(null)}
+            items={selectedId
+              ? buildElementMenuItems({
+                  onCut: cutElement,
+                  onCopy: copyElement,
+                  onPaste: pasteElement,
+                  onDuplicate: () => {
+                    const el = findInTree(elements, selectedId);
+                    if (!el) return;
+                    pushUndo();
+                    const copy = deepCopyElement(el);
+                    copy.x = (copy.x ?? 0) + 20;
+                    copy.y = (copy.y ?? 0) + 20;
+                    setElements((prev) => [...prev, copy]);
+                    setSelectedId(copy.id);
+                    setDirty(true);
+                  },
+                  onBringForward: bringForward,
+                  onSendBackward: sendBackward,
+                  onBringToFront: bringToFront,
+                  onSendToBack: sendToBack,
+                  onDelete: () => {
+                    const selEl = findInTree(elements, selectedId);
+                    if (selEl?.props?.locked) return;
+                    pushUndo();
+                    const [newEls] = removeFromTree(elements, selectedId);
+                    setElements(newEls);
+                    setSelectedId(null);
+                    setDirty(true);
+                  },
+                  hasClipboard: !!clipboard.current,
+                })
+              : buildCanvasMenuItems({
+                  onPaste: pasteElement,
+                  hasClipboard: !!clipboard.current,
+                })
+            }
+          />
+        )}
 
         {/* Right: Properties panel */}
         <aside className="w-60 border-l border-border bg-background overflow-hidden shrink-0 flex flex-col">
@@ -2559,6 +3580,11 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
             <PropertiesPanel
               element={selectedElement}
               onChange={(k, v) => updateElementProp(selectedElement.id, k, v)}
+              onPositionChange={(updates) => {
+                pushUndo();
+                setElements((prev) => prev.map((el) => el.id === selectedElement.id ? { ...el, ...updates } : el));
+                setDirty(true);
+              }}
               products={products}
               orgId={organizationId ?? ""}
               onSaveToLibrary={() => { setSaveDialogName(selectedElement.type); setShowSaveDialog(true); }}
@@ -2566,12 +3592,196 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               savedComponents={savedComponents}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <p className="text-xs text-muted-foreground">Select an element on the canvas to edit its properties</p>
+            <div className="h-full flex flex-col">
+              <div className="flex items-center border-b border-border shrink-0">
+                <span className="px-3 py-2 text-[11px] font-medium text-foreground border-b-2 border-foreground">Page</span>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {/* General */}
+                <div className="p-3 border-b border-border space-y-3">
+                  <span className="text-[11px] font-semibold">General</span>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-muted-foreground">Page title</span>
+                    <input
+                      type="text"
+                      value={pages.find((p) => p.id === activePageId)?.name ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPages((prev) => prev.map((p) => p.id === activePageId ? { ...p, name: val } : p));
+                      }}
+                      className="w-full rounded-sm bg-muted/50 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p className="text-[9px] text-muted-foreground/60">This appears before the site title</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-muted-foreground">Slug</span>
+                    <input
+                      type="text"
+                      value={pages.find((p) => p.id === activePageId)?.slug ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+                        setPages((prev) => prev.map((p) => p.id === activePageId ? { ...p, slug: val } : p));
+                      }}
+                      className="w-full rounded-sm bg-muted/50 px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-muted-foreground">Page meta description</span>
+                    <textarea
+                      rows={3}
+                      placeholder="Describe this page for search engines..."
+                      className="w-full rounded-sm bg-muted/50 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring resize-y"
+                    />
+                    <p className="text-[9px] text-muted-foreground/60">Leave blank to use the site description</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-muted-foreground">Language</span>
+                    <input
+                      type="text"
+                      placeholder="en"
+                      className="w-full rounded-sm bg-muted/50 px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p className="text-[9px] text-muted-foreground/60">Enter one ISO language code</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </aside>
       </div>
+      </DndContext>
+
+      {/* Bottom dock — element palette */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg px-2 py-1.5">
+        {PALETTE.flat().map((item) => (
+          <button
+            key={item.type}
+            onClick={() => addElement(item.type)}
+            title={item.label}
+            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            {item.icon}
+            <span className="text-[8px] leading-none">{item.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Settings modal */}
+      {showSettings && site && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowSettings(false)} />
+          <div className="relative bg-background border border-border rounded-sm w-full max-w-md shadow-lg z-10 overflow-y-auto max-h-[80vh]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background">
+              <h2 className="font-semibold text-sm flex items-center gap-2"><Settings className="h-4 w-4" /> Site Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="p-4 space-y-6">
+              {/* Site info */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">General</p>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">Site Name</span>
+                  <input
+                    type="text"
+                    value={site.name}
+                    onChange={(e) => setSite((prev) => prev ? { ...prev, name: e.target.value } : prev)}
+                    onBlur={() => updateSite(siteId, { name: site.name }).catch(console.error)}
+                    className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">Slug</span>
+                  <input
+                    type="text"
+                    value={site.slug}
+                    onChange={(e) => setSite((prev) => prev ? { ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") } : prev)}
+                    onBlur={() => updateSite(siteId, { slug: site.slug }).catch(console.error)}
+                    className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm font-mono outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">Custom Domain</span>
+                  <input
+                    type="text"
+                    value={site.customDomain ?? ""}
+                    onChange={(e) => setSite((prev) => prev ? { ...prev, customDomain: e.target.value || null } : prev)}
+                    onBlur={() => updateSite(siteId, { customDomain: site.customDomain }).catch(console.error)}
+                    placeholder="yourdomain.com"
+                    className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm font-mono outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+
+              {/* Features */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Features</p>
+                <p className="text-[10px] text-muted-foreground">Enable features to auto-create pages with pre-built elements.</p>
+                {([
+                  { key: "auth" as const, label: "Authentication", desc: "Login, Signup, Forgot Password" },
+                  { key: "products" as const, label: "Products", desc: "Product listing page" },
+                  { key: "cart" as const, label: "Shopping Cart", desc: "Cart page" },
+                  { key: "checkout" as const, label: "Checkout", desc: "Checkout flow" },
+                  { key: "subscriptions" as const, label: "Subscriptions", desc: "Membership plans" },
+                  { key: "rewards" as const, label: "Rewards", desc: "Points & rewards program" },
+                  { key: "booking" as const, label: "Booking", desc: "Reservations" },
+                  { key: "account" as const, label: "Customer Account", desc: "Dashboard with orders & membership" },
+                ]).map((feat) => (
+                  <label key={feat.key} className="flex items-center gap-3 py-1.5 border-b border-border/50 last:border-0 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={site.features?.[feat.key] ?? false}
+                      onChange={async (e) => {
+                        const enabled = e.target.checked;
+                        const newFeatures = { ...(site.features ?? {}), [feat.key]: enabled } as SiteFeatures;
+
+                        if (!enabled) {
+                          const templates = getBuiltInPages().filter((t) => t.featureKey === feat.key);
+                          const relatedPages = pages.filter((p) => templates.some((t) => t.slug === p.slug));
+                          if (relatedPages.length > 0) {
+                            const names = relatedPages.map((p) => p.name).join(", ");
+                            const shouldDelete = confirm(`Delete the ${names} page${relatedPages.length > 1 ? "s" : ""}? This cannot be undone.`);
+                            if (shouldDelete) {
+                              for (const rp of relatedPages) {
+                                try { await deletePage(rp.id); } catch (err) { console.error(err); }
+                              }
+                              setPages((prev) => prev.filter((p) => !relatedPages.some((rp) => rp.id === p.id)));
+                              if (relatedPages.some((rp) => rp.id === activePageId)) {
+                                const remaining = pages.filter((p) => !relatedPages.some((rp) => rp.id === p.id));
+                                if (remaining.length > 0) handlePageSwitch(remaining[0].id);
+                              }
+                            }
+                          }
+                        }
+
+                        setSite((prev) => prev ? { ...prev, features: newFeatures } : prev);
+                        try { await updateSite(siteId, { features: newFeatures }); } catch (err) { console.error(err); }
+
+                        if (enabled) {
+                          const templates = getBuiltInPages().filter((t) => t.featureKey === feat.key);
+                          for (const tmpl of templates) {
+                            if (!pages.some((p) => p.slug === tmpl.slug)) {
+                              try {
+                                const page = await createPage(siteId, tmpl.name, tmpl.slug, pages.length);
+                                await updatePage(page.id, { elements: tmpl.elements });
+                                setPages((prev) => [...prev, { ...page, elements: tmpl.elements }]);
+                              } catch (err) { console.error(err); }
+                            }
+                          }
+                        }
+                      }}
+                      className="rounded accent-blue-500"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium">{feat.label}</span>
+                      <p className="text-xs text-muted-foreground">{feat.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Theme modal */}
       {showTheme && site && (

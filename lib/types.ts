@@ -352,6 +352,7 @@ export type ElementType =
   | "pricing-table" | "testimonial" | "faq" | "gallery"
   | "custom-html" | "login-form" | "code-block" | "membership-widget"
   | "cart" | "checkout" | "reward" | "icon"
+  | "viewport"
   | "container"; // legacy alias — do not use in new code
 
 export interface SiteElement {
@@ -359,6 +360,11 @@ export interface SiteElement {
   type: ElementType;
   props: Record<string, unknown>;
   children?: SiteElement[];
+  // Free-form canvas position (editor-only, ignored by published renderer)
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface SitePage {
@@ -371,12 +377,24 @@ export interface SitePage {
   createdAt: string;
 }
 
+export interface SiteFeatures {
+  auth: boolean;
+  cart: boolean;
+  checkout: boolean;
+  products: boolean;
+  subscriptions: boolean;
+  rewards: boolean;
+  booking: boolean;
+  account: boolean;
+}
+
 export interface Site {
   id: string;
   organizationId: string;
   name: string;
   slug: string;
   theme: SiteTheme;
+  features: SiteFeatures;
   published: boolean;
   customDomain: string | null;
   createdAt: string;

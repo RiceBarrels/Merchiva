@@ -7,7 +7,7 @@ import { DynamicIcon } from "@/components/icon-picker";
 
 // ─── Theme CSS vars ───────────────────────────────────────────────────────────
 
-function themeVars(theme: SiteTheme): React.CSSProperties {
+export function themeVars(theme: SiteTheme): React.CSSProperties {
   return {
     "--sr-primary": theme.primary,
     "--sr-secondary": theme.secondary,
@@ -197,7 +197,9 @@ function RenderLayout({ props, children }: { props: Record<string, unknown>; chi
     minHeight: "40px",
   };
 
-  if (direction === "row") {
+  if (direction === "free") {
+    style.position = "relative";
+  } else if (direction === "row") {
     style.display = "flex";
     style.flexDirection = "row";
     style.flexWrap = "wrap";
@@ -617,7 +619,8 @@ export function SiteElementRenderer({
       case "divider":   return <RenderDivider props={props} />;
       case "spacer":    return <RenderSpacer props={props} />;
       case "layout":
-      case "container": return <RenderLayout props={props} children={children} />;
+      case "container":
+      case "viewport":  return <RenderLayout props={props} children={children} />;
       case "columns":   return <RenderColumns props={props} />;
       case "product-card":   return <RenderProductCard props={props} products={products} siteSlug={siteSlug} />;
       case "booking-form":   return <RenderBookingForm props={props} />;

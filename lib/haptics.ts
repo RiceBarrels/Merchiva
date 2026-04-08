@@ -1,18 +1,20 @@
-import { Capacitor } from '@capacitor/core';
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let nativeHaptics: any = null;
 
-async function getNativeHaptics() {
-  if (Capacitor.isNativePlatform()) {
-    const { Haptics } = await import('@capacitor/haptics');
-    return Haptics;
-  }
-  return null;
+function initHaptics() {
+  try {
+    const { Capacitor } = require('@capacitor/core');
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/haptics').then(
+        mod => { nativeHaptics = mod.Haptics; },
+        () => {}
+      );
+    }
+  } catch {}
 }
 
 if (typeof window !== 'undefined') {
-  getNativeHaptics().then(h => { nativeHaptics = h; });
+  initHaptics();
 }
 
 export async function hapticLight() {

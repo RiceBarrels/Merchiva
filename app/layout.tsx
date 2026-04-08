@@ -38,15 +38,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="BizOps" />
       </head>
       <body className="h-full bg-background text-foreground">
-        {/* Safe area gradient: solid bg → transparent, covers the notch/status bar */}
-        <div
-          className="fixed top-0 left-0 right-0 z-999 pointer-events-none"
-
-          style={{
-            height: "calc(env(safe-area-inset-top, 0px) + 12px)",
-            background: "linear-gradient(to bottom, var(--background) 60%, transparent)",
-          }}
-        />
         <ServiceWorkerRegistrar />
         {children}
       </body>

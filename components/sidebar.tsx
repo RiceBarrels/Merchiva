@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, createContext, useContext } from "react";
 
+
 // ─── Sidebar open context — allows child components (e.g. builder toolbar) to open the sidebar ──
 const SidebarOpenContext = createContext<(() => void) | null>(null);
 export function useSidebarOpen(): () => void {
@@ -42,6 +43,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { createOrganization, addOwnerMember, upsertUserProfile } from "@/lib/db/team";
 import { clearCache } from "@/lib/cache";
 import type { Permissions } from "@/lib/types";
+import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 40;
@@ -321,6 +323,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const isOpenRef = useRef(false);
   const draggingRef = useRef(false);
 
+  const safeAreaInsets = getSafeAreaInsets();
+  const screenRadius = getScreenCornerRadius();
+
   // Keep refs in sync with state
   isOpenRef.current = isOpen;
   draggingRef.current = dragging;
@@ -461,10 +466,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
                 setIsOpen((v) => !v);
               }
             }}
-            className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95"
+            className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4"
             style={{
-              left: 14,
-              top: 14,
+              left: 0,
+              top: 0 + safeAreaInsets.top,
               zIndex: hasDialog ? 200 : 50,
               transform: hasDialog ? "none" : `translateX(${translateX}px)`,
               transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
@@ -502,7 +507,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             <motion.div
               key={dialogTitle}
               className="fixed"
-              style={{ top: 22, left: 64, zIndex: 201 }}
+              style={{ top: 22 + safeAreaInsets.top, left: 64, zIndex: 201 }}
               initial={{ opacity: 0, scale: 0.3, x: -30 }}
               animate={{
                 opacity: 1 - dialogSwipe,
@@ -529,6 +534,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             transform: `translateX(${sidebarTranslateX}px) scale(${sidebarScale})`,
             opacity: sidebarOpacity,
             transformOrigin: "left center",
+            paddingTop: safeAreaInsets.top,
             transition: transitionStyle,
           }}
         >
@@ -539,23 +545,29 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         <div
           id="mobile-content"
           ref={contentRef}
-          className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden"
+          className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden border"
           style={{
             transform: `translateX(${translateX}px)`,
             transition: transitionStyle,
             ...(translateX > 0 && {
               boxShadow: "-4px 0 16px rgba(0, 0, 0, 0.15)",
-              borderRadius: "38px 0 0 38px",
-            }),
+              borderRadius: `${screenRadius || 38}px 0 0 ${screenRadius || 38}px`,
+            })
           }}
         >
           {/* Tap-to-close layer when sidebar is open */}
-          {isOpen && (
-            <div
-              className="absolute inset-0 z-10"
-              onClick={() => setIsOpen(false)}
-            />
-          )}
+          <AnimatePresence>
+            {isOpen && (
+              <motion.div
+                className="absolute inset-0 z-10 backdrop-blur-sm bg-foreground/20"
+                onClick={() => setIsOpen(false)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: translateX / 280 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              />
+            )}
+          </AnimatePresence>
 
           {/* Builder pages: no top spacer, no scroll wrapper — builder manages its own layout */}
           {isBuilderPage ? (
@@ -564,7 +576,14 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             </main>
           ) : (
             <main className="flex-1 overflow-y-auto">
-              <div className="h-12" />
+              {/* Safe area gradient: solid bg → transparent, covers the notch/status bar */}
+              <div
+                className="sticky top-0 left-0 right-0 pointer-events-none"
+                style={{
+                  height: safeAreaInsets.top + 48,
+                  background: "linear-gradient(to bottom, var(--background) 60%, transparent)",
+                }}
+              />
               {(isMobile === null || isMobile) && children}
             </main>
           )}
