@@ -26,6 +26,7 @@ export interface Permissions {
   staffing: PermissionSection;
   products: PermissionSection;
   settings: PermissionSection;
+  pos?: PermissionSection;
 }
 
 export type OrgRole = "owner" | "manager" | "staff";
@@ -484,7 +485,39 @@ export interface SiteBooking {
   createdAt: string;
 }
 
-// SiteElementType alias for backward compatibility
+// ─── POS / Payments ───────────────────────────────────────────────────────────
+
+export interface CartItem {
+  id: string;        // product id, or "custom-{uid}" for manual entries
+  name: string;
+  price: number;
+  quantity: number;
+  category?: string;
+}
+
+export type PaymentMethod = "card" | "cash" | "other";
+export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
+
+export interface Payment {
+  id: string;
+  organizationId: string;
+  userId?: string | null;
+  orderId?: string | null;
+  amount: number;
+  currency: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  processorId?: string | null;
+  processorResponse?: Record<string, unknown> | null;
+  customerName?: string | null;
+  notes?: string | null;
+  items?: CartItem[] | null;
+  taxAmount: number;
+  discountAmount: number;
+  createdAt: string;
+}
+
+// ─── SiteElementType alias for backward compatibility
 export type SiteElementType = ElementType;
 
 // ─── Component Library ────────────────────────────────────────────────────────

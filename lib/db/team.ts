@@ -41,6 +41,7 @@ export function defaultPermissions(): Permissions {
     staffing: { view: true, edit: false },
     products: { view: true, edit: false },
     settings: { view: true },
+    pos: { view: true, edit: false },
   };
 }
 
@@ -52,6 +53,7 @@ export function ownerPermissions(): Permissions {
     staffing: { view: true, edit: true },
     products: { view: true, edit: true },
     settings: { view: true },
+    pos: { view: true, edit: true },
   };
 }
 
