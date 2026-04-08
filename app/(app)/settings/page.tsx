@@ -19,6 +19,7 @@ import {
   Users,
   Star,
   UserPlus,
+  CreditCard,
 } from "lucide-react";
 import {
   Card,
@@ -140,6 +141,12 @@ export default function SettingsPage() {
   const [cloverSyncing, setCloverSyncing] = useState(false);
   const [cloverSyncResult, setCloverSyncResult] = useState<string | null>(null);
 
+  // Payment settings
+  const [paymentTaxRate, setPaymentTaxRate] = useState("0");
+  const [paymentCurrency, setPaymentCurrency] = useState("USD");
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentSaved, setPaymentSaved] = useState(false);
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -176,6 +183,15 @@ export default function SettingsPage() {
       })
       .catch((err) => console.error("Failed to load settings:", err))
       .finally(() => setLoading(false));
+
+    import("@/lib/db/payments").then(({ getPaymentConfig }) => {
+      getPaymentConfig()
+        .then(({ taxRate, currency }) => {
+          setPaymentTaxRate(String(taxRate));
+          setPaymentCurrency(currency);
+        })
+        .catch(() => {});
+    });
   }, []);
 
   // Restore dialogs from URL (?dialogs=Team,Invite)
@@ -302,6 +318,22 @@ export default function SettingsPage() {
       setTimeout(() => setProfileSaved(false), 2500);
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleSavePaymentSettings = async () => {
+    if (!userId) return;
+    setSavingPayment(true);
+    try {
+      const { upsertPaymentConfig } = await import("@/lib/db/payments");
+      await upsertPaymentConfig(userId, {
+        taxRate: parseFloat(paymentTaxRate) || 0,
+        currency: paymentCurrency,
+      });
+      setPaymentSaved(true);
+      setTimeout(() => setPaymentSaved(false), 2500);
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -667,6 +699,64 @@ export default function SettingsPage() {
           </button>
         )}
       </div>
+
+      {/* ─── Payments ─────────────────────────────────────── */}
+      {isAdmin && (
+      <>
+      <div className="bg-muted/40 px-4 py-2">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Payments</p>
+      </div>
+      <div className="divide-y divide-border bg-card">
+        <div className="flex items-start gap-3 px-4 py-3.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-100 shrink-0">
+            <CreditCard className="h-4 w-4 text-stone-600" />
+          </div>
+          <div className="flex-1 space-y-3">
+            <div>
+              <p className="text-sm font-medium">Card Payments</p>
+              <p className="text-xs text-muted-foreground">Card processing is configured by the app administrator.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Tax Rate (%)</label>
+                <Input
+                  type="number"
+                  value={paymentTaxRate}
+                  onChange={(e) => setPaymentTaxRate(e.target.value)}
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  placeholder="0"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Currency</label>
+                <Select value={paymentCurrency} onValueChange={(v) => setPaymentCurrency(v ?? paymentCurrency)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD — US Dollar</SelectItem>
+                    <SelectItem value="CAD">CAD — Canadian Dollar</SelectItem>
+                    <SelectItem value="EUR">EUR — Euro</SelectItem>
+                    <SelectItem value="GBP">GBP — British Pound</SelectItem>
+                    <SelectItem value="AUD">AUD — Australian Dollar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <button
+              onClick={handleSavePaymentSettings}
+              disabled={savingPayment}
+              className="flex items-center gap-1.5 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50 transition-colors"
+            >
+              {savingPayment ? <Loader2 className="h-3 w-3 animate-spin" /> : paymentSaved ? <CheckCircle2 className="h-3 w-3 text-emerald-500" /> : <Save className="h-3 w-3" />}
+              {paymentSaved ? "Saved" : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+      </>
+      )}
 
       {/* ─── AI ───────────────────────────────────────────── */}
       <div className="bg-muted/40 px-4 py-2">

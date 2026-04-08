@@ -30,6 +30,7 @@ import {
   Loader2,
   Menu,
   MessageSquare,
+  MonitorSmartphone,
   ArrowLeft,
   ArrowRight,
 } from "lucide-react";
@@ -63,6 +64,7 @@ const navItems: NavItem[] = [
   { label: "Sales Prediction", href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
   { label: "Staffing",         href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
   { label: "Products",         href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
+  { label: "POS",              href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
   { label: "Chat",             href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { label: "Website",          href: "/builder",     icon: Globe },
   { label: "Membership",       href: "/membership",  icon: Crown },
