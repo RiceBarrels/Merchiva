@@ -79,8 +79,31 @@ export async function getPayments(organizationId: string, limit = 50): Promise<P
   return (data ?? []).map(fromDb);
 }
 
-export async function getRecentPayments(organizationId: string, limit = 30): Promise<Payment[]> {
-  return getPayments(organizationId, limit);
+export async function getRecentPayments(
+  organizationId: string,
+  limit = 30,
+  offset = 0,
+  search?: string
+): Promise<Payment[]> {
+  const supabase = createClient();
+  let query = supabase
+    .from("payments")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .gte("amount", 0) // exclude negative audit records
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (search && search.trim()) {
+    const term = `%${search.trim()}%`;
+    query = query.or(
+      `customer_name.ilike.${term},processor_id.ilike.${term},notes.ilike.${term}`
+    );
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map(fromDb);
 }
 
 export async function updatePaymentStatus(
