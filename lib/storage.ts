@@ -1,30 +1,12 @@
-import { createClient } from "@/lib/supabase/client";
+import { uploadFiles } from "@/lib/uploadthing";
 
-const BUCKET = "site-uploads";
-
-export async function uploadSiteImage(file: File, orgId: string): Promise<string> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
-  const path = `${user.id}/${orgId}/${Date.now()}.${ext}`;
-
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: false });
-  if (error) throw error;
-
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+export async function uploadSiteImage(file: File): Promise<string> {
+  const [res] = await uploadFiles("siteImage", { files: [file] });
+  return res.ufsUrl;
 }
 
-export async function deleteSiteImage(url: string): Promise<void> {
-  const supabase = createClient();
-  // Public URL format: .../storage/v1/object/public/site-uploads/<path>
-  const marker = `/object/public/${BUCKET}/`;
-  const idx = url.indexOf(marker);
-  if (idx === -1) return;
-  const path = url.slice(idx + marker.length);
-  await supabase.storage.from(BUCKET).remove([path]);
+// No-op: UploadThing file deletion is handled server-side via UTApi if needed
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function deleteSiteImage(_url: string): Promise<void> {
+  // Files are automatically managed by UploadThing
 }

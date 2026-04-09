@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import type { ChatConversation, ChatMessage, ChatMember } from "@/lib/types";
+import { uploadFiles } from "@/lib/uploadthing";
 
 // ─── Conversations ──────────────────────────────────────────────────────────
 
@@ -228,27 +229,13 @@ export async function sendMessage(
 export async function uploadChatFile(
   file: File
 ): Promise<{ url: string; type: string; name: string }> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const ext = file.name.split(".").pop() ?? "bin";
-  const path = `${user.id}/${Date.now()}.${ext}`;
-
-  const { error } = await supabase.storage
-    .from("chat-attachments")
-    .upload(path, file);
-  if (error) throw new Error(error.message);
-
-  const { data: { publicUrl } } = supabase.storage
-    .from("chat-attachments")
-    .getPublicUrl(path);
+  const [res] = await uploadFiles("chatFile", { files: [file] });
 
   let type = "file";
   if (file.type.startsWith("image/")) type = "image";
   else if (file.type.startsWith("video/")) type = "video";
 
-  return { url: publicUrl, type, name: file.name };
+  return { url: res.ufsUrl, type, name: file.name };
 }
 
 // ─── Reactions ──────────────────────────────────────────────────────────────

@@ -61,6 +61,7 @@ import type { OrgMember, OrgInvitation, OrgRole, Permissions } from "@/lib/types
 import { defaultPermissions } from "@/lib/db/team";
 import { usePermissions } from "@/lib/context/permissions";
 import { hapticSuccess } from "@/lib/haptics";
+import { uploadFiles } from "@/lib/uploadthing";
 
 interface SquareLocation {
   id: string;
@@ -341,32 +342,15 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
 
-    // Validate
     if (!file.type.startsWith("image/")) return;
-    if (file.size > 5 * 1024 * 1024) return; // 5MB max
+    if (file.size > 4 * 1024 * 1024) return; // 4MB max
 
     setUploadingAvatar(true);
     try {
+      const [res] = await uploadFiles("avatar", { files: [file] });
+      const url = res.ufsUrl;
+
       const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${userId}/avatar.${ext}`;
-
-      // Upload (upsert)
-      const { error: uploadErr } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, { upsert: true });
-
-      if (uploadErr) throw uploadErr;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(path);
-
-      // Add cache buster
-      const url = `${publicUrl}?t=${Date.now()}`;
-
-      // Save to profile
       await supabase
         .from("user_profiles")
         .update({ avatar_url: url })
