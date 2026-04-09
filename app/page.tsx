@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { LoginForm } from "@/components/login-form";
 
 export default function Home() {
@@ -11,16 +10,13 @@ export default function Home() {
   const [needsLogin, setNeedsLogin] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        router.replace("/dashboard");
-      } else {
-        setNeedsLogin(true);
-      }
-    }).catch(() => {
+    const token = localStorage.getItem("stdb_token");
+    if (token) {
+      router.replace("/dashboard");
+    } else {
       setNeedsLogin(true);
-    }).finally(() => setChecking(false));
+      setChecking(false);
+    }
   }, [router]);
 
   if (checking) return null;
