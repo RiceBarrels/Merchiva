@@ -19,6 +19,9 @@ function fromDb(row: any): Payment {
     items: row.items ?? null,
     taxAmount: Number(row.tax_amount ?? 0),
     discountAmount: Number(row.discount_amount ?? 0),
+    refundAmount: row.refund_amount != null ? Number(row.refund_amount) : null,
+    refundReason: row.refund_reason ?? null,
+    refundedAt: row.refunded_at ?? null,
     createdAt: row.created_at,
   };
 }
@@ -76,6 +79,10 @@ export async function getPayments(organizationId: string, limit = 50): Promise<P
   return (data ?? []).map(fromDb);
 }
 
+export async function getRecentPayments(organizationId: string, limit = 30): Promise<Payment[]> {
+  return getPayments(organizationId, limit);
+}
+
 export async function updatePaymentStatus(
   id: string,
   status: PaymentStatus,
@@ -88,6 +95,31 @@ export async function updatePaymentStatus(
   if (processorResponse !== undefined) payload.processor_response = processorResponse;
   const { error } = await supabase.from("payments").update(payload).eq("id", id);
   if (error) throw error;
+}
+
+// ─── Refund ───────────────────────────────────────────────────────────────────
+
+export interface RefundResult {
+  success: boolean;
+  error?: string;
+  payment?: Payment;
+}
+
+export async function refundPayment(
+  paymentId: string,
+  amount?: number,
+  reason?: string
+): Promise<RefundResult> {
+  const res = await fetch("/api/payments/refund", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paymentId, amount, reason }),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    return { success: false, error: json.error ?? "Refund failed" };
+  }
+  return { success: true, payment: json.payment };
 }
 
 // ─── Payment settings (tax rate + currency) ───────────────────────────────────

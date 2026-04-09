@@ -514,6 +514,9 @@ export interface Payment {
   items?: CartItem[] | null;
   taxAmount: number;
   discountAmount: number;
+  refundAmount?: number | null;
+  refundReason?: string | null;
+  refundedAt?: string | null;
   createdAt: string;
 }
 
