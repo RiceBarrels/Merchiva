@@ -4,10 +4,15 @@ import { useState, useEffect } from "react";
 import { Zap, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "react-oidc-context";
 import { hapticSuccess, hapticLight } from "@/lib/haptics";
+import { generatePKCE, savePKCE } from "@/lib/pkce";
+import {
+  SPACETIMEAUTH_AUTHORITY,
+  SPACETIMEAUTH_CLIENT_ID,
+  SPACETIMEAUTH_REDIRECT_URI,
+} from "@/lib/spacetimedb/auth-config";
+
 export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onSignup?: () => void }) {
-  const auth = useAuth();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +25,7 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
     setIsMobile(isTouch);
   }, []);
 
-  // Poll localStorage for token after sheet opens
+  // Poll localStorage for token after sheet opens (mobile)
   useEffect(() => {
     if (!showSheet) return;
     const interval = setInterval(() => {
@@ -35,47 +40,64 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
     return () => clearInterval(interval);
   }, [showSheet, onSuccess]);
 
+  // Poll for token when new tab is opened (desktop)
+  useEffect(() => {
+    if (!loading || isMobile) return;
+    const interval = setInterval(() => {
+      const token = localStorage.getItem("stdb_token");
+      if (token) {
+        clearInterval(interval);
+        setLoading(false);
+        hapticSuccess();
+        onSuccess?.();
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [loading, isMobile, onSuccess]);
+
+  const buildAuthUrl = async (hint?: string) => {
+    const { verifier, challenge } = await generatePKCE();
+    const nonce = crypto.randomUUID();
+    savePKCE(verifier, nonce);
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: SPACETIMEAUTH_CLIENT_ID,
+      redirect_uri: SPACETIMEAUTH_REDIRECT_URI,
+      scope: "openid profile email",
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+      nonce,
+    });
+    if (hint) params.set("login_hint", hint);
+
+    return `${SPACETIMEAUTH_AUTHORITY}/auth?${params.toString()}`;
+  };
+
   const handleSignin = async () => {
     setLoading(true);
     setError(null);
     hapticLight();
 
-    const authority = process.env.NEXT_PUBLIC_SPACETIMEAUTH_AUTHORITY;
-    const clientId = process.env.NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID;
+    try {
+      const url = await buildAuthUrl(email.trim() || undefined);
 
-    console.log("[BizOps auth] authority:", authority, "clientId:", clientId);
-
-    if (!authority || !clientId) {
-      setError("Authentication not configured. Please contact support.");
-      setLoading(false);
-      return;
-    }
-
-    if (isMobile) {
-      // Mobile: bottom sheet iframe — implicit flow (id_token in URL hash)
-      const redirectUri = window.location.origin + "/auth/callback";
-      const hint = email.trim();
-      const nonce = crypto.randomUUID();
-      const url =
-        `${authority}/auth?response_type=id_token&client_id=${clientId}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+profile+email` +
-        `&nonce=${nonce}` +
-        (hint ? `&login_hint=${encodeURIComponent(hint)}` : "");
-      setAuthUrl(url);
-      setShowSheet(true);
-      setLoading(false);
-    } else {
-      // Desktop: direct redirect — most reliable, no popup blockers
-      try {
-        await auth.signinRedirect({
-          extraQueryParams: email.trim() ? { login_hint: email.trim() } : {},
-        });
-        // signinRedirect navigates away; loading stops naturally on return
-      } catch (err) {
-        console.error("[BizOps auth] signinRedirect failed:", err);
-        setError("Failed to connect to authentication. Please try again.");
+      if (isMobile) {
+        setAuthUrl(url);
+        setShowSheet(true);
         setLoading(false);
+      } else {
+        // Open in new tab; poll localStorage for the token
+        const newTab = window.open(url, "_blank");
+        if (!newTab) {
+          // Popup blocked — fall back to redirect
+          window.location.href = url;
+        }
+        // loading stays true; polling effect above will clear it
       }
+    } catch {
+      setError("Failed to start sign in. Please try again.");
+      setLoading(false);
     }
   };
 

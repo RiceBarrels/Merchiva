@@ -1,49 +1,78 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "react-oidc-context";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { loadPKCE, clearPKCE } from "@/lib/pkce";
+import {
+  SPACETIMEAUTH_AUTHORITY,
+  SPACETIMEAUTH_CLIENT_ID,
+  SPACETIMEAUTH_REDIRECT_URI,
+} from "@/lib/spacetimedb/auth-config";
 
 export default function AuthCallback() {
-  const auth = useAuth();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Implicit flow: id_token is in the URL hash — handle it immediately
-    // before react-oidc-context even processes it, as a reliable fallback.
-    const hash = window.location.hash;
-    if (hash.includes("id_token=")) {
-      const params = new URLSearchParams(hash.substring(1));
-      const idToken = params.get("id_token");
-      if (idToken) {
-        localStorage.setItem("stdb_token", idToken);
-        window.location.replace("/dashboard");
-        return;
-      }
-    }
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const errorParam = params.get("error");
+    const errorDesc = params.get("error_description");
 
-    // react-oidc-context has processed the callback
-    if (auth.isAuthenticated && auth.user?.id_token) {
-      localStorage.setItem("stdb_token", auth.user.id_token);
-      router.replace("/dashboard");
+    if (errorParam) {
+      setError(errorDesc ?? errorParam);
       return;
     }
 
-    if (auth.error) {
-      setError(auth.error.message || "Authentication failed");
+    if (!code) {
+      setError("No authorization code received.");
       return;
     }
 
-    const timer = setTimeout(() => {
-      if (!auth.isAuthenticated) {
-        setError("Authentication timed out. Please try again.");
-      }
-    }, 10000);
+    const pkce = loadPKCE();
+    if (!pkce) {
+      setError("Session expired. Please try signing in again.");
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [auth.isAuthenticated, auth.user, auth.error, router]);
+    const { verifier } = pkce;
+
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: SPACETIMEAUTH_REDIRECT_URI,
+      client_id: SPACETIMEAUTH_CLIENT_ID,
+      code_verifier: verifier,
+    });
+
+    fetch(`${SPACETIMEAUTH_AUTHORITY}/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    })
+      .then((res) => {
+        if (!res.ok) return res.text().then((t) => Promise.reject(new Error(t)));
+        return res.json();
+      })
+      .then((data: { id_token?: string; access_token?: string }) => {
+        clearPKCE();
+        const token = data.id_token ?? data.access_token;
+        if (!token) throw new Error("No token in response");
+        localStorage.setItem("stdb_token", token);
+        // If opened in a new tab, close it so the opener detects the token
+        if (window.opener) {
+          window.close();
+        } else {
+          router.replace("/dashboard");
+        }
+      })
+      .catch((err: Error) => {
+        clearPKCE();
+        setError(err.message || "Authentication failed");
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (error) {
     return (
@@ -52,7 +81,11 @@ export default function AuthCallback() {
         <button
           onClick={() => {
             localStorage.removeItem("stdb_token");
-            window.location.href = "/";
+            if (window.opener) {
+              window.close();
+            } else {
+              window.location.href = "/";
+            }
           }}
           className="px-4 py-2 text-sm border border-stone-300 rounded-sm hover:bg-stone-100"
         >

@@ -8,7 +8,7 @@ import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { getStoredToken } from "@/lib/spacetimedb/client";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
-import { useAuth } from "react-oidc-context";
+
 import { tables } from "@/lib/spacetimedb/generated";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
@@ -19,7 +19,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const [organizations, orgsReady] = useTable(tables.organization);
   const [timedOut, setTimedOut] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const auth = useAuth();
 
   const identity = stdb?.identity;
   const isReady = membersReady && orgsReady;
@@ -71,7 +70,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = () => {
     localStorage.removeItem("stdb_token");
-    auth.removeUser().catch(() => null);
     window.location.href = "/?logout=1";
   };
 
@@ -106,21 +104,13 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const auth = useAuth();
   const [hasToken, setHasToken] = useState(false);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (auth.isLoading) return;
-
-    // Sync OIDC id_token to localStorage so SpacetimeDB can use it
-    if (auth.isAuthenticated && auth.user?.id_token) {
-      localStorage.setItem("stdb_token", auth.user.id_token);
-    }
-
-    setHasToken(!!(auth.user?.id_token ?? getStoredToken()));
+    setHasToken(!!getStoredToken());
     setChecked(true);
-  }, [auth.isLoading, auth.isAuthenticated, auth.user]);
+  }, []);
 
   if (!checked) {
     return (

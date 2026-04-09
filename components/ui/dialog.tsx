@@ -444,10 +444,12 @@ function DialogContent({
   children,
   showCloseButton = true,
   noPadding = false,
+  side,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
   noPadding?: boolean
+  side?: "right"
 }) {
   // Detect mobile via matchMedia — initialize with correct value to avoid
   // false→true transition that causes MobileDialogPage double-mount
@@ -470,6 +472,40 @@ function DialogContent({
           <div className="w-full" style={{ height: getSafeAreaInsets().top }} />
           {children}
         </MobileDialogPage>
+      </DialogPortal>
+    );
+  }
+
+  // Desktop right-side panel (Sheet behaviour)
+  if (side === "right") {
+    return (
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Popup
+          data-slot="dialog-content"
+          className={cn(
+            "fixed right-0 top-0 bottom-0 z-50 h-full w-full max-w-md bg-background outline-none shadow-2xl duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right overflow-y-auto",
+            className
+          )}
+          {...props}
+        >
+          {children}
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              render={
+                <Button
+                  variant="ghost"
+                  className="absolute top-2 right-2"
+                  size="icon-sm"
+                />
+              }
+            >
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Popup>
       </DialogPortal>
     );
   }

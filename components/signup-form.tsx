@@ -3,8 +3,13 @@
 import { useState, useEffect } from "react";
 import { Zap, Loader2, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "react-oidc-context";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { generatePKCE, savePKCE } from "@/lib/pkce";
+import {
+  SPACETIMEAUTH_AUTHORITY,
+  SPACETIMEAUTH_CLIENT_ID,
+  SPACETIMEAUTH_REDIRECT_URI,
+} from "@/lib/spacetimedb/auth-config";
 
 interface SignupFormProps {
   onSuccess?: () => void;
@@ -12,7 +17,6 @@ interface SignupFormProps {
 }
 
 export function SignupForm({ onSuccess, onBack }: SignupFormProps) {
-  const auth = useAuth();
   const [showSheet, setShowSheet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -23,7 +27,7 @@ export function SignupForm({ onSuccess, onBack }: SignupFormProps) {
     setIsMobile(isTouch);
   }, []);
 
-  // Poll localStorage for token after sheet opens
+  // Poll localStorage for token after sheet opens (mobile)
   useEffect(() => {
     if (!showSheet) return;
     const interval = setInterval(() => {
@@ -38,43 +42,55 @@ export function SignupForm({ onSuccess, onBack }: SignupFormProps) {
     return () => clearInterval(interval);
   }, [showSheet, onSuccess]);
 
+  // Poll for token when new tab is opened (desktop)
+  useEffect(() => {
+    if (!loading || isMobile) return;
+    const interval = setInterval(() => {
+      const token = localStorage.getItem("stdb_token");
+      if (token) {
+        clearInterval(interval);
+        setLoading(false);
+        hapticSuccess();
+        onSuccess?.();
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [loading, isMobile, onSuccess]);
+
   const handleSignup = async () => {
     hapticLight();
     setLoading(true);
 
-    if (isMobile) {
-      const authority =
-        process.env.NEXT_PUBLIC_SPACETIMEAUTH_AUTHORITY || "https://auth.spacetimedb.com/oidc";
-      const clientId =
-        process.env.NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID || "client_032wKpr8lE6TZ7Kik2g0VE";
-      const redirectUri = window.location.origin + "/auth/callback";
+    try {
+      const { verifier, challenge } = await generatePKCE();
       const nonce = crypto.randomUUID();
-      const url =
-        `${authority}/auth?response_type=id_token&client_id=${clientId}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+profile+email` +
-        `&nonce=${nonce}&screen_hint=signup`;
-      setAuthUrl(url);
-      setShowSheet(true);
-      setLoading(false);
-    } else {
-      try {
-        const user = await auth.signinPopup({
-          extraQueryParams: { screen_hint: "signup" },
-        });
-        if (user?.id_token) {
-          localStorage.setItem("stdb_token", user.id_token);
+      savePKCE(verifier, nonce);
+
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: SPACETIMEAUTH_CLIENT_ID,
+        redirect_uri: SPACETIMEAUTH_REDIRECT_URI,
+        scope: "openid profile email",
+        code_challenge: challenge,
+        code_challenge_method: "S256",
+        nonce,
+        screen_hint: "signup",
+      });
+      const url = `${SPACETIMEAUTH_AUTHORITY}/auth?${params.toString()}`;
+
+      if (isMobile) {
+        setAuthUrl(url);
+        setShowSheet(true);
+        setLoading(false);
+      } else {
+        const newTab = window.open(url, "_blank");
+        if (!newTab) {
+          window.location.href = url;
         }
-        hapticSuccess();
-        onSuccess?.();
-      } catch {
-        try {
-          await auth.signinRedirect({
-            extraQueryParams: { screen_hint: "signup" },
-          });
-        } catch {
-          setLoading(false);
-        }
+        // loading stays true; polling effect above will clear it
       }
+    } catch {
+      setLoading(false);
     }
   };
 
