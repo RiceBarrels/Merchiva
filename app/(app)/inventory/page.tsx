@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Package,
   Plus,
@@ -52,19 +52,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/client";
 import {
-  getInventoryItems,
   addInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
-  getInventoryTransactions,
 } from "@/lib/db/inventory";
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
-import { getCached, setCache } from "@/lib/cache";
 import { usePermissions } from "@/lib/context/permissions";
+import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 
 const statusConfig: Record<
   InventoryStatus,
@@ -79,14 +76,10 @@ const statusConfig: Record<
   out_of_stock: { label: "Out of Stock", icon: XCircle,       color: "text-destructive" },
 };
 
-type InvCache = { items: InventoryItem[]; transactions: InventoryTransaction[] };
-
 export default function InventoryPage() {
   const { organizationId } = usePermissions();
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  // Data via SpacetimeDB migration hook (backed by Supabase; swap useTable internals once generated client is ready)
+  const { items, setItems, transactions, refreshing, userId, refresh: _refresh } = useInventory(organizationId);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -96,37 +89,6 @@ export default function InventoryPage() {
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<InventoryItem>>({});
-
-  useEffect(() => {
-    if (!organizationId) return;
-    const cacheKey = `inventory_${organizationId}`;
-
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUserId(user?.id ?? null);
-    });
-
-    // Show cached data instantly
-    const cached = getCached<InvCache>(cacheKey);
-    if (cached) {
-      setItems(cached.items);
-      setTransactions(cached.transactions);
-      setRefreshing(true);
-    }
-
-    Promise.all([getInventoryItems(), getInventoryTransactions()])
-      .then(([inv, tx]) => {
-        setItems(inv);
-        setTransactions(tx);
-        setCache(cacheKey, { items: inv, transactions: tx });
-      })
-      .catch((err) => {
-        console.error("Failed to load inventory:", err);
-      })
-      .finally(() => {
-        setRefreshing(false);
-      });
-  }, [organizationId]);
 
   const CATEGORIES = [
     "All",
@@ -216,7 +178,6 @@ export default function InventoryPage() {
         newItems = [newItem, ...items];
       }
       setItems(newItems);
-      if (organizationId) setCache(`inventory_${organizationId}`, { items: newItems, transactions });
       hapticSuccess();
       setDialogOpen(false);
     } catch (err) {
@@ -231,7 +192,6 @@ export default function InventoryPage() {
     await deleteInventoryItem(id);
     const newItems = items.filter((i) => i.id !== id);
     setItems(newItems);
-    if (organizationId) setCache(`inventory_${organizationId}`, { items: newItems, transactions });
   };
 
   const lowStockCount = items.filter((i) => i.status === "low_stock").length;

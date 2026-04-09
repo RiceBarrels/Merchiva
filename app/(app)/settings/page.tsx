@@ -35,12 +35,12 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import {
-  getSettings,
   upsertSettings,
   disconnectSquare,
   disconnectClover,
   type UserSettings,
 } from "@/lib/db/settings";
+import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -73,8 +73,8 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const { role, organizationId } = usePermissions();
   const isAdmin = role === "owner" || role === "manager";
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [loading, setLoading]   = useState(true);
+  // Settings data via SpacetimeDB migration hook
+  const { settings, setSettings, loading } = useSettings();
   const [userId, setUserId]     = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
 
@@ -164,26 +164,7 @@ export default function SettingsPage() {
       }
     });
 
-    // Show cached settings instantly
-    const cached = getCached<UserSettings>("settings");
-    if (cached) {
-      setSettings(cached);
-      setBusinessName(cached.businessName ?? "");
-      setTimezone(cached.timezone);
-      setLoading(false);
-    }
-
-    getSettings()
-      .then((s) => {
-        setSettings(s);
-        if (s) {
-          setBusinessName(s.businessName ?? "");
-          setTimezone(s.timezone);
-          setCache("settings", s);
-        }
-      })
-      .catch((err) => console.error("Failed to load settings:", err))
-      .finally(() => setLoading(false));
+    // settings state is now managed by useSettings hook (SpacetimeDB migration)
 
     import("@/lib/db/payments").then(({ getPaymentConfig }) => {
       getPaymentConfig()
@@ -194,6 +175,14 @@ export default function SettingsPage() {
         .catch(() => {});
     });
   }, []);
+
+  // Sync form fields when settings loads via hook
+  useEffect(() => {
+    if (settings) {
+      setBusinessName(settings.businessName ?? "");
+      setTimezone(settings.timezone);
+    }
+  }, [settings]);
 
   // Restore dialogs from URL (?dialogs=Team,Invite)
   const restoredRef = useRef(false);

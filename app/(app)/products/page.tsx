@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   ShoppingBag,
   TrendingUp,
@@ -61,14 +61,13 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { getProducts, addProduct, deleteProduct } from "@/lib/db/products";
+import { addProduct, deleteProduct } from "@/lib/db/products";
 import type { Product } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
-import { getCached, setCache } from "@/lib/cache";
 import { usePermissions } from "@/lib/context/permissions";
+import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
 
 const alertConfig = {
   none:           { label: "Healthy",         icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -98,42 +97,15 @@ const BLANK: Partial<Product> = {
 export default function ProductsPage() {
   const { organizationId } = usePermissions();
   const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [userId, setUserId]     = useState<string | null>(null);
+  // Data via SpacetimeDB migration hook
+  const { products, setProducts, refreshing, userId } = useProducts(organizationId);
+
   const [search, setSearch]     = useState("");
   const [category, setCategory] = useState("All");
   const [filterAlert, setFilterAlert] = useState<"all" | "alerts">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<Partial<Product>>(BLANK);
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!organizationId) return;
-    const cacheKey = `products_${organizationId}`;
-
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
-
-    // Show cached data instantly
-    const cached = getCached<Product[]>(cacheKey);
-    if (cached) {
-      setProducts(cached);
-      setRefreshing(true);
-    }
-
-    getProducts()
-      .then((p) => {
-        setProducts(p);
-        setCache(cacheKey, p);
-      })
-      .catch((err) => {
-        console.error("Failed to load products:", err);
-      })
-      .finally(() => {
-        setRefreshing(false);
-      });
-  }, [organizationId]);
 
   const CATEGORIES = ["All", ...Array.from(new Set(products.map((p) => p.category)))];
 
@@ -159,7 +131,6 @@ export default function ProductsPage() {
       hapticSuccess();
       const newProducts = [newProd, ...products];
       setProducts(newProducts);
-      if (organizationId) setCache(`products_${organizationId}`, newProducts);
       setDialogOpen(false);
       setForm(BLANK);
     } finally {
@@ -172,7 +143,6 @@ export default function ProductsPage() {
     await deleteProduct(id);
     const newProducts = products.filter((p) => p.id !== id);
     setProducts(newProducts);
-    if (organizationId) setCache(`products_${organizationId}`, newProducts);
   };
 
   const totalRevenue  = products.reduce((s, p) => s + p.revenue, 0);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+// useState/useEffect handled by useSales hook
 import {
   TrendingUp,
   CloudSun,
@@ -35,10 +35,9 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { getSalesHistory, getTodayHourlyRecords } from "@/lib/db/sales";
 import type { SalesRecord } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
-import { getCached, setCache } from "@/lib/cache";
+import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 
 const weatherIcon = (w: string) => {
   if (w === "sunny") return <CloudSun className="h-4 w-4 text-amber-500" />;
@@ -46,28 +45,9 @@ const weatherIcon = (w: string) => {
   return <Cloud className="h-4 w-4 text-slate-400" />;
 };
 
-type SalesCache = { history: SalesRecord[]; hourly: SalesRecord[] };
-
 export default function SalesPage() {
-  const [history, setHistory] = useState<SalesRecord[]>(() => getCached<SalesCache>("sales_30d")?.history ?? []);
-  const [hourly, setHourly] = useState<SalesRecord[]>(() => getCached<SalesCache>("sales_30d")?.hourly ?? []);
-  const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    setRefreshing(true);
-    Promise.all([getSalesHistory(30), getTodayHourlyRecords()])
-      .then(([hist, hrly]) => {
-        setHistory(hist);
-        setHourly(hrly);
-        setCache("sales_30d", { history: hist, hourly: hrly });
-      })
-      .catch((err) => {
-        console.error("Failed to load sales:", err);
-      })
-      .finally(() => {
-        setRefreshing(false);
-      });
-  }, []);
+  // Data via SpacetimeDB migration hook
+  const { history, hourly, refreshing } = useSales();
 
   const histChartData = history.map((s) => ({
     date: new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {

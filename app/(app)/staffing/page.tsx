@@ -29,19 +29,17 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
 import {
-  getTeamForScheduling, getShifts, addShift, updateShift, deleteShift,
-  getStaffRoles, addStaffRole, updateStaffRole, deleteStaffRole,
+  addShift, updateShift, deleteShift,
+  addStaffRole, updateStaffRole, deleteStaffRole,
   getRoleTasks, addRoleTask, updateRoleTask, deleteRoleTask,
 } from "@/lib/db/staffing";
-import { getConversations } from "@/lib/db/chat";
-import { getShiftPresets, addShiftPreset, updateShiftPreset, deleteShiftPreset } from "@/lib/db/shift-presets";
+import { addShiftPreset, updateShiftPreset, deleteShiftPreset } from "@/lib/db/shift-presets";
 import type { ShiftPreset } from "@/lib/types";
 import type { ChatConversation } from "@/lib/types";
 import {
-  getMyAvailability, upsertAvailability,
-  getTimeOffRequests, getOrgTimeOffRequests,
+  upsertAvailability,
   createTimeOffRequest, updateTimeOffStatus,
-  getOrgShiftTrades, createShiftTrade, updateTradeStatus,
+  createShiftTrade, updateTradeStatus,
   getCoworkersWithShifts,
 } from "@/lib/db/availability";
 import type {
@@ -51,6 +49,7 @@ import type {
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
+import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
 
 const ROLE_COLORS = [
   "#44403c", "#dc2626", "#ea580c", "#ca8a04",
@@ -179,17 +178,11 @@ const DEFAULT_AVAIL_FORM = {
 export default function StaffingPage() {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
 
-  const [team,    setTeam]    = useState<OrgMember[]>([]);
-  const [shifts,  setShifts]  = useState<Shift[]>([]);
-  const [roles,   setRoles]   = useState<StaffRole[]>([]);
-  const [presets, setPresets] = useState<ShiftPreset[]>([]);
   const [presetDialog, setPresetDialog] = useState(false);
   const [editingPreset, setEditingPreset] = useState<ShiftPreset | null>(null);
   const [presetForm, setPresetForm] = useState({ name: "", startTime: "07:00", endTime: "14:00", color: "#44403c" });
   const [deletePresetConfirm, setDeletePresetConfirm] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [userId,  setUserId]  = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [myMemberId, setMyMemberId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<MainTab>("myShifts");
@@ -235,7 +228,7 @@ export default function StaffingPage() {
   const [loadingTasks,    setLoadingTasks]    = useState(false);
   const [taskDialog,      setTaskDialog]      = useState<{ open: boolean; task: RoleTask | null }>({ open: false, task: null });
   const [taskForm,        setTaskForm]        = useState({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] as string[] });
-  const [chatOptions,    setChatOptions]     = useState<ChatConversation[]>([]);
+  // chatOptions managed by useStaffing hook below
   const [savingTask,      setSavingTask]      = useState(false);
   const [viewTasksDialog, setViewTasksDialog] = useState<{ open: boolean; role: StaffRole | null }>({ open: false, role: null });
 
@@ -267,13 +260,13 @@ export default function StaffingPage() {
 
   // ─── Availability Dialog ───
   const [availDialog, setAvailDialog] = useState(false);
-  const [myAvailability, setMyAvailability] = useState<StaffAvailability | null>(null);
+  // myAvailability managed by useStaffing hook below
   const [availForm, setAvailForm] = useState({ ...DEFAULT_AVAIL_FORM });
   const [savingAvail, setSavingAvail] = useState(false);
 
   // ─── Time Off Dialog ───
   const [timeOffDialog, setTimeOffDialog] = useState(false);
-  const [myTimeOffRequests, setMyTimeOffRequests] = useState<TimeOffRequest[]>([]);
+  // myTimeOffRequests managed by useStaffing hook below
   const [timeOffForm, setTimeOffForm] = useState({
     fullDays:  true,
     startDate: isoDate(new Date()),
@@ -286,12 +279,25 @@ export default function StaffingPage() {
 
   // ─── Manager Requests ───
   const [showRequests, setShowRequests] = useState(false);
-  const [orgTimeOffRequests, setOrgTimeOffRequests] = useState<TimeOffRequest[]>([]);
-  const [orgShiftTrades,     setOrgShiftTrades]     = useState<ShiftTrade[]>([]);
+  // orgTimeOffRequests, orgShiftTrades managed by useStaffing hook below
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const isStaff   = role === "staff";
   const canEdit   = isOwner || can("staffing", "edit");
+
+  // ─── Data via SpacetimeDB migration hook ──────────────────────────────────
+  const {
+    team, setTeam,
+    shifts, setShifts,
+    roles, setRoles,
+    presets, setPresets,
+    chatOptions, setChatOptions,
+    myAvailability, setMyAvailability,
+    myTimeOffRequests, setMyTimeOffRequests,
+    orgTimeOffRequests, setOrgTimeOffRequests,
+    orgShiftTrades, setOrgShiftTrades,
+    loading, refreshing,
+  } = useStaffing(organizationId, userId, isStaff);
 
   // ─── Effects ───────────────────────────────────────────────────────────────
 
@@ -303,69 +309,6 @@ export default function StaffingPage() {
     if (!userId || team.length === 0) return;
     setMyMemberId(team.find((m) => m.userId === userId)?.id ?? null);
   }, [team, userId]);
-
-  useEffect(() => {
-    if (!organizationId || !userId) return;
-    const cacheKey = `staffing_${organizationId}_${userId}`;
-
-    // Show cached data instantly
-    type StaffCache = {
-      team: OrgMember[]; shifts: Shift[]; roles: StaffRole[];
-      conversations: ChatConversation[]; presets: ShiftPreset[];
-    };
-    const cached = getCached<StaffCache>(cacheKey);
-    if (cached) {
-      setTeam(cached.team);
-      setShifts(cached.shifts);
-      setRoles(cached.roles);
-      setChatOptions(cached.conversations);
-      setPresets(cached.presets);
-      setLoading(false);
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
-    const promises: Promise<unknown>[] = [
-      getTeamForScheduling(organizationId),
-      getShifts(4),
-      getStaffRoles(),
-      getConversations(organizationId),
-      getShiftPresets(organizationId),
-      getMyAvailability(userId, organizationId),
-      getTimeOffRequests(userId, organizationId),
-    ];
-    if (!isStaff) {
-      promises.push(getOrgTimeOffRequests(organizationId));
-      promises.push(getOrgShiftTrades(organizationId));
-    }
-    Promise.all(promises)
-      .then((results) => {
-        const team = results[0] as OrgMember[];
-        const shifts = results[1] as Shift[];
-        const roles = results[2] as StaffRole[];
-        const conversations = results[3] as ChatConversation[];
-        const presets = results[4] as ShiftPreset[];
-        setTeam(team);
-        setShifts(shifts);
-        setRoles(roles);
-        setChatOptions(conversations);
-        setPresets(presets);
-        setMyAvailability(results[5] as StaffAvailability | null);
-        setMyTimeOffRequests(results[6] as TimeOffRequest[]);
-        if (!isStaff) {
-          setOrgTimeOffRequests(results[7] as TimeOffRequest[]);
-          setOrgShiftTrades(results[8] as ShiftTrade[]);
-        }
-        // Cache the core shared data
-        setCache(cacheKey, { team, shifts, roles, conversations, presets });
-      })
-      .catch((err) => console.error("Failed to load staffing:", err))
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
-  }, [organizationId, userId, isStaff]);
 
   // Handle table drag-select via non-passive touchmove
   useEffect(() => {
