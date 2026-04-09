@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Search, Plus, Minus, X, Loader2, CreditCard, Banknote,
   MoreHorizontal, Printer, RotateCcw, Check, Tag, User,
@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getProducts } from "@/lib/db/products";
 import { createPayment, getPaymentConfig, getRecentPayments, refundPayment } from "@/lib/db/payments";
+import { getCached, setCache } from "@/lib/cache";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { createClient } from "@/lib/supabase/client";
@@ -425,6 +426,10 @@ function OrderRow({
 
 // ─── Orders tab ───────────────────────────────────────────────────────────────
 
+const ORDERS_PAGE_SIZE = 30;
+const ORDERS_NEXT_SIZE = 10;
+const ORDERS_CACHE_KEY = "pos_orders_first_page";
+
 function OrdersTab({
   organizationId,
   onPaymentUpdated,
@@ -432,49 +437,147 @@ function OrdersTab({
   organizationId: string;
   onPaymentUpdated: (p: Payment) => void;
 }) {
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [orders, setOrders] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
   const [refundTarget, setRefundTarget] = useState<Payment | null>(null);
 
+  // Search
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search input → searchQuery
   useEffect(() => {
-    getRecentPayments(organizationId, 30)
-      .then(setPayments)
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setSearchQuery(searchInput), 500);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [searchInput]);
+
+  // Initial / search-triggered load
+  useEffect(() => {
+    setLoading(true);
+    setOrders([]);
+    setOffset(0);
+    setHasMore(true);
+
+    // Show cached first page immediately (only for no-search case)
+    if (!searchQuery) {
+      const cached = getCached<Payment[]>(ORDERS_CACHE_KEY);
+      if (cached) {
+        setOrders(cached);
+        setLoading(false);
+      }
+    }
+
+    getRecentPayments(organizationId, ORDERS_PAGE_SIZE, 0, searchQuery || undefined)
+      .then((data) => {
+        setOrders(data);
+        setOffset(data.length);
+        setHasMore(data.length === ORDERS_PAGE_SIZE);
+        if (!searchQuery) setCache(ORDERS_CACHE_KEY, data);
+      })
       .catch((err) => console.error("Orders: failed to load:", err))
       .finally(() => setLoading(false));
-  }, [organizationId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, searchQuery]);
+
+  // Load more
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await getRecentPayments(
+        organizationId, ORDERS_NEXT_SIZE, offset, searchQuery || undefined
+      );
+      setOrders((prev) => [...prev, ...data]);
+      setOffset((o) => o + data.length);
+      setHasMore(data.length === ORDERS_NEXT_SIZE);
+    } catch (err) {
+      console.error("Orders: failed to load more:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [organizationId, offset, hasMore, loadingMore, searchQuery]);
+
+  // IntersectionObserver on sentinel (placed 10 from bottom)
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore || loadingMore) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, loadMore, orders.length]);
 
   const handleRefundSuccess = (updated: Payment) => {
-    setPayments((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+    setOrders((prev) => prev.map((p) => p.id === updated.id ? updated : p));
     setRefundTarget(null);
     onPaymentUpdated(updated);
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const visible = payments.filter((p) => p.amount >= 0);
+  // Sentinel index: 10 from the end
+  const sentinelIndex = useMemo(
+    () => Math.max(0, orders.length - 10),
+    [orders.length]
+  );
 
   return (
     <>
+      {/* Search bar */}
+      <div className="shrink-0 border-b border-border px-4 py-2">
+        <div className="flex items-center gap-2">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by customer, note, or transaction ID…"
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+          {searchInput && (
+            <button type="button" onClick={() => setSearchInput("")}>
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {visible.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center py-16">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
             <History className="h-8 w-8 opacity-30" />
-            <p className="text-sm">No orders yet</p>
+            <p className="text-sm">{searchQuery ? "No matching orders" : "No orders yet"}</p>
           </div>
         ) : (
-          visible.map((p) => (
-            <OrderRow
-              key={p.id}
-              payment={p}
-              onRefund={setRefundTarget}
-            />
-          ))
+          <>
+            {orders.map((p, idx) => (
+              <div key={p.id}>
+                {idx === sentinelIndex && <div ref={sentinelRef} />}
+                <OrderRow payment={p} onRefund={setRefundTarget} />
+              </div>
+            ))}
+
+            {/* Bottom indicator */}
+            <div className="py-4 text-center">
+              {loadingMore ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
+              ) : !hasMore ? (
+                <p className="text-xs text-muted-foreground">No more orders</p>
+              ) : null}
+            </div>
+          </>
         )}
       </div>
 
