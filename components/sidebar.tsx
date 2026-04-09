@@ -295,16 +295,15 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
 
-  // Detect mobile to render children only once (avoids double-mounting dialogs)
-  // Start null to avoid hydration mismatch — render children in both during SSR,
-  // then commit to one side after mount.
+  // Detect touch device (iPhone, iPad, Android) — not screen width.
+  // Start null to avoid hydration mismatch; commit after mount.
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px)");
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const mobileUA = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // iPad Safari 13+ reports as "Macintosh" — detect via touch + Mac UA
+    const isIPad = navigator.userAgent.includes("Mac") && isTouch;
+    setIsMobile(isTouch && (mobileUA || isIPad));
   }, []);
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -448,8 +447,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarOpenContext.Provider value={() => setIsOpen(true)}>
     <>
-      {/* ── Mobile + tablet layout (< 1024px) + builder full-viewport ── */}
-      <div className={cn("relative h-screen overflow-hidden bg-background", isBuilderPage ? "flex" : "flex lg:hidden")}>
+      {/* ── Mobile / tablet layout (touch devices) + builder full-viewport ── */}
+      <div className={cn("relative h-screen overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex" : "hidden")}>
         {/* Floating hamburger — hidden on builder pages (builder has its own Menu button in toolbar) */}
         {!isBuilderPage && (
           <button
@@ -586,9 +585,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* ── Desktop layout (1024px+): permanent sidebar — not shown on builder pages ── */}
+      {/* ── Desktop layout (non-touch): permanent sidebar — not shown on builder pages ── */}
       {!isBuilderPage && (
-        <div className="hidden lg:flex h-screen overflow-hidden bg-background">
+        <div className={cn("h-screen overflow-hidden bg-background", isMobile === false ? "flex" : "hidden")}>
           <div className="w-56 h-full shrink-0">
             <SidebarContent />
           </div>
