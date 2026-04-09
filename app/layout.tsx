@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
+import { MobileDetector } from "@/components/mobile-detector";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -38,6 +39,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="BizOps" />
       </head>
       <body className="h-full bg-background text-foreground">
+        <MobileDetector />
         <ServiceWorkerRegistrar />
         {children}
       </body>

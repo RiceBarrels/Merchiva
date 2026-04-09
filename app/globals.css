@@ -133,66 +133,78 @@
   }
 }
 
-/* ─── Mobile / iPad touch-friendly sizing (≤ 1366px covers iPad Pro landscape) */
-@media (max-width: 1366px) {
-  /* Slightly larger base font so rem-based sizing scales up */
-  html { font-size: 17px; }
+/* ─── Mobile / tablet touch-friendly sizing (.mobile-device set by JS UA detection) ── */
+html.mobile-device {
+  font-size: 17px;
+}
 
-  /* Minimum 44px touch targets on interactive elements */
-  button:not([data-slot="button"]),
-  [role="button"],
-  a:not([class*="underline"]) {
-    min-height: 44px;
-    min-width: 44px;
-  }
+/* Minimum 44px touch targets */
+html.mobile-device button:not([data-slot="button"]),
+html.mobile-device [role="button"],
+html.mobile-device a:not([class*="underline"]) {
+  min-height: 44px;
+  min-width: 44px;
+}
 
-  /* shadcn Button component — bump default + icon sizes */
-  [data-slot="button"] {
-    min-height: 2.75rem; /* ~44px at 16px base */
-    padding-inline: 0.875rem;
-    font-size: 1rem;
-  }
-  [data-slot="button"][data-size="icon"],
-  [data-slot="button"].size-8,
-  [data-slot="button"].size-7 {
-    width: 2.75rem;
-    height: 2.75rem;
-  }
+/* shadcn Button component */
+html.mobile-device [data-slot="button"] {
+  min-height: 2.75rem;
+  padding-inline: 0.875rem;
+  font-size: 1rem;
+}
+html.mobile-device [data-slot="button"][data-size="icon"],
+html.mobile-device [data-slot="button"].size-8,
+html.mobile-device [data-slot="button"].size-7 {
+  width: 2.75rem;
+  height: 2.75rem;
+}
 
-  /* shadcn Input component */
-  [data-slot="input"] {
-    height: 2.75rem;
-    font-size: 1rem;
-    padding-inline: 0.75rem;
-  }
+/* shadcn Input component */
+html.mobile-device [data-slot="input"] {
+  height: 2.75rem;
+  font-size: 1rem;
+  padding-inline: 0.75rem;
+}
 
-  /* Table rows — more breathing room */
-  td[data-slot="table-cell"],
-  th[data-slot="table-head"] {
-    padding-block: 0.75rem;
-    font-size: 0.9375rem; /* 15px */
-  }
+/* Table rows */
+html.mobile-device td[data-slot="table-cell"],
+html.mobile-device th[data-slot="table-head"] {
+  padding-block: 0.75rem;
+  font-size: 0.9375rem;
+}
 
-  /* Card padding */
-  [data-slot="card"] {
-    padding-block: 1.25rem;
-  }
-  [data-slot="card-header"],
-  [data-slot="card-content"],
-  [data-slot="card-footer"] {
-    padding-inline: 1.25rem;
-  }
+/* Card padding */
+html.mobile-device [data-slot="card"] {
+  padding-block: 1.25rem;
+}
+html.mobile-device [data-slot="card-header"],
+html.mobile-device [data-slot="card-content"],
+html.mobile-device [data-slot="card-footer"] {
+  padding-inline: 1.25rem;
+}
 
-  /* Dialog / Sheet inner padding */
-  [data-slot="dialog-content"],
-  [data-slot="sheet-content"] {
-    padding: 1.5rem;
-  }
+/* Dialog / Sheet inner padding */
+html.mobile-device [data-slot="dialog-content"],
+html.mobile-device [data-slot="sheet-content"] {
+  padding: 1.5rem;
+}
 
-  /* Label */
-  label {
-    font-size: 0.9375rem;
-  }
+/* Select trigger */
+html.mobile-device [data-slot="select-trigger"] {
+  height: 2.75rem;
+  font-size: 1rem;
+}
+
+/* Textarea */
+html.mobile-device [data-slot="textarea"] {
+  min-height: 5rem;
+  padding-inline: 0.75rem;
+  padding-block: 0.75rem;
+}
+
+/* Label */
+html.mobile-device label {
+  font-size: 0.9375rem;
 }
 
 @keyframes fadeout {
