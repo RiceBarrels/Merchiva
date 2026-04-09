@@ -1,30 +1,19 @@
-import { createClient } from "@/lib/supabase/client";
+import { uploadFiles } from "@/lib/uploadthing";
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
 
-const BUCKET = "site-uploads";
+type UploadEndpoint = keyof OurFileRouter;
 
-export async function uploadSiteImage(file: File, orgId: string): Promise<string> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
-  const path = `${user.id}/${orgId}/${Date.now()}.${ext}`;
-
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(path, file, { upsert: false });
-  if (error) throw error;
-
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+export async function uploadFile(
+  file: File,
+  endpoint: UploadEndpoint = "siteImage"
+): Promise<string> {
+  const [res] = await uploadFiles(endpoint, { files: [file] });
+  return res.ufsUrl;
 }
 
-export async function deleteSiteImage(url: string): Promise<void> {
-  const supabase = createClient();
-  // Public URL format: .../storage/v1/object/public/site-uploads/<path>
-  const marker = `/object/public/${BUCKET}/`;
-  const idx = url.indexOf(marker);
-  if (idx === -1) return;
-  const path = url.slice(idx + marker.length);
-  await supabase.storage.from(BUCKET).remove([path]);
+// Kept for backward-compat call sites that used the old Supabase URL.
+// UploadThing manages deletion via the dashboard; no-op here.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function deleteSiteImage(_url: string): Promise<void> {
+  // Deletion is managed through the UploadThing dashboard or API.
 }

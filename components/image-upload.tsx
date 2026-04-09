@@ -2,11 +2,11 @@
 
 import { useRef, useState, DragEvent } from "react";
 import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
-import { uploadSiteImage } from "@/lib/storage";
+import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"];
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_BYTES = 4 * 1024 * 1024; // 4 MB (siteImage endpoint limit)
 
 interface ImageUploadProps {
   value: string;          // current URL (or empty string)
@@ -15,41 +15,37 @@ interface ImageUploadProps {
   className?: string;
 }
 
-export function ImageUpload({ value, orgId, onChange, className }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  const { startUpload, isUploading } = useUploadThing("siteImage", {
+    onClientUploadComplete: (res) => {
+      if (res?.[0]) {
+        onChange(res[0].ufsUrl);
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+    },
+    onUploadError: (err) => setError(err.message),
+  });
+
   async function handleFile(file: File) {
     setError(null);
-
     if (!ACCEPTED.includes(file.type)) {
       setError("Unsupported file type.");
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError("File exceeds 5 MB limit.");
+      setError("File exceeds 4 MB limit.");
       return;
     }
-
-    setUploading(true);
-    try {
-      const url = await uploadSiteImage(file, orgId);
-      onChange(url);
-      // Subtle haptic on supported devices
-      if (navigator.vibrate) navigator.vibrate(30);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-    }
+    await startUpload([file]);
   }
 
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
-    // Reset so same file can be re-selected
     e.target.value = "";
   }
 
@@ -106,7 +102,7 @@ export function ImageUpload({ value, orgId, onChange, className }: ImageUploadPr
           </div>
         )}
 
-        {uploading && (
+        {isUploading && (
           <div className="absolute inset-0 flex items-center justify-center rounded bg-background/70">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
@@ -116,11 +112,11 @@ export function ImageUpload({ value, orgId, onChange, className }: ImageUploadPr
       {/* Upload button */}
       <button
         type="button"
-        disabled={uploading}
+        disabled={isUploading}
         onClick={() => inputRef.current?.click()}
         className="flex w-full items-center justify-center gap-1.5 rounded border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
       >
-        {uploading ? (
+        {isUploading ? (
           <><Loader2 className="h-3 w-3 animate-spin" /> Uploading…</>
         ) : (
           <><Upload className="h-3 w-3" /> Upload image</>
