@@ -48,9 +48,11 @@ export function SignupForm({ onSuccess, onBack }: SignupFormProps) {
       const clientId =
         process.env.NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID || "client_032wKpr8lE6TZ7Kik2g0VE";
       const redirectUri = window.location.origin + "/auth/callback";
+      const nonce = crypto.randomUUID();
       const url =
-        `${authority}/auth?response_type=code&client_id=${clientId}` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+profile+email&screen_hint=signup`;
+        `${authority}/auth?response_type=id_token&client_id=${clientId}` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+profile+email` +
+        `&nonce=${nonce}&screen_hint=signup`;
       setAuthUrl(url);
       setShowSheet(true);
       setLoading(false);

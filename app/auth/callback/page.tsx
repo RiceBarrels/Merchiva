@@ -11,6 +11,20 @@ export default function AuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Implicit flow: id_token is in the URL hash — handle it immediately
+    // before react-oidc-context even processes it, as a reliable fallback.
+    const hash = window.location.hash;
+    if (hash.includes("id_token=")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const idToken = params.get("id_token");
+      if (idToken) {
+        localStorage.setItem("stdb_token", idToken);
+        window.location.replace("/dashboard");
+        return;
+      }
+    }
+
+    // react-oidc-context has processed the callback
     if (auth.isAuthenticated && auth.user?.id_token) {
       localStorage.setItem("stdb_token", auth.user.id_token);
       router.replace("/dashboard");
@@ -34,7 +48,7 @@ export default function AuthCallback() {
   if (error) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 px-6">
-        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-sm text-destructive text-center">{error}</p>
         <button
           onClick={() => {
             localStorage.removeItem("stdb_token");

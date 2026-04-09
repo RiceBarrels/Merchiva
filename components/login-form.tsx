@@ -52,12 +52,14 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
     }
 
     if (isMobile) {
-      // Mobile: bottom sheet iframe
+      // Mobile: bottom sheet iframe — implicit flow (id_token in URL hash)
       const redirectUri = window.location.origin + "/auth/callback";
       const hint = email.trim();
+      const nonce = crypto.randomUUID();
       const url =
-        `${authority}/auth?response_type=code&client_id=${clientId}` +
+        `${authority}/auth?response_type=id_token&client_id=${clientId}` +
         `&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid+profile+email` +
+        `&nonce=${nonce}` +
         (hint ? `&login_hint=${encodeURIComponent(hint)}` : "");
       setAuthUrl(url);
       setShowSheet(true);
