@@ -958,7 +958,7 @@ export const createOrg = spacetimedb.reducer(
 
     ctx.db.orgMember.insert({
       id: ctx.newUuidV4(),
-      organizationId: orgId.toHexString(),
+      organizationId: orgId.toString(),
       userId: ctx.sender,
       role: 'owner',
       displayName: user.displayName ?? user.email,
@@ -971,7 +971,7 @@ export const createOrg = spacetimedb.reducer(
     // Initialize default settings for the org
     ctx.db.settings.insert({
       id: ctx.newUuidV4(),
-      organizationId: orgId.toHexString(),
+      organizationId: orgId.toString(),
       businessName: undefined,
       businessType: undefined,
       timezone: 'America/Los_Angeles',
@@ -998,7 +998,7 @@ export const updateOrg = spacetimedb.reducer(
     if (member.role !== 'owner') unauthorized('Owner only');
 
     const org = [...ctx.db.organization.iter()]
-      .find(o => o.id.toHexString() === organizationId);
+      .find(o => o.id.toString() === organizationId);
     if (!org) throw new Error('Organization not found');
     // Note: update requires primaryKey index – rebuild with delete + insert
     ctx.db.organization.delete(org);
@@ -1021,9 +1021,9 @@ export const inviteToOrg = spacetimedb.reducer(
     // Only owner can invite managers
     if (role === 'manager' && member.role !== 'owner') unauthorized('Owner only can invite managers');
 
-    const token = ctx.newUuidV4().toHexString();
+    const token = ctx.newUuidV4().toString();
     const expiresAt = new (ctx.timestamp.constructor as any)(
-      ctx.timestamp.microsSinceEpoch + BigInt(7 * 24 * 60 * 60 * 1_000_000) // 7 days
+      ctx.timestamp.microsSinceUnixEpoch + BigInt(7 * 24 * 60 * 60 * 1_000_000) // 7 days
     );
 
     ctx.db.orgInvitation.insert({
@@ -1047,10 +1047,10 @@ export const acceptInvitation = spacetimedb.reducer(
     const user = ctx.db.user.identity.find(ctx.sender);
     if (!user) unauthorized('Must be logged in');
 
-    const invite = ctx.db.orgInvitation.byToken.find(token);
+    const invite = [...ctx.db.orgInvitation.byToken.filter(token)][0];
     if (!invite) throw new Error('Invitation not found');
     if (invite.acceptedAt !== undefined) throw new Error('Invitation already used');
-    if (invite.expiresAt.microsSinceEpoch < ctx.timestamp.microsSinceEpoch) {
+    if (invite.expiresAt.microsSinceUnixEpoch < ctx.timestamp.microsSinceUnixEpoch) {
       throw new Error('Invitation expired');
     }
 
@@ -1085,7 +1085,7 @@ export const updateMemberPermissions = spacetimedb.reducer(
     if (caller.role !== 'owner') unauthorized('Owner only');
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-      .find(m => m.id.toHexString() === memberId);
+      .find(m => m.id.toString() === memberId);
     if (!target) throw new Error('Member not found');
     if (target.role === 'owner') throw new Error('Cannot modify owner');
 
@@ -1102,7 +1102,7 @@ export const setMemberStatus = spacetimedb.reducer(
     if (caller.role !== 'owner') unauthorized('Owner only');
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-      .find(m => m.id.toHexString() === memberId);
+      .find(m => m.id.toString() === memberId);
     if (!target) throw new Error('Member not found');
 
     ctx.db.orgMember.delete(target);
@@ -1141,7 +1141,7 @@ export const updateSettings = spacetimedb.reducer(
     const perms = JSON.parse(member.permissions);
     if (!perms.settings?.view) unauthorized('No settings permission');
 
-    const existing = ctx.db.settings.byOrganizationId.find(organizationId);
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
     if (!existing) throw new Error('Settings not found');
 
     ctx.db.settings.delete(existing);
@@ -1641,7 +1641,7 @@ export const upsertAvailability = spacetimedb.reducer(
 
     if (args.existingId) {
       const existing = [...ctx.db.staffAvailability.byUserId.filter(ctx.sender)]
-        .find(a => a.id.toHexString() === args.existingId);
+        .find(a => a.id.toString() === args.existingId);
       if (existing) {
         ctx.db.staffAvailability.delete(existing);
         ctx.db.staffAvailability.insert({
@@ -1724,14 +1724,14 @@ export const updateTimeOffStatus = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     const req = [...ctx.db.timeOffRequest.byOrganizationId.filter(organizationId)]
-      .find(r => r.id.toHexString() === requestId);
+      .find(r => r.id.toString() === requestId);
     if (!req) throw new Error('Request not found');
 
     ctx.db.timeOffRequest.delete(req);
     ctx.db.timeOffRequest.insert({
       ...req,
       status,
-      reviewedBy: member.id.toHexString(),
+      reviewedBy: member.id.toString(),
       reviewedAt: ctx.timestamp,
     });
   }
@@ -1779,13 +1779,13 @@ export const updateShiftTradeStatus = spacetimedb.reducer(
     const member = findActiveMember(ctx, organizationId);
 
     const trade = [...ctx.db.shiftTrade.byOrganizationId.filter(organizationId)]
-      .find(t => t.id.toHexString() === tradeId);
+      .find(t => t.id.toString() === tradeId);
     if (!trade) throw new Error('Trade not found');
 
     const isManager = member.role === 'owner' || member.role === 'manager';
     const isParticipant =
-      trade.requesterId === member.id.toHexString() ||
-      trade.targetId === member.id.toHexString();
+      trade.requesterId === member.id.toString() ||
+      trade.targetId === member.id.toString();
 
     if (!isManager && !isParticipant) unauthorized('Not a participant');
 
@@ -1794,7 +1794,7 @@ export const updateShiftTradeStatus = spacetimedb.reducer(
       ...trade,
       status,
       managerApproved: isManager && status === 'accepted',
-      managerId: isManager ? member.id.toHexString() : trade.managerId,
+      managerId: isManager ? member.id.toString() : trade.managerId,
     });
   }
 );
@@ -1821,7 +1821,7 @@ export const createPayment = spacetimedb.reducer(
     ctx.db.payment.insert({
       id: ctx.newUuidV4(),
       organizationId: args.organizationId,
-      userId: ctx.sender.toHexString(),
+      userId: ctx.sender.toString(),
       orderId: undefined,
       amount: args.amount,
       currency: args.currency,
@@ -1854,7 +1854,7 @@ export const refundPayment = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required to refund');
 
     const payment = [...ctx.db.payment.byOrganizationId.filter(organizationId)]
-      .find(p => p.id.toHexString() === paymentId);
+      .find(p => p.id.toString() === paymentId);
     if (!payment) throw new Error('Payment not found');
     if (payment.status !== 'completed') throw new Error('Only completed payments can be refunded');
 
@@ -1889,7 +1889,7 @@ export const createConversation = spacetimedb.reducer(
       organizationId,
       type,
       name,
-      createdBy: member.id.toHexString(),
+      createdBy: member.id.toString(),
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
     });
@@ -1897,7 +1897,7 @@ export const createConversation = spacetimedb.reducer(
     // Add creator as member
     ctx.db.chatMember.insert({
       id: ctx.newUuidV4(),
-      conversationId: convId.toHexString(),
+      conversationId: convId.toString(),
       userId: ctx.sender,
       joinedAt: ctx.timestamp,
     });
@@ -1922,7 +1922,7 @@ export const sendMessage = spacetimedb.reducer(
 
     // Bump conversation updatedAt
     const conv = [...ctx.db.chatConversation.iter()]
-      .find(c => c.id.toHexString() === conversationId);
+      .find(c => c.id.toString() === conversationId);
     if (conv) {
       ctx.db.chatConversation.delete(conv);
       ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
@@ -2036,7 +2036,7 @@ export const updatePage = spacetimedb.reducer(
     findActiveMember(ctx, args.organizationId);
 
     const page = [...ctx.db.sitePage.iter()]
-      .find(p => p.id.toHexString() === args.pageId);
+      .find(p => p.id.toString() === args.pageId);
     if (!page) throw new Error('Page not found');
 
     ctx.db.sitePage.delete(page);
@@ -2264,18 +2264,18 @@ export const createSiteBooking = spacetimedb.reducer(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type AnyTable = {
-  byOrganizationId: { filter(orgId: string): Iterable<{ id: { toHexString(): string } }> };
+  byOrganizationId: { filter(orgId: string): Iterable<{ id: { toString(): string } }> };
 };
 
 /** Find a row by organizationId + id string, throwing if not found. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findItemInOrg<T extends { id: { toHexString(): string } }>(
+function findItemInOrg<T extends { id: { toString(): string } }>(
   tableHandle: { byOrganizationId: { filter(orgId: string): IterableIterator<T> } },
   organizationId: string,
   itemId: string
 ): T {
   const item = [...tableHandle.byOrganizationId.filter(organizationId)]
-    .find(r => r.id.toHexString() === itemId);
+    .find(r => r.id.toString() === itemId);
   if (!item) throw new Error('Record not found');
   return item;
 }
