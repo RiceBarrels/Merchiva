@@ -4,25 +4,17 @@ import { getValidSquareToken } from "@/lib/square/token";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const token = await getValidSquareToken(user.id);
-    const { data: settings } = await supabase
-      .from("settings")
-      .select("square_location_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const token = await getValidSquareToken("");
+    
 
-    if (!token || !settings?.square_location_id) {
+    if (!token) {
       return NextResponse.json(
-        { error: "Square not connected or location ID missing." },
+        { error: "Square not connected." },
         { status: 400 }
       );
     }
+    const locationId = "";
 
     const url = new URL(request.url);
     const days = parseInt(url.searchParams.get("days") ?? "30", 10);
@@ -36,7 +28,7 @@ export async function GET(request: NextRequest) {
     });
 
     const response = await square.orders.search({
-      locationIds: [settings.square_location_id],
+      locationIds: locationId ? [locationId] : [],
       query: {
         filter: {
           dateTimeFilter: {

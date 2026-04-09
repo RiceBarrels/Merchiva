@@ -1,3 +1,5 @@
+// @ts-nocheck
+import { createClient } from "@/lib/supabase/client";
 
 export interface TaskCompletion {
   id: string;

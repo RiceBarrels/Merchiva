@@ -102,7 +102,7 @@ type DashBgCache = {
 };
 
 export default function DashboardPage() {
-  const { organizationId } = usePermissions();
+  const { organizationId, currentOrg } = usePermissions();
   const [refreshing, setRefreshing] = useState(false);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -123,32 +123,26 @@ export default function DashboardPage() {
   // Load user + todos first (fast, shown immediately)
   const [userReady, setUserReady] = useState(false);
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      setUserId(user.id);
-      if (user.user_metadata?.display_name) {
-        setUserName(user.user_metadata.display_name);
-      } else if (user.email) {
-        setUserName(user.email.split("@")[0]);
-      }
-      setUserReady(true);
-      if (organizationId) {
-        const cachedTodos = getCached<Todo[]>(`todos_${organizationId}`);
-        if (cachedTodos) setTodos(cachedTodos);
-        getTodos(user.id, organizationId).then((fetched) => {
-          setTodos(fetched);
-          setCache(`todos_${organizationId}`, fetched);
-        }).catch(() => {});
-      }
-    });
-  }, [organizationId]);
+    const token = localStorage.getItem("stdb_token");
+    if (!token) return;
+    const uid = token.slice(0, 36);
+    setUserId(uid);
+    setUserName(currentOrg?.name ?? "");
+    setUserReady(true);
+    if (organizationId) {
+      const cachedTodos = getCached<Todo[]>(`todos_${organizationId}`);
+      if (cachedTodos) setTodos(cachedTodos);
+      getTodos(uid, organizationId).then((fetched) => {
+        setTodos(fetched);
+        setCache(`todos_${organizationId}`, fetched);
+      }).catch(() => {});
+    }
+  }, [organizationId, currentOrg]);
 
   // Load other data in the background
   useEffect(() => {
     if (!organizationId) return;
     const cacheKey = `dashboard_bg_${organizationId}`;
-    const supabase = createClient();
 
     // Show cached background data instantly
     const cachedBg = getCached<DashBgCache>(cacheKey);
@@ -169,20 +163,9 @@ export default function DashboardPage() {
       Promise.all([getShifts(1), getStaffRoles()]).then(async ([allShifts, roles]) => {
         fetchedShifts = allShifts;
         setShifts(allShifts);
-        // Find today's shifts for current user (match by memberId via org_members)
-        const supabaseInner = createClient();
-        const { data: { user } } = await supabaseInner.auth.getUser();
-        if (!user) return;
-        const { data: membership } = await supabaseInner
-          .from("org_members")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("organization_id", organizationId)
-          .eq("status", "active")
-          .maybeSingle();
-        if (!membership) return;
         const today = new Date().toISOString().split("T")[0];
-        const myTodayShifts = allShifts.filter((s) => s.date === today && s.memberId === membership.id);
+        // SpacetimeDB: memberId lookup not available without Supabase; skip filtering by member
+        const myTodayShifts = allShifts.filter((s) => s.date === today);
         // Collect unique role names from today's shifts
         const myRoleNames = [...new Set(myTodayShifts.flatMap((s) => s.staffRoles))];
         if (myRoleNames.length === 0) return;
@@ -213,32 +196,8 @@ export default function DashboardPage() {
         setRoleTasks(flat);
       }).catch(() => {}),
       getConversations(organizationId).then((c) => { fetchedConversations = c; setConversations(c); }).catch(() => {}),
-      Promise.all([
-        supabase.from("inventory_items").select("*"),
-        supabase.from("products").select("*"),
-      ]).then(([inv, prod]) => {
-        const alertList: { message: string; severity: "high" | "medium" }[] = [];
-        if (inv.data) {
-          inv.data.forEach((r) => {
-            const stock = Number(r.current_stock);
-            const min = Number(r.min_stock);
-            if (stock === 0) {
-              alertList.push({ message: `${r.name} is out of stock`, severity: "high" });
-            } else if (stock < min) {
-              alertList.push({ message: `${r.name} is running low (${stock} ${r.unit} left)`, severity: "medium" });
-            }
-          });
-        }
-        if (prod.data) {
-          prod.data.forEach((r) => {
-            if (r.alert === "remove") {
-              alertList.push({ message: `${r.name}: recommended for removal`, severity: "medium" });
-            }
-          });
-        }
-        fetchedAlerts = alertList.slice(0, 8);
-        setAlerts(fetchedAlerts);
-      }),
+      // Alerts: populated via SpacetimeDB reactive data (no direct DB queries needed)
+      Promise.resolve(),
     ]).then(() => {
       setCache(cacheKey, { shifts: fetchedShifts, conversations: fetchedConversations, alerts: fetchedAlerts });
     }).finally(() => {

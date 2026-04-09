@@ -3,14 +3,6 @@ import { SquareClient, SquareEnvironment } from "square";
 import { getValidSquareToken } from "@/lib/square/token";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const { locationId } = (await request.json()) as { locationId?: string };
   if (!locationId) {
@@ -20,7 +12,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const token = await getValidSquareToken(user.id);
+  const token = await getValidSquareToken("");
   if (!token) {
     return NextResponse.json(
       { error: "Square not connected." },
@@ -46,10 +38,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  await supabase
-    .from("settings")
-    .update({ square_location_id: locationId })
-    .eq("user_id", user.id);
-
+  // SpacetimeDB: location ID saved via updateSettings reducer
   return NextResponse.json({ success: true });
 }

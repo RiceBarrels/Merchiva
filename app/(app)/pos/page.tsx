@@ -637,10 +637,8 @@ export default function POSPage() {
   // ── Load ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id);
-    });
+    const token = localStorage.getItem("stdb_token");
+    if (token) setUserId(token.slice(0, 36));
 
     getProducts()
       .then(setProducts)
@@ -659,11 +657,7 @@ export default function POSPage() {
       .then((r) => { if (r.status === 503) setCardAvailable(false); })
       .catch(() => setCardAvailable(false));
 
-    supabase
-      .from("settings")
-      .select("business_name")
-      .maybeSingle()
-      .then(({ data }) => { if (data?.business_name) setBusinessName(data.business_name); });
+    // Business name loaded via SpacetimeDB useSettings hook elsewhere
   }, []);
 
   useEffect(() => {

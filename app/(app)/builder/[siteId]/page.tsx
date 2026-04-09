@@ -2088,14 +2088,13 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     if (!el || !organizationId || !siteId) return;
     setSavingComponent(true);
     try {
-      const { data: { user } } = await createClient().auth.getUser();
       const comp = await saveComponent(
         organizationId,
         siteId,
         saveDialogName.trim() || el.type,
         saveDialogCategory.trim() || null,
         el,
-        user?.id ?? ""
+        ""
       );
       setSavedComponents((prev) => [comp, ...prev]);
       setShowSaveDialog(false);

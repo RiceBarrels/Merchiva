@@ -52,7 +52,7 @@ function SignupForm() {
     connectToStdb()
       .then(async ({ conn }) => {
         await new Promise<void>((resolve) => {
-          conn.subscriptionBuilder().onApplied(resolve)
+          conn.subscriptionBuilder().onApplied(() => resolve())
             .subscribe(["SELECT * FROM org_invitation", "SELECT * FROM organization"]);
           setTimeout(resolve, 4000);
         });
@@ -135,7 +135,7 @@ function SignupForm() {
 
       // Subscribe to tables we'll need
       await new Promise<void>((resolve) => {
-        conn.subscriptionBuilder().onApplied(resolve)
+        conn.subscriptionBuilder().onApplied(() => resolve())
           .subscribe(["SELECT * FROM user", "SELECT * FROM org_member", "SELECT * FROM org_invitation"]);
         setTimeout(resolve, 4000);
       });

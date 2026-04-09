@@ -149,20 +149,10 @@ export default function SettingsPage() {
   const [paymentSaved, setPaymentSaved] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
-        setUserId(user.id);
-        setUserEmail(user.email ?? "");
-        // Load avatar
-        const { data: profile } = await supabase
-          .from("user_profiles")
-          .select("avatar_url")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (profile?.avatar_url) setAvatarUrl(profile.avatar_url);
-      }
-    });
+    const token = localStorage.getItem("stdb_token");
+    if (token) {
+      setUserId(token.slice(0, 36));
+    }
 
     // settings state is now managed by useSettings hook (SpacetimeDB migration)
 
@@ -338,12 +328,6 @@ export default function SettingsPage() {
     try {
       const [res] = await uploadFiles("avatar", { files: [file] });
       const url = res.ufsUrl;
-
-      const supabase = createClient();
-      await supabase
-        .from("user_profiles")
-        .update({ avatar_url: url })
-        .eq("user_id", userId);
 
       setAvatarUrl(url);
       hapticSuccess();

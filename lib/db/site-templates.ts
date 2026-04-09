@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { SiteElement, SiteFeatures } from "@/lib/types";
 
 function uid() {

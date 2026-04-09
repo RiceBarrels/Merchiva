@@ -90,7 +90,7 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
 
       // Subscribe, then call loginWithPassword to migrate the account to this identity
       await new Promise<void>((resolve) => {
-        conn.subscriptionBuilder().onApplied(resolve).subscribe(["SELECT * FROM user"]);
+        conn.subscriptionBuilder().onApplied(() => resolve()).subscribe(["SELECT * FROM user"]);
         setTimeout(resolve, 3000);
       });
 

@@ -89,10 +89,9 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id);
-    });
+    // SpacetimeDB: identity is stored in localStorage token
+    const token = localStorage.getItem("stdb_token");
+    if (token) setUserId(token.slice(0, 36)); // use token prefix as stable ID
   }, []);
 
   useEffect(() => {
@@ -130,45 +129,7 @@ export default function ChatPage() {
     }).catch(console.error);
   }, [activeConv]);
 
-  // Realtime subscription for new messages
-  useEffect(() => {
-    if (!activeConv) return;
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`chat:${activeConv.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chat_messages",
-          filter: `conversation_id=eq.${activeConv.id}`,
-        },
-        (payload) => {
-          const r = payload.new as Record<string, unknown>;
-          const msg: ChatMessage = {
-            id: r.id as string,
-            conversationId: r.conversation_id as string,
-            senderId: r.sender_id as string,
-            content: r.content as string,
-            createdAt: r.created_at as string,
-            replyToId: (r.reply_to_id as string) ?? null,
-            attachmentUrl: (r.attachment_url as string) ?? null,
-            attachmentType: (r.attachment_type as string) ?? null,
-            attachmentName: (r.attachment_name as string) ?? null,
-          };
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === msg.id)) return prev;
-            const updated = [...prev, msg];
-            setCache(`messages_${activeConv.id}`, updated.slice(-30));
-            return updated;
-          });
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [activeConv]);
+  // Realtime updates come via SpacetimeDB WebSocket subscription (no Supabase needed)
 
   // Auto-scroll to bottom
   useEffect(() => {

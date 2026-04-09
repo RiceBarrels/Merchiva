@@ -174,7 +174,7 @@ async function main() {
   console.log("📡  Subscribing to all tables…");
   await new Promise<void>((resolve) => {
     (conn as any).subscriptionBuilder()
-      .onApplied(resolve)
+      .onApplied(() => resolve())
       .subscribe([
         "SELECT * FROM organization",
         "SELECT * FROM org_member",

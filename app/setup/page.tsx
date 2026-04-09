@@ -114,40 +114,13 @@ export default function SetupPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth
-      .getUser()
-      .then(({ data: { user } }) => {
-        if (!user) {
-          router.replace("/login");
-          return;
-        }
-        supabase
-          .from("org_members")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .limit(1)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              router.replace("/dashboard");
-            } else {
-              // Restore state saved before OAuth redirect
-              try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) {
-                  const parsed = JSON.parse(saved) as SetupState;
-                  setState(parsed);
-                }
-              } catch {
-                // ignore
-              }
-              setChecking(false);
-            }
-          });
-      })
-      .catch(() => setChecking(false));
+    const token = localStorage.getItem("stdb_token");
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+    // SpacetimeDB: org setup is handled at signup; redirect to dashboard
+    router.replace("/dashboard");
   }, [router]);
 
   const persist = (next: SetupState) => {
@@ -191,100 +164,9 @@ export default function SetupPage() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
-
-    const displayName =
-      state.yourName.trim() || user.email?.split("@")[0] || "Me";
-    const orgName =
-      state.businessName.trim() || user.email?.split("@")[0] || "My Business";
-
-    try {
-      // 1. User profile
-      await supabase
-        .from("user_profiles")
-        .upsert(
-          { user_id: user.id, display_name: displayName },
-          { onConflict: "user_id" }
-        );
-
-      // 2. Organization
-      const { data: org, error: orgError } = await supabase
-        .from("organizations")
-        .insert({ owner_id: user.id, name: orgName })
-        .select("id")
-        .single();
-
-      if (orgError || !org) {
-        setError(orgError?.message ?? "Failed to create organization.");
-        setLoading(false);
-        return;
-      }
-
-      // 3. Set active org
-      await supabase
-        .from("user_profiles")
-        .update({ last_active_org_id: org.id })
-        .eq("user_id", user.id);
-
-      // 4. Org membership
-      const { error: memberError } = await supabase.from("org_members").insert({
-        organization_id: org.id,
-        user_id: user.id,
-        role: "owner",
-        display_name: displayName,
-        permissions: ownerPermissions(),
-        status: "active",
-      });
-
-      if (memberError) {
-        setError(memberError.message);
-        setLoading(false);
-        return;
-      }
-
-      // 5. Settings
-      await supabase.from("settings").upsert(
-        {
-          user_id: user.id,
-          business_name: orgName,
-          business_type: state.businessType || null,
-        },
-        { onConflict: "user_id" }
-      );
-
-      // 6. Send invitations
-      const validEmails = state.inviteEmails.filter(
-        (e) => e.trim() && e.includes("@")
-      );
-      for (const email of validEmails) {
-        try {
-          await fetch("/api/team/invite", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: email.trim(), role: "staff" }),
-          });
-        } catch {
-          // Don't block setup on invite failure
-        }
-      }
-
-      localStorage.removeItem(STORAGE_KEY);
-      hapticSuccess();
-      router.push("/dashboard");
-      router.refresh();
-    } catch (err) {
-      hapticError();
-      setError(err instanceof Error ? err.message : "Setup failed.");
-      setLoading(false);
-    }
+    // SpacetimeDB: org setup is done at signup via createOrganization reducer
+    setError("Organization setup is handled at signup. Please sign up again to create a new organization.");
+    setLoading(false);
   };
 
   if (checking) {

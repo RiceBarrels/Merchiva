@@ -4,13 +4,8 @@ import { getValidSquareToken } from "@/lib/square/token";
 
 export async function GET() {
   try {
-    const supabase = await createSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const token = await getValidSquareToken(user.id);
+    const token = await getValidSquareToken("");
     if (!token) {
       return NextResponse.json(
         { error: "Square not connected. Connect in Settings." },

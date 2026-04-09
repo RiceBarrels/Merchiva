@@ -301,7 +301,8 @@ export default function StaffingPage() {
   // ─── Effects ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    createClient().auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+    const token = localStorage.getItem("stdb_token");
+    setUserId(token ? token.slice(0, 36) : null);
   }, []);
 
   useEffect(() => {

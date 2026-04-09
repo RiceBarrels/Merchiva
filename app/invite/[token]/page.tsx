@@ -35,18 +35,12 @@ export default function InvitePage({
   const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
+    const stdbToken = localStorage.getItem("stdb_token");
+    if (stdbToken) {
+      setUserId(stdbToken.slice(0, 36));
+    }
 
-    Promise.all([
-      supabase.auth.getUser(),
-      getInvitationByToken(token),
-    ]).then(async ([{ data: { user } }, inv]) => {
-      if (user) {
-        setUserId(user.id);
-        setUserEmail(user.email ?? null);
-        setDisplayName(user.user_metadata?.business_name || user.email?.split("@")[0] || "");
-      }
-
+    getInvitationByToken(token).then(async (inv) => {
       if (!inv) {
         setError("This invitation is invalid or has already been accepted.");
         setLoading(false);
@@ -60,14 +54,9 @@ export default function InvitePage({
       }
 
       setInvitation(inv);
-
-      // Fetch org name
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("name")
-        .eq("id", inv.organizationId)
-        .single();
-      setOrgName(org?.name ?? "");
+      setLoading(false);
+    }).catch(() => {
+      setError("Failed to load invitation.");
       setLoading(false);
     });
   }, [token]);

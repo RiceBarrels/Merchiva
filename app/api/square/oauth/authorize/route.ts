@@ -4,14 +4,6 @@ import { NextResponse } from "next/server";
 const SCOPES = "ITEMS_READ INVENTORY_READ ORDERS_READ MERCHANT_PROFILE_READ";
 
 export async function GET() {
-  const supabase = await createSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const state = randomBytes(32).toString("hex");
 

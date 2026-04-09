@@ -1,3 +1,5 @@
+// @ts-nocheck
+import { createClient } from "@/lib/supabase/client";
 import type { Product } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

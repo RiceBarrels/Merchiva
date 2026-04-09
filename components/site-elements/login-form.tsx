@@ -37,17 +37,8 @@ export function LoginForm({ theme, onSuccess, title = "Customer Login" }: Props)
     setSuccess(null);
     setLoading(true);
     try {
-      const supabase = createClient();
-      if (mode === "login") {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        if (data.user) onSuccess?.(data.user.id);
-        setSuccess("Signed in successfully!");
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        setSuccess("Check your email to confirm your account.");
-      }
+      // Customer auth is not yet implemented in SpacetimeDB
+      throw new Error("Customer login is not available yet.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

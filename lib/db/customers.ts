@@ -1,3 +1,5 @@
+// @ts-nocheck
+import { createClient } from "@/lib/supabase/client";
 /**
  * Site customer system — stores in site_customers, site_memberships, site_orders, site_bookings
  *

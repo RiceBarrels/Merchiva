@@ -4,13 +4,8 @@ import { getValidSquareToken } from "@/lib/square/token";
 
 export async function GET() {
   try {
-    const supabase = await createSupabase();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const token = await getValidSquareToken(user.id);
+    const token = await getValidSquareToken("");
     if (!token) {
       return NextResponse.json(
         { error: "Square not connected. Connect in Settings." },
@@ -19,11 +14,7 @@ export async function GET() {
     }
 
     // Still need location_id for inventory queries
-    const { data: settings } = await supabase
-      .from("settings")
-      .select("square_location_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    
 
     const square = new SquareClient({
       token,
@@ -46,9 +37,7 @@ export async function GET() {
     const counts: unknown[] = [];
     const countsPage = await square.inventory.batchGetCounts({
       catalogObjectIds: variationIds.slice(0, 100),
-      locationIds: settings?.square_location_id
-        ? [settings.square_location_id]
-        : undefined,
+      locationIds: undefined,
     });
     for await (const count of countsPage) {
       counts.push(count);
