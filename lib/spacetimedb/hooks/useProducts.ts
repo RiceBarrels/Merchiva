@@ -1,49 +1,45 @@
 "use client";
-// SpacetimeDB migration layer — products
-// TODO: replace internals with:
-//   const [products] = useTable(tables.product.where(r => r.organizationId.eq(orgId)));
+// SpacetimeDB — products
 
-import { useState, useEffect, useCallback } from "react";
-import { getProducts } from "@/lib/db/products";
-import { createClient } from "@/lib/supabase/client";
-import { getCached, setCache } from "@/lib/cache";
+import { useMemo } from "react";
+import { useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
+import { usePermissions } from "@/lib/context/permissions";
 import type { Product } from "@/lib/types";
 
-export function useProducts(organizationId: string | null) {
-  const cacheKey = organizationId ? `products_${organizationId}` : null;
+export function useProducts(_organizationId: string | null) {
+  const { organizationId } = usePermissions();
 
-  const [products, setProducts] = useState<Product[]>(
-    () => (cacheKey ? getCached<Product[]>(cacheKey) ?? [] : [])
-  );
-  const [refreshing, setRefreshing] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [rawProducts, isReady] = useTable(tables.product);
 
-  useEffect(() => {
-    createClient()
-      .auth.getUser()
-      .then(({ data: { user } }) => setUserId(user?.id ?? null));
-  }, []);
+  const products = useMemo<Product[]>(() => {
+    if (!organizationId) return [];
+    return rawProducts
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:                 r.id.toString(),
+        name:               r.name,
+        category:           r.category,
+        price:              r.price,
+        cost:               r.cost,
+        unitsSoldThisMonth: r.unitsSoldThisMonth,
+        unitsSoldLastMonth: r.unitsSoldLastMonth,
+        revenue:            r.revenue,
+        margin:             r.margin,
+        rating:             r.rating,
+        trend:              r.trend as Product["trend"],
+        alert:              r.alert as Product["alert"],
+        alertReason:        r.alertReason ?? null,
+        squareItemId:       r.squareItemId ?? null,
+      }));
+  }, [rawProducts, organizationId]);
 
-  const refresh = useCallback(() => {
-    if (!organizationId) return;
-    setRefreshing(true);
-    getProducts()
-      .then((p) => {
-        setProducts(p);
-        if (cacheKey) setCache(cacheKey, p);
-      })
-      .catch((err) => console.error("[useProducts]", err))
-      .finally(() => {
-        setRefreshing(false);
-        setIsReady(true);
-      });
-  }, [organizationId, cacheKey]);
-
-  useEffect(() => {
-    if (!organizationId) return;
-    refresh();
-  }, [organizationId, refresh]);
-
-  return { products, setProducts, refreshing, isReady, userId, refresh } as const;
+  return {
+    products,
+    isReady,
+    refreshing: false,
+    userId: null,
+    setProducts: () => {},
+    refresh: () => {},
+  } as const;
 }

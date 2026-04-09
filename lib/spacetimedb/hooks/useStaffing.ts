@@ -1,115 +1,214 @@
 "use client";
-// SpacetimeDB migration layer — staffing
-// TODO: replace internals with useTable calls on tables.shift, tables.staffRole, etc.
+// SpacetimeDB — staffing, scheduling, availability, and chat
 
-import { useState, useEffect, useCallback } from "react";
-import { getTeamForScheduling, getShifts, getStaffRoles } from "@/lib/db/staffing";
-import { getConversations } from "@/lib/db/chat";
-import { getShiftPresets } from "@/lib/db/shift-presets";
-import {
-  getMyAvailability,
-  getTimeOffRequests,
-  getOrgTimeOffRequests,
-  getOrgShiftTrades,
-} from "@/lib/db/availability";
-import { getCached, setCache } from "@/lib/cache";
+import { useMemo } from "react";
+import { useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
+import { usePermissions } from "@/lib/context/permissions";
 import type {
   OrgMember, Shift, StaffRole, ShiftPreset,
-  StaffAvailability, TimeOffRequest, ShiftTrade,
+  StaffAvailability, TimeOffRequest, ShiftTrade, ChatConversation,
 } from "@/lib/types";
-import type { ChatConversation } from "@/lib/types";
-
-type StaffCache = {
-  team: OrgMember[];
-  shifts: Shift[];
-  roles: StaffRole[];
-  conversations: ChatConversation[];
-  presets: ShiftPreset[];
-};
+import type { Permissions } from "@/lib/types";
 
 export function useStaffing(
-  organizationId: string | null,
-  userId: string | null,
+  _organizationId: string | null,
+  _userId: string | null,
   isStaff: boolean
 ) {
-  const cacheKey = organizationId && userId ? `staffing_${organizationId}_${userId}` : null;
-  const cached = cacheKey ? getCached<StaffCache>(cacheKey) : null;
+  const { organizationId } = usePermissions();
 
-  const [team,    setTeam]    = useState<OrgMember[]>(cached?.team ?? []);
-  const [shifts,  setShifts]  = useState<Shift[]>(cached?.shifts ?? []);
-  const [roles,   setRoles]   = useState<StaffRole[]>(cached?.roles ?? []);
-  const [presets, setPresets] = useState<ShiftPreset[]>(cached?.presets ?? []);
-  const [chatOptions, setChatOptions] = useState<ChatConversation[]>(cached?.conversations ?? []);
-  const [myAvailability, setMyAvailability] = useState<StaffAvailability | null>(null);
-  const [myTimeOffRequests, setMyTimeOffRequests] = useState<TimeOffRequest[]>([]);
-  const [orgTimeOffRequests, setOrgTimeOffRequests] = useState<TimeOffRequest[]>([]);
-  const [orgShiftTrades, setOrgShiftTrades] = useState<ShiftTrade[]>([]);
-  const [loading, setLoading] = useState(!cached);
-  const [refreshing, setRefreshing] = useState(false);
+  const [rawMembers,  membersReady]  = useTable(tables.orgMember);
+  const [rawShifts,   shiftsReady]   = useTable(tables.shift);
+  const [rawRoles,    rolesReady]    = useTable(tables.staffRole);
+  const [rawPresets,  presetsReady]  = useTable(tables.shiftPreset);
+  const [rawConvos,   convosReady]   = useTable(tables.chatConversation);
+  const [rawAvail,    availReady]    = useTable(tables.staffAvailability);
+  const [rawTimeOff,  timeOffReady]  = useTable(tables.timeOffRequest);
+  const [rawTrades,   tradesReady]   = useTable(tables.shiftTrade);
 
-  const refresh = useCallback(() => {
-    if (!organizationId || !userId) return;
+  const isReady = membersReady && shiftsReady && rolesReady &&
+    presetsReady && convosReady && availReady && timeOffReady && tradesReady;
 
-    if (!loading) setRefreshing(true);
+  const team = useMemo<OrgMember[]>(() => {
+    if (!organizationId) return [];
+    return rawMembers
+      .filter((r) => r.organizationId === organizationId && r.status === "active")
+      .map((r) => ({
+        id:             r.id.toString(),
+        organizationId: r.organizationId,
+        userId:         r.userId.toHexString(),
+        role:           r.role as OrgMember["role"],
+        displayName:    r.displayName,
+        email:          r.email,
+        // permissions is JSON in SpacetimeDB; parse it safely
+        permissions:    (() => {
+          try { return JSON.parse(r.permissions) as Permissions; }
+          catch { return {} as Permissions; }
+        })(),
+        status:         r.status as OrgMember["status"],
+      }));
+  }, [rawMembers, organizationId]);
 
-    const promises: Promise<unknown>[] = [
-      getTeamForScheduling(organizationId),
-      getShifts(4),
-      getStaffRoles(),
-      getConversations(organizationId),
-      getShiftPresets(organizationId),
-      getMyAvailability(userId, organizationId),
-      getTimeOffRequests(userId, organizationId),
-    ];
-    if (!isStaff) {
-      promises.push(getOrgTimeOffRequests(organizationId));
-      promises.push(getOrgShiftTrades(organizationId));
-    }
+  const shifts = useMemo<Shift[]>(() => {
+    if (!organizationId) return [];
+    return rawShifts
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:              r.id.toString(),
+        memberId:        r.memberId ?? null,
+        staffName:       r.staffName,
+        staffRole:       r.staffRole ?? null,
+        staffRoles:      (() => {
+          try { return JSON.parse(r.staffRoles) as string[]; }
+          catch { return r.staffRoles ? [r.staffRoles] : []; }
+        })(),
+        date:            r.date,
+        shiftType:       r.shiftType as Shift["shiftType"],
+        startTime:       r.startTime,
+        endTime:         r.endTime,
+        predictedDemand: r.predictedDemand as Shift["predictedDemand"],
+      }));
+  }, [rawShifts, organizationId]);
 
-    Promise.all(promises)
-      .then((results) => {
-        const t = results[0] as OrgMember[];
-        const s = results[1] as Shift[];
-        const r = results[2] as StaffRole[];
-        const c = results[3] as ChatConversation[];
-        const p = results[4] as ShiftPreset[];
-        setTeam(t);
-        setShifts(s);
-        setRoles(r);
-        setChatOptions(c);
-        setPresets(p);
-        setMyAvailability(results[5] as StaffAvailability | null);
-        setMyTimeOffRequests(results[6] as TimeOffRequest[]);
-        if (!isStaff) {
-          setOrgTimeOffRequests(results[7] as TimeOffRequest[]);
-          setOrgShiftTrades(results[8] as ShiftTrade[]);
-        }
-        if (cacheKey) setCache(cacheKey, { team: t, shifts: s, roles: r, conversations: c, presets: p });
-      })
-      .catch((err) => console.error("[useStaffing]", err))
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
-  }, [organizationId, userId, isStaff, cacheKey, loading]);
+  const roles = useMemo<StaffRole[]>(() => {
+    if (!organizationId) return [];
+    return rawRoles
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:          r.id.toString(),
+        name:        r.name,
+        color:       r.color,
+        icon:        r.icon,
+        description: r.description,
+        permissions: (() => {
+          try { return JSON.parse(r.permissions); }
+          catch { return {}; }
+        })(),
+      }));
+  }, [rawRoles, organizationId]);
 
-  useEffect(() => {
-    if (!organizationId || !userId) return;
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, userId, isStaff]);
+  const presets = useMemo<ShiftPreset[]>(() => {
+    if (!organizationId) return [];
+    return rawPresets
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:             r.id.toString(),
+        organizationId: r.organizationId,
+        name:           r.name,
+        startTime:      r.startTime,
+        endTime:        r.endTime,
+        color:          r.color,
+        sortOrder:      r.sortOrder,
+      }));
+  }, [rawPresets, organizationId]);
+
+  const chatOptions = useMemo<ChatConversation[]>(() => {
+    if (!organizationId) return [];
+    return rawConvos
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:             r.id.toString(),
+        organizationId: r.organizationId,
+        type:           r.type as ChatConversation["type"],
+        name:           r.name ?? null,
+        createdBy:      r.createdBy ?? null,
+        createdAt:      r.createdAt.toDate().toISOString(),
+      }));
+  }, [rawConvos, organizationId]);
+
+  const myAvailability = useMemo<StaffAvailability | null>(() => {
+    if (!organizationId) return null;
+    const row = rawAvail.find(
+      (r) => r.organizationId === organizationId
+    );
+    if (!row) return null;
+    return {
+      id:             row.id.toString(),
+      userId:         row.userId.toHexString(),
+      organizationId: row.organizationId,
+      type:           row.type as StaffAvailability["type"],
+      startDate:      row.startDate ?? null,
+      endDate:        row.endDate ?? null,
+      days:           (() => {
+        try { return JSON.parse(row.days) as boolean[]; }
+        catch { return [false, false, false, false, false, false, false]; }
+      })(),
+      dayTimes:       (() => {
+        try { return JSON.parse(row.dayTimes); }
+        catch { return []; }
+      })(),
+      status:         row.status,
+      fullDay:        row.fullDay,
+      startTime:      row.startTime ?? null,
+      endTime:        row.endTime ?? null,
+      comments:       row.comments,
+    };
+  }, [rawAvail, organizationId]);
+
+  const myTimeOffRequests = useMemo<TimeOffRequest[]>(() => {
+    if (!organizationId) return [];
+    return rawTimeOff
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:             r.id.toString(),
+        userId:         r.userId.toHexString(),
+        organizationId: r.organizationId,
+        startDate:      r.startDate,
+        endDate:        r.endDate,
+        fullDays:       r.fullDays,
+        startTime:      r.startTime ?? null,
+        endTime:        r.endTime ?? null,
+        comments:       r.comments,
+        status:         r.status as TimeOffRequest["status"],
+        reviewedBy:     r.reviewedBy ?? null,
+        reviewedAt:     r.reviewedAt ? r.reviewedAt.toDate().toISOString() : null,
+      }));
+  }, [rawTimeOff, organizationId]);
+
+  const orgTimeOffRequests = isStaff ? [] : myTimeOffRequests;
+
+  const orgShiftTrades = useMemo<ShiftTrade[]>(() => {
+    if (!organizationId || isStaff) return [];
+    return rawTrades
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:              r.id.toString(),
+        organizationId:  r.organizationId,
+        shiftId:         r.shiftId,
+        requesterId:     r.requesterId,
+        targetId:        r.targetId,
+        targetShiftId:   r.targetShiftId ?? null,
+        type:            r.type as ShiftTrade["type"],
+        status:          r.status as ShiftTrade["status"],
+        managerApproved: r.managerApproved,
+        managerId:       r.managerId ?? null,
+        comments:        r.comments,
+      }));
+  }, [rawTrades, organizationId, isStaff]);
 
   return {
-    team, setTeam,
-    shifts, setShifts,
-    roles, setRoles,
-    presets, setPresets,
-    chatOptions, setChatOptions,
-    myAvailability, setMyAvailability,
-    myTimeOffRequests, setMyTimeOffRequests,
-    orgTimeOffRequests, setOrgTimeOffRequests,
-    orgShiftTrades, setOrgShiftTrades,
-    loading, refreshing,
-    refresh,
+    team,
+    shifts,
+    roles,
+    presets,
+    chatOptions,
+    myAvailability,
+    myTimeOffRequests,
+    orgTimeOffRequests,
+    orgShiftTrades,
+    loading:    !isReady,
+    refreshing: false,
+    // setters and refresh are no-ops — mutations via SpacetimeDB reducers
+    setTeam:               () => {},
+    setShifts:             () => {},
+    setRoles:              () => {},
+    setPresets:            () => {},
+    setChatOptions:        () => {},
+    setMyAvailability:     () => {},
+    setMyTimeOffRequests:  () => {},
+    setOrgTimeOffRequests: () => {},
+    setOrgShiftTrades:     () => {},
+    refresh:               () => {},
   } as const;
 }

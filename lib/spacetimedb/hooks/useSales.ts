@@ -1,39 +1,51 @@
 "use client";
-// SpacetimeDB migration layer — sales
-// TODO: replace internals with:
-//   const [records] = useTable(tables.salesRecord.where(r => r.organizationId.eq(orgId)));
+// SpacetimeDB — sales records
 
-import { useState, useEffect, useCallback } from "react";
-import { getSalesHistory, getTodayHourlyRecords } from "@/lib/db/sales";
-import { getCached, setCache } from "@/lib/cache";
+import { useMemo } from "react";
+import { useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
+import { usePermissions } from "@/lib/context/permissions";
 import type { SalesRecord } from "@/lib/types";
 
-type SalesCache = { history: SalesRecord[]; hourly: SalesRecord[] };
-
 export function useSales() {
-  const [history, setHistory] = useState<SalesRecord[]>(
-    () => getCached<SalesCache>("sales_30d")?.history ?? []
+  const { organizationId } = usePermissions();
+
+  const [rawRecords, isReady] = useTable(tables.salesRecord);
+
+  const allRecords = useMemo<SalesRecord[]>(() => {
+    if (!organizationId) return [];
+    return rawRecords
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        date:        r.date,
+        hour:        r.hour ?? undefined,
+        actual:      r.actual,
+        predicted:   r.predicted ?? 0,
+        weather:     r.weather ?? "",
+        footTraffic: r.footTraffic ?? 0,
+        isHoliday:   r.isHoliday,
+      }));
+  }, [rawRecords, organizationId]);
+
+  // 30-day history: all daily records (no hour field)
+  const history = useMemo<SalesRecord[]>(
+    () => allRecords.filter((r) => r.hour === undefined),
+    [allRecords]
   );
-  const [hourly, setHourly] = useState<SalesRecord[]>(
-    () => getCached<SalesCache>("sales_30d")?.hourly ?? []
+
+  // Today's hourly records: records with an hour field
+  const today = new Date().toISOString().slice(0, 10);
+  const hourly = useMemo<SalesRecord[]>(
+    () => allRecords.filter((r) => r.hour !== undefined && r.date === today),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allRecords]
   );
-  const [refreshing, setRefreshing] = useState(false);
 
-  const refresh = useCallback(() => {
-    setRefreshing(true);
-    Promise.all([getSalesHistory(30), getTodayHourlyRecords()])
-      .then(([hist, hrly]) => {
-        setHistory(hist);
-        setHourly(hrly);
-        setCache("sales_30d", { history: hist, hourly: hrly });
-      })
-      .catch((err) => console.error("[useSales]", err))
-      .finally(() => setRefreshing(false));
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  return { history, hourly, refreshing, refresh } as const;
+  return {
+    history,
+    hourly,
+    isReady,
+    refreshing: false,
+    refresh: () => {},
+  } as const;
 }
