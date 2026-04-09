@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
 import type { ChatConversation, ChatMessage, ChatMember } from "@/lib/types";
-import { uploadFiles } from "@/lib/uploadthing";
 
 // ─── Conversations ──────────────────────────────────────────────────────────
 
@@ -229,7 +228,8 @@ export async function sendMessage(
 export async function uploadChatFile(
   file: File
 ): Promise<{ url: string; type: string; name: string }> {
-  const [res] = await uploadFiles("chatFile", { files: [file] });
+  const { uploadFiles } = await import("@/lib/uploadthing");
+  const [res] = await uploadFiles("generalFile", { files: [file] });
 
   let type = "file";
   if (file.type.startsWith("image/")) type = "image";

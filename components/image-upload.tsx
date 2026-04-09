@@ -6,11 +6,11 @@ import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"];
-const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
+const MAX_BYTES = 4 * 1024 * 1024; // 4 MB (siteImage endpoint limit)
 
 interface ImageUploadProps {
   value: string;          // current URL (or empty string)
-  orgId?: string;         // kept for API compatibility, not used
+  orgId: string;
   onChange: (url: string) => void;
   className?: string;
 }
@@ -22,14 +22,12 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
 
   const { startUpload, isUploading } = useUploadThing("siteImage", {
     onClientUploadComplete: (res) => {
-      if (res?.[0]?.ufsUrl) {
+      if (res?.[0]) {
         onChange(res[0].ufsUrl);
         if (navigator.vibrate) navigator.vibrate(30);
       }
     },
-    onUploadError: (err) => {
-      setError(err.message ?? "Upload failed.");
-    },
+    onUploadError: (err) => setError(err.message),
   });
 
   async function handleFile(file: File) {
@@ -39,7 +37,7 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError("File exceeds 8 MB limit.");
+      setError("File exceeds 4 MB limit.");
       return;
     }
     await startUpload([file]);

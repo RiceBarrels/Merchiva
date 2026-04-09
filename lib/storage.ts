@@ -1,12 +1,19 @@
 import { uploadFiles } from "@/lib/uploadthing";
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
 
-export async function uploadSiteImage(file: File): Promise<string> {
-  const [res] = await uploadFiles("siteImage", { files: [file] });
+type UploadEndpoint = keyof OurFileRouter;
+
+export async function uploadFile(
+  file: File,
+  endpoint: UploadEndpoint = "siteImage"
+): Promise<string> {
+  const [res] = await uploadFiles(endpoint, { files: [file] });
   return res.ufsUrl;
 }
 
-// No-op: UploadThing file deletion is handled server-side via UTApi if needed
+// Kept for backward-compat call sites that used the old Supabase URL.
+// UploadThing manages deletion via the dashboard; no-op here.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function deleteSiteImage(_url: string): Promise<void> {
-  // Files are automatically managed by UploadThing
+  // Deletion is managed through the UploadThing dashboard or API.
 }

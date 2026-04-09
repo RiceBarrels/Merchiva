@@ -5,35 +5,27 @@ const f = createUploadthing();
 
 async function auth() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
   return { userId: user.id };
 }
 
 export const ourFileRouter = {
-  siteImage: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
-    .middleware(auth)
-    .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
-    }),
+  siteImage: f({ image: { maxFileSize: "4MB", maxFileCount: 10 } })
+    .middleware(async () => auth())
+    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
 
-  avatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
-    .middleware(auth)
-    .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
-    }),
+  avatar: f({ image: { maxFileSize: "2MB", maxFileCount: 1 } })
+    .middleware(async () => auth())
+    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
 
-  chatFile: f({
-    image: { maxFileSize: "8MB", maxFileCount: 1 },
-    video: { maxFileSize: "64MB", maxFileCount: 1 },
-    blob: { maxFileSize: "32MB", maxFileCount: 1 },
+  generalFile: f({
+    image: { maxFileSize: "8MB" },
+    video: { maxFileSize: "64MB" },
+    pdf: { maxFileSize: "16MB" },
   })
-    .middleware(auth)
-    .onUploadComplete(async ({ file }) => {
-      return { url: file.ufsUrl };
-    }),
+    .middleware(async () => auth())
+    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;
