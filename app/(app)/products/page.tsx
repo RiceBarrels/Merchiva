@@ -98,7 +98,7 @@ export default function ProductsPage() {
   const { organizationId } = usePermissions();
   const router = useRouter();
   // Data via SpacetimeDB migration hook
-  const { products, setProducts, refreshing, userId } = useProducts(organizationId);
+  const { products, refreshing, userId } = useProducts(organizationId);
 
   const [search, setSearch]     = useState("");
   const [category, setCategory] = useState("All");
@@ -129,8 +129,7 @@ export default function ProductsPage() {
         userId
       );
       hapticSuccess();
-      const newProducts = [newProd, ...products];
-      setProducts(newProducts);
+      void newProd;
       setDialogOpen(false);
       setForm(BLANK);
     } finally {
@@ -141,8 +140,6 @@ export default function ProductsPage() {
   const handleDelete = async (id: string) => {
     hapticWarning();
     await deleteProduct(id);
-    const newProducts = products.filter((p) => p.id !== id);
-    setProducts(newProducts);
   };
 
   const totalRevenue  = products.reduce((s, p) => s + p.revenue, 0);

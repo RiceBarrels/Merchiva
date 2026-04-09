@@ -79,7 +79,7 @@ const statusConfig: Record<
 export default function InventoryPage() {
   const { organizationId } = usePermissions();
   // Data via SpacetimeDB migration hook (backed by Supabase; swap useTable internals once generated client is ready)
-  const { items, setItems, transactions, refreshing, userId, refresh: _refresh } = useInventory(organizationId);
+  const { items, transactions, refreshing, userId, refresh: _refresh } = useInventory(organizationId);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -141,26 +141,10 @@ export default function InventoryPage() {
     if (!form.name || !userId) return;
     setSaving(true);
     try {
-      let newItems: InventoryItem[];
       if (editItem) {
         await updateInventoryItem(editItem.id, form);
-        newItems = items.map((i) =>
-          i.id === editItem.id
-            ? {
-                ...i,
-                ...form,
-                status:
-                  (form.currentStock ?? i.currentStock) === 0
-                    ? "out_of_stock"
-                    : (form.currentStock ?? i.currentStock) <
-                      (form.minStock ?? i.minStock)
-                    ? "low_stock"
-                    : "in_stock",
-              }
-            : i
-        );
       } else {
-        const newItem = await addInventoryItem(
+        await addInventoryItem(
           {
             name: form.name ?? "",
             category: form.category ?? "Other",
@@ -175,9 +159,7 @@ export default function InventoryPage() {
           },
           userId
         );
-        newItems = [newItem, ...items];
       }
-      setItems(newItems);
       hapticSuccess();
       setDialogOpen(false);
     } catch (err) {
@@ -190,8 +172,6 @@ export default function InventoryPage() {
   const handleDelete = async (id: string) => {
     hapticWarning();
     await deleteInventoryItem(id);
-    const newItems = items.filter((i) => i.id !== id);
-    setItems(newItems);
   };
 
   const lowStockCount = items.filter((i) => i.status === "low_stock").length;

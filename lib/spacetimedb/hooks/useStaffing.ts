@@ -1,7 +1,7 @@
 "use client";
 // SpacetimeDB — staffing, scheduling, availability, and chat
 
-import { useMemo } from "react";
+import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
@@ -199,16 +199,16 @@ export function useStaffing(
     orgShiftTrades,
     loading:    !isReady,
     refreshing: false,
-    // setters and refresh are no-ops — mutations via SpacetimeDB reducers
-    setTeam:               () => {},
-    setShifts:             () => {},
-    setRoles:              () => {},
-    setPresets:            () => {},
-    setChatOptions:        () => {},
-    setMyAvailability:     () => {},
-    setMyTimeOffRequests:  () => {},
-    setOrgTimeOffRequests: () => {},
-    setOrgShiftTrades:     () => {},
+    // setters are no-ops — mutations via SpacetimeDB reducers; typed for page compatibility
+    setTeam:               ((_v: SetStateAction<OrgMember[]>) => {}) as Dispatch<SetStateAction<OrgMember[]>>,
+    setShifts:             ((_v: SetStateAction<Shift[]>) => {}) as Dispatch<SetStateAction<Shift[]>>,
+    setRoles:              ((_v: SetStateAction<StaffRole[]>) => {}) as Dispatch<SetStateAction<StaffRole[]>>,
+    setPresets:            ((_v: SetStateAction<ShiftPreset[]>) => {}) as Dispatch<SetStateAction<ShiftPreset[]>>,
+    setChatOptions:        ((_v: SetStateAction<ChatConversation[]>) => {}) as Dispatch<SetStateAction<ChatConversation[]>>,
+    setMyAvailability:     ((_v: SetStateAction<StaffAvailability[]>) => {}) as Dispatch<SetStateAction<StaffAvailability[]>>,
+    setMyTimeOffRequests:  ((_v: SetStateAction<TimeOffRequest[]>) => {}) as Dispatch<SetStateAction<TimeOffRequest[]>>,
+    setOrgTimeOffRequests: ((_v: SetStateAction<TimeOffRequest[]>) => {}) as Dispatch<SetStateAction<TimeOffRequest[]>>,
+    setOrgShiftTrades:     ((_v: SetStateAction<ShiftTrade[]>) => {}) as Dispatch<SetStateAction<ShiftTrade[]>>,
     refresh:               () => {},
-  } as const;
+  };
 }

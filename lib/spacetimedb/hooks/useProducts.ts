@@ -29,7 +29,7 @@ export function useProducts(_organizationId: string | null) {
         rating:             r.rating,
         trend:              r.trend as Product["trend"],
         alert:              r.alert as Product["alert"],
-        alertReason:        r.alertReason ?? null,
+        alertReason:        r.alertReason ?? undefined,
         squareItemId:       r.squareItemId ?? null,
       }));
   }, [rawProducts, organizationId]);
@@ -39,7 +39,7 @@ export function useProducts(_organizationId: string | null) {
     isReady,
     refreshing: false,
     userId: null,
-    setProducts: () => {},
+    setProducts: (_?: any) => {},
     refresh: () => {},
-  } as const;
+  };
 }
