@@ -8,6 +8,7 @@ import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { getStoredToken } from "@/lib/spacetimedb/client";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
+import { useAuth } from "react-oidc-context";
 import { tables } from "@/lib/spacetimedb/generated";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
@@ -18,6 +19,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const [organizations, orgsReady] = useTable(tables.organization);
   const [timedOut, setTimedOut] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const auth = useAuth();
 
   const identity = stdb?.identity;
   const isReady = membersReady && orgsReady;
@@ -67,6 +69,12 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     };
   }, [isReady, authState]);
 
+  const handleSignOut = () => {
+    localStorage.removeItem("stdb_token");
+    auth.removeUser().catch(() => null);
+    window.location.href = "/?logout=1";
+  };
+
   // Still loading
   if (!isReady || !authState) {
     return (
@@ -74,10 +82,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
         {timedOut && (
           <button
-            onClick={() => {
-              localStorage.removeItem("stdb_token");
-              window.location.href = "/?logout=1";
-            }}
+            onClick={handleSignOut}
             className="rounded border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50"
           >
             Sign out and try again
@@ -101,14 +106,21 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  // Use state to avoid SSR/hydration mismatch — localStorage is client-only.
+  const auth = useAuth();
   const [hasToken, setHasToken] = useState(false);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    setHasToken(!!getStoredToken());
+    if (auth.isLoading) return;
+
+    // Sync OIDC id_token to localStorage so SpacetimeDB can use it
+    if (auth.isAuthenticated && auth.user?.id_token) {
+      localStorage.setItem("stdb_token", auth.user.id_token);
+    }
+
+    setHasToken(!!(auth.user?.id_token ?? getStoredToken()));
     setChecked(true);
-  }, []);
+  }, [auth.isLoading, auth.isAuthenticated, auth.user]);
 
   if (!checked) {
     return (
@@ -119,7 +131,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!hasToken) {
-    return <LoginForm onSuccess={() => setHasToken(true)} />;
+    return <LoginForm />;
   }
 
   return (

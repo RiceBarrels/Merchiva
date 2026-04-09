@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { MobileDetector } from "@/components/mobile-detector";
+import { Providers } from "./providers";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -41,7 +42,7 @@ export default function RootLayout({
       <body className="h-full bg-background text-foreground">
         <MobileDetector />
         <ServiceWorkerRegistrar />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

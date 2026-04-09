@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { SpacetimeDBProvider } from "spacetimedb/react";
+import { useAuth } from "react-oidc-context";
 import { DbConnection } from "./generated";
 import {
   SPACETIMEDB_URI,
@@ -18,6 +19,11 @@ interface SpacetimeProviderProps {
 }
 
 export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
+  const auth = useAuth();
+
+  // Prefer the live OIDC id_token; fall back to whatever is stored in localStorage.
+  const token = auth.user?.id_token ?? getStoredToken();
+
   // Build once — useMemo prevents re-creating the builder on every render.
   // SpacetimeDBProvider calls .build() internally on first mount.
   const builder = useMemo(
@@ -25,11 +31,11 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       DbConnection.builder()
         .withUri(SPACETIMEDB_URI)
         .withDatabaseName(SPACETIMEDB_MODULE)
-        .withToken(getStoredToken())
-        .onConnect((conn, _identity, token) => {
-          storeToken(token);
+        .withToken(token)
+        .onConnect((conn, _identity, newToken) => {
+          storeToken(newToken);
           setConnection(conn);
-          // Subscribe to all 33 public tables — the SDK merges subscriptions
+          // Subscribe to all public tables — the SDK merges subscriptions
           // into its local cache, making them available to all useTable() hooks.
           conn.subscriptionBuilder().subscribe([
             "SELECT * FROM user",
