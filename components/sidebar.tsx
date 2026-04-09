@@ -241,13 +241,13 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
               href={item.href}
               onClick={handleNavClick}
               className={cn(
-                "flex items-center gap-2.5 rounded px-2.5 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded px-3 py-3 lg:gap-2.5 lg:px-2.5 lg:py-2 text-sm lg:text-sm font-medium transition-colors",
                 isActive
                   ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
+              <item.icon className="h-5 w-5 lg:h-4 lg:w-4 shrink-0" />
               <span className="flex-1 truncate">{item.label}</span>
             </Link>
           );
@@ -262,20 +262,20 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
           href="/settings"
           onClick={handleNavClick}
           className={cn(
-            "flex items-center gap-2.5 rounded px-2.5 py-2 text-sm transition-colors",
+            "flex items-center gap-3 rounded px-3 py-3 lg:gap-2.5 lg:px-2.5 lg:py-2 text-sm transition-colors",
             pathname === "/settings"
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           )}
         >
-          <Settings className="h-4 w-4 shrink-0" />
+          <Settings className="h-5 w-5 lg:h-4 lg:w-4 shrink-0" />
           Settings
         </Link>
         <button
           onClick={handleLogout}
-          className="flex w-full items-center gap-2.5 rounded px-2.5 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex w-full items-center gap-3 rounded px-3 py-3 lg:gap-2.5 lg:px-2.5 lg:py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
+          <LogOut className="h-5 w-5 lg:h-4 lg:w-4 shrink-0" />
           Sign out
         </button>
       </div>

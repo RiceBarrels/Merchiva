@@ -133,6 +133,68 @@
   }
 }
 
+/* ─── Mobile / iPad touch-friendly sizing (< 1024px) ─────────────────────── */
+@media (max-width: 1023px) {
+  /* Slightly larger base font so rem-based sizing scales up */
+  html { font-size: 17px; }
+
+  /* Minimum 44px touch targets on interactive elements */
+  button:not([data-slot="button"]),
+  [role="button"],
+  a:not([class*="underline"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* shadcn Button component — bump default + icon sizes */
+  [data-slot="button"] {
+    min-height: 2.75rem; /* ~44px at 16px base */
+    padding-inline: 0.875rem;
+    font-size: 1rem;
+  }
+  [data-slot="button"][data-size="icon"],
+  [data-slot="button"].size-8,
+  [data-slot="button"].size-7 {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  /* shadcn Input component */
+  [data-slot="input"] {
+    height: 2.75rem;
+    font-size: 1rem;
+    padding-inline: 0.75rem;
+  }
+
+  /* Table rows — more breathing room */
+  td[data-slot="table-cell"],
+  th[data-slot="table-head"] {
+    padding-block: 0.75rem;
+    font-size: 0.9375rem; /* 15px */
+  }
+
+  /* Card padding */
+  [data-slot="card"] {
+    padding-block: 1.25rem;
+  }
+  [data-slot="card-header"],
+  [data-slot="card-content"],
+  [data-slot="card-footer"] {
+    padding-inline: 1.25rem;
+  }
+
+  /* Dialog / Sheet inner padding */
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"] {
+    padding: 1.5rem;
+  }
+
+  /* Label */
+  label {
+    font-size: 0.9375rem;
+  }
+}
+
 @keyframes fadeout {
   0%   { opacity: 1; }
   60%  { opacity: 1; }
