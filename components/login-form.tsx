@@ -40,11 +40,19 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
     setError(null);
     hapticLight();
 
+    const authority = process.env.NEXT_PUBLIC_SPACETIMEAUTH_AUTHORITY;
+    const clientId = process.env.NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID;
+
+    console.log("[BizOps auth] authority:", authority, "clientId:", clientId);
+
+    if (!authority || !clientId) {
+      setError("Authentication not configured. Please contact support.");
+      setLoading(false);
+      return;
+    }
+
     if (isMobile) {
-      const authority =
-        process.env.NEXT_PUBLIC_SPACETIMEAUTH_AUTHORITY || "https://auth.spacetimedb.com/oidc";
-      const clientId =
-        process.env.NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID || "client_032wKpr8lE6TZ7Kik2g0VE";
+      // Mobile: bottom sheet iframe
       const redirectUri = window.location.origin + "/auth/callback";
       const hint = email.trim();
       const url =
@@ -55,24 +63,16 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
       setShowSheet(true);
       setLoading(false);
     } else {
+      // Desktop: direct redirect — most reliable, no popup blockers
       try {
-        const user = await auth.signinPopup({
+        await auth.signinRedirect({
           extraQueryParams: email.trim() ? { login_hint: email.trim() } : {},
         });
-        if (user?.id_token) {
-          localStorage.setItem("stdb_token", user.id_token);
-        }
-        hapticSuccess();
-        onSuccess?.();
-      } catch {
-        try {
-          await auth.signinRedirect({
-            extraQueryParams: email.trim() ? { login_hint: email.trim() } : {},
-          });
-        } catch (err) {
-          setError("Failed to connect. Please try again.");
-          setLoading(false);
-        }
+        // signinRedirect navigates away; loading stops naturally on return
+      } catch (err) {
+        console.error("[BizOps auth] signinRedirect failed:", err);
+        setError("Failed to connect to authentication. Please try again.");
+        setLoading(false);
       }
     }
   };
