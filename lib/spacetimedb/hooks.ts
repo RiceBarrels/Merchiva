@@ -1,47 +1,65 @@
-// SpacetimeDB React hooks — wired to generated bindings
-//
-// Public tables (organization, user, site, site_page, membership_tier,
-// membership_perk) are subscribed to in the provider and accessible via
-// useTable(tables.xxx).
-//
-// Private tables (inventory, products, sales, settings, staffing) are not
-// exposed in the generated `tables` query builder; those domain hooks continue
-// to read from Supabase until the module tables are made public.
+// SpacetimeDB React hooks — generated bindings for all 33 public tables.
+// Use these in any client component inside <SpacetimeProvider>.
 
 import { useTable } from "spacetimedb/react";
 import { tables } from "./generated";
 
-// Re-export primitives for components that need raw access
 export { useSpacetimeDB } from "spacetimedb/react";
 export { useTable } from "spacetimedb/react";
 export { useReducer as useStdbReducer } from "spacetimedb/react";
+export { reducers } from "./generated";
 
-/** All organizations the current user belongs to (public table). */
-export function useOrganizations() {
-  return useTable(tables.organization);
-}
+// ── Auth / Org ───────────────────────────────────────────────────────────────
+export function useUsers()            { return useTable(tables.user); }
+export function useOrganizations()    { return useTable(tables.organization); }
+export function useOrgMembers()       { return useTable(tables.orgMember); }
+export function useOrgInvitations()   { return useTable(tables.orgInvitation); }
 
-/** All user records visible to the current connection (public table). */
-export function useUsers() {
-  return useTable(tables.user);
-}
+// ── Inventory ────────────────────────────────────────────────────────────────
+export function useInventoryItems()        { return useTable(tables.inventoryItem); }
+export function useInventoryTransactions() { return useTable(tables.inventoryTransaction); }
 
-/** All sites belonging to subscribed organizations (public table). */
-export function useSites() {
-  return useTable(tables.site);
-}
+// ── Sales ────────────────────────────────────────────────────────────────────
+export function useSalesRecords() { return useTable(tables.salesRecord); }
 
-/** All site pages (public table). */
-export function useSitePages() {
-  return useTable(tables.sitePage);
-}
+// ── Products ─────────────────────────────────────────────────────────────────
+export function useProducts() { return useTable(tables.product); }
 
-/** All membership tiers (public table). */
-export function useMembershipTiers() {
-  return useTable(tables.membershipTier);
-}
+// ── Settings ─────────────────────────────────────────────────────────────────
+export function useSettingsRows() { return useTable(tables.settings); }
 
-/** All membership perks (public table). */
-export function useMembershipPerks() {
-  return useTable(tables.membershipPerk);
-}
+// ── Staffing ─────────────────────────────────────────────────────────────────
+export function useStaffMembers()      { return useTable(tables.staffMember); }
+export function useStaffRoles()        { return useTable(tables.staffRole); }
+export function useShifts()            { return useTable(tables.shift); }
+export function useShiftPresets()      { return useTable(tables.shiftPreset); }
+export function useShiftTrades()       { return useTable(tables.shiftTrade); }
+export function useStaffAvailability() { return useTable(tables.staffAvailability); }
+export function useTimeOffRequests()   { return useTable(tables.timeOffRequest); }
+export function useRoleTasks()         { return useTable(tables.roleTask); }
+
+// ── Payments ─────────────────────────────────────────────────────────────────
+export function usePayments() { return useTable(tables.payment); }
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+export function useChatConversations() { return useTable(tables.chatConversation); }
+export function useChatMembers()       { return useTable(tables.chatMember); }
+export function useChatMessages()      { return useTable(tables.chatMessage); }
+
+// ── Sites / Builder ──────────────────────────────────────────────────────────
+export function useSites()           { return useTable(tables.site); }
+export function useSitePages()       { return useTable(tables.sitePage); }
+export function useSiteComponents()  { return useTable(tables.siteComponent); }
+export function useSiteCustomers()   { return useTable(tables.siteCustomer); }
+export function useSiteOrders()      { return useTable(tables.siteOrder); }
+export function useSiteBookings()    { return useTable(tables.siteBooking); }
+export function useSiteMemberships() { return useTable(tables.siteMembership); }
+
+// ── Membership / Loyalty ─────────────────────────────────────────────────────
+export function useMembershipTiers()  { return useTable(tables.membershipTier); }
+export function useMembershipPerks()  { return useTable(tables.membershipPerk); }
+export function usePerkClaims()       { return useTable(tables.perkClaim); }
+export function useCustomerPoints()   { return useTable(tables.customerPoints); }
+
+// ── Todos ────────────────────────────────────────────────────────────────────
+export function useTodos() { return useTable(tables.todo); }

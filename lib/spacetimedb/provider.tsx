@@ -29,17 +29,43 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         .onConnect((conn, _identity, token) => {
           storeToken(token);
           setConnection(conn);
-          // Subscribe to all public tables
-          conn
-            .subscriptionBuilder()
-            .subscribe([
-              "SELECT * FROM organization",
-              "SELECT * FROM user",
-              "SELECT * FROM site",
-              "SELECT * FROM site_page",
-              "SELECT * FROM membership_tier",
-              "SELECT * FROM membership_perk",
-            ]);
+          // Subscribe to all 33 public tables — the SDK merges subscriptions
+          // into its local cache, making them available to all useTable() hooks.
+          conn.subscriptionBuilder().subscribe([
+            "SELECT * FROM user",
+            "SELECT * FROM organization",
+            "SELECT * FROM org_member",
+            "SELECT * FROM org_invitation",
+            "SELECT * FROM settings",
+            "SELECT * FROM inventory_item",
+            "SELECT * FROM inventory_transaction",
+            "SELECT * FROM sales_record",
+            "SELECT * FROM product",
+            "SELECT * FROM staff_member",
+            "SELECT * FROM staff_role",
+            "SELECT * FROM role_task",
+            "SELECT * FROM shift",
+            "SELECT * FROM shift_preset",
+            "SELECT * FROM shift_trade",
+            "SELECT * FROM staff_availability",
+            "SELECT * FROM time_off_request",
+            "SELECT * FROM payment",
+            "SELECT * FROM chat_conversation",
+            "SELECT * FROM chat_member",
+            "SELECT * FROM chat_message",
+            "SELECT * FROM site",
+            "SELECT * FROM site_page",
+            "SELECT * FROM site_component",
+            "SELECT * FROM site_customer",
+            "SELECT * FROM site_order",
+            "SELECT * FROM site_booking",
+            "SELECT * FROM site_membership",
+            "SELECT * FROM membership_tier",
+            "SELECT * FROM membership_perk",
+            "SELECT * FROM perk_claim",
+            "SELECT * FROM customer_points",
+            "SELECT * FROM todo",
+          ]);
         })
         .onDisconnect(() => {
           clearConnection();

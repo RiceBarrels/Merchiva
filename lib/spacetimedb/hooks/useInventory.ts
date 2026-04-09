@@ -1,60 +1,68 @@
 "use client";
-// SpacetimeDB migration layer — inventory
-// Returns [data, isReady] pattern matching useTable from spacetimedb/react.
-// Backed by Supabase until the generated SpacetimeDB client is available.
-// TODO: replace internals with:
-//   const [items] = useTable(tables.inventoryItem.where(r => r.organizationId.eq(orgId)));
+// SpacetimeDB — inventory
+// Reads from the real-time SpacetimeDB cache via useTable.
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  getInventoryItems,
-  getInventoryTransactions,
-} from "@/lib/db/inventory";
-import { createClient } from "@/lib/supabase/client";
-import { getCached, setCache } from "@/lib/cache";
+import { useMemo } from "react";
+import { useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
+import { usePermissions } from "@/lib/context/permissions";
 import type { InventoryItem, InventoryTransaction } from "@/lib/types";
 
-type InvCache = { items: InventoryItem[]; transactions: InventoryTransaction[] };
+export function useInventory(_organizationId: string | null) {
+  const { organizationId } = usePermissions();
 
-export function useInventory(organizationId: string | null) {
-  const cacheKey = organizationId ? `inventory_${organizationId}` : null;
+  const [rawItems, itemsReady]  = useTable(tables.inventoryItem);
+  const [rawTx,    txReady]     = useTable(tables.inventoryTransaction);
 
-  const [items, setItems] = useState<InventoryItem[]>(
-    () => (cacheKey ? getCached<InvCache>(cacheKey)?.items ?? [] : [])
-  );
-  const [transactions, setTransactions] = useState<InventoryTransaction[]>(
-    () => (cacheKey ? getCached<InvCache>(cacheKey)?.transactions ?? [] : [])
-  );
-  const [refreshing, setRefreshing] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const items = useMemo<InventoryItem[]>(() => {
+    if (!organizationId) return [];
+    return rawItems
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:           r.id.toString(),
+        name:         r.name,
+        category:     r.category,
+        currentStock: r.currentStock,
+        minStock:     r.minStock,
+        maxStock:     r.maxStock,
+        unit:         r.unit,
+        costPerUnit:  r.costPerUnit,
+        supplier:     r.supplier,
+        lastRestocked: r.lastRestocked,
+        lossRate:     r.lossRate,
+        status: (
+          r.currentStock <= 0 ? "out_of_stock" :
+          r.currentStock <= r.minStock ? "low_stock" : "in_stock"
+        ) as InventoryItem["status"],
+      }));
+  }, [rawItems, organizationId]);
 
-  useEffect(() => {
-    createClient()
-      .auth.getUser()
-      .then(({ data: { user } }) => setUserId(user?.id ?? null));
-  }, []);
+  const transactions = useMemo<InventoryTransaction[]>(() => {
+    if (!organizationId) return [];
+    return rawTx
+      .filter((r) => r.organizationId === organizationId)
+      .map((r) => ({
+        id:       r.id.toString(),
+        itemId:   r.itemId ?? "",
+        itemName: r.itemName,
+        type:     r.type as InventoryTransaction["type"],
+        quantity: r.quantity,
+        date:     r.date,
+        note:     r.note,
+      }));
+  }, [rawTx, organizationId]);
 
-  const refresh = useCallback(() => {
-    if (!organizationId) return;
-    setRefreshing(true);
-    Promise.all([getInventoryItems(), getInventoryTransactions()])
-      .then(([inv, tx]) => {
-        setItems(inv);
-        setTransactions(tx);
-        if (cacheKey) setCache(cacheKey, { items: inv, transactions: tx });
-      })
-      .catch((err) => console.error("[useInventory]", err))
-      .finally(() => {
-        setRefreshing(false);
-        setIsReady(true);
-      });
-  }, [organizationId, cacheKey]);
+  const isReady = itemsReady && txReady;
 
-  useEffect(() => {
-    if (!organizationId) return;
-    refresh();
-  }, [organizationId, refresh]);
-
-  return { items, setItems, transactions, setTransactions, refreshing, isReady, userId, refresh } as const;
+  return {
+    items,
+    transactions,
+    isReady,
+    refreshing: false,
+    userId: null,
+    // setters are no-ops — mutations go through SpacetimeDB reducers
+    setItems: () => {},
+    setTransactions: () => {},
+    refresh: () => {},
+  } as const;
 }

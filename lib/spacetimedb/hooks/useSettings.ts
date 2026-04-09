@@ -1,31 +1,45 @@
 "use client";
-// SpacetimeDB migration layer — settings
-// TODO: replace internals with:
-//   const [settingsRows] = useTable(tables.settings.where(r => r.organizationId.eq(orgId)));
+// SpacetimeDB — settings
 
-import { useState, useEffect, useCallback } from "react";
-import { getSettings, type UserSettings } from "@/lib/db/settings";
-import { getCached, setCache } from "@/lib/cache";
+import { useMemo } from "react";
+import { useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
+import { usePermissions } from "@/lib/context/permissions";
+import type { UserSettings } from "@/lib/db/settings";
 
 export function useSettings() {
-  const [settings, setSettings] = useState<UserSettings | null>(
-    () => getCached<UserSettings>("settings") ?? null
-  );
-  const [loading, setLoading] = useState(() => !getCached<UserSettings>("settings"));
+  const { organizationId } = usePermissions();
 
-  const refresh = useCallback(() => {
-    getSettings()
-      .then((s) => {
-        setSettings(s);
-        if (s) setCache("settings", s);
-      })
-      .catch((err) => console.error("[useSettings]", err))
-      .finally(() => setLoading(false));
-  }, []);
+  const [rawSettings, isReady] = useTable(tables.settings);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const settings = useMemo<UserSettings | null>(() => {
+    if (!organizationId) return null;
+    const row = rawSettings.find((r) => r.organizationId === organizationId);
+    if (!row) return null;
+    return {
+      id:                  row.id.toString(),
+      userId:              organizationId, // settings are org-scoped in SpacetimeDB
+      businessName:        row.businessName ?? null,
+      businessType:        row.businessType ?? null,
+      timezone:            row.timezone,
+      squareConnected:     row.squareConnected,
+      squareMerchantId:    row.squareMerchantId ?? null,
+      squareLocationId:    row.squareLocationId ?? null,
+      squareLastSyncedAt:  row.squareLastSyncedAt
+        ? row.squareLastSyncedAt.toDate().toISOString()
+        : null,
+      // Clover integration not in SpacetimeDB schema
+      cloverConnected:     false,
+      cloverMerchantId:    null,
+      cloverLastSyncedAt:  null,
+    };
+  }, [rawSettings, organizationId]);
 
-  return { settings, setSettings, loading, refresh } as const;
+  return {
+    settings,
+    isReady,
+    loading: !isReady,
+    setSettings: () => {},
+    refresh: () => {},
+  } as const;
 }

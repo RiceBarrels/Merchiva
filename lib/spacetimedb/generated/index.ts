@@ -86,17 +86,137 @@ import UpsertAvailabilityReducer from "./upsert_availability_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import ChatConversationRow from "./chat_conversation_table";
+import ChatMemberRow from "./chat_member_table";
+import ChatMessageRow from "./chat_message_table";
+import CustomerPointsRow from "./customer_points_table";
+import InventoryItemRow from "./inventory_item_table";
+import InventoryTransactionRow from "./inventory_transaction_table";
 import MembershipPerkRow from "./membership_perk_table";
 import MembershipTierRow from "./membership_tier_table";
+import OrgInvitationRow from "./org_invitation_table";
+import OrgMemberRow from "./org_member_table";
 import OrganizationRow from "./organization_table";
+import PaymentRow from "./payment_table";
+import PerkClaimRow from "./perk_claim_table";
+import ProductRow from "./product_table";
+import RoleTaskRow from "./role_task_table";
+import SalesRecordRow from "./sales_record_table";
+import SettingsRow from "./settings_table";
+import ShiftRow from "./shift_table";
+import ShiftPresetRow from "./shift_preset_table";
+import ShiftTradeRow from "./shift_trade_table";
 import SiteRow from "./site_table";
+import SiteBookingRow from "./site_booking_table";
+import SiteComponentRow from "./site_component_table";
+import SiteCustomerRow from "./site_customer_table";
+import SiteMembershipRow from "./site_membership_table";
+import SiteOrderRow from "./site_order_table";
 import SitePageRow from "./site_page_table";
+import StaffAvailabilityRow from "./staff_availability_table";
+import StaffMemberRow from "./staff_member_table";
+import StaffRoleRow from "./staff_role_table";
+import TimeOffRequestRow from "./time_off_request_table";
+import TodoRow from "./todo_table";
 import UserRow from "./user_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  chatConversation: __table({
+    name: 'chat_conversation',
+    indexes: [
+      { accessor: 'id', name: 'chat_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'chat_conversation_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_conversation_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatConversationRow),
+  chatMember: __table({
+    name: 'chat_member',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_member_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'id', name: 'chat_member_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byUserId', name: 'chat_member_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_member_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatMemberRow),
+  chatMessage: __table({
+    name: 'chat_message',
+    indexes: [
+      { accessor: 'byConversationId', name: 'chat_message_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'id', name: 'chat_message_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_message_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChatMessageRow),
+  customerPoints: __table({
+    name: 'customer_points',
+    indexes: [
+      { accessor: 'byCustomerId', name: 'customer_points_customer_id_idx_btree', algorithm: 'btree', columns: [
+        'customerId',
+      ] },
+      { accessor: 'id', name: 'customer_points_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'bySiteId', name: 'customer_points_site_id_idx_btree', algorithm: 'btree', columns: [
+        'siteId',
+      ] },
+    ],
+    constraints: [
+      { name: 'customer_points_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, CustomerPointsRow),
+  inventoryItem: __table({
+    name: 'inventory_item',
+    indexes: [
+      { accessor: 'id', name: 'inventory_item_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'inventory_item_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'inventory_item_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, InventoryItemRow),
+  inventoryTransaction: __table({
+    name: 'inventory_transaction',
+    indexes: [
+      { accessor: 'id', name: 'inventory_transaction_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byItemId', name: 'inventory_transaction_item_id_idx_btree', algorithm: 'btree', columns: [
+        'itemId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'inventory_transaction_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'inventory_transaction_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, InventoryTransactionRow),
   membershipPerk: __table({
     name: 'membership_perk',
     indexes: [
@@ -125,6 +245,43 @@ const tablesSchema = __schema({
       { name: 'membership_tier_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, MembershipTierRow),
+  orgInvitation: __table({
+    name: 'org_invitation',
+    indexes: [
+      { accessor: 'byEmail', name: 'org_invitation_email_idx_btree', algorithm: 'btree', columns: [
+        'email',
+      ] },
+      { accessor: 'id', name: 'org_invitation_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'org_invitation_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byToken', name: 'org_invitation_token_idx_hash', algorithm: 'btree', columns: [
+        'token',
+      ] },
+    ],
+    constraints: [
+      { name: 'org_invitation_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, OrgInvitationRow),
+  orgMember: __table({
+    name: 'org_member',
+    indexes: [
+      { accessor: 'id', name: 'org_member_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'org_member_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byUserId', name: 'org_member_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'org_member_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, OrgMemberRow),
   organization: __table({
     name: 'organization',
     indexes: [
@@ -139,6 +296,156 @@ const tablesSchema = __schema({
       { name: 'organization_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, OrganizationRow),
+  payment: __table({
+    name: 'payment',
+    indexes: [
+      { accessor: 'id', name: 'payment_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'payment_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byStatus', name: 'payment_status_idx_btree', algorithm: 'btree', columns: [
+        'status',
+      ] },
+    ],
+    constraints: [
+      { name: 'payment_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PaymentRow),
+  perkClaim: __table({
+    name: 'perk_claim',
+    indexes: [
+      { accessor: 'byCustomerId', name: 'perk_claim_customer_id_idx_btree', algorithm: 'btree', columns: [
+        'customerId',
+      ] },
+      { accessor: 'id', name: 'perk_claim_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byPerkId', name: 'perk_claim_perk_id_idx_btree', algorithm: 'btree', columns: [
+        'perkId',
+      ] },
+    ],
+    constraints: [
+      { name: 'perk_claim_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PerkClaimRow),
+  product: __table({
+    name: 'product',
+    indexes: [
+      { accessor: 'id', name: 'product_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'product_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'product_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ProductRow),
+  roleTask: __table({
+    name: 'role_task',
+    indexes: [
+      { accessor: 'id', name: 'role_task_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'role_task_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byRoleId', name: 'role_task_role_id_idx_btree', algorithm: 'btree', columns: [
+        'roleId',
+      ] },
+    ],
+    constraints: [
+      { name: 'role_task_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, RoleTaskRow),
+  salesRecord: __table({
+    name: 'sales_record',
+    indexes: [
+      { accessor: 'byDate', name: 'sales_record_date_idx_btree', algorithm: 'btree', columns: [
+        'date',
+      ] },
+      { accessor: 'id', name: 'sales_record_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'sales_record_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'sales_record_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SalesRecordRow),
+  settings: __table({
+    name: 'settings',
+    indexes: [
+      { accessor: 'id', name: 'settings_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'settings_organization_id_idx_hash', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'settings_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SettingsRow),
+  shift: __table({
+    name: 'shift',
+    indexes: [
+      { accessor: 'byDate', name: 'shift_date_idx_btree', algorithm: 'btree', columns: [
+        'date',
+      ] },
+      { accessor: 'id', name: 'shift_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byMemberId', name: 'shift_member_id_idx_btree', algorithm: 'btree', columns: [
+        'memberId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'shift_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'shift_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ShiftRow),
+  shiftPreset: __table({
+    name: 'shift_preset',
+    indexes: [
+      { accessor: 'id', name: 'shift_preset_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'shift_preset_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'shift_preset_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ShiftPresetRow),
+  shiftTrade: __table({
+    name: 'shift_trade',
+    indexes: [
+      { accessor: 'id', name: 'shift_trade_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'shift_trade_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byRequesterId', name: 'shift_trade_requester_id_idx_btree', algorithm: 'btree', columns: [
+        'requesterId',
+      ] },
+      { accessor: 'byTargetId', name: 'shift_trade_target_id_idx_btree', algorithm: 'btree', columns: [
+        'targetId',
+      ] },
+    ],
+    constraints: [
+      { name: 'shift_trade_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ShiftTradeRow),
   site: __table({
     name: 'site',
     indexes: [
@@ -156,6 +463,94 @@ const tablesSchema = __schema({
       { name: 'site_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SiteRow),
+  siteBooking: __table({
+    name: 'site_booking',
+    indexes: [
+      { accessor: 'byCustomerId', name: 'site_booking_customer_id_idx_btree', algorithm: 'btree', columns: [
+        'customerId',
+      ] },
+      { accessor: 'byDate', name: 'site_booking_date_idx_btree', algorithm: 'btree', columns: [
+        'date',
+      ] },
+      { accessor: 'id', name: 'site_booking_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'bySiteId', name: 'site_booking_site_id_idx_btree', algorithm: 'btree', columns: [
+        'siteId',
+      ] },
+    ],
+    constraints: [
+      { name: 'site_booking_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SiteBookingRow),
+  siteComponent: __table({
+    name: 'site_component',
+    indexes: [
+      { accessor: 'id', name: 'site_component_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'site_component_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'bySiteId', name: 'site_component_site_id_idx_btree', algorithm: 'btree', columns: [
+        'siteId',
+      ] },
+    ],
+    constraints: [
+      { name: 'site_component_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SiteComponentRow),
+  siteCustomer: __table({
+    name: 'site_customer',
+    indexes: [
+      { accessor: 'byEmail', name: 'site_customer_email_idx_btree', algorithm: 'btree', columns: [
+        'email',
+      ] },
+      { accessor: 'id', name: 'site_customer_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'bySiteId', name: 'site_customer_site_id_idx_btree', algorithm: 'btree', columns: [
+        'siteId',
+      ] },
+    ],
+    constraints: [
+      { name: 'site_customer_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SiteCustomerRow),
+  siteMembership: __table({
+    name: 'site_membership',
+    indexes: [
+      { accessor: 'byCustomerId', name: 'site_membership_customer_id_idx_btree', algorithm: 'btree', columns: [
+        'customerId',
+      ] },
+      { accessor: 'id', name: 'site_membership_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'bySiteId', name: 'site_membership_site_id_idx_btree', algorithm: 'btree', columns: [
+        'siteId',
+      ] },
+    ],
+    constraints: [
+      { name: 'site_membership_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SiteMembershipRow),
+  siteOrder: __table({
+    name: 'site_order',
+    indexes: [
+      { accessor: 'byCustomerId', name: 'site_order_customer_id_idx_btree', algorithm: 'btree', columns: [
+        'customerId',
+      ] },
+      { accessor: 'id', name: 'site_order_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'bySiteId', name: 'site_order_site_id_idx_btree', algorithm: 'btree', columns: [
+        'siteId',
+      ] },
+    ],
+    constraints: [
+      { name: 'site_order_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SiteOrderRow),
   sitePage: __table({
     name: 'site_page',
     indexes: [
@@ -170,6 +565,85 @@ const tablesSchema = __schema({
       { name: 'site_page_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SitePageRow),
+  staffAvailability: __table({
+    name: 'staff_availability',
+    indexes: [
+      { accessor: 'id', name: 'staff_availability_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'staff_availability_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byUserId', name: 'staff_availability_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'staff_availability_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, StaffAvailabilityRow),
+  staffMember: __table({
+    name: 'staff_member',
+    indexes: [
+      { accessor: 'id', name: 'staff_member_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'staff_member_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'staff_member_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, StaffMemberRow),
+  staffRole: __table({
+    name: 'staff_role',
+    indexes: [
+      { accessor: 'id', name: 'staff_role_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'staff_role_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'staff_role_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, StaffRoleRow),
+  timeOffRequest: __table({
+    name: 'time_off_request',
+    indexes: [
+      { accessor: 'id', name: 'time_off_request_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'time_off_request_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byUserId', name: 'time_off_request_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'time_off_request_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TimeOffRequestRow),
+  todo: __table({
+    name: 'todo',
+    indexes: [
+      { accessor: 'id', name: 'todo_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'todo_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byUserId', name: 'todo_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'todo_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TodoRow),
   user: __table({
     name: 'user',
     indexes: [

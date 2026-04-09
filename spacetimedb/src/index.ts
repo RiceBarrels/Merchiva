@@ -67,7 +67,7 @@ const organizationTable = table(
 const orgMemberTable = table(
   {
     name: 'org_member',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
@@ -91,7 +91,7 @@ const orgMemberTable = table(
 const orgInvitationTable = table(
   {
     name: 'org_invitation',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byToken', algorithm: 'hash', columns: ['token'] },
@@ -116,7 +116,7 @@ const orgInvitationTable = table(
 const settingsTable = table(
   {
     name: 'settings',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'hash', columns: ['organizationId'] },
     ],
@@ -146,7 +146,7 @@ const settingsTable = table(
 const inventoryItemTable = table(
   {
     name: 'inventory_item',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
@@ -175,7 +175,7 @@ const inventoryItemTable = table(
 const inventoryTransactionTable = table(
   {
     name: 'inventory_transaction',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byItemId', algorithm: 'btree', columns: ['itemId'] },
@@ -199,7 +199,7 @@ const inventoryTransactionTable = table(
 const salesRecordTable = table(
   {
     name: 'sales_record',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byDate', algorithm: 'btree', columns: ['date'] },
@@ -225,7 +225,7 @@ const salesRecordTable = table(
 const staffRoleTable = table(
   {
     name: 'staff_role',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
@@ -248,7 +248,7 @@ const staffRoleTable = table(
 const roleTaskTable = table(
   {
     name: 'role_task',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byRoleId', algorithm: 'btree', columns: ['roleId'] },
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
@@ -274,7 +274,7 @@ const roleTaskTable = table(
 const staffMemberTable = table(
   {
     name: 'staff_member',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
@@ -296,7 +296,7 @@ const staffMemberTable = table(
 const shiftPresetTable = table(
   {
     name: 'shift_preset',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
@@ -318,7 +318,7 @@ const shiftPresetTable = table(
 const shiftTable = table(
   {
     name: 'shift',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byMemberId', algorithm: 'btree', columns: ['memberId'] },
@@ -346,7 +346,7 @@ const shiftTable = table(
 const staffAvailabilityTable = table(
   {
     name: 'staff_availability',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
@@ -375,7 +375,7 @@ const staffAvailabilityTable = table(
 const timeOffRequestTable = table(
   {
     name: 'time_off_request',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
@@ -403,7 +403,7 @@ const timeOffRequestTable = table(
 const shiftTradeTable = table(
   {
     name: 'shift_trade',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byRequesterId', algorithm: 'btree', columns: ['requesterId'] },
@@ -431,7 +431,7 @@ const shiftTradeTable = table(
 const productTable = table(
   {
     name: 'product',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
@@ -462,7 +462,7 @@ const productTable = table(
 const paymentTable = table(
   {
     name: 'payment',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byStatus', algorithm: 'btree', columns: ['status'] },
@@ -496,7 +496,7 @@ const paymentTable = table(
 const chatConversationTable = table(
   {
     name: 'chat_conversation',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
@@ -515,7 +515,7 @@ const chatConversationTable = table(
 const chatMemberTable = table(
   {
     name: 'chat_member',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byConversationId', algorithm: 'btree', columns: ['conversationId'] },
       { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
@@ -532,7 +532,7 @@ const chatMemberTable = table(
 const chatMessageTable = table(
   {
     name: 'chat_message',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byConversationId', algorithm: 'btree', columns: ['conversationId'] },
     ],
@@ -551,7 +551,7 @@ const chatMessageTable = table(
 const todoTable = table(
   {
     name: 'todo',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
@@ -615,7 +615,7 @@ const sitePageTable = table(
 const siteComponentTable = table(
   {
     name: 'site_component',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
@@ -639,7 +639,7 @@ const siteComponentTable = table(
 const siteCustomerTable = table(
   {
     name: 'site_customer',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byEmail', algorithm: 'btree', columns: ['email'] },
@@ -715,7 +715,7 @@ const membershipPerkTable = table(
 const perkClaimTable = table(
   {
     name: 'perk_claim',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'byPerkId', algorithm: 'btree', columns: ['perkId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -737,7 +737,7 @@ const perkClaimTable = table(
 const customerPointsTable = table(
   {
     name: 'customer_points',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -758,7 +758,7 @@ const customerPointsTable = table(
 const siteMembershipTable = table(
   {
     name: 'site_membership',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -779,7 +779,7 @@ const siteMembershipTable = table(
 const siteOrderTable = table(
   {
     name: 'site_order',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -804,7 +804,7 @@ const siteOrderTable = table(
 const siteBookingTable = table(
   {
     name: 'site_booking',
-    public: false,
+    public: true,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
