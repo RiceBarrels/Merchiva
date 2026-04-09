@@ -1,36 +1,55 @@
 "use client";
 
-// SpacetimeDB React provider
-//
-// IMPORTANT: This provider is a stub. Once the BizOps server module is
-// code-generated, pass a `connectionBuilder` created from the generated
-// `DbConnection.builder()` method:
-//
-//   import { DbConnection } from "@/lib/spacetimedb/generated";
-//   const builder = DbConnection.builder()
-//     .withUri(SPACETIMEDB_URI)
-//     .withDatabaseName(SPACETIMEDB_MODULE)
-//     .withToken(getStoredToken())
-//     .onConnect((conn, identity, token) => { storeToken(token); });
-//
-// Then pass it as the `connectionBuilder` prop to <SpacetimeProvider>.
-
+import { useMemo } from "react";
 import { SpacetimeDBProvider } from "spacetimedb/react";
-import type { DbConnectionBuilder, DbConnectionImpl } from "spacetimedb/sdk";
-import { setConnection, clearConnection } from "./client";
+import { DbConnection } from "./generated";
+import {
+  SPACETIMEDB_URI,
+  SPACETIMEDB_MODULE,
+  getStoredToken,
+  storeToken,
+  setConnection,
+  clearConnection,
+} from "./client";
 import type { ReactNode } from "react";
 
 interface SpacetimeProviderProps {
-  connectionBuilder: DbConnectionBuilder<DbConnectionImpl<any>>;
   children: ReactNode;
 }
 
-export function SpacetimeProvider({
-  connectionBuilder,
-  children,
-}: SpacetimeProviderProps) {
+export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
+  // Build once — useMemo prevents re-creating the builder on every render.
+  // SpacetimeDBProvider calls .build() internally on first mount.
+  const builder = useMemo(
+    () =>
+      DbConnection.builder()
+        .withUri(SPACETIMEDB_URI)
+        .withDatabaseName(SPACETIMEDB_MODULE)
+        .withToken(getStoredToken())
+        .onConnect((conn, _identity, token) => {
+          storeToken(token);
+          setConnection(conn);
+          // Subscribe to all public tables
+          conn
+            .subscriptionBuilder()
+            .subscribe([
+              "SELECT * FROM organization",
+              "SELECT * FROM user",
+              "SELECT * FROM site",
+              "SELECT * FROM site_page",
+              "SELECT * FROM membership_tier",
+              "SELECT * FROM membership_perk",
+            ]);
+        })
+        .onDisconnect(() => {
+          clearConnection();
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   return (
-    <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
+    <SpacetimeDBProvider connectionBuilder={builder}>
       {children}
     </SpacetimeDBProvider>
   );

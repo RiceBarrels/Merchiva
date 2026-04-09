@@ -5,6 +5,7 @@ import { MobileShell } from "@/components/sidebar";
 import { LoginForm } from "@/components/login-form";
 import { createClient } from "@/lib/supabase/client";
 import { PermissionsProvider } from "@/lib/context/permissions";
+import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
@@ -107,14 +108,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!authState) return null;
 
   return (
-    <PermissionsProvider
-      role={authState.role}
-      permissions={authState.permissions}
-      organizationId={authState.organizationId}
-      organizations={authState.organizations}
-      currentOrg={authState.currentOrg}
-    >
-      <MobileShell>{children}</MobileShell>
-    </PermissionsProvider>
+    <SpacetimeProvider>
+      <PermissionsProvider
+        role={authState.role}
+        permissions={authState.permissions}
+        organizationId={authState.organizationId}
+        organizations={authState.organizations}
+        currentOrg={authState.currentOrg}
+      >
+        <MobileShell>{children}</MobileShell>
+      </PermissionsProvider>
+    </SpacetimeProvider>
   );
 }
