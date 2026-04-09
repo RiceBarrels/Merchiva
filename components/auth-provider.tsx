@@ -3,8 +3,8 @@
 import { AuthProvider } from "react-oidc-context";
 
 const oidcConfig = {
-  authority: process.env.NEXT_PUBLIC_SPACETIMEAUTH_AUTHORITY || "https://auth.spacetimedb.com",
-  client_id: process.env.NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID || "",
+  authority: process.env.NEXT_PUBLIC_SPACETIMEAUTH_AUTHORITY || "https://auth.spacetimedb.com/oidc",
+  client_id: process.env.NEXT_PUBLIC_SPACETIMEAUTH_CLIENT_ID || "client_032wKpr8lE6TZ7Kik2g0VE",
   redirect_uri: typeof window !== "undefined" ? window.location.origin + "/auth/callback" : "",
   scope: "openid profile email",
   onSigninCallback: () => {

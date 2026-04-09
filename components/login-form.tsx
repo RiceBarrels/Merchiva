@@ -5,20 +5,37 @@ import { Zap, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "react-oidc-context";
-import { hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
+import { hapticSuccess, hapticLight } from "@/lib/haptics";
 
 export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const auth = useAuth();
   const [step, setStep] = useState<"email" | "password">("email");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSignin = async (hint: string) => {
+    try {
+      // Try popup first — keeps the user on the current page.
+      const user = await auth.signinPopup({
+        extraQueryParams: hint ? { login_hint: hint } : {},
+      });
+      if (user?.id_token) {
+        localStorage.setItem("stdb_token", user.id_token);
+      }
+      hapticSuccess();
+      onSuccess?.();
+    } catch {
+      // Popup was blocked or closed — fall back to full redirect.
+      await auth.signinRedirect({
+        extraQueryParams: hint ? { login_hint: hint } : {},
+      });
+    }
+  };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (step === "email") {
       if (!email.trim()) return;
       hapticLight();
@@ -30,22 +47,10 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
 
     setError(null);
     setLoading(true);
-
     try {
-      const user = await auth.signinResourceOwnerCredentials({
-        username: email.trim(),
-        password,
-      });
-
-      if (user?.id_token) {
-        localStorage.setItem("stdb_token", user.id_token);
-      }
-
-      hapticSuccess();
-      onSuccess?.();
+      await doSignin(email.trim());
     } catch (err) {
-      hapticError();
-      setError(err instanceof Error ? err.message : "Invalid email or password.");
+      setError(err instanceof Error ? err.message : "Failed to connect to auth service.");
       setLoading(false);
     }
   };
@@ -76,7 +81,7 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
           ))}
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {step === "email" ? (
             <div className="space-y-6">
               <div>
@@ -111,24 +116,20 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
                 >
                   <ArrowLeft className="h-3.5 w-3.5" /> {email}
                 </button>
-                <h1 className="text-2xl font-bold">Enter your password</h1>
+                <h1 className="text-2xl font-bold">Sign in to BizOps</h1>
+                <p className="text-muted-foreground text-sm mt-1">
+                  You&apos;ll be prompted to sign in securely
+                </p>
               </div>
-              <Input
-                ref={passwordRef}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                autoComplete="current-password"
-                className="text-lg h-12"
-              />
+              {/* Hidden input keeps password managers happy; actual auth is via OIDC */}
+              <input ref={passwordRef} type="password" className="sr-only" aria-hidden tabIndex={-1} />
               {error && (
                 <p className="text-sm text-destructive rounded-sm bg-destructive/10 px-3 py-2">
                   {error}
                 </p>
               )}
-              <Button type="submit" disabled={loading || !password} className="w-full h-11">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+              <Button type="submit" disabled={loading || auth.isLoading} className="w-full h-11">
+                {loading || auth.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
               </Button>
             </div>
           )}
