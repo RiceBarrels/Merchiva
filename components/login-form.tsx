@@ -6,9 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "react-oidc-context";
 import { hapticSuccess, hapticLight } from "@/lib/haptics";
-import Link from "next/link";
-
-export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
+export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onSignup?: () => void }) {
   const auth = useAuth();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -116,9 +114,18 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="font-medium text-foreground underline underline-offset-4">
-            Create one
-          </Link>
+          {onSignup ? (
+            <button
+              onClick={onSignup}
+              className="font-medium text-foreground underline underline-offset-4"
+            >
+              Create one
+            </button>
+          ) : (
+            <a href="/signup" className="font-medium text-foreground underline underline-offset-4">
+              Create one
+            </a>
+          )}
         </p>
       </div>
 
