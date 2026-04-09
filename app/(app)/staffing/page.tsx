@@ -785,7 +785,10 @@ export default function StaffingPage() {
         endTime:        null,
         comments:       availForm.comments,
       });
-      setMyAvailability(saved);
+      setMyAvailability((prev: StaffAvailability[]) => {
+        const idx = prev.findIndex((a) => a.id === saved.id);
+        return idx >= 0 ? prev.map((a) => a.id === saved.id ? saved : a) : [...prev, saved];
+      });
       setAvailDialog(false);
     } finally {
       setSavingAvail(false);

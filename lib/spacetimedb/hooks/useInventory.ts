@@ -61,8 +61,8 @@ export function useInventory(_organizationId: string | null) {
     refreshing: false,
     userId: null,
     // setters are no-ops — mutations go through SpacetimeDB reducers
-    setItems: () => {},
-    setTransactions: () => {},
+    setItems: (_?: any) => {},
+    setTransactions: (_?: any) => {},
     refresh: () => {},
-  } as const;
+  };
 }

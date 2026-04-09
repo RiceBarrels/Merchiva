@@ -1,7 +1,7 @@
 "use client";
 // SpacetimeDB — settings
 
-import { useMemo } from "react";
+import { useMemo, type Dispatch, type SetStateAction } from "react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
@@ -39,7 +39,8 @@ export function useSettings() {
     settings,
     isReady,
     loading: !isReady,
-    setSettings: () => {},
+    // no-op — SpacetimeDB updates reactively
+    setSettings: ((_v: SetStateAction<UserSettings | null>) => {}) as Dispatch<SetStateAction<UserSettings | null>>,
     refresh: () => {},
-  } as const;
+  };
 }
