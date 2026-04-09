@@ -1,99 +1,60 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MobileShell } from "@/components/sidebar";
 import { LoginForm } from "@/components/login-form";
-import { createClient } from "@/lib/supabase/client";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
+import { getStoredToken } from "@/lib/spacetimedb/client";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
-interface AuthState {
-  role: OrgRole;
-  permissions: Permissions;
-  organizationId: string;
-  organizations: OrgSummary[];
-  currentOrg: OrgSummary;
-}
+// Inner component — runs inside SpacetimeProvider so useTable/useSpacetimeDB are available.
+function AuthLoader({ children }: { children: React.ReactNode }) {
+  const stdb = useSpacetimeDB();
+  const [orgMembers, membersReady] = useTable(tables.orgMember);
+  const [organizations, orgsReady] = useTable(tables.organization);
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const identity = stdb?.identity;
+  const isReady = membersReady && orgsReady;
 
-  const loadAuth = useCallback(async () => {
-    setLoading(true);
-    setNeedsLogin(false);
-    const supabase = createClient();
+  const authState = useMemo(() => {
+    if (!isReady || !identity) return null;
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
+    const myMemberships = orgMembers.filter(
+      (m) => m.userId.toString() === identity.toString() && m.status === "active"
+    );
+    if (myMemberships.length === 0) return null;
 
-      if (!user) {
-        setNeedsLogin(true);
-        return;
+    const activeMembership = myMemberships[0];
+    const orgId = activeMembership.organizationId;
+
+    const orgs: OrgSummary[] = myMemberships.map((m) => {
+      const org = organizations.find((o) => o.id.toString() === m.organizationId.toString());
+      return { id: m.organizationId.toString(), name: org?.name ?? "Unknown" };
+    });
+
+    const currentOrg: OrgSummary = {
+      id: orgId.toString(),
+      name: organizations.find((o) => o.id.toString() === orgId.toString())?.name ?? "Unknown",
+    };
+
+    const role = activeMembership.role as OrgRole;
+    const permissions: Permissions = (() => {
+      try {
+        return JSON.parse(activeMembership.permissions) as Permissions;
+      } catch {
+        return role === "owner" ? ownerPermissions() : defaultPermissions();
       }
+    })();
 
-      const { data: memberships } = await supabase
-        .from("org_members")
-        .select("organization_id, role, permissions, organizations(id, name)")
-        .eq("user_id", user.id)
-        .eq("status", "active");
+    return { role, permissions, organizationId: orgId.toString(), organizations: orgs, currentOrg };
+  }, [isReady, identity, orgMembers, organizations]);
 
-      if (!memberships || memberships.length === 0) {
-        setNeedsLogin(true);
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("last_active_org_id")
-        .eq("user_id", user.id)
-        .single();
-
-      const lastActiveOrgId = profile?.last_active_org_id ?? null;
-      const activeMembership =
-        memberships.find((m) => m.organization_id === lastActiveOrgId) ?? memberships[0];
-
-      const organizations: OrgSummary[] = memberships.map((m) => ({
-        id: m.organization_id as string,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        name: (m.organizations as any)?.name ?? "Unknown",
-      }));
-
-      const currentOrg: OrgSummary = {
-        id: activeMembership.organization_id as string,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        name: (activeMembership.organizations as any)?.name ?? "Unknown",
-      };
-
-      const role = activeMembership.role as OrgRole;
-      const permissions =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (activeMembership.permissions as Permissions) ??
-        (role === "owner" ? ownerPermissions() : defaultPermissions());
-
-      setAuthState({
-        role,
-        permissions,
-        organizationId: activeMembership.organization_id as string,
-        organizations,
-        currentOrg,
-      });
-    } catch (err) {
-      console.error("Auth init failed:", err);
-      setNeedsLogin(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAuth();
-  }, [loadAuth]);
-
-  if (loading) {
+  // Still loading
+  if (!isReady || !authState) {
     return (
       <div className="flex h-screen items-center justify-center bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
@@ -101,23 +62,44 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (needsLogin) {
-    return <LoginForm onSuccess={loadAuth} />;
+  return (
+    <PermissionsProvider
+      role={authState.role}
+      permissions={authState.permissions}
+      organizationId={authState.organizationId}
+      organizations={authState.organizations}
+      currentOrg={authState.currentOrg}
+    >
+      <MobileShell>{children}</MobileShell>
+    </PermissionsProvider>
+  );
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  // Use state to avoid SSR/hydration mismatch — localStorage is client-only.
+  const [hasToken, setHasToken] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    setHasToken(!!getStoredToken());
+    setChecked(true);
+  }, []);
+
+  if (!checked) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-stone-50">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
+      </div>
+    );
   }
 
-  if (!authState) return null;
+  if (!hasToken) {
+    return <LoginForm onSuccess={() => setHasToken(true)} />;
+  }
 
   return (
     <SpacetimeProvider>
-      <PermissionsProvider
-        role={authState.role}
-        permissions={authState.permissions}
-        organizationId={authState.organizationId}
-        organizations={authState.organizations}
-        currentOrg={authState.currentOrg}
-      >
-        <MobileShell>{children}</MobileShell>
-      </PermissionsProvider>
+      <AuthLoader>{children}</AuthLoader>
     </SpacetimeProvider>
   );
 }
