@@ -10,6 +10,14 @@ export default function Home() {
   const [needsLogin, setNeedsLogin] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("logout") === "1") {
+      localStorage.removeItem("stdb_token");
+      window.history.replaceState({}, "", "/");
+      setNeedsLogin(true);
+      setChecking(false);
+      return;
+    }
     const token = localStorage.getItem("stdb_token");
     if (token) {
       router.replace("/dashboard");

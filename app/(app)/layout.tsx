@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { MobileShell } from "@/components/sidebar";
 import { LoginForm } from "@/components/login-form";
 import { PermissionsProvider } from "@/lib/context/permissions";
@@ -16,6 +16,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const stdb = useSpacetimeDB();
   const [orgMembers, membersReady] = useTable(tables.orgMember);
   const [organizations, orgsReady] = useTable(tables.organization);
+  const [timedOut, setTimedOut] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const identity = stdb?.identity;
   const isReady = membersReady && orgsReady;
@@ -53,11 +55,34 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     return { role, permissions, organizationId: orgId.toString(), organizations: orgs, currentOrg };
   }, [isReady, identity, orgMembers, organizations]);
 
+  // Start 8-second timeout while loading; clear it once loaded.
+  useEffect(() => {
+    if (isReady && authState) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      return;
+    }
+    timerRef.current = setTimeout(() => setTimedOut(true), 8000);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [isReady, authState]);
+
   // Still loading
   if (!isReady || !authState) {
     return (
-      <div className="flex h-screen items-center justify-center bg-stone-50">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
+        {timedOut && (
+          <button
+            onClick={() => {
+              localStorage.removeItem("stdb_token");
+              window.location.href = "/?logout=1";
+            }}
+            className="rounded border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50"
+          >
+            Sign out and try again
+          </button>
+        )}
       </div>
     );
   }

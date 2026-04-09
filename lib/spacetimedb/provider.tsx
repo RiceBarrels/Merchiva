@@ -69,6 +69,10 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         })
         .onDisconnect(() => {
           clearConnection();
+        })
+        .onConnectError((_ctx, _error) => {
+          localStorage.removeItem("stdb_token");
+          window.location.href = "/?logout=1";
         }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
