@@ -1,15 +1,15 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import type { SiteCustomer, CartItem } from "@/lib/types";
+import type { SiteCustomer, SiteCartItem } from "@/lib/types";
 
 interface SiteCustomerContextValue {
   siteId: string;
   customer: SiteCustomer | null;
-  cart: CartItem[];
+  cart: SiteCartItem[];
   login: (customer: SiteCustomer) => void;
   logout: () => void;
-  addToCart: (item: Omit<CartItem, "qty">) => void;
+  addToCart: (item: Omit<SiteCartItem, "qty">) => void;
   removeFromCart: (productId: string) => void;
   updateQty: (productId: string, qty: number) => void;
   clearCart: () => void;
@@ -40,7 +40,7 @@ export function SiteCustomerProvider({
   children: React.ReactNode;
 }) {
   const [customer, setCustomer] = useState<SiteCustomer | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<SiteCartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   // Hydrate from localStorage after mount
@@ -70,7 +70,7 @@ export function SiteCustomerProvider({
     localStorage.removeItem(sessionKey(siteId));
   }, [siteId]);
 
-  const addToCart = useCallback((item: Omit<CartItem, "qty">) => {
+  const addToCart = useCallback((item: Omit<SiteCartItem, "qty">) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.productId === item.productId);
       if (existing) {

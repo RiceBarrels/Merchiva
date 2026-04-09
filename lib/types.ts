@@ -513,6 +513,15 @@ export interface CartItem {
   category?: string;
 }
 
+// ─── Site storefront cart (public-facing, used in site-customer-context) ─────
+
+export interface SiteCartItem {
+  productId: string;
+  name: string;
+  price: number;
+  qty: number;
+}
+
 export type PaymentMethod = "card" | "cash" | "other";
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 
@@ -550,15 +559,6 @@ export interface SiteMembership {
   plan: string;
   startedAt: string;
   expiresAt: string | null;
-}
-
-// ─── Cart ─────────────────────────────────────────────────────────────────────
-
-export interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  qty: number;
 }
 
 // ─── Component Library ────────────────────────────────────────────────────────
