@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 import type { ChatConversation, ChatMessage, ChatMember } from "@/lib/types";
 
 // ─── Conversations ──────────────────────────────────────────────────────────

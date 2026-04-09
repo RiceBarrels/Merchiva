@@ -12,7 +12,6 @@ import { createPayment, getPaymentConfig, getRecentPayments, refundPayment } fro
 import { getCached, setCache } from "@/lib/cache";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
-import { createClient } from "@/lib/supabase/client";
 import type { Product, CartItem, Payment } from "@/lib/types";
 
 // ─── Category color palette ───────────────────────────────────────────────────

@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 
 /**
  * Returns the Clover base URL depending on environment.
@@ -14,18 +13,12 @@ export function getCloverBaseUrl(): string {
  * Retrieves the stored Clover credentials for a user.
  * Returns null if the user has no Clover connection.
  */
+// Clover credentials were stored in Supabase settings table.
+// Settings migration to SpacetimeDB is pending — return null for now.
 export async function getCloverCredentials(
-  userId: string
+  _userId: string
 ): Promise<{ token: string; merchantId: string } | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("settings")
-    .select("clover_access_token, clover_merchant_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (!data?.clover_access_token || !data?.clover_merchant_id) return null;
-  return { token: data.clover_access_token, merchantId: data.clover_merchant_id };
+  return null;
 }
 
 /**

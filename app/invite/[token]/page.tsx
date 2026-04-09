@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from "@/lib/supabase/client";
 import { getInvitationByToken } from "@/lib/db/team";
 import type { OrgInvitation } from "@/lib/types";
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import type { SiteTheme } from "@/lib/types";
 
 interface Props {

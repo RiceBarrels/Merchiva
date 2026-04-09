@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 import type { Payment, PaymentMethod, PaymentStatus, CartItem } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -13,6 +13,7 @@ import {
 export default __t.row({
   identity: __t.identity().primaryKey(),
   email: __t.string(),
+  passwordHash: __t.option(__t.string()).name("password_hash"),
   displayName: __t.option(__t.string()).name("display_name"),
   avatarUrl: __t.option(__t.string()).name("avatar_url"),
   lastActiveOrgId: __t.option(__t.string()).name("last_active_org_id"),

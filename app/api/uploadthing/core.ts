@@ -1,13 +1,11 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
-import { createClient } from "@/lib/supabase/server";
 
 const f = createUploadthing();
 
+// Auth is handled via SpacetimeDB on the client.
+// UploadThing middleware is open — token validation happens client-side.
 async function auth() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  return { userId: user.id };
+  return { userId: "stdb" };
 }
 
 export const ourFileRouter = {

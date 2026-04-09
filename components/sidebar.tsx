@@ -39,9 +39,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
 import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
-import { createOrganization, addOwnerMember, upsertUserProfile } from "@/lib/db/team";
 import { clearCache } from "@/lib/cache";
 import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
@@ -107,12 +105,9 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const orgId = await createOrganization(user.id, name);
-      await addOwnerMember(user.id, orgId, name);
-      await upsertUserProfile(user.id, name, orgId);
+      // Org creation is handled via SpacetimeDB reducers on the signup page.
+      // For now, show a message redirecting user to sign up with a new account.
+      throw new Error("Create a new account to start a new organization.");
       hapticSuccess();
       setOpen(false);
       setCreating(false);
@@ -200,10 +195,9 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   const router   = useRouter();
   const { can, isOwner } = usePermissions();
 
-  const handleLogout = async () => {
-    const supabase = createClient();
-    clearCache(); // clear all cache on logout
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    clearCache();
+    localStorage.removeItem("stdb_token");
     router.push("/login");
   };
 

@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 import type { OrgMember, OrgInvitation, OrgSummary, UserProfile, Permissions } from "@/lib/types";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────

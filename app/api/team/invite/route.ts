@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import type { Permissions, OrgRole } from "@/lib/types";
 import { defaultPermissions } from "@/lib/db/team";
 import { randomBytes } from "crypto";

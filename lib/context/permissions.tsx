@@ -4,7 +4,6 @@ import { createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 import { ownerPermissions } from "@/lib/db/team";
-import { createClient } from "@/lib/supabase/client";
 import { clearCache } from "@/lib/cache";
 
 export interface PermissionsContextValue {
@@ -56,14 +55,9 @@ export function PermissionsProvider({
     return false;
   }
 
-  async function switchOrg(orgId: string) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase
-      .from("user_profiles")
-      .upsert({ user_id: user.id, last_active_org_id: orgId }, { onConflict: "user_id" });
-    clearCache(); // clear all cache on org switch
+  async function switchOrg(_orgId: string) {
+    // Org switching is handled by SpacetimeDB — just refresh the page.
+    clearCache();
     router.refresh();
   }
 

@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 
 /** Returns a map of userId → avatarUrl for the given user IDs */
 export async function getAvatarMap(

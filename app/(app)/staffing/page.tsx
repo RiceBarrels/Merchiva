@@ -26,7 +26,6 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
 import {
   addShift, updateShift, deleteShift,

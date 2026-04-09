@@ -1,6 +1,5 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
-import { createClient as createSupabase } from "@/lib/supabase/server";
 
 const SCOPES = "ITEMS_READ INVENTORY_READ ORDERS_READ MERCHANT_PROFILE_READ";
 

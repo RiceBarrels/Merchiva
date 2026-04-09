@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { SquareClient, SquareEnvironment } from "square";
-import { createClient as createSupabase } from "@/lib/supabase/server";
 import { getValidSquareToken } from "@/lib/square/token";
 
 /**

@@ -12,5 +12,6 @@ import {
 
 export default {
   email: __t.string(),
+  passwordHash: __t.option(__t.string()),
   displayName: __t.option(__t.string()),
 };

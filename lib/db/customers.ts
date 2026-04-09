@@ -59,7 +59,6 @@
  * create policy "public all" on site_bookings for all using (true) with check (true);
  */
 
-import { createClient } from "@/lib/supabase/client";
 import type { SiteCustomer, SiteMembership, SiteOrder, SiteBooking, CartItem } from "@/lib/types";
 
 // ─── Password hashing (Web Crypto — no external package) ──────────────────────

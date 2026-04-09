@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────

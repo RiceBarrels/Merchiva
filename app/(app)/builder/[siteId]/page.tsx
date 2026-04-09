@@ -92,7 +92,6 @@ import { Combobox } from "@/components/ui/combobox";
 import { IconPicker } from "@/components/icon-picker";
 import * as LucideIcons from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
-import { createClient } from "@/lib/supabase/client";
 import { hapticLight } from "@/lib/haptics";
 import type { Site, SitePage, SiteElement, ElementType, SiteTheme, SiteComponent } from "@/lib/types";
 import type { Product } from "@/lib/types";

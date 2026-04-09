@@ -65,7 +65,6 @@ const ROLE_ICON_MAP: Record<string, LucideIcon> = {
   "shield": Shield, "wine": Wine, "bubbles": Bubbles, "moon-star": MoonStar,
   "sun": Sun, "receipt-text": ReceiptText, "hand-platter": HandPlatter,
 };
-import { createClient } from "@/lib/supabase/client";
 import { getCached, setCache } from "@/lib/cache";
 import { getShifts, getRoleTasks, getStaffRoles } from "@/lib/db/staffing";
 import { getConversations } from "@/lib/db/chat";

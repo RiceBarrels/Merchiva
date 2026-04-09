@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 import type { StaffAvailability, DayTime, TimeOffRequest, ShiftTrade } from "@/lib/types";
 
 const DEFAULT_DAY_TIME: DayTime = { enabled: false, fullDay: true, startTime: "09:00", endTime: "17:00" };

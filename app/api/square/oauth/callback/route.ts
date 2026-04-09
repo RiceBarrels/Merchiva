@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SquareClient, SquareEnvironment } from "square";
-import { createClient as createSupabase } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

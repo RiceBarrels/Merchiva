@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getCloverCredentials, cloverFetch } from "@/lib/clover/api";
 
 // Required DB columns (run migrations before using sync):

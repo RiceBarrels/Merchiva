@@ -15,12 +15,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from "@/lib/supabase/client";
-import { ownerPermissions, getInvitationByToken, acceptInvitation } from "@/lib/db/team";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
+import { connectToStdb, hashPassword } from "@/lib/spacetimedb/auth";
 import type { OrgInvitation } from "@/lib/types";
 
-type Step = "form" | "verify";
 type MobileStep = "name" | "store" | "email" | "password";
 
 function SignupForm() {
@@ -28,12 +26,10 @@ function SignupForm() {
   const searchParams = useSearchParams();
   const inviteCode = searchParams.get("invite_code");
 
-  const [step, setStep] = useState<Step>("form");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [yourName, setYourName] = useState("");
   const [storeName, setStoreName] = useState("");
-  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -42,44 +38,58 @@ function SignupForm() {
 
   useEffect(() => { setIsMobile(window.innerWidth < 640); }, []);
 
-  // Invitation state
+  // Invitation state — loaded from SpacetimeDB after signup if inviteCode present
   const [invitation, setInvitation] = useState<OrgInvitation | null>(null);
   const [orgName, setOrgName] = useState<string>("");
   const [inviteStatus, setInviteStatus] = useState<"loading" | "valid" | "invalid" | "none">(
     inviteCode ? "loading" : "none"
   );
 
+  // Validate the invite code by checking SpacetimeDB org_invitation table
   useEffect(() => {
     if (!inviteCode) return;
-    const supabase = createClient();
-    getInvitationByToken(inviteCode)
-      .then(async (inv) => {
-        if (!inv) {
+
+    connectToStdb()
+      .then(async ({ conn }) => {
+        await new Promise<void>((resolve) => {
+          conn.subscriptionBuilder().onApplied(resolve)
+            .subscribe(["SELECT * FROM org_invitation", "SELECT * FROM organization"]);
+          setTimeout(resolve, 4000);
+        });
+
+        const db = conn as any;
+        const invites: any[] = db.db?.orgInvitation ? [...db.db.orgInvitation.iter()] : [];
+        const inv = invites.find((i: any) => i.token === inviteCode);
+
+        if (!inv || new Date(inv.expiresAt?.toDate?.() ?? inv.expiresAt) < new Date()) {
           setInviteStatus("invalid");
           return;
         }
-        if (new Date(inv.expiresAt) < new Date()) {
-          setInviteStatus("invalid");
-          return;
-        }
-        setInvitation(inv);
+
+        const orgs: any[] = db.db?.organization ? [...db.db.organization.iter()] : [];
+        const org = orgs.find((o: any) => o.id?.toString() === inv.organizationId);
+
+        setInvitation({
+          id: inv.id?.toString() ?? "",
+          organizationId: inv.organizationId,
+          email: inv.email,
+          role: inv.role,
+          permissions: (() => { try { return JSON.parse(inv.permissions); } catch { return {}; } })(),
+          token: inv.token,
+          expiresAt: inv.expiresAt?.toDate?.()?.toISOString() ?? "",
+          acceptedAt: inv.acceptedAt ? inv.acceptedAt.toDate().toISOString() : null,
+        });
         setEmail(inv.email);
-        // Fetch org name (may work without auth depending on RLS)
-        const { data: org } = await supabase
-          .from("organizations")
-          .select("name")
-          .eq("id", inv.organizationId)
-          .single();
         setOrgName(org?.name ?? "");
         setInviteStatus("valid");
       })
       .catch(() => setInviteStatus("invalid"));
   }, [inviteCode]);
 
-  // Mobile: determine next step
+  // Mobile step list
   const mobileSteps: MobileStep[] = inviteStatus === "valid"
-    ? ["name", "email", "password"]           // invited: skip store name
-    : ["name", "store", "email", "password"]; // normal: include store name
+    ? ["name", "email", "password"]
+    : ["name", "store", "email", "password"];
   const mobileStepIdx = mobileSteps.indexOf(mobileStep);
 
   const advanceMobileStep = () => {
@@ -88,7 +98,7 @@ function SignupForm() {
       setTimeout(() => fieldRef.current?.focus(), 100);
       return true;
     }
-    return false; // last step, proceed to submit
+    return false;
   };
 
   const retreatMobileStep = () => {
@@ -103,275 +113,59 @@ function SignupForm() {
     setError(null);
 
     // Mobile: advance steps until last
-    if (isMobile && step === "form") {
-      if (mobileStep === "name" && !yourName.trim()) {
-        setError("Please enter your name.");
-        return;
-      }
-      if (mobileStep === "email" && !email.trim()) {
-        setError("Please enter your email.");
-        return;
-      }
-      if (advanceMobileStep()) return;
+    if (isMobile) {
+      if (mobileStep === "name" && !yourName.trim()) { setError("Please enter your name."); return; }
+      if (mobileStep === "email" && !email.trim()) { setError("Please enter your email."); return; }
+      if (advanceMobileStep()) { hapticLight(); return; }
     }
-
-    setLoading(true);
 
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
-      setLoading(false);
       return;
     }
 
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { display_name: yourName },
-      },
-    });
-
-    if (error) {
-      hapticError();
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    if (data.session) {
-      hapticSuccess();
-      await postSignup(data.user!.id);
-      return;
-    }
-
-    hapticLight();
-    setStep("verify");
-    setLoading(false);
-  };
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: code.trim(),
-      type: "signup",
-    });
-
-    if (error) {
-      hapticError();
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    if (!data.user) {
-      hapticError();
-      setError("Verification succeeded but no user was returned. Please try signing in.");
-      setLoading(false);
-      return;
-    }
-
-    hapticSuccess();
-    await postSignup(data.user.id);
-  };
-
-  const postSignup = async (userId: string) => {
-    if (invitation && inviteCode) {
-      await joinOrgViaInvite(userId);
-    } else {
-      await createOrgForUser(userId);
-    }
-  };
-
-  // ── Invited user: join existing org ──────────────────────────────────────────
-  const joinOrgViaInvite = async (userId: string) => {
-    const supabase = createClient();
-    const displayName = yourName.trim() || email.split("@")[0];
-
     try {
-      // Create user profile
-      await supabase
-        .from("user_profiles")
-        .upsert(
-          { user_id: userId, display_name: displayName },
-          { onConflict: "user_id" }
-        );
+      const passwordHash = await hashPassword(password);
+      const displayName = yourName.trim() || email.split("@")[0];
 
-      const res = await fetch("/api/team/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: inviteCode, displayName }),
+      // Connect to SpacetimeDB — generates a new Identity
+      const { conn } = await connectToStdb();
+
+      // Subscribe to tables we'll need
+      await new Promise<void>((resolve) => {
+        conn.subscriptionBuilder().onApplied(resolve)
+          .subscribe(["SELECT * FROM user", "SELECT * FROM org_member", "SELECT * FROM org_invitation"]);
+        setTimeout(resolve, 4000);
       });
 
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error ?? "Failed to join organization.");
+      // Register the user profile
+      await conn.reducers.createUser({
+        email: email.trim(),
+        passwordHash,
+        displayName,
+      });
+
+      if (invitation && inviteCode) {
+        // Join via invitation
+        await conn.reducers.acceptInvitation({ token: inviteCode });
+      } else {
+        // Create a new org
+        const orgDisplayName = storeName.trim() || email.split("@")[0];
+        await conn.reducers.createOrg({ name: orgDisplayName });
       }
 
-      // Set active org
-      await supabase
-        .from("user_profiles")
-        .update({ last_active_org_id: invitation!.organizationId })
-        .eq("user_id", userId);
-
+      hapticSuccess();
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to join organization.");
+      hapticError();
+      setError(err instanceof Error ? err.message : "Sign-up failed. Please try again.");
       setLoading(false);
     }
   };
 
-  // ── New user: create their own org ───────────────────────────────────────────
-  const createOrgForUser = async (userId: string) => {
-    const supabase = createClient();
-    const displayName = yourName.trim() || email.split("@")[0];
-    const orgName = storeName.trim() || email.split("@")[0];
-
-    await supabase
-      .from("user_profiles")
-      .upsert(
-        { user_id: userId, display_name: displayName },
-        { onConflict: "user_id" }
-      );
-
-    await supabase.from("settings").upsert({
-      user_id: userId,
-      business_name: orgName,
-    });
-
-    const { data: org, error: orgError } = await supabase
-      .from("organizations")
-      .insert({ owner_id: userId, name: orgName })
-      .select("id")
-      .single();
-
-    if (orgError || !org) {
-      setError(orgError?.message ?? "Failed to create organization.");
-      setLoading(false);
-      return;
-    }
-
-    await supabase
-      .from("user_profiles")
-      .update({ last_active_org_id: org.id })
-      .eq("user_id", userId);
-
-    await supabase.from("org_members").insert({
-      organization_id: org.id,
-      user_id: userId,
-      role: "owner",
-      display_name: displayName,
-      permissions: ownerPermissions(),
-      status: "active",
-    });
-
-    // Accept any pending invitation for this email
-    const { data: pendingInvite } = await supabase
-      .from("org_invitations")
-      .select("id")
-      .eq("email", email.toLowerCase())
-      .is("accepted_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .limit(1)
-      .single();
-
-    if (pendingInvite) {
-      await supabase
-        .from("org_invitations")
-        .update({ accepted_at: new Date().toISOString() })
-        .eq("id", pendingInvite.id);
-    }
-
-    router.push("/");
-    router.refresh();
-  };
-
-  // ── Verification step ─────────────────────────────────────────────────────────
-  if (step === "verify") {
-    return (
-      <Card className="w-full max-w-sm">
-        <CardHeader className="space-y-3 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-stone-900 text-white">
-              <Zap className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <p className="font-bold text-base leading-none">BizOps</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">AI Business Manager</p>
-            </div>
-          </div>
-          <div>
-            <CardTitle className="text-xl">Check your email</CardTitle>
-            <CardDescription>
-              We sent a 6-digit verification code to <strong>{email}</strong>
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleVerify} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="code">Verification code</Label>
-              <Input
-                id="code"
-                placeholder="123456"
-                value={code}
-                onChange={(e) =>
-                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                }
-                required
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                autoFocus
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-destructive rounded-sm bg-destructive/10 px-3 py-2">
-                {error}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading || code.length !== 6}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying…
-                </>
-              ) : (
-                "Verify and continue"
-              )}
-            </Button>
-
-            <p className="text-center text-sm text-muted-foreground">
-              Wrong email?{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setStep("form");
-                  setError(null);
-                  setCode("");
-                }}
-                className="font-medium text-foreground underline underline-offset-4"
-              >
-                Go back
-              </button>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // ── Sign up form ──────────────────────────────────────────────────────────────
+  // ── Sign up form ────────────────────────────────────────────────────────────
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="space-y-3 pb-4">
@@ -390,7 +184,7 @@ function SignupForm() {
             <CardTitle className="text-xl">Create account</CardTitle>
             <CardDescription>
               {isMobile && mobileStep !== "name"
-                ? { store: "Name your store", email: "Enter your email", password: "Choose a password" }[mobileStep]
+                ? ({ store: "Name your store", email: "Enter your email", password: "Choose a password" } as Record<string, string>)[mobileStep]
                 : <>You&apos;ve been invited to join <strong>{orgName}</strong></>}
             </CardDescription>
           </div>
@@ -399,7 +193,7 @@ function SignupForm() {
             <CardTitle className="text-xl">Create account</CardTitle>
             <CardDescription>
               {isMobile
-                ? { name: "What's your name?", store: "Name your store", email: "Enter your email", password: "Choose a password" }[mobileStep]
+                ? ({ name: "What's your name?", store: "Name your store", email: "Enter your email", password: "Choose a password" } as Record<string, string>)[mobileStep]
                 : "Start managing your business with AI"}
             </CardDescription>
           </div>
@@ -448,66 +242,31 @@ function SignupForm() {
               {mobileStep === "name" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="yourName">Your Name</Label>
-                  <Input
-                    ref={fieldRef}
-                    id="yourName"
-                    placeholder="Jane Smith"
-                    value={yourName}
-                    onChange={(e) => setYourName(e.target.value)}
-                    autoComplete="name"
-                    autoFocus
-                  />
+                  <Input ref={fieldRef} id="yourName" placeholder="Jane Smith" value={yourName}
+                    onChange={(e) => setYourName(e.target.value)} autoComplete="name" autoFocus />
                 </div>
               )}
-
               {mobileStep === "store" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="storeName">Store Name</Label>
-                  <Input
-                    ref={fieldRef}
-                    id="storeName"
-                    placeholder="My Coffee Shop"
-                    value={storeName}
-                    onChange={(e) => setStoreName(e.target.value)}
-                    autoComplete="organization"
-                    autoFocus
-                  />
+                  <Input ref={fieldRef} id="storeName" placeholder="My Coffee Shop" value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)} autoComplete="organization" autoFocus />
                 </div>
               )}
-
               {mobileStep === "email" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    ref={fieldRef}
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                    readOnly={inviteStatus === "valid"}
-                    className={inviteStatus === "valid" ? "bg-muted text-muted-foreground" : ""}
-                    autoFocus
-                  />
+                  <Input ref={fieldRef} id="email" type="email" placeholder="you@example.com" value={email}
+                    onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
+                    readOnly={inviteStatus === "valid"} className={inviteStatus === "valid" ? "bg-muted text-muted-foreground" : ""}
+                    autoFocus />
                 </div>
               )}
-
               {mobileStep === "password" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    ref={fieldRef}
-                    id="password"
-                    type="password"
-                    placeholder="At least 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
-                    autoFocus
-                  />
+                  <Input ref={fieldRef} id="password" type="password" placeholder="At least 6 characters" value={password}
+                    onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" autoFocus />
                 </div>
               )}
             </>
@@ -515,54 +274,26 @@ function SignupForm() {
             <>
               <div className="space-y-1.5">
                 <Label htmlFor="yourName">Your Name</Label>
-                <Input
-                  id="yourName"
-                  placeholder="Jane Smith"
-                  value={yourName}
-                  onChange={(e) => setYourName(e.target.value)}
-                  autoComplete="name"
-                />
+                <Input id="yourName" placeholder="Jane Smith" value={yourName}
+                  onChange={(e) => setYourName(e.target.value)} autoComplete="name" />
               </div>
-
               {inviteStatus !== "valid" && (
                 <div className="space-y-1.5">
                   <Label htmlFor="storeName">Store Name</Label>
-                  <Input
-                    id="storeName"
-                    placeholder="My Coffee Shop"
-                    value={storeName}
-                    onChange={(e) => setStoreName(e.target.value)}
-                    autoComplete="organization"
-                  />
+                  <Input id="storeName" placeholder="My Coffee Shop" value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)} autoComplete="organization" />
                 </div>
               )}
-
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  readOnly={inviteStatus === "valid"}
-                  className={inviteStatus === "valid" ? "bg-muted text-muted-foreground" : ""}
-                />
+                <Input id="email" type="email" placeholder="you@example.com" value={email}
+                  onChange={(e) => setEmail(e.target.value)} required autoComplete="email"
+                  readOnly={inviteStatus === "valid"} className={inviteStatus === "valid" ? "bg-muted text-muted-foreground" : ""} />
               </div>
-
               <div className="space-y-1.5">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="new-password"
-                />
+                <Input id="password" type="password" placeholder="At least 6 characters" value={password}
+                  onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
               </div>
             </>
           )}
@@ -591,10 +322,7 @@ function SignupForm() {
 
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link
-              href="/login"
-              className="font-medium text-foreground underline underline-offset-4"
-            >
+            <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
               Sign in
             </Link>
           </p>

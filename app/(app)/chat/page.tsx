@@ -17,7 +17,6 @@ import {
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@/components/ui/drawer";
-import { createClient } from "@/lib/supabase/client";
 import { usePermissions } from "@/lib/context/permissions";
 import { getCached, setCache } from "@/lib/cache";
 import {

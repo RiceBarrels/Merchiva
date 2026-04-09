@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getCloverBaseUrl } from "@/lib/clover/api";
 
 export async function GET() {

@@ -12,8 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/client";
 import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { connectToStdb, hashPassword } from "@/lib/spacetimedb/auth";
+import { getStoredToken } from "@/lib/spacetimedb/client";
 
 export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
   const [email, setEmail] = useState("");
@@ -42,22 +43,87 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const storedToken = getStoredToken();
 
-    if (error) {
-      hapticError();
-      if (error.message.toLowerCase().includes("email not confirmed")) {
-        setError("Your email isn't verified yet. Please check your inbox for a verification code and complete sign-up.");
-      } else {
-        setError(error.message);
+      if (storedToken) {
+        // Fast path: reconnect with existing token, verify email matches
+        const { conn } = await connectToStdb(storedToken);
+        const identity = conn.identity;
+
+        if (identity && email.trim()) {
+          // Give the subscription a moment to hydrate so we can read user.email
+          await new Promise<void>((resolve) => {
+            const sub = conn.subscriptionBuilder().onApplied(() => {
+              resolve();
+              // intentionally not unsubscribing — the connection will be closed by provider
+            }).subscribe(["SELECT * FROM user"]);
+            setTimeout(resolve, 3000);
+            void sub;
+          });
+
+          // Verify the stored identity's email matches what the user typed
+          const db = conn as any;
+          const rows: any[] = db.db?.user
+            ? [...db.db.user.iter()]
+            : [];
+          const userRow = rows.find(
+            (r: any) => r.identity?.toString() === identity.toString()
+          );
+
+          if (userRow && userRow.email && userRow.email !== email.trim()) {
+            hapticError();
+            setError("Email doesn't match the saved session. Sign out first or try signing up.");
+            setLoading(false);
+            return;
+          }
+        }
+
+        hapticSuccess();
+        onSuccess?.();
+        return;
       }
-      setLoading(false);
-      return;
-    }
 
-    hapticSuccess();
-    onSuccess?.();
+      // Slow path: no token — authenticate via email + password hash
+      const hash = await hashPassword(password);
+      const { conn } = await connectToStdb(); // anonymous new identity
+
+      // Subscribe, then call loginWithPassword to migrate the account to this identity
+      await new Promise<void>((resolve) => {
+        conn.subscriptionBuilder().onApplied(resolve).subscribe(["SELECT * FROM user"]);
+        setTimeout(resolve, 3000);
+      });
+
+      // Call reducer — if email/hash is wrong, the reducer throws server-side
+      // and a ReducerError event fires; we detect this by checking after 2s
+      // whether our identity has the expected email in its user row.
+      await conn.reducers.loginWithPassword({ email: email.trim(), passwordHash: hash });
+
+      // Wait for the migration to propagate
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Check outcome
+      const identity = conn.identity;
+      const db = conn as any;
+      const rows: any[] = db.db?.user ? [...db.db.user.iter()] : [];
+      const userRow = rows.find(
+        (r: any) => r.identity?.toString() === identity?.toString()
+      );
+
+      if (!userRow || userRow.email !== email.trim()) {
+        hapticError();
+        setError("Invalid email or password. If you created an account on a different device, your session is stored there.");
+        setLoading(false);
+        return;
+      }
+
+      hapticSuccess();
+      onSuccess?.();
+    } catch (err) {
+      hapticError();
+      setError(err instanceof Error ? err.message : "Sign-in failed. Please try again.");
+      setLoading(false);
+    }
   };
 
   // Mobile: one field at a time

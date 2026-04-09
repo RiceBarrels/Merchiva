@@ -460,6 +460,7 @@ export type Todo = __Infer<typeof Todo>;
 export const User = __t.object("User", {
   identity: __t.identity(),
   email: __t.string(),
+  passwordHash: __t.option(__t.string()),
   displayName: __t.option(__t.string()),
   avatarUrl: __t.option(__t.string()),
   lastActiveOrgId: __t.option(__t.string()),

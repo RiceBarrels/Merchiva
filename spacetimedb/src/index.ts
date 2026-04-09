@@ -37,6 +37,7 @@ const userTable = table(
   {
     identity: t.identity().primaryKey(),
     email: t.string(),
+    passwordHash: t.option(t.string()),
     displayName: t.option(t.string()),
     avatarUrl: t.option(t.string()),
     lastActiveOrgId: t.option(t.string()),
@@ -880,6 +881,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
     ctx.db.user.insert({
       identity: ctx.sender,
       email: '',
+      passwordHash: undefined,
       displayName: undefined,
       avatarUrl: undefined,
       lastActiveOrgId: undefined,
@@ -892,25 +894,92 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
 // AUTH REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Set the user's email and display name after first login. */
+/** Set the user's email, password hash, and display name after first connect. */
 export const createUser = spacetimedb.reducer(
   {
     email: t.string(),
+    passwordHash: t.option(t.string()),
     displayName: t.option(t.string()),
   },
-  (ctx, { email, displayName }) => {
+  (ctx, { email, passwordHash, displayName }) => {
     const existing = ctx.db.user.identity.find(ctx.sender);
     if (existing) {
-      ctx.db.user.identity.update({ ...existing, email, displayName: displayName ?? existing.displayName });
+      ctx.db.user.identity.update({
+        ...existing,
+        email,
+        passwordHash: passwordHash ?? existing.passwordHash,
+        displayName: displayName ?? existing.displayName,
+      });
     } else {
       ctx.db.user.insert({
         identity: ctx.sender,
         email,
+        passwordHash,
         displayName,
         avatarUrl: undefined,
         lastActiveOrgId: undefined,
         createdAt: ctx.timestamp,
       });
+    }
+  }
+);
+
+/**
+ * Authenticate with email + password hash when no stored token is available.
+ * Migrates all user data from the old Identity to the calling Identity so the
+ * new token can fully replace the old one.
+ */
+export const loginWithPassword = spacetimedb.reducer(
+  {
+    email: t.string(),
+    passwordHash: t.string(),
+  },
+  (ctx, { email, passwordHash }) => {
+    // Find existing account by email
+    const existingUser = [...ctx.db.user.byEmail.filter(email)][0];
+    if (!existingUser) throw new Error('Invalid email or password');
+    if (!existingUser.passwordHash) throw new Error('Account has no password set');
+    if (existingUser.passwordHash !== passwordHash) throw new Error('Invalid email or password');
+
+    const oldIdentity = existingUser.identity;
+    const newIdentity = ctx.sender;
+
+    // If same identity (token is already valid), nothing to migrate
+    if (oldIdentity.toString() === newIdentity.toString()) return;
+
+    // Delete the auto-created empty user row for the new anonymous identity
+    const autoCreated = ctx.db.user.identity.find(newIdentity);
+    if (autoCreated && autoCreated.email === '') {
+      ctx.db.user.delete(autoCreated);
+    }
+
+    // Migrate user record to new identity
+    ctx.db.user.delete(existingUser);
+    ctx.db.user.insert({ ...existingUser, identity: newIdentity });
+
+    // Migrate org memberships
+    for (const m of [...ctx.db.orgMember.byUserId.filter(oldIdentity)]) {
+      ctx.db.orgMember.id.update({ ...m, userId: newIdentity });
+    }
+
+    // Migrate staff availability
+    for (const a of [...ctx.db.staffAvailability.byUserId.filter(oldIdentity)]) {
+      ctx.db.staffAvailability.id.update({ ...a, userId: newIdentity });
+    }
+
+    // Migrate time-off requests
+    for (const r of [...ctx.db.timeOffRequest.byUserId.filter(oldIdentity)]) {
+      ctx.db.timeOffRequest.id.update({ ...r, userId: newIdentity });
+    }
+
+    // Migrate chat memberships
+    for (const cm of [...ctx.db.chatMember.byUserId.filter(oldIdentity)]) {
+      ctx.db.chatMember.id.update({ ...cm, userId: newIdentity });
+    }
+
+    // Migrate todos
+    for (const td of [...ctx.db.todo.byUserId.filter(oldIdentity)]) {
+      ctx.db.todo.id.update({ ...td, userId: newIdentity });
     }
   }
 );

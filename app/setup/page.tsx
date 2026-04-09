@@ -28,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createClient } from "@/lib/supabase/client";
 import { ownerPermissions } from "@/lib/db/team";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 

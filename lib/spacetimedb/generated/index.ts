@@ -64,6 +64,7 @@ import DeleteStaffMemberReducer from "./delete_staff_member_reducer";
 import DeleteStaffRoleReducer from "./delete_staff_role_reducer";
 import InviteToOrgReducer from "./invite_to_org_reducer";
 import LeaveOrgReducer from "./leave_org_reducer";
+import LoginWithPasswordReducer from "./login_with_password_reducer";
 import RefundPaymentReducer from "./refund_payment_reducer";
 import RegisterCustomerReducer from "./register_customer_reducer";
 import SendMessageReducer from "./send_message_reducer";
@@ -692,6 +693,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_staff_role", DeleteStaffRoleReducer),
   __reducerSchema("invite_to_org", InviteToOrgReducer),
   __reducerSchema("leave_org", LeaveOrgReducer),
+  __reducerSchema("login_with_password", LoginWithPasswordReducer),
   __reducerSchema("refund_payment", RefundPaymentReducer),
   __reducerSchema("register_customer", RegisterCustomerReducer),
   __reducerSchema("send_message", SendMessageReducer),
