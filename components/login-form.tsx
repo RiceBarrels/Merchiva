@@ -4,50 +4,53 @@ import { useState } from "react";
 import { Zap, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { hapticSuccess, hapticLight } from "@/lib/haptics";
-import { generatePKCE, savePKCE } from "@/lib/pkce";
-import {
-  SPACETIMEAUTH_AUTHORITY,
-  SPACETIMEAUTH_CLIENT_ID,
-  SPACETIMEAUTH_REDIRECT_URI,
-} from "@/lib/spacetimedb/auth-config";
+import { useSignIn } from "@clerk/react";
+import { hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import Link from "next/link";
 
-// onSuccess is kept for cases where login-form is embedded and token already exists,
-// but the primary auth path is a redirect — onSuccess is not called mid-redirect.
-export function LoginForm({ onSuccess: _onSuccess, onSignup }: { onSuccess?: () => void; onSignup?: () => void }) {
-  const [step, setStep] = useState<"email" | "redirecting">("email");
+export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onSignup?: () => void }) {
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const [step, setStep] = useState<"email" | "password">("email");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleContinue = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    hapticLight();
+
+    if (step === "email") {
+      if (!email.trim()) return;
+      hapticLight();
+      setStep("password");
+      return;
+    }
+
+    if (!isLoaded || !signIn) return;
     setLoading(true);
-    setStep("redirecting");
+    setError(null);
 
     try {
-      const { verifier, challenge } = await generatePKCE();
-      const nonce = crypto.randomUUID();
-      savePKCE(verifier, nonce);
-
-      const params = new URLSearchParams({
-        response_type: "code",
-        client_id: SPACETIMEAUTH_CLIENT_ID,
-        redirect_uri: SPACETIMEAUTH_REDIRECT_URI,
-        scope: "openid profile email",
-        code_challenge: challenge,
-        code_challenge_method: "S256",
-        nonce,
-        login_hint: email.trim(),
+      const result = await signIn.create({
+        identifier: email.trim(),
+        password,
       });
 
-      hapticSuccess();
-      window.location.href = `${SPACETIMEAUTH_AUTHORITY}/auth?${params.toString()}`;
-    } catch {
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        hapticSuccess();
+        onSuccess?.();
+      } else {
+        throw new Error("Sign in incomplete — please try again.");
+      }
+    } catch (err) {
+      hapticError();
+      const msg = err instanceof Error ? err.message : "Invalid email or password";
+      // Clerk error objects have a `errors` array
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const clerkMsg = (err as any)?.errors?.[0]?.longMessage ?? (err as any)?.errors?.[0]?.message;
+      setError(clerkMsg ?? msg);
       setLoading(false);
-      setStep("email");
     }
   };
 
@@ -68,22 +71,16 @@ export function LoginForm({ onSuccess: _onSuccess, onSignup }: { onSuccess?: () 
         {/* Progress bar */}
         <div className="flex gap-1.5">
           <div className="h-1 flex-1 rounded-full bg-stone-900" />
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step === "redirecting" ? "bg-stone-900" : "bg-stone-200"}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step === "password" ? "bg-stone-900" : "bg-stone-200"}`} />
         </div>
 
-        {step === "redirecting" ? (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Redirecting to sign in…</p>
-          </div>
-        ) : (
-          <form onSubmit={handleContinue} className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-bold">Welcome back</h1>
-              <p className="text-muted-foreground text-sm mt-1">Enter your email to continue</p>
-            </div>
-
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {step === "email" ? (
             <div className="space-y-4">
+              <div>
+                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <p className="text-muted-foreground text-sm mt-1">Enter your email to continue</p>
+              </div>
               <Input
                 type="email"
                 value={email}
@@ -93,21 +90,45 @@ export function LoginForm({ onSuccess: _onSuccess, onSignup }: { onSuccess?: () 
                 autoComplete="email"
                 className="h-12 text-base"
               />
-
-              <Button type="submit" disabled={loading || !email.trim()} className="w-full h-11">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue"}
+              <Button type="submit" disabled={!email.trim()} className="w-full h-11">
+                Continue
               </Button>
             </div>
-          </form>
-        )}
+          ) : (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => { hapticLight(); setStep("email"); setError(null); }}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold">Enter your password</h1>
+                <p className="text-muted-foreground text-sm mt-1">{email}</p>
+              </div>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoFocus
+                autoComplete="current-password"
+                className="h-12 text-base"
+              />
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" disabled={loading || !password} className="w-full h-11">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+              </Button>
+            </div>
+          )}
+        </form>
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           {onSignup ? (
-            <button
-              onClick={onSignup}
-              className="font-medium text-foreground underline underline-offset-4"
-            >
+            <button onClick={onSignup} className="font-medium text-foreground underline underline-offset-4">
               Create one
             </button>
           ) : (

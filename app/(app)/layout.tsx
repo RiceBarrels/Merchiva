@@ -5,9 +5,9 @@ import { MobileShell } from "@/components/sidebar";
 import { LoginForm } from "@/components/login-form";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
-import { getStoredToken } from "@/lib/spacetimedb/client";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
+import { useAuth } from "@clerk/react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,9 +140,11 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     };
   }, [isReady, authState]);
 
+  const { signOut } = useAuth();
+
   const handleSignOut = () => {
     localStorage.removeItem("stdb_token");
-    window.location.href = "/?logout=1";
+    signOut().then(() => { window.location.href = "/"; }).catch(() => { window.location.href = "/"; });
   };
 
   // Still waiting for SpacetimeDB tables to sync
@@ -186,15 +188,17 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [hasToken, setHasToken] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const { isLoaded, isSignedIn, getToken } = useAuth();
 
+  // Keep stdb_token fresh whenever Clerk session is active
   useEffect(() => {
-    setHasToken(!!getStoredToken());
-    setChecked(true);
-  }, []);
+    if (!isSignedIn) return;
+    getToken().then((token) => {
+      if (token) localStorage.setItem("stdb_token", token);
+    });
+  }, [isSignedIn, getToken]);
 
-  if (!checked) {
+  if (!isLoaded) {
     return (
       <div className="flex h-screen items-center justify-center bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
@@ -202,7 +206,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!hasToken) {
+  if (!isSignedIn) {
     return <LoginForm />;
   }
 

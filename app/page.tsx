@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/react";
 import { LoginForm } from "@/components/login-form";
 import { SignupForm } from "@/components/signup-form";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -10,8 +11,7 @@ import { hapticLight } from "@/lib/haptics";
 
 export default function Home() {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [showSignup, setShowSignup] = useState(false);
 
   useEffect(() => {
@@ -19,22 +19,19 @@ export default function Home() {
     if (params.get("logout") === "1") {
       localStorage.removeItem("stdb_token");
       window.history.replaceState({}, "", "/");
-      setNeedsLogin(true);
-      setChecking(false);
       return;
     }
 
-    const token = localStorage.getItem("stdb_token");
-    if (token) {
-      router.replace("/dashboard");
-    } else {
-      setNeedsLogin(true);
-      setChecking(false);
+    if (isLoaded && isSignedIn) {
+      getToken().then((token) => {
+        if (token) localStorage.setItem("stdb_token", token);
+        router.replace("/dashboard");
+      });
     }
-  }, [router]);
+  }, [isLoaded, isSignedIn, router, getToken]);
 
-  if (checking && !needsLogin) return null;
-  if (!needsLogin) return null;
+  if (!isLoaded) return null;
+  if (isSignedIn) return null; // Will redirect
 
   const handleSuccess = () => router.replace("/dashboard");
   const openSignup = () => { hapticLight(); setShowSignup(true); };
@@ -44,14 +41,12 @@ export default function Home() {
     <>
       <LoginForm onSuccess={handleSuccess} onSignup={openSignup} />
 
-      {/* Signup — slides in from the right using Sheet */}
       <Sheet open={showSignup} onOpenChange={(open) => { if (!open) closeSignup(); }}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0" showCloseButton={false}>
           <SignupForm onSuccess={handleSuccess} />
         </SheetContent>
       </Sheet>
 
-      {/* Floating back button + title pill — shown above the Sheet when signup is open */}
       {showSignup && (
         <FloatingNavButton
           mode="back"

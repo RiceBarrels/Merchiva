@@ -1,5 +1,5 @@
-// Auth is now handled via PKCE directly — no OIDC provider wrapper needed.
-// This file is kept for import compatibility.
+// Auth is now handled by Clerk via ClerkProvider in app/providers.tsx.
+// This file is kept for import compatibility only.
 export function SpacetimeAuthProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
