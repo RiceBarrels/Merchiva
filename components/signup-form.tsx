@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSignUp } from "@clerk/react";
+import { useSignUp } from "@clerk/react/legacy";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
 import Link from "next/link";
 

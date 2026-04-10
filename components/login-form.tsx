@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Zap, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSignIn } from "@clerk/react";
+import { useSignIn } from "@clerk/react/legacy";
 import { hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
 import Link from "next/link";
 
@@ -46,7 +46,6 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
     } catch (err) {
       hapticError();
       const msg = err instanceof Error ? err.message : "Invalid email or password";
-      // Clerk error objects have a `errors` array
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const clerkMsg = (err as any)?.errors?.[0]?.longMessage ?? (err as any)?.errors?.[0]?.message;
       setError(clerkMsg ?? msg);
