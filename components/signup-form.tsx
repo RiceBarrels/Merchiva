@@ -56,19 +56,22 @@ export function SignupForm({ onSuccess: _onSuccess, onBack }: SignupFormProps) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center px-6 bg-background">
-      <div className="mx-auto w-full max-w-sm space-y-8">
-        {/* Back button (shown when embedded in slide layout) */}
-        {onBack && (
+    <div className="flex min-h-screen flex-col bg-background">
+      {/* Fixed top bar with back button */}
+      {onBack && (
+        <div className="sticky top-0 z-10 flex items-center px-4 py-3 bg-background">
           <button
             onClick={onBack}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </button>
-        )}
+        </div>
+      )}
 
+      <div className="flex flex-1 flex-col justify-center px-6">
+      <div className="mx-auto w-full max-w-sm space-y-8">
         {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-stone-900 text-white">
@@ -125,6 +128,7 @@ export function SignupForm({ onSuccess: _onSuccess, onBack }: SignupFormProps) {
             </Link>
           )}
         </p>
+      </div>
       </div>
     </div>
   );
