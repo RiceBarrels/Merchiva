@@ -23,19 +23,16 @@ import {
   Settings,
   LogOut,
   UserCog,
-  X,
   ChevronDown,
   Plus,
   Check,
   Loader2,
-  Menu,
   MessageSquare,
   MonitorSmartphone,
-  ArrowLeft,
-  ArrowRight,
 } from "lucide-react";
 import { useOpenDialogCount, useDialogTitle, useDialogSwipeProgress } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "motion/react";
+import { FloatingNavButton } from "@/components/floating-nav-button";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
 import { Separator } from "@/components/ui/separator";
@@ -449,78 +446,30 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <>
       {/* ── Mobile / tablet layout (touch devices) + builder full-viewport ── */}
       <div className={cn("relative h-screen overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex" : "hidden")}>
-        {/* Floating hamburger — hidden on builder pages (builder has its own Menu button in toolbar) */}
+        {/* Floating hamburger / back button — hidden on builder pages */}
         {!isBuilderPage && (
-          <button
-            onClick={() => {
-              if (hasDialog) {
-                const topDialog = document.getElementById(`mobile-dialog-${openDialogs - 1}`);
-                const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
-                backBtn?.click();
-              } else {
-                setIsOpen((v) => !v);
-              }
+          <FloatingNavButton
+            mode="menu"
+            title={dialogTitle}
+            onToggle={() => setIsOpen((v) => !v)}
+            onDialogBack={() => {
+              const topDialog = document.getElementById(`mobile-dialog-${openDialogs - 1}`);
+              const backBtn = topDialog?.querySelector("[data-dialog-back]") as HTMLButtonElement | null;
+              backBtn?.click();
             }}
-            className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4"
-            style={{
-              left: 0,
-              top: 0 + safeAreaInsets.top,
-              zIndex: hasDialog ? 200 : 50,
-              transform: hasDialog ? "none" : `translateX(${translateX}px)`,
-              transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)",
-            }}
-            aria-label={hasDialog ? "Go back" : isOpen ? "Close menu" : "Open menu"}
-          >
-            <motion.span
-              className="relative block h-5 w-5"
-              animate={{
-                rotate: hasDialog
-                  ? openDialogs > 1
-                    ? -180
-                    : -180 + dialogSwipe * 180
-                  : btnRotation
-              }}
-              transition={dragging || dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 300 }}
-            >
-              <ArrowRight className="h-5 w-5 absolute inset-0" style={{
-                opacity: hasDialog ? (openDialogs > 1 ? 1 : 1 - dialogSwipe) : 0,
-                transition: dialogSwipe > 0 ? "none" : "opacity 200ms",
-              }} />
-              <Menu className="h-5 w-5 absolute inset-0" style={{
-                opacity: hasDialog ? (openDialogs > 1 ? 0 : dialogSwipe) : menuOpacity,
-                transition: dialogSwipe > 0 || dragging ? "none" : "opacity 200ms",
-              }} />
-              <X className="h-5 w-5 absolute inset-0" style={{ opacity: hasDialog ? 0 : xOpacity, transition: dragging ? "none" : "opacity 200ms" }} />
-            </motion.span>
-          </button>
+            isOpen={isOpen}
+            hasDialog={hasDialog}
+            openDialogs={openDialogs}
+            translateX={translateX}
+            dragging={dragging}
+            dialogSwipe={dialogSwipe}
+            btnRotation={btnRotation}
+            menuOpacity={menuOpacity}
+            xOpacity={xOpacity}
+            safeAreaTop={safeAreaInsets.top}
+            zIndex={hasDialog ? 200 : 50}
+          />
         )}
-
-        {/* Floating dialog title pill */}
-        <AnimatePresence>
-          {hasDialog && dialogTitle && (
-            <motion.div
-              key={dialogTitle}
-              className="fixed"
-              style={{ top: 22 + safeAreaInsets.top, left: 64, zIndex: 201 }}
-              initial={{ opacity: 0, scale: 0.3, x: -30 }}
-              animate={{
-                opacity: 1 - dialogSwipe,
-                scale: 1 - dialogSwipe * 0.7,
-                x: -dialogSwipe * 30,
-              }}
-              exit={{ opacity: 0, scale: 0.3, x: -30 }}
-              transition={dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 400, delay: 0.1 }}
-            >
-              <div
-                className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-lg"
-                style={{ boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)" }}
-              >
-                {dialogTitle}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Sidebar: slides in from back with scale */}
         <div

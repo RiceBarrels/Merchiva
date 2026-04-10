@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, Loader2, ArrowLeft } from "lucide-react";
+import { Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
@@ -15,10 +15,9 @@ import Link from "next/link";
 
 interface SignupFormProps {
   onSuccess?: () => void;
-  onBack?: () => void;
 }
 
-export function SignupForm({ onSuccess: _onSuccess, onBack }: SignupFormProps) {
+export function SignupForm({ onSuccess: _onSuccess }: SignupFormProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -57,19 +56,6 @@ export function SignupForm({ onSuccess: _onSuccess, onBack }: SignupFormProps) {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Fixed top bar with back button */}
-      {onBack && (
-        <div className="sticky top-0 z-10 flex items-center px-4 py-3 bg-background">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
-        </div>
-      )}
-
       <div className="flex flex-1 flex-col justify-center px-6">
       <div className="mx-auto w-full max-w-sm space-y-8">
         {/* Logo */}
@@ -115,18 +101,9 @@ export function SignupForm({ onSuccess: _onSuccess, onBack }: SignupFormProps) {
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          {onBack ? (
-            <button
-              onClick={onBack}
-              className="font-medium text-foreground underline underline-offset-4"
-            >
-              Sign in
-            </button>
-          ) : (
-            <Link href="/" className="font-medium text-foreground underline underline-offset-4">
-              Sign in
-            </Link>
-          )}
+          <Link href="/" className="font-medium text-foreground underline underline-offset-4">
+            Sign in
+          </Link>
         </p>
       </div>
       </div>

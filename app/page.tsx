@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
 import { SignupForm } from "@/components/signup-form";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { FloatingNavButton } from "@/components/floating-nav-button";
 import { hapticLight } from "@/lib/haptics";
 
 export default function Home() {
@@ -43,11 +44,22 @@ export default function Home() {
     <>
       <LoginForm onSuccess={handleSuccess} onSignup={openSignup} />
 
+      {/* Signup — slides in from the right using Sheet */}
       <Sheet open={showSignup} onOpenChange={(open) => { if (!open) closeSignup(); }}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0" showCloseButton={false}>
-          <SignupForm onSuccess={handleSuccess} onBack={closeSignup} />
+          <SignupForm onSuccess={handleSuccess} />
         </SheetContent>
       </Sheet>
+
+      {/* Floating back button + title pill — shown above the Sheet when signup is open */}
+      {showSignup && (
+        <FloatingNavButton
+          mode="back"
+          title="Create account"
+          onBack={closeSignup}
+          zIndex={200}
+        />
+      )}
     </>
   );
 }
