@@ -1,102 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Zap, Loader2, X } from "lucide-react";
+import { useState } from "react";
+import { Zap, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { hapticSuccess, hapticLight } from "@/lib/haptics";
-import { generatePKCE, savePKCE } from "@/lib/pkce";
-import {
-  SPACETIMEAUTH_AUTHORITY,
-  SPACETIMEAUTH_CLIENT_ID,
-  SPACETIMEAUTH_REDIRECT_URI,
-} from "@/lib/spacetimedb/auth-config";
+import { useSignIn } from "@clerk/react/legacy";
+import { hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
+import Link from "next/link";
 
 export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onSignup?: () => void }) {
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const [step, setStep] = useState<"email" | "password">("email");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [showSheet, setShowSheet] = useState(false);
-  const [authUrl, setAuthUrl] = useState("");
 
-  useEffect(() => {
-    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    setIsMobile(isTouch);
-  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  // Poll localStorage for token after sheet opens (mobile)
-  useEffect(() => {
-    if (!showSheet) return;
-    const interval = setInterval(() => {
-      const token = localStorage.getItem("stdb_token");
-      if (token) {
-        clearInterval(interval);
-        setShowSheet(false);
-        hapticSuccess();
-        onSuccess?.();
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [showSheet, onSuccess]);
+    if (step === "email") {
+      if (!email.trim()) return;
+      hapticLight();
+      setStep("password");
+      return;
+    }
 
-  // Poll for token when new tab is opened (desktop)
-  useEffect(() => {
-    if (!loading || isMobile) return;
-    const interval = setInterval(() => {
-      const token = localStorage.getItem("stdb_token");
-      if (token) {
-        clearInterval(interval);
-        setLoading(false);
-        hapticSuccess();
-        onSuccess?.();
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [loading, isMobile, onSuccess]);
-
-  const buildAuthUrl = async (hint?: string) => {
-    const { verifier, challenge } = await generatePKCE();
-    const nonce = crypto.randomUUID();
-    savePKCE(verifier, nonce);
-
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: SPACETIMEAUTH_CLIENT_ID,
-      redirect_uri: SPACETIMEAUTH_REDIRECT_URI,
-      scope: "openid profile email",
-      code_challenge: challenge,
-      code_challenge_method: "S256",
-      nonce,
-    });
-    if (hint) params.set("login_hint", hint);
-
-    return `${SPACETIMEAUTH_AUTHORITY}/auth?${params.toString()}`;
-  };
-
-  const handleSignin = async () => {
+    if (!isLoaded || !signIn) return;
     setLoading(true);
     setError(null);
-    hapticLight();
 
     try {
-      const url = await buildAuthUrl(email.trim() || undefined);
+      const result = await signIn.create({
+        identifier: email.trim(),
+        password,
+      });
 
-      if (isMobile) {
-        setAuthUrl(url);
-        setShowSheet(true);
-        setLoading(false);
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        hapticSuccess();
+        onSuccess?.();
       } else {
-        // Open in new tab; poll localStorage for the token
-        const newTab = window.open(url, "_blank");
-        if (!newTab) {
-          // Popup blocked — fall back to redirect
-          window.location.href = url;
-        }
-        // loading stays true; polling effect above will clear it
+        throw new Error("Sign in incomplete — please try again.");
       }
-    } catch {
-      setError("Failed to start sign in. Please try again.");
+    } catch (err) {
+      hapticError();
+      const msg = err instanceof Error ? err.message : "Invalid email or password";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const clerkMsg = (err as any)?.errors?.[0]?.longMessage ?? (err as any)?.errors?.[0]?.message;
+      setError(clerkMsg ?? msg);
       setLoading(false);
     }
   };
@@ -104,6 +56,7 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
   return (
     <div className="flex min-h-screen flex-col justify-center px-6 bg-background">
       <div className="mx-auto w-full max-w-sm space-y-8">
+        {/* Logo */}
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-stone-900 text-white">
             <Zap className="h-4 w-4" />
@@ -114,69 +67,76 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
           </div>
         </div>
 
-        <div>
-          <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground text-sm mt-1">Sign in to continue</p>
+        {/* Progress bar */}
+        <div className="flex gap-1.5">
+          <div className="h-1 flex-1 rounded-full bg-stone-900" />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step === "password" ? "bg-stone-900" : "bg-stone-200"}`} />
         </div>
 
-        <div className="space-y-4">
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email (optional)"
-            className="h-12 text-base"
-            onKeyDown={(e) => e.key === "Enter" && !loading && handleSignin()}
-          />
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <Button onClick={handleSignin} disabled={loading} className="w-full h-11">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
-          </Button>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {step === "email" ? (
+            <div className="space-y-4">
+              <div>
+                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <p className="text-muted-foreground text-sm mt-1">Enter your email to continue</p>
+              </div>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoFocus
+                autoComplete="email"
+                className="h-12 text-base"
+              />
+              <Button type="submit" disabled={!email.trim()} className="w-full h-11">
+                Continue
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => { hapticLight(); setStep("email"); setError(null); }}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold">Enter your password</h1>
+                <p className="text-muted-foreground text-sm mt-1">{email}</p>
+              </div>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoFocus
+                autoComplete="current-password"
+                className="h-12 text-base"
+              />
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" disabled={loading || !password} className="w-full h-11">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+              </Button>
+            </div>
+          )}
+        </form>
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           {onSignup ? (
-            <button
-              onClick={onSignup}
-              className="font-medium text-foreground underline underline-offset-4"
-            >
+            <button onClick={onSignup} className="font-medium text-foreground underline underline-offset-4">
               Create one
             </button>
           ) : (
-            <a href="/signup" className="font-medium text-foreground underline underline-offset-4">
+            <Link href="/signup" className="font-medium text-foreground underline underline-offset-4">
               Create one
-            </a>
+            </Link>
           )}
         </p>
       </div>
-
-      {/* Mobile bottom sheet with iframe */}
-      {showSheet && (
-        <div className="fixed inset-0 z-50 flex flex-col">
-          {/* Backdrop */}
-          <div
-            className="flex-none h-16 bg-black/20"
-            onClick={() => setShowSheet(false)}
-          />
-          {/* Sheet */}
-          <div className="flex-1 bg-background rounded-t-xl overflow-hidden flex flex-col animate-slideUp">
-            <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
-              <p className="text-sm font-medium">Sign in</p>
-              <button onClick={() => setShowSheet(false)}>
-                <X className="h-5 w-5 text-muted-foreground" />
-              </button>
-            </div>
-            <iframe
-              src={authUrl}
-              className="flex-1 w-full border-0"
-              allow="publickey-credentials-get"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

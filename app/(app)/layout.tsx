@@ -5,12 +5,84 @@ import { MobileShell } from "@/components/sidebar";
 import { LoginForm } from "@/components/login-form";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
-import { getStoredToken } from "@/lib/spacetimedb/client";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
+import { useAuth } from "@clerk/react";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import { tables } from "@/lib/spacetimedb/generated";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
+
+// New-user onboarding: shown when SpacetimeDB is ready but the user has no org membership yet.
+function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSignOut: () => void }) {
+  const stdb = useSpacetimeDB();
+  const [displayName, setDisplayName] = useState("");
+  const [storeName, setStoreName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSetup = async () => {
+    if (!displayName.trim() || !storeName.trim() || !stdb) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const conn = stdb as any;
+      conn.reducers.createUser({
+        email: "",
+        passwordHash: null,
+        displayName: displayName.trim(),
+      });
+      conn.reducers.createOrg({ name: storeName.trim() });
+      // Give SpacetimeDB a moment to propagate the new rows, then reload.
+      setTimeout(onComplete, 1500);
+    } catch (err) {
+      console.error("Setup failed:", err);
+      setError("Setup failed. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen flex-col justify-center px-6 bg-background">
+      <div className="mx-auto w-full max-w-sm space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold">Set up your account</h1>
+          <p className="text-muted-foreground text-sm mt-1">One last step to get started</p>
+        </div>
+        <div className="space-y-4">
+          <Input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Your name"
+            className="h-12 text-base"
+            autoFocus
+          />
+          <Input
+            value={storeName}
+            onChange={(e) => setStoreName(e.target.value)}
+            placeholder="Your store name"
+            className="h-12 text-base"
+            onKeyDown={(e) => e.key === "Enter" && !loading && handleSetup()}
+          />
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button
+            onClick={handleSetup}
+            disabled={loading || !displayName.trim() || !storeName.trim()}
+            className="w-full h-11"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Get started"}
+          </Button>
+        </div>
+        <button onClick={onSignOut} className="block text-sm text-muted-foreground underline underline-offset-4">
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // Inner component — runs inside SpacetimeProvider so useTable/useSpacetimeDB are available.
 function AuthLoader({ children }: { children: React.ReactNode }) {
@@ -68,13 +140,15 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     };
   }, [isReady, authState]);
 
+  const { signOut } = useAuth();
+
   const handleSignOut = () => {
     localStorage.removeItem("stdb_token");
-    window.location.href = "/?logout=1";
+    signOut().then(() => { window.location.href = "/"; }).catch(() => { window.location.href = "/"; });
   };
 
-  // Still loading
-  if (!isReady || !authState) {
+  // Still waiting for SpacetimeDB tables to sync
+  if (!isReady) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
@@ -87,6 +161,16 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           </button>
         )}
       </div>
+    );
+  }
+
+  // Tables loaded but no org membership — new user needs onboarding
+  if (!authState) {
+    return (
+      <NewUserSetup
+        onComplete={() => window.location.reload()}
+        onSignOut={handleSignOut}
+      />
     );
   }
 
@@ -104,15 +188,17 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [hasToken, setHasToken] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const { isLoaded, isSignedIn, getToken } = useAuth();
 
+  // Keep stdb_token fresh whenever Clerk session is active
   useEffect(() => {
-    setHasToken(!!getStoredToken());
-    setChecked(true);
-  }, []);
+    if (!isSignedIn) return;
+    getToken().then((token) => {
+      if (token) localStorage.setItem("stdb_token", token);
+    });
+  }, [isSignedIn, getToken]);
 
-  if (!checked) {
+  if (!isLoaded) {
     return (
       <div className="flex h-screen items-center justify-center bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
@@ -120,7 +206,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!hasToken) {
+  if (!isSignedIn) {
     return <LoginForm />;
   }
 

@@ -1,7 +1,11 @@
 "use client";
 
-import { SpacetimeAuthProvider } from "@/components/auth-provider";
+import { ClerkProvider } from "@clerk/react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return <SpacetimeAuthProvider>{children}</SpacetimeAuthProvider>;
+  return (
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}>
+      {children}
+    </ClerkProvider>
+  );
 }
