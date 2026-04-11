@@ -84,14 +84,18 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       })
       .onConnectError((_ctx, error) => {
         console.error("[SpacetimeDB] Connection error:", error);
-        localStorage.removeItem("stdb_token");
-        window.location.href = "/";
+        // Don't redirect — let the layout timeout handle this gracefully
       });
   }, [clerkToken]);
 
   if (!builder) {
-    // Token not yet fetched — render children so layout can show its own loading state.
-    return <>{children}</>;
+    // Token not yet fetched — show loading spinner. Do NOT render children because
+    // AuthLoader uses useSpacetimeDB/useTable hooks that require SpacetimeDBProvider context.
+    return (
+      <div className="flex h-screen items-center justify-center bg-stone-50">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
+      </div>
+    );
   }
 
   return (
