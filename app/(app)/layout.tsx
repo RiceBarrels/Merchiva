@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { MobileShell } from "@/components/sidebar";
 import { LoginForm } from "@/components/login-form";
 import { PermissionsProvider } from "@/lib/context/permissions";
@@ -30,12 +30,12 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conn = stdb as any;
-      conn.reducers.createUser({
+      await conn.reducers.createUser({
         email: "",
         passwordHash: null,
         displayName: displayName.trim(),
       });
-      conn.reducers.createOrg({ name: storeName.trim() });
+      await conn.reducers.createOrg({ name: storeName.trim() });
       // Give SpacetimeDB a moment to propagate the new rows, then reload.
       setTimeout(onComplete, 1500);
     } catch (err) {
@@ -188,15 +188,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
-
-  // Keep stdb_token fresh whenever Clerk session is active
-  useEffect(() => {
-    if (!isSignedIn) return;
-    getToken().then((token) => {
-      if (token) localStorage.setItem("stdb_token", token);
-    });
-  }, [isSignedIn, getToken]);
+  const { isLoaded, isSignedIn } = useAuth();
 
   if (!isLoaded) {
     return (
