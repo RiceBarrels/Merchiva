@@ -14,7 +14,8 @@ import {
   X,
 } from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
-import { getSites, createSite, updateSite, deleteSite } from "@/lib/db/sites";
+import { createSite, updateSite, deleteSite } from "@/lib/spacetimedb/actions";
+import { getSites } from "@/lib/db/sites";
 import type { Site } from "@/lib/types";
 
 function slugify(s: string) {

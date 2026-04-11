@@ -62,7 +62,7 @@ import {
   Cell,
 } from "recharts";
 import { useRouter } from "next/navigation";
-import { addProduct, deleteProduct } from "@/lib/db/products";
+import { addProduct, deleteProduct } from "@/lib/spacetimedb/actions";
 import type { Product } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";

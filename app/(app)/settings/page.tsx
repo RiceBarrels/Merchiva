@@ -33,13 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import {
-  getSettings,
-  upsertSettings,
-  disconnectSquare,
-  disconnectClover,
-  type UserSettings,
-} from "@/lib/db/settings";
+import { upsertSettings, disconnectSquare, disconnectClover } from "@/lib/spacetimedb/actions";
+import { getSettings, type UserSettings } from "@/lib/db/settings";
 import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -50,13 +45,9 @@ import {
 } from "@/components/ui/select";
 import { PermissionGuard } from "@/components/permission-guard";
 import { getCached, setCache } from "@/lib/cache";
-import {
-  getMyAvailability, upsertAvailability,
-  getTimeOffRequests, createTimeOffRequest,
-} from "@/lib/db/availability";
-import {
-  getTeamMembers, getInvitations, updateMember, removeMember, cancelInvitation,
-} from "@/lib/db/team";
+import { getMyAvailability, getTimeOffRequests } from "@/lib/db/availability";
+import { upsertAvailability, createTimeOffRequest, updateMember, removeMember, cancelInvitation } from "@/lib/spacetimedb/actions";
+import { getTeamMembers, getInvitations } from "@/lib/db/team";
 import type { OrgMember, OrgInvitation, OrgRole, Permissions } from "@/lib/types";
 import { defaultPermissions } from "@/lib/db/team";
 import { usePermissions } from "@/lib/context/permissions";

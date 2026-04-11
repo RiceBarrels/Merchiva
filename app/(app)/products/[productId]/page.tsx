@@ -29,7 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getProductById, updateProduct } from "@/lib/db/products";
+import { updateProduct } from "@/lib/spacetimedb/actions";
+import { getProductById } from "@/lib/db/products";
 import type { Product, SiteElement, SiteTheme } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { SiteRenderer } from "@/components/site-renderer";

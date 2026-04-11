@@ -19,20 +19,13 @@ import {
   Edit2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createTier, updateTier, deleteTier, createPerk, updatePerk, deletePerk, updateOrderStatus, updateBookingStatus } from "@/lib/spacetimedb/actions";
 import {
   getMembershipTiers,
-  createTier,
-  updateTier,
-  deleteTier,
   getTierPerks,
-  createPerk,
-  updatePerk,
-  deletePerk,
   getSiteCustomers,
   getOrgOrders,
   getOrgBookings,
-  updateOrderStatus,
-  updateBookingStatus,
 } from "@/lib/db/membership";
 import type {
   MembershipTier,
@@ -331,8 +324,10 @@ function TiersTab({ siteId }: { siteId: string }) {
       setTiers((prev) => prev.map((t) => t.id === editTier.id ? { ...t, ...data } : t));
       setEditTier(null);
     } else {
-      const tier = await createTier(siteId, data).catch(console.error);
-      if (tier) setTiers((prev) => [...prev, tier]);
+      await createTier(siteId, data).catch(console.error);
+      // Tier will appear via SpacetimeDB subscription; optimistic update with temp data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setTiers((prev) => [...prev, { id: crypto.randomUUID(), siteId, ...data } as any]);
     }
   };
 
@@ -353,10 +348,9 @@ function TiersTab({ siteId }: { siteId: string }) {
       }));
       setEditPerk(null);
     } else {
-      const perk = await createPerk(tierId, data).catch(console.error);
-      if (perk) {
-        setPerksMap((prev) => ({ ...prev, [tierId]: [...(prev[tierId] ?? []), perk] }));
-      }
+      await createPerk({ tierId, ...data }).catch(console.error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setPerksMap((prev) => ({ ...prev, [tierId]: [...(prev[tierId] ?? []), { id: crypto.randomUUID(), tierId, ...data } as any] }));
     }
   };
 

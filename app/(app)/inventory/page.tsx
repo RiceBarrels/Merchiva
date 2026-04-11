@@ -56,7 +56,7 @@ import {
   addInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
-} from "@/lib/db/inventory";
+} from "@/lib/spacetimedb/actions";
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";

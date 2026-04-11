@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { tables } from "@/lib/spacetimedb/generated";
-import { getConnection } from "@/lib/spacetimedb/client";
+import { getConnection, setActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
 // New-user onboarding: shown when SpacetimeDB is ready but the user has no org membership yet.
@@ -182,6 +182,9 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       />
     );
   }
+
+  // Make organizationId available to non-React write helpers.
+  setActiveOrgId(authState.organizationId);
 
   return (
     <PermissionsProvider

@@ -37,6 +37,18 @@ export function clearToken(): void {
   }
 }
 
+// Active organization ID — set by AuthLoader once membership is resolved.
+let _activeOrgId: string | null = null;
+
+export function setActiveOrgId(id: string): void {
+  _activeOrgId = id;
+}
+
+export function getActiveOrgId(): string {
+  if (!_activeOrgId) throw new Error("Organization not loaded");
+  return _activeOrgId;
+}
+
 // Single cached connection reference — populated by the provider on mount.
 let _connection: DbConnectionImpl<any> | null = null;
 

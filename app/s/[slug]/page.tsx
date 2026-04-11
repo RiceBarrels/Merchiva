@@ -5,7 +5,7 @@ import Link from "next/link";
 import { SiteRenderer } from "@/components/site-renderer";
 import { getSiteBySlug, getPages } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
-import { loginCustomer, registerCustomer } from "@/lib/db/membership";
+import { loginCustomer, registerCustomer } from "@/lib/spacetimedb/actions";
 import type { Site, SitePage, SiteCustomer } from "@/lib/types";
 import type { Product } from "@/lib/types";
 import { Loader2, ShoppingCart, X, User, LogOut } from "lucide-react";

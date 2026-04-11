@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProducts } from "@/lib/db/products";
-import { createPayment, getPaymentConfig, getRecentPayments, refundPayment } from "@/lib/db/payments";
+import { createPayment, refundPayment } from "@/lib/spacetimedb/actions";
+import { getPaymentConfig, getRecentPayments } from "@/lib/db/payments";
 import { getCached, setCache } from "@/lib/cache";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";

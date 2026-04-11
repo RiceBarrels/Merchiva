@@ -68,9 +68,10 @@ const ROLE_ICON_MAP: Record<string, LucideIcon> = {
 import { getCached, setCache } from "@/lib/cache";
 import { getShifts, getRoleTasks, getStaffRoles } from "@/lib/db/staffing";
 import { getConversations } from "@/lib/db/chat";
-import { getTodos, addTodo, toggleTodo, deleteTodo } from "@/lib/db/todos";
+import { addTodo, toggleTodo, deleteTodo } from "@/lib/spacetimedb/actions";
+import { getTodos } from "@/lib/db/todos";
 import { uploadEvidence } from "@/lib/db/evidence";
-import { sendMessage } from "@/lib/db/chat";
+import { sendMessage } from "@/lib/spacetimedb/actions";
 import { getTodayCompletions, completeTask } from "@/lib/db/task-completions";
 import { usePermissions } from "@/lib/context/permissions";
 import type { Shift, ChatConversation, Todo, RoleTask, StaffRole } from "@/lib/types";

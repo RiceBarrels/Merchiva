@@ -18,20 +18,13 @@ import {
   Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createTier, updateTier, deleteTier, createPerk, updatePerk, deletePerk, updateOrderStatus, updateBookingStatus } from "@/lib/spacetimedb/actions";
 import {
   getMembershipTiers,
-  createTier,
-  updateTier,
-  deleteTier,
   getTierPerks,
-  createPerk,
-  updatePerk,
-  deletePerk,
   getSiteCustomers,
   getOrgOrders,
   getOrgBookings,
-  updateOrderStatus,
-  updateBookingStatus,
 } from "@/lib/db/membership";
 import { getSites } from "@/lib/db/sites";
 import { usePermissions } from "@/lib/context/permissions";

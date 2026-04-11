@@ -19,9 +19,9 @@ import {
 } from "@/components/ui/drawer";
 import { usePermissions } from "@/lib/context/permissions";
 import { getCached, setCache } from "@/lib/cache";
+import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage } from "@/lib/spacetimedb/actions";
 import {
-  getConversations, getMessages, sendMessage, addMembersToConversation,
-  getReactions, addReaction, removeReaction, deleteMessage, uploadChatFile,
+  getConversations, getMessages, getReactions, uploadChatFile,
   type ChatReaction,
 } from "@/lib/db/chat";
 import { getTeamForScheduling } from "@/lib/db/staffing";

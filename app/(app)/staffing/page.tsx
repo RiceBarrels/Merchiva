@@ -31,16 +31,16 @@ import {
   addShift, updateShift, deleteShift,
   addStaffRole, updateStaffRole, deleteStaffRole,
   getRoleTasks, addRoleTask, updateRoleTask, deleteRoleTask,
-} from "@/lib/db/staffing";
-import { addShiftPreset, updateShiftPreset, deleteShiftPreset } from "@/lib/db/shift-presets";
+  addShiftPreset, updateShiftPreset, deleteShiftPreset,
+} from "@/lib/spacetimedb/actions";
 import type { ShiftPreset } from "@/lib/types";
 import type { ChatConversation } from "@/lib/types";
 import {
   upsertAvailability,
   createTimeOffRequest, updateTimeOffStatus,
   createShiftTrade, updateTradeStatus,
-  getCoworkersWithShifts,
-} from "@/lib/db/availability";
+} from "@/lib/spacetimedb/actions";
+import { getCoworkersWithShifts } from "@/lib/db/availability";
 import type {
   OrgMember, Shift, ShiftType, StaffRole, StaffRolePermissions,
   StaffAvailability, TimeOffRequest, ShiftTrade, RoleTask,

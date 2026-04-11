@@ -82,7 +82,8 @@ import {
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { useSidebarOpen } from "@/components/sidebar";
-import { getSiteById, getPages, createPage, updatePage, updateSite, deletePage, getSavedComponents, saveComponent, deleteComponent } from "@/lib/db/sites";
+import { createPage, updatePage, updateSite, deletePage, saveComponent, deleteComponent } from "@/lib/spacetimedb/actions";
+import { getSiteById, getPages, getSavedComponents } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { getBuiltInPages } from "@/lib/db/site-templates";
 import type { SiteFeatures } from "@/lib/types";
@@ -2040,7 +2041,8 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
         let allPages = pgs;
         if (!allPages.some((p) => p.slug === "index" || p.name === "Home")) {
           try {
-            const home = await createPage(siteId, "Home", "index", 0);
+            const homeId = uid();
+            await createPage(siteId, "Home", "index", 0);
             // Give home page a default desktop viewport
             const defaultVp: SiteElement = {
               id: uid(), type: "viewport",
@@ -2050,8 +2052,9 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               ],
               x: 0, y: 0, width: 1280, height: 600,
             };
-            await updatePage(home.id, { elements: [defaultVp] });
-            home.elements = [defaultVp];
+            await updatePage(homeId, { elements: [defaultVp] });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const home: any = { id: homeId, siteId, name: "Home", slug: "index", sortOrder: 0, elements: [defaultVp] };
             allPages = [home, ...allPages];
           } catch (err: unknown) {
             console.error("Failed to create home page:", err);
@@ -2088,15 +2091,9 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     if (!el || !organizationId || !siteId) return;
     setSavingComponent(true);
     try {
-      const comp = await saveComponent(
-        organizationId,
-        siteId,
-        saveDialogName.trim() || el.type,
-        saveDialogCategory.trim() || null,
-        el,
-        ""
-      );
-      setSavedComponents((prev) => [comp, ...prev]);
+      await saveComponent({ organizationId, siteId, name: saveDialogName.trim() || el.type, category: saveDialogCategory.trim() || null, element: el });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setSavedComponents((prev) => [{ id: crypto.randomUUID(), organizationId, siteId, name: saveDialogName.trim() || el.type, category: saveDialogCategory.trim() || null, element: el } as any, ...prev]);
       setShowSaveDialog(false);
       setSaveDialogName("");
       setSaveDialogCategory("");
@@ -2649,7 +2646,10 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     if (!newPageName.trim()) return;
     const slug = newPageName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
     try {
-      const page = await createPage(siteId, newPageName.trim(), slug, pages.length);
+      const newPageId = crypto.randomUUID();
+      await createPage(siteId, newPageName.trim(), slug, pages.length);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const page: any = { id: newPageId, siteId, name: newPageName.trim(), slug, sortOrder: pages.length, elements: [] };
       setPages((prev) => [...prev, page]);
       setShowAddPage(false);
       setNewPageName("");

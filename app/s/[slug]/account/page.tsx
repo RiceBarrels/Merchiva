@@ -3,7 +3,8 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, ShoppingBag, CalendarDays, Star, Gift, LogOut } from "lucide-react";
-import { getCustomer, getCustomerOrders, getCustomerBookings, getCustomerMembership, canClaimPerk, claimPerk } from "@/lib/db/membership";
+import { claimPerk } from "@/lib/spacetimedb/actions";
+import { getCustomer, getCustomerOrders, getCustomerBookings, getCustomerMembership, canClaimPerk } from "@/lib/db/membership";
 import type { SiteCustomer, SiteOrder, SiteBooking, MembershipTier, MembershipPerk } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
