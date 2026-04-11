@@ -82,9 +82,9 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       .onDisconnect(() => {
         clearConnection();
       })
-      .onConnectError((_ctx, _error) => {
-        localStorage.removeItem("stdb_token");
-        window.location.href = "/?logout=1";
+      .onConnectError((_ctx, error) => {
+        console.error("[SpacetimeDB] Connection error:", error);
+        // Don't redirect — let the layout timeout handle sign-out
       });
   }, [clerkToken]);
 
