@@ -152,13 +152,17 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
+        <p className="text-xs text-stone-500">Connecting…</p>
         {timedOut && (
-          <button
-            onClick={handleSignOut}
-            className="rounded border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50"
-          >
-            Sign out and try again
-          </button>
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <p className="text-xs text-red-500">Connection timed out</p>
+            <button
+              onClick={handleSignOut}
+              className="rounded border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50"
+            >
+              Sign out and try again
+            </button>
+          </div>
         )}
       </div>
     );
