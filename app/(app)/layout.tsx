@@ -13,34 +13,39 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { tables } from "@/lib/spacetimedb/generated";
+import { getConnection } from "@/lib/spacetimedb/client";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
 // New-user onboarding: shown when SpacetimeDB is ready but the user has no org membership yet.
 function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSignOut: () => void }) {
-  const stdb = useSpacetimeDB();
   const [displayName, setDisplayName] = useState("");
   const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSetup = async () => {
-    if (!displayName.trim() || !storeName.trim() || !stdb) return;
+    if (!displayName.trim() || !storeName.trim()) return;
+    const conn = getConnection();
+    if (!conn) {
+      setError("Not connected to database. Please try again.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const conn = stdb as any;
-      await conn.reducers.createUser({
+      await (conn as any).reducers.createUser({
         email: "",
         passwordHash: null,
         displayName: displayName.trim(),
       });
-      await conn.reducers.createOrg({ name: storeName.trim() });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (conn as any).reducers.createOrg({ name: storeName.trim() });
       // Give SpacetimeDB a moment to propagate the new rows, then reload.
       setTimeout(onComplete, 1500);
     } catch (err) {
-      console.error("Setup failed:", err);
-      setError("Setup failed. Please try again.");
+      console.error("Setup failed:", err, JSON.stringify(err));
+      setError(`Setup failed: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
   };
