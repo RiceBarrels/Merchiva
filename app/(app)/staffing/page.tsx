@@ -521,8 +521,10 @@ export default function StaffingPage() {
         await updateShiftPreset(editingPreset.id, presetForm);
         setPresets((prev) => prev.map((p) => p.id === editingPreset.id ? { ...p, ...presetForm } : p));
       } else {
-        const p = await addShiftPreset(organizationId, presetForm);
-        setPresets((prev) => [...prev, p]);
+        const presetId = crypto.randomUUID();
+        await addShiftPreset(organizationId, presetForm);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setPresets((prev) => [...prev, { id: presetId, organizationId, ...presetForm } as any]);
       }
       setPresetDialog(false);
       setEditingPreset(null);

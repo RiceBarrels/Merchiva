@@ -739,22 +739,37 @@ export default function POSPage() {
     setProcessing(true);
     setPaymentError(null);
     try {
-      const payment = await createPayment({
-        organizationId, userId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const optimisticPayment: Payment = {
+        id: crypto.randomUUID(), organizationId, userId,
         amount: parseFloat(total.toFixed(2)),
+        currency, method, status: "completed",
+        processorId: opts.processorId ?? null,
+        processorResponse: opts.processorResponse ? JSON.stringify(opts.processorResponse) : null,
+        customerName: customerName.trim() || null,
+        notes: opts.notes ?? null,
+        items: JSON.stringify(cart),
+        taxAmount: parseFloat(taxAmount.toFixed(2)),
+        discountAmount: parseFloat(discountAmount.toFixed(2)),
+        refundAmount: null, refundReason: null,
+        createdAt: new Date().toISOString(),
+      } as any;
+      await createPayment({
+        organizationId, userId,
+        amount: optimisticPayment.amount,
         currency, method, status: "completed",
         processorId: opts.processorId ?? null,
         processorResponse: opts.processorResponse ?? null,
         customerName: customerName.trim() || null,
         notes: opts.notes ?? null,
         items: cart,
-        taxAmount: parseFloat(taxAmount.toFixed(2)),
-        discountAmount: parseFloat(discountAmount.toFixed(2)),
+        taxAmount: optimisticPayment.taxAmount,
+        discountAmount: optimisticPayment.discountAmount,
       });
       hapticSuccess();
       setChargeDialog(false);
       setOrdersKey((k) => k + 1); // trigger orders tab refresh
-      setReceipt({ payment, businessName });
+      setReceipt({ payment: optimisticPayment, businessName });
     } catch (err) {
       console.error("POS: payment record failed:", err);
       setPaymentError("Failed to record payment. Please try again.");
