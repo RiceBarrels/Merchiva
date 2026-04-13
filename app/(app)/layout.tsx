@@ -34,17 +34,23 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
     setError(null);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (conn as any).reducers.createUser({
+      const r = (conn as any).reducers;
+      console.log("[Setup] Available reducers:", Object.keys(r || {}));
+      console.log("[Setup] Calling createUser...");
+      await r.createUser({
         email: "",
-        passwordHash: null,
+        passwordHash: undefined,
         displayName: displayName.trim(),
       });
+      console.log("[Setup] createUser done, calling createOrg...");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (conn as any).reducers.createOrg({ name: storeName.trim() });
+      await r.createOrg({ name: storeName.trim() });
+      console.log("[Setup] createOrg done, reloading in 1.5s...");
       // Give SpacetimeDB a moment to propagate the new rows, then reload.
       setTimeout(onComplete, 1500);
-    } catch (err) {
-      console.error("Setup failed:", err, JSON.stringify(err));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Setup failed:", msg, err);
       setError(`Setup failed: ${err instanceof Error ? err.message : String(err)}`);
       setLoading(false);
     }
