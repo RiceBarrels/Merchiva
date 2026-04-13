@@ -11,6 +11,7 @@ import { useAuth } from "@clerk/react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 import { tables } from "@/lib/spacetimedb/generated";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
@@ -21,12 +22,10 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
   const [displayName, setDisplayName] = useState("");
   const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSetup = async () => {
     if (!displayName.trim() || !storeName.trim() || !stdb) return;
     setLoading(true);
-    setError(null);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conn = stdb as any;
@@ -40,7 +39,7 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
       setTimeout(onComplete, 1500);
     } catch (err) {
       console.error("Setup failed:", err);
-      setError("Setup failed. Please try again.");
+      toast.error("Setup failed", { description: "Please try again." });
       setLoading(false);
     }
   };
@@ -67,7 +66,6 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
             className="h-12 text-base"
             onKeyDown={(e) => e.key === "Enter" && !loading && handleSetup()}
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
           <Button
             onClick={handleSetup}
             disabled={loading || !displayName.trim() || !storeName.trim()}

@@ -62,6 +62,7 @@ import { defaultPermissions } from "@/lib/db/team";
 import { usePermissions } from "@/lib/context/permissions";
 import { hapticSuccess } from "@/lib/haptics";
 import { uploadFiles } from "@/lib/uploadthing";
+import { toast } from "sonner";
 
 interface SquareLocation {
   id: string;
@@ -88,9 +89,7 @@ export default function SettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // Square OAuth feedback
-  const [squareMessage, setSquareMessage] = useState<string | null>(null);
-  const [squareError, setSquareError] = useState<string | null>(null);
+  // Square OAuth feedback (replaced with toast)
 
   // Location picker
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -128,15 +127,12 @@ export default function SettingsPage() {
   const [inviteRole, setInviteRole] = useState<"staff" | "manager">("staff");
   const [invitePerms, setInvitePerms] = useState<Permissions>(defaultPermissions());
   const [inviting, setInviting] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
 
   // Square sync
   const [squareSyncing, setSquareSyncing] = useState(false);
   const [squareSyncResult, setSquareSyncResult] = useState<string | null>(null);
 
-  // Clover OAuth feedback
-  const [cloverMessage, setCloverMessage] = useState<string | null>(null);
-  const [cloverError, setCloverError] = useState<string | null>(null);
+  // Clover OAuth feedback (replaced with toast)
 
   // Clover sync
   const [cloverSyncing, setCloverSyncing] = useState(false);
@@ -205,8 +201,7 @@ export default function SettingsPage() {
   useEffect(() => {
     // Square
     if (searchParams.get("connected") === "true") {
-      setSquareMessage("Square connected successfully!");
-      setTimeout(() => setSquareMessage(null), 5000);
+      toast.success("Square connected successfully!");
     }
     if (searchParams.get("error")) {
       const err = searchParams.get("error");
@@ -217,7 +212,7 @@ export default function SettingsPage() {
         token_exchange_failed: "Failed to exchange authorization code.",
         exchange_failed: "Connection failed. Please try again.",
       };
-      setSquareError(messages[err!] ?? "An error occurred connecting to Square.");
+      toast.error(messages[err!] ?? "An error occurred connecting to Square.");
     }
     if (searchParams.get("pickLocation") === "true") {
       setShowLocationPicker(true);
@@ -226,8 +221,7 @@ export default function SettingsPage() {
 
     // Clover
     if (searchParams.get("clover_connected") === "true") {
-      setCloverMessage("Clover connected successfully!");
-      setTimeout(() => setCloverMessage(null), 5000);
+      toast.success("Clover connected successfully!");
       // Reload settings to reflect new connection
       getSettings()
         .then(setSettings)
@@ -241,7 +235,7 @@ export default function SettingsPage() {
         missing_token: "Clover did not return a valid token.",
         exchange_failed: "Connection failed. Please try again.",
       };
-      setCloverError(messages[err!] ?? "An error occurred connecting to Clover.");
+      toast.error(messages[err!] ?? "An error occurred connecting to Clover.");
     }
   }, [searchParams]);
 
@@ -252,7 +246,7 @@ export default function SettingsPage() {
       const json = await res.json();
       setLocations(json.locations ?? []);
     } catch {
-      setSquareError("Failed to load locations.");
+      toast.error("Failed to load locations.");
     } finally {
       setLoadingLocations(false);
     }
@@ -268,16 +262,15 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         setShowLocationPicker(false);
-        setSquareMessage("Square connected successfully!");
-        setTimeout(() => setSquareMessage(null), 5000);
+        toast.success("Square connected successfully!");
         const updated = await getSettings();
         setSettings(updated);
       } else {
         const err = await res.json();
-        setSquareError(err.error ?? "Failed to select location.");
+        toast.error(err.error ?? "Failed to select location.");
       }
     } catch {
-      setSquareError("Failed to select location.");
+      toast.error("Failed to select location.");
     } finally {
       setSelectingLocation(false);
     }
@@ -294,6 +287,7 @@ export default function SettingsPage() {
         return next;
       });
       hapticSuccess();
+      toast.success("Profile saved");
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2500);
     } finally {
@@ -310,6 +304,7 @@ export default function SettingsPage() {
         taxRate: parseFloat(paymentTaxRate) || 0,
         currency: paymentCurrency,
       });
+      toast.success("Payment settings saved");
       setPaymentSaved(true);
       setTimeout(() => setPaymentSaved(false), 2500);
     } finally {
@@ -427,7 +422,6 @@ export default function SettingsPage() {
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviting(true);
-    setInviteError(null);
     try {
       const res = await fetch("/api/team/invite", {
         method: "POST",
@@ -435,14 +429,15 @@ export default function SettingsPage() {
         body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, permissions: invitePerms }),
       });
       const json = await res.json();
-      if (!res.ok) { setInviteError(json.error ?? "Failed"); return; }
+      if (!res.ok) { toast.error(json.error ?? "Failed to send invitation"); return; }
+      toast.success("Invitation sent");
       setInviteDialog(false);
       setInviteEmail("");
       setInviteRole("staff");
       setInvitePerms(defaultPermissions());
       loadTeam();
     } catch {
-      setInviteError("Failed to send invitation.");
+      toast.error("Failed to send invitation.");
     } finally {
       setInviting(false);
     }
@@ -1068,9 +1063,6 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
-          {inviteError && (
-            <p className="text-xs text-destructive bg-destructive/10 rounded px-3 py-2">{inviteError}</p>
-          )}
           <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="w-full">
             {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Invitation"}
           </Button>

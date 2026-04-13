@@ -68,6 +68,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
+import { toast } from "sonner";
 
 const alertConfig = {
   none:           { label: "Healthy",         icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -129,9 +130,13 @@ export default function ProductsPage() {
         userId
       );
       hapticSuccess();
+      toast.success("Product added");
       void newProd;
       setDialogOpen(false);
       setForm(BLANK);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add product");
     } finally {
       setSaving(false);
     }
@@ -139,7 +144,13 @@ export default function ProductsPage() {
 
   const handleDelete = async (id: string) => {
     hapticWarning();
-    await deleteProduct(id);
+    try {
+      await deleteProduct(id);
+      toast.success("Product deleted");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete product");
+    }
   };
 
   const totalRevenue  = products.reduce((s, p) => s + p.revenue, 0);
