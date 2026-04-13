@@ -548,7 +548,8 @@ export default function StaffingPage() {
     try {
       if (editingShift) {
         const member = team.find((m) => m.id === shiftForm.memberId);
-        const sh = await updateShift(editingShift.id, {
+        const updated = {
+          ...editingShift,
           memberId:   shiftForm.memberId,
           staffName:  member?.displayName ?? editingShift.staffName,
           staffRoles: shiftForm.roleNames,
@@ -556,12 +557,14 @@ export default function StaffingPage() {
           shiftType:  shiftForm.shiftType,
           startTime:  shiftForm.startTime,
           endTime:    shiftForm.endTime,
-        });
-        setShifts((prev) => prev.map((s) => s.id === sh.id ? sh : s));
+        };
+        await updateShift(editingShift.id, updated);
+        setShifts((prev) => prev.map((s) => s.id === editingShift.id ? updated : s));
       } else {
         const member = team.find((m) => m.id === shiftForm.memberId);
         if (!member) return;
-        const sh = await addShift({
+        const shiftId = crypto.randomUUID();
+        await addShift({
           memberId:        member.id,
           staffName:       member.displayName,
           staffRole:       shiftForm.roleNames[0] || null,
@@ -572,7 +575,8 @@ export default function StaffingPage() {
           endTime:         shiftForm.endTime,
           predictedDemand: "medium",
         }, userId, organizationId ?? undefined);
-        setShifts((prev) => [...prev, sh]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setShifts((prev) => [...prev, { id: shiftId, memberId: member.id, staffName: member.displayName, staffRoles: shiftForm.roleNames, date: shiftForm.date, shiftType: shiftForm.shiftType, startTime: shiftForm.startTime, endTime: shiftForm.endTime } as any]);
       }
       hapticSuccess();
       setAddDialog(false);
@@ -598,8 +602,10 @@ export default function StaffingPage() {
         setRoles((prev) => prev.map((r) => r.id === editingRole.id ? updated : r));
         if (selectedRole?.id === editingRole.id) setSelectedRole(updated);
       } else {
-        const r = await addStaffRole(roleForm, userId, organizationId);
-        setRoles((prev) => [...prev, r]);
+        const roleId = crypto.randomUUID();
+        await addStaffRole(roleForm, userId, organizationId ?? undefined);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setRoles((prev) => [...prev, { id: roleId, ...roleForm } as any]);
       }
       hapticSuccess();
       setRoleDialog(false);
@@ -656,7 +662,8 @@ export default function StaffingPage() {
           ).sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99")),
         }));
       } else {
-        const t = await addRoleTask({
+        const taskId = crypto.randomUUID();
+        await addRoleTask({
           roleId: selectedRole.id,
           organizationId: organizationId ?? null,
           title: taskForm.title,
@@ -667,9 +674,11 @@ export default function StaffingPage() {
           requiresEvidence: taskForm.requiresEvidence,
           notifyChats: taskForm.notifyChats,
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const newTask: any = { id: taskId, roleId: selectedRole.id, title: taskForm.title, description: taskForm.description, startTime: taskForm.hasTime ? taskForm.startTime : null, endTime: taskForm.hasTime ? taskForm.endTime : null, sortOrder: existing.length, requiresEvidence: taskForm.requiresEvidence, notifyChats: taskForm.notifyChats };
         setRoleTasksCache((prev) => ({
           ...prev,
-          [selectedRole.id]: [...existing, t].sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99")),
+          [selectedRole.id]: [...existing, newTask].sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99")),
         }));
       }
       setTaskDialog({ open: false, task: null });
@@ -772,7 +781,8 @@ export default function StaffingPage() {
     try {
       const days = availForm.dayTimes.map((dt) => dt.enabled);
       const allFullDay = availForm.dayTimes.every((dt) => dt.fullDay || !dt.enabled);
-      const saved = await upsertAvailability({
+      const savedId = myAvailability?.id ?? crypto.randomUUID();
+      await upsertAvailability({
         id:             myAvailability?.id,
         userId,
         organizationId,
@@ -787,9 +797,11 @@ export default function StaffingPage() {
         endTime:        null,
         comments:       availForm.comments,
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const optimisticAvail: any = { id: savedId, userId, organizationId, type: availForm.type, days, dayTimes: availForm.dayTimes, status: availForm.status, fullDay: allFullDay, comments: availForm.comments };
       setMyAvailability((prev: StaffAvailability[]) => {
-        const idx = prev.findIndex((a) => a.id === saved.id);
-        return idx >= 0 ? prev.map((a) => a.id === saved.id ? saved : a) : [...prev, saved];
+        const idx = prev.findIndex((a) => a.id === savedId);
+        return idx >= 0 ? prev.map((a) => a.id === savedId ? optimisticAvail : a) : [...prev, optimisticAvail];
       });
       setAvailDialog(false);
     } finally {
@@ -801,7 +813,8 @@ export default function StaffingPage() {
     if (!userId || !organizationId) return;
     setSavingTimeOff(true);
     try {
-      const req = await createTimeOffRequest({
+      const reqId = crypto.randomUUID();
+      await createTimeOffRequest({
         userId,
         organizationId,
         startDate: timeOffForm.startDate,
@@ -811,7 +824,8 @@ export default function StaffingPage() {
         endTime:   timeOffForm.fullDays ? null : timeOffForm.endTime,
         comments:  timeOffForm.comments,
       });
-      setMyTimeOffRequests((prev) => [req, ...prev]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setMyTimeOffRequests((prev) => [{ id: reqId, userId, organizationId, ...timeOffForm, status: "pending", createdAt: new Date().toISOString() } as any, ...prev]);
       setTimeOffDialog(false);
     } finally {
       setSavingTimeOff(false);
@@ -1885,14 +1899,12 @@ export default function StaffingPage() {
                 // Check if shift already exists for this member+date
                 const existing = shifts.find((s) => s.memberId === memberId && s.date === date);
                 if (existing) {
-                  const updated = await updateShift(existing.id, {
-                    startTime: batchForm.startTime,
-                    endTime: batchForm.endTime,
-                    staffRoles: batchForm.roleNames,
-                  });
-                  setShifts((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+                  const patched = { ...existing, startTime: batchForm.startTime, endTime: batchForm.endTime, staffRoles: batchForm.roleNames };
+                  await updateShift(existing.id, patched);
+                  setShifts((prev) => prev.map((s) => s.id === existing.id ? patched : s));
                 } else {
-                  const sh = await addShift({
+                  const shiftId = crypto.randomUUID();
+                  await addShift({
                     memberId: member.id,
                     staffName: member.displayName,
                     staffRole: batchForm.roleNames[0] || null,
@@ -1903,7 +1915,8 @@ export default function StaffingPage() {
                     endTime: batchForm.endTime,
                     predictedDemand: "medium",
                   }, userId, organizationId ?? undefined);
-                  newShifts.push(sh);
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  newShifts.push({ id: shiftId, memberId: member.id, staffName: member.displayName, staffRoles: batchForm.roleNames, date, shiftType: "morning", startTime: batchForm.startTime, endTime: batchForm.endTime } as any);
                 }
               }
               if (newShifts.length > 0) setShifts((prev) => [...prev, ...newShifts]);
@@ -1931,7 +1944,8 @@ export default function StaffingPage() {
                 const newDateStr = isoDate(newDate);
                 // Skip if shift already exists
                 if (shifts.find((ex) => ex.memberId === s.memberId && ex.date === newDateStr)) continue;
-                const sh = await addShift({
+                const shiftId = crypto.randomUUID();
+                await addShift({
                   memberId: s.memberId,
                   staffName: s.staffName,
                   staffRole: s.staffRole,
@@ -1942,7 +1956,8 @@ export default function StaffingPage() {
                   endTime: s.endTime,
                   predictedDemand: s.predictedDemand,
                 }, userId, organizationId ?? undefined);
-                newShifts.push(sh);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                newShifts.push({ ...s, id: shiftId, date: newDateStr } as any);
               }
               setShifts((prev) => [...prev, ...newShifts]);
             } finally { setSaving(false); }

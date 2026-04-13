@@ -151,8 +151,8 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
   const handleClaim = async (perkId: string) => {
     setClaiming(perkId);
     try {
-      const claim = await claimPerk(customerId, perkId);
-      setClaimed((prev) => ({ ...prev, [perkId]: claim.couponCode ?? "Claimed!" }));
+      await claimPerk({ customerId, perkId });
+      setClaimed((prev) => ({ ...prev, [perkId]: "Claimed!" }));
       setPerkStatus((prev) => ({ ...prev, [perkId]: { canClaim: false, nextClaimAt: null } }));
     } catch (err) {
       console.error("Claim failed:", err);

@@ -136,12 +136,13 @@ function AuthModal({
     setLoading(true);
     try {
       if (mode === "login") {
-        const c = await loginCustomer(siteId, email, password);
-        if (!c) { setError("Invalid email or password."); return; }
-        onSuccess(c);
+        await loginCustomer({ siteId, email, password });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onSuccess({ email, name } as any);
       } else {
-        const c = await registerCustomer(siteId, email, password, name);
-        onSuccess(c);
+        await registerCustomer({ siteId, email, password, name });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onSuccess({ email, name } as any);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
