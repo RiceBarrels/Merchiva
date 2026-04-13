@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSignIn } from "@clerk/react/legacy";
 import { hapticSuccess, hapticError, hapticLight } from "@/lib/haptics";
+import { toast } from "sonner";
 import Link from "next/link";
 
 export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onSignup?: () => void }) {
@@ -48,6 +49,7 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
       const msg = err instanceof Error ? err.message : "Invalid email or password";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const clerkMsg = (err as any)?.errors?.[0]?.longMessage ?? (err as any)?.errors?.[0]?.message;
+      toast.error("Sign in failed", { description: clerkMsg ?? msg });
       setError(clerkMsg ?? msg);
       setLoading(false);
     }

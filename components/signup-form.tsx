@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSignUp } from "@clerk/react/legacy";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
+import { toast } from "sonner";
 import Link from "next/link";
 
 interface SignupFormProps {
@@ -54,7 +55,9 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       }
     } catch (err) {
       hapticError();
-      setError(getClerkError(err));
+      const msg = getClerkError(err);
+      toast.error("Sign up failed", { description: msg });
+      setError(msg);
       setLoading(false);
     }
   };
@@ -77,7 +80,9 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       }
     } catch (err) {
       hapticError();
-      setError(getClerkError(err));
+      const msg = getClerkError(err);
+      toast.error("Verification failed", { description: msg });
+      setError(msg);
       setLoading(false);
     }
   };

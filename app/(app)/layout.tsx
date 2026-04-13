@@ -11,6 +11,7 @@ import { useAuth } from "@clerk/react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 import { tables } from "@/lib/spacetimedb/generated";
 import { getConnection, setActiveOrgId } from "@/lib/spacetimedb/client";
@@ -21,22 +22,22 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
   const [displayName, setDisplayName] = useState("");
   const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSetup = async () => {
     if (!displayName.trim() || !storeName.trim()) return;
     const conn = getConnection();
     if (!conn) {
-      setError("Not connected to database. Please try again.");
+      toast.error("Not connected to database", { description: "Please wait a moment and try again." });
       return;
     }
     setLoading(true);
-    setError(null);
+    toast.info("Connecting to database...");
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r = (conn as any).reducers;
       console.log("[Setup] Available reducers:", Object.keys(r || {}));
       console.log("[Setup] Calling createUser...");
+      toast.info("Creating account...");
       await r.createUser({
         email: "",
         passwordHash: undefined,
@@ -46,12 +47,12 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await r.createOrg({ name: storeName.trim() });
       console.log("[Setup] createOrg done, reloading in 1.5s...");
-      // Give SpacetimeDB a moment to propagate the new rows, then reload.
+      toast.success("Account created! Loading dashboard...");
       setTimeout(onComplete, 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Setup failed:", msg, err);
-      setError(`Setup failed: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error("Setup failed", { description: msg, duration: 10000 });
       setLoading(false);
     }
   };
@@ -78,7 +79,6 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
             className="h-12 text-base"
             onKeyDown={(e) => e.key === "Enter" && !loading && handleSetup()}
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
           <Button
             onClick={handleSetup}
             disabled={loading || !displayName.trim() || !storeName.trim()}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { toast } from "sonner";
 import {
   Search, Plus, Minus, X, Loader2, CreditCard, Banknote,
   MoreHorizontal, Printer, RotateCcw, Check, Tag, User,
@@ -234,17 +235,18 @@ function RefundDialog({
 
   const handleRefund = async () => {
     setProcessing(true);
-    setError(null);
-    const result = await refundPayment(
-      payment.id,
-      mode === "partial" ? refundAmt : undefined,
-      reason.trim() || undefined
-    );
-    setProcessing(false);
-    if (!result.success) {
-      setError(result.error ?? "Refund failed");
+    try {
+      await refundPayment(
+        payment.id,
+        mode === "partial" ? refundAmt : undefined,
+        reason.trim() || undefined
+      );
+    } catch (err) {
+      setProcessing(false);
+      toast.error("Refund failed", { description: err instanceof Error ? err.message : String(err) });
       return;
     }
+    setProcessing(false);
     hapticSuccess();
     // Reconstruct updated payment from result or patch locally
     const updated: Payment = {

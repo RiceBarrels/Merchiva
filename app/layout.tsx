@@ -4,6 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { MobileDetector } from "@/components/mobile-detector";
 import { Providers } from "./providers";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -43,6 +44,7 @@ export default function RootLayout({
         <MobileDetector />
         <ServiceWorkerRegistrar />
         <Providers>{children}</Providers>
+        <Toaster position="top-center" richColors />
       </body>
     </html>
   );

@@ -84,7 +84,12 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       })
       .onConnectError((_ctx, error) => {
         console.error("[SpacetimeDB] Connection error:", error);
-        // Don't redirect — let the layout timeout handle this gracefully
+        import("sonner").then(({ toast }) => {
+          toast.error("Database connection failed", {
+            description: String(error),
+            duration: 10000,
+          });
+        });
       });
   }, [clerkToken]);
 

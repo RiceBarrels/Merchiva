@@ -347,10 +347,10 @@ function TiersTab({ siteId }: { siteId: string }) {
       }));
       setEditPerk(null);
     } else {
-      const perk = await createPerk(tierId, data).catch(console.error);
-      if (perk) {
-        setPerksMap((prev) => ({ ...prev, [tierId]: [...(prev[tierId] ?? []), perk] }));
-      }
+      const perkId = crypto.randomUUID();
+      await createPerk({ tierId, ...data }).catch(console.error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setPerksMap((prev) => ({ ...prev, [tierId]: [...(prev[tierId] ?? []), { id: perkId, tierId, ...data } as any] }));
     }
   };
 
