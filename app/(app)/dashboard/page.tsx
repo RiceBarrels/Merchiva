@@ -212,8 +212,10 @@ export default function DashboardPage() {
     setAddingTodo(false);
     setTodoInput("");
     try {
-      const todo = await addTodo(userId, organizationId, title);
-      setTodos((prev) => [todo, ...prev]);
+      const todoId = crypto.randomUUID();
+      await addTodo(userId, organizationId, title);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setTodos((prev) => [{ id: todoId, userId, organizationId, title, completed: false, createdAt: new Date().toISOString() } as any, ...prev]);
     } catch (err) {
       console.error("Failed to add todo:", err);
     }

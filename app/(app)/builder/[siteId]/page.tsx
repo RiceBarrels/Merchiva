@@ -2839,9 +2839,11 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
                       for (const tmpl of templates) {
                         if (!pages.some((p) => p.slug === tmpl.slug)) {
                           try {
-                            const page = await createPage(siteId, tmpl.name, tmpl.slug, pages.length);
-                            await updatePage(page.id, { elements: tmpl.elements });
-                            setPages((prev) => [...prev, { ...page, elements: tmpl.elements }]);
+                            const pageId = crypto.randomUUID();
+                            await (createPage as any)(siteId, tmpl.name, tmpl.slug, pages.length);
+                            await updatePage(pageId, { elements: tmpl.elements });
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            setPages((prev) => [...prev, { id: pageId, siteId, name: tmpl.name, slug: tmpl.slug, sortOrder: pages.length, elements: tmpl.elements } as any]);
                           } catch (err) { console.error(err); }
                         }
                       }
@@ -3759,9 +3761,11 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
                           for (const tmpl of templates) {
                             if (!pages.some((p) => p.slug === tmpl.slug)) {
                               try {
-                                const page = await createPage(siteId, tmpl.name, tmpl.slug, pages.length);
-                                await updatePage(page.id, { elements: tmpl.elements });
-                                setPages((prev) => [...prev, { ...page, elements: tmpl.elements }]);
+                                const pageId = crypto.randomUUID();
+                                await (createPage as any)(siteId, tmpl.name, tmpl.slug, pages.length);
+                                await updatePage(pageId, { elements: tmpl.elements });
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                setPages((prev) => [...prev, { id: pageId, siteId, name: tmpl.name, slug: tmpl.slug, sortOrder: pages.length, elements: tmpl.elements } as any]);
                               } catch (err) { console.error(err); }
                             }
                           }

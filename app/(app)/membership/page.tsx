@@ -323,8 +323,10 @@ function TiersTab({ siteId }: { siteId: string }) {
       setTiers((prev) => prev.map((t) => t.id === editTier.id ? { ...t, ...data } : t));
       setEditTier(null);
     } else {
-      const tier = await createTier(siteId, data).catch(console.error);
-      if (tier) setTiers((prev) => [...prev, tier]);
+      const tierId = crypto.randomUUID();
+      await createTier(siteId, data).catch(console.error);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setTiers((prev) => [...prev, { id: tierId, siteId, ...data } as any]);
     }
   };
 

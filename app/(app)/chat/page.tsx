@@ -139,7 +139,7 @@ export default function ChatPage() {
   const handleSend = async (attachment?: { url: string; type: string; name: string } | null) => {
     if ((!input.trim() && !attachment) || !activeConv) return;
     const content = input.trim();
-    const replyId = replyTo?.id ?? null;
+    const replyId = replyTo?.id ?? undefined;
     setInput("");
     setReplyTo(null);
     setSending(true);

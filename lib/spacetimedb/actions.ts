@@ -248,16 +248,15 @@ export async function addMembersToConversation(_convId: string, _userIds: string
   console.warn("[SpacetimeDB] addMembersToConversation not yet implemented");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function addReaction(_convId: string, _messageId: string, _emoji: string): Promise<void> {
+export async function addReaction(_messageId: string, _emoji: string): Promise<void> {
   console.warn("[SpacetimeDB] addReaction not yet implemented");
 }
 
-export async function removeReaction(_convId: string, _messageId: string, _emoji: string): Promise<void> {
+export async function removeReaction(_messageId: string, _emoji: string): Promise<void> {
   console.warn("[SpacetimeDB] removeReaction not yet implemented");
 }
 
-export async function deleteMessage(_convId: string, _messageId: string): Promise<void> {
+export async function deleteMessage(_messageId: string): Promise<void> {
   console.warn("[SpacetimeDB] deleteMessage not yet implemented");
 }
 

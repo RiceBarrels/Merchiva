@@ -54,7 +54,10 @@ export default function BuilderPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const site = await createSite(organizationId, newName.trim(), newSlug.trim());
+      const siteId = crypto.randomUUID();
+      await createSite(organizationId, newName.trim(), newSlug.trim());
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const site: Site = { id: siteId, organizationId, name: newName.trim(), slug: newSlug.trim(), isPublished: false, features: {} } as any;
       setSites((prev) => [site, ...prev]);
       setShowCreate(false);
       setNewName("");
