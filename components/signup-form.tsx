@@ -21,7 +21,6 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const getClerkError = (err: unknown) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +33,6 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
     if (!isLoaded || !signUp) return;
     hapticLight();
     setLoading(true);
-    setError(null);
 
     try {
       const result = await signUp.create({
@@ -57,7 +55,6 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       hapticError();
       const msg = getClerkError(err);
       toast.error("Sign up failed", { description: msg });
-      setError(msg);
       setLoading(false);
     }
   };
@@ -67,7 +64,6 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
     if (!isLoaded || !signUp) return;
     hapticLight();
     setLoading(true);
-    setError(null);
 
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
@@ -82,7 +78,6 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
       hapticError();
       const msg = getClerkError(err);
       toast.error("Verification failed", { description: msg });
-      setError(msg);
       setLoading(false);
     }
   };
@@ -133,7 +128,6 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
                   autoComplete="new-password"
                   className="h-12 text-base"
                 />
-                {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" disabled={loading || !email.trim() || !password} className="w-full h-11">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
                 </Button>
@@ -156,7 +150,6 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
                   autoComplete="one-time-code"
                   className="h-12 text-base tracking-widest"
                 />
-                {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" disabled={loading || !code} className="w-full h-11">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify email"}
                 </Button>

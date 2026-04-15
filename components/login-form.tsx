@@ -15,7 +15,6 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +28,6 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
 
     if (!isLoaded || !signIn) return;
     setLoading(true);
-    setError(null);
 
     try {
       const result = await signIn.create({
@@ -50,7 +48,6 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const clerkMsg = (err as any)?.errors?.[0]?.longMessage ?? (err as any)?.errors?.[0]?.message;
       toast.error("Sign in failed", { description: clerkMsg ?? msg });
-      setError(clerkMsg ?? msg);
       setLoading(false);
     }
   };
@@ -99,7 +96,7 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
             <div className="space-y-4">
               <button
                 type="button"
-                onClick={() => { hapticLight(); setStep("email"); setError(null); }}
+                onClick={() => { hapticLight(); setStep("email"); }}
                 className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
@@ -118,7 +115,6 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
                 autoComplete="current-password"
                 className="h-12 text-base"
               />
-              {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" disabled={loading || !password} className="w-full h-11">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
               </Button>

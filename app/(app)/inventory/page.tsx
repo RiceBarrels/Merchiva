@@ -62,6 +62,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
+import { toast } from "sonner";
 
 const statusConfig: Record<
   InventoryStatus,
@@ -161,9 +162,11 @@ export default function InventoryPage() {
         );
       }
       hapticSuccess();
+      toast.success(editItem ? "Item updated" : "Item added");
       setDialogOpen(false);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to save item");
     } finally {
       setSaving(false);
     }
@@ -171,7 +174,13 @@ export default function InventoryPage() {
 
   const handleDelete = async (id: string) => {
     hapticWarning();
-    await deleteInventoryItem(id);
+    try {
+      await deleteInventoryItem(id);
+      toast.success("Item deleted");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete item");
+    }
   };
 
   const lowStockCount = items.filter((i) => i.status === "low_stock").length;

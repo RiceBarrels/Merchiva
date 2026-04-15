@@ -49,6 +49,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
+import { toast } from "sonner";
 
 const ROLE_COLORS = [
   "#44403c", "#dc2626", "#ea580c", "#ca8a04",
@@ -579,6 +580,7 @@ export default function StaffingPage() {
         setShifts((prev) => [...prev, { id: shiftId, memberId: member.id, staffName: member.displayName, staffRoles: shiftForm.roleNames, date: shiftForm.date, shiftType: shiftForm.shiftType, startTime: shiftForm.startTime, endTime: shiftForm.endTime } as any]);
       }
       hapticSuccess();
+      toast.success(editingShift ? "Shift updated" : "Shift added");
       setAddDialog(false);
       setEditingShift(null);
     } finally {
@@ -588,8 +590,14 @@ export default function StaffingPage() {
 
   const handleDeleteShift = async (id: string) => {
     hapticWarning();
-    await deleteShift(id);
-    setShifts((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await deleteShift(id);
+      setShifts((prev) => prev.filter((s) => s.id !== id));
+      toast.success("Shift deleted");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete shift");
+    }
   };
 
   const handleSaveRole = async () => {
@@ -608,6 +616,7 @@ export default function StaffingPage() {
         setRoles((prev) => [...prev, { id: roleId, ...roleForm } as any]);
       }
       hapticSuccess();
+      toast.success(editingRole ? "Role updated" : "Role added");
       setRoleDialog(false);
       setEditingRole(null);
       setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} });
@@ -699,8 +708,14 @@ export default function StaffingPage() {
 
   const handleDeleteRole = async (id: string) => {
     hapticWarning();
-    await deleteStaffRole(id);
-    setRoles((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await deleteStaffRole(id);
+      setRoles((prev) => prev.filter((r) => r.id !== id));
+      toast.success("Role deleted");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete role");
+    }
   };
 
   const openTradeDialog = async (shift: Shift) => {
@@ -733,6 +748,7 @@ export default function StaffingPage() {
         comments:      "",
       });
       hapticSuccess();
+      toast.success("Trade request sent");
       setTradeDialog({ open: false, shift: null });
     } finally {
       setSavingTrade(false);
@@ -753,6 +769,7 @@ export default function StaffingPage() {
         comments:      "",
       });
       hapticSuccess();
+      toast.success("Cover request sent");
       setCoverDialog({ open: false, shift: null });
     } finally {
       setSavingCover(false);
