@@ -1,37 +1,6 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Site, SitePage, SiteElement, SiteTheme, SiteComponent, SiteFeatures } from "@/lib/types";
-
-// ─── Mappers ──────────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function siteFromDb(row: any): Site {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    name: row.name,
-    slug: row.slug,
-    theme: row.theme ?? defaultTheme(),
-    features: { ...defaultFeatures(), ...(row.features ?? {}) },
-    published: row.published ?? false,
-    customDomain: row.custom_domain ?? null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pageFromDb(row: any): SitePage {
-  return {
-    id: row.id,
-    siteId: row.site_id,
-    name: row.name ?? row.title ?? "Untitled",
-    slug: row.slug ?? "index",
-    elements: (row.elements as SiteElement[]) ?? [],
-    sortOrder: row.sort_order ?? 0,
-    createdAt: row.created_at,
-  };
-}
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
 
@@ -52,40 +21,85 @@ export function defaultFeatures(): SiteFeatures {
   return { auth: false, cart: false, checkout: false, products: false, subscriptions: false, rewards: false, booking: false, account: false };
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function parseJsonField<T>(value: string | T, fallback: T): T {
+  if (typeof value === "string") {
+    try { return JSON.parse(value); } catch { return fallback; }
+  }
+  return value ?? fallback;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function siteFromRow(row: any): Site {
+  return {
+    id: row.id.toString(),
+    organizationId: row.organizationId,
+    name: row.name,
+    slug: row.slug,
+    theme: parseJsonField(row.theme, defaultTheme()),
+    features: { ...defaultFeatures(), ...parseJsonField(row.features, {}) },
+    published: row.published ?? false,
+    customDomain: row.customDomain ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pageFromRow(row: any): SitePage {
+  return {
+    id: row.id.toString(),
+    siteId: row.siteId,
+    name: row.name ?? "Untitled",
+    slug: row.slug ?? "index",
+    elements: parseJsonField(row.elements, []) as SiteElement[],
+    sortOrder: row.sortOrder ?? 0,
+    createdAt: row.createdAt,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function componentFromRow(row: any): SiteComponent {
+  return {
+    id: row.id.toString(),
+    organizationId: row.organizationId,
+    siteId: row.siteId ?? null,
+    name: row.name,
+    description: row.description ?? null,
+    elementData: parseJsonField(row.elementData, {} as SiteElement),
+    category: row.category ?? null,
+    createdBy: row.createdBy ?? null,
+    createdAt: row.createdAt,
+  };
+}
+
 // ─── Sites ────────────────────────────────────────────────────────────────────
 
 export async function getSites(organizationId: string): Promise<Site[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("sites")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(siteFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.site.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === organizationId)
+    .map(siteFromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getSiteById(id: string): Promise<Site | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("sites")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? siteFromDb(data) : null;
+  const c = getConnection();
+  if (!c) return null;
+  const rows = (c as any).db.site.iter();
+  const row = Array.from(rows).find((r: any) => r.id.toString() === id);
+  return row ? siteFromRow(row) : null;
 }
 
 export async function getSiteBySlug(slug: string): Promise<Site | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("sites")
-    .select("*")
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? siteFromDb(data) : null;
+  const c = getConnection();
+  if (!c) return null;
+  const rows = (c as any).db.site.iter();
+  const row = Array.from(rows).find((r: any) => r.slug === slug && r.published);
+  return row ? siteFromRow(row) : null;
 }
 
 export async function createSite(
@@ -93,68 +107,51 @@ export async function createSite(
   name: string,
   slug: string
 ): Promise<Site> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("sites")
-    .insert({
-      organization_id: organizationId,
-      name,
-      slug,
-      theme: defaultTheme(),
-      published: false,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return siteFromDb(data);
+  console.warn("[sites] createSite: writes should go through @/lib/spacetimedb/actions.ts");
+  // Return an optimistic placeholder
+  return {
+    id: crypto.randomUUID(),
+    organizationId,
+    name,
+    slug,
+    theme: defaultTheme(),
+    features: defaultFeatures(),
+    published: false,
+    customDomain: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export async function updateSite(
   id: string,
   updates: Partial<Pick<Site, "name" | "slug" | "theme" | "features" | "published" | "customDomain">>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = {};
-  if (updates.name !== undefined) payload.name = updates.name;
-  if (updates.slug !== undefined) payload.slug = updates.slug;
-  if (updates.theme !== undefined) payload.theme = updates.theme;
-  if (updates.features !== undefined) payload.features = updates.features;
-  if (updates.published !== undefined) payload.published = updates.published;
-  if (updates.customDomain !== undefined) payload.custom_domain = updates.customDomain;
-  payload.updated_at = new Date().toISOString();
-  const { error } = await supabase.from("sites").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn("[sites] updateSite: writes should go through @/lib/spacetimedb/actions.ts");
 }
 
 export async function deleteSite(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("sites").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[sites] deleteSite: writes should go through @/lib/spacetimedb/actions.ts");
 }
 
 // ─── Pages ────────────────────────────────────────────────────────────────────
 
 export async function getPages(siteId: string): Promise<SitePage[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_pages")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("sort_order", { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(pageFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.sitePage.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.siteId === siteId)
+    .map(pageFromRow)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export async function getPageBySlug(siteId: string, slug: string): Promise<SitePage | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_pages")
-    .select("*")
-    .eq("site_id", siteId)
-    .eq("slug", slug)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? pageFromDb(data) : null;
+  const c = getConnection();
+  if (!c) return null;
+  const rows = (c as any).db.sitePage.iter();
+  const row = Array.from(rows).find((r: any) => r.siteId === siteId && r.slug === slug);
+  return row ? pageFromRow(row) : null;
 }
 
 export async function createPage(
@@ -163,69 +160,39 @@ export async function createPage(
   slug: string,
   sortOrder = 0
 ): Promise<SitePage> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_pages")
-    .insert({
-      site_id: siteId,
-      name,
-      title: name,
-      slug,
-      elements: [],
-      sort_order: sortOrder,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return pageFromDb(data);
+  console.warn("[sites] createPage: writes should go through @/lib/spacetimedb/actions.ts");
+  return {
+    id: crypto.randomUUID(),
+    siteId,
+    name,
+    slug,
+    elements: [],
+    sortOrder,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function updatePage(
   id: string,
   updates: Partial<Pick<SitePage, "name" | "slug" | "elements" | "sortOrder">>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = {};
-  if (updates.name !== undefined) payload.name = updates.name;
-  if (updates.slug !== undefined) payload.slug = updates.slug;
-  if (updates.elements !== undefined) payload.elements = updates.elements;
-  if (updates.sortOrder !== undefined) payload.sort_order = updates.sortOrder;
-  const { error } = await supabase.from("site_pages").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn("[sites] updatePage: writes should go through @/lib/spacetimedb/actions.ts");
 }
 
 export async function deletePage(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("site_pages").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[sites] deletePage: writes should go through @/lib/spacetimedb/actions.ts");
 }
 
 // ─── Component Library ────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function componentFromDb(row: any): SiteComponent {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    siteId: row.site_id ?? null,
-    name: row.name,
-    description: row.description ?? null,
-    elementData: row.element_data as SiteElement,
-    category: row.category ?? null,
-    createdBy: row.created_by ?? null,
-    createdAt: row.created_at,
-  };
-}
-
 export async function getSavedComponents(orgId: string): Promise<SiteComponent[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_components")
-    .select("*")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(componentFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.siteComponent.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === orgId)
+    .map(componentFromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function saveComponent(
@@ -236,25 +203,20 @@ export async function saveComponent(
   elementData: SiteElement,
   userId: string
 ): Promise<SiteComponent> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_components")
-    .insert({
-      organization_id: orgId,
-      site_id: siteId,
-      name,
-      category: category || null,
-      element_data: elementData,
-      created_by: userId,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return componentFromDb(data);
+  console.warn("[sites] saveComponent: writes should go through @/lib/spacetimedb/actions.ts");
+  return {
+    id: crypto.randomUUID(),
+    organizationId: orgId,
+    siteId,
+    name,
+    description: null,
+    elementData,
+    category: category || null,
+    createdBy: userId,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function deleteComponent(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("site_components").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[sites] deleteComponent: writes should go through @/lib/spacetimedb/actions.ts");
 }

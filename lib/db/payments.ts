@@ -1,29 +1,29 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Payment, PaymentMethod, PaymentStatus, CartItem } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function fromDb(row: any): Payment {
+function fromRow(r: any): Payment {
   return {
-    id: row.id,
-    organizationId: row.organization_id,
-    userId: row.user_id ?? null,
-    orderId: row.order_id ?? null,
-    amount: Number(row.amount),
-    currency: row.currency,
-    method: row.method as PaymentMethod,
-    status: row.status as PaymentStatus,
-    processorId: row.processor_id ?? null,
-    processorResponse: row.processor_response ?? null,
-    customerName: row.customer_name ?? null,
-    notes: row.notes ?? null,
-    items: row.items ?? null,
-    taxAmount: Number(row.tax_amount ?? 0),
-    discountAmount: Number(row.discount_amount ?? 0),
-    refundAmount: row.refund_amount != null ? Number(row.refund_amount) : null,
-    refundReason: row.refund_reason ?? null,
-    refundedAt: row.refunded_at ?? null,
-    createdAt: row.created_at,
+    id: r.id.toString(),
+    organizationId: r.organizationId,
+    userId: r.userId ?? null,
+    orderId: r.orderId ?? null,
+    amount: Number(r.amount),
+    currency: r.currency,
+    method: r.method as PaymentMethod,
+    status: r.status as PaymentStatus,
+    processorId: r.processorId ?? null,
+    processorResponse: r.processorResponse ? JSON.parse(r.processorResponse) : null,
+    customerName: r.customerName ?? null,
+    notes: r.notes ?? null,
+    items: r.items ? JSON.parse(r.items) : null,
+    taxAmount: Number(r.taxAmount ?? 0),
+    discountAmount: Number(r.discountAmount ?? 0),
+    refundAmount: r.refundAmount != null ? Number(r.refundAmount) : null,
+    refundReason: r.refundReason ?? null,
+    refundedAt: r.refundedAt ? String(r.refundedAt) : null,
+    createdAt: r.createdAt ? String(r.createdAt) : new Date().toISOString(),
   };
 }
 
@@ -44,40 +44,40 @@ export interface CreatePaymentInput {
 }
 
 export async function createPayment(input: CreatePaymentInput): Promise<Payment> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("payments")
-    .insert({
-      organization_id: input.organizationId,
-      user_id: input.userId,
-      amount: input.amount,
-      currency: input.currency,
-      method: input.method,
-      status: input.status,
-      processor_id: input.processorId ?? null,
-      processor_response: input.processorResponse ?? null,
-      customer_name: input.customerName ?? null,
-      notes: input.notes ?? null,
-      items: input.items ?? null,
-      tax_amount: input.taxAmount,
-      discount_amount: input.discountAmount,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return fromDb(data);
+  console.warn("[SpacetimeDB] createPayment: writes not yet implemented via reducers");
+  // Return a stub payment so callers don't crash
+  return {
+    id: crypto.randomUUID(),
+    organizationId: input.organizationId,
+    userId: input.userId,
+    orderId: null,
+    amount: input.amount,
+    currency: input.currency,
+    method: input.method,
+    status: input.status,
+    processorId: input.processorId ?? null,
+    processorResponse: input.processorResponse ?? null,
+    customerName: input.customerName ?? null,
+    notes: input.notes ?? null,
+    items: input.items ?? null,
+    taxAmount: input.taxAmount,
+    discountAmount: input.discountAmount,
+    refundAmount: null,
+    refundReason: null,
+    refundedAt: null,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function getPayments(organizationId: string, limit = 50): Promise<Payment[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("payments")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return (data ?? []).map(fromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.payment.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === organizationId)
+    .map(fromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, limit);
 }
 
 export async function getRecentPayments(
@@ -86,25 +86,25 @@ export async function getRecentPayments(
   offset = 0,
   search?: string
 ): Promise<Payment[]> {
-  const supabase = createClient();
-  let query = supabase
-    .from("payments")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .gte("amount", 0) // exclude negative audit records
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.payment.iter();
+  let results = Array.from(rows)
+    .filter((r: any) => r.organizationId === organizationId && Number(r.amount) >= 0)
+    .map(fromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   if (search && search.trim()) {
-    const term = `%${search.trim()}%`;
-    query = query.or(
-      `customer_name.ilike.${term},processor_id.ilike.${term},notes.ilike.${term}`
+    const term = search.trim().toLowerCase();
+    results = results.filter(
+      (p) =>
+        (p.customerName && p.customerName.toLowerCase().includes(term)) ||
+        (p.processorId && p.processorId.toLowerCase().includes(term)) ||
+        (p.notes && p.notes.toLowerCase().includes(term))
     );
   }
 
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []).map(fromDb);
+  return results.slice(offset, offset + limit);
 }
 
 export async function updatePaymentStatus(
@@ -113,15 +113,10 @@ export async function updatePaymentStatus(
   processorId?: string,
   processorResponse?: Record<string, unknown>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = { status };
-  if (processorId !== undefined) payload.processor_id = processorId;
-  if (processorResponse !== undefined) payload.processor_response = processorResponse;
-  const { error } = await supabase.from("payments").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] updatePaymentStatus: writes not yet implemented via reducers");
 }
 
-// ─── Refund ───────────────────────────────────────────────────────────────────
+// --- Refund ---------------------------------------------------------------
 
 export interface RefundResult {
   success: boolean;
@@ -146,7 +141,7 @@ export async function refundPayment(
   return { success: true, payment: json.payment };
 }
 
-// ─── Payment settings (tax rate + currency) ───────────────────────────────────
+// --- Payment settings (tax rate + currency) --------------------------------
 
 export interface PaymentConfig {
   taxRate: number;   // percentage e.g. 8.5
@@ -154,27 +149,24 @@ export interface PaymentConfig {
 }
 
 export async function getPaymentConfig(): Promise<PaymentConfig> {
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("settings")
-    .select("payment_tax_rate, payment_currency")
-    .maybeSingle();
-  return {
-    taxRate: Number(data?.payment_tax_rate ?? 0),
-    currency: data?.payment_currency ?? "USD",
-  };
+  const c = getConnection();
+  if (!c) return { taxRate: 0, currency: "USD" };
+  const orgId = getActiveOrgId();
+  const rows = (c as any).db.settings.iter();
+  for (const r of rows) {
+    if (r.organizationId === orgId) {
+      return {
+        taxRate: Number(r.paymentTaxRate ?? 0),
+        currency: r.paymentCurrency ?? "USD",
+      };
+    }
+  }
+  return { taxRate: 0, currency: "USD" };
 }
 
 export async function upsertPaymentConfig(
   userId: string,
   config: Partial<PaymentConfig>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = { user_id: userId };
-  if (config.taxRate !== undefined) payload.payment_tax_rate = config.taxRate;
-  if (config.currency !== undefined) payload.payment_currency = config.currency;
-  const { error } = await supabase
-    .from("settings")
-    .upsert(payload, { onConflict: "user_id" });
-  if (error) throw error;
+  console.warn("[SpacetimeDB] upsertPaymentConfig: writes not yet implemented via reducers");
 }

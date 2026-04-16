@@ -1,20 +1,24 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+import { getConnection } from "@/lib/spacetimedb/client";
 
 /** Returns a map of userId → avatarUrl for the given user IDs */
 export async function getAvatarMap(
   userIds: string[]
 ): Promise<Record<string, string>> {
   if (userIds.length === 0) return {};
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("user_profiles")
-    .select("user_id, avatar_url")
-    .in("user_id", userIds);
+
+  const c = getConnection();
+  if (!c) return {};
+
+  const userIdSet = new Set(userIds);
+  const allUsers = Array.from(c.db.user.iter());
 
   const map: Record<string, string> = {};
-  for (const row of data ?? []) {
-    if (row.avatar_url) map[row.user_id] = row.avatar_url;
+  for (const row of allUsers) {
+    const uid = row.identity.toHexString();
+    if (userIdSet.has(uid) && row.avatarUrl) {
+      map[uid] = row.avatarUrl;
+    }
   }
   return map;
 }

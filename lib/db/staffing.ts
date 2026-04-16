@@ -1,52 +1,61 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Shift, ShiftType, StaffRole, OrgMember, RoleTask } from "@/lib/types";
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function parseJsonField<T>(value: string | T, fallback: T): T {
+  if (typeof value === "string") {
+    try { return JSON.parse(value); } catch { return fallback; }
+  }
+  return value ?? fallback;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function shiftFromDb(row: any): Shift {
-  // Migrate: build staffRoles from staff_roles array or legacy staff_role
-  const staffRoles: string[] = Array.isArray(row.staff_roles) && row.staff_roles.length > 0
-    ? row.staff_roles
-    : row.staff_role ? [row.staff_role] : [];
+function shiftFromRow(row: any): Shift {
+  // staffRoles is stored as JSON string in SpacetimeDB
+  const staffRoles: string[] = typeof row.staffRoles === "string"
+    ? (() => { try { return JSON.parse(row.staffRoles); } catch { return []; } })()
+    : Array.isArray(row.staffRoles) ? row.staffRoles : [];
   return {
     id: row.id,
-    memberId: row.member_id ?? null,
-    staffName: row.staff_name,
-    staffRole: staffRoles[0] ?? null,
+    memberId: row.memberId ?? null,
+    staffName: row.staffName,
+    staffRole: staffRoles[0] ?? (row.staffRole ?? null),
     staffRoles,
     date: row.date,
-    shiftType: row.shift_type,
-    startTime: row.start_time,
-    endTime: row.end_time,
-    predictedDemand: row.predicted_demand ?? "medium",
+    shiftType: row.shiftType,
+    startTime: row.startTime,
+    endTime: row.endTime,
+    predictedDemand: row.predictedDemand ?? "medium",
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function roleFromDb(row: any): StaffRole {
+function roleFromRow(row: any): StaffRole {
   return {
     id: row.id,
     name: row.name,
     color: row.color ?? "#44403c",
     icon: row.icon ?? "user",
     description: row.description ?? "",
-    permissions: row.permissions ?? {},
+    permissions: parseJsonField(row.permissions, {}),
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function roleTaskFromDb(row: any): RoleTask {
+function roleTaskFromRow(row: any): RoleTask {
   return {
     id: row.id,
-    roleId: row.role_id,
-    organizationId: row.organization_id ?? null,
+    roleId: row.roleId,
+    organizationId: row.organizationId ?? null,
     title: row.title,
     description: row.description ?? "",
-    startTime: row.start_time ?? null,
-    endTime: row.end_time ?? null,
-    sortOrder: row.sort_order ?? 0,
-    requiresEvidence: row.requires_evidence ?? false,
-    notifyChats: row.notify_chats ?? [],
+    startTime: row.startTime ?? null,
+    endTime: row.endTime ?? null,
+    sortOrder: row.sortOrder ?? 0,
+    requiresEvidence: row.requiresEvidence ?? false,
+    notifyChats: parseJsonField(row.notifyChats, []),
   };
 }
 
@@ -55,42 +64,39 @@ function roleTaskFromDb(row: any): RoleTask {
 export async function getTeamForScheduling(
   organizationId: string
 ): Promise<OrgMember[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("org_members")
-    .select("*")
-    .eq("organization_id", organizationId)
-    .eq("status", "active")
-    .order("display_name");
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    organizationId: row.organization_id,
-    userId: row.user_id,
-    role: row.role,
-    displayName: row.display_name ?? "",
-    email: "",
-    permissions: row.permissions ?? {},
-    status: row.status,
-  }));
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.orgMember.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === organizationId && r.status === "active")
+    .map((row: any) => ({
+      id: row.id,
+      organizationId: row.organizationId,
+      userId: row.userId,
+      role: row.role,
+      displayName: row.displayName ?? "",
+      email: row.email ?? "",
+      permissions: parseJsonField(row.permissions, {}),
+      status: row.status,
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 // ─── Shifts ────────────────────────────────────────────────────────────────────
 
 export async function getShifts(weeksAhead = 2): Promise<Shift[]> {
-  const supabase = createClient();
+  const c = getConnection();
+  if (!c) return [];
   const today = new Date().toISOString().split("T")[0];
   const future = new Date();
   future.setDate(future.getDate() + weeksAhead * 7);
-  const { data, error } = await supabase
-    .from("shifts")
-    .select("*")
-    .gte("date", today)
-    .lte("date", future.toISOString().split("T")[0])
-    .order("date")
-    .order("start_time");
-  if (error) throw error;
-  return (data ?? []).map(shiftFromDb);
+  const futureStr = future.toISOString().split("T")[0];
+  const orgId = getActiveOrgId();
+  const rows = (c as any).db.shift.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === orgId && r.date >= today && r.date <= futureStr)
+    .map(shiftFromRow)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
 }
 
 export async function addShift(
@@ -98,26 +104,12 @@ export async function addShift(
   userId: string,
   organizationId?: string
 ): Promise<Shift> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("shifts")
-    .insert({
-      user_id: userId,
-      organization_id: organizationId || null,
-      member_id: shift.memberId || null,
-      staff_name: shift.staffName,
-      staff_role: shift.staffRoles[0] || shift.staffRole || null,
-      staff_roles: shift.staffRoles,
-      date: shift.date,
-      shift_type: shift.shiftType,
-      start_time: shift.startTime,
-      end_time: shift.endTime,
-      predicted_demand: shift.predictedDemand,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return shiftFromDb(data);
+  console.warn("[staffing] addShift: writes go through SpacetimeDB actions.ts");
+  // Return a stub so callers don't crash
+  return {
+    id: crypto.randomUUID(),
+    ...shift,
+  };
 }
 
 export async function updateShift(
@@ -133,43 +125,25 @@ export async function updateShift(
     endTime?: string;
   }
 ): Promise<Shift> {
-  const supabase = createClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const patch: Record<string, any> = {};
-  if (updates.memberId   !== undefined) patch.member_id   = updates.memberId || null;
-  if (updates.staffName  !== undefined) patch.staff_name  = updates.staffName;
-  if (updates.staffRoles !== undefined) {
-    patch.staff_roles = updates.staffRoles;
-    patch.staff_role  = updates.staffRoles[0] || null;
-  } else if (updates.staffRole !== undefined) {
-    patch.staff_role  = updates.staffRole || null;
-  }
-  if (updates.date       !== undefined) patch.date        = updates.date;
-  if (updates.shiftType  !== undefined) patch.shift_type  = updates.shiftType;
-  if (updates.startTime  !== undefined) patch.start_time  = updates.startTime;
-  if (updates.endTime    !== undefined) patch.end_time    = updates.endTime;
-  const { data, error } = await supabase
-    .from("shifts").update(patch).eq("id", id).select().single();
-  if (error) throw error;
-  return shiftFromDb(data);
+  console.warn("[staffing] updateShift: writes go through SpacetimeDB actions.ts");
+  return { id, staffName: "", staffRole: null, staffRoles: [], date: "", shiftType: "morning" as ShiftType, startTime: "", endTime: "", predictedDemand: "medium", memberId: null, ...updates } as Shift;
 }
 
 export async function deleteShift(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("shifts").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[staffing] deleteShift: writes go through SpacetimeDB actions.ts");
 }
 
 // ─── Staff Roles ──────────────────────────────────────────────────────────────
 
 export async function getStaffRoles(): Promise<StaffRole[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("staff_roles")
-    .select("*")
-    .order("name");
-  if (error) throw error;
-  return (data ?? []).map(roleFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const orgId = getActiveOrgId();
+  const rows = (c as any).db.staffRole.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === orgId)
+    .map(roleFromRow)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function addStaffRole(
@@ -177,100 +151,50 @@ export async function addStaffRole(
   userId: string,
   organizationId?: string | null
 ): Promise<StaffRole> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("staff_roles")
-    .insert({
-      user_id: userId,
-      organization_id: organizationId ?? null,
-      name: role.name,
-      color: role.color,
-      icon: role.icon,
-      description: role.description,
-      permissions: role.permissions,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return roleFromDb(data);
+  console.warn("[staffing] addStaffRole: writes go through SpacetimeDB actions.ts");
+  return { id: crypto.randomUUID(), ...role };
 }
 
 export async function updateStaffRole(
   id: string,
   updates: Partial<Omit<StaffRole, "id">>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = {};
-  if (updates.name !== undefined) payload.name = updates.name;
-  if (updates.color !== undefined) payload.color = updates.color;
-  if (updates.icon !== undefined) payload.icon = updates.icon;
-  if (updates.description !== undefined) payload.description = updates.description;
-  if (updates.permissions !== undefined) payload.permissions = updates.permissions;
-  const { error } = await supabase.from("staff_roles").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn("[staffing] updateStaffRole: writes go through SpacetimeDB actions.ts");
 }
 
 export async function deleteStaffRole(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("staff_roles").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[staffing] deleteStaffRole: writes go through SpacetimeDB actions.ts");
 }
 
 // ─── Role Tasks ───────────────────────────────────────────────────────────────
 
 export async function getRoleTasks(roleId: string): Promise<RoleTask[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("role_tasks")
-    .select("*")
-    .eq("role_id", roleId)
-    .order("start_time");
-  if (error) throw error;
-  return (data ?? []).map(roleTaskFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.roleTask.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.roleId === roleId)
+    .map(roleTaskFromRow)
+    .sort((a, b) => {
+      if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    });
 }
 
 export async function addRoleTask(
   task: Omit<RoleTask, "id">,
 ): Promise<RoleTask> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("role_tasks")
-    .insert({
-      role_id: task.roleId,
-      organization_id: task.organizationId ?? null,
-      title: task.title,
-      description: task.description,
-      start_time: task.startTime || null,
-      end_time: task.endTime || null,
-      sort_order: task.sortOrder,
-      requires_evidence: task.requiresEvidence,
-      notify_chats: task.notifyChats,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return roleTaskFromDb(data);
+  console.warn("[staffing] addRoleTask: writes go through SpacetimeDB actions.ts");
+  return { id: crypto.randomUUID(), ...task };
 }
 
 export async function updateRoleTask(
   id: string,
   updates: Partial<Pick<RoleTask, "title" | "description" | "startTime" | "endTime" | "sortOrder" | "requiresEvidence" | "notifyChats">>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = {};
-  if (updates.title !== undefined) payload.title = updates.title;
-  if (updates.description !== undefined) payload.description = updates.description;
-  if (updates.startTime !== undefined) payload.start_time = updates.startTime;
-  if (updates.endTime !== undefined) payload.end_time = updates.endTime;
-  if (updates.sortOrder !== undefined) payload.sort_order = updates.sortOrder;
-  if (updates.requiresEvidence !== undefined) payload.requires_evidence = updates.requiresEvidence;
-  if (updates.notifyChats !== undefined) payload.notify_chats = updates.notifyChats;
-  const { error } = await supabase.from("role_tasks").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn("[staffing] updateRoleTask: writes go through SpacetimeDB actions.ts");
 }
 
 export async function deleteRoleTask(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("role_tasks").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[staffing] deleteRoleTask: writes go through SpacetimeDB actions.ts");
 }

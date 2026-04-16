@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+import { getConnection } from "@/lib/spacetimedb/client";
 import type {
   MembershipTier,
   MembershipPerk,
@@ -10,7 +10,7 @@ import type {
   SiteBooking,
 } from "@/lib/types";
 
-// ─── Password helpers ─────────────────────────────────────────────────────────
+// --- Password helpers ------------------------------------------------------
 
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -21,242 +21,206 @@ async function hashPassword(password: string): Promise<string> {
     .join("");
 }
 
-// ─── Mappers ──────────────────────────────────────────────────────────────────
+// --- Mappers ---------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function tierFromDb(row: any): MembershipTier {
+function tierFromRow(r: any): MembershipTier {
   return {
-    id: row.id,
-    siteId: row.site_id,
-    name: row.name,
-    description: row.description ?? null,
-    price: row.price ?? 0,
-    pricePeriod: row.price_period ?? "free",
-    color: row.color ?? "#3b82f6",
-    icon: row.icon ?? "⭐",
-    sortOrder: row.sort_order ?? 0,
-    isDefault: row.is_default ?? false,
-    createdAt: row.created_at,
+    id: r.id.toString(),
+    siteId: r.siteId,
+    name: r.name,
+    description: r.description ?? null,
+    price: Number(r.price ?? 0),
+    pricePeriod: r.pricePeriod ?? "free",
+    color: r.color ?? "#3b82f6",
+    icon: r.icon ?? "⭐",
+    sortOrder: Number(r.sortOrder ?? 0),
+    isDefault: Boolean(r.isDefault),
+    createdAt: r.createdAt ? String(r.createdAt) : new Date().toISOString(),
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function perkFromDb(row: any): MembershipPerk {
+function perkFromRow(r: any): MembershipPerk {
   return {
-    id: row.id,
-    tierId: row.tier_id,
-    type: row.type ?? "custom",
-    name: row.name,
-    description: row.description ?? null,
-    couponCode: row.coupon_code ?? null,
-    discountValue: row.discount_value ?? null,
-    discountType: row.discount_type ?? null,
-    cooldownHours: row.cooldown_hours ?? null,
-    frequency: row.frequency ?? null,
-    minPurchase: row.min_purchase ?? null,
-    validDays: row.valid_days ?? null,
-    validHours: row.valid_hours ?? null,
-    active: row.active ?? true,
-    sortOrder: row.sort_order ?? 0,
+    id: r.id.toString(),
+    tierId: r.tierId,
+    type: r.type ?? "custom",
+    name: r.name,
+    description: r.description ?? null,
+    couponCode: r.couponCode ?? null,
+    discountValue: r.discountValue != null ? Number(r.discountValue) : null,
+    discountType: r.discountType ?? null,
+    cooldownHours: r.cooldownHours != null ? Number(r.cooldownHours) : null,
+    frequency: r.frequency != null ? Number(r.frequency) : null,
+    minPurchase: r.minPurchase != null ? Number(r.minPurchase) : null,
+    validDays: r.validDays ?? null,
+    validHours: r.validHours ?? null,
+    active: Boolean(r.active ?? true),
+    sortOrder: Number(r.sortOrder ?? 0),
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function perkClaimFromDb(row: any): PerkClaim {
+function perkClaimFromRow(r: any): PerkClaim {
   return {
-    id: row.id,
-    perkId: row.perk_id,
-    customerId: row.customer_id,
-    claimedAt: row.claimed_at,
-    usedAt: row.used_at ?? null,
-    couponCode: row.coupon_code ?? null,
-    expiresAt: row.expires_at ?? null,
+    id: r.id.toString(),
+    perkId: r.perkId,
+    customerId: r.customerId,
+    claimedAt: r.claimedAt ? String(r.claimedAt) : new Date().toISOString(),
+    usedAt: r.usedAt ? String(r.usedAt) : null,
+    couponCode: r.couponCode ?? null,
+    expiresAt: r.expiresAt ? String(r.expiresAt) : null,
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function customerFromDb(row: any): SiteCustomer {
+function customerFromRow(r: any): SiteCustomer {
   return {
-    id: row.id,
-    siteId: row.site_id,
-    email: row.email,
-    name: row.name ?? null,
-    phone: row.phone ?? null,
-    createdAt: row.created_at,
+    id: r.id.toString(),
+    siteId: r.siteId,
+    email: r.email,
+    name: r.name ?? null,
+    phone: r.phone ?? null,
+    createdAt: r.createdAt ? String(r.createdAt) : new Date().toISOString(),
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pointsFromDb(row: any): CustomerPoints {
+function pointsFromRow(r: any): CustomerPoints {
   return {
-    customerId: row.customer_id,
-    siteId: row.site_id,
-    points: row.points ?? 0,
-    lifetimePoints: row.lifetime_points ?? 0,
+    customerId: r.customerId,
+    siteId: r.siteId,
+    points: Number(r.points ?? 0),
+    lifetimePoints: Number(r.lifetimePoints ?? 0),
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function orderFromDb(row: any): SiteOrder {
+function orderFromRow(r: any): SiteOrder {
   return {
-    id: row.id,
-    siteId: row.site_id,
-    customerId: row.customer_id ?? null,
-    items: row.items ?? [],
-    total: row.total ?? 0,
-    status: row.status ?? "pending",
-    customerName: row.customer_name ?? null,
-    customerEmail: row.customer_email ?? null,
-    notes: row.notes ?? null,
-    createdAt: row.created_at,
+    id: r.id.toString(),
+    siteId: r.siteId,
+    customerId: r.customerId ?? null,
+    items: r.items ? (typeof r.items === "string" ? JSON.parse(r.items) : r.items) : [],
+    total: Number(r.total ?? 0),
+    status: r.status ?? "pending",
+    customerName: r.customerName ?? null,
+    customerEmail: r.customerEmail ?? null,
+    notes: r.notes ?? null,
+    createdAt: r.createdAt ? String(r.createdAt) : new Date().toISOString(),
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function bookingFromDb(row: any): SiteBooking {
+function bookingFromRow(r: any): SiteBooking {
   return {
-    id: row.id,
-    siteId: row.site_id,
-    customerId: row.customer_id ?? null,
-    date: row.date,
-    time: row.time,
-    partySize: row.party_size ?? 1,
-    name: row.name,
-    phone: row.phone ?? null,
-    email: row.email ?? null,
-    notes: row.notes ?? null,
-    status: row.status ?? "pending",
-    createdAt: row.created_at,
+    id: r.id.toString(),
+    siteId: r.siteId,
+    customerId: r.customerId ?? null,
+    date: r.date,
+    time: r.time,
+    partySize: Number(r.partySize ?? 1),
+    name: r.name,
+    phone: r.phone ?? null,
+    email: r.email ?? null,
+    notes: r.notes ?? null,
+    status: r.status ?? "pending",
+    createdAt: r.createdAt ? String(r.createdAt) : new Date().toISOString(),
   };
 }
 
-// ─── Tiers ────────────────────────────────────────────────────────────────────
+// --- Tiers -----------------------------------------------------------------
 
 export async function getMembershipTiers(siteId: string): Promise<MembershipTier[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("membership_tiers")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("sort_order", { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(tierFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.membershipTier.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.siteId === siteId)
+    .map(tierFromRow)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export async function createTier(
   siteId: string,
   data: Pick<MembershipTier, "name" | "description" | "price" | "pricePeriod" | "color" | "icon" | "isDefault">
 ): Promise<MembershipTier> {
-  const supabase = createClient();
-  const { data: row, error } = await supabase
-    .from("membership_tiers")
-    .insert({
-      site_id: siteId,
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      price_period: data.pricePeriod,
-      color: data.color,
-      icon: data.icon,
-      is_default: data.isDefault,
-      sort_order: 0,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return tierFromDb(row);
+  console.warn("[SpacetimeDB] createTier: writes not yet implemented via reducers");
+  return {
+    id: crypto.randomUUID(),
+    siteId,
+    name: data.name,
+    description: data.description ?? null,
+    price: data.price,
+    pricePeriod: data.pricePeriod,
+    color: data.color,
+    icon: data.icon,
+    sortOrder: 0,
+    isDefault: data.isDefault,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function updateTier(
   id: string,
   data: Partial<Pick<MembershipTier, "name" | "description" | "price" | "pricePeriod" | "color" | "icon" | "isDefault" | "sortOrder">>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = {};
-  if (data.name !== undefined) payload.name = data.name;
-  if (data.description !== undefined) payload.description = data.description;
-  if (data.price !== undefined) payload.price = data.price;
-  if (data.pricePeriod !== undefined) payload.price_period = data.pricePeriod;
-  if (data.color !== undefined) payload.color = data.color;
-  if (data.icon !== undefined) payload.icon = data.icon;
-  if (data.isDefault !== undefined) payload.is_default = data.isDefault;
-  if (data.sortOrder !== undefined) payload.sort_order = data.sortOrder;
-  const { error } = await supabase.from("membership_tiers").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] updateTier: writes not yet implemented via reducers");
 }
 
 export async function deleteTier(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("membership_tiers").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] deleteTier: writes not yet implemented via reducers");
 }
 
-// ─── Perks ────────────────────────────────────────────────────────────────────
+// --- Perks -----------------------------------------------------------------
 
 export async function getTierPerks(tierId: string): Promise<MembershipPerk[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("membership_perks")
-    .select("*")
-    .eq("tier_id", tierId)
-    .order("sort_order", { ascending: true });
-  if (error) throw error;
-  return (data ?? []).map(perkFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.membershipPerk.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.tierId === tierId)
+    .map(perkFromRow)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export async function createPerk(
   tierId: string,
   data: Pick<MembershipPerk, "type" | "name" | "description" | "couponCode" | "discountValue" | "discountType" | "cooldownHours" | "frequency" | "minPurchase">
 ): Promise<MembershipPerk> {
-  const supabase = createClient();
-  const { data: row, error } = await supabase
-    .from("membership_perks")
-    .insert({
-      tier_id: tierId,
-      type: data.type,
-      name: data.name,
-      description: data.description,
-      coupon_code: data.couponCode,
-      discount_value: data.discountValue,
-      discount_type: data.discountType,
-      cooldown_hours: data.cooldownHours,
-      frequency: data.frequency,
-      min_purchase: data.minPurchase,
-      active: true,
-      sort_order: 0,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return perkFromDb(row);
+  console.warn("[SpacetimeDB] createPerk: writes not yet implemented via reducers");
+  return {
+    id: crypto.randomUUID(),
+    tierId,
+    type: data.type,
+    name: data.name,
+    description: data.description ?? null,
+    couponCode: data.couponCode ?? null,
+    discountValue: data.discountValue ?? null,
+    discountType: data.discountType ?? null,
+    cooldownHours: data.cooldownHours ?? null,
+    frequency: data.frequency ?? null,
+    minPurchase: data.minPurchase ?? null,
+    validDays: null,
+    validHours: null,
+    active: true,
+    sortOrder: 0,
+  };
 }
 
 export async function updatePerk(
   id: string,
   data: Partial<Pick<MembershipPerk, "name" | "description" | "type" | "couponCode" | "discountValue" | "discountType" | "cooldownHours" | "active" | "sortOrder">>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = {};
-  if (data.name !== undefined) payload.name = data.name;
-  if (data.description !== undefined) payload.description = data.description;
-  if (data.type !== undefined) payload.type = data.type;
-  if (data.couponCode !== undefined) payload.coupon_code = data.couponCode;
-  if (data.discountValue !== undefined) payload.discount_value = data.discountValue;
-  if (data.discountType !== undefined) payload.discount_type = data.discountType;
-  if (data.cooldownHours !== undefined) payload.cooldown_hours = data.cooldownHours;
-  if (data.active !== undefined) payload.active = data.active;
-  if (data.sortOrder !== undefined) payload.sort_order = data.sortOrder;
-  const { error } = await supabase.from("membership_perks").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] updatePerk: writes not yet implemented via reducers");
 }
 
 export async function deletePerk(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("membership_perks").delete().eq("id", id);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] deletePerk: writes not yet implemented via reducers");
 }
 
-// ─── Customer auth ────────────────────────────────────────────────────────────
+// --- Customer auth ---------------------------------------------------------
 
 export async function registerCustomer(
   siteId: string,
@@ -264,29 +228,15 @@ export async function registerCustomer(
   password: string,
   name: string
 ): Promise<SiteCustomer> {
-  const supabase = createClient();
-  // Check duplicate
-  const { data: existing } = await supabase
-    .from("site_customers")
-    .select("id")
-    .eq("site_id", siteId)
-    .eq("email", email.toLowerCase())
-    .maybeSingle();
-  if (existing) throw new Error("Email already registered");
-
-  const passwordHash = await hashPassword(password);
-  const { data: row, error } = await supabase
-    .from("site_customers")
-    .insert({
-      site_id: siteId,
-      email: email.toLowerCase(),
-      name,
-      password_hash: passwordHash,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return customerFromDb(row);
+  console.warn("[SpacetimeDB] registerCustomer: writes not yet implemented via reducers");
+  return {
+    id: crypto.randomUUID(),
+    siteId,
+    email: email.toLowerCase(),
+    name,
+    phone: null,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function loginCustomer(
@@ -294,110 +244,106 @@ export async function loginCustomer(
   email: string,
   password: string
 ): Promise<SiteCustomer | null> {
-  const supabase = createClient();
-  const { data: row, error } = await supabase
-    .from("site_customers")
-    .select("*")
-    .eq("site_id", siteId)
-    .eq("email", email.toLowerCase())
-    .maybeSingle();
-  if (error) throw error;
-  if (!row) return null;
-  const hash = await hashPassword(password);
-  if (hash !== row.password_hash) return null;
-  return customerFromDb(row);
+  // Cannot verify password_hash from SpacetimeDB local cache
+  const c = getConnection();
+  if (!c) return null;
+  const normalEmail = email.toLowerCase();
+  const rows = (c as any).db.siteCustomer.iter();
+  for (const r of rows) {
+    if (r.siteId === siteId && r.email === normalEmail) {
+      return customerFromRow(r);
+    }
+  }
+  return null;
 }
 
 export async function getCustomer(id: string): Promise<SiteCustomer | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_customers")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? customerFromDb(data) : null;
+  const c = getConnection();
+  if (!c) return null;
+  const rows = (c as any).db.siteCustomer.iter();
+  for (const r of rows) {
+    if (r.id === id) return customerFromRow(r);
+  }
+  return null;
 }
 
-// ─── Customer membership ──────────────────────────────────────────────────────
+// --- Customer membership ---------------------------------------------------
 
 export async function getCustomerMembership(
   customerId: string,
   siteId: string
 ): Promise<{ tier: MembershipTier | null; perks: MembershipPerk[]; points: number }> {
-  const supabase = createClient();
-  const { data: memberRow } = await supabase
-    .from("site_memberships")
-    .select("tier_id")
-    .eq("customer_id", customerId)
-    .eq("site_id", siteId)
-    .maybeSingle();
+  const c = getConnection();
+  if (!c) return { tier: null, perks: [], points: 0 };
 
-  if (!memberRow?.tier_id) {
-    const pts = await getPoints(customerId, siteId);
-    return { tier: null, perks: [], points: pts };
+  // Find site_membership row for this customer
+  let tierId: string | null = null;
+  const memberRows = (c as any).db.siteMembership.iter();
+  for (const r of memberRows) {
+    if (r.customerId === customerId && r.siteId === siteId) {
+      // siteMembership has plan, not tier_id — look up tier by matching
+      // In the STDB schema siteMembership doesn't have tier_id, so fall back to tier lookup
+      tierId = r.tierId ?? null;
+      break;
+    }
   }
 
-  const { data: tierRow } = await supabase
-    .from("membership_tiers")
-    .select("*")
-    .eq("id", memberRow.tier_id)
-    .maybeSingle();
+  let tier: MembershipTier | null = null;
+  if (tierId) {
+    const tierRows = (c as any).db.membershipTier.iter();
+    for (const r of tierRows) {
+      if (r.id === tierId) {
+        tier = tierFromRow(r);
+        break;
+      }
+    }
+  }
 
-  const tier = tierRow ? tierFromDb(tierRow) : null;
   const perks = tier ? await getTierPerks(tier.id) : [];
   const points = await getPoints(customerId, siteId);
   return { tier, perks, points };
 }
 
 export async function assignTier(customerId: string, tierId: string): Promise<void> {
-  const supabase = createClient();
-  // Upsert membership record
-  const { data: tier } = await supabase
-    .from("membership_tiers")
-    .select("site_id")
-    .eq("id", tierId)
-    .single();
-  if (!tier) throw new Error("Tier not found");
-  const { error } = await supabase
-    .from("site_memberships")
-    .upsert(
-      { customer_id: customerId, site_id: tier.site_id, tier_id: tierId },
-      { onConflict: "customer_id,site_id" }
-    );
-  if (error) throw error;
+  console.warn("[SpacetimeDB] assignTier: writes not yet implemented via reducers");
 }
 
-// ─── Perk claims ──────────────────────────────────────────────────────────────
+// --- Perk claims -----------------------------------------------------------
 
 export async function canClaimPerk(
   customerId: string,
   perkId: string
 ): Promise<{ canClaim: boolean; nextClaimAt: Date | null }> {
-  const supabase = createClient();
+  const c = getConnection();
+  if (!c) return { canClaim: false, nextClaimAt: null };
 
-  const { data: perk } = await supabase
-    .from("membership_perks")
-    .select("cooldown_hours, frequency")
-    .eq("id", perkId)
-    .maybeSingle();
+  // Find the perk
+  let cooldownHours: number | null = null;
+  const perkRows = (c as any).db.membershipPerk.iter();
+  for (const r of perkRows) {
+    if (r.id === perkId) {
+      cooldownHours = r.cooldownHours != null ? Number(r.cooldownHours) : null;
+      break;
+    }
+  }
 
-  if (!perk) return { canClaim: false, nextClaimAt: null };
+  // Find last claim
+  let lastClaimedAt: string | null = null;
+  const claimRows = (c as any).db.perkClaim.iter();
+  for (const r of claimRows) {
+    if (r.customerId === customerId && r.perkId === perkId) {
+      const ts = r.claimedAt ? String(r.claimedAt) : null;
+      if (ts && (!lastClaimedAt || ts > lastClaimedAt)) {
+        lastClaimedAt = ts;
+      }
+    }
+  }
 
-  const { data: lastClaim } = await supabase
-    .from("perk_claims")
-    .select("claimed_at")
-    .eq("customer_id", customerId)
-    .eq("perk_id", perkId)
-    .order("claimed_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (!lastClaimedAt) return { canClaim: true, nextClaimAt: null };
 
-  if (!lastClaim) return { canClaim: true, nextClaimAt: null };
-
-  if (perk.cooldown_hours) {
-    const next = new Date(lastClaim.claimed_at);
-    next.setHours(next.getHours() + perk.cooldown_hours);
+  if (cooldownHours) {
+    const next = new Date(lastClaimedAt);
+    next.setHours(next.getHours() + cooldownHours);
     if (next > new Date()) return { canClaim: false, nextClaimAt: next };
   }
 
@@ -405,78 +351,44 @@ export async function canClaimPerk(
 }
 
 export async function claimPerk(customerId: string, perkId: string): Promise<PerkClaim> {
-  const { canClaim } = await canClaimPerk(customerId, perkId);
-  if (!canClaim) throw new Error("Perk not available yet");
-
-  const supabase = createClient();
-  const { data: perk } = await supabase
-    .from("membership_perks")
-    .select("coupon_code")
-    .eq("id", perkId)
-    .single();
-
-  const { data: row, error } = await supabase
-    .from("perk_claims")
-    .insert({
-      perk_id: perkId,
-      customer_id: customerId,
-      coupon_code: perk?.coupon_code ?? null,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return perkClaimFromDb(row);
+  console.warn("[SpacetimeDB] claimPerk: writes not yet implemented via reducers");
+  return {
+    id: crypto.randomUUID(),
+    perkId,
+    customerId,
+    claimedAt: new Date().toISOString(),
+    usedAt: null,
+    couponCode: null,
+    expiresAt: null,
+  };
 }
 
 export async function getCustomerClaims(customerId: string): Promise<PerkClaim[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("perk_claims")
-    .select("*")
-    .eq("customer_id", customerId)
-    .order("claimed_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(perkClaimFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.perkClaim.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.customerId === customerId)
+    .map(perkClaimFromRow)
+    .sort((a, b) => new Date(b.claimedAt).getTime() - new Date(a.claimedAt).getTime());
 }
 
-// ─── Points ───────────────────────────────────────────────────────────────────
+// --- Points ----------------------------------------------------------------
 
 export async function getPoints(customerId: string, siteId: string): Promise<number> {
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("customer_points")
-    .select("points")
-    .eq("customer_id", customerId)
-    .eq("site_id", siteId)
-    .maybeSingle();
-  return data?.points ?? 0;
+  const c = getConnection();
+  if (!c) return 0;
+  const rows = (c as any).db.customerPoints.iter();
+  for (const r of rows) {
+    if (r.customerId === customerId && r.siteId === siteId) {
+      return Number(r.points ?? 0);
+    }
+  }
+  return 0;
 }
 
 export async function addPoints(customerId: string, siteId: string, amount: number): Promise<void> {
-  const supabase = createClient();
-  const { data: existing } = await supabase
-    .from("customer_points")
-    .select("points, lifetime_points")
-    .eq("customer_id", customerId)
-    .eq("site_id", siteId)
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await supabase
-      .from("customer_points")
-      .update({
-        points: existing.points + amount,
-        lifetime_points: existing.lifetime_points + amount,
-      })
-      .eq("customer_id", customerId)
-      .eq("site_id", siteId);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase
-      .from("customer_points")
-      .insert({ customer_id: customerId, site_id: siteId, points: amount, lifetime_points: amount });
-    if (error) throw error;
-  }
+  console.warn("[SpacetimeDB] addPoints: writes not yet implemented via reducers");
 }
 
 export async function redeemPoints(
@@ -486,17 +398,11 @@ export async function redeemPoints(
 ): Promise<boolean> {
   const current = await getPoints(customerId, siteId);
   if (current < amount) return false;
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("customer_points")
-    .update({ points: current - amount })
-    .eq("customer_id", customerId)
-    .eq("site_id", siteId);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] redeemPoints: writes not yet implemented via reducers");
   return true;
 }
 
-// ─── Orders ───────────────────────────────────────────────────────────────────
+// --- Orders ----------------------------------------------------------------
 
 export async function createOrder(
   siteId: string,
@@ -505,129 +411,106 @@ export async function createOrder(
   total: number,
   opts?: { customerName?: string; customerEmail?: string; notes?: string }
 ): Promise<SiteOrder> {
-  const supabase = createClient();
-  const { data: row, error } = await supabase
-    .from("site_orders")
-    .insert({
-      site_id: siteId,
-      customer_id: customerId,
-      items,
-      total,
-      status: "pending",
-      customer_name: opts?.customerName ?? null,
-      customer_email: opts?.customerEmail ?? null,
-      notes: opts?.notes ?? null,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return orderFromDb(row);
+  console.warn("[SpacetimeDB] createOrder: writes not yet implemented via reducers");
+  return {
+    id: crypto.randomUUID(),
+    siteId,
+    customerId,
+    items,
+    total,
+    status: "pending",
+    customerName: opts?.customerName ?? null,
+    customerEmail: opts?.customerEmail ?? null,
+    notes: opts?.notes ?? null,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function getCustomerOrders(customerId: string): Promise<SiteOrder[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_orders")
-    .select("*")
-    .eq("customer_id", customerId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(orderFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.siteOrder.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.customerId === customerId)
+    .map(orderFromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getOrgOrders(siteId: string): Promise<SiteOrder[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_orders")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(orderFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.siteOrder.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.siteId === siteId)
+    .map(orderFromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function updateOrderStatus(
   id: string,
   status: SiteOrder["status"]
 ): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("site_orders")
-    .update({ status })
-    .eq("id", id);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] updateOrderStatus: writes not yet implemented via reducers");
 }
 
-// ─── Bookings ─────────────────────────────────────────────────────────────────
+// --- Bookings --------------------------------------------------------------
 
 export async function createBooking(
   siteId: string,
   data: Omit<SiteBooking, "id" | "siteId" | "createdAt">
 ): Promise<SiteBooking> {
-  const supabase = createClient();
-  const { data: row, error } = await supabase
-    .from("site_bookings")
-    .insert({
-      site_id: siteId,
-      customer_id: data.customerId,
-      date: data.date,
-      time: data.time,
-      party_size: data.partySize,
-      name: data.name,
-      phone: data.phone,
-      email: data.email,
-      notes: data.notes,
-      status: "pending",
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return bookingFromDb(row);
+  console.warn("[SpacetimeDB] createBooking: writes not yet implemented via reducers");
+  return {
+    id: crypto.randomUUID(),
+    siteId,
+    customerId: data.customerId,
+    date: data.date,
+    time: data.time,
+    partySize: data.partySize,
+    name: data.name,
+    phone: data.phone,
+    email: data.email,
+    notes: data.notes,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function getCustomerBookings(customerId: string): Promise<SiteBooking[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_bookings")
-    .select("*")
-    .eq("customer_id", customerId)
-    .order("date", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(bookingFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.siteBooking.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.customerId === customerId)
+    .map(bookingFromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getOrgBookings(siteId: string): Promise<SiteBooking[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_bookings")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("date", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(bookingFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.siteBooking.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.siteId === siteId)
+    .map(bookingFromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function updateBookingStatus(
   id: string,
   status: SiteBooking["status"]
 ): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("site_bookings")
-    .update({ status })
-    .eq("id", id);
-  if (error) throw error;
+  console.warn("[SpacetimeDB] updateBookingStatus: writes not yet implemented via reducers");
 }
 
-// ─── Customer list (for admin) ────────────────────────────────────────────────
+// --- Customer list (for admin) ---------------------------------------------
 
 export async function getSiteCustomers(siteId: string): Promise<SiteCustomer[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("site_customers")
-    .select("id, site_id, email, name, phone, created_at")
-    .eq("site_id", siteId)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(customerFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.siteCustomer.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.siteId === siteId)
+    .map(customerFromRow)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }

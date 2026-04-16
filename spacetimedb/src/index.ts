@@ -2329,6 +2329,525 @@ export const createSiteBooking = spacetimedb.reducer(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ROLE TASKS REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addRoleTask = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    roleId: t.string(),
+    title: t.string(),
+    description: t.string(),
+    startTime: t.option(t.string()),
+    endTime: t.option(t.string()),
+    sortOrder: t.i32(),
+    requiresEvidence: t.bool(),
+    notifyChats: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+
+    ctx.db.roleTask.insert({
+      id: ctx.newUuidV4(),
+      roleId: args.roleId,
+      organizationId: args.organizationId,
+      title: args.title,
+      description: args.description,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      sortOrder: args.sortOrder,
+      requiresEvidence: args.requiresEvidence,
+      notifyChats: args.notifyChats,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateRoleTask = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    roleTaskId: t.string(),
+    title: t.string(),
+    description: t.string(),
+    startTime: t.option(t.string()),
+    endTime: t.option(t.string()),
+    sortOrder: t.i32(),
+    requiresEvidence: t.bool(),
+    notifyChats: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+
+    const task = [...ctx.db.roleTask.byOrganizationId.filter(args.organizationId)]
+      .find(r => r.id.toString() === args.roleTaskId);
+    if (!task) throw new Error('Role task not found');
+
+    ctx.db.roleTask.delete(task);
+    ctx.db.roleTask.insert({
+      ...task,
+      title: args.title,
+      description: args.description,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      sortOrder: args.sortOrder,
+      requiresEvidence: args.requiresEvidence,
+      notifyChats: args.notifyChats,
+    });
+  }
+);
+
+export const deleteRoleTask = spacetimedb.reducer(
+  { organizationId: t.string(), roleTaskId: t.string() },
+  (ctx, { organizationId, roleTaskId }) => {
+    findActiveMember(ctx, organizationId);
+
+    const task = [...ctx.db.roleTask.byOrganizationId.filter(organizationId)]
+      .find(r => r.id.toString() === roleTaskId);
+    if (!task) throw new Error('Role task not found');
+
+    ctx.db.roleTask.delete(task);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SHIFT PRESETS REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addShiftPreset = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    name: t.string(),
+    startTime: t.string(),
+    endTime: t.string(),
+    color: t.string(),
+    sortOrder: t.i32(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+
+    ctx.db.shiftPreset.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      name: args.name,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      color: args.color,
+      sortOrder: args.sortOrder,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateShiftPreset = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    presetId: t.string(),
+    name: t.string(),
+    startTime: t.string(),
+    endTime: t.string(),
+    color: t.string(),
+    sortOrder: t.i32(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+
+    const preset = findItemInOrg(ctx.db.shiftPreset, args.organizationId, args.presetId);
+    ctx.db.shiftPreset.delete(preset);
+    ctx.db.shiftPreset.insert({
+      ...preset,
+      name: args.name,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      color: args.color,
+      sortOrder: args.sortOrder,
+    });
+  }
+);
+
+export const deleteShiftPreset = spacetimedb.reducer(
+  { organizationId: t.string(), presetId: t.string() },
+  (ctx, { organizationId, presetId }) => {
+    findActiveMember(ctx, organizationId);
+
+    const preset = findItemInOrg(ctx.db.shiftPreset, organizationId, presetId);
+    ctx.db.shiftPreset.delete(preset);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SITE PAGES/COMPONENTS REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const deletePage = spacetimedb.reducer(
+  { organizationId: t.string(), pageId: t.string() },
+  (ctx, { organizationId, pageId }) => {
+    findActiveMember(ctx, organizationId);
+
+    const page = [...ctx.db.sitePage.iter()]
+      .find(p => p.id.toString() === pageId);
+    if (!page) throw new Error('Page not found');
+
+    ctx.db.sitePage.delete(page);
+  }
+);
+
+export const saveComponent = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    siteId: t.option(t.string()),
+    name: t.string(),
+    description: t.option(t.string()),
+    elementData: t.string(),
+    category: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+
+    ctx.db.siteComponent.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      siteId: args.siteId,
+      name: args.name,
+      description: args.description,
+      elementData: args.elementData,
+      category: args.category,
+      createdBy: member.id.toString(),
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const deleteComponent = spacetimedb.reducer(
+  { organizationId: t.string(), componentId: t.string() },
+  (ctx, { organizationId, componentId }) => {
+    findActiveMember(ctx, organizationId);
+
+    const component = findItemInOrg(ctx.db.siteComponent, organizationId, componentId);
+    ctx.db.siteComponent.delete(component);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADDITIONAL CHAT REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addMembersToConversation = spacetimedb.reducer(
+  {
+    conversationId: t.string(),
+    userIds: t.string(),  // JSON-encoded string[] of Identity hex strings
+  },
+  (ctx, { conversationId, userIds }) => {
+    // Verify caller is a member of the conversation
+    const callerMembership = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
+      .some(m => m.conversationId === conversationId);
+    if (!callerMembership) unauthorized('Not a conversation member');
+
+    const ids: string[] = JSON.parse(userIds);
+    for (const uid of ids) {
+      ctx.db.chatMember.insert({
+        id: ctx.newUuidV4(),
+        conversationId,
+        userId: uid as unknown as typeof ctx.sender,
+        joinedAt: ctx.timestamp,
+      });
+    }
+  }
+);
+
+export const deleteMessage = spacetimedb.reducer(
+  { conversationId: t.string(), messageId: t.string() },
+  (ctx, { conversationId, messageId }) => {
+    // Verify caller is a member of the conversation
+    const callerMembership = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
+      .some(m => m.conversationId === conversationId);
+    if (!callerMembership) unauthorized('Not a conversation member');
+
+    const message = [...ctx.db.chatMessage.byConversationId.filter(conversationId)]
+      .find(m => m.id.toString() === messageId);
+    if (!message) throw new Error('Message not found');
+
+    // Only the sender can delete their own message
+    if (message.senderId.toString() !== ctx.sender.toString()) {
+      unauthorized('Can only delete your own messages');
+    }
+
+    ctx.db.chatMessage.delete(message);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADDITIONAL MEMBERSHIP REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const updateTier = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    tierId: t.string(),
+    name: t.string(),
+    description: t.option(t.string()),
+    price: t.number(),
+    pricePeriod: t.string(),
+    color: t.string(),
+    icon: t.string(),
+    sortOrder: t.i32(),
+    isDefault: t.bool(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+
+    const tier = [...ctx.db.membershipTier.iter()]
+      .find(t => t.id.toString() === args.tierId);
+    if (!tier) throw new Error('Tier not found');
+
+    ctx.db.membershipTier.delete(tier);
+    ctx.db.membershipTier.insert({
+      ...tier,
+      name: args.name,
+      description: args.description,
+      price: args.price,
+      pricePeriod: args.pricePeriod,
+      color: args.color,
+      icon: args.icon,
+      sortOrder: args.sortOrder,
+      isDefault: args.isDefault,
+    });
+  }
+);
+
+export const deleteTier = spacetimedb.reducer(
+  { organizationId: t.string(), tierId: t.string() },
+  (ctx, { organizationId, tierId }) => {
+    findActiveMember(ctx, organizationId);
+
+    const tier = [...ctx.db.membershipTier.iter()]
+      .find(t => t.id.toString() === tierId);
+    if (!tier) throw new Error('Tier not found');
+
+    ctx.db.membershipTier.delete(tier);
+  }
+);
+
+export const updatePerk = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    perkId: t.string(),
+    type: t.string(),
+    name: t.string(),
+    description: t.option(t.string()),
+    couponCode: t.option(t.string()),
+    discountValue: t.option(t.number()),
+    discountType: t.option(t.string()),
+    cooldownHours: t.option(t.number()),
+    frequency: t.option(t.number()),
+    minPurchase: t.option(t.number()),
+    active: t.bool(),
+    sortOrder: t.i32(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+
+    const perk = [...ctx.db.membershipPerk.iter()]
+      .find(p => p.id.toString() === args.perkId);
+    if (!perk) throw new Error('Perk not found');
+
+    ctx.db.membershipPerk.delete(perk);
+    ctx.db.membershipPerk.insert({
+      ...perk,
+      type: args.type,
+      name: args.name,
+      description: args.description,
+      couponCode: args.couponCode,
+      discountValue: args.discountValue,
+      discountType: args.discountType,
+      cooldownHours: args.cooldownHours,
+      frequency: args.frequency,
+      minPurchase: args.minPurchase,
+      active: args.active,
+      sortOrder: args.sortOrder,
+    });
+  }
+);
+
+export const deletePerk = spacetimedb.reducer(
+  { organizationId: t.string(), perkId: t.string() },
+  (ctx, { organizationId, perkId }) => {
+    findActiveMember(ctx, organizationId);
+
+    const perk = [...ctx.db.membershipPerk.iter()]
+      .find(p => p.id.toString() === perkId);
+    if (!perk) throw new Error('Perk not found');
+
+    ctx.db.membershipPerk.delete(perk);
+  }
+);
+
+export const assignTier = spacetimedb.reducer(
+  {
+    siteId: t.string(),
+    customerId: t.string(),
+    plan: t.string(),
+  },
+  (ctx, { siteId, customerId, plan }) => {
+    const existing = [...ctx.db.siteMembership.byCustomerId.filter(customerId)]
+      .find(m => m.siteId === siteId);
+
+    if (existing) {
+      ctx.db.siteMembership.delete(existing);
+      ctx.db.siteMembership.insert({
+        ...existing,
+        plan,
+      });
+    } else {
+      ctx.db.siteMembership.insert({
+        id: ctx.newUuidV4(),
+        siteId,
+        customerId,
+        plan,
+        startedAt: ctx.timestamp,
+        expiresAt: undefined,
+      });
+    }
+  }
+);
+
+export const updateOrderStatus = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    orderId: t.string(),
+    status: t.string(),
+  },
+  (ctx, { organizationId, orderId, status }) => {
+    findActiveMember(ctx, organizationId);
+
+    const order = [...ctx.db.siteOrder.iter()]
+      .find(o => o.id.toString() === orderId);
+    if (!order) throw new Error('Order not found');
+
+    ctx.db.siteOrder.delete(order);
+    ctx.db.siteOrder.insert({ ...order, status });
+  }
+);
+
+export const updateBookingStatus = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    bookingId: t.string(),
+    status: t.string(),
+  },
+  (ctx, { organizationId, bookingId, status }) => {
+    findActiveMember(ctx, organizationId);
+
+    const booking = [...ctx.db.siteBooking.iter()]
+      .find(b => b.id.toString() === bookingId);
+    if (!booking) throw new Error('Booking not found');
+
+    ctx.db.siteBooking.delete(booking);
+    ctx.db.siteBooking.insert({ ...booking, status });
+  }
+);
+
+export const redeemPoints = spacetimedb.reducer(
+  {
+    siteId: t.string(),
+    customerId: t.string(),
+    points: t.i32(),
+  },
+  (ctx, { siteId, customerId, points }) => {
+    const existing = [...ctx.db.customerPoints.byCustomerId.filter(customerId)]
+      .find(cp => cp.siteId === siteId);
+    if (!existing) throw new Error('Customer points record not found');
+    if (existing.points < points) throw new Error('Insufficient points');
+
+    ctx.db.customerPoints.delete(existing);
+    ctx.db.customerPoints.insert({
+      ...existing,
+      points: existing.points - points,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADDITIONAL ORG REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const cancelInvitation = spacetimedb.reducer(
+  { organizationId: t.string(), invitationId: t.string() },
+  (ctx, { organizationId, invitationId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const invite = [...ctx.db.orgInvitation.byOrganizationId.filter(organizationId)]
+      .find(i => i.id.toString() === invitationId);
+    if (!invite) throw new Error('Invitation not found');
+
+    ctx.db.orgInvitation.delete(invite);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TODOS REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addTodo = spacetimedb.reducer(
+  { organizationId: t.string(), title: t.string() },
+  (ctx, { organizationId, title }) => {
+    findActiveMember(ctx, organizationId);
+
+    ctx.db.todo.insert({
+      id: ctx.newUuidV4(),
+      userId: ctx.sender,
+      organizationId,
+      title,
+      completed: false,
+      sortOrder: 0,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const toggleTodo = spacetimedb.reducer(
+  { todoId: t.string(), completed: t.bool() },
+  (ctx, { todoId, completed }) => {
+    const todo = [...ctx.db.todo.byUserId.filter(ctx.sender)]
+      .find(t => t.id.toString() === todoId);
+    if (!todo) throw new Error('Todo not found');
+
+    ctx.db.todo.delete(todo);
+    ctx.db.todo.insert({ ...todo, completed });
+  }
+);
+
+export const deleteTodo = spacetimedb.reducer(
+  { todoId: t.string() },
+  (ctx, { todoId }) => {
+    const todo = [...ctx.db.todo.byUserId.filter(ctx.sender)]
+      .find(t => t.id.toString() === todoId);
+    if (!todo) throw new Error('Todo not found');
+
+    // Verify ownership
+    if (todo.userId.toString() !== ctx.sender.toString()) {
+      unauthorized('Can only delete your own todos');
+    }
+
+    ctx.db.todo.delete(todo);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SETTINGS — CLOVER DISCONNECT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** No-op reducer for Clover disconnect (no Clover fields in settings table yet). */
+export const disconnectClover = spacetimedb.reducer(
+  { organizationId: t.string() },
+  (ctx, { organizationId }) => {
+    findActiveMember(ctx, organizationId);
+    // No-op: Clover integration fields not yet in settings table
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // INTERNAL HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 

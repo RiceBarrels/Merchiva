@@ -1,8 +1,8 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 
-// ─── Mappers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function computeStatus(current: number, min: number): InventoryStatus {
   if (current === 0) return "out_of_stock";
@@ -11,29 +11,31 @@ function computeStatus(current: number, min: number): InventoryStatus {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function itemFromDb(row: any): InventoryItem {
+function itemFromRow(row: any): InventoryItem {
+  const currentStock = Number(row.currentStock);
+  const minStock = Number(row.minStock);
   return {
     id: row.id,
     name: row.name,
     category: row.category,
-    currentStock: Number(row.current_stock),
-    minStock: Number(row.min_stock),
-    maxStock: Number(row.max_stock),
+    currentStock,
+    minStock,
+    maxStock: Number(row.maxStock),
     unit: row.unit,
-    costPerUnit: Number(row.cost_per_unit),
+    costPerUnit: Number(row.costPerUnit),
     supplier: row.supplier ?? "",
-    lastRestocked: row.last_restocked ?? "",
-    status: computeStatus(Number(row.current_stock), Number(row.min_stock)),
-    lossRate: Number(row.loss_rate ?? 0),
+    lastRestocked: row.lastRestocked ?? "",
+    status: computeStatus(currentStock, minStock),
+    lossRate: Number(row.lossRate ?? 0),
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function txFromDb(row: any): InventoryTransaction {
+function txFromRow(row: any): InventoryTransaction {
   return {
     id: row.id,
-    itemId: row.item_id ?? "",
-    itemName: row.item_name,
+    itemId: row.itemId ?? "",
+    itemName: row.itemName,
     type: row.type,
     quantity: Number(row.quantity),
     date: row.date,
@@ -41,98 +43,61 @@ function txFromDb(row: any): InventoryTransaction {
   };
 }
 
-// ─── Queries ──────────────────────────────────────────────────────────────────
+// ─── Queries ─────────────────────────────────────────────────────────────────
 
 export async function getInventoryItems(): Promise<InventoryItem[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(itemFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const orgId = getActiveOrgId();
+  const rows = (c as any).db.inventoryItem.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === orgId)
+    .map(itemFromRow);
 }
 
 export async function addInventoryItem(
   item: Omit<InventoryItem, "id" | "status">,
   userId: string
 ): Promise<InventoryItem> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .insert({
-      user_id: userId,
-      name: item.name,
-      category: item.category,
-      current_stock: item.currentStock,
-      min_stock: item.minStock,
-      max_stock: item.maxStock,
-      unit: item.unit,
-      cost_per_unit: item.costPerUnit,
-      supplier: item.supplier,
-      last_restocked: item.lastRestocked || new Date().toISOString().split("T")[0],
-      loss_rate: item.lossRate,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return itemFromDb(data);
+  console.warn(
+    "[inventory] addInventoryItem: writes should go through SpacetimeDB actions.ts"
+  );
+  throw new Error("addInventoryItem: use SpacetimeDB reducers via actions.ts");
 }
 
 export async function updateInventoryItem(
   id: string,
   updates: Partial<InventoryItem>
 ): Promise<void> {
-  const supabase = createClient();
-  const payload: Record<string, unknown> = {};
-  if (updates.name !== undefined) payload.name = updates.name;
-  if (updates.category !== undefined) payload.category = updates.category;
-  if (updates.currentStock !== undefined) payload.current_stock = updates.currentStock;
-  if (updates.minStock !== undefined) payload.min_stock = updates.minStock;
-  if (updates.maxStock !== undefined) payload.max_stock = updates.maxStock;
-  if (updates.unit !== undefined) payload.unit = updates.unit;
-  if (updates.costPerUnit !== undefined) payload.cost_per_unit = updates.costPerUnit;
-  if (updates.supplier !== undefined) payload.supplier = updates.supplier;
-  if (updates.lossRate !== undefined) payload.loss_rate = updates.lossRate;
-  const { error } = await supabase.from("inventory_items").update(payload).eq("id", id);
-  if (error) throw error;
+  console.warn(
+    "[inventory] updateInventoryItem: writes should go through SpacetimeDB actions.ts"
+  );
+  throw new Error("updateInventoryItem: use SpacetimeDB reducers via actions.ts");
 }
 
 export async function deleteInventoryItem(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("inventory_items").delete().eq("id", id);
-  if (error) throw error;
+  console.warn(
+    "[inventory] deleteInventoryItem: writes should go through SpacetimeDB actions.ts"
+  );
+  throw new Error("deleteInventoryItem: use SpacetimeDB reducers via actions.ts");
 }
 
 export async function getInventoryTransactions(): Promise<InventoryTransaction[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("inventory_transactions")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (error) throw error;
-  return (data ?? []).map(txFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const orgId = getActiveOrgId();
+  const rows = (c as any).db.inventoryTransaction.iter();
+  return Array.from(rows)
+    .filter((r: any) => r.organizationId === orgId)
+    .map(txFromRow);
 }
 
 export async function addInventoryTransaction(
   tx: Omit<InventoryTransaction, "id">,
   userId: string
 ): Promise<InventoryTransaction> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("inventory_transactions")
-    .insert({
-      user_id: userId,
-      item_id: tx.itemId || null,
-      item_name: tx.itemName,
-      type: tx.type,
-      quantity: tx.quantity,
-      note: tx.note,
-      date: tx.date,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return txFromDb(data);
+  console.warn(
+    "[inventory] addInventoryTransaction: writes should go through SpacetimeDB actions.ts"
+  );
+  throw new Error("addInventoryTransaction: use SpacetimeDB reducers via actions.ts");
 }

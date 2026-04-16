@@ -46,7 +46,7 @@ import {
 import { PermissionGuard } from "@/components/permission-guard";
 import { getCached, setCache } from "@/lib/cache";
 import { getMyAvailability, getTimeOffRequests } from "@/lib/db/availability";
-import { upsertAvailability, createTimeOffRequest, updateMember, removeMember, cancelInvitation } from "@/lib/spacetimedb/actions";
+import { upsertAvailability, createTimeOffRequest, updateMember, removeMember, cancelInvitation, inviteToOrg } from "@/lib/spacetimedb/actions";
 import { getTeamMembers, getInvitations } from "@/lib/db/team";
 import type { OrgMember, OrgInvitation, OrgRole, Permissions } from "@/lib/types";
 import { defaultPermissions } from "@/lib/db/team";
@@ -414,21 +414,19 @@ export default function SettingsPage() {
     if (!inviteEmail.trim()) return;
     setInviting(true);
     try {
-      const res = await fetch("/api/team/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, permissions: invitePerms }),
+      await inviteToOrg({
+        email: inviteEmail.trim(),
+        role: inviteRole,
+        permissions: JSON.stringify(invitePerms),
       });
-      const json = await res.json();
-      if (!res.ok) { toast.error(json.error ?? "Failed to send invitation"); return; }
       toast.success("Invitation sent");
       setInviteDialog(false);
       setInviteEmail("");
       setInviteRole("staff");
       setInvitePerms(defaultPermissions());
       loadTeam();
-    } catch {
-      toast.error("Failed to send invitation.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send invitation.");
     } finally {
       setInviting(false);
     }

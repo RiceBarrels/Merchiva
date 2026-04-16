@@ -37,14 +37,20 @@ import {
 import AcceptInvitationReducer from "./accept_invitation_reducer";
 import AddInventoryItemReducer from "./add_inventory_item_reducer";
 import AddInventoryTransactionReducer from "./add_inventory_transaction_reducer";
+import AddMembersToConversationReducer from "./add_members_to_conversation_reducer";
 import AddPageReducer from "./add_page_reducer";
 import AddPerkReducer from "./add_perk_reducer";
 import AddPointsReducer from "./add_points_reducer";
 import AddProductReducer from "./add_product_reducer";
+import AddRoleTaskReducer from "./add_role_task_reducer";
 import AddSalesRecordReducer from "./add_sales_record_reducer";
 import AddShiftReducer from "./add_shift_reducer";
+import AddShiftPresetReducer from "./add_shift_preset_reducer";
 import AddStaffMemberReducer from "./add_staff_member_reducer";
 import AddStaffRoleReducer from "./add_staff_role_reducer";
+import AddTodoReducer from "./add_todo_reducer";
+import AssignTierReducer from "./assign_tier_reducer";
+import CancelInvitationReducer from "./cancel_invitation_reducer";
 import ClaimPerkReducer from "./claim_perk_reducer";
 import CreateConversationReducer from "./create_conversation_reducer";
 import CreateMembershipTierReducer from "./create_membership_tier_reducer";
@@ -56,31 +62,49 @@ import CreateSiteBookingReducer from "./create_site_booking_reducer";
 import CreateSiteOrderReducer from "./create_site_order_reducer";
 import CreateTimeOffRequestReducer from "./create_time_off_request_reducer";
 import CreateUserReducer from "./create_user_reducer";
+import DeleteComponentReducer from "./delete_component_reducer";
 import DeleteInventoryItemReducer from "./delete_inventory_item_reducer";
+import DeleteMessageReducer from "./delete_message_reducer";
+import DeletePageReducer from "./delete_page_reducer";
+import DeletePerkReducer from "./delete_perk_reducer";
 import DeleteProductReducer from "./delete_product_reducer";
+import DeleteRoleTaskReducer from "./delete_role_task_reducer";
 import DeleteShiftReducer from "./delete_shift_reducer";
+import DeleteShiftPresetReducer from "./delete_shift_preset_reducer";
 import DeleteSiteReducer from "./delete_site_reducer";
 import DeleteStaffMemberReducer from "./delete_staff_member_reducer";
 import DeleteStaffRoleReducer from "./delete_staff_role_reducer";
+import DeleteTierReducer from "./delete_tier_reducer";
+import DeleteTodoReducer from "./delete_todo_reducer";
+import DisconnectCloverReducer from "./disconnect_clover_reducer";
 import InviteToOrgReducer from "./invite_to_org_reducer";
 import LeaveOrgReducer from "./leave_org_reducer";
 import LoginWithPasswordReducer from "./login_with_password_reducer";
+import RedeemPointsReducer from "./redeem_points_reducer";
 import RefundPaymentReducer from "./refund_payment_reducer";
 import RegisterCustomerReducer from "./register_customer_reducer";
+import SaveComponentReducer from "./save_component_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
+import ToggleTodoReducer from "./toggle_todo_reducer";
+import UpdateBookingStatusReducer from "./update_booking_status_reducer";
 import UpdateInventoryItemReducer from "./update_inventory_item_reducer";
 import UpdateMemberPermissionsReducer from "./update_member_permissions_reducer";
+import UpdateOrderStatusReducer from "./update_order_status_reducer";
 import UpdateOrgReducer from "./update_org_reducer";
 import UpdatePageReducer from "./update_page_reducer";
+import UpdatePerkReducer from "./update_perk_reducer";
 import UpdateProductReducer from "./update_product_reducer";
 import UpdateProfileReducer from "./update_profile_reducer";
+import UpdateRoleTaskReducer from "./update_role_task_reducer";
 import UpdateSettingsReducer from "./update_settings_reducer";
 import UpdateShiftReducer from "./update_shift_reducer";
+import UpdateShiftPresetReducer from "./update_shift_preset_reducer";
 import UpdateShiftTradeStatusReducer from "./update_shift_trade_status_reducer";
 import UpdateSiteReducer from "./update_site_reducer";
 import UpdateStaffMemberReducer from "./update_staff_member_reducer";
 import UpdateStaffRoleReducer from "./update_staff_role_reducer";
+import UpdateTierReducer from "./update_tier_reducer";
 import UpdateTimeOffStatusReducer from "./update_time_off_status_reducer";
 import UpsertAvailabilityReducer from "./upsert_availability_reducer";
 
@@ -666,14 +690,20 @@ const reducersSchema = __reducers(
   __reducerSchema("accept_invitation", AcceptInvitationReducer),
   __reducerSchema("add_inventory_item", AddInventoryItemReducer),
   __reducerSchema("add_inventory_transaction", AddInventoryTransactionReducer),
+  __reducerSchema("add_members_to_conversation", AddMembersToConversationReducer),
   __reducerSchema("add_page", AddPageReducer),
   __reducerSchema("add_perk", AddPerkReducer),
   __reducerSchema("add_points", AddPointsReducer),
   __reducerSchema("add_product", AddProductReducer),
+  __reducerSchema("add_role_task", AddRoleTaskReducer),
   __reducerSchema("add_sales_record", AddSalesRecordReducer),
   __reducerSchema("add_shift", AddShiftReducer),
+  __reducerSchema("add_shift_preset", AddShiftPresetReducer),
   __reducerSchema("add_staff_member", AddStaffMemberReducer),
   __reducerSchema("add_staff_role", AddStaffRoleReducer),
+  __reducerSchema("add_todo", AddTodoReducer),
+  __reducerSchema("assign_tier", AssignTierReducer),
+  __reducerSchema("cancel_invitation", CancelInvitationReducer),
   __reducerSchema("claim_perk", ClaimPerkReducer),
   __reducerSchema("create_conversation", CreateConversationReducer),
   __reducerSchema("create_membership_tier", CreateMembershipTierReducer),
@@ -685,31 +715,49 @@ const reducersSchema = __reducers(
   __reducerSchema("create_site_order", CreateSiteOrderReducer),
   __reducerSchema("create_time_off_request", CreateTimeOffRequestReducer),
   __reducerSchema("create_user", CreateUserReducer),
+  __reducerSchema("delete_component", DeleteComponentReducer),
   __reducerSchema("delete_inventory_item", DeleteInventoryItemReducer),
+  __reducerSchema("delete_message", DeleteMessageReducer),
+  __reducerSchema("delete_page", DeletePageReducer),
+  __reducerSchema("delete_perk", DeletePerkReducer),
   __reducerSchema("delete_product", DeleteProductReducer),
+  __reducerSchema("delete_role_task", DeleteRoleTaskReducer),
   __reducerSchema("delete_shift", DeleteShiftReducer),
+  __reducerSchema("delete_shift_preset", DeleteShiftPresetReducer),
   __reducerSchema("delete_site", DeleteSiteReducer),
   __reducerSchema("delete_staff_member", DeleteStaffMemberReducer),
   __reducerSchema("delete_staff_role", DeleteStaffRoleReducer),
+  __reducerSchema("delete_tier", DeleteTierReducer),
+  __reducerSchema("delete_todo", DeleteTodoReducer),
+  __reducerSchema("disconnect_clover", DisconnectCloverReducer),
   __reducerSchema("invite_to_org", InviteToOrgReducer),
   __reducerSchema("leave_org", LeaveOrgReducer),
   __reducerSchema("login_with_password", LoginWithPasswordReducer),
+  __reducerSchema("redeem_points", RedeemPointsReducer),
   __reducerSchema("refund_payment", RefundPaymentReducer),
   __reducerSchema("register_customer", RegisterCustomerReducer),
+  __reducerSchema("save_component", SaveComponentReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
+  __reducerSchema("toggle_todo", ToggleTodoReducer),
+  __reducerSchema("update_booking_status", UpdateBookingStatusReducer),
   __reducerSchema("update_inventory_item", UpdateInventoryItemReducer),
   __reducerSchema("update_member_permissions", UpdateMemberPermissionsReducer),
+  __reducerSchema("update_order_status", UpdateOrderStatusReducer),
   __reducerSchema("update_org", UpdateOrgReducer),
   __reducerSchema("update_page", UpdatePageReducer),
+  __reducerSchema("update_perk", UpdatePerkReducer),
   __reducerSchema("update_product", UpdateProductReducer),
   __reducerSchema("update_profile", UpdateProfileReducer),
+  __reducerSchema("update_role_task", UpdateRoleTaskReducer),
   __reducerSchema("update_settings", UpdateSettingsReducer),
   __reducerSchema("update_shift", UpdateShiftReducer),
+  __reducerSchema("update_shift_preset", UpdateShiftPresetReducer),
   __reducerSchema("update_shift_trade_status", UpdateShiftTradeStatusReducer),
   __reducerSchema("update_site", UpdateSiteReducer),
   __reducerSchema("update_staff_member", UpdateStaffMemberReducer),
   __reducerSchema("update_staff_role", UpdateStaffRoleReducer),
+  __reducerSchema("update_tier", UpdateTierReducer),
   __reducerSchema("update_time_off_status", UpdateTimeOffStatusReducer),
   __reducerSchema("upsert_availability", UpsertAvailabilityReducer),
 );

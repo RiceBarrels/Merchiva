@@ -158,7 +158,7 @@ export function FloatingNavButton({
           <motion.div
             key={title}
             className="fixed"
-            style={{ top: 22 + safeAreaTop, left: 64, zIndex: zIndex + 1 }}
+            style={{ top: 26 + safeAreaTop, left: 72, zIndex: zIndex + 1 }}
             initial={{ opacity: 0, scale: 0.3, x: -30 }}
             animate={{ opacity: pillOpacity, scale: pillScale, x: pillX }}
             exit={{ opacity: 0, scale: 0.3, x: -30 }}

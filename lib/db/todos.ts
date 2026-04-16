@@ -1,17 +1,17 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Todo } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function todoFromDb(row: any): Todo {
+function todoFromRow(row: any): Todo {
   return {
     id: row.id,
-    userId: row.user_id,
-    organizationId: row.organization_id,
+    userId: row.userId,
+    organizationId: row.organizationId,
     title: row.title,
     completed: row.completed ?? false,
-    sortOrder: row.sort_order ?? 0,
-    createdAt: row.created_at,
+    sortOrder: row.sortOrder ?? 0,
+    createdAt: row.createdAt,
   };
 }
 
@@ -19,17 +19,21 @@ export async function getTodos(
   userId: string,
   organizationId: string
 ): Promise<Todo[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("todos")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("organization_id", organizationId)
-    .order("completed")
-    .order("sort_order")
-    .order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(todoFromDb);
+  const c = getConnection();
+  if (!c) return [];
+  const rows = (c as any).db.todo.iter();
+  return Array.from(rows)
+    .filter(
+      (r: any) =>
+        r.organizationId === organizationId && String(r.userId) === userId
+    )
+    .map(todoFromRow)
+    .sort((a, b) => {
+      // Sort: incomplete first, then by sortOrder, then by createdAt desc
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 }
 
 export async function addTodo(
@@ -37,27 +41,16 @@ export async function addTodo(
   organizationId: string,
   title: string
 ): Promise<Todo> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("todos")
-    .insert({ user_id: userId, organization_id: organizationId, title })
-    .select()
-    .single();
-  if (error) throw error;
-  return todoFromDb(data);
+  // TODO: call SpacetimeDB reducer when available
+  throw new Error("addTodo: SpacetimeDB reducer not yet implemented");
 }
 
 export async function toggleTodo(id: string, completed: boolean): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("todos")
-    .update({ completed, updated_at: new Date().toISOString() })
-    .eq("id", id);
-  if (error) throw error;
+  // TODO: call SpacetimeDB reducer when available
+  throw new Error("toggleTodo: SpacetimeDB reducer not yet implemented");
 }
 
 export async function deleteTodo(id: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase.from("todos").delete().eq("id", id);
-  if (error) throw error;
+  // TODO: call SpacetimeDB reducer when available
+  throw new Error("deleteTodo: SpacetimeDB reducer not yet implemented");
 }

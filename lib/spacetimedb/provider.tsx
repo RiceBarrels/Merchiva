@@ -36,11 +36,13 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   const builder = useMemo(() => {
     if (!clerkToken) return null;
 
+    console.log("ℹ️ INFO Connecting to SpacetimeDB WS...");
     return DbConnection.builder()
       .withUri(SPACETIMEDB_URI)
       .withDatabaseName(SPACETIMEDB_MODULE)
       .withToken(clerkToken)
       .onConnect((conn, _identity, newToken) => {
+        console.log("ℹ️ INFO Connected to SpacetimeDB WS");
         storeToken(newToken);
         setConnection(conn);
         conn.subscriptionBuilder().subscribe([

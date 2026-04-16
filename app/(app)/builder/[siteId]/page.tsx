@@ -80,9 +80,18 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { useSidebarOpen } from "@/components/sidebar";
 import { createPage, updatePage, updateSite, deletePage, saveComponent, deleteComponent } from "@/lib/spacetimedb/actions";
+import { useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
 import { getSiteById, getPages, getSavedComponents } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { getBuiltInPages } from "@/lib/db/site-templates";
@@ -508,45 +517,15 @@ function getPageFrameX(pgs: SitePage[], pageIndex: number): number {
 // ─── Element palette config ───────────────────────────────────────────────────
 
 const PALETTE: { label: string; icon: React.ReactNode; type: ElementType }[][] = [
-  // Layout
   [
     { label: "Text",      icon: <Type className="h-3.5 w-3.5" />,             type: "text" },
     { label: "Image",     icon: <Image className="h-3.5 w-3.5" />,            type: "image" },
     { label: "Layout",    icon: <LayoutGrid className="h-3.5 w-3.5" />,        type: "layout" },
-    { label: "Columns",   icon: <Columns2 className="h-3.5 w-3.5" />,         type: "columns" },
-    { label: "Icon",      icon: <Star className="h-3.5 w-3.5" />,             type: "icon" },
-  ],
-  // Sections
-  [
-    { label: "Hero",      icon: <LayoutDashboard className="h-3.5 w-3.5" />,  type: "hero" },
-  ],
-  // Content
-  [
-    { label: "Review",    icon: <MessageSquare className="h-3.5 w-3.5" />,    type: "testimonial" },
-    { label: "Gallery",   icon: <GalleryHorizontal className="h-3.5 w-3.5" />, type: "gallery" },
-  ],
-  // Commerce
-  [
-    { label: "Product",   icon: <ShoppingBag className="h-3.5 w-3.5" />,      type: "product-card" },
-    { label: "Booking",   icon: <CalendarDays className="h-3.5 w-3.5" />,     type: "booking-form" },
-    { label: "Coupon",    icon: <Tag className="h-3.5 w-3.5" />,              type: "coupon-banner" },
-    { label: "Cart",      icon: <ShoppingCart className="h-3.5 w-3.5" />,     type: "cart" },
-    { label: "Checkout",  icon: <CreditCard className="h-3.5 w-3.5" />,       type: "checkout" },
-  ],
-  // Account
-  [
-    { label: "Login",      icon: <LogIn className="h-3.5 w-3.5" />,            type: "login-form" },
-    { label: "Membership", icon: <Star className="h-3.5 w-3.5" />,             type: "membership-widget" },
-    { label: "Reward",     icon: <Gift className="h-3.5 w-3.5" />,             type: "reward" },
-  ],
-  // Advanced
-  [
-    { label: "HTML",       icon: <Code2 className="h-3.5 w-3.5" />,            type: "custom-html" },
-    { label: "Code",       icon: <Code2 className="h-3.5 w-3.5" />,            type: "code-block" },
+    { label: "Button",    icon: <Blocks className="h-3.5 w-3.5" />,            type: "button" },
   ],
 ];
 
-const PALETTE_LABELS = ["Layout", "Sections", "Content", "Commerce", "Account", "Advanced"];
+const PALETTE_LABELS = ["Elements"];
 
 // ─── Properties panel components ─────────────────────────────────────────────
 
@@ -1487,6 +1466,107 @@ function RewardProps({ props, onChange }: { props: Record<string, unknown>; onCh
 
 // ─── DnD palette/library components ───────────────────────────────────────────
 
+// ─── Layer tree helpers ──────────────────────────────────────────────────────
+
+/** Collect all element IDs in depth-first order (for flat SortableContext) */
+function collectAllIds(els: SiteElement[]): string[] {
+  const ids: string[] = [];
+  for (const el of els) {
+    ids.push(el.id);
+    if (el.children?.length) ids.push(...collectAllIds(el.children));
+  }
+  return ids;
+}
+
+/** Find an element by ID anywhere in the tree. Returns [element, parentChildren, index] */
+function findInTreeWithParent(els: SiteElement[], id: string): [SiteElement, SiteElement[], number] | null {
+  for (let i = 0; i < els.length; i++) {
+    if (els[i].id === id) return [els[i], els, i];
+    if (els[i].children?.length) {
+      const found = findInTreeWithParent(els[i].children!, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** Deep clone elements tree */
+function cloneTree(els: SiteElement[]): SiteElement[] {
+  return els.map(el => ({
+    ...el,
+    children: el.children ? cloneTree(el.children) : undefined,
+  }));
+}
+
+/** Check if an element is a container type (can hold children) */
+function isContainer(el: SiteElement): boolean {
+  return el.type === "layout" || el.type === "viewport" || el.type === "container";
+}
+
+// Layer row component (non-sortable, used inside the sortable wrapper)
+function LayerRow({ el, selectedId, onSelect, depth, expanded, onToggle, isDragging, isOver }: {
+  el: SiteElement; selectedId: string | null; onSelect: (id: string) => void;
+  depth: number; expanded: boolean; onToggle: () => void;
+  isDragging: boolean; isOver: boolean;
+}) {
+  const padLeft = 20 + depth * 16;
+  const hasChildren = (el.children?.length ?? 0) > 0;
+  const canHaveChildren = isContainer(el);
+  return (
+    <button
+      onClick={() => onSelect(el.id)}
+      className={cn(
+        "flex items-center gap-2 w-full rounded pr-2 py-1 text-xs transition-colors text-left",
+        isDragging && "opacity-40",
+        isOver && canHaveChildren && "ring-1 ring-blue-400 bg-blue-50",
+        selectedId === el.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+      )}
+      style={{ paddingLeft: padLeft }}
+    >
+      {(hasChildren || canHaveChildren) && (
+        <span onClick={(e) => { e.stopPropagation(); onToggle(); }} className="shrink-0 cursor-pointer">
+          {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        </span>
+      )}
+      {el.type === "viewport" ? <Frame className="h-3 w-3 shrink-0" /> : <Layers className="h-3 w-3 shrink-0" />}
+      <span className="truncate">{el.type === "viewport" ? String(el.props.viewportName || "Viewport") : el.type}</span>
+      {!!el.props?.locked && <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50" />}
+      {hasChildren && !expanded && (
+        <span className="ml-auto text-[9px] text-muted-foreground">{el.children!.length}</span>
+      )}
+    </button>
+  );
+}
+
+// Sortable layer item with nested children support
+function SortableLayerItem({ el, selectedId, onSelect, depth = 0 }: {
+  el: SiteElement; selectedId: string | null; onSelect: (id: string) => void; depth?: number;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
+    id: el.id,
+    data: { type: "layer", element: el, isContainer: isContainer(el) },
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  const canExpand = isContainer(el) || (el.children?.length ?? 0) > 0;
+  const handleClick = () => {
+    onSelect(el.id);
+    if (canExpand) setExpanded((prev) => !prev);
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <LayerRow
+        el={el} selectedId={selectedId} onSelect={handleClick} depth={depth}
+        expanded={expanded} onToggle={() => setExpanded(!expanded)}
+        isDragging={isDragging} isOver={isOver}
+      />
+      {expanded && (el.children ?? []).map((child) => (
+        <SortableLayerItem key={child.id} el={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
+      ))}
+    </div>
+  );
+}
+
 // Draggable palette item
 function DraggablePaletteItem({ item, onAdd }: { item: { label: string; icon: React.ReactNode; type: ElementType }; onAdd: (type: ElementType) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -1846,6 +1926,9 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   const { siteId } = use(params);
   const { organizationId } = usePermissions();
   const openSidebar = useSidebarOpen();
+  // Wait for SpacetimeDB subscription data to be ready before querying
+  const [, siteTableReady] = useTable(tables.site);
+  const [, pageTableReady] = useTable(tables.sitePage);
 
   const [site, setSite] = useState<Site | null>(null);
   const [pages, setPages] = useState<SitePage[]>([]);
@@ -2026,8 +2109,9 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
     },
   });
 
-  // Load initial data
+  // Load initial data — wait for SpacetimeDB tables to be ready
   useEffect(() => {
+    if (!siteTableReady || !pageTableReady) return;
     Promise.all([
       getSiteById(siteId),
       getPages(siteId),
@@ -2075,7 +2159,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [siteId]);
+  }, [siteId, siteTableReady, pageTableReady]);
 
   // Load saved components when orgId is available
   useEffect(() => {
@@ -2993,7 +3077,7 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
             </div>
           </div>
 
-          {/* Layers section — all pages */}
+          {/* Layers section — all pages, drag to reorder */}
           <div className="border-t border-border flex-1 flex flex-col min-h-0">
             <div className="px-3 py-2 shrink-0">
               <span className="text-[11px] font-semibold">Layers</span>
@@ -3004,7 +3088,6 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
                 const pageEls = isActive ? elements : (page.elements ?? []);
                 return (
                   <React.Fragment key={page.id}>
-                    {/* Page header */}
                     <button
                       onClick={() => { if (!isActive) handlePageSwitch(page.id); setSelectedId(null); }}
                       className={cn(
@@ -3015,38 +3098,49 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
                       <Globe className="h-3 w-3 shrink-0" />
                       <span className="truncate">{page.name === "Home" ? "Home" : `/${page.slug}`}</span>
                     </button>
-                    {/* Page elements (only show active page's elements expanded) */}
-                    {isActive && pageEls.map((el) => (
-                      <React.Fragment key={el.id}>
-                        <button
-                          onClick={() => setSelectedId(el.id)}
-                          className={cn(
-                            "flex items-center gap-2 w-full rounded pl-5 pr-2 py-1 text-xs transition-colors text-left",
-                            selectedId === el.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                          )}
-                        >
-                          {el.type === "viewport" ? <Frame className="h-3 w-3 shrink-0" /> : <Layers className="h-3 w-3 shrink-0" />}
-                          <span className="truncate">{el.type === "viewport" ? String(el.props.viewportName || "Viewport") : el.type}</span>
-                          {!!el.props?.locked && <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50" />}
-                          {(el.children?.length ?? 0) > 0 && (
-                            <span className="ml-auto text-[9px] text-muted-foreground">{el.children!.length}</span>
-                          )}
-                        </button>
-                        {(el.children ?? []).map((child) => (
-                          <button
-                            key={child.id}
-                            onClick={() => setSelectedId(child.id)}
-                            className={cn(
-                              "flex items-center gap-2 w-full rounded pl-9 pr-2 py-1 text-xs transition-colors text-left",
-                              selectedId === child.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                            )}
-                          >
-                            <Layers className="h-2.5 w-2.5 shrink-0" />
-                            <span className="truncate">{child.type}</span>
-                          </button>
-                        ))}
-                      </React.Fragment>
-                    ))}
+                    {isActive && (
+                      <DndContext
+                        onDragEnd={(event) => {
+                          const { active, over } = event;
+                          if (!over || active.id === over.id) return;
+                          const activeId = String(active.id);
+                          const overId = String(over.id);
+
+                          const tree = cloneTree(pageEls);
+                          const activeResult = findInTreeWithParent(tree, activeId);
+                          if (!activeResult) return;
+                          const [activeEl, activeParent, activeIdx] = activeResult;
+
+                          const overResult = findInTreeWithParent(tree, overId);
+                          if (!overResult) return;
+                          const [overEl] = overResult;
+
+                          // Remove from current position
+                          activeParent.splice(activeIdx, 1);
+
+                          // If dropping onto a container (layout/viewport), add as child
+                          if (isContainer(overEl) && overEl.id !== activeEl.id) {
+                            if (!overEl.children) overEl.children = [];
+                            overEl.children.push(activeEl);
+                          } else {
+                            // Drop as sibling (after the target)
+                            const overResult2 = findInTreeWithParent(tree, overId);
+                            if (!overResult2) return;
+                            const [, overParent, overIdx] = overResult2;
+                            overParent.splice(overIdx + 1, 0, activeEl);
+                          }
+
+                          setElements(tree);
+                          setDirty(true);
+                        }}
+                      >
+                        <SortableContext items={collectAllIds(pageEls)} strategy={verticalListSortingStrategy}>
+                          {pageEls.map((el) => (
+                            <SortableLayerItem key={el.id} el={el} selectedId={selectedId} onSelect={setSelectedId} />
+                          ))}
+                        </SortableContext>
+                      </DndContext>
+                    )}
                   </React.Fragment>
                 );
               })}

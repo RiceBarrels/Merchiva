@@ -30,13 +30,25 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
     setLoading(true);
 
     try {
-      const result = await signIn.create({
+      const si = await signIn.create({
         identifier: email.trim(),
-        password,
       });
 
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
+      if (si.status === "needs_first_factor") {
+        const result = await si.attemptFirstFactor({
+          strategy: "password",
+          password,
+        });
+
+        if (result.status === "complete") {
+          await setActive({ session: result.createdSessionId });
+          hapticSuccess();
+          onSuccess?.();
+        } else {
+          throw new Error("Sign in incomplete — please try again.");
+        }
+      } else if (si.status === "complete") {
+        await setActive({ session: si.createdSessionId });
         hapticSuccess();
         onSuccess?.();
       } else {
@@ -53,7 +65,7 @@ export function LoginForm({ onSuccess, onSignup }: { onSuccess?: () => void; onS
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center px-6 bg-background">
+    <div className="flex flex-1 min-h-screen flex-col justify-center px-6 bg-background">
       <div className="mx-auto w-full max-w-sm space-y-8">
         {/* Logo */}
         <div className="flex items-center gap-2.5">

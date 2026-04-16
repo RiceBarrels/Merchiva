@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getInvitationByToken } from "@/lib/db/team";
+import { acceptInvitation } from "@/lib/spacetimedb/actions";
 import type { OrgInvitation } from "@/lib/types";
 
 export default function InvitePage({
@@ -67,20 +68,11 @@ export default function InvitePage({
     setAccepting(true);
     setError(null);
     try {
-      const res = await fetch("/api/team/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, displayName }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error ?? "Failed to accept invitation");
-        return;
-      }
+      await acceptInvitation(token);
       setSuccess(true);
       setTimeout(() => router.push("/dashboard"), 2000);
-    } catch {
-      setError("Failed to accept invitation. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to accept invitation. Please try again.");
     } finally {
       setAccepting(false);
     }

@@ -6,6 +6,7 @@
  */
 
 import { getConnection, getActiveOrgId } from "./client";
+import type { RoleTask, ShiftPreset } from "@/lib/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function conn(): any {
@@ -43,7 +44,13 @@ export async function addInventoryTransaction(data: any): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addProduct(data: any, _userId?: string): Promise<void> {
-  return conn().reducers.addProduct({ organizationId: orgId(), ...data });
+  return conn().reducers.addProduct({
+    organizationId: orgId(),
+    name: data.name,
+    category: data.category,
+    price: data.price ?? 0,
+    cost: data.cost ?? 0,
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,25 +110,106 @@ export async function deleteStaffMember(staffMemberId: string): Promise<void> {
   return conn().reducers.deleteStaffMember({ organizationId: orgId(), staffMemberId });
 }
 
-// ─── Staffing: Role Tasks (no reducer — stub) ─────────────────────────────────
+// ─── Staffing: Role Tasks (read from SpacetimeDB table, no write reducers yet)
+
+export async function getRoleTasks(roleId: string): Promise<RoleTask[]> {
+  const c = getConnection();
+  if (!c) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (c as any).db.roleTask.iter().filter((r: any) => r.roleId === roleId);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return Array.from(rows).map((r: any) => ({
+    id: r.id.toString(),
+    roleId: r.roleId,
+    organizationId: r.organizationId ?? null,
+    title: r.title,
+    description: r.description,
+    startTime: r.startTime ?? null,
+    endTime: r.endTime ?? null,
+    sortOrder: r.sortOrder,
+    requiresEvidence: r.requiresEvidence,
+    notifyChats: r.notifyChats,
+  }));
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getRoleTasks(_roleId: string): Promise<any[]> { return []; }
+export async function addRoleTask(data: any): Promise<void> {
+  return conn().reducers.addRoleTask({
+    organizationId: orgId(),
+    roleId: data.roleId,
+    title: data.title,
+    description: data.description,
+    startTime: data.startTime ?? undefined,
+    endTime: data.endTime ?? undefined,
+    sortOrder: data.sortOrder ?? 0,
+    requiresEvidence: data.requiresEvidence ?? false,
+    notifyChats: JSON.stringify(data.notifyChats ?? []),
+  });
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function addRoleTask(_data: any): Promise<void> { console.warn("[SpacetimeDB] addRoleTask not yet implemented"); }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateRoleTask(_id: string, _data: any): Promise<void> { console.warn("[SpacetimeDB] updateRoleTask not yet implemented"); }
-export async function deleteRoleTask(_id: string): Promise<void> { console.warn("[SpacetimeDB] deleteRoleTask not yet implemented"); }
+export async function updateRoleTask(id: string, data: any): Promise<void> {
+  return conn().reducers.updateRoleTask({
+    organizationId: orgId(),
+    roleTaskId: id,
+    title: data.title,
+    description: data.description,
+    startTime: data.startTime ?? undefined,
+    endTime: data.endTime ?? undefined,
+    sortOrder: data.sortOrder ?? 0,
+    requiresEvidence: data.requiresEvidence ?? false,
+    notifyChats: typeof data.notifyChats === 'string' ? data.notifyChats : JSON.stringify(data.notifyChats ?? []),
+  });
+}
+export async function deleteRoleTask(id: string): Promise<void> {
+  return conn().reducers.deleteRoleTask({ organizationId: orgId(), roleTaskId: id });
+}
 
-// ─── Shift Presets (no reducer — stub) ───────────────────────────────────────
+// ─── Shift Presets (read from SpacetimeDB table, no write reducers yet)
+
+export async function getShiftPresets(_orgId?: string): Promise<ShiftPreset[]> {
+  const c = getConnection();
+  if (!c) return [];
+  const oid = _orgId ?? orgId();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (c as any).db.shiftPreset.iter().filter((r: any) => r.organizationId === oid);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return Array.from(rows).map((r: any) => ({
+    id: r.id.toString(),
+    organizationId: r.organizationId,
+    name: r.name,
+    startTime: r.startTime,
+    endTime: r.endTime,
+    color: r.color,
+    sortOrder: r.sortOrder,
+  }));
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getShiftPresets(_orgId?: string): Promise<any[]> { return []; }
+export async function addShiftPreset(orgIdParam: string, data: any): Promise<void> {
+  return conn().reducers.addShiftPreset({
+    organizationId: orgIdParam || orgId(),
+    name: data.name,
+    startTime: data.startTime,
+    endTime: data.endTime,
+    color: data.color,
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function addShiftPreset(_orgId: string, _data: any): Promise<void> { console.warn("[SpacetimeDB] addShiftPreset not yet implemented"); }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateShiftPreset(_id: string, _data: any): Promise<void> { console.warn("[SpacetimeDB] updateShiftPreset not yet implemented"); }
-export async function deleteShiftPreset(_id: string): Promise<void> { console.warn("[SpacetimeDB] deleteShiftPreset not yet implemented"); }
+export async function updateShiftPreset(id: string, data: any): Promise<void> {
+  return conn().reducers.updateShiftPreset({
+    organizationId: orgId(),
+    presetId: id,
+    name: data.name,
+    startTime: data.startTime,
+    endTime: data.endTime,
+    color: data.color,
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
+export async function deleteShiftPreset(id: string): Promise<void> {
+  return conn().reducers.deleteShiftPreset({ organizationId: orgId(), presetId: id });
+}
 
 // ─── Availability & Time-off ──────────────────────────────────────────────────
 
@@ -173,7 +261,7 @@ export async function disconnectSquare(_userId: string): Promise<void> {
 }
 
 export async function disconnectClover(_userId: string): Promise<void> {
-  console.warn("[SpacetimeDB] disconnectClover not yet implemented");
+  return conn().reducers.disconnectClover({ organizationId: orgId() });
 }
 
 // ─── Sites ────────────────────────────────────────────────────────────────────
@@ -204,17 +292,24 @@ export async function updatePage(pageId: string, data: any): Promise<void> {
   return conn().reducers.updatePage({ organizationId: orgId(), pageId, ...data });
 }
 
-export async function deletePage(_id: string): Promise<void> {
-  console.warn("[SpacetimeDB] deletePage not yet implemented");
+export async function deletePage(id: string): Promise<void> {
+  return conn().reducers.deletePage({ organizationId: orgId(), pageId: id });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function saveComponent(_data: any): Promise<void> {
-  console.warn("[SpacetimeDB] saveComponent not yet implemented");
+export async function saveComponent(data: any): Promise<void> {
+  return conn().reducers.saveComponent({
+    organizationId: orgId(),
+    siteId: data.siteId ?? undefined,
+    name: data.name,
+    description: data.description ?? undefined,
+    elementData: typeof data.elementData === 'string' ? data.elementData : JSON.stringify(data.elementData),
+    category: data.category ?? undefined,
+  });
 }
 
-export async function deleteComponent(_id: string): Promise<void> {
-  console.warn("[SpacetimeDB] deleteComponent not yet implemented");
+export async function deleteComponent(id: string): Promise<void> {
+  return conn().reducers.deleteComponent({ organizationId: orgId(), componentId: id });
 }
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
@@ -244,8 +339,8 @@ export async function sendMessage(conversationId: string, content: string, _repl
   return conn().reducers.sendMessage({ conversationId, content });
 }
 
-export async function addMembersToConversation(_convId: string, _userIds: string[]): Promise<void> {
-  console.warn("[SpacetimeDB] addMembersToConversation not yet implemented");
+export async function addMembersToConversation(convId: string, userIds: string[]): Promise<void> {
+  return conn().reducers.addMembersToConversation({ conversationId: convId, userIds: JSON.stringify(userIds) });
 }
 
 export async function addReaction(_messageId: string, _emoji: string): Promise<void> {
@@ -256,8 +351,8 @@ export async function removeReaction(_messageId: string, _emoji: string): Promis
   console.warn("[SpacetimeDB] removeReaction not yet implemented");
 }
 
-export async function deleteMessage(_messageId: string): Promise<void> {
-  console.warn("[SpacetimeDB] deleteMessage not yet implemented");
+export async function deleteMessage(messageId: string): Promise<void> {
+  return conn().reducers.deleteMessage({ conversationId: "", messageId });
 }
 
 // ─── Membership ───────────────────────────────────────────────────────────────
@@ -295,31 +390,91 @@ export async function registerCustomer(data: any): Promise<void> {
   return conn().reducers.registerCustomer(data);
 }
 
-// Membership stubs (no reducers yet)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateTier(_id: string, _data: any): Promise<void> { console.warn("[SpacetimeDB] updateTier not yet implemented"); }
-export async function deleteTier(_id: string): Promise<void> { console.warn("[SpacetimeDB] deleteTier not yet implemented"); }
+export async function updateTier(id: string, data: any): Promise<void> {
+  return conn().reducers.updateTier({
+    organizationId: orgId(),
+    tierId: id,
+    name: data.name,
+    description: data.description ?? undefined,
+    price: data.price,
+    pricePeriod: data.pricePeriod,
+    color: data.color,
+    icon: data.icon,
+    sortOrder: data.sortOrder ?? 0,
+    isDefault: data.isDefault ?? false,
+  });
+}
+export async function deleteTier(id: string): Promise<void> {
+  return conn().reducers.deleteTier({ organizationId: orgId(), tierId: id });
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createPerk(data: any): Promise<void> {
   return conn().reducers.addPerk({ organizationId: orgId(), ...data });
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updatePerk(_id: string, _data: any): Promise<void> { console.warn("[SpacetimeDB] updatePerk not yet implemented"); }
-export async function deletePerk(_id: string): Promise<void> { console.warn("[SpacetimeDB] deletePerk not yet implemented"); }
+export async function updatePerk(id: string, data: any): Promise<void> {
+  return conn().reducers.updatePerk({
+    organizationId: orgId(),
+    perkId: id,
+    type: data.type,
+    name: data.name,
+    description: data.description ?? undefined,
+    couponCode: data.couponCode ?? undefined,
+    discountValue: data.discountValue ?? undefined,
+    discountType: data.discountType ?? undefined,
+    cooldownHours: data.cooldownHours ?? undefined,
+    frequency: data.frequency ?? undefined,
+    minPurchase: data.minPurchase ?? undefined,
+    active: data.active ?? true,
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
+export async function deletePerk(id: string): Promise<void> {
+  return conn().reducers.deletePerk({ organizationId: orgId(), perkId: id });
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function loginCustomer(_data: any): Promise<void> { console.warn("[SpacetimeDB] loginCustomer not yet implemented"); }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function assignTier(_data: any): Promise<void> { console.warn("[SpacetimeDB] assignTier not yet implemented"); }
+export async function assignTier(data: any): Promise<void> {
+  return conn().reducers.assignTier({ siteId: data.siteId, customerId: data.customerId, plan: data.plan });
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createOrder(_data: any): Promise<void> { console.warn("[SpacetimeDB] createOrder not yet implemented"); }
+export async function createOrder(data: any): Promise<void> {
+  return conn().reducers.createSiteOrder({
+    siteId: data.siteId,
+    customerId: data.customerId ?? undefined,
+    items: typeof data.items === 'string' ? data.items : JSON.stringify(data.items),
+    total: data.total,
+    customerName: data.customerName ?? undefined,
+    customerEmail: data.customerEmail ?? undefined,
+    notes: data.notes ?? undefined,
+  });
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createBooking(_data: any): Promise<void> { console.warn("[SpacetimeDB] createBooking not yet implemented"); }
+export async function createBooking(data: any): Promise<void> {
+  return conn().reducers.createSiteBooking({
+    siteId: data.siteId,
+    customerId: data.customerId ?? undefined,
+    date: data.date,
+    time: data.time,
+    partySize: data.partySize,
+    name: data.name,
+    phone: data.phone ?? undefined,
+    email: data.email ?? undefined,
+    notes: data.notes ?? undefined,
+  });
+}
+export async function updateOrderStatus(id: string, status: string): Promise<void> {
+  return conn().reducers.updateOrderStatus({ organizationId: orgId(), orderId: id, status });
+}
+export async function updateBookingStatus(id: string, status: string): Promise<void> {
+  return conn().reducers.updateBookingStatus({ organizationId: orgId(), bookingId: id, status });
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateOrderStatus(_id: string, _status: string): Promise<void> { console.warn("[SpacetimeDB] updateOrderStatus not yet implemented"); }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateBookingStatus(_id: string, _status: string): Promise<void> { console.warn("[SpacetimeDB] updateBookingStatus not yet implemented"); }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function redeemPoints(_data: any): Promise<void> { console.warn("[SpacetimeDB] redeemPoints not yet implemented"); }
+export async function redeemPoints(data: any): Promise<void> {
+  return conn().reducers.redeemPoints({ siteId: data.siteId, customerId: data.customerId, points: data.points });
+}
 
 // ─── Team / Org ───────────────────────────────────────────────────────────────
 
@@ -337,9 +492,12 @@ export async function removeMember(memberId: string): Promise<void> {
   return conn().reducers.setMemberStatus({ organizationId: orgId(), memberId, status: "removed" });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function cancelInvitation(_id: string): Promise<void> {
-  console.warn("[SpacetimeDB] cancelInvitation not yet implemented");
+export async function cancelInvitation(id: string): Promise<void> {
+  return conn().reducers.cancelInvitation({ organizationId: orgId(), invitationId: id });
+}
+
+export async function acceptInvitation(token: string): Promise<void> {
+  return conn().reducers.acceptInvitation({ token });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -351,9 +509,15 @@ export async function updateProfile(data: any): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getTodos(_userId?: string, _orgId?: string): Promise<any[]> { return []; }
-export async function addTodo(_userId: string, _orgId: string, _title: string): Promise<void> { console.warn("[SpacetimeDB] addTodo not yet implemented"); }
-export async function toggleTodo(_id: string, _completed: boolean): Promise<void> { console.warn("[SpacetimeDB] toggleTodo not yet implemented"); }
-export async function deleteTodo(_id: string): Promise<void> { console.warn("[SpacetimeDB] deleteTodo not yet implemented"); }
+export async function addTodo(_userId: string, orgIdParam: string, title: string): Promise<void> {
+  return conn().reducers.addTodo({ organizationId: orgIdParam || orgId(), title });
+}
+export async function toggleTodo(id: string, completed: boolean): Promise<void> {
+  return conn().reducers.toggleTodo({ todoId: id, completed });
+}
+export async function deleteTodo(id: string): Promise<void> {
+  return conn().reducers.deleteTodo({ todoId: id });
+}
 
 // ─── Sales records ────────────────────────────────────────────────────────────
 

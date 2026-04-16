@@ -83,7 +83,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex flex-1 min-h-screen flex-col bg-background">
       <div className="flex flex-1 flex-col justify-center px-6">
         <div className="mx-auto w-full max-w-sm space-y-8">
           {/* Logo */}
@@ -128,6 +128,7 @@ export function SignupForm({ onSuccess }: SignupFormProps) {
                   autoComplete="new-password"
                   className="h-12 text-base"
                 />
+                <div id="clerk-captcha" />
                 <Button type="submit" disabled={loading || !email.trim() || !password} className="w-full h-11">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
                 </Button>

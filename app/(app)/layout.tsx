@@ -58,7 +58,7 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
   };
 
   return (
-    <div className="flex min-h-screen flex-col justify-center px-6 bg-background">
+    <div className="flex flex-1 min-h-screen flex-col justify-center px-6 bg-background">
       <div className="mx-auto w-full max-w-sm space-y-8">
         <div>
           <h1 className="text-2xl font-bold">Set up your account</h1>

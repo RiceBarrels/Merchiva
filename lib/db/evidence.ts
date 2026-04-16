@@ -1,5 +1,6 @@
 // @ts-nocheck
-import { createClient } from "@/lib/supabase/client";
+// NOTE: task_evidence table does not exist in SpacetimeDB yet.
+// All functions return empty results / stubs until a SpacetimeDB table is created.
 
 export interface TaskEvidence {
   id: string;
@@ -17,47 +18,6 @@ export async function uploadEvidence(
   roleTaskId: string,
   organizationId: string
 ): Promise<TaskEvidence> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const ext = file.name.split(".").pop() ?? "bin";
-  const path = `${user.id}/${roleTaskId}/${Date.now()}.${ext}`;
-
-  const { error: uploadErr } = await supabase.storage
-    .from("task-evidence")
-    .upload(path, file);
-  if (uploadErr) throw new Error(uploadErr.message);
-
-  const { data: { publicUrl } } = supabase.storage
-    .from("task-evidence")
-    .getPublicUrl(path);
-
-  let fileType = "file";
-  if (file.type.startsWith("image/")) fileType = "image";
-  else if (file.type.startsWith("video/")) fileType = "video";
-
-  const { data, error } = await supabase
-    .from("task_evidence")
-    .insert({
-      user_id: user.id,
-      organization_id: organizationId,
-      role_task_id: roleTaskId,
-      file_url: publicUrl,
-      file_type: fileType,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-
-  return {
-    id: data.id,
-    userId: data.user_id,
-    organizationId: data.organization_id,
-    roleTaskId: data.role_task_id,
-    date: data.date,
-    fileUrl: data.file_url,
-    fileType: data.file_type,
-    createdAt: data.created_at,
-  };
+  // No SpacetimeDB table for task_evidence yet
+  throw new Error("uploadEvidence: SpacetimeDB table not yet available");
 }

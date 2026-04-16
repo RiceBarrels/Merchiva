@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/drawer";
 import { usePermissions } from "@/lib/context/permissions";
 import { getCached, setCache } from "@/lib/cache";
-import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage } from "@/lib/spacetimedb/actions";
+import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage, createConversation } from "@/lib/spacetimedb/actions";
 import {
   getConversations, getMessages, getReactions, uploadChatFile,
   type ChatReaction,
@@ -176,21 +176,16 @@ export default function ChatPage() {
   };
 
   const createConv = async (type: "direct" | "group", memberUserIds: string[], name?: string) => {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ organizationId, type, memberUserIds, name }),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error);
-    const c = json.conversation;
+    await createConversation(organizationId!, type, memberUserIds, name);
+    // SpacetimeDB subscription will auto-update conversations list
+    // Return a placeholder — the real row arrives via subscription
     return {
-      id: c.id,
-      organizationId: c.organization_id,
-      type: c.type,
-      name: c.name,
-      createdBy: c.created_by,
-      createdAt: c.created_at,
+      id: crypto.randomUUID(),
+      organizationId: organizationId!,
+      type,
+      name: name ?? null,
+      createdBy: null,
+      createdAt: new Date().toISOString(),
     } as ChatConversation;
   };
 
