@@ -42,6 +42,7 @@ import {
   Star,
   Library,
   Blocks,
+  ClipboardList,
   Paintbrush,
   BookMarked,
   LayoutGrid,
@@ -56,6 +57,7 @@ import {
   Bold,
   Link as LinkIcon,
   Layers,
+  GripVertical,
   Sparkles,
   Frame,
   BoxSelect,
@@ -68,6 +70,7 @@ import {
   Lock,
   Settings,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -79,7 +82,7 @@ import {
   type DragOverEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -92,6 +95,10 @@ import { useSidebarOpen } from "@/components/sidebar";
 import { createPage, updatePage, updateSite, deletePage, saveComponent, deleteComponent } from "@/lib/spacetimedb/actions";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getSiteById, getPages, getSavedComponents } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { getBuiltInPages } from "@/lib/db/site-templates";
@@ -464,7 +471,7 @@ function defaultProps(type: ElementType): Record<string, unknown> {
     case "footer":     return { text: "© 2024 My Site. All rights reserved.", links: [], backgroundColor: "#18181b", textColor: "#9ca3af" };
     case "divider":    return { color: "#e5e7eb", thickness: "1px", margin: "1.5rem 0" };
     case "spacer":     return { height: "48px" };
-    case "layout":     return { direction: "stack", spacing: "medium", align: "stretch", padding: "1rem", backgroundColor: "", columns: 2, children: [] };
+    case "layout":     return { tag: "div", direction: "stack", spacing: "medium", align: "stretch", padding: "1rem", backgroundColor: "", columns: 2, children: [] };
     case "container":  return { direction: "stack", spacing: "medium", align: "stretch", padding: "1rem", backgroundColor: "" }; // legacy
     case "columns":    return { columns: 2, gap: "1.5rem", columnContent: ["", ""] };
     case "product-card":  return { productId: "", showPrice: true, showDescription: false };
@@ -531,7 +538,7 @@ const PALETTE_LABELS = ["Elements"];
 
 function PropRow({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[90px_1fr] items-start gap-2 py-1.5 border-b border-border/50 last:border-0">
+    <div className="grid grid-cols-[90px_1fr] items-start gap-2 p-1.5 border-b border-border/50 last:border-0">
       <span className="text-[11px] text-muted-foreground pt-1.5 leading-none flex items-center gap-1">
         {icon && <span className="opacity-60 shrink-0">{icon}</span>}
         {label}
@@ -1138,6 +1145,111 @@ function SpacerProps({ props, onChange }: { props: Record<string, unknown>; onCh
   return <PropRow label="Height"><PropInput value={(props.height as string) || "48px"} onChange={(v) => onChange("height", v)} placeholder="48px" /></PropRow>;
 }
 
+const LAYOUT_TAGS: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: "div",      label: "Default",    icon: BoxSelect },
+  { value: "section",  label: "Section",    icon: LayoutGrid },
+  { value: "header",   label: "Header",     icon: AlignStartVertical },
+  { value: "nav",      label: "Nav",        icon: Navigation },
+  { value: "main",     label: "Main",       icon: Maximize },
+  { value: "aside",    label: "Aside",      icon: Columns2 },
+  { value: "footer",   label: "Footer",     icon: AlignEndVertical },
+  { value: "article",  label: "Article",    icon: BookMarked },
+  { value: "form",     label: "Form",       icon: ClipboardList },
+  { value: "fieldset", label: "Fieldset",   icon: Blocks },
+];
+
+function getLayoutTagLabel(tag: string): string {
+  return LAYOUT_TAGS.find(t => t.value === tag)?.label ?? tag;
+}
+
+function getLayoutTagIcon(tag: string): LucideIcon {
+  return LAYOUT_TAGS.find(t => t.value === tag)?.icon ?? BoxSelect;
+}
+
+function LayoutTagPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [customTag, setCustomTag] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const isCustom = !LAYOUT_TAGS.some(t => t.value === value);
+  const current = LAYOUT_TAGS.find(t => t.value === value);
+  const Icon = current?.icon ?? Code2;
+  const label = current?.label ?? value;
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(p => !p)}
+        className="flex w-full items-center gap-2 rounded border border-border bg-background px-2 py-1 text-xs outline-none hover:bg-muted focus:ring-1 focus:ring-ring"
+      >
+        <Icon className="h-3 w-3 shrink-0 text-muted-foreground" />
+        <span className="flex-1 truncate text-left">{label}</span>
+        <ChevronDown className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded border border-border bg-background shadow-md">
+          <ul className="max-h-56 overflow-y-auto py-1">
+            {LAYOUT_TAGS.map((t) => {
+              const TIcon = t.icon;
+              return (
+                <li key={t.value}>
+                  <button
+                    type="button"
+                    onClick={() => { onChange(t.value); setOpen(false); }}
+                    className={cn("flex w-full items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted", t.value === value && "bg-muted")}
+                  >
+                    <TIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 truncate">{t.label}</span>
+                    {t.value === value && <Check className="h-3 w-3 shrink-0" />}
+                  </button>
+                </li>
+              );
+            })}
+            {/* Other: custom tag input */}
+            <li className="border-t border-border mt-1 pt-1">
+              <div className="flex items-center gap-1 px-2.5 py-1">
+                <Code2 className="h-3 w-3 shrink-0 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={isCustom ? value : customTag}
+                  onChange={(e) => setCustomTag(e.target.value.replace(/[^a-z0-9-]/gi, "").toLowerCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customTag.trim()) {
+                      onChange(customTag.trim());
+                      setOpen(false);
+                      setCustomTag("");
+                    }
+                  }}
+                  placeholder="Other tag..."
+                  className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground font-mono min-w-0"
+                />
+                {customTag.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => { onChange(customTag.trim()); setOpen(false); setCustomTag(""); }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Check className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            </li>
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LayoutProps({ props, onChange }: { props: Record<string, unknown>; onChange: (k: string, v: unknown) => void }) {
   const DIRECTIONS = [
     { label: <Maximize2 className="h-3 w-3" />, value: "free", title: "Free" },
@@ -1154,9 +1266,13 @@ function LayoutProps({ props, onChange }: { props: Record<string, unknown>; onCh
   const dir = (props.direction as string) || "stack";
   const spacing = (props.spacing as string) || "medium";
   const align = (props.align as string) || "stretch";
+  const tag = (props.tag as string) || "div";
 
   return (
     <>
+      <PropRow label="Element">
+        <LayoutTagPicker value={tag} onChange={(v) => onChange("tag", v)} />
+      </PropRow>
       <PropRow label="Direction">
         <div className="flex gap-1">
           {DIRECTIONS.map((d) => (
@@ -1478,12 +1594,12 @@ function collectAllIds(els: SiteElement[]): string[] {
   return ids;
 }
 
-/** Find an element by ID anywhere in the tree. Returns [element, parentChildren, index] */
-function findInTreeWithParent(els: SiteElement[], id: string): [SiteElement, SiteElement[], number] | null {
+/** Find an element by ID anywhere in the tree. Returns [element, parentChildren, index, parentId] */
+function findInTreeWithParent(els: SiteElement[], id: string, parentId: string | null = null): [SiteElement, SiteElement[], number, string | null] | null {
   for (let i = 0; i < els.length; i++) {
-    if (els[i].id === id) return [els[i], els, i];
+    if (els[i].id === id) return [els[i], els, i, parentId];
     if (els[i].children?.length) {
-      const found = findInTreeWithParent(els[i].children!, id);
+      const found = findInTreeWithParent(els[i].children!, id, els[i].id);
       if (found) return found;
     }
   }
@@ -1503,65 +1619,75 @@ function isContainer(el: SiteElement): boolean {
   return el.type === "layout" || el.type === "viewport" || el.type === "container";
 }
 
-// Layer row component (non-sortable, used inside the sortable wrapper)
-function LayerRow({ el, selectedId, onSelect, depth, expanded, onToggle, isDragging, isOver }: {
-  el: SiteElement; selectedId: string | null; onSelect: (id: string) => void;
-  depth: number; expanded: boolean; onToggle: () => void;
-  isDragging: boolean; isOver: boolean;
-}) {
-  const padLeft = 20 + depth * 16;
-  const hasChildren = (el.children?.length ?? 0) > 0;
-  const canHaveChildren = isContainer(el);
-  return (
-    <button
-      onClick={() => onSelect(el.id)}
-      className={cn(
-        "flex items-center gap-2 w-full rounded pr-2 py-1 text-xs transition-colors text-left",
-        isDragging && "opacity-40",
-        isOver && canHaveChildren && "ring-1 ring-blue-400 bg-blue-50",
-        selectedId === el.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-      )}
-      style={{ paddingLeft: padLeft }}
-    >
-      {(hasChildren || canHaveChildren) && (
-        <span onClick={(e) => { e.stopPropagation(); onToggle(); }} className="shrink-0 cursor-pointer">
-          {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        </span>
-      )}
-      {el.type === "viewport" ? <Frame className="h-3 w-3 shrink-0" /> : <Layers className="h-3 w-3 shrink-0" />}
-      <span className="truncate">{el.type === "viewport" ? String(el.props.viewportName || "Viewport") : el.type}</span>
-      {!!el.props?.locked && <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50" />}
-      {hasChildren && !expanded && (
-        <span className="ml-auto text-[9px] text-muted-foreground">{el.children!.length}</span>
-      )}
-    </button>
-  );
-}
-
-// Sortable layer item with nested children support
-function SortableLayerItem({ el, selectedId, onSelect, depth = 0 }: {
+// Draggable + droppable layer item (no sortable — avoids parent displacement)
+function DraggableLayerItem({ el, selectedId, onSelect, depth = 0 }: {
   el: SiteElement; selectedId: string | null; onSelect: (id: string) => void; depth?: number;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
-    id: el.id,
-    data: { type: "layer", element: el, isContainer: isContainer(el) },
+  const { attributes, listeners, setNodeRef: setDragRef, transform, isDragging } = useDraggable({
+    id: `layer-drag-${el.id}`,
+    data: { layerId: el.id },
   });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-  const canExpand = isContainer(el) || (el.children?.length ?? 0) > 0;
-  const handleClick = () => {
-    onSelect(el.id);
-    if (canExpand) setExpanded((prev) => !prev);
-  };
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `layer-drop-${el.id}`,
+    data: { layerId: el.id, isContainer: isContainer(el) },
+  });
+  const padLeft = 20 + depth * 16;
+  const hasChildren = (el.children?.length ?? 0) > 0;
+  const canHaveChildren = isContainer(el);
+  const canExpand = canHaveChildren || hasChildren;
+
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <LayerRow
-        el={el} selectedId={selectedId} onSelect={handleClick} depth={depth}
-        expanded={expanded} onToggle={() => setExpanded(!expanded)}
-        isDragging={isDragging} isOver={isOver}
-      />
+    <div ref={setDropRef}>
+      <div
+        ref={setDragRef}
+        className={cn(
+          "flex items-center gap-1 w-full rounded pr-2 py-1 text-xs transition-colors",
+          isDragging && "opacity-40",
+          isOver && "ring-1 ring-blue-400 bg-blue-50",
+          selectedId === el.id ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+        )}
+        style={{
+          paddingLeft: padLeft,
+          transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+          position: transform ? "relative" : undefined,
+          zIndex: isDragging ? 50 : undefined,
+        }}
+      >
+        {/* Drag handle */}
+        <span {...attributes} {...listeners} className="shrink-0 cursor-grab active:cursor-grabbing p-0.5">
+          <GripVertical className="h-3 w-3 opacity-40" />
+        </span>
+        {/* Click area: select + toggle */}
+        <button
+          onClick={() => { onSelect(el.id); if (canExpand) setExpanded((p) => !p); }}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+        >
+          {canExpand && (
+            <span className="shrink-0">
+              {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </span>
+          )}
+          {(() => {
+            if (el.type === "viewport") return <Frame className="h-3 w-3 shrink-0" />;
+            if (el.type === "layout") { const TagIcon = getLayoutTagIcon(String(el.props.tag || "div")); return <TagIcon className="h-3 w-3 shrink-0" />; }
+            return <Layers className="h-3 w-3 shrink-0" />;
+          })()}
+          <span className="truncate">{
+            el.type === "viewport"
+              ? String(el.props.viewportName || "Viewport")
+              : el.type === "layout"
+                ? `layout - ${getLayoutTagLabel(String(el.props.tag || "div"))}`
+                : el.type
+          }</span>
+          {!!el.props?.locked && <Lock className="h-2.5 w-2.5 shrink-0 text-muted-foreground/50" />}
+          {hasChildren && !expanded && (
+            <span className="ml-auto text-[9px] text-muted-foreground">{el.children!.length}</span>
+          )}
+        </button>
+      </div>
       {expanded && (el.children ?? []).map((child) => (
-        <SortableLayerItem key={child.id} el={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
+        <DraggableLayerItem key={child.id} el={child} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
       ))}
     </div>
   );
@@ -1640,8 +1766,84 @@ function DraggableLibraryCard({ comp, onInsert, onDelete }: { comp: SiteComponen
 
 // ─── Properties panel ─────────────────────────────────────────────────────────
 
+/** Parse an HTML string back into a SiteElement (single element) */
+function parseHtmlToElement(html: string, original: SiteElement): SiteElement | null {
+  try {
+    const doc = new DOMParser().parseFromString(html.trim(), "text/html");
+    const body = doc.body;
+    const root = body.firstElementChild as HTMLElement | null;
+    if (!root) return null;
+
+    function domToElement(node: HTMLElement, ref?: SiteElement): SiteElement {
+      const tag = node.tagName.toLowerCase();
+      // Determine element type from data attributes or tag
+      const dataViewport = node.getAttribute("data-viewport");
+      let type: string = ref?.type ?? "layout";
+      if (dataViewport) type = "viewport";
+      else if (tag === "img") type = "image";
+      else if (tag === "a") type = "button";
+      else if (["p", "h1", "h2", "h3", "h4", "h5", "h6", "span"].includes(tag)) type = "text";
+
+      const props: Record<string, unknown> = { ...(ref?.props ?? {}) };
+
+      // Parse style attribute
+      const style = node.getAttribute("style");
+      if (style) {
+        for (const rule of style.split(";")) {
+          const [k, v] = rule.split(":").map(s => s.trim());
+          if (!k || !v) continue;
+          const camel = k.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+          props[camel] = v;
+        }
+      }
+
+      // Type-specific parsing
+      if (type === "text") {
+        props.content = node.innerHTML;
+        props.tag = tag;
+      } else if (type === "image") {
+        props.src = node.getAttribute("src") ?? "";
+        props.alt = node.getAttribute("alt") ?? "";
+      } else if (type === "button") {
+        props.label = node.textContent ?? "";
+        props.href = node.getAttribute("href") ?? "#";
+      } else if (type === "viewport") {
+        props.viewportName = dataViewport ?? "Desktop";
+        props.viewportWidth = Number(node.getAttribute("data-canvas-w")) || ref?.props?.viewportWidth || 1280;
+      } else if (type === "layout" || type === "container") {
+        props.tag = tag === "div" ? "div" : tag;
+      }
+
+      const el: SiteElement = {
+        id: ref?.id ?? `el-${Math.random().toString(36).slice(2, 8)}`,
+        type: type as SiteElement["type"],
+        props,
+        x: Number(node.getAttribute("data-canvas-x")) || ref?.x || 0,
+        y: Number(node.getAttribute("data-canvas-y")) || ref?.y || 0,
+        width: Number(node.getAttribute("data-canvas-w")) || ref?.width,
+        height: Number(node.getAttribute("data-canvas-h")) || ref?.height,
+      };
+
+      // Parse children
+      const childNodes = Array.from(node.children) as HTMLElement[];
+      if (childNodes.length > 0) {
+        const refChildren = ref?.children ?? [];
+        el.children = childNodes.map((child, i) => domToElement(child, refChildren[i]));
+      } else if (ref?.children) {
+        // Keep existing children structure if DOM has none (text-only nodes)
+      }
+
+      return el;
+    }
+
+    return domToElement(root, original);
+  } catch {
+    return null;
+  }
+}
+
 function PropertiesPanel({
-  element, onChange, onPositionChange, products, orgId, onSaveToLibrary, onApplyFromLibrary, savedComponents,
+  element, onChange, onPositionChange, products, orgId, onSaveToLibrary, onApplyFromLibrary, savedComponents, elementHtml, onCodeChange,
 }: {
   element: SiteElement;
   onChange: (k: string, v: unknown) => void;
@@ -1651,8 +1853,19 @@ function PropertiesPanel({
   onSaveToLibrary: () => void;
   onApplyFromLibrary: (comp: SiteComponent) => void;
   savedComponents: SiteComponent[];
+  elementHtml: string;
+  onCodeChange: (el: SiteElement) => void;
 }) {
   const [showApplyPicker, setShowApplyPicker] = useState(false);
+  const [rightTab, setRightTab] = useState<"design" | "code">("design");
+  const [codeBuffer, setCodeBuffer] = useState(elementHtml);
+  const [codeDirty, setCodeDirty] = useState(false);
+
+  // Sync code buffer when element changes
+  useEffect(() => {
+    setCodeBuffer(elementHtml);
+    setCodeDirty(false);
+  }, [elementHtml]);
   const typeLabels: Record<string, string> = {
     text: "Text", image: "Image", button: "Button", hero: "Hero", nav: "Navigation",
     footer: "Footer", divider: "Divider", spacer: "Spacer", layout: "Layout", container: "Layout",
@@ -1669,11 +1882,52 @@ function PropertiesPanel({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Figma-style header with Design tab */}
+      {/* Design | Code tabs */}
       <div className="flex items-center border-b border-border shrink-0">
-        <span className="px-3 py-2 text-[11px] font-medium text-foreground border-b-2 border-foreground">Design</span>
+        <button
+          onClick={() => setRightTab("design")}
+          className={cn(
+            "px-3 py-2 text-[11px] font-medium border-b-2 transition-colors",
+            rightTab === "design" ? "text-foreground border-foreground" : "text-muted-foreground border-transparent hover:text-foreground"
+          )}
+        >
+          Design
+        </button>
+        <button
+          onClick={() => setRightTab("code")}
+          className={cn(
+            "px-3 py-2 text-[11px] font-medium border-b-2 transition-colors",
+            rightTab === "code" ? "text-foreground border-foreground" : "text-muted-foreground border-transparent hover:text-foreground"
+          )}
+        >
+          Code
+        </button>
       </div>
 
+      {rightTab === "code" ? (
+        <div className="flex-1 flex flex-col overflow-hidden p-2 gap-2">
+          <textarea
+            value={codeBuffer}
+            onChange={(e) => { setCodeBuffer(e.target.value); setCodeDirty(true); }}
+            spellCheck={false}
+            className="flex-1 text-[10px] font-mono leading-relaxed text-muted-foreground bg-muted/30 rounded p-2 border border-border resize-none outline-none focus:ring-1 focus:ring-ring"
+          />
+          {codeDirty && (
+            <button
+              onClick={() => {
+                const parsed = parseHtmlToElement(codeBuffer, element);
+                if (parsed) {
+                  onCodeChange(parsed);
+                  setCodeDirty(false);
+                }
+              }}
+              className="shrink-0 w-full rounded bg-foreground text-background py-1.5 text-xs font-medium hover:bg-foreground/90 transition-colors"
+            >
+              Apply Changes
+            </button>
+          )}
+        </div>
+      ) : (
       <div className="flex-1 overflow-y-auto">
         {/* Element type info */}
         <div className="px-3 py-2.5 border-b border-border">
@@ -1755,37 +2009,28 @@ function PropertiesPanel({
         </Section>
 
         {/* Link section */}
-        <Section label="Link" defaultOpen={!!(element.props.href)} actions={
-          <button
-            onClick={() => onChange("href", element.props.href ? "" : "#")}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            {element.props.href ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-          </button>
-        }>
-          {element.props.href !== undefined && element.props.href !== "" && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5">
-                <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <input
-                  type="text"
-                  value={String(element.props.href ?? "")}
-                  onChange={(e) => onChange("href", e.target.value)}
-                  placeholder="https://..."
-                  className="flex-1 rounded-sm bg-muted/50 px-2 py-1 text-[11px] font-mono outline-none focus:ring-1 focus:ring-ring min-w-0"
-                />
+        <Section label="Link" defaultOpen={!!(element.props.href)}>
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <LinkIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <input
+                type="text"
+                value={String(element.props.href ?? "")}
+                onChange={(e) => onChange("href", e.target.value)}
+                placeholder="https://..."
+                className="flex-1 rounded-sm bg-muted/50 px-2 py-1 text-[11px] font-mono outline-none focus:ring-1 focus:ring-ring min-w-0"
+              />
               </div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!!element.props.openInNewTab}
-                  onChange={(e) => onChange("openInNewTab", e.target.checked)}
-                  className="rounded"
-                />
-                <span className="text-[11px]">Open in new tab</span>
-              </label>
-            </div>
-          )}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!element.props.openInNewTab}
+                onChange={(e) => onChange("openInNewTab", e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-[11px]">Open in new tab</span>
+            </label>
+          </div>
         </Section>
 
         {/* Content-specific properties */}
@@ -1811,6 +2056,7 @@ function PropertiesPanel({
           <StyleProps props={element.props} onChange={onChange} />
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -1955,6 +2201,100 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   const [showSettings, setShowSettings] = useState(false);
   const [setupStep, setSetupStep] = useState<"features" | "theme" | null>(null);
   const [collapsedPages, setCollapsedPages] = useState<Set<string>>(new Set());
+  const [sidebarTab, setSidebarTab] = useState<"pages" | "code">("pages");
+
+  // ─── Element → HTML converter ──────────────────────────────────────────────
+
+  function elementToHtml(el: SiteElement, indent = 2): string {
+    const pad = " ".repeat(indent);
+    const tag = el.type === "layout" || el.type === "container"
+      ? String(el.props.tag || "div")
+      : el.type === "viewport"
+        ? "div"
+        : el.type === "text"
+          ? String(el.props.tag || "p")
+          : el.type === "image"
+            ? "img"
+            : el.type === "button"
+              ? "a"
+              : "div";
+
+    const attrs: string[] = [];
+
+    // data-canvas-* for viewports
+    if (el.type === "viewport") {
+      attrs.push(`data-viewport="${String(el.props.viewportName || "Desktop")}"`);
+      attrs.push(`data-canvas-x="${el.x ?? 0}"`);
+      attrs.push(`data-canvas-y="${el.y ?? 0}"`);
+      attrs.push(`data-canvas-w="${el.props.viewportWidth ?? el.width ?? 1280}"`);
+      attrs.push(`data-canvas-h="${el.height ?? 600}"`);
+    } else if (el.type === "layout" || el.type === "container") {
+      if (el.x != null) attrs.push(`data-canvas-x="${el.x}"`);
+      if (el.y != null) attrs.push(`data-canvas-y="${el.y}"`);
+      if (el.width != null) attrs.push(`data-canvas-w="${el.width}"`);
+      if (el.height != null) attrs.push(`data-canvas-h="${el.height}"`);
+    }
+
+    // Style
+    const styles: string[] = [];
+    if (el.props.backgroundColor) styles.push(`background-color: ${el.props.backgroundColor}`);
+    if (el.props.padding) styles.push(`padding: ${el.props.padding}`);
+    if (el.props.color) styles.push(`color: ${el.props.color}`);
+    if (el.props.fontSize) styles.push(`font-size: ${el.props.fontSize}`);
+    if (el.props.fontWeight && el.props.fontWeight !== "normal") styles.push(`font-weight: ${el.props.fontWeight}`);
+    if (el.props.align) styles.push(`text-align: ${el.props.align}`);
+    if (styles.length > 0) attrs.push(`style="${styles.join("; ")}"`);
+
+    // Element-specific attributes
+    if (el.type === "image") {
+      if (el.props.src) attrs.push(`src="${el.props.src}"`);
+      attrs.push(`alt="${el.props.alt || ""}"`);
+      return `${pad}<${tag} ${attrs.join(" ")} />`;
+    }
+
+    if (el.type === "button") {
+      if (el.props.href) attrs.push(`href="${el.props.href}"`);
+      const attrStr = attrs.length ? " " + attrs.join(" ") : "";
+      return `${pad}<${tag}${attrStr}>${el.props.label || "Button"}</${tag}>`;
+    }
+
+    if (el.type === "text") {
+      const attrStr = attrs.length ? " " + attrs.join(" ") : "";
+      return `${pad}<${tag}${attrStr}>${el.props.content || ""}</${tag}>`;
+    }
+
+    // Container types (viewport, layout)
+    const attrStr = attrs.length ? " " + attrs.join(" ") : "";
+    const children = el.children ?? [];
+    if (children.length === 0) {
+      return `${pad}<${tag}${attrStr}></${tag}>`;
+    }
+    const childHtml = children.map(c => elementToHtml(c, indent + 2)).join("\n");
+    return `${pad}<${tag}${attrStr}>\n${childHtml}\n${pad}</${tag}>`;
+  }
+
+  function pageToHtml(): string {
+    const activePage = pages.find(p => p.id === activePageId);
+    if (!activePage) return "<!-- No page selected -->";
+    const pageEls = elements;
+    const frameX = 0;
+    const frameY = 0;
+    const bodyAttrs = [
+      `data-canvas-x="${frameX}"`,
+      `data-canvas-y="${frameY}"`,
+      `data-canvas-w="${getPageWidth(pageEls)}"`,
+      `data-canvas-h="${PAGE_FRAME_MIN_HEIGHT}"`,
+    ].join(" ");
+    const elHtml = pageEls.map(el => elementToHtml(el, 4)).join("\n");
+    return `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8" />\n  <title>${activePage.name}</title>\n</head>\n<body ${bodyAttrs}>\n${elHtml}\n</body>\n</html>`;
+  }
+
+  function selectedElementHtml(): string {
+    if (!selectedId) return pageToHtml();
+    const el = findInTree(elements, selectedId);
+    if (!el) return pageToHtml();
+    return elementToHtml(el, 0);
+  }
 
   // Add a viewport to the active page
   const addViewport = (name: string, width: number) => {
@@ -2565,6 +2905,20 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
   }, [selectedId, elements, enteredLayoutId, pushUndo, undo, redo, copyElement, cutElement, pasteElement, bringForward, sendBackward]);
 
   // Element operations
+  const [noViewportAlert, setNoViewportAlert] = useState(false);
+
+  /** Find the viewport that contains a given element ID, or null */
+  const findParentViewport = (elId: string): SiteElement | null => {
+    for (const root of elements) {
+      if (root.type === "viewport") {
+        if (root.id === elId) return root;
+        const found = findInTree(root.children ?? [], elId);
+        if (found) return root;
+      }
+    }
+    return null;
+  };
+
   const addElement = (type: ElementType) => {
     const size = getDefaultSize(type);
     const el: SiteElement = {
@@ -2592,16 +2946,22 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
         setDirty(true);
         return;
       }
+      // Selected element is inside a viewport — add to that viewport
+      const parentVp = findParentViewport(targetId);
+      if (parentVp) {
+        pushUndo();
+        setElements((prev) => updateInTree(prev, parentVp.id, (vp) => ({
+          ...vp,
+          children: [...(vp.children ?? []), el],
+        })));
+        setSelectedId(el.id);
+        setDirty(true);
+        return;
+      }
     }
 
-    // Default: add at root level at viewport center
-    const center = viewportCenter(window.innerWidth * 0.6, window.innerHeight * 0.8, zoom, panX, panY);
-    el.x = center.x - size.w / 2;
-    el.y = center.y - size.h / 2;
-    pushUndo();
-    setElements((prev) => [...prev, el]);
-    setSelectedId(el.id);
-    setDirty(true);
+    // No viewport selected — show alert
+    setNoViewportAlert(true);
   };
 
   const addChildElement = (layoutId: string) => {
@@ -3102,43 +3462,52 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
                       <DndContext
                         onDragEnd={(event) => {
                           const { active, over } = event;
-                          if (!over || active.id === over.id) return;
-                          const activeId = String(active.id);
-                          const overId = String(over.id);
+                          if (!over) return;
+                          // Extract real element IDs from prefixed drag/drop IDs
+                          const activeId = String(active.data.current?.layerId ?? "");
+                          const overId = String(over.data.current?.layerId ?? "");
+                          if (!activeId || !overId || activeId === overId) return;
 
                           const tree = cloneTree(pageEls);
-                          const activeResult = findInTreeWithParent(tree, activeId);
-                          if (!activeResult) return;
-                          const [activeEl, activeParent, activeIdx] = activeResult;
 
+                          const activeResult = findInTreeWithParent(tree, activeId);
                           const overResult = findInTreeWithParent(tree, overId);
-                          if (!overResult) return;
-                          const [overEl] = overResult;
+                          if (!activeResult || !overResult) return;
+
+                          const [activeEl, activeParent, activeIdx, activeParentId] = activeResult;
+                          const [overEl, overParent, , overParentId] = overResult;
+
+                          // Don't drop an element into itself or its descendants
+                          const isDesc = (parent: SiteElement, childId: string): boolean => {
+                            if (parent.id === childId) return true;
+                            return (parent.children ?? []).some(c => isDesc(c, childId));
+                          };
+                          if (isDesc(activeEl, overId)) return;
 
                           // Remove from current position
                           activeParent.splice(activeIdx, 1);
 
-                          // If dropping onto a container (layout/viewport), add as child
-                          if (isContainer(overEl) && overEl.id !== activeEl.id) {
+                          if (activeParentId === overParentId && !isContainer(overEl)) {
+                            // Same parent, non-container target → sibling reorder
+                            const idx = overParent.findIndex(e => e.id === overId);
+                            overParent.splice(idx === -1 ? overParent.length : idx, 0, activeEl);
+                          } else if (isContainer(overEl)) {
+                            // Dropping onto a container → add as child
                             if (!overEl.children) overEl.children = [];
                             overEl.children.push(activeEl);
                           } else {
-                            // Drop as sibling (after the target)
-                            const overResult2 = findInTreeWithParent(tree, overId);
-                            if (!overResult2) return;
-                            const [, overParent, overIdx] = overResult2;
-                            overParent.splice(overIdx + 1, 0, activeEl);
+                            // Different parent, non-container → insert as sibling after target
+                            const idx = overParent.findIndex(e => e.id === overId);
+                            overParent.splice(idx === -1 ? overParent.length : idx + 1, 0, activeEl);
                           }
 
                           setElements(tree);
                           setDirty(true);
                         }}
                       >
-                        <SortableContext items={collectAllIds(pageEls)} strategy={verticalListSortingStrategy}>
-                          {pageEls.map((el) => (
-                            <SortableLayerItem key={el.id} el={el} selectedId={selectedId} onSelect={setSelectedId} />
-                          ))}
-                        </SortableContext>
+                        {pageEls.map((el) => (
+                          <DraggableLayerItem key={el.id} el={el} selectedId={selectedId} onSelect={setSelectedId} />
+                        ))}
                       </DndContext>
                     )}
                   </React.Fragment>
@@ -3684,6 +4053,12 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
               onSaveToLibrary={() => { setSaveDialogName(selectedElement.type); setShowSaveDialog(true); }}
               onApplyFromLibrary={applyFromLibrary}
               savedComponents={savedComponents}
+              elementHtml={selectedElementHtml()}
+              onCodeChange={(updated) => {
+                pushUndo();
+                setElements((prev) => updateInTree(prev, updated.id, () => updated));
+                setDirty(true);
+              }}
             />
           ) : (
             <div className="h-full flex flex-col">
@@ -3932,6 +4307,21 @@ export default function BuilderEditorPage({ params }: { params: Promise<{ siteId
         </div>
       )}
     </div>
+
+    <AlertDialog open={noViewportAlert} onOpenChange={setNoViewportAlert}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Select a viewport first</AlertDialogTitle>
+          <AlertDialogDescription>
+            Elements must be placed inside a viewport. Please click on a viewport (e.g. Desktop) in the Layers panel before adding elements.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setNoViewportAlert(false)}>OK</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
     </ThemeContext.Provider>
   );
 }
