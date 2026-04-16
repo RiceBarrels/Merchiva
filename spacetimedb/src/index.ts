@@ -609,6 +609,7 @@ const sitePageTable = table(
     slug: t.string(),
     elements: t.string(),  // JSON-encoded SiteElement[]
     sortOrder: t.i32(),
+    html: t.option(t.string()),
     createdAt: t.timestamp(),
   }
 );
@@ -2076,6 +2077,7 @@ export const addPage = spacetimedb.reducer(
     slug: t.string(),
     elements: t.string(),
     sortOrder: t.i32(),
+    html: t.option(t.string()),
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
@@ -2087,6 +2089,7 @@ export const addPage = spacetimedb.reducer(
       slug: args.slug,
       elements: args.elements,
       sortOrder: args.sortOrder,
+      html: args.html,
       createdAt: ctx.timestamp,
     });
   }
@@ -2100,6 +2103,7 @@ export const updatePage = spacetimedb.reducer(
     slug: t.string(),
     elements: t.string(),
     sortOrder: t.i32(),
+    html: t.option(t.string()),
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
@@ -2115,6 +2119,7 @@ export const updatePage = spacetimedb.reducer(
       slug: args.slug,
       elements: args.elements,
       sortOrder: args.sortOrder,
+      html: args.html,
     });
   }
 );

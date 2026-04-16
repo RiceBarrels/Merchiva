@@ -55,6 +55,7 @@ function pageFromRow(row: any): SitePage {
     slug: row.slug ?? "index",
     elements: parseJsonField(row.elements, []) as SiteElement[],
     sortOrder: row.sortOrder ?? 0,
+    html: row.html ?? undefined,
     createdAt: row.createdAt,
   };
 }
@@ -174,7 +175,7 @@ export async function createPage(
 
 export async function updatePage(
   id: string,
-  updates: Partial<Pick<SitePage, "name" | "slug" | "elements" | "sortOrder">>
+  updates: Partial<Pick<SitePage, "name" | "slug" | "elements" | "sortOrder" | "html">>
 ): Promise<void> {
   console.warn("[sites] updatePage: writes should go through @/lib/spacetimedb/actions.ts");
 }

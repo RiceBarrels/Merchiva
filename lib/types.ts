@@ -347,7 +347,7 @@ export interface FaqItem {
 }
 
 export type ElementType =
-  | "text" | "image" | "button" | "layout" | "divider"
+  | "text" | "image" | "button" | "layout" | "fixed" | "divider"
   | "hero" | "nav" | "footer" | "spacer" | "columns"
   | "product-card" | "booking-form" | "coupon-banner"
   | "pricing-table" | "testimonial" | "faq" | "gallery"
@@ -375,6 +375,7 @@ export interface SitePage {
   slug: string;
   elements: SiteElement[];
   sortOrder: number;
+  html?: string;
   createdAt: string;
 }
 

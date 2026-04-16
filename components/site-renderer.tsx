@@ -28,15 +28,17 @@ export function themeVars(theme: SiteTheme): React.CSSProperties {
 function RenderText({ props }: { props: Record<string, unknown> }) {
   const tag = (props.tag as string) || "p";
   const content = (props.content as string) || "Text";
+  const customStyle = (props.style as Record<string, string>) || {};
   const style: React.CSSProperties = {
-    textAlign: (props.align as React.CSSProperties["textAlign"]) || "left",
-    color: (props.color as string) || undefined,
-    fontSize: (props.fontSize as string) || undefined,
-    fontWeight: (props.fontWeight as React.CSSProperties["fontWeight"]) || undefined,
-    fontFamily: tag.startsWith("h") ? "var(--sr-font-heading)" : "var(--sr-font-body)",
+    textAlign: ((customStyle.textAlign || props.align) as React.CSSProperties["textAlign"]) || "left",
+    color: customStyle.color || (props.color as string) || undefined,
+    fontSize: customStyle.fontSize || (props.fontSize as string) || undefined,
+    fontWeight: (customStyle.fontWeight || props.fontWeight as React.CSSProperties["fontWeight"]) || undefined,
+    fontFamily: customStyle.fontFamily || (tag.startsWith("h") ? "var(--sr-font-heading)" : "var(--sr-font-body)"),
+    lineHeight: customStyle.lineHeight || 1.6,
+    letterSpacing: customStyle.letterSpacing || undefined,
     padding: (props.padding as string) || "0",
     margin: 0,
-    lineHeight: 1.6,
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -189,12 +191,25 @@ function RenderLayout({ props, children }: { props: Record<string, unknown>; chi
   const spacing = (props.spacing as string) || "medium";
   const GAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
   const gridCols = Number(props.columns) || 2;
+  const justify = (props.justify as string) || undefined;
+  const tag = (props.tag as string) || "div";
+  const href = (props.href as string) || undefined;
+  const customStyle = (props.style as Record<string, string>) || {};
 
   const style: React.CSSProperties = {
     backgroundColor: (props.backgroundColor as string) || undefined,
     padding: (props.padding as string) || "1rem",
     borderRadius: (props.borderRadius as string) || undefined,
-    minHeight: "40px",
+    width: "100%",
+    height: "100%",
+    // Typography from style prop
+    fontFamily: customStyle.fontFamily || undefined,
+    fontSize: customStyle.fontSize || undefined,
+    fontWeight: customStyle.fontWeight || undefined,
+    color: customStyle.color || undefined,
+    textAlign: (customStyle.textAlign as React.CSSProperties["textAlign"]) || undefined,
+    lineHeight: customStyle.lineHeight || undefined,
+    letterSpacing: customStyle.letterSpacing || undefined,
   };
 
   if (direction === "free") {
@@ -205,16 +220,84 @@ function RenderLayout({ props, children }: { props: Record<string, unknown>; chi
     style.flexWrap = "wrap";
     style.gap = GAP[spacing] ?? spacing;
     style.alignItems = (props.align as string) || "flex-start";
+    style.justifyContent = justify;
   } else if (direction === "grid") {
     style.display = "grid";
     style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
     style.gap = GAP[spacing] ?? spacing;
+    style.justifyContent = justify;
   } else {
     // stack (default)
     style.display = "flex";
     style.flexDirection = "column";
     style.gap = GAP[spacing] ?? spacing;
     style.alignItems = (props.align as string) || "stretch";
+    style.justifyContent = justify;
+  }
+
+  const isLink = tag === "a";
+  if (isLink) {
+    style.textDecoration = "none";
+    if (!style.color) style.color = "inherit";
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const Tag = tag as any;
+
+  return (
+    <Tag style={style} href={isLink ? (href || "#") : undefined}>
+      {children?.map((child) => (
+        <SiteElementRenderer key={child.id} element={child} />
+      ))}
+    </Tag>
+  );
+}
+
+function RenderFixed({ props, children }: { props: Record<string, unknown>; children?: SiteElement[] }) {
+  const direction = (props.direction as string) || "stack";
+  const spacing = (props.spacing as string) || "medium";
+  const GAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
+  const gridCols = Number(props.columns) || 2;
+  const justify = (props.justify as string) || undefined;
+  const x = Number(props.x) || 0;
+  const y = Number(props.y) || 0;
+  const zIndex = Number(props.zIndex) || 100;
+  const customStyle = (props.style as Record<string, string>) || {};
+
+  const style: React.CSSProperties = {
+    position: "fixed",
+    left: `${x}px`,
+    top: `${y}px`,
+    zIndex,
+    backgroundColor: (props.backgroundColor as string) || undefined,
+    padding: (props.padding as string) || "1rem",
+    fontFamily: customStyle.fontFamily || undefined,
+    fontSize: customStyle.fontSize || undefined,
+    fontWeight: customStyle.fontWeight || undefined,
+    color: customStyle.color || undefined,
+    textAlign: (customStyle.textAlign as React.CSSProperties["textAlign"]) || undefined,
+    lineHeight: customStyle.lineHeight || undefined,
+    letterSpacing: customStyle.letterSpacing || undefined,
+  };
+
+  if (direction === "row") {
+    style.display = "flex";
+    style.flexDirection = "row";
+    style.flexWrap = "wrap";
+    style.gap = GAP[spacing] ?? spacing;
+    style.alignItems = (props.align as string) || "flex-start";
+    style.justifyContent = justify;
+  } else if (direction === "grid") {
+    style.display = "grid";
+    style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+    style.gap = GAP[spacing] ?? spacing;
+    style.justifyContent = justify;
+  } else {
+    style.display = "flex";
+    style.flexDirection = "column";
+    style.gap = GAP[spacing] ?? spacing;
+    style.alignItems = (props.align as string) || "stretch";
+    style.justifyContent = justify;
   }
 
   return (
@@ -606,7 +689,20 @@ export function SiteElementRenderer({
 }) {
   const { type, props, children } = element;
   const customStyle = (props.style as React.CSSProperties | undefined) || {};
-  const hasCustomStyle = Object.keys(customStyle).length > 0;
+  const isLayoutType = type === "layout" || type === "container" || type === "viewport";
+
+  // For layout types, apply element.height as minHeight so RenderLayout's height:100% works
+  const wrapperStyle: React.CSSProperties = { ...customStyle };
+  if (isLayoutType && element.height != null) {
+    const hVal = typeof element.height === "number" ? `${element.height}px` : element.height;
+    if (!wrapperStyle.minHeight) wrapperStyle.minHeight = hVal;
+  }
+  if (isLayoutType && element.width != null) {
+    const wVal = typeof element.width === "number" ? `${element.width}px` : element.width;
+    if (!wrapperStyle.width) wrapperStyle.width = wVal;
+  }
+
+  const hasWrapperStyle = Object.keys(wrapperStyle).length > 0;
 
   const rendered = (() => {
     switch (type as ElementType) {
@@ -618,6 +714,7 @@ export function SiteElementRenderer({
       case "footer":    return <RenderFooter props={props} />;
       case "divider":   return <RenderDivider props={props} />;
       case "spacer":    return <RenderSpacer props={props} />;
+      case "fixed":     return <RenderFixed props={props} children={children} />;
       case "layout":
       case "container":
       case "viewport":  return <RenderLayout props={props} children={children} />;
@@ -641,8 +738,8 @@ export function SiteElementRenderer({
     }
   })();
 
-  if (!hasCustomStyle) return rendered;
-  return <div style={customStyle}>{rendered}</div>;
+  if (!hasWrapperStyle) return rendered;
+  return <div style={wrapperStyle}>{rendered}</div>;
 }
 
 // ─── Google Fonts loader ──────────────────────────────────────────────────────
