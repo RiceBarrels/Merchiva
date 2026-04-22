@@ -5,16 +5,16 @@ import type { Product } from "@/lib/types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fromRow(row: any): Product {
   return {
-    id: row.id,
+    id: typeof row.id === "string" ? row.id : row.id?.toString?.() ?? "",
     name: row.name,
     category: row.category,
-    price: Number(row.price),
-    cost: Number(row.cost),
-    unitsSoldThisMonth: Number(row.unitsSoldThisMonth),
-    unitsSoldLastMonth: Number(row.unitsSoldLastMonth),
-    revenue: Number(row.revenue),
-    margin: Number(row.margin),
-    rating: Number(row.rating),
+    price: Number(row.price) || 0,
+    cost: Number(row.cost) || 0,
+    unitsSoldThisMonth: Number(row.unitsSoldThisMonth) || 0,
+    unitsSoldLastMonth: Number(row.unitsSoldLastMonth) || 0,
+    revenue: Number(row.revenue) || 0,
+    margin: Number(row.margin) || 0,
+    rating: Number(row.rating) || 0,
     trend: row.trend,
     alert: row.alert,
     alertReason: row.alertReason ?? undefined,
@@ -41,7 +41,7 @@ export async function getProductById(id: string): Promise<Product | null> {
   const orgId = getActiveOrgId();
   const rows = (c as any).db.product.iter();
   const match = Array.from(rows).find(
-    (r: any) => r.id === id && r.organizationId === orgId
+    (r: any) => (r.id?.toString?.() ?? r.id) === id && r.organizationId === orgId
   );
   return match ? fromRow(match) : null;
 }

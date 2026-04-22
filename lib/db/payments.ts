@@ -9,7 +9,7 @@ function fromRow(r: any): Payment {
     organizationId: r.organizationId,
     userId: r.userId ?? null,
     orderId: r.orderId ?? null,
-    amount: Number(r.amount),
+    amount: Number(r.amount) || 0,
     currency: r.currency,
     method: r.method as PaymentMethod,
     status: r.status as PaymentStatus,

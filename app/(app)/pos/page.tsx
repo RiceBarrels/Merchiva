@@ -34,7 +34,8 @@ function catColor(category: string, categories: string[]): string {
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
 function fmt(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const safe = Number.isFinite(n) ? n : 0;
+  return safe.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
 function fmtDate(iso: string): string {
@@ -698,7 +699,7 @@ export default function POSPage() {
     setCart((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1, category: product.category }];
+      return [...prev, { id: product.id, name: product.name, price: product.price || 0, quantity: 1, category: product.category }];
     });
   }, []);
 
@@ -748,21 +749,32 @@ export default function POSPage() {
         processorResponse: opts.processorResponse ? JSON.stringify(opts.processorResponse) : null,
         customerName: customerName.trim() || null,
         notes: opts.notes ?? null,
-        items: JSON.stringify(cart),
+        items: cart.map((c) => ({
+          name: c.name,
+          price: c.price,
+          quantity: c.quantity,
+        })),
         taxAmount: parseFloat(taxAmount.toFixed(2)),
         discountAmount: parseFloat(discountAmount.toFixed(2)),
         refundAmount: null, refundReason: null,
         createdAt: new Date().toISOString(),
       } as any;
+      const itemsForDb = cart.map((c) => ({
+        name: c.name,
+        price: c.price,
+        quantity: c.quantity,
+      }));
       await createPayment({
         organizationId, userId,
         amount: optimisticPayment.amount,
         currency, method, status: "completed",
         processorId: opts.processorId ?? null,
-        processorResponse: opts.processorResponse ?? null,
+        processorResponse: opts.processorResponse
+          ? JSON.stringify(opts.processorResponse)
+          : null,
         customerName: customerName.trim() || null,
         notes: opts.notes ?? null,
-        items: cart,
+        items: JSON.stringify(itemsForDb),
         taxAmount: optimisticPayment.taxAmount,
         discountAmount: optimisticPayment.discountAmount,
       });

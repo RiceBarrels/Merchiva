@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSiteById, getPages } from "@/lib/db/sites";
+import { createPage } from "@/lib/spacetimedb/actions";
 import { getProducts } from "@/lib/db/products";
 import { usePermissions } from "@/lib/context/permissions";
 import { useSidebarOpen } from "@/components/sidebar";
@@ -44,8 +45,18 @@ export default function BuilderPage({
         ]);
         if (cancelled) return;
         setSite(s);
-        setPages(p);
         setProducts(pr);
+
+        if (p.length === 0 && s) {
+          try {
+            await createPage(siteId, "Home", "index", 0);
+          } catch (err) {
+            console.error("Failed to auto-create index page:", err);
+          }
+          return;
+        }
+
+        setPages(p);
       } catch (err) {
         console.error("Failed to load builder data:", err);
       } finally {
