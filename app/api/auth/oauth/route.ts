@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { workos, clientId } from "@/lib/auth/workos";
+import { handleOptions, jsonWithCors } from "@/lib/api-cors";
 
 const providerMap: Record<string, string> = {
   google: "GoogleOAuth",
   apple: "AppleOAuth",
 };
+
+export const OPTIONS = handleOptions;
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +15,8 @@ export async function POST(req: NextRequest) {
 
     const strategy = providerMap[provider];
     if (!strategy) {
-      return NextResponse.json(
+      return jsonWithCors(
+        req,
         { error: `Unsupported provider: ${provider}` },
         { status: 400 },
       );
@@ -28,11 +32,11 @@ export async function POST(req: NextRequest) {
       state: Buffer.from(JSON.stringify({ redirectTo: redirectTo || "/dashboard" })).toString("base64url"),
     });
 
-    return NextResponse.json({ url: authorizationUrl });
+    return jsonWithCors(req, { url: authorizationUrl });
   } catch (err: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const error = err as any;
     const message = error.message ?? "Failed to generate auth URL";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonWithCors(req, { error: message }, { status: 500 });
   }
 }

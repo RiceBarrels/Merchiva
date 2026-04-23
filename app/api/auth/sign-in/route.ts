@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { workos, clientId } from "@/lib/auth/workos";
+import { handleOptions, jsonWithCors } from "@/lib/api-cors";
+
+export const OPTIONS = handleOptions;
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +16,7 @@ export async function POST(req: NextRequest) {
       userAgent: req.headers.get("user-agent") ?? undefined,
     });
 
-    return NextResponse.json({
+    return jsonWithCors(req, {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
       user: result.user,
@@ -23,7 +26,8 @@ export async function POST(req: NextRequest) {
     const error = err as any;
 
     if (error.code === "email_verification_required") {
-      return NextResponse.json(
+      return jsonWithCors(
+        req,
         {
           emailVerificationRequired: true,
           pendingAuthenticationToken: error.pendingAuthenticationToken,
@@ -33,7 +37,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (error.code === "mfa_challenge") {
-      return NextResponse.json(
+      return jsonWithCors(
+        req,
         {
           mfaRequired: true,
           pendingAuthenticationToken: error.pendingAuthenticationToken,
@@ -45,6 +50,6 @@ export async function POST(req: NextRequest) {
 
     const message =
       error.message ?? error.rawData?.message ?? "Authentication failed";
-    return NextResponse.json({ error: message }, { status: 401 });
+    return jsonWithCors(req, { error: message }, { status: 401 });
   }
 }

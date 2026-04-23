@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { workos, clientId } from "@/lib/auth/workos";
+import { handleOptions, jsonWithCors } from "@/lib/api-cors";
+
+export const OPTIONS = handleOptions;
 
 export async function POST(req: NextRequest) {
   try {
     const { refreshToken } = await req.json();
 
     if (!refreshToken) {
-      return NextResponse.json(
-        { error: "Missing refresh token" },
-        { status: 400 },
-      );
+      return jsonWithCors(req, { error: "Missing refresh token" }, { status: 400 });
     }
 
     const result = await workos.userManagement.authenticateWithRefreshToken({
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       userAgent: req.headers.get("user-agent") ?? undefined,
     });
 
-    return NextResponse.json({
+    return jsonWithCors(req, {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
       user: result.user,
@@ -28,6 +28,6 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const error = err as any;
     const message = error.message ?? "Token refresh failed";
-    return NextResponse.json({ error: message }, { status: 401 });
+    return jsonWithCors(req, { error: message }, { status: 401 });
   }
 }

@@ -1,4 +1,8 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
+}
 
 export async function apiPost<T = unknown>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

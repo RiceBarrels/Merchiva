@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { storeAuthTokens } from "@/lib/auth/context";
+import { apiUrl } from "@/lib/api-client";
 
 /* ── Password strength ─────────────────────────────── */
 
@@ -58,7 +59,7 @@ function SignupForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/sign-up", {
+      const res = await fetch(apiUrl("/api/auth/sign-up"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -92,7 +93,7 @@ function SignupForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/verify-email", {
+      const res = await fetch(apiUrl("/api/auth/verify-email"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -118,7 +119,7 @@ function SignupForm() {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     try {
-      const res = await fetch("/api/auth/oauth", {
+      const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider, redirectTo: next }),

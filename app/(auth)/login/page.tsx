@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { storeAuthTokens } from "@/lib/auth/context";
+import { apiUrl } from "@/lib/api-client";
 
 function LoginForm() {
   const router = useRouter();
@@ -48,7 +49,7 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/sign-in", {
+      const res = await fetch(apiUrl("/api/auth/sign-in"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -91,7 +92,7 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/verify-mfa", {
+      const res = await fetch(apiUrl("/api/auth/verify-mfa"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -121,7 +122,7 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/verify-email", {
+      const res = await fetch(apiUrl("/api/auth/verify-email"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -147,7 +148,7 @@ function LoginForm() {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     try {
-      const res = await fetch("/api/auth/oauth", {
+      const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider, redirectTo: next }),

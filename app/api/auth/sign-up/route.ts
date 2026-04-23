@@ -1,5 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { workos, clientId } from "@/lib/auth/workos";
+import { handleOptions, jsonWithCors } from "@/lib/api-cors";
+
+export const OPTIONS = handleOptions;
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,8 +14,6 @@ export async function POST(req: NextRequest) {
       emailVerified: false,
     });
 
-    // Attempt to authenticate — WorkOS will send a verification email
-    // and return a pending token if email is unverified.
     try {
       const result = await workos.userManagement.authenticateWithPassword({
         clientId,
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
         userAgent: req.headers.get("user-agent") ?? undefined,
       });
 
-      return NextResponse.json({
+      return jsonWithCors(req, {
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
         user: result.user,
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const authError = authErr as any;
       if (authError.code === "email_verification_required") {
-        return NextResponse.json({
+        return jsonWithCors(req, {
           pendingVerification: true,
           pendingAuthenticationToken: authError.pendingAuthenticationToken,
           userId: user.id,
@@ -46,6 +47,6 @@ export async function POST(req: NextRequest) {
     const message =
       error.message ?? error.rawData?.message ?? "Registration failed";
     const status = message.includes("already exists") ? 409 : 400;
-    return NextResponse.json({ error: message }, { status });
+    return jsonWithCors(req, { error: message }, { status });
   }
 }

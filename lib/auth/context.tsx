@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { apiUrl } from "@/lib/api-client";
 
 export interface AuthUser {
   id: string;
@@ -118,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!refreshToken) return null;
 
     try {
-      const res = await fetch("/api/auth/refresh", {
+      const res = await fetch(apiUrl("/api/auth/refresh"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),

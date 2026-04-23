@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { storeAuthTokens } from "@/lib/auth/context";
+import { apiUrl } from "@/lib/api-client";
 
 export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
   const [email, setEmail] = useState("");
@@ -23,7 +24,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/sign-in", {
+      const res = await fetch(apiUrl("/api/auth/sign-in"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -58,7 +59,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/verify-mfa", {
+      const res = await fetch(apiUrl("/api/auth/verify-mfa"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
