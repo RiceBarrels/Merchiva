@@ -15,7 +15,7 @@ function getAllowedOrigin(origin: string | null): string | null {
   return null;
 }
 
-export function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const origin = req.headers.get("origin");
   const allowed = getAllowedOrigin(origin);
 
