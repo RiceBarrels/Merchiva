@@ -1,14 +1,13 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.bizops.app',
-  appName: 'BizOps',
+  appId: 'com.merchiva.app',
+  appName: 'Merchiva',
   webDir: 'out',
-  // server: {
-  //   url: 'https://project-management-phi-red.vercel.app',
-  //   iosScheme: 'https',
-  //   androidScheme: 'https',
-  // },
+  server: {
+    iosScheme: 'merchiva',
+    androidScheme: 'merchiva',
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

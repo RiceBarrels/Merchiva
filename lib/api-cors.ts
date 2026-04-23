@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 
 const ALLOWED_ORIGINS = [
   "https://project-management-phi-red.vercel.app",
+  "merchiva://",
   "capacitor://localhost",
   "ionic://localhost",
-  "http://localhost",
+  "http://localhost:5500",
+  "http://localhost:3000",
 ];
 
 function getAllowedOrigin(req: Request): string | null {
