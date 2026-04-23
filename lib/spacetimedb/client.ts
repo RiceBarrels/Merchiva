@@ -3,7 +3,7 @@
 // This file provides the connection config and a cached connection reference.
 //
 // IMPORTANT: `DbConnection` is code-generated per SpacetimeDB module.
-// Once the BizOps server module is generated (by the server-side session), import it:
+// Once the Merchiva server module is generated (by the server-side session), import it:
 //   import { DbConnection } from "@/lib/spacetimedb/generated";
 //
 // The `buildConnection` helper below is wired to be called from the provider

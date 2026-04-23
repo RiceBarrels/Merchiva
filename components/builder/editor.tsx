@@ -102,6 +102,7 @@ export function BuilderEditor({
 
   return (
     <Editor
+      key={activePageId}
       resolver={resolver}
       enabled={true}
       onRender={RenderNode}
@@ -125,7 +126,7 @@ export function BuilderEditor({
             onAddPage={handleAddPage}
           />
           {/* Canvas area */}
-          <CanvasContextMenu>
+          <CanvasContextMenu siteId={site.id}>
             <div
               className="relative flex-1 overflow-auto bg-muted"
               data-craft-canvas
@@ -133,7 +134,7 @@ export function BuilderEditor({
             >
               <div className="mx-auto p-8" style={{ maxWidth: 1400 }}>
                 {hasState ? (
-                  <Frame json={initialState}>
+                  <Frame data={initialState}>
                     <Element canvas is={CraftCanvas} />
                   </Frame>
                 ) : (
@@ -145,7 +146,7 @@ export function BuilderEditor({
               <ToolBar />
             </div>
           </CanvasContextMenu>
-          <DesignPanel />
+          <DesignPanel pages={pages} />
         </div>
       </div>
       <KeyboardShortcuts />

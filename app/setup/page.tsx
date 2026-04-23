@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Zap,
+  // Zap removed — using MerchivaLogo
   Loader2,
   ChevronRight,
   ChevronLeft,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { ownerPermissions } from "@/lib/db/team";
 import { hapticLight, hapticSuccess, hapticError } from "@/lib/haptics";
+import { MerchivaLogo } from "@/components/logo";
 
 const BUSINESS_TYPES = [
   "Restaurant",
@@ -83,7 +84,7 @@ const POS_SYSTEMS = [
   },
 ];
 
-const STORAGE_KEY = "bizops_setup_state";
+const STORAGE_KEY = "merchiva_setup_state";
 const TOTAL_STEPS = 4;
 
 interface SetupState {
@@ -182,10 +183,8 @@ export default function SetupPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-2.5 mb-6">
-          <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-stone-900 text-white">
-            <Zap className="h-3.5 w-3.5" />
-          </div>
-          <p className="font-bold text-sm leading-none text-stone-900">BizOps</p>
+          <MerchivaLogo size={28} fg="#ffffff" bg="#1c1917" rounded />
+          <p className="font-bold text-sm leading-none text-stone-900">Merchiva</p>
         </div>
 
         {/* Step indicator */}
@@ -483,7 +482,7 @@ export default function SetupPage() {
               </div>
               <CardTitle className="text-xl">You&apos;re all set!</CardTitle>
               <CardDescription>
-                Your BizOps workspace is ready. Let&apos;s get started.
+                Your Merchiva workspace is ready. Let&apos;s get started.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

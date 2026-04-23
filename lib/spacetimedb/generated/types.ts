@@ -138,6 +138,7 @@ export const OrgMember = __t.object("OrgMember", {
   permissions: __t.string(),
   status: __t.string(),
   joinedAt: __t.timestamp(),
+  punchInCode: __t.option(__t.string()),
 });
 export type OrgMember = __Infer<typeof OrgMember>;
 
@@ -203,6 +204,19 @@ export const Product = __t.object("Product", {
   updatedAt: __t.timestamp(),
 });
 export type Product = __Infer<typeof Product>;
+
+export const PunchEvent = __t.object("PunchEvent", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  memberId: __t.string(),
+  pin: __t.string(),
+  action: __t.string(),
+  at: __t.timestamp(),
+  closed: __t.bool(),
+  pairEventId: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+});
+export type PunchEvent = __Infer<typeof PunchEvent>;
 
 export const RoleTask = __t.object("RoleTask", {
   id: __t.uuid(),
@@ -383,6 +397,8 @@ export const SitePage = __t.object("SitePage", {
   elements: __t.string(),
   sortOrder: __t.i32(),
   createdAt: __t.timestamp(),
+  html: __t.option(__t.string()),
+  metadata: __t.option(__t.string()),
 });
 export type SitePage = __Infer<typeof SitePage>;
 

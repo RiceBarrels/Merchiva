@@ -20,4 +20,5 @@ export default __t.row({
   permissions: __t.string(),
   status: __t.string(),
   joinedAt: __t.timestamp().name("joined_at"),
+  punchInCode: __t.option(__t.string()).name("punch_in_code"),
 });

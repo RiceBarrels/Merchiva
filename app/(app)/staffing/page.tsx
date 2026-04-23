@@ -9,7 +9,7 @@ import {
   ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera,
   Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, ArrowLeft,
   ClipboardList, Pencil, Download, Wine, Bubbles, MoonStar, Sun, ReceiptText, HandPlatter,
-  RefreshCw,
+  RefreshCw, Inbox, PanelRightOpen, PanelRightClose, Bell,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,9 +46,11 @@ import type {
   StaffAvailability, TimeOffRequest, ShiftTrade, RoleTask,
 } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { PageHeader } from "@/components/page-header";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
+import { useSpacetimeDB } from "spacetimedb/react";
 import { toast } from "sonner";
 
 const ROLE_COLORS = [
@@ -164,16 +166,930 @@ function formatDateShort(iso: string): string {
 
 type MainTab = "myShifts" | "schedule" | "table" | "roles";
 
+const DEFAULT_DAY_TIMES = [false, true, true, true, true, true, false].map((on) => ({
+  enabled: on, fullDay: true, startTime: "09:00", endTime: "17:00",
+}));
+
 const DEFAULT_AVAIL_FORM = {
   type: "permanent" as "permanent" | "temporary",
   startDate: "",
   endDate: "",
-  dayTimes: [false, true, true, true, true, true, false].map((on) => ({
-    enabled: on, fullDay: true, startTime: "09:00", endTime: "17:00",
-  })),
+  dayTimes: DEFAULT_DAY_TIMES,
   status: "available",
   comments: "",
 };
+
+// Pad a possibly-short dayTimes array to 7 entries so UI indexing is always safe.
+function normalizeDayTimes(dt: unknown): typeof DEFAULT_DAY_TIMES {
+  const base = DEFAULT_DAY_TIMES.map((d) => ({ ...d }));
+  if (!Array.isArray(dt)) return base;
+  for (let i = 0; i < 7; i++) {
+    const src = dt[i];
+    if (src && typeof src === "object") {
+      base[i] = { ...base[i], ...(src as Partial<typeof base[number]>) };
+    }
+  }
+  return base;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Desktop Layout
+// ─────────────────────────────────────────────────────────────────────────────
+
+type DesktopTab = "schedule" | "myShifts" | "roles";
+
+interface StaffingDesktopProps {
+  organizationId: string | null;
+  isOwner: boolean;
+  canEdit: boolean;
+  isStaff: boolean;
+  currentOrg: { name: string } | null;
+  role: string | null;
+  userId: string | null;
+  myMemberId: string | null;
+  team: OrgMember[];
+  shifts: Shift[];
+  setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
+  roles: StaffRole[];
+  weekStart: Date;
+  setWeekStart: React.Dispatch<React.SetStateAction<Date>>;
+  weekDates: Date[];
+  weekShifts: Shift[];
+  myShifts: Shift[];
+  todayStr: string;
+  selectedDay: string;
+  setSelectedDay: (d: string) => void;
+  todayTasks: RoleTask[];
+  taskCompletions: Record<string, boolean>;
+  toggleTaskDone: (taskId: string) => void;
+  loadingTodayTasks: boolean;
+  orgTimeOffRequests: TimeOffRequest[];
+  orgShiftTrades: ShiftTrade[];
+  pendingCount: number;
+  getMemberName: (id: string) => string;
+  handleTimeOffStatusUpdate: (id: string, status: "approved" | "denied") => Promise<void>;
+  handleTradeStatusUpdate: (id: string, status: "accepted" | "denied") => Promise<void>;
+  handleDeleteShift: (id: string) => Promise<void>;
+  setEditingShift: (s: Shift | null) => void;
+  setShiftForm: React.Dispatch<React.SetStateAction<{
+    memberId: string;
+    date: string;
+    shiftType: ShiftType;
+    startTime: string;
+    endTime: string;
+    roleNames: string[];
+  }>>;
+  setAddDialog: (b: boolean) => void;
+  roleTasksCache: Record<string, RoleTask[]>;
+  loadRoleTasksFor: (roleId: string) => Promise<void>;
+  loadingTasks: boolean;
+  selectedRole: StaffRole | null;
+  setSelectedRole: (r: StaffRole | null) => void;
+  handleSelectRole: (r: StaffRole) => void;
+  handleDeleteRole: (id: string) => Promise<void>;
+  setEditingRole: (r: StaffRole | null) => void;
+  setRoleForm: React.Dispatch<React.SetStateAction<{
+    name: string;
+    color: string;
+    icon: string;
+    description: string;
+    permissions: StaffRolePermissions;
+  }>>;
+  setRoleDialog: (b: boolean) => void;
+  setTaskDialog: React.Dispatch<React.SetStateAction<{ open: boolean; task: RoleTask | null }>>;
+  setTaskForm: React.Dispatch<React.SetStateAction<{
+    title: string;
+    description: string;
+    hasTime: boolean;
+    startTime: string;
+    endTime: string;
+    requiresEvidence: boolean;
+    notifyChats: string[];
+  }>>;
+  refreshing: boolean;
+}
+
+function StaffingDesktop(props: StaffingDesktopProps) {
+  const {
+    canEdit, isStaff, currentOrg, team, shifts, roles,
+    weekStart, setWeekStart, weekDates, weekShifts, myShifts,
+    todayStr, todayTasks, taskCompletions, toggleTaskDone, loadingTodayTasks,
+    orgTimeOffRequests, orgShiftTrades, pendingCount,
+    getMemberName, handleTimeOffStatusUpdate, handleTradeStatusUpdate,
+    handleDeleteShift, setEditingShift, setShiftForm, setAddDialog,
+    roleTasksCache, loadRoleTasksFor, loadingTasks,
+    selectedRole, setSelectedRole, handleSelectRole, handleDeleteRole,
+    setEditingRole, setRoleForm, setRoleDialog,
+    setTaskDialog, setTaskForm, refreshing, myMemberId, selectedDay, setSelectedDay,
+  } = props;
+
+  const [dTab, setDTab] = useState<DesktopTab>("schedule");
+  const [railOpen, setRailOpen] = useState(true);
+
+  const prevWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
+  const nextWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
+
+  const monthYearD = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const isTodayD = (d: Date) => isoDate(d) === todayStr;
+  const allMembers = team.filter((m) => m.status === "active");
+
+  // Compute shift hours helper
+  const shiftHours = (s: Shift) => {
+    const [sh, sm] = s.startTime.split(":").map(Number);
+    const [eh, em] = s.endTime.split(":").map(Number);
+    return Math.max(0, eh + em / 60 - (sh + sm / 60));
+  };
+
+  // ─── Schedule Tab (staff x week grid) ─────────────────────
+  function ScheduleGrid() {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Week nav */}
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-white shrink-0">
+          <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
+            <ChevronLeft className="h-4 w-4 text-stone-600" />
+          </button>
+          <span className="text-[13px] font-semibold text-stone-800 min-w-[140px] text-center">{monthYearD}</span>
+          <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
+            <ChevronRight className="h-4 w-4 text-stone-600" />
+          </button>
+          <div className="flex-1" />
+          {canEdit && (
+            <button
+              onClick={() => {
+                setEditingShift(null);
+                setShiftForm({
+                  memberId: team[0]?.id ?? "",
+                  date: todayStr,
+                  shiftType: "morning",
+                  startTime: "07:00",
+                  endTime: "14:00",
+                  roleNames: [],
+                });
+                setAddDialog(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Shift
+            </button>
+          )}
+        </div>
+
+        {/* Grid */}
+        <div className="flex-1 overflow-auto">
+          <div
+            className="min-w-full"
+            style={{ display: "grid", gridTemplateColumns: "180px repeat(7, minmax(0, 1fr)) 68px" }}
+          >
+            {/* Header row */}
+            <div className="sticky top-0 z-10 bg-stone-50 border-b border-r border-border px-3 py-2.5 flex items-center">
+              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Staff</span>
+            </div>
+            {weekDates.map((d) => {
+              const ds = isoDate(d);
+              const today = isTodayD(d);
+              return (
+                <div
+                  key={ds}
+                  className={`sticky top-0 z-10 border-b border-r border-border px-2 py-2.5 text-center ${
+                    today ? "bg-stone-900 text-white" : "bg-stone-50 text-stone-600"
+                  }`}
+                >
+                  <div className="text-[10.5px] font-semibold uppercase tracking-wide">
+                    {d.toLocaleDateString("en-US", { weekday: "short" })}
+                  </div>
+                  <div className={`text-[15px] font-bold ${today ? "text-white" : "text-stone-800"}`}>
+                    {d.getDate()}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="sticky top-0 z-10 bg-stone-50 border-b border-border px-2 py-2.5 text-center">
+              <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wide">Total</span>
+            </div>
+
+            {/* Staff rows */}
+            {allMembers.map((member) => {
+              const memberWeekShifts = weekShifts.filter((s) => s.memberId === member.id);
+              const totalHrs = memberWeekShifts.reduce((acc, s) => acc + shiftHours(s), 0);
+              return (
+                <React.Fragment key={member.id}>
+                  {/* Name cell */}
+                  <div className="border-b border-r border-border px-3 py-2.5 flex items-center gap-2.5 bg-white">
+                    <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(member.displayName)}`}>
+                      {initials(member.displayName)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium text-stone-900 truncate leading-tight">{member.displayName}</div>
+                      <div className="text-[11px] text-stone-400 truncate leading-tight">{member.role ?? "staff"}</div>
+                    </div>
+                  </div>
+
+                  {/* Day cells */}
+                  {weekDates.map((d) => {
+                    const ds = isoDate(d);
+                    const dayShifts = memberWeekShifts.filter((s) => s.date === ds);
+                    const today = isTodayD(d);
+                    return (
+                      <div
+                        key={ds}
+                        className={`border-b border-r border-border px-1.5 py-1.5 group/cell relative min-h-[60px] ${
+                          today ? "bg-stone-50/50" : "bg-white"
+                        }`}
+                      >
+                        {dayShifts.length > 0 ? (
+                          <div className="space-y-1">
+                            {dayShifts.map((shift) => {
+                              const matchedRoles = (shift.staffRoles ?? [])
+                                .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
+                                .filter(Boolean) as StaffRole[];
+                              return (
+                                <div
+                                  key={shift.id}
+                                  className="flex items-start gap-1.5 px-1.5 py-1 rounded-[0.3rem] hover:bg-stone-100 cursor-pointer transition-colors group/chip"
+                                  onClick={() => {
+                                    if (canEdit) {
+                                      setEditingShift(shift);
+                                      setShiftForm({
+                                        memberId: shift.memberId ?? member.id,
+                                        date: shift.date,
+                                        shiftType: shift.shiftType,
+                                        startTime: shift.startTime,
+                                        endTime: shift.endTime,
+                                        roleNames: shift.staffRoles ?? [],
+                                      });
+                                      setAddDialog(true);
+                                    }
+                                  }}
+                                >
+                                  <div
+                                    className="w-[3px] rounded-full shrink-0 self-stretch mt-0.5 mb-0.5"
+                                    style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[11px] font-medium text-stone-700 font-mono tabular-nums leading-tight">
+                                      {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                                    </div>
+                                    {matchedRoles.length > 0 && (
+                                      <div className="flex items-center gap-1 mt-0.5">
+                                        {matchedRoles.map((r) => (
+                                          <span
+                                            key={r.id}
+                                            className="h-2 w-2 rounded-full shrink-0"
+                                            style={{ backgroundColor: r.color }}
+                                            title={r.name}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {canEdit && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteShift(shift.id); }}
+                                      className="p-0.5 rounded opacity-0 group-hover/chip:opacity-100 hover:bg-red-100 text-stone-400 hover:text-red-600 transition-all shrink-0"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : canEdit ? (
+                          <button
+                            onClick={() => {
+                              setEditingShift(null);
+                              setShiftForm({
+                                memberId: member.id,
+                                date: ds,
+                                shiftType: "morning",
+                                startTime: "07:00",
+                                endTime: "14:00",
+                                roleNames: [],
+                              });
+                              setAddDialog(true);
+                            }}
+                            className="absolute inset-1 border border-dashed border-transparent group-hover/cell:border-stone-300 rounded-[0.3rem] flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-stone-400" />
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+
+                  {/* Total cell */}
+                  <div className="border-b border-border px-2 py-2.5 text-center bg-white">
+                    <span className="text-[13px] font-semibold text-stone-700 font-mono tabular-nums">
+                      {totalHrs % 1 === 0 ? `${totalHrs}h` : `${totalHrs.toFixed(1)}h`}
+                    </span>
+                  </div>
+                </React.Fragment>
+              );
+            })}
+
+            {/* Bottom total row */}
+            <div className="bg-stone-50 border-r border-border px-3 py-2 flex items-center">
+              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Total</span>
+            </div>
+            {weekDates.map((d) => {
+              const ds = isoDate(d);
+              const count = weekShifts.filter((s) => s.date === ds).length;
+              const hrs = weekShifts.filter((s) => s.date === ds).reduce((a, s) => a + shiftHours(s), 0);
+              return (
+                <div key={ds} className="bg-stone-50 border-r border-border px-2 py-2 text-center">
+                  <div className="text-[13px] font-semibold text-stone-700 font-mono tabular-nums">{count}</div>
+                  <div className="text-[10px] text-stone-400 font-mono">{hrs % 1 === 0 ? `${hrs}h` : `${hrs.toFixed(1)}h`}</div>
+                </div>
+              );
+            })}
+            <div className="bg-stone-50 px-2 py-2 text-center">
+              <div className="text-[13px] font-semibold text-stone-700 font-mono tabular-nums">
+                {weekShifts.reduce((a, s) => a + shiftHours(s), 0).toFixed(0)}h
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── My Shifts Tab ────────────────────────────────────────
+  function MyShiftsTab() {
+    const todayShifts = shifts.filter((s) => s.memberId === myMemberId && s.date === todayStr);
+    const doneCount = todayTasks.filter((t) => taskCompletions[t.id]).length;
+
+    return (
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left: week list */}
+        <div className="flex-1 min-w-0 overflow-y-auto px-6 py-4">
+          {/* Week nav */}
+          <div className="flex items-center gap-3 mb-4">
+            <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
+              <ChevronLeft className="h-4 w-4 text-stone-600" />
+            </button>
+            <span className="text-[13px] font-semibold text-stone-800">{monthYearD}</span>
+            <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
+              <ChevronRight className="h-4 w-4 text-stone-600" />
+            </button>
+          </div>
+
+          <div className="divide-y divide-border">
+            {weekDates.map((d) => {
+              const ds = isoDate(d);
+              const dayShifts = myShifts.filter((s) => s.date === ds);
+              const today = isTodayD(d);
+              return (
+                <div key={ds} className="flex gap-4 py-3">
+                  {/* Date column */}
+                  <div className={`w-14 shrink-0 text-center py-1.5 rounded-[0.3rem] ${today ? "bg-stone-900 text-white" : ""}`}>
+                    <div className={`text-[10.5px] font-semibold uppercase tracking-wide ${today ? "text-stone-300" : "text-stone-400"}`}>
+                      {d.toLocaleDateString("en-US", { weekday: "short" })}
+                    </div>
+                    <div className={`text-[15px] font-bold ${today ? "text-white" : "text-stone-800"}`}>
+                      {d.getDate()}
+                    </div>
+                  </div>
+
+                  {/* Shifts */}
+                  <div className="flex-1 min-w-0">
+                    {dayShifts.length === 0 ? (
+                      <p className="text-[13px] text-stone-400 py-2">No shifts</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {dayShifts.map((shift) => {
+                          const matchedRoles = (shift.staffRoles ?? [])
+                            .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
+                            .filter(Boolean) as StaffRole[];
+                          return (
+                            <div
+                              key={shift.id}
+                              className="flex items-center gap-3 px-3 py-2 border border-border rounded-[0.3rem] hover:border-stone-300 transition-colors"
+                            >
+                              <div
+                                className="w-[3px] rounded-full self-stretch shrink-0"
+                                style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[13px] font-medium text-stone-800 font-mono tabular-nums">
+                                  {formatTime(shift.startTime)} &ndash; {formatTime(shift.endTime)}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[11px] text-stone-500">{SHIFT_LABELS[shift.shiftType]}</span>
+                                  {matchedRoles.map((r) => (
+                                    <span key={r.id} className="inline-flex items-center gap-1">
+                                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
+                                      <span className="text-[11px] text-stone-500">{r.name}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 text-stone-600 transition-colors">
+                                  Trade
+                                </button>
+                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 text-stone-600 transition-colors">
+                                  Cover
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right: Today's tasks */}
+        <div className="w-[320px] shrink-0 border-l border-border bg-white overflow-y-auto">
+          <div className="px-5 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sun className="h-4 w-4 text-stone-500" />
+                <span className="text-[13px] font-semibold text-stone-900">Today&apos;s Tasks</span>
+              </div>
+              {todayTasks.length > 0 && (
+                <span className="text-[11px] font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200 rounded-[0.3rem]">
+                  {doneCount}/{todayTasks.length}
+                </span>
+              )}
+            </div>
+
+            {todayTasks.length === 0 ? (
+              <p className="text-[13px] text-stone-400">
+                {loadingTodayTasks ? "Loading tasks..." : todayShifts.length === 0 ? "No shifts today" : "No tasks assigned"}
+              </p>
+            ) : (
+              <div className="space-y-0.5">
+                {todayTasks.map((task) => {
+                  const done = !!taskCompletions[task.id];
+                  return (
+                    <button
+                      key={task.id}
+                      onClick={() => toggleTaskDone(task.id)}
+                      className="flex items-start gap-2.5 w-full text-left py-1.5 hover:bg-stone-50 -mx-1 px-1 transition-colors rounded-[0.3rem]"
+                    >
+                      <div className={`mt-0.5 h-4 w-4 shrink-0 border rounded-[2px] flex items-center justify-center transition-colors ${done ? "bg-stone-900 border-stone-900" : "border-stone-300"}`}>
+                        {done && <Check className="h-2.5 w-2.5 text-white" />}
+                      </div>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {task.startTime && task.endTime && (
+                          <span className="font-mono text-[11px] text-stone-400 shrink-0 tabular-nums">
+                            {task.startTime.slice(0, 5)}&ndash;{task.endTime.slice(0, 5)}
+                          </span>
+                        )}
+                        <span className={`text-[13px] leading-snug ${done ? "line-through text-stone-400" : "text-stone-800"}`}>
+                          {task.title}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Roles Tab ────────────────────────────────────────────
+  function RolesTab() {
+    return (
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left: Role list */}
+        <div className="w-[280px] shrink-0 border-r border-border bg-white overflow-y-auto">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <span className="text-[13px] font-semibold text-stone-800">Roles</span>
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setEditingRole(null);
+                  setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} as StaffRolePermissions });
+                  setRoleDialog(true);
+                }}
+                className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5 text-stone-500" />
+              </button>
+            )}
+          </div>
+
+          {roles.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <Shield className="h-7 w-7 mx-auto text-stone-300 mb-2" />
+              <p className="text-[13px] text-stone-400">No roles yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {roles.map((r) => {
+                const tasks = roleTasksCache[r.id] ?? [];
+                const isActive = selectedRole?.id === r.id;
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => { handleSelectRole(r); }}
+                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
+                      isActive ? "bg-stone-100" : "hover:bg-stone-50"
+                    }`}
+                  >
+                    <div
+                      className="h-8 w-8 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+                      style={{ borderColor: r.color, color: r.color }}
+                    >
+                      <RoleIconComp name={r.icon} className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-medium text-stone-900 truncate">{r.name}</div>
+                      <div className="text-[11px] text-stone-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Selected role detail */}
+        <div className="flex-1 min-w-0 overflow-y-auto bg-white">
+          {!selectedRole ? (
+            <div className="flex items-center justify-center h-full text-[13px] text-stone-400">
+              Select a role to see details
+            </div>
+          ) : (
+            <div className="px-6 py-5">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div
+                  className="h-10 w-10 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+                  style={{ borderColor: selectedRole.color, color: selectedRole.color }}
+                >
+                  <RoleIconComp name={selectedRole.icon} className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[15px] font-bold text-stone-900">{selectedRole.name}</span>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: selectedRole.color }} />
+                  </div>
+                  {selectedRole.description && (
+                    <p className="text-[13px] text-stone-500 mt-0.5">{selectedRole.description}</p>
+                  )}
+                  {/* Members count */}
+                  {(() => {
+                    const memberCount = shifts.filter((s) =>
+                      (s.staffRoles ?? []).some((rn) => rn.toLowerCase() === selectedRole.name.toLowerCase())
+                    ).map((s) => s.memberId).filter((v, i, a) => a.indexOf(v) === i).length;
+                    return (
+                      <p className="text-[11px] text-stone-400 mt-0.5">{memberCount} member{memberCount !== 1 ? "s" : ""} assigned</p>
+                    );
+                  })()}
+                </div>
+                {canEdit && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => {
+                        setEditingRole(selectedRole);
+                        setRoleForm({
+                          name: selectedRole.name,
+                          color: selectedRole.color,
+                          icon: selectedRole.icon,
+                          description: selectedRole.description,
+                          permissions: selectedRole.permissions,
+                        });
+                        setRoleDialog(true);
+                      }}
+                      className="p-1.5 rounded-[0.3rem] hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={async () => { await handleDeleteRole(selectedRole.id); setSelectedRole(null); }}
+                      className="p-1.5 rounded-[0.3rem] hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Tasks */}
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Task Timeline</p>
+                {canEdit && (
+                  <button
+                    onClick={() => {
+                      setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
+                      setTaskDialog({ open: true, task: null });
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 transition-colors"
+                  >
+                    <Plus className="h-3 w-3" /> Add Task
+                  </button>
+                )}
+              </div>
+
+              {loadingTasks ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
+                </div>
+              ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
+                <div className="text-center py-10">
+                  <ClipboardList className="h-7 w-7 mx-auto text-stone-300 mb-2" />
+                  <p className="text-[13px] text-stone-400">No tasks yet</p>
+                </div>
+              ) : (
+                <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
+                  {(roleTasksCache[selectedRole.id] ?? []).map((task) => (
+                    <div key={task.id} className="relative pl-4 pb-4 group">
+                      <div
+                        className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-white"
+                        style={{ borderColor: selectedRole.color }}
+                      />
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          {task.startTime && task.endTime && (
+                            <p className="font-mono text-[11px] text-stone-400 leading-none mb-0.5 tabular-nums">
+                              {formatTime(task.startTime)} &ndash; {formatTime(task.endTime)}
+                            </p>
+                          )}
+                          <p className="text-[13px] font-semibold text-stone-900 leading-snug">{task.title}</p>
+                          {task.description && (
+                            <p className="text-[12px] text-stone-500 mt-0.5 leading-relaxed">{task.description}</p>
+                          )}
+                        </div>
+                        {canEdit && (
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button
+                              onClick={() => {
+                                setTaskForm({
+                                  title: task.title,
+                                  description: task.description,
+                                  hasTime: !!(task.startTime && task.endTime),
+                                  startTime: task.startTime ?? "08:00",
+                                  endTime: task.endTime ?? "10:00",
+                                  requiresEvidence: task.requiresEvidence ?? false,
+                                  notifyChats: task.notifyChats ?? [],
+                                });
+                                setTaskDialog({ open: true, task });
+                              }}
+                              className="p-1 rounded-[0.3rem] hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Member chips */}
+              {(() => {
+                const assignedMemberIds = [...new Set(
+                  shifts
+                    .filter((s) => (s.staffRoles ?? []).some((rn) => rn.toLowerCase() === selectedRole.name.toLowerCase()))
+                    .map((s) => s.memberId)
+                )];
+                const assignedMembers = assignedMemberIds
+                  .map((id) => team.find((m) => m.id === id))
+                  .filter(Boolean) as OrgMember[];
+                if (assignedMembers.length === 0) return null;
+                return (
+                  <div className="mt-6">
+                    <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-2">Assigned Members</p>
+                    <div className="flex flex-wrap gap-2">
+                      {assignedMembers.map((m) => (
+                        <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded-[0.3rem]">
+                          <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold ${avatarBg(m.displayName)}`}>
+                            {initials(m.displayName)}
+                          </div>
+                          <span className="text-[12px] font-medium text-stone-700">{m.displayName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Right Rail: Requests ─────────────────────────────────
+  function RequestsRail() {
+    if (!railOpen) {
+      return (
+        <div className="w-10 shrink-0 border-l border-border bg-white flex flex-col items-center py-4 gap-3 cursor-pointer hover:bg-stone-50 transition-colors"
+          onClick={() => setRailOpen(true)}
+        >
+          <div className="relative">
+            <Inbox className="h-4 w-4 text-stone-500" />
+            {pendingCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-[14px] px-0.5 flex items-center justify-center bg-red-500 text-white text-[8px] font-bold rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </div>
+          <div className="flex-1 flex items-center">
+            <span className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-widest"
+              style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
+            >
+              Requests
+            </span>
+          </div>
+          <PanelRightOpen className="h-3.5 w-3.5 text-stone-400" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-[340px] shrink-0 border-l border-border bg-white flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Inbox className="h-4 w-4 text-stone-500" />
+            <span className="text-[13px] font-semibold text-stone-800">Requests</span>
+            {pendingCount > 0 && (
+              <span className="h-5 min-w-[20px] px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setRailOpen(false)}
+            className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors"
+          >
+            <PanelRightClose className="h-3.5 w-3.5 text-stone-400" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5">
+          {/* Time Off */}
+          {orgTimeOffRequests.length > 0 && (
+            <div>
+              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">Time Off</p>
+              <div className="space-y-2">
+                {orgTimeOffRequests.map((req) => (
+                  <div key={req.id} className="border border-border rounded-[0.3rem] p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold ${avatarBg(getMemberName(req.userId))}`}>
+                        {initials(getMemberName(req.userId))}
+                      </div>
+                      <span className="text-[13px] font-medium text-stone-900">{getMemberName(req.userId)}</span>
+                    </div>
+                    <p className="text-[12px] text-stone-500 mb-1">
+                      {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
+                      {!req.fullDays && req.startTime && req.endTime && (
+                        <> &middot; {formatTime(req.startTime)}&ndash;{formatTime(req.endTime)}</>
+                      )}
+                    </p>
+                    {req.comments && (
+                      <p className="text-[12px] text-stone-400 italic mb-2">&ldquo;{req.comments}&rdquo;</p>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
+                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Check className="h-3 w-3" /> Approve
+                      </button>
+                      <button
+                        onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
+                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Ban className="h-3 w-3" /> Deny
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Trades */}
+          {orgShiftTrades.length > 0 && (
+            <div>
+              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">Trades</p>
+              <div className="space-y-2">
+                {orgShiftTrades.map((trade) => {
+                  const shift = shifts.find((s) => s.id === trade.shiftId);
+                  return (
+                    <div key={trade.id} className="border border-border rounded-[0.3rem] p-3">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded-[0.2rem]">
+                          {trade.type}
+                        </span>
+                      </div>
+                      <p className="text-[13px] font-medium text-stone-900 mb-0.5">
+                        {getMemberName(trade.requesterId)}
+                        <span className="text-stone-400 font-normal mx-1">&rarr;</span>
+                        {getMemberName(trade.targetId)}
+                      </p>
+                      {shift && (
+                        <p className="text-[12px] text-stone-500 mb-2">
+                          {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
+                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Check className="h-3 w-3" /> Approve
+                        </button>
+                        <button
+                          onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
+                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <Ban className="h-3 w-3" /> Deny
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {orgTimeOffRequests.length === 0 && orgShiftTrades.length === 0 && (
+            <div className="text-center py-8">
+              <Inbox className="h-6 w-6 mx-auto text-stone-300 mb-2" />
+              <p className="text-[13px] text-stone-400">No pending requests</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Desktop Return ───────────────────────────────────────
+  const tabLabels: Record<DesktopTab, string> = {
+    schedule: "Schedule",
+    myShifts: "My Shifts",
+    roles: "Roles",
+  };
+  const desktopTabs: DesktopTab[] = isStaff ? ["myShifts", "roles"] : ["schedule", "myShifts", "roles"];
+
+  return (
+    <PermissionGuard section="staffing">
+      <div className="flex flex-col h-full bg-stone-50/30">
+        <PageHeader
+          title="Staffing"
+          subtitle="Schedule, roles, and requests"
+          right={
+            refreshing ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-stone-400" /> : undefined
+          }
+        />
+
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Main column */}
+          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex items-center gap-0 px-6 border-b border-border bg-white shrink-0">
+              {desktopTabs.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setDTab(tab)}
+                  className={`px-4 py-2.5 text-[13px] font-medium transition-colors relative ${
+                    dTab === tab
+                      ? "text-stone-900"
+                      : "text-stone-500 hover:text-stone-700"
+                  }`}
+                >
+                  {tabLabels[tab]}
+                  {dTab === tab && (
+                    <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-stone-900 rounded-full" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            {dTab === "schedule" && !isStaff && <ScheduleGrid />}
+            {dTab === "myShifts" && <MyShiftsTab />}
+            {dTab === "roles" && <RolesTab />}
+          </div>
+
+          {/* Right rail (only show for non-staff / managers) */}
+          {!isStaff && <RequestsRail />}
+        </div>
+      </div>
+    </PermissionGuard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Needs React import for Fragment usage in desktop grid
+// ─────────────────────────────────────────────────────────────────────────────
+import React from "react";
 
 export default function StaffingPage() {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
@@ -182,10 +1098,13 @@ export default function StaffingPage() {
   const [editingPreset, setEditingPreset] = useState<ShiftPreset | null>(null);
   const [presetForm, setPresetForm] = useState({ name: "", startTime: "07:00", endTime: "14:00", color: "#44403c" });
   const [deletePresetConfirm, setDeletePresetConfirm] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const stdb = useSpacetimeDB();
+  const userId = stdb?.identity?.toHexString() ?? null;
   const [myMemberId, setMyMemberId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<MainTab>("myShifts");
+  const [mobileSection, setMobileSection] = useState<"overview" | "schedule">("overview");
+  const [scheduleView, setScheduleView] = useState<"day" | "people">("day");
 
   const [weekStart, setWeekStart] = useState(() => {
     const now = new Date();
@@ -285,6 +1204,16 @@ export default function StaffingPage() {
   const isStaff   = role === "staff";
   const canEdit   = isOwner || can("staffing", "edit");
 
+  // ─── Desktop detection ────────────────────────────────────────────────────
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
+    const h = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
+
   // ─── Data via SpacetimeDB migration hook ──────────────────────────────────
   const {
     team, setTeam,
@@ -300,11 +1229,6 @@ export default function StaffingPage() {
   } = useStaffing(organizationId, userId, isStaff);
 
   // ─── Effects ───────────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    const token = localStorage.getItem("stdb_token");
-    setUserId(token ? token.slice(0, 36) : null);
-  }, []);
 
   useEffect(() => {
     if (!userId || team.length === 0) return;
@@ -583,6 +1507,8 @@ export default function StaffingPage() {
       toast.success(editingShift ? "Shift updated" : "Shift added");
       setAddDialog(false);
       setEditingShift(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save shift");
     } finally {
       setSaving(false);
     }
@@ -620,6 +1546,8 @@ export default function StaffingPage() {
       setRoleDialog(false);
       setEditingRole(null);
       setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save role");
     } finally {
       setSaving(false);
     }
@@ -692,6 +1620,8 @@ export default function StaffingPage() {
       }
       setTaskDialog({ open: false, task: null });
       setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save task");
     } finally {
       setSavingTask(false);
     }
@@ -750,6 +1680,8 @@ export default function StaffingPage() {
       hapticSuccess();
       toast.success("Trade request sent");
       setTradeDialog({ open: false, shift: null });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send trade request");
     } finally {
       setSavingTrade(false);
     }
@@ -771,6 +1703,8 @@ export default function StaffingPage() {
       hapticSuccess();
       toast.success("Cover request sent");
       setCoverDialog({ open: false, shift: null });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send cover request");
     } finally {
       setSavingCover(false);
     }
@@ -782,12 +1716,12 @@ export default function StaffingPage() {
         type:      myAvailability.type,
         startDate: myAvailability.startDate ?? "",
         endDate:   myAvailability.endDate ?? "",
-        dayTimes:  myAvailability.dayTimes,
+        dayTimes:  normalizeDayTimes(myAvailability.dayTimes),
         status:    myAvailability.status,
         comments:  myAvailability.comments,
       });
     } else {
-      setAvailForm({ ...DEFAULT_AVAIL_FORM });
+      setAvailForm({ ...DEFAULT_AVAIL_FORM, dayTimes: normalizeDayTimes(undefined) });
     }
     setAvailDialog(true);
   };
@@ -821,6 +1755,8 @@ export default function StaffingPage() {
         return idx >= 0 ? prev.map((a) => a.id === savedId ? optimisticAvail : a) : [...prev, optimisticAvail];
       });
       setAvailDialog(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save availability");
     } finally {
       setSavingAvail(false);
     }
@@ -844,6 +1780,8 @@ export default function StaffingPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setMyTimeOffRequests((prev) => [{ id: reqId, userId, organizationId, ...timeOffForm, status: "pending", createdAt: new Date().toISOString() } as any, ...prev]);
       setTimeOffDialog(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit time-off request");
     } finally {
       setSavingTimeOff(false);
     }
@@ -1317,999 +2255,862 @@ export default function StaffingPage() {
   const [batchDialog, setBatchDialog] = useState(false);
   const [batchForm, setBatchForm] = useState({ startTime: "09:00", endTime: "17:00", roleNames: [] as string[] });
 
+  // ─── Desktop early return ────────────────────────────────────────────────
+  if (isDesktop) return (
+    <>
+      <StaffingDesktop
+        organizationId={organizationId}
+        isOwner={isOwner}
+        canEdit={canEdit}
+        isStaff={isStaff}
+        currentOrg={currentOrg}
+        role={role}
+        userId={userId}
+        myMemberId={myMemberId}
+        team={team}
+        shifts={shifts}
+        setShifts={setShifts}
+        roles={roles}
+        weekStart={weekStart}
+        setWeekStart={setWeekStart}
+        weekDates={weekDates}
+        weekShifts={weekShifts}
+        myShifts={myShifts}
+        todayStr={todayStr}
+        selectedDay={selectedDay}
+        setSelectedDay={setSelectedDay}
+        todayTasks={todayTasks}
+        taskCompletions={taskCompletions}
+        toggleTaskDone={toggleTaskDone}
+        loadingTodayTasks={loadingTodayTasks}
+        orgTimeOffRequests={orgTimeOffRequests}
+        orgShiftTrades={orgShiftTrades}
+        pendingCount={pendingCount}
+        getMemberName={getMemberName}
+        handleTimeOffStatusUpdate={handleTimeOffStatusUpdate}
+        handleTradeStatusUpdate={handleTradeStatusUpdate}
+        handleDeleteShift={handleDeleteShift}
+        setEditingShift={setEditingShift}
+        setShiftForm={setShiftForm}
+        setAddDialog={setAddDialog}
+        roleTasksCache={roleTasksCache}
+        loadRoleTasksFor={loadRoleTasksFor}
+        loadingTasks={loadingTasks}
+        selectedRole={selectedRole}
+        setSelectedRole={setSelectedRole}
+        handleSelectRole={handleSelectRole}
+        handleDeleteRole={handleDeleteRole}
+        setEditingRole={setEditingRole}
+        setRoleForm={setRoleForm}
+        setRoleDialog={setRoleDialog}
+        setTaskDialog={setTaskDialog}
+        setTaskForm={setTaskForm}
+        refreshing={refreshing}
+      />
+      {/* ─── Dialogs still need to render (they are portals) ─── */}
+      {/* Add / Edit Shift Dialog */}
+      <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
+        <DialogContent className="max-w-md" noPadding>
+          <DialogHeader>
+            <DialogTitle mobileTitle={editingShift ? "Edit shift" : "Create a shift"}>
+              {editingShift ? "Edit shift" : "Create a shift"}
+            </DialogTitle>
+            <DialogDescription className="hidden">
+              {editingShift ? "Update shift details." : "Schedule a shift."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-4 pt-2 pb-4 space-y-4">
+                <div className="flex items-center gap-3 py-2 border-b border-border">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input type="date" value={shiftForm.date} onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))} className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0" />
+                </div>
+                <div className="flex items-center gap-2 py-2 border-b border-border">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input type="time" value={shiftForm.startTime} onChange={(e) => setShiftForm((f) => ({ ...f, startTime: e.target.value }))} className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1" />
+                  <span className="text-muted-foreground">&mdash;</span>
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input type="time" value={shiftForm.endTime} onChange={(e) => setShiftForm((f) => ({ ...f, endTime: e.target.value }))} className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1" />
+                </div>
+              </div>
+              <div className="h-2 bg-muted/50" />
+              <div className="px-4 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Assign employee</Label>
+                    <Select value={shiftForm.memberId} onValueChange={(v) => setShiftForm((f) => ({ ...f, memberId: v ?? "" }))}>
+                      <SelectTrigger className="mt-1 border-0 border-b border-border rounded-none px-0 shadow-none focus:ring-0">
+                        <SelectValue placeholder="Select...">{team.find((m) => m.id === shiftForm.memberId)?.displayName ?? "Select..."}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {team.map((m) => (<SelectItem key={m.id} value={m.id}>{m.displayName}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Roles</Label>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {roles.map((r) => {
+                        const selected = shiftForm.roleNames.includes(r.name);
+                        return (
+                          <button key={r.id} onClick={() => setShiftForm((f) => ({ ...f, roleNames: selected ? f.roleNames.filter((n) => n !== r.name) : [...f.roleNames, r.name] }))}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border rounded transition-colors ${selected ? "border-stone-900 bg-stone-900 text-white" : "border-border text-stone-500 hover:bg-stone-50"}`}>
+                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selected ? "white" : r.color }} />
+                            {r.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="px-4 py-4 border-t border-border mt-auto">
+              <Button onClick={handleAddShift} disabled={saving || (!editingShift && !shiftForm.memberId)} className="w-full h-12 text-sm font-semibold">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? "Save shift" : "Create shift"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Role Dialog */}
+      <Dialog open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingRole ? "Edit Role" : "Add Role"}</DialogTitle>
+            <DialogDescription>{editingRole ? "Update this role's details and permissions." : "Define a new staff role."}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <Label>Icon</Label>
+              <div className="grid grid-cols-8 gap-1">
+                {ROLE_ICON_LIST.map((iconName) => (
+                  <button key={iconName} type="button" onClick={() => setRoleForm((f) => ({ ...f, icon: iconName }))}
+                    className={`h-8 w-8 flex items-center justify-center transition-colors ${roleForm.icon === iconName ? "border-2 border-stone-900 bg-stone-100" : "border border-transparent bg-stone-100 hover:bg-stone-200"}`} title={iconName}>
+                    <RoleIconComp name={iconName} className="h-4 w-4 text-stone-700" />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role Name *</Label>
+              <Input value={roleForm.name} onChange={(e) => setRoleForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Barista, Shift Lead, Cashier" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Color</Label>
+              <div className="flex gap-2">
+                {ROLE_COLORS.map((c) => (
+                  <button key={c} type="button" onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
+                    className={`h-6 w-6 rounded-full transition-all ${roleForm.color === c ? "ring-2 ring-offset-1 ring-stone-900 scale-110" : ""}`} style={{ backgroundColor: c }} />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea value={roleForm.description} onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))} placeholder="What does this role do?" className="resize-none text-sm" rows={2} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setRoleDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? "Save" : "Add Role"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Task Dialog */}
+      <Dialog open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{taskDialog.task ? "Edit Task" : "Add Task"}</DialogTitle>
+            <DialogDescription>{taskDialog.task ? "Update this time-period task." : "Add a task for a specific time period in this role."}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <div className="space-y-1.5">
+              <Label>Task Title *</Label>
+              <Input value={taskForm.title} onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Open register, Prep station" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Details <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Textarea value={taskForm.description} onChange={(e) => setTaskForm((f) => ({ ...f, description: e.target.value }))} placeholder="Step-by-step instructions or notes..." className="resize-none text-sm" rows={3} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Time Window</Label>
+              <button onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${taskForm.hasTime ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}>
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"}`} />
+              </button>
+            </div>
+            {taskForm.hasTime && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label>Start Time</Label><Input type="time" value={taskForm.startTime} onChange={(e) => setTaskForm((f) => ({ ...f, startTime: e.target.value }))} /></div>
+                <div className="space-y-1.5"><Label>End Time</Label><Input type="time" value={taskForm.endTime} onChange={(e) => setTaskForm((f) => ({ ...f, endTime: e.target.value }))} /></div>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>Cancel</Button>
+            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>{savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? "Save" : "Add Task"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+
+  // ─── Mobile computed data ──────────────────────────────────────────────────
+  const todayDate = new Date();
+  const todayShiftsAll = shifts.filter((s) => s.memberId === myMemberId && s.date === todayStr);
+  const todayAllShifts = weekShifts.filter((s) => s.date === selectedDay);
+  const todayScheduledHours = (() => {
+    const hrs = todayAllShifts.reduce((acc, s) => {
+      const [sh, sm] = s.startTime.split(":").map(Number);
+      const [eh, em] = s.endTime.split(":").map(Number);
+      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+    }, 0);
+    return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
+  })();
+  const todayStaffIds = [...new Set(todayAllShifts.map((s) => s.memberId))];
+  const pendingTimeOff = orgTimeOffRequests.filter((r) => r.status === "pending");
+  const pendingTrades = orgShiftTrades.filter((t) => t.status === "pending");
+
+  // Find earliest opening shift for today display
+  const todayOpenTime = (() => {
+    if (todayAllShifts.length === 0) return null;
+    const earliest = todayAllShifts.reduce((min, s) => s.startTime < min ? s.startTime : min, todayAllShifts[0].startTime);
+    return formatTime(earliest);
+  })();
+
+  // Timeline helper for schedule day view
+  const TIMELINE_START = 6; // 6 AM
+  const TIMELINE_END = 22; // 10 PM
+  const TIMELINE_HOURS_COUNT = TIMELINE_END - TIMELINE_START;
+
+  const getShiftTopPercent = (startTime: string) => {
+    const [h, m] = startTime.split(":").map(Number);
+    const hours = h + m / 60;
+    return Math.max(0, Math.min(100, ((hours - TIMELINE_START) / TIMELINE_HOURS_COUNT) * 100));
+  };
+
+  const getShiftHeightPercent = (startTime: string, endTime: string) => {
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    const duration = (eh + em / 60) - (sh + sm / 60);
+    return Math.max(2, (duration / TIMELINE_HOURS_COUNT) * 100);
+  };
+
+  // Compute lanes for overlapping shifts in day view
+  const computeLanes = (dayShifts: Shift[]) => {
+    const sorted = [...dayShifts].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const lanes: Shift[][] = [];
+    for (const shift of sorted) {
+      let placed = false;
+      for (const lane of lanes) {
+        const last = lane[lane.length - 1];
+        if (last.endTime <= shift.startTime) {
+          lane.push(shift);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) lanes.push([shift]);
+    }
+    const laneMap = new Map<string, { lane: number; totalLanes: number }>();
+    for (const shift of sorted) {
+      for (let i = 0; i < lanes.length; i++) {
+        if (lanes[i].includes(shift)) {
+          laneMap.set(shift.id, { lane: i, totalLanes: lanes.length });
+          break;
+        }
+      }
+    }
+    return laneMap;
+  };
+
+  // Current time position for red line
+  const currentTimePercent = (() => {
+    const now = new Date();
+    const hours = now.getHours() + now.getMinutes() / 60;
+    if (hours < TIMELINE_START || hours > TIMELINE_END) return null;
+    return ((hours - TIMELINE_START) / TIMELINE_HOURS_COUNT) * 100;
+  })();
+
+  // Selected day data for schedule tab
+  const selectedDayShifts = weekShifts.filter((s) => s.date === selectedDay);
+  const selectedDayLanes = computeLanes(selectedDayShifts);
+
+  // ─── Mobile computed helpers ─────────────────────────────────────────────
+  const activeMembers = team.filter((m) => m.status === "active");
+
+  // On-shift now: shifts that overlap with current time
+  const nowOnShift = (() => {
+    const now = new Date();
+    const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    return todayAllShifts.filter((s) => s.startTime <= nowTime && s.endTime > nowTime);
+  })();
+
+  // Upcoming shifts today (haven't started yet)
+  const upNextToday = (() => {
+    const now = new Date();
+    const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    return todayAllShifts
+      .filter((s) => s.startTime > nowTime)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  })();
+
+  // Minutes until a shift starts
+  const minutesUntil = (startTime: string) => {
+    const now = new Date();
+    const [h, m] = startTime.split(":").map(Number);
+    return Math.max(0, (h * 60 + m) - (now.getHours() * 60 + now.getMinutes()));
+  };
+
+  // Week hours
+  const weekTotalHours = (() => {
+    const hrs = weekShifts.reduce((acc, s) => {
+      const [sh, sm] = s.startTime.split(":").map(Number);
+      const [eh, em] = s.endTime.split(":").map(Number);
+      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+    }, 0);
+    return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
+  })();
+
+  // Week of label for schedule tab
+  const weekOfLabel = weekDates[0].toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  // Selected day display for schedule tab
+  const selectedDayDate = new Date(selectedDay + "T00:00:00");
+  const selectedDayLabel = selectedDayDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  const selectedDayHours = (() => {
+    const hrs = selectedDayShifts.reduce((acc, s) => {
+      const [sh, sm] = s.startTime.split(":").map(Number);
+      const [eh, em] = s.endTime.split(":").map(Number);
+      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+    }, 0);
+    return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
+  })();
+
   return (
     <PermissionGuard section="staffing">
-      <div className={`p-3 sm:p-5 mx-auto ${activeTab === "table" ? "max-w-5xl" : "max-w-xl"}`}>
+      <div className="flex flex-col min-h-screen bg-white">
 
-        {/* ─── Header ──────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight">Scheduling</h1>
-            {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        {/* ─── TopBar: sticky, border-b, white bg ──────────────── */}
+        <div className="sticky top-0 z-20 bg-white border-b border-stone-200 px-4 py-3 flex items-center justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold text-stone-900 leading-tight">Staffing</h1>
+            <p className="text-[12px] text-stone-500 leading-tight">
+              {currentOrg?.name ?? "Store"} &middot; {activeMembers.length} active
+            </p>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 shrink-0">
+            {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-stone-400" />}
+            <button className="h-8 w-8 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors">
+              <Search className="h-4 w-4 text-stone-700" />
+            </button>
             <button
-              onClick={() => { setDownloadRange({ start: isoDate(weekDates[0]), end: isoDate(weekDates[6]) }); setDownloadDialog(true); }}
-              className="h-8 w-8 flex items-center justify-center border border-border rounded hover:bg-stone-100 transition-colors"
-              title="Export schedule"
+              onClick={() => { hapticLight(); setShowRequests(!showRequests); }}
+              className="h-8 w-8 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors relative"
             >
-              <Download className="h-4 w-4" />
+              <Bell className="h-4 w-4 text-stone-700" />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-0.5 flex items-center justify-center bg-stone-900 text-white text-[9px] font-bold rounded-full">
+                  {pendingCount}
+                </span>
+              )}
             </button>
             {canEdit && (
               <button
                 onClick={() => {
+                  hapticLight();
                   setEditingShift(null);
                   setShiftForm({
-                    memberId:  team[0]?.id ?? "",
-                    date:      selectedDay,
+                    memberId: team[0]?.id ?? "",
+                    date: selectedDay,
                     shiftType: "morning",
                     startTime: "07:00",
-                    endTime:   "14:00",
+                    endTime: "14:00",
                     roleNames: [],
                   });
                   setAddDialog(true);
                 }}
-                className="h-8 w-8 flex items-center justify-center border border-border rounded hover:bg-stone-100 transition-colors"
+                className="h-8 w-8 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-4 text-stone-700" />
               </button>
             )}
           </div>
         </div>
 
-        {/* ─── Toggle Tabs ─────────────────────────────────────────── */}
-        <div className="flex border border-border overflow-hidden w-fit mb-5">
-          {visibleTabs.map((tab, i) => {
-            const labels: Record<MainTab, string> = {
-              myShifts: "My Shifts",
-              schedule: "Schedule",
-              table:    `Week ${weekDates[0].getMonth() + 1}/${weekDates[0].getDate()} – ${weekDates[6].getMonth() + 1}/${weekDates[6].getDate()}`,
-              roles:    "Roles",
-            };
-            return (
-              <button
-                key={tab}
-                onClick={() => { hapticLight(); setActiveTab(tab); }}
-                className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                  i > 0 ? "border-l border-border" : ""
-                } ${
-                  activeTab === tab
-                    ? "bg-stone-900 text-white"
-                    : "bg-white text-stone-600 hover:bg-stone-50"
-                }`}
-              >
-                {labels[tab]}
-                {tab === "schedule" && pendingCount > 0 && (
-                  <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 px-1 bg-stone-900 text-white text-[9px] font-bold rounded-full">
-                    {pendingCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* ─── Tabs: Overview | Schedule ────────────────────────── */}
+        <div className="flex border-b border-stone-200 bg-white">
+          {(["overview", "schedule"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => { hapticLight(); setMobileSection(tab); }}
+              className={`flex-1 py-2.5 text-[13px] text-center capitalize transition-colors ${
+                mobileSection === tab
+                  ? "font-semibold text-stone-900 border-b-2 border-stone-900"
+                  : "font-medium text-stone-500"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
-        {/* ─── Today's Tasks ──────────────────────────────────────── */}
-        {activeTab === "myShifts" && (() => {
-          const todayShifts = shifts.filter((s) => s.memberId === myMemberId && s.date === todayStr);
-          if (todayShifts.length === 0) return null;
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ─── OVERVIEW TAB ──────────────────────────────────────── */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {mobileSection === "overview" && (
+          <div className="flex-1 overflow-y-auto pb-24">
 
-          const doneCount = todayTasks.filter((t) => taskCompletions[t.id]).length;
-
-          return (
-            <div className="border border-border p-3 mb-4">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2">
-                  <Sun className="h-4 w-4 text-stone-500" />
-                  <span className="text-sm font-semibold text-stone-900">Today&apos;s Tasks</span>
-                </div>
-                {todayTasks.length > 0 && (
-                  <span className="text-xs font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200">
-                    {doneCount}/{todayTasks.length} done
-                  </span>
-                )}
-              </div>
-              {todayTasks.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {loadingTodayTasks ? "Loading tasks…" : "No tasks assigned for today"}
+            {/* ── KPI Grid: 2x2, cells separated by borders ── */}
+            <div className="grid grid-cols-2 border-b border-stone-200">
+              {/* On shift now */}
+              <div className="px-4 py-3 border-r border-b border-stone-200">
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">On shift now</p>
+                <p className="text-2xl font-semibold text-stone-900 mt-0.5">
+                  {nowOnShift.length}
+                  <span className="text-[15px] text-stone-400 font-normal"> / {activeMembers.length}</span>
                 </p>
+              </div>
+              {/* Today hours */}
+              <div className="px-4 py-3 border-b border-stone-200">
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Today hours</p>
+                <p className="text-2xl font-semibold text-stone-900 font-mono tabular-nums mt-0.5">{todayScheduledHours}h</p>
+              </div>
+              {/* Open requests */}
+              <div className="px-4 py-3 border-r border-stone-200">
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Open requests</p>
+                <p className={`text-2xl font-semibold mt-0.5 ${pendingCount > 0 ? "text-amber-600" : "text-stone-900"}`}>
+                  {pendingCount}
+                </p>
+              </div>
+              {/* This week */}
+              <div className="px-4 py-3">
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">This week</p>
+                <p className="text-2xl font-semibold text-stone-900 font-mono tabular-nums mt-0.5">{weekTotalHours}h</p>
+              </div>
+            </div>
+
+            {/* ── Section: Currently on shift ── */}
+            <div className="border-b border-stone-200">
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Currently on shift</p>
+                  <span className="text-[10.5px] font-semibold text-stone-400 bg-stone-100 rounded px-1.5 py-0.5">{nowOnShift.length}</span>
+                </div>
+              </div>
+              {nowOnShift.length === 0 ? (
+                <div className="px-4 pb-3">
+                  <p className="text-[12px] text-stone-400">No one is currently on shift</p>
+                </div>
               ) : (
-                <div className="space-y-0.5">
-                  {todayTasks.map((task) => {
-                    const done = !!taskCompletions[task.id];
+                <div className="divide-y divide-stone-200">
+                  {nowOnShift.map((shift) => {
+                    const member = team.find((m) => m.id === shift.memberId);
+                    const name = member?.displayName ?? shift.staffName ?? "Staff";
+                    const matchedRoles = (shift.staffRoles ?? [])
+                      .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
+                      .filter(Boolean) as StaffRole[];
                     return (
                       <button
-                        key={task.id}
-                        onClick={() => toggleTaskDone(task.id)}
-                        className="flex items-start gap-2.5 w-full text-left py-1 hover:bg-stone-50 -mx-1 px-1 transition-colors"
+                        key={shift.id}
+                        onClick={() => setShiftDetailShift(shift)}
+                        className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-stone-50 transition-colors"
                       >
-                        <div className={`mt-0.5 h-4 w-4 shrink-0 border flex items-center justify-center transition-colors ${done ? "bg-stone-900 border-stone-900" : "border-stone-400"}`}>
-                          {done && <Check className="h-2.5 w-2.5 text-white" />}
+                        <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
+                          {initials(name)}
                         </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                          {task.startTime && task.endTime && (
-                            <span className="font-mono text-[11px] text-stone-400 shrink-0 tabular-nums">
-                              {task.startTime.slice(0, 5)}–{task.endTime.slice(0, 5)}
-                            </span>
-                          )}
-                          <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-stone-800"}`}>
-                            {task.title}
-                          </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium text-stone-900 truncate leading-tight">{name}</p>
+                          <p className="text-[11px] text-stone-500 leading-tight">
+                            {matchedRoles.map((r) => r.name).join(", ") || "Staff"}
+                          </p>
                         </div>
+                        <span className="text-[11px] font-mono tabular-nums text-stone-700 shrink-0">
+                          {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                        </span>
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
                       </button>
                     );
                   })}
                 </div>
               )}
             </div>
-          );
-        })()}
 
-        {/* ─── Week Calendar Strip (swipe left/right to change weeks) ── */}
-        {activeTab !== "roles" && activeTab !== "table" && (
-          <div ref={calendarRef}>
-            <div className="flex items-center justify-between mb-3">
-              <button onClick={prevWeek} className="p-1 rounded hover:bg-stone-100 transition-colors">
-                <ChevronLeft className="h-4 w-4 text-stone-600" />
-              </button>
-              <span className="text-sm font-semibold text-stone-800">{monthYear}</span>
-              <button onClick={nextWeek} className="p-1 rounded hover:bg-stone-100 transition-colors">
-                <ChevronRight className="h-4 w-4 text-stone-600" />
-              </button>
-            </div>
-
-            <div className="relative overflow-hidden mb-4" style={{ height: 56 }}>
-              {[
-                { dates: prevWeekDates, offset: -1, current: false },
-                { dates: weekDates,     offset:  0, current: true  },
-                { dates: nextWeekDates, offset:  1, current: false },
-              ].map(({ dates, offset, current }) => (
-                <div
-                  key={offset}
-                  className="absolute inset-0 grid grid-cols-7"
-                  style={{
-                    transform: `translateX(calc(${offset * 100}% + ${swipeOffset}px))`,
-                    transition: swiping ? "none" : slideAnim ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-                  }}
-                >
-                  {dates.map((d, i) => {
-                    const ds = isoDate(d);
-                    const isTodayD = isToday(d);
-                    const isSelected = current && ds === selectedDay;
+            {/* ── Section: Up next today ── */}
+            {upNextToday.length > 0 && (
+              <div className="border-b border-stone-200">
+                <div className="flex items-center gap-2 px-4 py-2.5">
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Up next today</p>
+                  <span className="text-[10.5px] font-semibold text-stone-400 bg-stone-100 rounded px-1.5 py-0.5">{upNextToday.length}</span>
+                </div>
+                <div className="divide-y divide-stone-200">
+                  {upNextToday.map((shift) => {
+                    const member = team.find((m) => m.id === shift.memberId);
+                    const name = member?.displayName ?? shift.staffName ?? "Staff";
+                    const matchedRoles = (shift.staffRoles ?? [])
+                      .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
+                      .filter(Boolean) as StaffRole[];
+                    const mins = minutesUntil(shift.startTime);
+                    const inLabel = mins >= 60 ? `in ${Math.floor(mins / 60)}h${mins % 60 > 0 ? ` ${mins % 60}m` : ""}` : `in ${mins}m`;
                     return (
                       <button
-                        key={ds}
-                        onClick={current ? () => setSelectedDay(ds) : undefined}
-                        className="flex flex-col items-center gap-1 py-1"
+                        key={shift.id}
+                        onClick={() => setShiftDetailShift(shift)}
+                        className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-stone-50 transition-colors"
                       >
-                        <span className="text-[10px] font-medium text-muted-foreground">{DAY_ABBR[i]}</span>
-                        <span
-                          className={`h-8 w-8 flex items-center justify-center rounded-full text-sm font-semibold ${
-                            !current
-                              ? "text-stone-400"
-                              : isTodayD
-                              ? "bg-stone-900 text-white"
-                              : isSelected
-                              ? "bg-stone-200 text-stone-900"
-                              : "text-stone-700"
-                          }`}
-                        >
-                          {d.getDate()}
-                        </span>
+                        <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
+                          {initials(name)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium text-stone-900 truncate leading-tight">{name}</p>
+                          <p className="text-[11px] text-stone-500 leading-tight">
+                            {matchedRoles.map((r) => r.name).join(", ") || "Staff"}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[11px] font-medium text-stone-700">{inLabel}</p>
+                          <p className="text-[10.5px] font-mono tabular-nums text-stone-400">
+                            {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                          </p>
+                        </div>
                       </button>
                     );
                   })}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
-            <div className="border-t border-border" />
+            {/* ── Section: Needs attention ── */}
+            {!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0) && (
+              <div className="border-b border-stone-200">
+                <div className="flex items-center gap-2 px-4 py-2.5">
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Needs attention</p>
+                </div>
+                <div className="divide-y divide-stone-200">
+                  {/* Time off row */}
+                  {pendingTimeOff.length > 0 && (
+                    <button
+                      onClick={() => { hapticLight(); setTimeOffDialog(true); }}
+                      className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
+                    >
+                      <div className="h-9 w-9 shrink-0 rounded border border-stone-200 bg-stone-100 flex items-center justify-center">
+                        <CalendarX className="h-4 w-4 text-stone-700" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{pendingTimeOff.length} time-off request{pendingTimeOff.length !== 1 ? "s" : ""}</p>
+                        <p className="text-[11px] text-stone-500 leading-tight">Awaiting approval</p>
+                      </div>
+                      <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">Pending</span>
+                    </button>
+                  )}
+                  {/* Trades row */}
+                  {pendingTrades.length > 0 && (
+                    <button
+                      onClick={() => { hapticLight(); setMobileSection("schedule"); }}
+                      className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
+                    >
+                      <div className="h-9 w-9 shrink-0 rounded border border-stone-200 bg-stone-100 flex items-center justify-center">
+                        <ArrowLeftRight className="h-4 w-4 text-stone-700" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{pendingTrades.length} shift trade{pendingTrades.length !== 1 ? "s" : ""}</p>
+                        <p className="text-[11px] text-stone-500 leading-tight">Awaiting approval</p>
+                      </div>
+                      <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">Pending</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ─── My Shifts ───────────────────────────────────────────── */}
-        {activeTab === "myShifts" && (
-          <div
-            ref={contentRef}
-            style={{
-              transform: `translateX(${swipeOffset}px)`,
-              transition: swiping ? "none" : slideAnim ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
-          >
-            <div className="divide-y divide-border">
-              {weekDates.map((d) => {
-                const ds        = isoDate(d);
-                const dayShifts = myShifts.filter((s) => s.date === ds);
-                const isTodayD  = isToday(d);
-                const label     = isTodayD
-                  ? "Today"
-                  : d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ─── SCHEDULE TAB ──────────────────────────────────────── */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {mobileSection === "schedule" && (
+          <div className="flex-1 overflow-y-auto pb-24">
 
-                return (
-                  <div key={ds} className="py-3">
-                    <p className={`text-xs font-semibold mb-2 ${isTodayD ? "text-stone-900" : "text-stone-500"}`}>
-                      {label}
-                    </p>
-                    {dayShifts.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">You are not scheduled to work.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {dayShifts.map((shift) => {
-                          const matchedRoles = (shift.staffRoles ?? [])
-                            .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
-                            .filter(Boolean) as typeof roles;
-                          return (
-                          <div
-                            key={shift.id}
-                            className="flex items-center gap-3 cursor-pointer hover:bg-stone-50 -mx-1 px-1 py-0.5 rounded"
-                            onClick={() => setShiftDetailShift(shift)}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-stone-900">
-                                {formatTime(shift.startTime)} – {formatTime(shift.endTime)}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <span
-                                  className="inline-block h-2 w-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
-                                />
-                                <span className="text-xs text-muted-foreground">
-                                  {currentOrg?.name ?? "Store"} &middot; {SHIFT_LABELS[shift.shiftType]}
-                                </span>
-                                {matchedRoles.map((matchedRole) => (
-                                  <span key={matchedRole.id} className="inline-flex items-center gap-1">
-                                    <span className="text-stone-300">&middot;</span>
-                                    <span
-                                      className="inline-block h-2 w-2 rounded-full shrink-0"
-                                      style={{ backgroundColor: matchedRole.color }}
-                                    />
-                                    <span className="text-xs font-medium text-stone-600">{matchedRole.name}</span>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        await loadRoleTasksFor(matchedRole.id);
-                                        setViewTasksDialog({ open: true, role: matchedRole });
-                                      }}
-                                      className="text-[11px] font-medium underline-offset-2 hover:underline text-stone-400 hover:text-stone-700 transition-colors"
-                                    >
-                                      View tasks
-                                    </button>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            {canEdit && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleDeleteShift(shift.id); }}
-                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Availability summary */}
-            {myAvailability && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-stone-700">My Availability</p>
-                  <button onClick={openAvailDialog} className="text-xs text-stone-500 hover:text-stone-700 underline-offset-2 hover:underline">
-                    Edit
+            {/* ── Week strip ── */}
+            <div className="bg-white border-b border-stone-200">
+              {/* Week nav header */}
+              <div className="flex items-center justify-between px-4 py-2">
+                <p className="text-[12px] font-semibold text-stone-700">Week of {weekOfLabel}</p>
+                <div className="flex items-center gap-1">
+                  <button onClick={prevWeek} className="h-7 w-7 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors">
+                    <ChevronLeft className="h-3.5 w-3.5 text-stone-600" />
+                  </button>
+                  <button onClick={nextWeek} className="h-7 w-7 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors">
+                    <ChevronRight className="h-3.5 w-3.5 text-stone-600" />
                   </button>
                 </div>
-                <div className="flex gap-1.5 flex-wrap">
-                  {DAY_NAMES.map((d, i) => {
-                    const dt = myAvailability.dayTimes[i];
-                    return (
-                      <span
-                        key={d}
-                        className={`px-2 py-0.5 text-[11px] font-medium border ${
-                          dt.enabled
-                            ? "border-stone-300 bg-stone-900 text-white"
-                            : "border-border text-stone-400"
-                        }`}
-                        title={dt.enabled && !dt.fullDay ? `${dt.startTime}–${dt.endTime}` : undefined}
-                      >
-                        {d}
+              </div>
+
+              {/* 7-column day buttons */}
+              <div className="grid grid-cols-7 gap-0 px-2 pb-2" ref={calendarRef}>
+                {weekDates.map((d) => {
+                  const ds = isoDate(d);
+                  const isSelected = ds === selectedDay;
+                  const dayShiftCount = weekShifts.filter((s) => s.date === ds).length;
+                  return (
+                    <button
+                      key={ds}
+                      onClick={() => { hapticLight(); setSelectedDay(ds); }}
+                      className={`flex flex-col items-center py-1.5 rounded transition-colors ${
+                        isSelected
+                          ? "bg-stone-900 text-white"
+                          : "hover:bg-stone-100"
+                      }`}
+                    >
+                      <span className={`text-[10px] font-semibold uppercase tracking-wide ${
+                        isSelected ? "text-stone-300" : "text-stone-500"
+                      }`}>
+                        {d.toLocaleDateString("en-US", { weekday: "short" })}
                       </span>
+                      <span className={`text-[17px] font-mono tabular-nums font-semibold leading-snug ${
+                        isSelected ? "text-white" : "text-stone-900"
+                      }`}>
+                        {d.getDate()}
+                      </span>
+                      <span className={`text-[9.5px] font-mono tabular-nums ${
+                        isSelected ? "text-stone-400" : "text-stone-400"
+                      }`}>
+                        {dayShiftCount > 0 ? `${dayShiftCount}` : " "}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Day header ── */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-200">
+              <div>
+                <p className="text-[15px] font-semibold text-stone-900">{selectedDayLabel}</p>
+                <p className="text-[11px] font-mono tabular-nums text-stone-500">
+                  {selectedDayShifts.length} shift{selectedDayShifts.length !== 1 ? "s" : ""} &middot; {selectedDayHours}h
+                </p>
+              </div>
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    hapticLight();
+                    setEditingShift(null);
+                    setShiftForm({
+                      memberId: team[0]?.id ?? "",
+                      date: selectedDay,
+                      shiftType: "morning",
+                      startTime: "07:00",
+                      endTime: "14:00",
+                      roleNames: [],
+                    });
+                    setAddDialog(true);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold border border-stone-200 rounded hover:bg-stone-100 text-stone-700 transition-colors"
+                >
+                  <Plus className="h-3 w-3" /> Add shift
+                </button>
+              )}
+            </div>
+
+            {/* ── Day Timeline ── */}
+            <div className="px-0" ref={contentRef}>
+              {selectedDayShifts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Clock className="h-6 w-6 text-stone-300 mb-2" />
+                  <p className="text-[13px] text-stone-400">No shifts scheduled</p>
+                </div>
+              ) : (
+                <div className="relative" style={{ height: `${TIMELINE_HOURS_COUNT * 48}px` }}>
+                  {/* Hour labels + grid lines */}
+                  {Array.from({ length: TIMELINE_HOURS_COUNT + 1 }, (_, i) => {
+                    const hour = TIMELINE_START + i;
+                    const top = (i / TIMELINE_HOURS_COUNT) * 100;
+                    return (
+                      <div
+                        key={hour}
+                        className="absolute left-0 right-0 flex items-start"
+                        style={{ top: `${top}%` }}
+                      >
+                        <span className="text-[10.5px] text-stone-400 font-mono tabular-nums w-12 text-right pr-2.5 -mt-2 shrink-0">
+                          {hour === 0 ? "12a" : hour < 12 ? `${hour}a` : hour === 12 ? "12p" : `${hour - 12}p`}
+                        </span>
+                        <div className="flex-1 border-t border-stone-200" />
+                      </div>
+                    );
+                  })}
+
+                  {/* Current time line */}
+                  {currentTimePercent !== null && selectedDay === todayStr && (
+                    <div
+                      className="absolute left-12 right-0 z-10 flex items-center"
+                      style={{ top: `${currentTimePercent}%` }}
+                    >
+                      <div className="h-2 w-2 rounded-full bg-red-500 -ml-1 shrink-0" />
+                      <div className="flex-1 bg-red-500 h-[1.5px]" />
+                    </div>
+                  )}
+
+                  {/* Shift bars */}
+                  {selectedDayShifts.map((shift) => {
+                    const top = getShiftTopPercent(shift.startTime);
+                    const height = getShiftHeightPercent(shift.startTime, shift.endTime);
+                    const laneInfo = selectedDayLanes.get(shift.id);
+                    const totalLanes = laneInfo?.totalLanes ?? 1;
+                    const lane = laneInfo?.lane ?? 0;
+                    const laneWidthPercent = totalLanes > 1 ? (100 - 15) / totalLanes : 100 - 15;
+                    const laneLeftPercent = 15 + lane * laneWidthPercent;
+                    const matchedRoles = (shift.staffRoles ?? [])
+                      .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
+                      .filter(Boolean) as StaffRole[];
+                    const name = team.find((m) => m.id === shift.memberId)?.displayName ?? shift.staffName ?? "Staff";
+                    const firstName = name.split(" ")[0];
+
+                    return (
+                      <button
+                        key={shift.id}
+                        onClick={() => {
+                          if (canEdit) {
+                            setEditingShift(shift);
+                            setShiftForm({
+                              memberId: shift.memberId ?? team[0]?.id ?? "",
+                              date: shift.date,
+                              shiftType: shift.shiftType,
+                              startTime: shift.startTime,
+                              endTime: shift.endTime,
+                              roleNames: shift.staffRoles ?? [],
+                            });
+                            setAddDialog(true);
+                          } else {
+                            setShiftDetailShift(shift);
+                          }
+                        }}
+                        className="absolute bg-white border border-stone-200 flex overflow-hidden text-left rounded"
+                        style={{
+                          top: `${top}%`,
+                          height: `${height}%`,
+                          left: `${laneLeftPercent}%`,
+                          width: `${laneWidthPercent - 1}%`,
+                          minHeight: "28px",
+                          borderLeftWidth: "2px",
+                          borderLeftColor: "#1c1917",
+                        }}
+                      >
+                        <div className="flex-1 min-w-0 px-2 py-1 flex items-start gap-1.5">
+                          <div className={`h-[18px] w-[18px] shrink-0 rounded-full flex items-center justify-center text-[7px] font-bold ${avatarBg(name)}`}>
+                            {initials(name)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[12.5px] font-semibold text-stone-900 truncate leading-tight">{firstName}</p>
+                            <p className="text-[10.5px] font-mono tabular-nums text-stone-500 leading-tight">
+                              {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                            </p>
+                            {matchedRoles.length > 0 && (
+                              <p className="text-[10px] text-stone-400 truncate leading-tight">
+                                {matchedRoles.map((r) => r.name).join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
+              )}
+            </div>
+
+            {/* ── Manager Requests Section (in Schedule tab) ── */}
+            {!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0) && (
+              <div className="border-t border-stone-200">
+                <button
+                  onClick={() => setShowRequests(!showRequests)}
+                  className="flex items-center gap-2 w-full px-4 py-2.5 border-b border-stone-200"
+                >
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Requests</p>
+                  <span className="text-[10.5px] font-semibold text-white bg-stone-900 rounded px-1.5 py-0.5">
+                    {pendingCount}
+                  </span>
+                  {showRequests
+                    ? <ChevronUp className="h-3.5 w-3.5 ml-auto text-stone-400" />
+                    : <ChevronDown className="h-3.5 w-3.5 ml-auto text-stone-400" />
+                  }
+                </button>
+                {showRequests && (
+                  <div className="divide-y divide-stone-200">
+                    {pendingTimeOff.map((req) => (
+                      <div key={req.id} className="px-4 py-3">
+                        <p className="text-[13px] font-medium text-stone-900">{getMemberName(req.userId)}</p>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
+                            className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                          >
+                            <Check className="h-3 w-3" /> Approve
+                          </button>
+                          <button
+                            onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
+                            className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                          >
+                            <Ban className="h-3 w-3" /> Deny
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {pendingTrades.map((trade) => {
+                      const shift = shifts.find((s) => s.id === trade.shiftId);
+                      return (
+                        <div key={trade.id} className="px-4 py-3">
+                          <p className="text-[13px] font-medium text-stone-900">
+                            {getMemberName(trade.requesterId)} &rarr; {getMemberName(trade.targetId)}
+                          </p>
+                          {shift && (
+                            <p className="text-[11px] text-stone-500 mt-0.5">
+                              {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                            </p>
+                          )}
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
+                              className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <Check className="h-3 w-3" /> Accept
+                            </button>
+                            <button
+                              onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
+                              className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <Ban className="h-3 w-3" /> Deny
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* ─── Schedule (manager view) ──────────────────────────────── */}
-        {activeTab === "schedule" && !isStaff && (
-          <div
-            ref={contentRef}
-            style={{
-              transform: `translateX(${swipeOffset}px)`,
-              transition: swiping ? "none" : slideAnim ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
-            }}
-          >
-            <div id="schedule-grid" className="divide-y divide-border">
-              {weekDates.map((d) => {
-                const ds        = isoDate(d);
-                const dayShifts = weekShifts.filter((s) => s.date === ds);
-                const isTodayD  = isToday(d);
-                const label     = isTodayD
-                  ? `Today · ${d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" })}`
-                  : d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
-
-                return (
-                  <div key={ds} className="py-3">
-                    <p className={`text-xs font-semibold mb-2 ${isTodayD ? "text-stone-900" : "text-stone-500"}`}>
-                      {label}
-                    </p>
-                    {dayShifts.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No shifts scheduled.</p>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {dayShifts.map((shift) => {
-                          const shiftRoles = (shift.staffRoles ?? [])
-                            .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
-                            .filter(Boolean) as typeof roles;
-                          return (
-                          <div key={shift.id} className="flex items-center gap-3 group">
-                            <div
-                              className={`h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${avatarBg(shift.staffName)}`}
-                            >
-                              {initials(shift.staffName)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-sm font-medium text-stone-900 leading-snug">
-                                  {shift.staffName}
-                                </p>
-                                {shiftRoles.map((sr) => (
-                                  <span key={sr.id} className="inline-flex items-center gap-1">
-                                    <span
-                                      className="inline-block h-2 w-2 rounded-full shrink-0"
-                                      style={{ backgroundColor: sr.color }}
-                                    />
-                                    <span className="text-xs font-medium text-stone-500">{sr.name}</span>
-                                  </span>
-                                ))}
-                              </div>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span
-                                  className="inline-block h-2 w-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
-                                />
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {formatTime(shift.startTime)} – {formatTime(shift.endTime)} &middot; {SHIFT_LABELS[shift.shiftType]}
-                                </span>
-                              </div>
-                            </div>
-                            {canEdit && (
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                                <button
-                                  onClick={() => {
-                                    setEditingShift(shift);
-                                    setShiftForm({
-                                      memberId:  shift.memberId ?? team[0]?.id ?? "",
-                                      date:      shift.date,
-                                      shiftType: shift.shiftType,
-                                      startTime: shift.startTime,
-                                      endTime:   shift.endTime,
-                                      roleNames: shift.staffRoles ?? [],
-                                    });
-                                    setAddDialog(true);
-                                  }}
-                                  className="p-1 rounded hover:bg-muted text-muted-foreground transition-colors"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteShift(shift.id)}
-                                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {canEdit && (
-                      <button
-                        onClick={() => {
-                          setEditingShift(null);
-                          setShiftForm({
-                            memberId:  team[0]?.id ?? "",
-                            date:      ds,
-                            shiftType: "morning",
-                            startTime: "07:00",
-                            endTime:   "14:00",
-                            roleNames: [],
-                          });
-                          setAddDialog(true);
-                        }}
-                        className="flex items-center gap-1.5 mt-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors w-full"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add Shift
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ─── Manager Requests Section ──────────────────────── */}
-            <div className="mt-4 border-t border-border">
-              <button
-                onClick={() => setShowRequests(!showRequests)}
-                className="flex items-center gap-2 w-full py-3"
-              >
-                <span className="text-sm font-semibold text-stone-800">Requests</span>
-                {pendingCount > 0 && (
-                  <span className="inline-flex items-center justify-center h-4 min-w-4 px-1.5 bg-stone-900 text-white text-[9px] font-bold rounded-full">
-                    {pendingCount}
-                  </span>
-                )}
-                {showRequests
-                  ? <ChevronUp className="h-4 w-4 ml-auto text-stone-400" />
-                  : <ChevronDown className="h-4 w-4 ml-auto text-stone-400" />
-                }
-              </button>
-
-              {showRequests && (
-                <div className="space-y-4 pb-4">
-                  {/* Time-off requests */}
-                  {orgTimeOffRequests.length > 0 && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-2">Time Off</p>
-                      <div className="space-y-2">
-                        {orgTimeOffRequests.map((req) => (
-                          <div key={req.id} className="border border-border p-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-stone-900">
-                                  {getMemberName(req.userId)}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {formatDateShort(req.startDate)} – {formatDateShort(req.endDate)}
-                                  {!req.fullDays && req.startTime && req.endTime && (
-                                    <> &middot; {formatTime(req.startTime)}–{formatTime(req.endTime)}</>
-                                  )}
-                                </p>
-                                {req.comments && (
-                                  <p className="text-xs text-stone-500 mt-1 italic">&ldquo;{req.comments}&rdquo;</p>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
-                                  className="p-1.5 border border-border hover:bg-emerald-50 hover:border-emerald-300 text-stone-500 hover:text-emerald-700 rounded transition-colors"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
-                                  className="p-1.5 border border-border hover:bg-red-50 hover:border-red-300 text-stone-500 hover:text-red-700 rounded transition-colors"
-                                >
-                                  <Ban className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Shift trade requests */}
-                  {orgShiftTrades.length > 0 && (
-                    <div>
-                      <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-2">Shift Trades</p>
-                      <div className="space-y-2">
-                        {orgShiftTrades.map((trade) => {
-                          const shift = shifts.find((s) => s.id === trade.shiftId);
-                          return (
-                            <div key={trade.id} className="border border-border p-3">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-stone-100 text-stone-600">
-                                      {trade.type}
-                                    </span>
-                                    <p className="text-sm font-medium text-stone-900">
-                                      {getMemberName(trade.requesterId)}
-                                      <span className="text-stone-400 font-normal"> → </span>
-                                      {getMemberName(trade.targetId)}
-                                    </p>
-                                  </div>
-                                  {shift && (
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                      {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}–{formatTime(shift.endTime)}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
-                                    className="p-1.5 border border-border hover:bg-emerald-50 hover:border-emerald-300 text-stone-500 hover:text-emerald-700 rounded transition-colors"
-                                  >
-                                    <Check className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
-                                    className="p-1.5 border border-border hover:bg-red-50 hover:border-red-300 text-stone-500 hover:text-red-700 rounded transition-colors"
-                                  >
-                                    <Ban className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {orgTimeOffRequests.length === 0 && orgShiftTrades.length === 0 && (
-                    <p className="text-sm text-muted-foreground py-2">No pending requests.</p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ─── Table View (Excel-like grid) ────────────────────────── */}
-        {activeTab === "table" && !isStaff && (() => {
-          const allMembers = team.filter((m) => m.status === "active");
-          const memberIds = allMembers.map((m) => m.id);
-          const dateStrs = weekDates.map((d) => isoDate(d));
-
-          const handleCellClick = (key: CellKey, e: React.MouseEvent) => {
-            const [memberId, date] = key.split("|");
-            const lastCell = lastCellRef.current; // capture before setState
-            setSelectedCells((prev) => {
-              const next = new Set(prev);
-              if (e.shiftKey && lastCell) {
-                // Rectangle select from last click to current, additive
-                const [lastMember, lastDate] = lastCell.split("|");
-                const r1 = memberIds.indexOf(lastMember);
-                const r2 = memberIds.indexOf(memberId);
-                const c1 = dateStrs.indexOf(lastDate);
-                const c2 = dateStrs.indexOf(date);
-                if (r1 >= 0 && r2 >= 0 && c1 >= 0 && c2 >= 0) {
-                  for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) {
-                    for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
-                      next.add(`${memberIds[r]}|${dateStrs[c]}`);
-                    }
-                  }
-                }
-              } else if (e.metaKey || e.ctrlKey) {
-                if (next.has(key)) next.delete(key); else next.add(key);
-              } else {
-                next.clear();
-                next.add(key);
-              }
-              return next;
-            });
-            lastCellRef.current = key;
-          };
-          const handleBatchApply = async () => {
-            if (selectedCells.size === 0 || !userId || !organizationId) return;
-            setSaving(true);
-            try {
-              const newShifts: Shift[] = [];
-              for (const key of selectedCells) {
-                const [memberId, date] = key.split("|");
-                const member = team.find((m) => m.id === memberId);
-                if (!member) continue;
-                // Check if shift already exists for this member+date
-                const existing = shifts.find((s) => s.memberId === memberId && s.date === date);
-                if (existing) {
-                  const patched = { ...existing, startTime: batchForm.startTime, endTime: batchForm.endTime, staffRoles: batchForm.roleNames };
-                  await updateShift(existing.id, patched);
-                  setShifts((prev) => prev.map((s) => s.id === existing.id ? patched : s));
-                } else {
-                  const shiftId = crypto.randomUUID();
-                  await addShift({
-                    memberId: member.id,
-                    staffName: member.displayName,
-                    staffRole: batchForm.roleNames[0] || null,
-                    staffRoles: batchForm.roleNames,
-                    date,
-                    shiftType: "morning",
-                    startTime: batchForm.startTime,
-                    endTime: batchForm.endTime,
-                    predictedDemand: "medium",
-                  }, userId, organizationId ?? undefined);
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  newShifts.push({ id: shiftId, memberId: member.id, staffName: member.displayName, staffRoles: batchForm.roleNames, date, shiftType: "morning", startTime: batchForm.startTime, endTime: batchForm.endTime } as any);
-                }
-              }
-              if (newShifts.length > 0) setShifts((prev) => [...prev, ...newShifts]);
-              setSelectedCells(new Set());
-              setBatchDialog(false);
-            } finally { setSaving(false); }
-          };
-          const handleCopyLastWeek = async () => {
-            if (!userId || !organizationId) return;
-            const prevStart = new Date(weekStart);
-            prevStart.setDate(prevStart.getDate() - 7);
-            const prevEnd = new Date(prevStart);
-            prevEnd.setDate(prevEnd.getDate() + 6);
-            const prevStartStr = isoDate(prevStart);
-            const prevEndStr = isoDate(prevEnd);
-            const lastWeekShifts = shifts.filter((s) => s.date >= prevStartStr && s.date <= prevEndStr);
-            if (lastWeekShifts.length === 0) { alert("No shifts found in the previous week."); return; }
-            setSaving(true);
-            try {
-              const newShifts: Shift[] = [];
-              for (const s of lastWeekShifts) {
-                const oldDate = new Date(s.date + "T00:00:00");
-                const newDate = new Date(oldDate);
-                newDate.setDate(newDate.getDate() + 7);
-                const newDateStr = isoDate(newDate);
-                // Skip if shift already exists
-                if (shifts.find((ex) => ex.memberId === s.memberId && ex.date === newDateStr)) continue;
-                const shiftId = crypto.randomUUID();
-                await addShift({
-                  memberId: s.memberId,
-                  staffName: s.staffName,
-                  staffRole: s.staffRole,
-                  staffRoles: s.staffRoles,
-                  date: newDateStr,
-                  shiftType: s.shiftType,
-                  startTime: s.startTime,
-                  endTime: s.endTime,
-                  predictedDemand: s.predictedDemand,
-                }, userId, organizationId ?? undefined);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                newShifts.push({ ...s, id: shiftId, date: newDateStr } as any);
-              }
-              setShifts((prev) => [...prev, ...newShifts]);
-            } finally { setSaving(false); }
-          };
-          const handleDeleteSelected = async () => {
-            if (selectedCells.size === 0) return;
-            setSaving(true);
-            try {
-              const idsToDelete: string[] = [];
-              for (const key of selectedCells) {
-                const [memberId, date] = key.split("|");
-                const existing = shifts.find((s) => s.memberId === memberId && s.date === date);
-                if (existing) idsToDelete.push(existing.id);
-              }
-              for (const id of idsToDelete) await deleteShift(id);
-              setShifts((prev) => prev.filter((s) => !idsToDelete.includes(s.id)));
-              setSelectedCells(new Set());
-            } finally { setSaving(false); }
-          };
-
-          return (
-          <>
-            {/* Week nav for table */}
-            <div className="flex items-center justify-between mb-3">
-              <button onClick={prevWeek} className="p-1 rounded hover:bg-stone-100 transition-colors">
-                <ChevronLeft className="h-4 w-4 text-stone-600" />
-              </button>
-              <span className="text-sm font-semibold text-stone-800">{monthYear}</span>
-              <button onClick={nextWeek} className="p-1 rounded hover:bg-stone-100 transition-colors">
-                <ChevronRight className="h-4 w-4 text-stone-600" />
-              </button>
-            </div>
-
-            {/* Toolbar */}
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              {/* Mobile: Select toggle */}
-              <button
-                onClick={() => { setSelectMode((v) => !v); if (selectMode) setSelectedCells(new Set()); }}
-                className={`md:hidden px-2.5 py-1 text-xs font-medium border rounded transition-colors ${
-                  selectMode ? "border-blue-500 bg-blue-50 text-blue-700" : "border-border hover:bg-stone-50"
-                }`}
-              >
-                {selectMode ? "Done" : "Select"}
-              </button>
-              <button
-                onClick={() => { setBatchForm({ startTime: "09:00", endTime: "17:00", roleNames: [] }); setBatchDialog(true); }}
-                disabled={selectedCells.size === 0}
-                className="px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-stone-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                Edit ({selectedCells.size})
-              </button>
-              <button
-                onClick={handleDeleteSelected}
-                disabled={selectedCells.size === 0 || saving}
-                className="px-2.5 py-1 text-xs font-medium border border-destructive/50 text-destructive rounded hover:bg-destructive/5 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              >
-                Delete
-              </button>
-              <div className="flex-1" />
-              <button
-                onClick={handleCopyLastWeek}
-                disabled={saving}
-                className="px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-stone-50 disabled:opacity-50 transition-colors"
-              >
-                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : "Copy Last Week"}
-              </button>
-              <button
-                onClick={() => { setSelectMode(true); const all = new Set<CellKey>(); allMembers.forEach((m) => weekDates.forEach((d) => all.add(`${m.id}|${isoDate(d)}`))); setSelectedCells(all); }}
-                className="hidden md:block px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-stone-50 transition-colors"
-              >
-                Select All
-              </button>
-              <button
-                onClick={() => setSelectedCells(new Set())}
-                disabled={selectedCells.size === 0}
-                className="hidden md:block px-2.5 py-1 text-xs font-medium border border-border rounded hover:bg-stone-50 disabled:opacity-30 transition-colors"
-              >
-                Clear
-              </button>
-            </div>
-
-            <p className="hidden md:block text-[10px] text-muted-foreground mb-2">⌘/Ctrl+click to toggle · Shift+click to range select</p>
-            {selectMode && <p className="md:hidden text-[10px] text-muted-foreground mb-2">Tap to toggle · Drag to range select</p>}
-
-            {/* Grid table */}
-            <div className="overflow-x-auto border border-border rounded" id="table-grid-container">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr>
-                    <th className="sticky left-0 z-10 bg-stone-100 border-b border-r border-border px-1.5 py-2 text-left font-semibold text-[10px] min-w-[60px]">Name</th>
-                    {weekDates.map((d) => {
-                      const ds = isoDate(d);
-                      const isTodayD = isToday(d);
-                      return (
-                        <th key={ds} className={`border-b border-r border-border px-1 py-2 text-center font-semibold min-w-[70px] text-[10px] ${isTodayD ? "bg-stone-200" : "bg-stone-100"}`}>
-                          {d.toLocaleDateString("en-US", { weekday: "short" })} {d.getMonth() + 1}/{d.getDate()}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {allMembers.map((member) => (
-                    <tr key={member.id}>
-                      <td className="sticky left-0 z-10 bg-white border-b border-r border-border px-1.5 py-2 font-medium text-[10px] leading-tight">
-                        {(() => {
-                          const parts = member.displayName.split(" ");
-                          if (parts.length <= 1) return member.displayName;
-                          return `${parts[0]} ${parts.slice(1).map((p) => p[0] + ".").join(" ")}`;
-                        })()}
-                      </td>
-                      {weekDates.map((d) => {
-                        const ds = isoDate(d);
-                        const cellKey: CellKey = `${member.id}|${ds}`;
-                        const isSelected = selectedCells.has(cellKey);
-                        const shift = weekShifts.find((s) => s.memberId === member.id && s.date === ds);
-                        const shiftRoles = shift ? (shift.staffRoles ?? []).map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase())).filter(Boolean) as typeof roles : [];
-                        return (
-                          <td
-                            key={ds}
-                            onClick={(e) => {
-                              if (selectMode) {
-                                // Select mode: tap = toggle (like cmd+click)
-                                handleCellClick(cellKey, { ...e, metaKey: true, ctrlKey: true, shiftKey: false } as React.MouseEvent);
-                              } else if (e.metaKey || e.ctrlKey || e.shiftKey) {
-                                // Desktop multi-select
-                                handleCellClick(cellKey, e);
-                              } else {
-                                // Normal click: open sheet to edit/create
-                                if (shift) {
-                                  setEditingShift(shift);
-                                  setShiftForm({
-                                    memberId:  shift.memberId ?? member.id,
-                                    date:      shift.date,
-                                    shiftType: shift.shiftType,
-                                    startTime: shift.startTime,
-                                    endTime:   shift.endTime,
-                                    roleNames: shift.staffRoles ?? [],
-                                  });
-                                } else {
-                                  setEditingShift(null);
-                                  setShiftForm({
-                                    memberId:  member.id,
-                                    date:      ds,
-                                    shiftType: "morning",
-                                    startTime: "07:00",
-                                    endTime:   "14:00",
-                                    roleNames: [],
-                                  });
-                                }
-                                setAddDialog(true);
-                              }
-                            }}
-                            onTouchStart={() => {
-                              if (!selectMode) return;
-                              dragStartRef.current = cellKey;
-                              isDraggingRef.current = false;
-                              preDragSelectionRef.current = new Set(selectedCells);
-                            }}
-                            onTouchEnd={() => { dragStartRef.current = null; isDraggingRef.current = false; }}
-                            data-cellkey={cellKey}
-                            className={`border-b border-r border-border px-1 py-1 text-center cursor-pointer select-none transition-colors min-w-[70px] ${
-                              isSelected
-                                ? "bg-blue-100 ring-2 ring-inset ring-blue-400"
-                                : shift
-                                ? "bg-orange-50 hover:bg-orange-100"
-                                : "hover:bg-stone-50"
-                            }`}
-                          >
-                            {shift && (
-                              <div>
-                                <div className="text-[9px] font-medium">{formatTime(shift.startTime)}</div>
-                                <div className="text-[9px] font-medium">{formatTime(shift.endTime)}</div>
-                                {shiftRoles.length > 0 && (
-                                  <div className="flex justify-center gap-1 mt-1">
-                                    {shiftRoles.map((r) => (
-                                      <RoleIconComp key={r.id} name={r.icon} className="h-3 w-3" style={{ color: r.color }} />
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                  {/* Total row */}
-                  <tr className="bg-stone-50">
-                    <td className="sticky left-0 z-10 bg-stone-100 border-r border-border px-1.5 py-2 font-semibold text-[10px]">Total</td>
-                    {weekDates.map((d) => {
-                      const ds = isoDate(d);
-                      const count = weekShifts.filter((s) => s.date === ds).length;
-                      return <td key={ds} className="border-r border-border px-2 py-2 text-center font-semibold">{count}</td>;
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Batch Edit Dialog — same style as Add Shift */}
-            <Dialog open={batchDialog} onOpenChange={(open) => { if (!open) setBatchDialog(false); }}>
-              <DialogContent className="max-w-md" noPadding>
-                <DialogHeader>
-                  <DialogTitle mobileTitle={`Edit ${selectedCells.size} shift${selectedCells.size > 1 ? "s" : ""}`}>
-                    Edit {selectedCells.size} shift{selectedCells.size > 1 ? "s" : ""}
-                  </DialogTitle>
-                  <DialogDescription className="hidden">
-                    Set shift time and roles for selected cells.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="flex flex-col h-full">
-                  <div className="flex-1 overflow-y-auto">
-                    {/* Time range */}
-                    <div className="px-4 pt-2 pb-4 space-y-4">
-                      <div className="flex items-center gap-2 py-2 border-b border-border">
-                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <Input
-                          type="time"
-                          value={batchForm.startTime}
-                          onChange={(e) => setBatchForm((f) => ({ ...f, startTime: e.target.value }))}
-                          className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1"
-                        />
-                        <span className="text-muted-foreground">—</span>
-                        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <Input
-                          type="time"
-                          value={batchForm.endTime}
-                          onChange={(e) => setBatchForm((f) => ({ ...f, endTime: e.target.value }))}
-                          className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1"
-                        />
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          ({(() => {
-                            const [sh, sm] = batchForm.startTime.split(":").map(Number);
-                            const [eh, em] = batchForm.endTime.split(":").map(Number);
-                            const h = Math.max(0, eh + em / 60 - (sh + sm / 60));
-                            return h % 1 === 0 ? `${h}hr` : `${h.toFixed(1)}hr`;
-                          })()})
-                        </span>
-                      </div>
-
-                      {/* Time Template */}
-                      <div>
-                        <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium mb-1.5 block">Time Template</span>
-                        {allPresets.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">No templates yet.</p>
-                        ) : (
-                          <div className="flex gap-1.5 flex-wrap">
-                            {allPresets.map((p) => {
-                              const active = batchForm.startTime === p.startTime && batchForm.endTime === p.endTime;
-                              return (
-                                <button
-                                  key={p.id}
-                                  onClick={() => setBatchForm((f) => ({ ...f, startTime: p.startTime, endTime: p.endTime }))}
-                                  className={`px-2.5 py-1.5 text-[11px] font-semibold rounded transition-all text-center ${
-                                    active ? "text-white shadow-sm" : "text-muted-foreground bg-muted hover:bg-stone-200"
-                                  }`}
-                                  style={active ? { backgroundColor: p.color } : undefined}
-                                >
-                                  <div>{p.name}</div>
-                                  <div className={`text-[9px] font-normal ${active ? "text-white/70" : "text-muted-foreground/60"}`}>{formatTime(p.startTime)}–{formatTime(p.endTime)}</div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="h-2 bg-muted/50" />
-
-                    {/* Roles */}
-                    <div className="px-4 py-4">
-                      <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Roles</Label>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        {roles.map((r) => {
-                          const selected = batchForm.roleNames.includes(r.name);
-                          return (
-                            <button
-                              key={r.id}
-                              onClick={() => setBatchForm((f) => ({
-                                ...f,
-                                roleNames: selected ? f.roleNames.filter((n) => n !== r.name) : [...f.roleNames, r.name],
-                              }))}
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border rounded transition-colors ${
-                                selected ? "border-stone-900 bg-stone-900 text-white" : "border-border text-stone-500 hover:bg-stone-50"
-                              }`}
-                            >
-                              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selected ? "white" : r.color }} />
-                              {r.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom CTA */}
-                  <div className="px-4 py-4 border-t border-border mt-auto">
-                    <Button
-                      onClick={handleBatchApply}
-                      disabled={saving}
-                      className="w-full h-12 text-sm font-semibold"
-                    >
-                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : `Apply to ${selectedCells.size} shift${selectedCells.size > 1 ? "s" : ""}`}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </>
-          );
-        })()}
-
-        {/* ─── Roles ───────────────────────────────────────────────── */}
-        {activeTab === "roles" && (
-          <div className="mt-1">
-            {/* ── Role detail sheet ── */}
-            <Dialog open={roleDetailOpen && !!selectedRole} onOpenChange={(open) => { if (!open) { setRoleDetailOpen(false); } }}>
-              <DialogContent noPadding>
-                <DialogHeader>
-                  <DialogTitle mobileTitle={selectedRole?.name ?? "Role"}>
-                    {selectedRole?.name ?? "Role"}
-                  </DialogTitle>
-                  <DialogDescription className="hidden">Role details and tasks</DialogDescription>
-                </DialogHeader>
+        {/* ── Role detail dialog (shared between tabs) ── */}
+        <Dialog open={roleDetailOpen && !!selectedRole} onOpenChange={(open) => { if (!open) { setRoleDetailOpen(false); } }}>
+          <DialogContent noPadding>
+            <DialogHeader>
+              <DialogTitle mobileTitle={selectedRole?.name ?? "Role"}>
+                {selectedRole?.name ?? "Role"}
+              </DialogTitle>
+              <DialogDescription className="hidden">Role details and tasks</DialogDescription>
+            </DialogHeader>
             {selectedRole && (
               <div className="space-y-4 px-4 pb-4 overflow-y-auto">
-                {/* Header */}
                 <div className="flex items-center gap-2 pt-2">
                   <div className="flex items-center gap-2.5 flex-1 min-w-0">
                     <div
-                      className="h-8 w-8 shrink-0 flex items-center justify-center border"
+                      className="h-8 w-8 shrink-0 flex items-center justify-center border rounded"
                       style={{ borderColor: selectedRole.color, color: selectedRole.color }}
                     >
                       <RoleIconComp name={selectedRole.icon} className="h-4 w-4" />
@@ -2320,7 +3121,7 @@ export default function StaffingPage() {
                         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selectedRole.color }} />
                       </div>
                       {selectedRole.description && (
-                        <p className="text-xs text-muted-foreground truncate">{selectedRole.description}</p>
+                        <p className="text-xs text-stone-500 truncate">{selectedRole.description}</p>
                       )}
                     </div>
                   </div>
@@ -2338,45 +3139,42 @@ export default function StaffingPage() {
                           });
                           setRoleDialog(true);
                         }}
-                        className="p-1.5 rounded hover:bg-stone-100 text-muted-foreground hover:text-stone-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-900 transition-colors"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={async () => { await handleDeleteRole(selectedRole.id); setSelectedRole(null); setRoleDetailOpen(false); }}
-                        className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   )}
                 </div>
-
-                {/* Task Timeline */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide">Task Timeline</p>
+                    <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Task Timeline</p>
                     {canEdit && (
                       <button
                         onClick={() => {
                           setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
                           setTaskDialog({ open: true, task: null });
                         }}
-                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-border hover:bg-stone-50 transition-colors"
+                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-stone-200 hover:bg-stone-50 transition-colors rounded"
                       >
                         <Plus className="h-3 w-3" /> Add Task
                       </button>
                     )}
                   </div>
-
                   {loadingTasks ? (
                     <div className="flex justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
                     </div>
                   ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
                     <div className="text-center py-10">
-                      <ClipboardList className="h-7 w-7 mx-auto text-muted-foreground opacity-25 mb-2" />
-                      <p className="text-sm text-muted-foreground">No tasks yet. Add time-based tasks for this role.</p>
+                      <ClipboardList className="h-7 w-7 mx-auto text-stone-300 mb-2" />
+                      <p className="text-[13px] text-stone-400">No tasks yet.</p>
                     </div>
                   ) : (
                     <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
@@ -2389,13 +3187,13 @@ export default function StaffingPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               {task.startTime && task.endTime && (
-                                <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5">
-                                  {formatTime(task.startTime)} – {formatTime(task.endTime)}
+                                <p className="font-mono text-[11px] text-stone-400 leading-none mb-0.5 tabular-nums">
+                                  {formatTime(task.startTime)} &ndash; {formatTime(task.endTime)}
                                 </p>
                               )}
-                              <p className="text-sm font-semibold text-stone-900 leading-snug">{task.title}</p>
+                              <p className="text-[13px] font-semibold text-stone-900 leading-snug">{task.title}</p>
                               {task.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
+                                <p className="text-[12px] text-stone-500 mt-0.5 leading-relaxed">{task.description}</p>
                               )}
                             </div>
                             {canEdit && (
@@ -2405,13 +3203,13 @@ export default function StaffingPage() {
                                     setTaskForm({ title: task.title, description: task.description, hasTime: !!(task.startTime && task.endTime), startTime: task.startTime ?? "08:00", endTime: task.endTime ?? "10:00", requiresEvidence: task.requiresEvidence ?? false, notifyChats: task.notifyChats ?? [] });
                                     setTaskDialog({ open: true, task });
                                   }}
-                                  className="p-1 rounded hover:bg-stone-100 text-muted-foreground hover:text-stone-700 transition-colors"
+                                  className="p-1 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTask(task.id)}
-                                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                  className="p-1 rounded hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>
@@ -2425,84 +3223,9 @@ export default function StaffingPage() {
                 </div>
               </div>
             )}
-              </DialogContent>
-            </Dialog>
-
-              {/* ── Role grid ── */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-sm">Staff Roles</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Define roles and task timelines for your team</p>
-                  </div>
-                  {canEdit && (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setEditingRole(null);
-                        setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} });
-                        setRoleDialog(true);
-                      }}
-                      className="gap-1.5"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add Role
-                    </Button>
-                  )}
-                </div>
-
-                {roles.length === 0 ? (
-                  <div className="text-center py-12 space-y-2">
-                    <Shield className="h-8 w-8 mx-auto text-muted-foreground opacity-30" />
-                    <p className="text-sm text-muted-foreground">
-                      No roles yet. Create roles like &quot;Barista&quot; or &quot;Shift Lead&quot;.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {roles.map((r) => (
-                      <div
-                        key={r.id}
-                        className="border border-border p-3 hover:border-stone-300 transition-colors cursor-pointer group"
-                        onClick={() => handleSelectRole(r)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                            <div
-                              className="h-8 w-8 shrink-0 flex items-center justify-center border"
-                              style={{ borderColor: r.color, color: r.color }}
-                            >
-                              <RoleIconComp name={r.icon} className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-sm text-stone-900">{r.name}</span>
-                                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                              </div>
-                              {r.description ? (
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">{r.description}</p>
-                              ) : (
-                                <p className="text-xs text-stone-400 mt-0.5">No description</p>
-                              )}
-                            </div>
-                          </div>
-                          {canEdit && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteRole(r.id); }}
-                              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-          </div>
-        )}
+          </DialogContent>
+        </Dialog>
       </div>
-
       {/* ─── Add / Edit Shift Dialog (7shifts-style) ─────────────── */}
       <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
         <DialogContent className="max-w-md" noPadding>
@@ -3181,24 +3904,28 @@ export default function StaffingPage() {
             <div className="space-y-1.5">
               <Label>Available Days</Label>
               <div className="flex gap-1.5">
-                {DAY_NAMES.map((d, i) => (
-                  <button
-                    key={d}
-                    onClick={() =>
-                      setAvailForm((f) => {
-                        const dayTimes = f.dayTimes.map((dt, j) => j === i ? { ...dt, enabled: !dt.enabled } : dt);
-                        return { ...f, dayTimes };
-                      })
-                    }
-                    className={`flex-1 py-1.5 text-xs font-semibold border transition-colors ${
-                      availForm.dayTimes[i].enabled
-                        ? "bg-stone-900 text-white border-stone-900"
-                        : "bg-white text-stone-500 border-border hover:bg-stone-50"
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
+                {DAY_NAMES.map((d, i) => {
+                  const enabled = !!availForm.dayTimes[i]?.enabled;
+                  return (
+                    <button
+                      key={d}
+                      onClick={() =>
+                        setAvailForm((f) => {
+                          const base = normalizeDayTimes(f.dayTimes);
+                          const dayTimes = base.map((dt, j) => j === i ? { ...dt, enabled: !dt.enabled } : dt);
+                          return { ...f, dayTimes };
+                        })
+                      }
+                      className={`flex-1 py-1.5 text-xs font-semibold border transition-colors ${
+                        enabled
+                          ? "bg-stone-900 text-white border-stone-900"
+                          : "bg-white text-stone-500 border-border hover:bg-stone-50"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

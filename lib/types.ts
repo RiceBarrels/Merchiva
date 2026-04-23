@@ -17,6 +17,7 @@ export interface OrgSummary {
 export interface PermissionSection {
   view: boolean;
   edit?: boolean;
+  invite?: boolean;
 }
 
 export interface Permissions {
@@ -26,7 +27,9 @@ export interface Permissions {
   staffing: PermissionSection;
   products: PermissionSection;
   settings: PermissionSection;
-  pos?: PermissionSection;
+  pos: PermissionSection;
+  team: PermissionSection;    // view=see team list, invite=send invites, edit=change roles/codes
+  website: PermissionSection; // view=see builder, edit=modify sites
 }
 
 export type OrgRole = "owner" | "manager" | "staff";
@@ -368,6 +371,17 @@ export interface SiteElement {
   height?: number;
 }
 
+export interface PageMetadata {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  keywords?: string;
+  robots?: string;
+  canonicalUrl?: string;
+}
+
 export interface SitePage {
   id: string;
   siteId: string;
@@ -376,6 +390,7 @@ export interface SitePage {
   elements: SiteElement[];
   sortOrder: number;
   html?: string;
+  metadata?: PageMetadata;
   createdAt: string;
 }
 

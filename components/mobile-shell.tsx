@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Menu, X, Zap } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { SidebarContent } from "@/components/sidebar";
+import { MerchivaLogo } from "@/components/logo";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 30;
@@ -165,10 +166,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               )}
             </button>
             <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
-                <Zap className="h-3.5 w-3.5" />
-              </div>
-              <p className="text-sm font-semibold tracking-tight">BizOps</p>
+              <MerchivaLogo size={24} fg="var(--background)" bg="var(--foreground)" rounded />
+              <p className="text-sm font-semibold tracking-tight">Merchiva</p>
             </div>
           </div>
 

@@ -33,12 +33,19 @@ import {
   Bold,
   Paintbrush,
   AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignStartHorizontal,
+  AlignCenterHorizontal,
+  AlignEndHorizontal,
   CaseSensitive,
   ArrowUpNarrowWide,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
+import type { SitePage } from "@/lib/types";
 import { FontPicker } from "./font-picker";
+import { ColorPicker } from "./color-picker";
 import { ImageUpload } from "@/components/image-upload";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -150,7 +157,7 @@ function Section({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <Label className="text-[11px] text-muted-foreground font-normal">{label}</Label>
+      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal">{label}</Label>
       {children}
     </div>
   );
@@ -158,15 +165,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function FieldRow({ label, icon: Icon, children }: { label: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-1.5">
-      {Icon ? (
-        <div className="flex w-6 shrink-0 items-center justify-center" title={label}>
-          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-      ) : (
-        <Label className="w-10 shrink-0 text-[10px] text-muted-foreground font-normal">{label}</Label>
-      )}
-      <div className="flex-1">{children}</div>
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        {Icon && <Icon className="h-3 w-3 text-muted-foreground" />}
+        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal">{label}</Label>
+      </div>
+      {children}
     </div>
   );
 }
@@ -426,18 +430,102 @@ function FieldCheckbox({ label, checked, onChange }: { label: string; checked: b
 // ─── Color row ──────────────────────────────────────────────────────────────
 
 function ColorRow({ color, onColorChange, onRemove }: { color: string; onColorChange: (c: string) => void; onRemove: () => void }) {
-  const hex = color.startsWith("#") ? color : color || "#000000";
+  const display = color || "#000000";
   return (
     <div className="flex items-center gap-2">
-      <label className="relative h-7 w-7 shrink-0 cursor-pointer overflow-hidden rounded-[0.3rem] border border-border">
-        <div className="absolute inset-0" style={{ backgroundColor: hex }} />
-        <input type="color" className="absolute inset-0 cursor-pointer opacity-0" value={hex} onChange={(e) => onColorChange(e.target.value)} />
-      </label>
-      <DeferredInput className="h-7 flex-1 font-mono text-xs focus-visible:ring-0 focus-visible:ring-offset-0" value={hex} onCommit={(v) => onColorChange(v)} />
+      <ColorPicker value={display} onChange={onColorChange} />
+      <DeferredInput className="h-7 flex-1 font-mono text-xs focus-visible:ring-0 focus-visible:ring-offset-0" value={display} onCommit={(v) => onColorChange(v)} />
       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onRemove}>
         <X className="h-3 w-3" />
       </Button>
     </div>
+  );
+}
+
+// Link field — page picker dropdown + free-form URL input
+function LinkField({
+  value,
+  pages,
+  onChange,
+}: {
+  value: string;
+  pages: SitePage[];
+  onChange: (v: string) => void;
+}) {
+  // Match a page if value equals "/slug" or "/" for home
+  const matchedPage = pages.find((p) => {
+    const pathForPage = p.slug === "index" || p.slug === "home" || p.slug === "" ? "/" : `/${p.slug}`;
+    return value === pathForPage;
+  });
+  const selectValue = matchedPage ? `page:${matchedPage.id}` : "custom";
+
+  return (
+    <div className="space-y-1">
+      <FieldRow label="Link to">
+        <Select
+          value={selectValue}
+          onValueChange={(v) => {
+            if (!v) return;
+            if (v === "custom") {
+              // Leave current value as-is; user will edit the URL input
+              return;
+            }
+            const pageId = v.replace("page:", "");
+            const page = pages.find((p) => p.id === pageId);
+            if (!page) return;
+            const path = page.slug === "index" || page.slug === "home" || page.slug === "" ? "/" : `/${page.slug}`;
+            onChange(path);
+          }}
+        >
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="custom" className="text-xs">External URL</SelectItem>
+            {pages.map((p) => (
+              <SelectItem key={p.id} value={`page:${p.id}`} className="text-xs">
+                {p.name} <span className="text-muted-foreground">/{p.slug}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FieldRow>
+      <DeferredInput
+        className="h-7 text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+        value={value}
+        placeholder={matchedPage ? "" : "https://..."}
+        onCommit={onChange}
+      />
+    </div>
+  );
+}
+
+// Inline color field (swatch + hex input) — for rows like Typography > Color
+function ColorField({
+  label,
+  icon,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  value: string;
+  placeholder?: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <FieldRow label={label} icon={icon}>
+      <div className="flex items-center gap-1.5">
+        <ColorPicker value={value || "#000000"} onChange={onChange} />
+        <DeferredInput
+          className="h-7 flex-1 font-mono text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+          value={value}
+          placeholder={placeholder || "#000000"}
+          onCommit={onChange}
+        />
+      </div>
+    </FieldRow>
   );
 }
 
@@ -505,12 +593,13 @@ function getDisplayName(node: Record<string, unknown>) {
 // Main Panel
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function DesignPanel() {
+export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
   const { selected, node, actions } = useEditor((state) => {
     const [currentNodeId] = state.events.selected;
     if (currentNodeId) return { selected: currentNodeId, node: state.nodes[currentNodeId] };
     return { selected: null, node: null };
   });
+  const dom = (node?.dom as HTMLElement | null) ?? null;
 
   const [lockAspect, setLockAspect] = useState(false);
 
@@ -540,7 +629,15 @@ export function DesignPanel() {
   const showPositionInputs = position === "absolute" || position === "fixed";
   const hasFill = !!style.backgroundColor;
   const hasStroke = !!style.border && style.border !== "none";
-  const hasEffect = !!style.boxShadow && style.boxShadow !== "none";
+  const isTextNode = displayName === "Text";
+  const isImageNode = displayName === "Image";
+  const shadowProp = isTextNode ? "textShadow" : "boxShadow";
+  const hasShadow = isTextNode
+    ? !!style.textShadow && style.textShadow !== "none"
+    : !!style.boxShadow && style.boxShadow !== "none";
+  const hasBlur = !!style.filter && style.filter.includes("blur");
+  const hasBackdrop = !!style.backdropFilter && style.backdropFilter !== "none";
+  const hasEffect = hasShadow || hasBlur || hasBackdrop;
 
   return (
     <div className="w-64 shrink-0 overflow-y-auto border-l border-border bg-background">
@@ -598,8 +695,51 @@ export function DesignPanel() {
         </Section>
       )}
 
+      {displayName === "Button" && (
+        <Section title="Button">
+          <FieldInput
+            label="Label"
+            value={(props.label as string) || ""}
+            placeholder="Click me"
+            onChange={(v) => setProp("label", v)}
+            noUnit
+          />
+          <LinkField
+            value={(props.href as string) || ""}
+            pages={pages}
+            onChange={(v) => setProp("href", v)}
+          />
+          <FieldSelect
+            label="Variant"
+            value={(props.variant as string) || "primary"}
+            options={[
+              { value: "primary", label: "Primary" },
+              { value: "secondary", label: "Secondary" },
+              { value: "outline", label: "Outline" },
+              { value: "ghost", label: "Ghost" },
+            ]}
+            onChange={(v) => setProp("variant", v)}
+          />
+          <FieldSelect
+            label="Size"
+            value={(props.size as string) || "md"}
+            options={[
+              { value: "sm", label: "Small" },
+              { value: "md", label: "Medium" },
+              { value: "lg", label: "Large" },
+            ]}
+            onChange={(v) => setProp("size", v)}
+          />
+          <FieldCheckbox
+            label="Full width"
+            checked={!!props.fullWidth}
+            onChange={(v) => setProp("fullWidth", v)}
+          />
+        </Section>
+      )}
+
       {/* ── Typography ──────────────────────────────────────────────────── */}
-      <Section title="Typography" defaultOpen={displayName === "Text"}>
+      <Section title="Typography" defaultOpen={displayName === "Text" || showAutoLayout}>
         <FieldRow label="Font" icon={Type}>
           <FontPicker
             value={style.fontFamily || ""}
@@ -624,7 +764,7 @@ export function DesignPanel() {
           ]}
           onChange={(v) => { setStyle("fontWeight", v); if (displayName === "Text") setProp("fontWeight", v); }}
         />
-        <FieldInput label="Color" icon={Paintbrush} value={style.color || (props.color as string) || ""} placeholder="#000000" onChange={(v) => { setStyle("color", v); if (displayName === "Text") setProp("color", v); }} />
+        <ColorField label="Color" icon={Paintbrush} value={style.color || (props.color as string) || ""} placeholder="#000000" onChange={(v) => { setStyle("color", v); if (displayName === "Text") setProp("color", v); }} />
         <FieldSelect
           label="Align"
           icon={AlignLeft}
@@ -637,7 +777,7 @@ export function DesignPanel() {
           ]}
           onChange={(v) => { setStyle("textAlign", v); if (displayName === "Text") setProp("align", v); }}
         />
-        <FieldInput label="Line height" icon={ArrowUpNarrowWide} value={style.lineHeight || ""} placeholder="1.6" onChange={(v) => setStyle("lineHeight", v)} noUnit />
+        <FieldInput label="Line height" icon={ArrowUpNarrowWide} value={style.lineHeight || ""} suffix="em" placeholder="1.6" onChange={(v) => setStyle("lineHeight", v)} />
         <FieldInput label="Letter spacing" icon={CaseSensitive} value={style.letterSpacing || ""} suffix="px" placeholder="0" onChange={(v) => setStyle("letterSpacing", v)} />
       </Section>
 
@@ -662,7 +802,11 @@ export function DesignPanel() {
             onChange={(v) => setProp("tag", v)}
           />
           {(props.tag as string) === "a" && (
-            <FieldInput label="Href" value={(props.href as string) || ""} placeholder="https://..." onChange={(v) => setProp("href", v)} noUnit />
+            <LinkField
+              value={(props.href as string) || ""}
+              pages={pages}
+              onChange={(v) => setProp("href", v)}
+            />
           )}
           <Field label="Direction">
             <ToggleGroup
@@ -706,14 +850,6 @@ export function DesignPanel() {
             onChange={(v) => setProp("justify", v)}
           />
 
-          <FieldInput label="Gap" icon={MoveVertical} value={(props.spacing as string) || "16px"} placeholder="16" suffix="px" onChange={(v) => setProp("spacing", v)} />
-
-          <SpacingControl
-            label="Padding"
-            value={(props.padding as string) || ""}
-            onChange={(v) => setProp("padding", v)}
-          />
-
           {(props.direction as string) === "grid" && (
             <FieldInput label="Columns" value={String((props.columns as number) || 2)} type="number" onChange={(v) => setProp("columns", parseInt(v) || 2)} />
           )}
@@ -737,35 +873,96 @@ export function DesignPanel() {
           onChange={(v) => setStyle("position", v === "static" ? "" : v)}
         />
 
+        {/* Alignment — shown for fixed/absolute */}
+        {showPositionInputs && (
+          <Field label="Alignment">
+            <div className="space-y-1">
+              {/* Horizontal alignment */}
+              <div className="flex gap-0.5 rounded-[0.3rem] border border-border p-0.5">
+                {[
+                  { value: "left", icon: AlignLeft, label: "Align left" },
+                  { value: "center", icon: AlignCenter, label: "Align horizontal centers" },
+                  { value: "right", icon: AlignRight, label: "Align right" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    title={opt.label}
+                    className="flex flex-1 items-center justify-center rounded-[0.2rem] py-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    onClick={() => {
+                      const parentWidth = (dom?.parentElement?.getBoundingClientRect().width) || 0;
+                      const selfWidth = dom?.getBoundingClientRect().width || 0;
+                      if (opt.value === "left") {
+                        setStyle("left", "0px");
+                        setStyle("right", "");
+                      } else if (opt.value === "right") {
+                        setStyle("right", "0px");
+                        setStyle("left", "");
+                      } else {
+                        // center: compute pixel offset from current layout
+                        const left = Math.max(0, Math.round((parentWidth - selfWidth) / 2));
+                        setStyle("left", `${left}px`);
+                        setStyle("right", "");
+                      }
+                    }}
+                  >
+                    <opt.icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
+              </div>
+              {/* Vertical alignment */}
+              <div className="flex gap-0.5 rounded-[0.3rem] border border-border p-0.5">
+                {[
+                  { value: "top", icon: AlignStartHorizontal, label: "Align top" },
+                  { value: "middle", icon: AlignCenterHorizontal, label: "Align vertical centers" },
+                  { value: "bottom", icon: AlignEndHorizontal, label: "Align bottom" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    title={opt.label}
+                    className="flex flex-1 items-center justify-center rounded-[0.2rem] py-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    onClick={() => {
+                      const parentHeight = (dom?.parentElement?.getBoundingClientRect().height) || 0;
+                      const selfHeight = dom?.getBoundingClientRect().height || 0;
+                      if (opt.value === "top") {
+                        setStyle("top", "0px");
+                        setStyle("bottom", "");
+                      } else if (opt.value === "bottom") {
+                        setStyle("bottom", "0px");
+                        setStyle("top", "");
+                      } else {
+                        const top = Math.max(0, Math.round((parentHeight - selfHeight) / 2));
+                        setStyle("top", `${top}px`);
+                        setStyle("bottom", "");
+                      }
+                    }}
+                  >
+                    <opt.icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Field>
+        )}
+
         {/* Constraints — shown for fixed/absolute */}
         {showPositionInputs && (
           <>
             {/* Constraint inputs: Top, Right, Bottom, Left */}
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-1 items-center">
-              {/* Top */}
-              <div />
+            <div className="grid grid-cols-2 gap-2">
               <Field label="Top">
-                <DeferredInput className="h-6 w-16 text-xs text-center focus-visible:ring-0 focus-visible:ring-offset-0" value={stripUnit(style.top)} placeholder="—" onCommit={(v) => setStyle("top", v ? ensurePx(v) : "")} />
+                <UnitInput value={style.top || ""} placeholder="—" onChange={(v) => setStyle("top", v)} />
               </Field>
-              <div />
-
-              {/* Left - visual - Right */}
               <Field label="Left">
-                <DeferredInput className="h-6 w-16 text-xs text-center focus-visible:ring-0 focus-visible:ring-offset-0" value={stripUnit(style.left)} placeholder="—" onCommit={(v) => setStyle("left", v ? ensurePx(v) : "")} />
+                <UnitInput value={style.left || ""} placeholder="—" onChange={(v) => setStyle("left", v)} />
               </Field>
-              <div className="flex items-center justify-center">
-                <div className="h-8 w-8 rounded-[0.2rem] border border-border bg-muted" />
-              </div>
               <Field label="Right">
-                <DeferredInput className="h-6 w-16 text-xs text-center focus-visible:ring-0 focus-visible:ring-offset-0" value={stripUnit(style.right)} placeholder="—" onCommit={(v) => setStyle("right", v ? ensurePx(v) : "")} />
+                <UnitInput value={style.right || ""} placeholder="—" onChange={(v) => setStyle("right", v)} />
               </Field>
-
-              {/* Bottom */}
-              <div />
               <Field label="Bottom">
-                <DeferredInput className="h-6 w-16 text-xs text-center focus-visible:ring-0 focus-visible:ring-offset-0" value={stripUnit(style.bottom)} placeholder="—" onCommit={(v) => setStyle("bottom", v ? ensurePx(v) : "")} />
+                <UnitInput value={style.bottom || ""} placeholder="—" onChange={(v) => setStyle("bottom", v)} />
               </Field>
-              <div />
             </div>
 
             {/* Z-Index */}
@@ -775,7 +972,9 @@ export function DesignPanel() {
 
         {position === "sticky" && (
           <>
-            <FieldInput label="Top" icon={MoveVertical} value={stripUnit(style.top)} suffix="px" onChange={(v) => setStyle("top", ensurePx(v))} />
+            <Field label="Top">
+              <UnitInput value={style.top || ""} placeholder="0" onChange={(v) => setStyle("top", v)} />
+            </Field>
             <FieldInput label="Z-Index" value={style.zIndex || ""} placeholder="auto" onChange={(v) => setStyle("zIndex", v)} noUnit />
           </>
         )}
@@ -827,8 +1026,26 @@ export function DesignPanel() {
         </button>
       </Section>
 
-      {/* ── Spacing (Margin) ────────────────────────────────────────────── */}
-      <Section title="Margin" defaultOpen={false}>
+      {/* ── Spacing (Gap / Padding / Margin) ────────────────────────────── */}
+      <Section title="Spacing" defaultOpen={false}>
+        {showAutoLayout && (
+          <FieldInput
+            label="Gap"
+            icon={MoveVertical}
+            value={(props.spacing as string) || "16px"}
+            placeholder="16"
+            suffix="px"
+            onChange={(v) => setProp("spacing", v)}
+          />
+        )}
+        <SpacingControl
+          label="Padding"
+          value={showAutoLayout ? ((props.padding as string) || "") : (style.padding || "")}
+          onChange={(v) => {
+            if (showAutoLayout) setProp("padding", v);
+            else setStyle("padding", v);
+          }}
+        />
         <SpacingControl
           label="Margin"
           value={style.margin || ""}
@@ -899,38 +1116,127 @@ export function DesignPanel() {
       </Section>
 
       {/* ── Effects ─────────────────────────────────────────────────────── */}
-      <Section title="Effects" onAdd={() => { if (!hasEffect) setStyle("boxShadow", "0px 4px 12px rgba(0,0,0,0.15)"); }} defaultOpen={false}>
-        {hasEffect ? (
-          <div className="space-y-2">
+      <Section
+        title="Effects"
+        onAdd={() => {
+          if (!hasShadow) {
+            if (isTextNode) {
+              setStyle("textShadow", "0px 2px 4px rgba(0,0,0,0.25)");
+            } else {
+              setStyle("boxShadow", "0px 4px 12px rgba(0,0,0,0.15)");
+            }
+          }
+        }}
+        defaultOpen={hasEffect}
+      >
+        {/* Shadow — text-shadow for Text, box-shadow for others */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            {isTextNode ? "Text Shadow" : isImageNode ? "Drop Shadow" : "Shadow"}
+          </p>
+          {hasShadow ? (
+            <>
+              <div className="flex items-center gap-2">
+                <DeferredInput
+                  className="h-7 flex-1 font-mono text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+                  value={style[shadowProp] || ""}
+                  onCommit={(v) => setStyle(shadowProp, v)}
+                />
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setStyle(shadowProp, "")}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <div className="flex gap-1">
+                {(isTextNode
+                  ? [
+                      { label: "Soft", value: "0px 1px 2px rgba(0,0,0,0.2)" },
+                      { label: "Medium", value: "0px 2px 4px rgba(0,0,0,0.25)" },
+                      { label: "Heavy", value: "0px 3px 6px rgba(0,0,0,0.35)" },
+                      { label: "Glow", value: "0px 0px 8px rgba(255,255,255,0.6)" },
+                    ]
+                  : [
+                      { label: "Small", value: "0px 1px 3px rgba(0,0,0,0.12)" },
+                      { label: "Medium", value: "0px 4px 12px rgba(0,0,0,0.15)" },
+                      { label: "Large", value: "0px 8px 24px rgba(0,0,0,0.2)" },
+                      { label: "XL", value: "0px 16px 48px rgba(0,0,0,0.25)" },
+                    ]
+                ).map((p) => (
+                  <button
+                    key={p.label}
+                    className={cn(
+                      "flex-1 rounded-[0.3rem] border border-border py-1 text-[10px] font-medium transition-colors",
+                      style[shadowProp] === p.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
+                    )}
+                    onClick={() => setStyle(shadowProp, p.value)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <button
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setStyle(shadowProp, isTextNode ? "0px 2px 4px rgba(0,0,0,0.25)" : "0px 4px 12px rgba(0,0,0,0.15)")}
+            >
+              + Add {isTextNode ? "text shadow" : "shadow"}
+            </button>
+          )}
+        </div>
+
+        <Separator className="my-1" />
+
+        {/* Blur */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">Blur</p>
+          {hasBlur ? (
             <div className="flex items-center gap-2">
-              <DeferredInput className="h-7 flex-1 font-mono text-xs focus-visible:ring-0 focus-visible:ring-offset-0" value={style.boxShadow || ""} onCommit={(v) => setStyle("boxShadow", v)} />
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setStyle("boxShadow", "")}>
+              <DeferredInput
+                className="h-7 flex-1 font-mono text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+                value={style.filter?.match(/blur\(([^)]+)\)/)?.[1] || ""}
+                placeholder="4px"
+                onCommit={(v) => setStyle("filter", v ? `blur(${ensurePx(v)})` : "")}
+              />
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setStyle("filter", "")}>
                 <X className="h-3 w-3" />
               </Button>
             </div>
-            <div className="flex gap-1">
-              {[
-                { label: "Small", value: "0px 1px 3px rgba(0,0,0,0.12)" },
-                { label: "Medium", value: "0px 4px 12px rgba(0,0,0,0.15)" },
-                { label: "Large", value: "0px 8px 24px rgba(0,0,0,0.2)" },
-                { label: "XL", value: "0px 16px 48px rgba(0,0,0,0.25)" },
-              ].map((p) => (
-                <button
-                  key={p.label}
-                  className={cn(
-                    "flex-1 rounded-[0.3rem] border border-border py-1 text-[10px] font-medium transition-colors",
-                    style.boxShadow === p.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
-                  )}
-                  onClick={() => setStyle("boxShadow", p.value)}
-                >
-                  {p.label}
-                </button>
-              ))}
+          ) : (
+            <button
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setStyle("filter", "blur(4px)")}
+            >
+              + Add blur
+            </button>
+          )}
+        </div>
+
+        <Separator className="my-1" />
+
+        {/* Backdrop blur */}
+        <div className="space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">Backdrop Blur</p>
+          {hasBackdrop ? (
+            <div className="flex items-center gap-2">
+              <DeferredInput
+                className="h-7 flex-1 font-mono text-xs focus-visible:ring-0 focus-visible:ring-offset-0"
+                value={style.backdropFilter?.match(/blur\(([^)]+)\)/)?.[1] || ""}
+                placeholder="8px"
+                onCommit={(v) => setStyle("backdropFilter", v ? `blur(${ensurePx(v)})` : "")}
+              />
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setStyle("backdropFilter", "")}>
+                <X className="h-3 w-3" />
+              </Button>
             </div>
-          </div>
-        ) : (
-          <p className="text-[11px] text-muted-foreground">No effects. Click + to add.</p>
-        )}
+          ) : (
+            <button
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setStyle("backdropFilter", "blur(8px)")}
+            >
+              + Add backdrop blur
+            </button>
+          )}
+        </div>
       </Section>
     </div>
   );

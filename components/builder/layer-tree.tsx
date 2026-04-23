@@ -2,8 +2,81 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useEditor } from "@craftjs/core";
-import { ChevronRight, ChevronDown, Eye, EyeOff, GripVertical } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  GripVertical,
+  Type,
+  Image as ImageIcon,
+  MousePointerClick,
+  Frame,
+  Pin,
+  Box,
+  Columns2,
+  Monitor,
+  Menu,
+  PanelBottom,
+  ShoppingBag,
+  ShoppingCart,
+  CreditCard,
+  Ticket,
+  BadgeDollarSign,
+  Quote,
+  HelpCircle,
+  GalleryHorizontalEnd,
+  Code2,
+  FileCode2,
+  LogIn,
+  Crown,
+  Gift,
+  MoveVertical,
+  SmilePlus,
+  SeparatorHorizontal,
+  Flame,
+  CalendarCheck,
+  Component as ComponentIcon,
+  Package,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const NODE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  CraftText: Type,
+  CraftImage: ImageIcon,
+  CraftButton: MousePointerClick,
+  CraftLayout: Frame,
+  CraftFixed: Pin,
+  CraftViewport: Monitor,
+  CraftColumns: Columns2,
+  CraftHero: Flame,
+  CraftNav: Menu,
+  CraftFooter: PanelBottom,
+  CraftDivider: SeparatorHorizontal,
+  CraftSpacer: MoveVertical,
+  CraftIcon: SmilePlus,
+  CraftProductCard: ShoppingBag,
+  CraftCart: ShoppingCart,
+  CraftCheckout: CreditCard,
+  CraftCouponBanner: Ticket,
+  CraftPricingTable: BadgeDollarSign,
+  CraftTestimonial: Quote,
+  CraftFaq: HelpCircle,
+  CraftGallery: GalleryHorizontalEnd,
+  CraftCodeBlock: Code2,
+  CraftCustomHtml: FileCode2,
+  CraftLoginForm: LogIn,
+  CraftMembershipWidget: Crown,
+  CraftReward: Gift,
+  CraftBookingForm: CalendarCheck,
+};
+
+function getNodeIcon(resolvedName: string, isComponent: boolean): React.ComponentType<{ className?: string }> {
+  if (isComponent) return ComponentIcon;
+  return NODE_ICONS[resolvedName] ?? Box;
+}
+
+export { Package };
 
 // ─── Drag state (module-level to share between all LayerNode instances) ─────
 
@@ -17,6 +90,11 @@ function isCraftFixed(nodeData: { type: unknown }): boolean {
     && (nodeData.type as { resolvedName: string }).resolvedName === "CraftFixed";
 }
 
+function isPositionedFixed(nodeData: { props?: Record<string, unknown> }): boolean {
+  const style = (nodeData.props?.style as Record<string, string> | undefined) || {};
+  return style.position === "fixed" || style.position === "absolute";
+}
+
 interface LayerNodeProps {
   nodeId: string;
   depth: number;
@@ -28,19 +106,24 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
   const [dropPosition, setDropPosition] = useState<"above" | "inside" | "below" | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
-  const { node, selected, hovered, actions, query, childIds, isFixedNode } = useEditor(
+  const { node, selected, hovered, actions, query, childIds, isFixedNode, isComponentNode, componentName } = useEditor(
     (state) => {
       const n = state.nodes[nodeId];
-      if (!n) return { node: null, selected: false, hovered: false, childIds: [], isFixedNode: false };
+      if (!n) return { node: null, selected: false, hovered: false, childIds: [], isFixedNode: false, isComponentNode: false, componentName: null };
       const resolvedName = typeof n.data.type === "object" && n.data.type !== null && "resolvedName" in n.data.type
         ? (n.data.type as { resolvedName: string }).resolvedName
         : "";
+      const style = (n.data.props?.style as Record<string, string> | undefined) || {};
+      const hasFixedPosition = style.position === "fixed" || style.position === "absolute";
+      const fromComp = (n.data.custom as { fromComponent?: { id: string; name: string } } | undefined)?.fromComponent;
       return {
         node: n,
         selected: state.events.selected.has(nodeId),
         hovered: state.events.hovered.has(nodeId),
         childIds: n.data.nodes || [],
-        isFixedNode: resolvedName === "CraftFixed",
+        isFixedNode: resolvedName === "CraftFixed" || hasFixedPosition,
+        isComponentNode: !!fromComp,
+        componentName: fromComp?.name ?? null,
       };
     }
   );
@@ -203,14 +286,15 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
 
   if (!node) return null;
 
+  const resolvedName = typeof node.data.type === "object" && node.data.type !== null && "resolvedName" in node.data.type
+    ? (node.data.type as { resolvedName: string }).resolvedName
+    : "";
   const displayName =
+    componentName ||
     node.data.custom?.displayName ||
     node.data.displayName ||
-    (typeof node.data.type === "object" &&
-    node.data.type !== null &&
-    "resolvedName" in node.data.type
-      ? (node.data.type as { resolvedName: string }).resolvedName.replace("Craft", "")
-      : "Element");
+    (resolvedName ? resolvedName.replace("Craft", "") : "Element");
+  const NodeIcon = getNodeIcon(resolvedName, isComponentNode);
 
   const hasChildren = childIds.length > 0;
   const isHidden = node.data.hidden;
@@ -282,6 +366,14 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
         ) : (
           <span className="h-4 w-4 shrink-0" />
         )}
+
+        {/* Element type icon */}
+        <NodeIcon
+          className={cn(
+            "h-3.5 w-3.5 shrink-0",
+            isComponentNode ? "text-violet-500" : "text-muted-foreground",
+          )}
+        />
 
         {/* Node name */}
         <span className="flex-1 truncate">{displayName}</span>

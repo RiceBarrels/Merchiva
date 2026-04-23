@@ -139,27 +139,26 @@ export default function InventoryPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name || !userId) return;
+    if (!form.name) {
+      toast.error("Name is required");
+      return;
+    }
     setSaving(true);
     try {
       if (editItem) {
         await updateInventoryItem(editItem.id, form);
       } else {
-        await addInventoryItem(
-          {
-            name: form.name ?? "",
-            category: form.category ?? "Other",
-            currentStock: form.currentStock ?? 0,
-            minStock: form.minStock ?? 10,
-            maxStock: form.maxStock ?? 100,
-            unit: form.unit ?? "units",
-            costPerUnit: form.costPerUnit ?? 0,
-            supplier: form.supplier ?? "",
-            lastRestocked: new Date().toISOString().split("T")[0],
-            lossRate: form.lossRate ?? 0,
-          },
-          userId
-        );
+        await addInventoryItem({
+          name: form.name ?? "",
+          category: form.category ?? "Other",
+          currentStock: form.currentStock ?? 0,
+          minStock: form.minStock ?? 10,
+          maxStock: form.maxStock ?? 100,
+          unit: form.unit ?? "units",
+          costPerUnit: form.costPerUnit ?? 0,
+          supplier: form.supplier ?? "",
+          lastRestocked: new Date().toISOString().split("T")[0],
+        });
       }
       hapticSuccess();
       toast.success(editItem ? "Item updated" : "Item added");

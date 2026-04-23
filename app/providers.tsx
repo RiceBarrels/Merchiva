@@ -1,11 +1,7 @@
 "use client";
 
-import { ClerkProvider } from "@clerk/react";
+import { AuthProvider } from "@/lib/auth/context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  return (
-    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}>
-      {children}
-    </ClerkProvider>
-  );
+  return <AuthProvider>{children}</AuthProvider>;
 }

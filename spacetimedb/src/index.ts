@@ -84,6 +84,7 @@ const orgMemberTable = table(
     permissions: t.string(),   // JSON-encoded Permissions object
     status: t.string(),        // "active" | "disabled"
     joinedAt: t.timestamp(),
+    punchInCode: t.option(t.string()).default(undefined),
   }
 );
 
@@ -569,6 +570,30 @@ const todoTable = table(
   }
 );
 
+// ─── Punch Events ────────────────────────────────────────────────────────────
+
+const punchEventTable = table(
+  {
+    name: 'punch_event',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byMemberId', algorithm: 'btree', columns: ['memberId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    memberId: t.string(),
+    pin: t.string(),
+    action: t.string(),   // "in" | "out" | "break-start" | "break-end"
+    at: t.timestamp(),
+    closed: t.bool(),
+    pairEventId: t.option(t.string()),
+    createdAt: t.timestamp(),
+  }
+);
+
 // ─── Sites ────────────────────────────────────────────────────────────────────
 
 const siteTable = table(
@@ -609,8 +634,9 @@ const sitePageTable = table(
     slug: t.string(),
     elements: t.string(),  // JSON-encoded SiteElement[]
     sortOrder: t.i32(),
-    html: t.option(t.string()),
     createdAt: t.timestamp(),
+    html: t.option(t.string()).default(undefined),
+    metadata: t.option(t.string()).default(undefined),
   }
 );
 
@@ -856,6 +882,7 @@ const spacetimedb = schema({
   chatMember: chatMemberTable,
   chatMessage: chatMessageTable,
   todo: todoTable,
+  punchEvent: punchEventTable,
   site: siteTable,
   sitePage: sitePageTable,
   siteComponent: siteComponentTable,
@@ -1024,6 +1051,9 @@ export const createOrg = spacetimedb.reducer(
       staffing: { view: true, edit: true },
       products: { view: true, edit: true },
       settings: { view: true },
+      pos: { view: true, edit: true },
+      team: { view: true, invite: true, edit: true },
+      website: { view: true, edit: true },
     });
 
     ctx.db.orgMember.insert({
@@ -1036,13 +1066,14 @@ export const createOrg = spacetimedb.reducer(
       permissions: defaultPermissions,
       status: 'active',
       joinedAt: ctx.timestamp,
+      punchInCode: undefined,
     });
 
-    // Initialize default settings for the org
+    // Initialize default settings for the org — seed businessName from org name
     ctx.db.settings.insert({
       id: ctx.newUuidV4(),
       organizationId: orgId.toString(),
-      businessName: undefined,
+      businessName: name,
       businessType: undefined,
       timezone: 'America/Los_Angeles',
       squareConnected: false,
@@ -1134,6 +1165,7 @@ export const acceptInvitation = spacetimedb.reducer(
       permissions: invite.permissions,
       status: 'active',
       joinedAt: ctx.timestamp,
+      punchInCode: undefined,
     });
 
     // Mark invitation as accepted (delete + reinsert)
@@ -1189,6 +1221,128 @@ export const leaveOrg = spacetimedb.reducer(
     if (!member) throw new Error('Not a member');
     if (member.role === 'owner') throw new Error('Owner cannot leave; transfer ownership first');
     ctx.db.orgMember.delete(member);
+  }
+);
+
+/**
+ * Set or clear a member's punch-in code.
+ * - A user may always set/clear their own code.
+ * - An owner or a member with `team.edit` permission may set/clear another
+ *   member's code in the same organization.
+ * Pass `code: undefined` (option) to clear the code.
+ */
+export const setPunchInCode = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    memberId: t.string(),
+    code: t.option(t.string()),
+  },
+  (ctx, { organizationId, memberId, code }) => {
+    const caller = findActiveMember(ctx, organizationId);
+    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.id.toString() === memberId);
+    if (!target) throw new Error('Member not found');
+
+    const isSelf = target.id.toString() === caller.id.toString();
+    if (!isSelf) {
+      const perms = JSON.parse(caller.permissions);
+      const canEditTeam = caller.role === 'owner' || perms?.team?.edit === true;
+      if (!canEditTeam) unauthorized('Cannot change another member\'s punch-in code');
+    }
+
+    // Validate code shape when setting (exactly 4 digits). Clearing is always allowed.
+    if (code !== undefined) {
+      if (!/^[0-9]{4}$/.test(code)) throw new Error('Code must be 4 digits');
+      // Prevent collisions within the same org so punch-in lookups remain unambiguous.
+      const collision = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+        .find(m => m.id.toString() !== memberId && m.punchInCode === code);
+      if (collision) throw new Error('Code already in use at this store');
+    }
+
+    ctx.db.orgMember.delete(target);
+    ctx.db.orgMember.insert({ ...target, punchInCode: code });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUNCH CLOCK REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const recordPunch = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    code: t.string(),
+    action: t.string(), // "in" | "out" | "break-start" | "break-end"
+  },
+  (ctx, { organizationId, code, action }) => {
+    findActiveMember(ctx, organizationId);
+
+    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.punchInCode === code && m.status === 'active');
+    if (!target) throw new Error('Invalid punch-in code');
+
+    const memberId = target.id.toString();
+    const memberEvents = [...ctx.db.punchEvent.byMemberId.filter(memberId)]
+      .filter(e => e.organizationId === organizationId);
+
+    const openIn = memberEvents.find(e => e.action === 'in' && !e.closed);
+    const openBreak = memberEvents.find(e => e.action === 'break-start' && !e.closed);
+    const isOnShift = !!openIn;
+    const isOnBreak = !!openBreak;
+
+    let resolved = action;
+    if (action === 'auto') {
+      if (!isOnShift) resolved = 'in';
+      else if (isOnBreak) resolved = 'break-end';
+      else throw new Error('NEEDS_EXPLICIT_ACTION');
+    }
+
+    switch (resolved) {
+      case 'in':
+        if (isOnShift) throw new Error('Already on shift');
+        break;
+      case 'out':
+        if (!isOnShift) throw new Error('Not on shift');
+        if (isOnBreak) throw new Error('End break before punching out');
+        break;
+      case 'break-start':
+        if (!isOnShift) throw new Error('Not on shift');
+        if (isOnBreak) throw new Error('Already on break');
+        break;
+      case 'break-end':
+        if (!isOnBreak) throw new Error('Not on break');
+        break;
+      default:
+        throw new Error('Invalid action: ' + resolved);
+    }
+
+    let pairId: string | undefined = undefined;
+    if (resolved === 'out' && openIn) {
+      pairId = openIn.id.toString();
+      ctx.db.punchEvent.delete(openIn);
+      ctx.db.punchEvent.insert({ ...openIn, closed: true });
+      if (openBreak) {
+        ctx.db.punchEvent.delete(openBreak);
+        ctx.db.punchEvent.insert({ ...openBreak, closed: true });
+      }
+    }
+    if (resolved === 'break-end' && openBreak) {
+      pairId = openBreak.id.toString();
+      ctx.db.punchEvent.delete(openBreak);
+      ctx.db.punchEvent.insert({ ...openBreak, closed: true });
+    }
+
+    ctx.db.punchEvent.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      memberId,
+      pin: code,
+      action: resolved,
+      at: ctx.timestamp,
+      closed: resolved === 'out' || resolved === 'break-end',
+      pairEventId: pairId,
+      createdAt: ctx.timestamp,
+    });
   }
 );
 
@@ -2078,6 +2232,7 @@ export const addPage = spacetimedb.reducer(
     elements: t.string(),
     sortOrder: t.i32(),
     html: t.option(t.string()),
+    metadata: t.option(t.string()),
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
@@ -2090,6 +2245,7 @@ export const addPage = spacetimedb.reducer(
       elements: args.elements,
       sortOrder: args.sortOrder,
       html: args.html,
+      metadata: args.metadata,
       createdAt: ctx.timestamp,
     });
   }
@@ -2104,6 +2260,7 @@ export const updatePage = spacetimedb.reducer(
     elements: t.string(),
     sortOrder: t.i32(),
     html: t.option(t.string()),
+    metadata: t.option(t.string()),
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
@@ -2120,6 +2277,7 @@ export const updatePage = spacetimedb.reducer(
       elements: args.elements,
       sortOrder: args.sortOrder,
       html: args.html,
+      metadata: args.metadata,
     });
   }
 );

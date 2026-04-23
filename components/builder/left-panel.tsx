@@ -2,16 +2,22 @@
 
 import { useState, useCallback } from "react";
 import { useEditor } from "@craftjs/core";
-import { ChevronDown, Plus, Globe } from "lucide-react";
+import { ChevronDown, Plus, Globe, Component, Trash2, Settings } from "lucide-react";
+import { PageSettingsDialog } from "./page-settings-dialog";
 import { LayerTree, draggedNodeId } from "./layer-tree";
 import { CraftLayout } from "./craft-components/craft-layout";
 import { CraftFixed } from "./craft-components/craft-fixed";
+import { cloneSubtree } from "./canvas-context-menu";
+import { siteElementsToCraftState } from "@/lib/builder/craft-bridge";
+import { useSiteComponents } from "@/lib/spacetimedb/hooks";
+import { deleteComponent } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import React from "react";
-import type { Site, SitePage } from "@/lib/types";
+import type { Site, SitePage, SiteElement } from "@/lib/types";
+import { componentDragState } from "./component-drag-state";
 
 interface LeftPanelProps {
   site: Site;
@@ -92,7 +98,14 @@ export function LeftPanel({
 }: LeftPanelProps) {
   const [isAddingPage, setIsAddingPage] = useState(false);
   const [newPageName, setNewPageName] = useState("");
+  const [componentsOpen, setComponentsOpen] = useState(true);
+  const [settingsPageId, setSettingsPageId] = useState<string | null>(null);
   const { actions, query } = useEditor();
+
+  const [rawComponents] = useSiteComponents();
+  const siteComponents = (rawComponents || []).filter(
+    (c) => c.siteId === site.id || !c.siteId
+  );
 
   const addElement = useCallback((fixed: boolean) => {
     const component = fixed ? CraftFixed : CraftLayout;
@@ -102,6 +115,48 @@ export function LeftPanel({
     ).toNodeTree();
     actions.addNodeTree(tree, "ROOT");
   }, [actions, query]);
+
+  const insertComponent = useCallback((elementData: SiteElement | string, meta?: { id: string; name: string }) => {
+    try {
+      const element: SiteElement = typeof elementData === "string"
+        ? JSON.parse(elementData)
+        : elementData;
+
+      // Wrap in array for siteElementsToCraftState (which expects SiteElement[])
+      const craftJson = siteElementsToCraftState([element]);
+      const craftNodes = JSON.parse(craftJson);
+
+      // The first child of ROOT is our component root
+      const rootChildId = craftNodes.ROOT?.nodes?.[0];
+      if (!rootChildId) return;
+
+      const tree = cloneSubtree(craftNodes, rootChildId, query);
+      if (!tree) return;
+
+      // Tag the clone's root node so the layer tree can show a Component icon
+      if (meta) {
+        const rootNode = tree.nodes[tree.rootNodeId];
+        if (rootNode) {
+          rootNode.data.custom = {
+            ...(rootNode.data.custom || {}),
+            fromComponent: { id: meta.id, name: meta.name },
+          };
+        }
+      }
+
+      actions.addNodeTree(tree, "ROOT");
+    } catch (err) {
+      console.error("Insert component failed:", err);
+    }
+  }, [actions, query]);
+
+  const handleDeleteComponent = useCallback(async (id: string) => {
+    try {
+      await deleteComponent(id);
+    } catch (err) {
+      console.error("Delete component failed:", err);
+    }
+  }, []);
 
   function handleAddPage() {
     const name = newPageName.trim();
@@ -164,16 +219,15 @@ export function LeftPanel({
           {pages.map((page, i) => {
             const isActive = page.id === activePageId;
             return (
-              <Button
+              <div
                 key={page.id}
-                variant="ghost"
-                onClick={() => onPageSwitch(page.id)}
                 className={cn(
-                  "flex w-full items-center justify-start gap-2 rounded-[0.3rem] border border-transparent p-2 h-auto text-left",
+                  "group flex w-full items-center gap-2 rounded-[0.3rem] border border-transparent p-2 text-left cursor-pointer",
                   isActive
-                    ? "border-border bg-accent text-foreground hover:bg-accent hover:text-foreground"
-                    : "text-foreground hover:bg-accent/60 hover:text-foreground"
+                    ? "border-border bg-accent text-foreground"
+                    : "text-foreground hover:bg-accent/60"
                 )}
+                onClick={() => onPageSwitch(page.id)}
               >
                 <div
                   className={cn(
@@ -181,8 +235,22 @@ export function LeftPanel({
                     PAGE_COLORS[i % PAGE_COLORS.length]
                   )}
                 />
-                <span className="truncate text-xs">{page.name}</span>
-              </Button>
+                <span className="flex-1 truncate text-xs">{page.name}</span>
+                <button
+                  type="button"
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground hover:text-foreground transition-opacity",
+                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSettingsPageId(page.id);
+                  }}
+                  title="Page settings"
+                >
+                  <Settings className="h-3 w-3" />
+                </button>
+              </div>
             );
           })}
 
@@ -209,6 +277,73 @@ export function LeftPanel({
 
       <Separator />
 
+      {/* Components section */}
+      <div>
+        <button
+          className="flex w-full items-center justify-between px-3 py-2 hover:bg-accent/50 transition-colors"
+          onClick={() => setComponentsOpen(!componentsOpen)}
+        >
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Components
+          </span>
+          <span className="text-[10px] text-muted-foreground">{siteComponents.length}</span>
+        </button>
+
+        {componentsOpen && (
+          <div className="space-y-0.5 px-2 pb-2">
+            {siteComponents.length === 0 ? (
+              <p className="px-1 py-2 text-[11px] text-muted-foreground">
+                Right-click an element and select &quot;Save as Component&quot; to add here.
+              </p>
+            ) : (
+              siteComponents.map((comp) => {
+                const compIdStr = comp.id.toString();
+                const parsedData: SiteElement = typeof comp.elementData === "string"
+                  ? JSON.parse(comp.elementData)
+                  : comp.elementData;
+                return (
+                  <div
+                    key={compIdStr}
+                    draggable
+                    onDragStart={(e) => {
+                      componentDragState.payload = {
+                        id: compIdStr,
+                        name: comp.name,
+                        data: parsedData,
+                      };
+                      e.dataTransfer.effectAllowed = "copy";
+                      // Required for drag to fire in some browsers
+                      e.dataTransfer.setData("text/plain", comp.name);
+                    }}
+                    onDragEnd={() => {
+                      componentDragState.payload = null;
+                    }}
+                    className="group flex items-center gap-2 rounded-[0.3rem] border border-transparent px-2 py-1.5 hover:border-border hover:bg-accent/60 cursor-grab active:cursor-grabbing"
+                    onClick={() => insertComponent(comp.elementData, { id: compIdStr, name: comp.name })}
+                    title="Click to insert or drag onto canvas"
+                  >
+                    <Component className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 truncate text-xs text-foreground">{comp.name}</span>
+                    <button
+                      type="button"
+                      className="h-4 w-4 shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteComponent(compIdStr);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
       {/* Layers section */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DropSection
@@ -221,14 +356,16 @@ export function LeftPanel({
               ? (node.data.type as { resolvedName: string }).resolvedName : "";
             if (resolvedName === "CraftFixed") return;
 
-            // Remove fixed positioning
+            // Remove fixed/absolute positioning when moving into scroll flow
             actions.setProp(nodeId, (p: Record<string, unknown>) => {
               const s = (p.style as Record<string, string>) || {};
-              delete s.position;
-              delete s.top;
-              delete s.right;
-              delete s.bottom;
-              delete s.left;
+              if (s.position === "fixed" || s.position === "absolute") {
+                delete s.position;
+                delete s.top;
+                delete s.right;
+                delete s.bottom;
+                delete s.left;
+              }
               p.style = { ...s };
             });
           }}
@@ -239,14 +376,39 @@ export function LeftPanel({
         <DropSection
           label="Fixed"
           onAdd={() => addElement(true)}
-          onDrop={() => {
-            // CraftFixed elements are inherently fixed — no style changes needed
-            // Non-fixed elements cannot be converted to fixed via drag (different component type)
+          onDrop={(nodeId) => {
+            const node = query.node(nodeId).get();
+            const resolvedName = typeof node.data.type === "object" && node.data.type !== null && "resolvedName" in node.data.type
+              ? (node.data.type as { resolvedName: string }).resolvedName : "";
+            // CraftFixed is inherently fixed
+            if (resolvedName === "CraftFixed") return;
+            // Apply fixed positioning to regular elements
+            actions.setProp(nodeId, (p: Record<string, unknown>) => {
+              const s = (p.style as Record<string, string>) || {};
+              if (s.position !== "fixed" && s.position !== "absolute") {
+                s.position = "fixed";
+                if (!s.top && !s.bottom) s.top = "20px";
+                if (!s.left && !s.right) s.left = "20px";
+              }
+              p.style = { ...s };
+            });
           }}
         >
           <LayerTree filter="fixed" />
         </DropSection>
       </div>
+
+      {settingsPageId && (() => {
+        const targetPage = pages.find((p) => p.id === settingsPageId);
+        if (!targetPage) return null;
+        return (
+          <PageSettingsDialog
+            open={!!settingsPageId}
+            onOpenChange={(v) => { if (!v) setSettingsPageId(null); }}
+            page={targetPage}
+          />
+        );
+      })()}
     </div>
   );
 }

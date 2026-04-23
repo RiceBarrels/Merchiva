@@ -11,7 +11,7 @@ export interface PermissionsContextValue {
   permissions: Permissions;
   organizationId: string | null;
   isOwner: boolean;
-  can: (section: keyof Permissions, action: "view" | "edit") => boolean;
+  can: (section: keyof Permissions, action: "view" | "edit" | "invite") => boolean;
   organizations: OrgSummary[];
   currentOrg: OrgSummary | null;
   switchOrg: (orgId: string) => Promise<void>;
@@ -46,19 +46,29 @@ export function PermissionsProvider({
   const router = useRouter();
   const isOwner = role === "owner";
 
-  function can(section: keyof Permissions, action: "view" | "edit"): boolean {
+  function can(section: keyof Permissions, action: "view" | "edit" | "invite"): boolean {
     if (isOwner) return true;
     const section_perms = permissions[section];
     if (!section_perms) return false;
     if (action === "view") return section_perms.view === true;
     if (action === "edit") return section_perms.edit === true;
+    if (action === "invite") return section_perms.invite === true;
     return false;
   }
 
-  async function switchOrg(_orgId: string) {
-    // Org switching is handled by SpacetimeDB — just refresh the page.
+  async function switchOrg(orgId: string) {
+    if (!orgId) return;
+    // Persist preference so the layout picks this org on next render/refresh.
+    try {
+      localStorage.setItem("active_org_id", orgId);
+    } catch {
+      // localStorage may be unavailable in some contexts — ignore.
+    }
     clearCache();
     router.refresh();
+    // Hard reload so the layout re-reads localStorage and SpacetimeDB
+    // subscriptions re-scope under the new active org.
+    window.location.reload();
   }
 
   return (

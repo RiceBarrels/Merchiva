@@ -124,35 +124,44 @@ export function siteElementsToCraftState(elements: SiteElement[]): string {
 
 // ─── Craft.js serialized nodes → SiteElement[] ─────────────────────────────
 
+function nodeToElement(nodes: Record<string, CraftNode>, nodeId: string): SiteElement {
+  const node = nodes[nodeId];
+  const elementType = (node.custom?.elementType as ElementType) ||
+    CRAFT_TO_TYPE[node.type.resolvedName] ||
+    "text";
+
+  const children: SiteElement[] = node.nodes
+    .filter((childId) => nodes[childId])
+    .map((childId) => nodeToElement(nodes, childId));
+
+  return {
+    id: nodeId,
+    type: elementType,
+    props: { ...node.props },
+    ...(children.length > 0 ? { children } : {}),
+    ...(node.custom?.x != null ? { x: node.custom.x as number } : {}),
+    ...(node.custom?.y != null ? { y: node.custom.y as number } : {}),
+    ...(node.custom?.width != null ? { width: node.custom.width as number } : {}),
+    ...(node.custom?.height != null ? { height: node.custom.height as number } : {}),
+  };
+}
+
 export function craftStateToSiteElements(serializedJson: string): SiteElement[] {
   const nodes: Record<string, CraftNode> = JSON.parse(serializedJson);
-
-  function nodeToElement(nodeId: string): SiteElement {
-    const node = nodes[nodeId];
-    const elementType = (node.custom?.elementType as ElementType) ||
-      CRAFT_TO_TYPE[node.type.resolvedName] ||
-      "text";
-
-    const children: SiteElement[] = node.nodes
-      .filter((childId) => nodes[childId])
-      .map((childId) => nodeToElement(childId));
-
-    return {
-      id: nodeId,
-      type: elementType,
-      props: { ...node.props },
-      ...(children.length > 0 ? { children } : {}),
-      ...(node.custom?.x != null ? { x: node.custom.x as number } : {}),
-      ...(node.custom?.y != null ? { y: node.custom.y as number } : {}),
-      ...(node.custom?.width != null ? { width: node.custom.width as number } : {}),
-      ...(node.custom?.height != null ? { height: node.custom.height as number } : {}),
-    };
-  }
 
   const root = nodes.ROOT;
   if (!root) return [];
 
   return root.nodes
     .filter((id) => nodes[id])
-    .map((id) => nodeToElement(id));
+    .map((id) => nodeToElement(nodes, id));
+}
+
+/**
+ * Extract a single node subtree as a SiteElement (for saving as component).
+ */
+export function craftNodeToSiteElement(serializedJson: string, nodeId: string): SiteElement | null {
+  const nodes: Record<string, CraftNode> = JSON.parse(serializedJson);
+  if (!nodes[nodeId]) return null;
+  return nodeToElement(nodes, nodeId);
 }

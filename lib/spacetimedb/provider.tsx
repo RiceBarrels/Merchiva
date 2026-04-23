@@ -10,7 +10,7 @@ import {
   setConnection,
   clearConnection,
 } from "./client";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/lib/auth/context";
 import type { ReactNode } from "react";
 
 interface SpacetimeProviderProps {
@@ -19,28 +19,26 @@ interface SpacetimeProviderProps {
 
 export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   const { getToken, isSignedIn } = useAuth();
-  const [clerkToken, setClerkToken] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
-  // Fetch fresh Clerk JWT and make it available to the connection builder.
   useEffect(() => {
     if (!isSignedIn) return;
     getToken().then((token) => {
       if (token) {
-        setClerkToken(token);
+        setAuthToken(token);
         localStorage.setItem("stdb_token", token);
       }
     });
   }, [isSignedIn, getToken]);
 
-  // Build once per token — recreated only when the Clerk JWT changes.
   const builder = useMemo(() => {
-    if (!clerkToken) return null;
+    if (!authToken) return null;
 
     console.log("ℹ️ INFO Connecting to SpacetimeDB WS...");
     return DbConnection.builder()
       .withUri(SPACETIMEDB_URI)
       .withDatabaseName(SPACETIMEDB_MODULE)
-      .withToken(clerkToken)
+      .withToken(authToken)
       .onConnect((conn, _identity, newToken) => {
         console.log("ℹ️ INFO Connected to SpacetimeDB WS");
         storeToken(newToken);
@@ -79,6 +77,7 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           "SELECT * FROM perk_claim",
           "SELECT * FROM customer_points",
           "SELECT * FROM todo",
+          "SELECT * FROM punch_event",
         ]);
       })
       .onDisconnect(() => {
@@ -93,11 +92,9 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           });
         });
       });
-  }, [clerkToken]);
+  }, [authToken]);
 
   if (!builder) {
-    // Token not yet fetched — show loading spinner. Do NOT render children because
-    // AuthLoader uses useSpacetimeDB/useTable hooks that require SpacetimeDBProvider context.
     return (
       <div className="flex h-screen items-center justify-center bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />

@@ -56,6 +56,7 @@ function pageFromRow(row: any): SitePage {
     elements: parseJsonField(row.elements, []) as SiteElement[],
     sortOrder: row.sortOrder ?? 0,
     html: row.html ?? undefined,
+    metadata: row.metadata ? parseJsonField(row.metadata, {}) : undefined,
     createdAt: row.createdAt,
   };
 }

@@ -14,6 +14,35 @@ function orgId(): string {
   return getActiveOrgId();
 }
 
+// Convert SpacetimeDB Timestamp (or string / Date / null) to an ISO string.
+function toIsoString(v: any): string {
+  if (!v) return new Date(0).toISOString();
+  try {
+    if (typeof v === "string") return new Date(v).toISOString();
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v.toDate === "function") return v.toDate().toISOString();
+    if (typeof v.microsSinceUnixEpoch === "bigint") {
+      return new Date(Number(v.microsSinceUnixEpoch / 1000n)).toISOString();
+    }
+    return new Date(v).toISOString();
+  } catch {
+    return new Date(0).toISOString();
+  }
+}
+
+function toDateMs(v: any): number {
+  try {
+    if (!v) return 0;
+    if (typeof v === "string") return new Date(v).getTime();
+    if (v instanceof Date) return v.getTime();
+    if (typeof v.toDate === "function") return v.toDate().getTime();
+    if (typeof v.microsSinceUnixEpoch === "bigint") return Number(v.microsSinceUnixEpoch / 1000n);
+    return new Date(v).getTime();
+  } catch {
+    return 0;
+  }
+}
+
 // ─── Conversations ──────────────────────────────────────────────────────────
 
 export async function getConversations(
@@ -59,13 +88,13 @@ export async function getConversations(
         id: m.id.toString(),
         conversationId: m.conversationId,
         userId: m.userId.toHexString(),
-        joinedAt: new Date(m.joinedAt).toISOString(),
+        joinedAt: toIsoString(m.joinedAt),
       }));
 
     // Find last message
     const convMessages = allMessages
       .filter((msg: any) => msg.conversationId === convIdStr)
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a: any, b: any) => toDateMs(b.createdAt) - toDateMs(a.createdAt));
 
     const lastMsg = convMessages[0] ?? null;
 
@@ -75,7 +104,7 @@ export async function getConversations(
       type: r.type as "direct" | "group",
       name: r.name ?? null,
       createdBy: r.createdBy ?? null,
-      createdAt: new Date(r.createdAt).toISOString(),
+      createdAt: toIsoString(r.createdAt),
       members,
       lastMessage: lastMsg
         ? {
@@ -83,7 +112,7 @@ export async function getConversations(
             conversationId: lastMsg.conversationId,
             senderId: lastMsg.senderId.toHexString(),
             content: lastMsg.content,
-            createdAt: new Date(lastMsg.createdAt).toISOString(),
+            createdAt: toIsoString(lastMsg.createdAt),
             replyToId: null,
             attachmentUrl: null,
             attachmentType: null,
@@ -143,7 +172,7 @@ async function findDirectConversation(
         type: conv.type as "direct" | "group",
         name: conv.name ?? null,
         createdBy: conv.createdBy ?? null,
-        createdAt: new Date(conv.createdAt).toISOString(),
+        createdAt: toIsoString(conv.createdAt),
       };
     }
   }
@@ -170,7 +199,7 @@ export async function getMessages(
   const allMessages = Array.from(c.db.chatMessage.iter());
   const filtered = allMessages
     .filter((r: any) => r.conversationId === conversationId)
-    .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .sort((a: any, b: any) => toDateMs(a.createdAt) - toDateMs(b.createdAt))
     .slice(-limit);
 
   return filtered.map((r: any) => ({
@@ -178,7 +207,7 @@ export async function getMessages(
     conversationId: r.conversationId,
     senderId: r.senderId.toHexString(),
     content: r.content,
-    createdAt: new Date(r.createdAt).toISOString(),
+    createdAt: toIsoString(r.createdAt),
     replyToId: null,
     attachmentUrl: null,
     attachmentType: null,

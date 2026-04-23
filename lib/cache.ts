@@ -1,4 +1,4 @@
-const CACHE_PREFIX = "bizops_";
+const CACHE_PREFIX = "merchiva_";
 
 interface CacheEntry<T> {
   data: T;
@@ -25,7 +25,7 @@ export function clearCache(key?: string): void {
   if (key) {
     localStorage.removeItem(CACHE_PREFIX + key);
   } else {
-    // Clear all bizops cache
+    // Clear all app cache
     Object.keys(localStorage)
       .filter((k) => k.startsWith(CACHE_PREFIX))
       .forEach((k) => localStorage.removeItem(k));

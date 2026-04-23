@@ -4,14 +4,11 @@ const config: CapacitorConfig = {
   appId: 'com.bizops.app',
   appName: 'BizOps',
   webDir: 'out',
-  // Local mode: no server URL, loads from webDir
-  // To use Vercel: uncomment server.url below
-  server: {
-    url: 'http://localhost:3000',
-    cleartext: true,
-    iosScheme: 'bizops',
-    androidScheme: 'bizops',
-  },
+  // server: {
+  //   url: 'https://project-management-phi-red.vercel.app',
+  //   iosScheme: 'https',
+  //   androidScheme: 'https',
+  // },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

@@ -143,12 +143,14 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
     parent,
     nodeStyle,
     isFixedNode,
+    isStylePositioned,
     fixedX,
     fixedY,
     fixedZIndex,
   } = useNode((node) => {
     const resolvedName = typeof node.data.type === "object" && node.data.type !== null && "resolvedName" in node.data.type
       ? (node.data.type as { resolvedName: string }).resolvedName : "";
+    const style = (node.data.props?.style as Record<string, string> | undefined) || {};
     return {
       isHover: node.events.hovered,
       dom: node.dom,
@@ -158,6 +160,7 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
       parent: node.data.parent,
       nodeStyle: (node.data.props?.style as Record<string, string>) || null,
       isFixedNode: resolvedName === "CraftFixed",
+      isStylePositioned: resolvedName !== "CraftFixed" && (style.position === "fixed" || style.position === "absolute"),
       fixedX: (node.data.props?.x as number) ?? 0,
       fixedY: (node.data.props?.y as number) ?? 0,
       fixedZIndex: (node.data.props?.zIndex as number) ?? 100,
@@ -219,6 +222,59 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
       dom.style.outlineOffset = "";
     }
   }, [dom, isActive, isHover]);
+
+  // ─── Direct drag for style-positioned elements (position: fixed/absolute) ──
+  const styleDragging = useRef<{ startX: number; startY: number; startLeft: number; startTop: number } | null>(null);
+
+  useEffect(() => {
+    if (!dom || !isStylePositioned || !isActive) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest("[data-resize-handle]") || (e.target as HTMLElement).closest("[data-node-toolbar]")) return;
+      e.stopPropagation();
+      const startLeft = parseFloat(dom.style.left) || 0;
+      const startTop = parseFloat(dom.style.top) || 0;
+      styleDragging.current = { startX: e.clientX, startY: e.clientY, startLeft, startTop };
+
+      const onMouseMove = (ev: MouseEvent) => {
+        if (!styleDragging.current) return;
+        const dx = ev.clientX - styleDragging.current.startX;
+        const dy = ev.clientY - styleDragging.current.startY;
+        dom.style.left = `${styleDragging.current.startLeft + dx}px`;
+        dom.style.top = `${styleDragging.current.startTop + dy}px`;
+      };
+
+      const onMouseUp = () => {
+        if (!styleDragging.current) return;
+        const finalLeft = Math.round(parseFloat(dom.style.left) || 0);
+        const finalTop = Math.round(parseFloat(dom.style.top) || 0);
+        styleDragging.current = null;
+
+        actions.setProp(id, (props: Record<string, unknown>) => {
+          const s = (props.style as Record<string, string>) || {};
+          s.left = `${finalLeft}px`;
+          s.top = `${finalTop}px`;
+          // Clear opposing anchors so left/top are the source of truth
+          delete s.right;
+          delete s.bottom;
+          props.style = { ...s };
+        });
+
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    };
+
+    dom.style.cursor = "move";
+    dom.addEventListener("mousedown", onMouseDown);
+    return () => {
+      dom.style.cursor = "";
+      dom.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [dom, isStylePositioned, isActive, actions, id]);
 
   // ─── Direct drag for CraftFixed elements ─────────────────────────────────
   const fixedDragging = useRef<{ startX: number; startY: number; startPropX: number; startPropY: number } | null>(null);
@@ -317,7 +373,7 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
         ? ReactDOM.createPortal(
             <div
               ref={indicatorRef}
-              className="fixed z-[9999] flex h-6 items-center gap-0.5 rounded-b-sm bg-blue-500 px-1.5 text-white shadow-sm"
+              className="fixed z-[9999] flex h-6 items-center gap-0.5 rounded-t-sm bg-blue-500 px-1.5 text-white shadow-sm"
               style={{
                 left: getPos(dom).left,
                 top: getPos(dom).top,

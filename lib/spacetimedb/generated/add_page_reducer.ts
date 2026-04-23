@@ -17,4 +17,6 @@ export default {
   slug: __t.string(),
   elements: __t.string(),
   sortOrder: __t.i32(),
+  html: __t.option(__t.string()),
+  metadata: __t.option(__t.string()),
 };

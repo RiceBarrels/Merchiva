@@ -18,4 +18,6 @@ export default __t.row({
   elements: __t.string(),
   sortOrder: __t.i32().name("sort_order"),
   createdAt: __t.timestamp().name("created_at"),
+  html: __t.option(__t.string()),
+  metadata: __t.option(__t.string()),
 });

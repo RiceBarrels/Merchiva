@@ -13,6 +13,8 @@ export function defaultPermissions(): Permissions {
     products: { view: true, edit: false },
     settings: { view: true },
     pos: { view: true, edit: false },
+    team: { view: false, invite: false, edit: false },
+    website: { view: false, edit: false },
   };
 }
 
@@ -25,21 +27,25 @@ export function ownerPermissions(): Permissions {
     products: { view: true, edit: true },
     settings: { view: true },
     pos: { view: true, edit: true },
+    team: { view: true, invite: true, edit: true },
+    website: { view: true, edit: true },
   };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parsePermissions(raw: unknown): Permissions {
-  if (!raw) return defaultPermissions();
+  const base = defaultPermissions();
+  if (!raw) return base;
+  let parsed: Partial<Permissions> = {};
   if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as Permissions;
-    } catch {
-      return defaultPermissions();
-    }
+    try { parsed = JSON.parse(raw) as Partial<Permissions>; } catch { return base; }
+  } else {
+    parsed = raw as Partial<Permissions>;
   }
-  return raw as Permissions;
+  // Merge parsed onto base so new permission keys added after the JSON was saved
+  // still have defaults rather than being undefined.
+  return { ...base, ...parsed } as Permissions;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

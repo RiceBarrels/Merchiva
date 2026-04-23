@@ -2,12 +2,12 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { MobileShell } from "@/components/sidebar";
-import { LoginForm } from "@/components/login-form";
+import { InlineSignIn } from "@/components/inline-sign-in";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/lib/auth/context";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,8 +114,26 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     );
     if (myMemberships.length === 0) return null;
 
-    const activeMembership = myMemberships[0];
+    // Honor the user's last-selected org if they have an active membership in it.
+    let preferredOrgId: string | null = null;
+    try {
+      preferredOrgId = typeof window !== "undefined"
+        ? localStorage.getItem("active_org_id")
+        : null;
+    } catch {
+      preferredOrgId = null;
+    }
+
+    const activeMembership =
+      (preferredOrgId
+        ? myMemberships.find((m) => m.organizationId.toString() === preferredOrgId)
+        : null) ?? myMemberships[0];
     const orgId = activeMembership.organizationId;
+
+    // If the preferred org no longer applies, clear the stale preference.
+    if (preferredOrgId && preferredOrgId !== orgId.toString()) {
+      try { localStorage.removeItem("active_org_id"); } catch {}
+    }
 
     const orgs: OrgSummary[] = myMemberships.map((m) => {
       const org = organizations.find((o) => o.id.toString() === m.organizationId.toString());
@@ -129,10 +147,13 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
     const role = activeMembership.role as OrgRole;
     const permissions: Permissions = (() => {
+      const fallback = role === "owner" ? ownerPermissions() : defaultPermissions();
       try {
-        return JSON.parse(activeMembership.permissions) as Permissions;
+        // Merge onto the role-appropriate fallback so new permission keys added
+        // after the membership's JSON was last saved aren't undefined.
+        return { ...fallback, ...(JSON.parse(activeMembership.permissions) as Partial<Permissions>) } as Permissions;
       } catch {
-        return role === "owner" ? ownerPermissions() : defaultPermissions();
+        return fallback;
       }
     })();
 
@@ -154,8 +175,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const { signOut } = useAuth();
 
   const handleSignOut = () => {
-    localStorage.removeItem("stdb_token");
-    signOut().then(() => { window.location.href = "/"; }).catch(() => { window.location.href = "/"; });
+    signOut();
   };
 
   // Still waiting for SpacetimeDB tables to sync
@@ -217,7 +237,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!isSignedIn) {
-    return <LoginForm />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+        <InlineSignIn redirectTo="/dashboard" />
+      </div>
+    );
   }
 
   return (

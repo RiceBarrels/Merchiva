@@ -154,8 +154,8 @@ export function KeyboardShortcuts() {
         return;
       }
 
-      // Redo
-      if (mod && e.shiftKey && e.key === "z") {
+      // Redo (Cmd+Shift+Z or Cmd+Y)
+      if ((mod && e.shiftKey && e.key === "z") || (mod && e.key === "y")) {
         e.preventDefault();
         try { actions.history.redo(); } catch {}
         return;

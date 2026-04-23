@@ -1,8 +1,8 @@
-# Agent Development Rules — BizOps
+# Agent Development Rules — Merchiva
 
 ## Project Overview
 
-BizOps is an AI-powered inventory prediction and daily management system for small businesses. It connects to Square POS for real data, uses Supabase for auth and storage, and provides sales forecasting, staffing management, and product performance tracking.
+Merchiva is an AI-powered inventory prediction and daily management system for small businesses. It connects to Square POS for real data, uses Supabase for auth and storage, and provides sales forecasting, staffing management, and product performance tracking.
 
 ---
 

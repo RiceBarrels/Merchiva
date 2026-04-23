@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BizOps — AI-Powered Business Management",
+  title: "Merchiva — AI-Powered Business Management",
   description: "Intelligent inventory prediction and daily management for small businesses",
 };
 
@@ -38,7 +38,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="BizOps" />
+        <meta name="apple-mobile-web-app-title" content="Merchiva" />
       </head>
       <body className="h-full bg-background text-foreground">
         <MobileDetector />

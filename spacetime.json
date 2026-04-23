@@ -1,4 +1,5 @@
 {
   "module-path": "./spacetimedb",
-  "server": "local"
+  "server": "local",
+  "database": "bizops"
 }

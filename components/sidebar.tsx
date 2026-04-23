@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef, createContext, useContext } from "react";
+import { useAuth } from "@/lib/auth/context";
 
 
 // ─── Sidebar open context — allows child components (e.g. builder toolbar) to open the sidebar ──
@@ -10,6 +11,35 @@ const SidebarOpenContext = createContext<(() => void) | null>(null);
 export function useSidebarOpen(): () => void {
   const fn = useContext(SidebarOpenContext);
   return fn ?? (() => {});
+}
+
+// ─── Sidebar collapsed context for desktop ──
+const SidebarCollapsedContext = createContext<{ collapsed: boolean; toggle: () => void }>({ collapsed: false, toggle: () => {} });
+export function useSidebarCollapsed() { return useContext(SidebarCollapsedContext); }
+
+function SidebarTooltip({ label, show, children }: { label: string; show: boolean; children: React.ReactNode }) {
+  if (!show) return <>{children}</>;
+  return (
+    <Tooltip>
+      <TooltipTrigger render={(props) => <div {...props}>{children}</div>} />
+      <TooltipContent side="right" sideOffset={8}>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function useSidebarCollapseState(): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try { setCollapsed(localStorage.getItem("sidebar_collapsed") === "1"); } catch {}
+  }, []);
+  const toggle = () => {
+    setCollapsed(c => {
+      const next = !c;
+      try { if (next) localStorage.setItem("sidebar_collapsed", "1"); else localStorage.removeItem("sidebar_collapsed"); } catch {}
+      return next;
+    });
+  };
+  return [collapsed, toggle];
 }
 import {
   LayoutDashboard,
@@ -19,7 +49,7 @@ import {
   ShoppingBag,
   Globe,
   Crown,
-  Zap,
+  // Zap removed — using MerchivaLogo
   Settings,
   LogOut,
   UserCog,
@@ -29,15 +59,26 @@ import {
   Loader2,
   MessageSquare,
   MonitorSmartphone,
+  KeyRound,
 } from "lucide-react";
 import { useOpenDialogCount, useDialogTitle, useDialogSwipeProgress } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
+import { BottomBar } from "@/components/bottom-bar";
+import { MerchivaLogo } from "@/components/logo";
+import { useNavMode } from "@/lib/nav-mode";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/context/permissions";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { clearCache } from "@/lib/cache";
+import { createOrg } from "@/lib/spacetimedb/actions";
+import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
+import {
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 
@@ -53,6 +94,7 @@ type NavItem = {
   permissionKey?: keyof Permissions;
 };
 
+// Punch-in is only shown in store-machine mode; see `visibleNavItems` below.
 const navItems: NavItem[] = [
   { label: "Home",              href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
   { label: "Inventory",        href: "/inventory",   icon: Package,         permissionKey: "inventory" },
@@ -60,8 +102,9 @@ const navItems: NavItem[] = [
   { label: "Staffing",         href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
   { label: "Products",         href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
   { label: "POS",              href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
+  { label: "Punch In",         href: "/punch-in",    icon: KeyRound },
   { label: "Chat",             href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
-  { label: "Website",          href: "/builder",     icon: Globe },
+  { label: "Website",          href: "/builder",     icon: Globe,           permissionKey: "website"   },
   { label: "Membership",       href: "/membership",  icon: Crown },
 ];
 
@@ -102,17 +145,17 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      // Org creation is handled via SpacetimeDB reducers on the signup page.
-      // For now, show a message redirecting user to sign up with a new account.
-      throw new Error("Create a new account to start a new organization.");
+      await createOrg(name);
       hapticSuccess();
       setOpen(false);
       setCreating(false);
       setNewStoreName("");
       onClose?.();
+      // Refresh so PermissionsProvider picks up the new org membership
+      // and switches the active org.
       router.refresh();
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to create store");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create store");
     } finally {
       setLoading(false);
     }
@@ -187,15 +230,22 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
   );
 }
 
-export function SidebarContent({ onClose }: { onClose?: () => void }) {
+export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname();
   const router   = useRouter();
   const { can, isOwner } = usePermissions();
+  const { signOut } = useAuth();
+  const [storeMachine] = useStoreMachineMode();
+  const [deviceName] = useDeviceName();
+
+  // Paths allowed when the device is in store-machine mode.
+  const STORE_MACHINE_HREFS = new Set(["/pos", "/inventory", "/punch-in"]);
 
   const handleLogout = () => {
     clearCache();
-    localStorage.removeItem("stdb_token");
-    router.push("/login");
+    localStorage.removeItem("active_org_id");
+    onClose?.();
+    signOut();
   };
 
   const handleNavClick = () => {
@@ -204,49 +254,60 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   };
 
   const visibleNavItems = navItems.filter((item) => {
+    // Punch In is a store-machine-only entry point.
+    if (item.href === "/punch-in" && !storeMachine) return false;
+    if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
     if (!item.permissionKey) return true;
     return can(item.permissionKey, "view");
   });
 
   return (
-    <aside className="flex h-full w-full flex-col md:border-r md:border-border bg-card">
+    <TooltipProvider delay={0}>
+    <aside className="flex h-full w-full flex-col bg-card">
       {/* Logo */}
-      <div className="flex h-12 items-center gap-2 px-4 border-b border-border">
-        <div className="flex h-6 w-6 items-center justify-center rounded bg-foreground text-background">
-          <Zap className="h-3.5 w-3.5" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold leading-none tracking-tight">BizOps</p>
-        </div>
+      <div className={cn("flex h-14 items-center gap-2.5 border-b border-border", collapsed ? "justify-center px-2" : "px-4")}>
+        <MerchivaLogo size={28} fg="var(--background)" bg="var(--foreground)" rounded />
+        {!collapsed && (
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold leading-tight tracking-tight truncate">Merchiva <span className="text-[10px] font-normal text-muted-foreground">beta</span></p>
+            {storeMachine && deviceName && (
+              <p className="text-[10.5px] text-muted-foreground leading-tight truncate">{deviceName}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Store switcher */}
-      <StoreSwitcher onClose={onClose} />
+      {!collapsed && <StoreSwitcher onClose={onClose} />}
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
-        <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Daily Management
-        </p>
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        {!collapsed && (
+          <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Daily Management
+          </p>
+        )}
         {visibleNavItems.map((item) => {
           const hasQuery = item.href.includes("?");
           const isActive = !hasQuery &&
             (pathname === item.href || pathname.startsWith(item.href + "/"));
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={handleNavClick}
-              className={cn(
-                "flex items-center gap-3 rounded px-3 py-3 lg:gap-2.5 lg:px-2.5 lg:py-2 text-sm lg:text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5 lg:h-4 lg:w-4 shrink-0" />
-              <span className="flex-1 truncate">{item.label}</span>
-            </Link>
+            <SidebarTooltip key={item.href} label={item.label} show={!!collapsed}>
+              <Link
+                href={item.href}
+                onClick={handleNavClick}
+                className={cn(
+                  "flex items-center rounded text-[13px] font-medium transition-colors",
+                  collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
+                  isActive
+                    ? "bg-stone-900 text-white"
+                    : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                )}
+              >
+                <item.icon className="h-[15px] w-[15px] shrink-0" />
+                {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+              </Link>
+            </SidebarTooltip>
           );
         })}
       </nav>
@@ -254,34 +315,93 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
       <Separator />
 
       {/* Bottom links */}
-      <div className="px-2 py-2 space-y-0.5">
-        <Link
-          href="/settings"
-          onClick={handleNavClick}
-          className={cn(
-            "flex items-center gap-3 rounded px-3 py-3 lg:gap-2.5 lg:px-2.5 lg:py-2 text-sm transition-colors",
-            pathname === "/settings"
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-          )}
-        >
-          <Settings className="h-5 w-5 lg:h-4 lg:w-4 shrink-0" />
-          Settings
-        </Link>
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center gap-3 rounded px-3 py-3 lg:gap-2.5 lg:px-2.5 lg:py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <LogOut className="h-5 w-5 lg:h-4 lg:w-4 shrink-0" />
-          Sign out
-        </button>
+      <div className="px-2 py-3 border-t border-border space-y-0.5">
+        <SidebarTooltip label="Settings" show={!!collapsed}>
+          <Link
+            href="/settings"
+            onClick={handleNavClick}
+            className={cn(
+              "flex items-center rounded text-[13px] font-medium transition-colors",
+              collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
+              pathname === "/settings"
+                ? "bg-stone-900 text-white"
+                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+            )}
+          >
+            <Settings className="h-[15px] w-[15px] shrink-0" />
+            {!collapsed && "Settings"}
+          </Link>
+        </SidebarTooltip>
+        <SidebarTooltip label="Sign out" show={!!collapsed}>
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "flex w-full items-center rounded text-[13px] text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors",
+              collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
+            )}
+          >
+            <LogOut className="h-[15px] w-[15px] shrink-0" />
+            {!collapsed && "Sign out"}
+          </button>
+        </SidebarTooltip>
+        {onToggleCollapse && (
+          <SidebarTooltip label={collapsed ? "Expand" : "Collapse"} show={!!collapsed}>
+            <button
+              onClick={onToggleCollapse}
+              className={cn(
+                "flex w-full items-center rounded text-[12px] text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors mt-1",
+                collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
+              )}
+            >
+              {collapsed ? <PanelLeftOpen className="h-[15px] w-[15px]" /> : <PanelLeftClose className="h-[15px] w-[15px]" />}
+              {!collapsed && <span>Collapse</span>}
+            </button>
+          </SidebarTooltip>
+        )}
+        {!collapsed && (
+          <p className="px-2.5 pt-2 pb-1 text-[10px] text-stone-400 font-mono">merchiva · beta-0.1.0</p>
+        )}
       </div>
     </aside>
+    </TooltipProvider>
+  );
+}
+
+function StoreTopBar({ deviceName }: { deviceName: string }) {
+  return (
+    <header className="h-11 shrink-0 border-b border-stone-800 bg-stone-900 text-white flex items-center px-4 gap-3 z-30">
+      <span className="font-mono text-xs font-bold tracking-[0.18em]">BIZOPS</span>
+      <span className="w-px h-4 bg-stone-700" />
+      <span className="text-[13px] font-semibold">Time Clock</span>
+      <span className="inline-flex items-center gap-1.5 ml-1.5 px-2 py-0.5 rounded-full border border-stone-700 text-[10px] font-mono tracking-wider text-stone-400">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />ONLINE
+      </span>
+      <span className="ml-auto text-[11px] font-mono text-stone-400 truncate">
+        {deviceName ? deviceName.toUpperCase() : "TERMINAL"}
+      </span>
+    </header>
+  );
+}
+
+function StoreFooter() {
+  const now = new Date();
+  return (
+    <footer className="h-9 shrink-0 border-t border-stone-200 bg-stone-50 flex items-center px-4 text-[11px] text-stone-400 font-mono gap-4 z-30">
+      <span>Merchiva · beta-0.1.0</span>
+      <span className="hidden sm:inline">·</span>
+      <span className="hidden sm:inline">All times recorded in local timezone</span>
+      <span className="ml-auto">SYNC OK · {now.toISOString().slice(0, 19).replace("T", " ")}Z</span>
+    </footer>
   );
 }
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [storeMachineMode] = useStoreMachineMode();
+  const [smDeviceName] = useDeviceName();
+  const [sidebarCollapsed, toggleSidebarCollapse] = useSidebarCollapseState();
+  const [navMode] = useNavMode();
+  const useBottomBar = navMode === "bottombar" && !storeMachineMode;
   // Builder subpages (/builder/[siteId]/...) need full viewport — force drawer mode
   const isBuilderPage = pathname.startsWith("/builder/");
   const openDialogs = useOpenDialogCount();
@@ -292,15 +412,18 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
 
-  // Detect touch device (iPhone, iPad, Android) — not screen width.
-  // Start null to avoid hydration mismatch; commit after mount.
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   useEffect(() => {
-    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    const mobileUA = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    // iPad Safari 13+ reports as "Macintosh" — detect via touch + Mac UA
-    const isIPad = navigator.userAgent.includes("Mac") && isTouch;
-    setIsMobile(isTouch && (mobileUA || isIPad));
+    function check() {
+      const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const mobileUA = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const isIPad = navigator.userAgent.includes("Mac") && isTouch;
+      const isNarrow = window.innerWidth < 1024;
+      setIsMobile((isTouch && (mobileUA || isIPad)) || isNarrow);
+    }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   const contentRef = useRef<HTMLDivElement>(null);
@@ -314,6 +437,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const isHoriz = useRef<boolean | null>(null);
   const isOpenRef = useRef(false);
   const draggingRef = useRef(false);
+  const useBottomBarRef = useRef(false);
+  useBottomBarRef.current = useBottomBar;
 
   const safeAreaInsets = getSafeAreaInsets();
   const screenRadius = getScreenCornerRadius();
@@ -333,6 +458,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     if (!el) return;
 
     function onTouchStart(e: TouchEvent) {
+      if (useBottomBarRef.current) return;
       const t = e.touches[0];
       startX.current = t.clientX;
       startY.current = t.clientY;
@@ -442,12 +568,13 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     : "all 220ms cubic-bezier(0.4, 0, 0.2, 1)";
 
   return (
+    <SidebarCollapsedContext.Provider value={{ collapsed: sidebarCollapsed, toggle: toggleSidebarCollapse }}>
     <SidebarOpenContext.Provider value={() => setIsOpen(true)}>
     <>
       {/* ── Mobile / tablet layout (touch devices) + builder full-viewport ── */}
       <div className={cn("relative h-screen overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex" : "hidden")}>
-        {/* Floating hamburger / back button — hidden on builder pages */}
-        {!isBuilderPage && (
+        {/* Floating hamburger / back button — in bottom-bar mode, only show when a dialog is open */}
+        {!isBuilderPage && (!useBottomBar || hasDialog) && (
           <FloatingNavButton
             mode="menu"
             title={dialogTitle}
@@ -468,22 +595,25 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             xOpacity={xOpacity}
             safeAreaTop={safeAreaInsets.top}
             zIndex={hasDialog ? 200 : 50}
+            tabBarMode={useBottomBar}
           />
         )}
 
-        {/* Sidebar: slides in from back with scale */}
-        <div
-          className="fixed inset-y-0 left-0 w-[280px] z-10"
-          style={{
-            transform: `translateX(${sidebarTranslateX}px) scale(${sidebarScale})`,
-            opacity: sidebarOpacity,
-            transformOrigin: "left center",
-            paddingTop: safeAreaInsets.top,
-            transition: transitionStyle,
-          }}
-        >
-          <SidebarContent onClose={() => setIsOpen(false)} />
-        </div>
+        {/* Sidebar: slides in from back with scale — hidden in bottom-bar mode */}
+        {!useBottomBar && (
+          <div
+            className="fixed inset-y-0 left-0 w-[280px] z-10"
+            style={{
+              transform: `translateX(${sidebarTranslateX}px) scale(${sidebarScale})`,
+              opacity: sidebarOpacity,
+              transformOrigin: "left center",
+              paddingTop: safeAreaInsets.top,
+              transition: transitionStyle,
+            }}
+          >
+            <SidebarContent onClose={() => setIsOpen(false)} />
+          </div>
+        )}
 
         {/* Main content: slides right to reveal the sidebar (z-20) */}
         <div
@@ -491,61 +621,78 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           ref={contentRef}
           className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden border"
           style={{
-            transform: `translateX(${translateX}px)`,
-            transition: transitionStyle,
-            ...(translateX > 0 && {
-              boxShadow: "-4px 0 16px rgba(0, 0, 0, 0.15)",
-              borderRadius: `${screenRadius || 38}px 0 0 ${screenRadius || 38}px`,
-            })
+            ...(!useBottomBar && {
+              transform: `translateX(${translateX}px)`,
+              transition: transitionStyle,
+              ...(translateX > 0 && {
+                boxShadow: "-4px 0 16px rgba(0, 0, 0, 0.15)",
+                borderRadius: `${screenRadius || 38}px 0 0 ${screenRadius || 38}px`,
+              }),
+            }),
           }}
         >
           {/* Tap-to-close layer when sidebar is open */}
-          <AnimatePresence>
-            {isOpen && (
-              <motion.div
-                className="absolute inset-0 z-10 backdrop-blur-sm bg-foreground/20"
-                onClick={() => setIsOpen(false)}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: translateX / 280 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              />
-            )}
-          </AnimatePresence>
+          {!useBottomBar && (
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  className="absolute inset-0 z-20 backdrop-blur-sm bg-foreground/20"
+                  onClick={() => setIsOpen(false)}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: translateX / 280 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                />
+              )}
+            </AnimatePresence>
+          )}
 
           {/* Builder pages: no top spacer, no scroll wrapper — builder manages its own layout */}
           {isBuilderPage ? (
             <main className="flex-1 overflow-hidden">
               {children}
             </main>
+          ) : storeMachineMode ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <StoreTopBar deviceName={smDeviceName} />
+              <main className="flex-1 overflow-y-auto">{(isMobile === null || isMobile) && children}</main>
+              <StoreFooter />
+            </div>
           ) : (
-            <main className="flex-1 overflow-y-auto">
-              {/* Safe area gradient: solid bg → transparent, covers the notch/status bar */}
-              <div
-                className="sticky top-0 left-0 right-0 pointer-events-none"
-                style={{
-                  height: safeAreaInsets.top + 48,
-                  background: "linear-gradient(to bottom, var(--background) 60%, transparent)",
-                }}
-              />
+            <main className="flex-1 overflow-y-auto" style={useBottomBar ? { paddingBottom: 56 + safeAreaInsets.bottom } : undefined}>
+              {!useBottomBar && (
+                <div
+                  className="sticky top-0 left-0 right-0 pointer-events-none"
+                  style={{
+                    height: safeAreaInsets.top + 48,
+                    background: "linear-gradient(to bottom, var(--background) 60%, transparent)",
+                  }}
+                />
+              )}
               {(isMobile === null || isMobile) && children}
             </main>
           )}
+
+          {/* Bottom bar navigation */}
+          {useBottomBar && !isBuilderPage && <BottomBar />}
         </div>
       </div>
 
       {/* ── Desktop layout (non-touch): permanent sidebar — not shown on builder pages ── */}
       {!isBuilderPage && (
         <div className={cn("h-screen overflow-hidden bg-background", isMobile === false ? "flex" : "hidden")}>
-          <div className="w-56 h-full shrink-0">
-            <SidebarContent />
+          <div className="h-full shrink-0 transition-[width] duration-200 border-r border-border bg-white" style={{ width: sidebarCollapsed ? 64 : 220 }}>
+            <SidebarContent collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
           </div>
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <main className="flex-1 overflow-y-auto">{(isMobile === null || !isMobile) && children}</main>
+          <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+            {storeMachineMode && <StoreTopBar deviceName={smDeviceName} />}
+            <main className="flex flex-col flex-1 overflow-y-auto">{(isMobile === null || !isMobile) && children}</main>
+            {storeMachineMode && <StoreFooter />}
           </div>
         </div>
       )}
     </>
     </SidebarOpenContext.Provider>
+    </SidebarCollapsedContext.Provider>
   );
 }

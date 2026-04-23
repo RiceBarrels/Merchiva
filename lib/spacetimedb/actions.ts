@@ -478,6 +478,10 @@ export async function redeemPoints(data: any): Promise<void> {
 
 // ─── Team / Org ───────────────────────────────────────────────────────────────
 
+export async function createOrg(name: string): Promise<void> {
+  return conn().reducers.createOrg({ name });
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function inviteToOrg(data: any): Promise<void> {
   return conn().reducers.inviteToOrg({ organizationId: orgId(), ...data });
@@ -494,6 +498,14 @@ export async function removeMember(memberId: string): Promise<void> {
 
 export async function cancelInvitation(id: string): Promise<void> {
   return conn().reducers.cancelInvitation({ organizationId: orgId(), invitationId: id });
+}
+
+export async function setPunchInCode(memberId: string, code: string | null): Promise<void> {
+  return conn().reducers.setPunchInCode({
+    organizationId: orgId(),
+    memberId,
+    code: code ?? undefined,
+  });
 }
 
 export async function acceptInvitation(token: string): Promise<void> {
@@ -517,6 +529,16 @@ export async function toggleTodo(id: string, completed: boolean): Promise<void> 
 }
 export async function deleteTodo(id: string): Promise<void> {
   return conn().reducers.deleteTodo({ todoId: id });
+}
+
+// ─── Punch Clock ─────────────────────────────────────────────────────────────
+
+export async function recordPunch(code: string, action: string): Promise<void> {
+  return conn().reducers.recordPunch({
+    organizationId: orgId(),
+    code,
+    action,
+  });
 }
 
 // ─── Sales records ────────────────────────────────────────────────────────────

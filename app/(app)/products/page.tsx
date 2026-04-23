@@ -118,7 +118,10 @@ export default function ProductsPage() {
   });
 
   const handleAdd = async () => {
-    if (!form.name || !userId) return;
+    if (!form.name) {
+      toast.error("Name is required");
+      return;
+    }
     setSaving(true);
     try {
       const margin =
@@ -127,7 +130,6 @@ export default function ProductsPage() {
           : form.margin ?? 0;
       const newProd = await addProduct(
         { ...(BLANK as Omit<Product, "id">), ...form, margin } as Omit<Product, "id">,
-        userId
       );
       hapticSuccess();
       toast.success("Product added");
@@ -316,7 +318,7 @@ export default function ProductsPage() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((p) => {
-                    const cfg = alertConfig[p.alert];
+                    const cfg = alertConfig[p.alert] ?? alertConfig.none;
                     const AlertIcon = cfg.icon;
                     const momPct = p.unitsSoldLastMonth > 0
                       ? Math.round(((p.unitsSoldThisMonth - p.unitsSoldLastMonth) / p.unitsSoldLastMonth) * 100)

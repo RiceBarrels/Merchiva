@@ -1,10 +1,10 @@
-# CLAUDE.md — BizOps Project Instructions
+# CLAUDE.md — Merchiva Project Instructions
 
 @AGENTS.md
 
 ## Quick Context
 
-This is **BizOps**, a Next.js 16 + Supabase + Square app for small business daily management. The UI uses shadcn/ui v4 with Tailwind CSS v4.
+This is **Merchiva**, a Next.js 16 + Supabase + Square app for small business daily management. The UI uses shadcn/ui v4 with Tailwind CSS v4.
 
 ## Critical Rules
 

@@ -250,17 +250,52 @@ for (const dir of topLevel) {
   dirsToHide.push({ original: dir, hidden: dir.replace(/\[/g, "_").replace(/\]/g, "_") + ".__hidden__" });
 }
 
-// API routes
-const apiRoutes = findFilesRecursive(join(APP_DIR, "api"), (n) => n === "route.ts");
+// Ignored paths from ignoreInStatic.json (user-editable, supports globs)
+const ignoreConfigPath = join(ROOT, "ignoreInStatic.json");
+let ignoredPaths: string[] = [];
+if (existsSync(ignoreConfigPath)) {
+  const ignoreConfig = JSON.parse(readFileSync(ignoreConfigPath, "utf-8"));
+  for (const pattern of ignoreConfig.ignore as string[]) {
+    if (pattern.includes("*") || pattern.includes("?") || pattern.includes("{")) {
+      const glob = new Bun.Glob(pattern);
+      for (const match of glob.scanSync({ cwd: ROOT, onlyFiles: false })) {
+        ignoredPaths.push(join(ROOT, match));
+      }
+    } else {
+      ignoredPaths.push(join(ROOT, pattern));
+    }
+  }
+} else {
+  console.log("  ⚠ ignoreInStatic.json not found — falling back to removing all API routes");
+}
+
+// API routes (only from non-ignored dirs, as fallback when no config)
+const apiRoutes = ignoredPaths.length === 0
+  ? findFilesRecursive(join(APP_DIR, "api"), (n) => n === "route.ts")
+  : [];
 
 const swappedStatic: { staticPath: string; pagePath: string }[] = [];
 const dirsHidden: { original: string; hidden: string }[] = [];
+
+// Find route.ts files inside ignored paths (only hide route handlers, not supporting files like core.ts)
+const ignoredToHide: { original: string; hidden: string }[] = [];
+for (const p of ignoredPaths) {
+  if (!existsSync(p)) continue;
+  if (statSync(p).isDirectory()) {
+    for (const route of findFilesRecursive(p, (n) => n === "route.ts" || n === "route.tsx")) {
+      ignoredToHide.push({ original: route, hidden: route + ".__static_ignore__" });
+    }
+  } else {
+    ignoredToHide.push({ original: p, hidden: p + ".__static_ignore__" });
+  }
+}
 
 console.log(`
 📦 Step 2: Build static${dryRun ? " (dry run)" : ""}
    ${staticPages.length} page.static.tsx swap(s)
    ${dirsToHide.length} dynamic dir(s) to hide
-   ${apiRoutes.length} API route(s) to remove
+   ${ignoredToHide.length} route(s) to hide from ignoreInStatic.json
+   ${apiRoutes.length} API route(s) to remove (fallback)
 `);
 
 // ─── Step 3: Execute ────────────────────────────────────────────────────────
@@ -293,7 +328,15 @@ try {
     }
   }
 
-  // Remove API routes
+  // Hide ignored paths from ignoreInStatic.json
+  for (const { original, hidden } of ignoredToHide) {
+    console.log(`  ✕ ${rel(original)} → hide (ignoreInStatic.json)`);
+    if (!dryRun) {
+      renameSync(original, hidden);
+    }
+  }
+
+  // Remove remaining API routes (fallback when no ignoreInStatic.json)
   for (const routePath of apiRoutes) {
     console.log(`  ✕ ${rel(routePath)} → remove (API)`);
     if (!dryRun) {
@@ -325,7 +368,11 @@ try {
 } finally {
   if (!dryRun) {
     console.log("🔄 Restoring original files...");
-    // Un-hide directories
+    // Un-hide ignored paths from ignoreInStatic.json
+    for (const { original, hidden } of ignoredToHide) {
+      if (existsSync(hidden)) renameSync(hidden, original);
+    }
+    // Un-hide dynamic directories
     for (const { original, hidden } of dirsHidden) {
       if (existsSync(hidden)) renameSync(hidden, original);
     }

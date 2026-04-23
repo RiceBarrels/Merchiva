@@ -35,6 +35,8 @@ interface FloatingNavButtonProps {
   /** iOS safe area top inset in px */
   safeAreaTop?: number;
   zIndex?: number;
+  /** In tab-bar mode the button only appears for dialogs — spin in/out, no hamburger */
+  tabBarMode?: boolean;
 }
 
 export function FloatingNavButton({
@@ -54,6 +56,7 @@ export function FloatingNavButton({
   xOpacity = 0,
   safeAreaTop = 0,
   zIndex = 50,
+  tabBarMode = false,
 }: FloatingNavButtonProps) {
   const handleClick = () => {
     if (mode === "back") {
@@ -91,6 +94,47 @@ export function FloatingNavButton({
       : { duration: 0 };
 
   const showTitle = mode === "back" ? !!title : hasDialog && !!title;
+
+  if (tabBarMode) {
+    return (
+      <AnimatePresence>
+        {hasDialog && (
+          <>
+            <motion.button
+              onClick={handleClick}
+              className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4"
+              style={{ left: 0, top: safeAreaTop, zIndex, boxShadow: "0 4px 14px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)" }}
+              initial={{ opacity: 0, scale: 0, rotate: -180 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0, rotate: 180 }}
+              transition={{ type: "spring", damping: 18, stiffness: 350 }}
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </motion.button>
+            {showTitle && (
+              <motion.div
+                key={title}
+                className="fixed"
+                style={{ top: 26 + safeAreaTop, left: 72, zIndex: zIndex + 1 }}
+                initial={{ opacity: 0, scale: 0.3, x: -30 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.3, x: -30 }}
+                transition={{ type: "spring", damping: 20, stiffness: 400, delay: 0.05 }}
+              >
+                <div
+                  className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-lg"
+                  style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)" }}
+                >
+                  {title}
+                </div>
+              </motion.div>
+            )}
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <>

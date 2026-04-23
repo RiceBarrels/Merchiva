@@ -80,12 +80,14 @@ import DisconnectCloverReducer from "./disconnect_clover_reducer";
 import InviteToOrgReducer from "./invite_to_org_reducer";
 import LeaveOrgReducer from "./leave_org_reducer";
 import LoginWithPasswordReducer from "./login_with_password_reducer";
+import RecordPunchReducer from "./record_punch_reducer";
 import RedeemPointsReducer from "./redeem_points_reducer";
 import RefundPaymentReducer from "./refund_payment_reducer";
 import RegisterCustomerReducer from "./register_customer_reducer";
 import SaveComponentReducer from "./save_component_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
+import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
 import ToggleTodoReducer from "./toggle_todo_reducer";
 import UpdateBookingStatusReducer from "./update_booking_status_reducer";
 import UpdateInventoryItemReducer from "./update_inventory_item_reducer";
@@ -125,6 +127,7 @@ import OrganizationRow from "./organization_table";
 import PaymentRow from "./payment_table";
 import PerkClaimRow from "./perk_claim_table";
 import ProductRow from "./product_table";
+import PunchEventRow from "./punch_event_table";
 import RoleTaskRow from "./role_task_table";
 import SalesRecordRow from "./sales_record_table";
 import SettingsRow from "./settings_table";
@@ -369,6 +372,23 @@ const tablesSchema = __schema({
       { name: 'product_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ProductRow),
+  punchEvent: __table({
+    name: 'punch_event',
+    indexes: [
+      { accessor: 'id', name: 'punch_event_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byMemberId', name: 'punch_event_member_id_idx_btree', algorithm: 'btree', columns: [
+        'memberId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'punch_event_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'punch_event_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PunchEventRow),
   roleTask: __table({
     name: 'role_task',
     indexes: [
@@ -733,12 +753,14 @@ const reducersSchema = __reducers(
   __reducerSchema("invite_to_org", InviteToOrgReducer),
   __reducerSchema("leave_org", LeaveOrgReducer),
   __reducerSchema("login_with_password", LoginWithPasswordReducer),
+  __reducerSchema("record_punch", RecordPunchReducer),
   __reducerSchema("redeem_points", RedeemPointsReducer),
   __reducerSchema("refund_payment", RefundPaymentReducer),
   __reducerSchema("register_customer", RegisterCustomerReducer),
   __reducerSchema("save_component", SaveComponentReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
+  __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
   __reducerSchema("toggle_todo", ToggleTodoReducer),
   __reducerSchema("update_booking_status", UpdateBookingStatusReducer),
   __reducerSchema("update_inventory_item", UpdateInventoryItemReducer),
