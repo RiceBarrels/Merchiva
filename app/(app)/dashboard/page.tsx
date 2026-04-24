@@ -74,6 +74,7 @@ import { uploadEvidence } from "@/lib/db/evidence";
 import { sendMessage } from "@/lib/spacetimedb/actions";
 import { getTodayCompletions, completeTask } from "@/lib/db/task-completions";
 import { usePermissions } from "@/lib/context/permissions";
+import { useT } from "@/lib/i18n/context";
 import type { Shift, ChatConversation, Todo, RoleTask, StaffRole } from "@/lib/types";
 
 function formatTime(t: string) {
@@ -83,17 +84,17 @@ function formatTime(t: string) {
   return `${hr === 0 ? 12 : hr > 12 ? hr - 12 : hr}:${m} ${ampm}`;
 }
 
-function relativeTime(dateStr: string) {
+function relativeTime(dateStr: string, t: (path: string) => string) {
   const now = new Date();
   const d = new Date(dateStr);
   const diff = now.getTime() - d.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("dashboard.time.justNow");
+  if (mins < 60) return t("dashboard.time.minutesAgo").replace("{n}", String(mins));
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("dashboard.time.hoursAgo").replace("{n}", String(hrs));
   const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  return t("dashboard.time.daysAgo").replace("{n}", String(days));
 }
 
 type DashBgCache = {
@@ -104,6 +105,7 @@ type DashBgCache = {
 
 export default function DashboardPage() {
   const { organizationId, currentOrg } = usePermissions();
+  const tr = useT();
   const [refreshing, setRefreshing] = useState(false);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -191,7 +193,7 @@ export default function DashboardPage() {
             setCache(`task_done_${task.id}_${today}`, true);
           } else if (lsChecked) {
             task.checked = true;
-            task.checkedBy = "You";
+            task.checkedBy = tr("dashboard.todo.you");
           }
         }
         setRoleTasks(flat);
@@ -277,7 +279,7 @@ export default function DashboardPage() {
         name: `evidence-${e.id}`,
       }));
       const task = roleTasks.find((rt) => rt.id === evidenceTaskId);
-      setRoleTasks((prev) => prev.map((rt) => rt.id === evidenceTaskId ? { ...rt, checked: true, checkedBy: userName || "You" } : rt));
+      setRoleTasks((prev) => prev.map((rt) => rt.id === evidenceTaskId ? { ...rt, checked: true, checkedBy: userName || tr("dashboard.todo.you") } : rt));
       if (organizationId) {
         setCache(`task_done_${evidenceTaskId}_${today}`, true);
         completeTask(evidenceTaskId, organizationId, userName || "Unknown").catch(() => {});
@@ -301,9 +303,9 @@ export default function DashboardPage() {
 
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
+    if (h < 12) return tr("dashboard.greeting.morning");
+    if (h < 17) return tr("dashboard.greeting.afternoon");
+    return tr("dashboard.greeting.evening");
   })();
 
   return (
@@ -329,15 +331,20 @@ export default function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-2.5">
           <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">To-Do</h2>
+          <h2 className="text-sm font-semibold">{tr("dashboard.todo.title")}</h2>
           {(pendingTodos.length + roleTasks.filter((t) => !t.checked).length) > 0 && (
-            <span className="text-xs text-muted-foreground">{pendingTodos.length + roleTasks.filter((t) => !t.checked).length} remaining</span>
+            <span className="text-xs text-muted-foreground">
+              {tr("dashboard.todo.remaining").replace(
+                "{n}",
+                String(pendingTodos.length + roleTasks.filter((t) => !t.checked).length)
+              )}
+            </span>
           )}
           <button
             onClick={() => { setAddingTodo(true); setTimeout(() => todoInputRef.current?.focus(), 50); }}
             className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
           >
-            <Plus className="h-3 w-3" /> Add
+            <Plus className="h-3 w-3" /> {tr("dashboard.todo.add")}
           </button>
         </div>
 
@@ -353,18 +360,18 @@ export default function DashboardPage() {
                 if (e.key === "Enter") handleAddTodo();
                 if (e.key === "Escape") { setAddingTodo(false); setTodoInput(""); }
               }}
-              placeholder="What needs to be done?"
+              placeholder={tr("dashboard.todo.placeholder")}
               className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
             />
             <button onClick={handleAddTodo} className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-              Add
+              {tr("dashboard.todo.add")}
             </button>
           </div>
         )}
 
         {todos.length === 0 && roleTasks.length === 0 && !addingTodo ? (
           <div className="rounded border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            No tasks yet
+            {tr("dashboard.todo.empty")}
           </div>
         ) : (
           <div className="space-y-1">
@@ -380,7 +387,7 @@ export default function DashboardPage() {
                         setEvidenceFiles([]);
                       } else if (organizationId) {
                         setCache(`task_done_${t.id}_${today}`, true);
-                        setRoleTasks((prev) => prev.map((rt) => rt.id === t.id ? { ...rt, checked: true, checkedBy: userName || "You" } : rt));
+                        setRoleTasks((prev) => prev.map((rt) => rt.id === t.id ? { ...rt, checked: true, checkedBy: userName || tr("dashboard.todo.you") } : rt));
                         completeTask(t.id, organizationId, userName || "Unknown").catch(() => {});
                         notifyChatsForTask(t);
                       }
@@ -418,7 +425,9 @@ export default function DashboardPage() {
                       {t.checkedBy && (
                         <>
                           <span className="text-[10px] text-muted-foreground">&middot;</span>
-                          <span className="text-[10px] text-muted-foreground">Checked by {t.checkedBy}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {tr("dashboard.todo.checkedBy").replace("{name}", t.checkedBy)}
+                          </span>
                         </>
                       )}
                     </div>
@@ -462,7 +471,7 @@ export default function DashboardPage() {
         <section>
           <div className="flex items-center gap-2 mb-2.5">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <h2 className="text-sm font-semibold">Alerts</h2>
+            <h2 className="text-sm font-semibold">{tr("dashboard.alerts.title")}</h2>
             <span className="ml-auto text-xs text-muted-foreground">{alerts.length}</span>
           </div>
           <div className="space-y-1.5">
@@ -489,14 +498,14 @@ export default function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-2.5">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Today&apos;s Shifts</h2>
+          <h2 className="text-sm font-semibold">{tr("dashboard.shifts.today")}</h2>
           <Link href="/staffing" className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5">
-            View all <ChevronRight className="h-3 w-3" />
+            {tr("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
           </Link>
         </div>
         {todayShifts.length === 0 ? (
           <div className="rounded border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            No shifts scheduled for today
+            {tr("dashboard.shifts.emptyToday")}
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -523,7 +532,7 @@ export default function DashboardPage() {
         <section>
           <div className="flex items-center gap-2 mb-2.5">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Upcoming Shifts</h2>
+            <h2 className="text-sm font-semibold">{tr("dashboard.shifts.upcoming")}</h2>
           </div>
           <div className="space-y-1.5">
             {upcomingShifts.map((s) => (
@@ -547,14 +556,14 @@ export default function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-2.5">
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold">Recent Messages</h2>
+          <h2 className="text-sm font-semibold">{tr("dashboard.chat.title")}</h2>
           <Link href="/chat" className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5">
-            Open chat <ChevronRight className="h-3 w-3" />
+            {tr("dashboard.chat.open")} <ChevronRight className="h-3 w-3" />
           </Link>
         </div>
         {recentConvos.length === 0 ? (
           <div className="rounded border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            No messages yet
+            {tr("dashboard.chat.empty")}
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -570,10 +579,10 @@ export default function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium truncate">
-                      {c.name ?? c.lastMessage?.senderName ?? "Chat"}
+                      {c.name ?? c.lastMessage?.senderName ?? tr("dashboard.chat.fallback")}
                     </p>
                     <span className="text-[10px] text-muted-foreground shrink-0">
-                      {c.lastMessage ? relativeTime(c.lastMessage.createdAt) : ""}
+                      {c.lastMessage ? relativeTime(c.lastMessage.createdAt, tr) : ""}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
@@ -603,7 +612,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground">Upload at least one photo or video as evidence to complete this task.</p>
+              <p className="text-xs text-muted-foreground">{tr("dashboard.evidence.prompt")}</p>
 
               <input
                 ref={evidenceInputRef}
@@ -627,7 +636,7 @@ export default function DashboardPage() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={URL.createObjectURL(f)} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">Video</div>
+                        <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">{tr("dashboard.evidence.video")}</div>
                       )}
                       <button
                         onClick={() => setEvidenceFiles((prev) => prev.filter((_, j) => j !== i))}
@@ -645,14 +654,14 @@ export default function DashboardPage() {
                   onClick={() => evidenceInputRef.current?.click()}
                   className="flex-1 rounded border border-border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
                 >
-                  {evidenceFiles.length > 0 ? "Add more" : "Choose file"}
+                  {evidenceFiles.length > 0 ? tr("dashboard.evidence.addMore") : tr("dashboard.evidence.choose")}
                 </button>
                 <button
                   onClick={handleEvidenceSubmit}
                   disabled={evidenceFiles.length === 0 || uploading}
                   className="flex-1 rounded bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                 >
-                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Complete"}
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : tr("dashboard.evidence.complete")}
                 </button>
               </div>
             </div>

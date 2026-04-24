@@ -1275,5 +1275,186 @@
     "fileFallback": "Fichier",
     "timeToday": "Aujourd'hui",
     "timeYesterday": "Hier"
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Bonjour",
+      "afternoon": "Bon après-midi",
+      "evening": "Bonsoir"
+    },
+    "time": {
+      "justNow": "à l'instant",
+      "minutesAgo": "il y a {n} min",
+      "hoursAgo": "il y a {n} h",
+      "daysAgo": "il y a {n} j"
+    },
+    "todo": {
+      "title": "À faire",
+      "remaining": "{n} restantes",
+      "add": "Ajouter",
+      "placeholder": "Que faut-il faire ?",
+      "empty": "Aucune tâche pour l'instant",
+      "checkedBy": "Validé par {name}",
+      "you": "Vous"
+    },
+    "alerts": {
+      "title": "Alertes"
+    },
+    "shifts": {
+      "today": "Shifts du jour",
+      "upcoming": "Prochains shifts",
+      "viewAll": "Tout voir",
+      "emptyToday": "Aucun shift prévu aujourd'hui"
+    },
+    "chat": {
+      "title": "Messages récents",
+      "open": "Ouvrir le chat",
+      "empty": "Aucun message pour l'instant",
+      "fallback": "Chat"
+    },
+    "evidence": {
+      "prompt": "Téléversez au moins une photo ou vidéo comme preuve pour terminer cette tâche.",
+      "video": "Vidéo",
+      "addMore": "Ajouter plus",
+      "choose": "Choisir un fichier",
+      "complete": "Terminer"
+    }
+  },
+  "inventory": {
+    "title": "Inventaire",
+    "subtitle": "Suivez les niveaux de stock, les pertes et les besoins de réapprovisionnement",
+    "addItem": "Ajouter un article",
+    "status": {
+      "inStock": "En stock",
+      "lowStock": "Stock faible",
+      "outOfStock": "Rupture de stock"
+    },
+    "summary": {
+      "totalItems": "Total d'articles",
+      "totalValue": "Valeur totale",
+      "lowStock": "Stock faible",
+      "outOfStock": "Rupture de stock"
+    },
+    "tabs": {
+      "items": "Articles",
+      "transactions": "Journal des transactions",
+      "losses": "Suivi des pertes"
+    },
+    "filters": {
+      "searchPlaceholder": "Rechercher des articles ou fournisseurs…",
+      "categoryPlaceholder": "Catégorie",
+      "all": "Tous"
+    },
+    "emptyItems": {
+      "title": "Aucun article en stock pour l'instant",
+      "hint": "Ajoutez votre premier article ou synchronisez depuis Square dans les Paramètres."
+    },
+    "tableHeaders": {
+      "item": "Article",
+      "category": "Catégorie",
+      "stock": "Stock",
+      "level": "Niveau",
+      "costPerUnit": "Coût/Unité",
+      "lossRate": "Taux de perte",
+      "status": "Statut",
+      "supplier": "Fournisseur",
+      "date": "Date",
+      "type": "Type",
+      "quantity": "Quantité",
+      "note": "Note"
+    },
+    "noItems": "Aucun article trouvé.",
+    "transactions": {
+      "title": "Transactions récentes",
+      "description": "Mouvements de stock — livraisons, utilisation et pertes",
+      "empty": "Aucune transaction pour l'instant. Elles apparaîtront ici dès que vous commencerez à suivre les mouvements de stock."
+    },
+    "losses": {
+      "title": "Taux de perte par article",
+      "description": "Pourcentage de perte historique — connectez l'API Square pour un remplissage automatique",
+      "empty": "Ajoutez des articles d'inventaire pour suivre les taux de perte.",
+      "lossSuffix": " % de perte",
+      "footnote": "Les données de perte se connectent à l'API Square pour un suivi automatique. Configurez dans les Paramètres."
+    },
+    "dialog": {
+      "editTitle": "Modifier l'article",
+      "addTitle": "Ajouter un article d'inventaire",
+      "editDescription": "Mettez à jour les détails de cet article d'inventaire.",
+      "addDescription": "Ajoutez un nouvel article à votre inventaire.",
+      "name": "Nom de l'article *",
+      "category": "Catégorie",
+      "currentStock": "Stock actuel",
+      "minStock": "Stock min",
+      "maxStock": "Stock max",
+      "unit": "Unité",
+      "costPerUnit": "Coût par unité ($)",
+      "supplier": "Fournisseur",
+      "lossRate": "Taux de perte (%)",
+      "namePlaceholder": "ex. Grains de café Arabica",
+      "categoryPlaceholder": "ex. Boissons",
+      "unitPlaceholder": "kg, litres, unités…",
+      "supplierPlaceholder": "Nom du fournisseur",
+      "cancel": "Annuler",
+      "save": "Enregistrer les modifications",
+      "saving": "Enregistrement…",
+      "add": "Ajouter un article"
+    },
+    "toast": {
+      "nameRequired": "Le nom est obligatoire",
+      "itemUpdated": "Article mis à jour",
+      "itemAdded": "Article ajouté",
+      "saveFailed": "Échec de l'enregistrement de l'article",
+      "itemDeleted": "Article supprimé",
+      "deleteFailed": "Échec de la suppression de l'article"
+    }
+  },
+  "sales": {
+    "title": "Prévisions de ventes",
+    "subtitle": "Prévisions par IA basées sur la météo, la fréquentation et les tendances historiques",
+    "accuracyBadge": "Précision des prévisions : {n} %",
+    "summary": {
+      "avgDaily": "Ventes quotidiennes moyennes",
+      "today": "Aujourd'hui (en cours)",
+      "accuracy": "Précision des prévisions",
+      "records": "Enregistrements"
+    },
+    "summarySub": {
+      "last30": "30 derniers jours",
+      "hourly": "Valeurs horaires réelles",
+      "vsActual": "vs résultats réels",
+      "daysTracked": "Jours suivis"
+    },
+    "empty": {
+      "title": "Aucune donnée de vente pour l'instant",
+      "description": "Connectez Square dans les Paramètres pour importer automatiquement votre historique de ventes, ou ajoutez des enregistrements manuellement via l'API."
+    },
+    "tabs": {
+      "history": "Analyse historique",
+      "hourly": "Heure par heure aujourd'hui"
+    },
+    "history": {
+      "title": "Historique des ventes sur 30 jours",
+      "description": "Ventes réelles vs prévues par l'IA",
+      "predicted": "Prévu",
+      "actual": "Réel"
+    },
+    "factors": {
+      "weatherTitle": "Impact de la météo",
+      "weatherDesc": "Les journées ensoleillées génèrent généralement 10–20 % de fréquentation en plus. Connectez une API météo pour intégrer les conditions en temps réel aux prévisions.",
+      "weatherBadge": "API météo — en attente",
+      "trafficTitle": "Fréquentation",
+      "trafficDesc": "Les données de popularité Google Maps sont fortement corrélées aux ventes. Heures de pointe : 8–10 h et 12–14 h.",
+      "trafficBadge": "API Google Maps — en attente",
+      "holidayTitle": "Effet des jours et jours fériés",
+      "holidayDesc": "Les week-ends et jours fériés affichent des pics de demande constants. Marquez les jours fériés dans vos enregistrements de ventes pour améliorer la précision des prévisions.",
+      "holidayBadge": "Calendrier des jours fériés — prêt"
+    },
+    "hourly": {
+      "title": "Aujourd'hui — Détail horaire",
+      "description": "Prévisions vs ventes réelles par heure",
+      "forecast": "Prévision",
+      "actual": "Réel",
+      "empty": "Aucune donnée horaire pour aujourd'hui"
+    }
   }
 }

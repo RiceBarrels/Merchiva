@@ -62,23 +62,23 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
+import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 
-const statusConfig: Record<
-  InventoryStatus,
-  {
-    label: string;
-    icon: React.ElementType;
-    color: string;
-  }
-> = {
-  in_stock:     { label: "In Stock",     icon: CheckCircle2, color: "text-emerald-600" },
-  low_stock:    { label: "Low Stock",    icon: AlertTriangle, color: "text-amber-600"  },
-  out_of_stock: { label: "Out of Stock", icon: XCircle,       color: "text-destructive" },
-};
+type StatusCfg = { label: string; icon: React.ElementType; color: string };
+
+function useStatusConfig(t: (path: string) => string): Record<InventoryStatus, StatusCfg> {
+  return {
+    in_stock:     { label: t("inventory.status.inStock"),    icon: CheckCircle2, color: "text-emerald-600" },
+    low_stock:    { label: t("inventory.status.lowStock"),   icon: AlertTriangle, color: "text-amber-600"  },
+    out_of_stock: { label: t("inventory.status.outOfStock"), icon: XCircle,       color: "text-destructive" },
+  };
+}
 
 export default function InventoryPage() {
   const { organizationId } = usePermissions();
+  const t = useT();
+  const statusConfig = useStatusConfig(t);
   // Data via SpacetimeDB migration hook (backed by Supabase; swap useTable internals once generated client is ready)
   const { items, transactions, refreshing, userId, refresh: _refresh } = useInventory(organizationId);
 
@@ -140,7 +140,7 @@ export default function InventoryPage() {
 
   const handleSave = async () => {
     if (!form.name) {
-      toast.error("Name is required");
+      toast.error(t("inventory.toast.nameRequired"));
       return;
     }
     setSaving(true);
@@ -161,11 +161,11 @@ export default function InventoryPage() {
         });
       }
       hapticSuccess();
-      toast.success(editItem ? "Item updated" : "Item added");
+      toast.success(editItem ? t("inventory.toast.itemUpdated") : t("inventory.toast.itemAdded"));
       setDialogOpen(false);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save item");
+      toast.error(t("inventory.toast.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -175,10 +175,10 @@ export default function InventoryPage() {
     hapticWarning();
     try {
       await deleteInventoryItem(id);
-      toast.success("Item deleted");
+      toast.success(t("inventory.toast.itemDeleted"));
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete item");
+      toast.error(t("inventory.toast.deleteFailed"));
     }
   };
 
@@ -192,16 +192,16 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("inventory.title")}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Track stock levels, losses, and restocking needs
+            {t("inventory.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           <Button onClick={openAdd} className="gap-2">
             <Plus className="h-4 w-4" />
-            Add Item
+            {t("inventory.addItem")}
           </Button>
         </div>
       </div>
@@ -210,22 +210,22 @@ export default function InventoryPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SummaryCard icon={Package}      label="Total Items"   value={String(items.length)} />
-        <SummaryCard icon={CheckCircle2} label="Total Value"   value={`$${totalValue.toFixed(0)}`} />
-        <SummaryCard icon={AlertTriangle} label="Low Stock"    value={String(lowStockCount)} urgent={lowStockCount > 0} />
-        <SummaryCard icon={XCircle}       label="Out of Stock" value={String(outCount)}      urgent={outCount > 0} />
+        <SummaryCard icon={Package}      label={t("inventory.summary.totalItems")}  value={String(items.length)} />
+        <SummaryCard icon={CheckCircle2} label={t("inventory.summary.totalValue")}  value={`$${totalValue.toFixed(0)}`} />
+        <SummaryCard icon={AlertTriangle} label={t("inventory.summary.lowStock")}    value={String(lowStockCount)} urgent={lowStockCount > 0} />
+        <SummaryCard icon={XCircle}       label={t("inventory.summary.outOfStock")} value={String(outCount)}      urgent={outCount > 0} />
       </div>
 
       <Tabs defaultValue="items">
         <TabsList>
           <TabsTrigger value="items" className="gap-2">
-            <Package className="h-3.5 w-3.5" /> Items
+            <Package className="h-3.5 w-3.5" /> {t("inventory.tabs.items")}
           </TabsTrigger>
           <TabsTrigger value="transactions" className="gap-2">
-            <History className="h-3.5 w-3.5" /> Transaction Log
+            <History className="h-3.5 w-3.5" /> {t("inventory.tabs.transactions")}
           </TabsTrigger>
           <TabsTrigger value="losses" className="gap-2">
-            <TrendingDown className="h-3.5 w-3.5" /> Loss Tracking
+            <TrendingDown className="h-3.5 w-3.5" /> {t("inventory.tabs.losses")}
           </TabsTrigger>
         </TabsList>
 
@@ -237,7 +237,7 @@ export default function InventoryPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search items or suppliers…"
+                    placeholder={t("inventory.filters.searchPlaceholder")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
@@ -248,12 +248,12 @@ export default function InventoryPage() {
                   onValueChange={(v) => setCategory(v ?? "All")}
                 >
                   <SelectTrigger className="w-44">
-                    <SelectValue placeholder="Category" />
+                    <SelectValue placeholder={t("inventory.filters.categoryPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((c) => (
                       <SelectItem key={c} value={c}>
-                        {c}
+                        {c === "All" ? t("inventory.filters.all") : c}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -264,8 +264,8 @@ export default function InventoryPage() {
               {items.length === 0 ? (
                 <div className="py-16 text-center text-muted-foreground">
                   <Package className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">No inventory items yet</p>
-                  <p className="text-sm mt-1">Add your first item or sync from Square in Settings.</p>
+                  <p className="font-medium">{t("inventory.emptyItems.title")}</p>
+                  <p className="text-sm mt-1">{t("inventory.emptyItems.hint")}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -273,19 +273,19 @@ export default function InventoryPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>
-                        <SortButton label="Item" k="name" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                        <SortButton label={t("inventory.tableHeaders.item")} k="name" current={sortKey} dir={sortDir} onClick={toggleSort} />
                       </TableHead>
-                      <TableHead>Category</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.category")}</TableHead>
                       <TableHead>
-                        <SortButton label="Stock" k="currentStock" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                        <SortButton label={t("inventory.tableHeaders.stock")} k="currentStock" current={sortKey} dir={sortDir} onClick={toggleSort} />
                       </TableHead>
-                      <TableHead>Level</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.level")}</TableHead>
                       <TableHead>
-                        <SortButton label="Cost/Unit" k="costPerUnit" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                        <SortButton label={t("inventory.tableHeaders.costPerUnit")} k="costPerUnit" current={sortKey} dir={sortDir} onClick={toggleSort} />
                       </TableHead>
-                      <TableHead>Loss Rate</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Supplier</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.lossRate")}</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.status")}</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.supplier")}</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
                   </TableHeader>
@@ -367,7 +367,7 @@ export default function InventoryPage() {
                     {filtered.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
-                          No items found.
+                          {t("inventory.noItems")}
                         </TableCell>
                       </TableRow>
                     )}
@@ -383,24 +383,24 @@ export default function InventoryPage() {
         <TabsContent value="transactions" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Recent Transactions</CardTitle>
-              <CardDescription>Stock movements — deliveries, usage, and waste</CardDescription>
+              <CardTitle className="text-base">{t("inventory.transactions.title")}</CardTitle>
+              <CardDescription>{t("inventory.transactions.description")}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {transactions.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground text-sm">
-                  No transactions yet. They&apos;ll appear here once you start tracking stock movements.
+                  {t("inventory.transactions.empty")}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Note</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.date")}</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.item")}</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.type")}</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.quantity")}</TableHead>
+                      <TableHead>{t("inventory.tableHeaders.note")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -436,14 +436,14 @@ export default function InventoryPage() {
         <TabsContent value="losses" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Loss Rate by Item</CardTitle>
+              <CardTitle className="text-base">{t("inventory.losses.title")}</CardTitle>
               <CardDescription>
-                Historical loss percentage — connect Square API to auto-populate
+                {t("inventory.losses.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
               {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Add inventory items to track loss rates.</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">{t("inventory.losses.empty")}</p>
               ) : (
                 [...items]
                   .sort((a, b) => b.lossRate - a.lossRate)
@@ -460,7 +460,7 @@ export default function InventoryPage() {
                               : "text-emerald-600"
                           }`}
                         >
-                          {item.lossRate}% loss
+                          {item.lossRate}{t("inventory.losses.lossSuffix")}
                         </span>
                       </div>
                       <Progress
@@ -478,7 +478,7 @@ export default function InventoryPage() {
               )}
               <Separator className="my-2" />
               <p className="text-xs text-muted-foreground">
-                Loss data connects to Square API for automatic tracking. Configure in Settings.
+                {t("inventory.losses.footnote")}
               </p>
             </CardContent>
           </Card>
@@ -489,35 +489,35 @@ export default function InventoryPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editItem ? "Edit Item" : "Add Inventory Item"}</DialogTitle>
+            <DialogTitle>{editItem ? t("inventory.dialog.editTitle") : t("inventory.dialog.addTitle")}</DialogTitle>
             <DialogDescription>
               {editItem
-                ? "Update the details for this inventory item."
-                : "Add a new item to your inventory."}
+                ? t("inventory.dialog.editDescription")
+                : t("inventory.dialog.addDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Item Name *</Label>
+                <Label>{t("inventory.dialog.name")}</Label>
                 <Input
                   value={form.name ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Arabica Coffee Beans"
+                  placeholder={t("inventory.dialog.namePlaceholder")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Category</Label>
+                <Label>{t("inventory.dialog.category")}</Label>
                 <Input
                   value={form.category ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                  placeholder="e.g. Beverages"
+                  placeholder={t("inventory.dialog.categoryPlaceholder")}
                 />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label>Current Stock</Label>
+                <Label>{t("inventory.dialog.currentStock")}</Label>
                 <Input
                   type="number"
                   value={form.currentStock ?? 0}
@@ -525,7 +525,7 @@ export default function InventoryPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Min Stock</Label>
+                <Label>{t("inventory.dialog.minStock")}</Label>
                 <Input
                   type="number"
                   value={form.minStock ?? 0}
@@ -533,7 +533,7 @@ export default function InventoryPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Max Stock</Label>
+                <Label>{t("inventory.dialog.maxStock")}</Label>
                 <Input
                   type="number"
                   value={form.maxStock ?? 0}
@@ -543,15 +543,15 @@ export default function InventoryPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Unit</Label>
+                <Label>{t("inventory.dialog.unit")}</Label>
                 <Input
                   value={form.unit ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                  placeholder="kg, liters, units…"
+                  placeholder={t("inventory.dialog.unitPlaceholder")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Cost per Unit ($)</Label>
+                <Label>{t("inventory.dialog.costPerUnit")}</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -562,15 +562,15 @@ export default function InventoryPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Supplier</Label>
+                <Label>{t("inventory.dialog.supplier")}</Label>
                 <Input
                   value={form.supplier ?? ""}
                   onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
-                  placeholder="Supplier name"
+                  placeholder={t("inventory.dialog.supplierPlaceholder")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Loss Rate (%)</Label>
+                <Label>{t("inventory.dialog.lossRate")}</Label>
                 <Input
                   type="number"
                   step="0.1"
@@ -582,15 +582,15 @@ export default function InventoryPage() {
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t("inventory.dialog.cancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("inventory.dialog.saving")}</>
               ) : editItem ? (
-                "Save Changes"
+                t("inventory.dialog.save")
               ) : (
-                "Add Item"
+                t("inventory.dialog.add")
               )}
             </Button>
           </div>

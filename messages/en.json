@@ -1275,5 +1275,186 @@
     "fileFallback": "File",
     "timeToday": "Today",
     "timeYesterday": "Yesterday"
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago",
+      "daysAgo": "{n}d ago"
+    },
+    "todo": {
+      "title": "To-Do",
+      "remaining": "{n} remaining",
+      "add": "Add",
+      "placeholder": "What needs to be done?",
+      "empty": "No tasks yet",
+      "checkedBy": "Checked by {name}",
+      "you": "You"
+    },
+    "alerts": {
+      "title": "Alerts"
+    },
+    "shifts": {
+      "today": "Today's Shifts",
+      "upcoming": "Upcoming Shifts",
+      "viewAll": "View all",
+      "emptyToday": "No shifts scheduled for today"
+    },
+    "chat": {
+      "title": "Recent Messages",
+      "open": "Open chat",
+      "empty": "No messages yet",
+      "fallback": "Chat"
+    },
+    "evidence": {
+      "prompt": "Upload at least one photo or video as evidence to complete this task.",
+      "video": "Video",
+      "addMore": "Add more",
+      "choose": "Choose file",
+      "complete": "Complete"
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "subtitle": "Track stock levels, losses, and restocking needs",
+    "addItem": "Add Item",
+    "status": {
+      "inStock": "In Stock",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "summary": {
+      "totalItems": "Total Items",
+      "totalValue": "Total Value",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock"
+    },
+    "tabs": {
+      "items": "Items",
+      "transactions": "Transaction Log",
+      "losses": "Loss Tracking"
+    },
+    "filters": {
+      "searchPlaceholder": "Search items or suppliers…",
+      "categoryPlaceholder": "Category",
+      "all": "All"
+    },
+    "emptyItems": {
+      "title": "No inventory items yet",
+      "hint": "Add your first item or sync from Square in Settings."
+    },
+    "tableHeaders": {
+      "item": "Item",
+      "category": "Category",
+      "stock": "Stock",
+      "level": "Level",
+      "costPerUnit": "Cost/Unit",
+      "lossRate": "Loss Rate",
+      "status": "Status",
+      "supplier": "Supplier",
+      "date": "Date",
+      "type": "Type",
+      "quantity": "Quantity",
+      "note": "Note"
+    },
+    "noItems": "No items found.",
+    "transactions": {
+      "title": "Recent Transactions",
+      "description": "Stock movements — deliveries, usage, and waste",
+      "empty": "No transactions yet. They'll appear here once you start tracking stock movements."
+    },
+    "losses": {
+      "title": "Loss Rate by Item",
+      "description": "Historical loss percentage — connect Square API to auto-populate",
+      "empty": "Add inventory items to track loss rates.",
+      "lossSuffix": "% loss",
+      "footnote": "Loss data connects to Square API for automatic tracking. Configure in Settings."
+    },
+    "dialog": {
+      "editTitle": "Edit Item",
+      "addTitle": "Add Inventory Item",
+      "editDescription": "Update the details for this inventory item.",
+      "addDescription": "Add a new item to your inventory.",
+      "name": "Item Name *",
+      "category": "Category",
+      "currentStock": "Current Stock",
+      "minStock": "Min Stock",
+      "maxStock": "Max Stock",
+      "unit": "Unit",
+      "costPerUnit": "Cost per Unit ($)",
+      "supplier": "Supplier",
+      "lossRate": "Loss Rate (%)",
+      "namePlaceholder": "e.g. Arabica Coffee Beans",
+      "categoryPlaceholder": "e.g. Beverages",
+      "unitPlaceholder": "kg, liters, units…",
+      "supplierPlaceholder": "Supplier name",
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "saving": "Saving…",
+      "add": "Add Item"
+    },
+    "toast": {
+      "nameRequired": "Name is required",
+      "itemUpdated": "Item updated",
+      "itemAdded": "Item added",
+      "saveFailed": "Failed to save item",
+      "itemDeleted": "Item deleted",
+      "deleteFailed": "Failed to delete item"
+    }
+  },
+  "sales": {
+    "title": "Sales Prediction",
+    "subtitle": "AI-powered forecasting using weather, foot traffic, and historical patterns",
+    "accuracyBadge": "{n}% forecast accuracy",
+    "summary": {
+      "avgDaily": "Avg Daily Sales",
+      "today": "Today (so far)",
+      "accuracy": "Forecast Accuracy",
+      "records": "Records"
+    },
+    "summarySub": {
+      "last30": "Last 30 days",
+      "hourly": "Hourly actuals",
+      "vsActual": "vs actual results",
+      "daysTracked": "Days tracked"
+    },
+    "empty": {
+      "title": "No sales data yet",
+      "description": "Connect Square in Settings to automatically import your sales history, or manually add records via the API."
+    },
+    "tabs": {
+      "history": "Historical Analysis",
+      "hourly": "Today's Hourly"
+    },
+    "history": {
+      "title": "30-Day Sales History",
+      "description": "Actual vs AI-predicted sales",
+      "predicted": "Predicted",
+      "actual": "Actual"
+    },
+    "factors": {
+      "weatherTitle": "Weather Impact",
+      "weatherDesc": "Sunny days typically drive 10–20% higher foot traffic. Connect a weather API to factor real-time conditions into forecasts.",
+      "weatherBadge": "Weather API — pending",
+      "trafficTitle": "Foot Traffic",
+      "trafficDesc": "Google Maps popularity data correlates strongly with sales. High-traffic hours: 8–10am and 12–2pm.",
+      "trafficBadge": "Google Maps API — pending",
+      "holidayTitle": "Day & Holiday Effect",
+      "holidayDesc": "Weekends and holidays show consistent demand spikes. Mark holidays in your sales records to improve forecast accuracy.",
+      "holidayBadge": "Holiday calendar — ready"
+    },
+    "hourly": {
+      "title": "Today — Hourly Breakdown",
+      "description": "Forecast vs actual sales by hour",
+      "forecast": "Forecast",
+      "actual": "Actual",
+      "empty": "No hourly data for today yet"
+    }
   }
 }
