@@ -9,10 +9,11 @@ import { loginCustomer, registerCustomer } from "@/lib/spacetimedb/actions";
 import type { Site, SiteCustomer, SiteTheme, SiteElement } from "@/lib/types";
 import type { Product } from "@/lib/types";
 import { Loader2, ShoppingCart, X, User, LogOut, ArrowLeft } from "lucide-react";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Default template ─────────────────────────────────────────────────────────
 
-function buildDefaultTemplate(product: Product, siteTheme: SiteTheme): SiteElement[] {
+function buildDefaultTemplate(product: Product, siteTheme: SiteTheme, t: (k: string) => string): SiteElement[] {
   const base = product.id;
   return [
     {
@@ -55,7 +56,7 @@ function buildDefaultTemplate(product: Product, siteTheme: SiteTheme): SiteEleme
       id: `pp-btn-${base}`,
       type: "button",
       props: {
-        label: "Add to Cart",
+        label: t("storefront.product.addToCart"),
         href: "#",
         variant: "primary",
         size: "lg",
@@ -125,6 +126,7 @@ function CartDrawer({
   onRemove: (id: string) => void;
   onQty: (id: string, delta: number) => void;
 }) {
+  const t = useT();
   const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
   return (
@@ -132,11 +134,11 @@ function CartDrawer({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 w-full max-w-sm bg-white h-full flex flex-col shadow-xl">
         <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="font-semibold text-sm">Cart ({cart.reduce((s, i) => s + i.quantity, 0)})</h2>
+          <h2 className="font-semibold text-sm">{t("storefront.cart.title")} ({cart.reduce((s, i) => s + i.quantity, 0)})</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {cart.length === 0 && <p className="text-sm text-gray-500 text-center py-8">Your cart is empty.</p>}
+          {cart.length === 0 && <p className="text-sm text-gray-500 text-center py-8">{t("storefront.cart.empty")}</p>}
           {cart.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
@@ -154,14 +156,14 @@ function CartDrawer({
         </div>
         <div className="border-t p-4 space-y-3">
           <div className="flex justify-between font-semibold">
-            <span>Total</span>
+            <span>{t("storefront.cart.total")}</span>
             <span>${total.toFixed(2)}</span>
           </div>
           <button
             disabled={cart.length === 0}
             className="w-full py-2.5 rounded bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50"
           >
-            Checkout
+            {t("storefront.cart.checkout")}
           </button>
         </div>
       </div>
@@ -180,6 +182,7 @@ function AuthModal({
   onSuccess: (customer: SiteCustomer) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -202,7 +205,7 @@ function AuthModal({
         onSuccess({ email, name } as any);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof Error ? err.message : t("storefront.auth.somethingWrong"));
     } finally {
       setLoading(false);
     }
@@ -215,22 +218,22 @@ function AuthModal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 bg-white rounded-sm border border-gray-200 w-full max-w-sm shadow-xl p-6">
         <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"><X className="h-4 w-4" /></button>
-        <h2 className="font-bold text-base mb-4">{mode === "login" ? "Sign In" : "Create Account"}</h2>
+        <h2 className="font-bold text-base mb-4">{mode === "login" ? t("storefront.auth.signInTitle") : t("storefront.auth.createAccountTitle")}</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === "register" && (
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={inputCls} required />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("storefront.auth.yourNamePlaceholder")} className={inputCls} required />
           )}
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className={inputCls} required />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className={inputCls} required />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("storefront.auth.emailPlaceholder")} className={inputCls} required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("storefront.auth.passwordPlaceholder")} className={inputCls} required />
           {error && <p className="text-red-600 text-xs">{error}</p>}
           <button type="submit" disabled={loading} className="w-full py-2.5 rounded bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : (mode === "login" ? "Sign In" : "Create Account")}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : (mode === "login" ? t("storefront.auth.signInButton") : t("storefront.auth.createAccountButton"))}
           </button>
         </form>
         <p className="text-xs text-center text-gray-500 mt-3">
-          {mode === "login" ? "Don't have an account? " : "Already have an account? "}
+          {mode === "login" ? t("storefront.auth.noAccount") : t("storefront.auth.hasAccount")}{" "}
           <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="underline font-medium text-gray-900">
-            {mode === "login" ? "Register" : "Sign In"}
+            {mode === "login" ? t("storefront.auth.register") : t("storefront.auth.signInButton")}
           </button>
         </p>
       </div>
@@ -245,6 +248,7 @@ export default function PublicProductPage({
 }: {
   params: Promise<{ slug: string; productId: string }>;
 }) {
+  const t = useT();
   const { slug, productId } = use(params);
 
   const [site, setSite] = useState<Site | null>(null);
@@ -313,10 +317,10 @@ export default function PublicProductPage({
   if (notFound || !site || !product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-        <h1 className="text-2xl font-bold mb-2">Product not found</h1>
-        <p className="text-muted-foreground text-sm mb-4">This product page doesn&apos;t exist.</p>
+        <h1 className="text-2xl font-bold mb-2">{t("storefront.notFound.product")}</h1>
+        <p className="text-muted-foreground text-sm mb-4">{t("storefront.notFound.productDesc")}</p>
         <Link href={`/s/${slug}`} className="text-sm underline text-muted-foreground hover:text-foreground">
-          ← Back to site
+          ← {t("storefront.notFound.backToSite")}
         </Link>
       </div>
     );
@@ -324,7 +328,7 @@ export default function PublicProductPage({
 
   const elements = product.pageTemplate?.length
     ? product.pageTemplate
-    : buildDefaultTemplate(product, site.theme);
+    : buildDefaultTemplate(product, site.theme, t);
 
   return (
     <div>
@@ -335,7 +339,7 @@ export default function PublicProductPage({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-gray-200 shadow-sm text-xs font-medium hover:bg-gray-50"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back
+          {t("storefront.topbar.back")}
         </Link>
       </div>
 
@@ -363,7 +367,7 @@ export default function PublicProductPage({
             <button
               onClick={handleLogout}
               className="p-1.5 rounded bg-white border border-gray-200 shadow-sm text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-              title="Sign out"
+              title={t("storefront.topbar.signOut")}
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -373,7 +377,7 @@ export default function PublicProductPage({
             onClick={() => setShowAuth(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-gray-200 shadow-sm text-xs font-medium hover:bg-gray-50"
           >
-            <User className="h-3.5 w-3.5" /> Sign In
+            <User className="h-3.5 w-3.5" /> {t("storefront.topbar.signIn")}
           </button>
         )}
       </div>

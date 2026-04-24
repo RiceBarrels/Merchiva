@@ -77,5 +77,169 @@
     "useDifferentMethod": "Utiliser une autre méthode",
     "step": "Étape",
     "registrationFailed": "Échec de l'inscription"
+  },
+  "status": {
+    "pending": "En attente",
+    "confirmed": "Confirmé",
+    "completed": "Terminé",
+    "cancelled": "Annulé"
+  },
+  "storefront": {
+    "auth": {
+      "signInTitle": "Se connecter",
+      "createAccountTitle": "Créer un compte",
+      "yourNamePlaceholder": "Votre nom",
+      "emailPlaceholder": "E-mail",
+      "passwordPlaceholder": "Mot de passe",
+      "signInButton": "Se connecter",
+      "createAccountButton": "Créer un compte",
+      "noAccount": "Pas de compte ?",
+      "hasAccount": "Vous avez déjà un compte ?",
+      "register": "S'inscrire",
+      "somethingWrong": "Une erreur est survenue."
+    },
+    "cart": {
+      "title": "Panier",
+      "empty": "Votre panier est vide.",
+      "total": "Total",
+      "checkout": "Commander"
+    },
+    "topbar": {
+      "signIn": "Se connecter",
+      "signOut": "Se déconnecter",
+      "back": "Retour"
+    },
+    "notFound": {
+      "site": "Site introuvable",
+      "siteDesc": "Ce site n'existe pas ou n'a pas encore été publié.",
+      "noPages": "Aucune page n'a encore été ajoutée à ce site.",
+      "page": "Page introuvable",
+      "pageDesc": "Cette page n'existe pas.",
+      "product": "Produit introuvable",
+      "productDesc": "Cette page produit n'existe pas.",
+      "backToSite": "Retour au site"
+    },
+    "product": {
+      "addToCart": "Ajouter au panier"
+    },
+    "account": {
+      "notSignedIn": "Vous n'êtes pas connecté.",
+      "backToSite": "Retour au site",
+      "signOut": "Se déconnecter",
+      "tabMembership": "Abonnement",
+      "tabOrders": "Commandes",
+      "tabBookings": "Réservations",
+      "noOrders": "Aucune commande pour le moment.",
+      "noBookings": "Aucune réservation pour le moment.",
+      "partyOf": "Groupe de",
+      "noMembership": "Vous n'avez pas encore d'abonnement.",
+      "askStaff": "Demandez au personnel de vous attribuer un niveau d'abonnement.",
+      "pointsBalance": "Solde de points",
+      "yourPerks": "Vos avantages",
+      "codeLabel": "Code :",
+      "availableAt": "Disponible",
+      "claim": "Réclamer",
+      "claimed": "Réclamé !"
+    }
+  },
+  "membership": {
+    "header": {
+      "title": "Abonnement & commerce",
+      "tabTiers": "Niveaux & avantages",
+      "tabCustomers": "Clients",
+      "tabOrders": "Commandes",
+      "tabBookings": "Réservations"
+    },
+    "noSite": {
+      "title": "Aucun site web",
+      "desc": "Créez d'abord un site web pour gérer les abonnements.",
+      "button": "Aller au constructeur de site"
+    },
+    "periodSuffix": {
+      "free": "Gratuit",
+      "monthly": "/mois",
+      "yearly": "/an",
+      "oneTime": " une fois"
+    },
+    "periodOption": {
+      "free": "Gratuit",
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "oneTime": "Paiement unique"
+    },
+    "perkType": {
+      "discount": "Remise",
+      "freebie": "Cadeau",
+      "coupon": "Code coupon",
+      "pointsMultiplier": "Multiplicateur de points",
+      "custom": "Personnalisé"
+    },
+    "tierModal": {
+      "title": "Niveau d'abonnement",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Membre Or",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Débloquez des avantages exclusifs…",
+      "priceLabel": "Prix",
+      "periodLabel": "Période",
+      "colorLabel": "Couleur",
+      "iconLabel": "Icône (emoji)",
+      "iconPlaceholder": "⭐",
+      "defaultCheckbox": "Niveau par défaut (attribué automatiquement aux nouveaux clients)"
+    },
+    "perkModal": {
+      "title": "Avantage d'abonnement",
+      "typeLabel": "Type",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Boisson gratuite toutes les 3 heures",
+      "descriptionLabel": "Description (facultatif)",
+      "discountValueLabel": "Valeur de la remise",
+      "discountTypeLabel": "Type",
+      "percentOption": "Pourcentage (%)",
+      "fixedOption": "Fixe ($)",
+      "couponCodeLabel": "Code coupon",
+      "couponCodePlaceholder": "MEMBER10",
+      "cooldownLabel": "Délai d'attente (heures)",
+      "cooldownPlaceholder": "ex. 3",
+      "minPurchaseLabel": "Achat minimum ($)",
+      "activeCheckbox": "Actif"
+    },
+    "modal": {
+      "cancel": "Annuler",
+      "save": "Enregistrer"
+    },
+    "tiers": {
+      "sectionTitle": "Niveaux d'abonnement",
+      "addTier": "Ajouter un niveau",
+      "empty": "Aucun niveau. Créez votre premier niveau d'abonnement.",
+      "defaultBadge": "Par défaut",
+      "freePrice": "Gratuit",
+      "perksTitle": "Avantages",
+      "addPerk": "Ajouter un avantage",
+      "noPerks": "Aucun avantage.",
+      "cooldownSuffix": "h d'attente",
+      "confirmDelete": "Supprimer ce niveau et tous ses avantages ?"
+    },
+    "customers": {
+      "sectionTitle": "Clients",
+      "empty": "Aucun client. Ils apparaîtront ici dès leur inscription sur votre site.",
+      "headerCustomer": "Client",
+      "headerEmail": "E-mail",
+      "headerJoined": "Inscrit le"
+    },
+    "orders": {
+      "sectionTitle": "Commandes",
+      "empty": "Aucune commande.",
+      "guest": "Invité"
+    },
+    "bookings": {
+      "sectionTitle": "Réservations",
+      "empty": "Aucune réservation.",
+      "partyOf": "Groupe de"
+    }
+  },
+  "toast": {
+    "dbConnectionFailed": "Échec de la connexion à la base de données",
+    "notConnected": "Non connecté à SpacetimeDB"
   }
 }

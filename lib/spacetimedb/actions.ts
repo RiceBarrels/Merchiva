@@ -6,12 +6,21 @@
  */
 
 import { getConnection, getActiveOrgId } from "./client";
+import { getDictionary, lookup } from "@/lib/i18n/dictionaries";
+import { LOCALE_COOKIE, isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import type { RoleTask, ShiftPreset } from "@/lib/types";
+
+function currentLocale() {
+  if (typeof document === "undefined") return DEFAULT_LOCALE;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]*)`));
+  const raw = match ? decodeURIComponent(match[1]) : null;
+  return isLocale(raw) ? raw : DEFAULT_LOCALE;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function conn(): any {
   const c = getConnection();
-  if (!c) throw new Error("Not connected to SpacetimeDB");
+  if (!c) throw new Error(lookup(getDictionary(currentLocale()), "toast.notConnected"));
   return c;
 }
 

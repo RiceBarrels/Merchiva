@@ -77,5 +77,169 @@
     "useDifferentMethod": "दूसरी विधि का उपयोग करें",
     "step": "चरण",
     "registrationFailed": "पंजीकरण विफल"
+  },
+  "status": {
+    "pending": "लंबित",
+    "confirmed": "पुष्टि की गई",
+    "completed": "पूर्ण",
+    "cancelled": "रद्द"
+  },
+  "storefront": {
+    "auth": {
+      "signInTitle": "साइन इन करें",
+      "createAccountTitle": "खाता बनाएं",
+      "yourNamePlaceholder": "आपका नाम",
+      "emailPlaceholder": "ईमेल",
+      "passwordPlaceholder": "पासवर्ड",
+      "signInButton": "साइन इन करें",
+      "createAccountButton": "खाता बनाएं",
+      "noAccount": "कोई खाता नहीं?",
+      "hasAccount": "पहले से खाता है?",
+      "register": "रजिस्टर करें",
+      "somethingWrong": "कुछ गलत हो गया।"
+    },
+    "cart": {
+      "title": "कार्ट",
+      "empty": "आपका कार्ट खाली है।",
+      "total": "कुल",
+      "checkout": "चेकआउट"
+    },
+    "topbar": {
+      "signIn": "साइन इन करें",
+      "signOut": "साइन आउट",
+      "back": "वापस"
+    },
+    "notFound": {
+      "site": "साइट नहीं मिली",
+      "siteDesc": "यह साइट मौजूद नहीं है या अभी प्रकाशित नहीं हुई है।",
+      "noPages": "इस साइट पर अभी तक कोई पेज नहीं जोड़ा गया है।",
+      "page": "पेज नहीं मिला",
+      "pageDesc": "यह पेज मौजूद नहीं है।",
+      "product": "उत्पाद नहीं मिला",
+      "productDesc": "यह उत्पाद पेज मौजूद नहीं है।",
+      "backToSite": "साइट पर वापस"
+    },
+    "product": {
+      "addToCart": "कार्ट में जोड़ें"
+    },
+    "account": {
+      "notSignedIn": "आप साइन इन नहीं हैं।",
+      "backToSite": "साइट पर वापस",
+      "signOut": "साइन आउट",
+      "tabMembership": "सदस्यता",
+      "tabOrders": "ऑर्डर",
+      "tabBookings": "बुकिंग",
+      "noOrders": "अभी तक कोई ऑर्डर नहीं।",
+      "noBookings": "अभी तक कोई बुकिंग नहीं।",
+      "partyOf": "समूह",
+      "noMembership": "आपके पास अभी तक कोई सदस्यता नहीं है।",
+      "askStaff": "स्टाफ से सदस्यता स्तर सौंपने के लिए कहें।",
+      "pointsBalance": "पॉइंट्स शेष",
+      "yourPerks": "आपके लाभ",
+      "codeLabel": "कोड:",
+      "availableAt": "उपलब्ध",
+      "claim": "दावा करें",
+      "claimed": "दावा कर लिया!"
+    }
+  },
+  "membership": {
+    "header": {
+      "title": "सदस्यता और वाणिज्य",
+      "tabTiers": "स्तर और लाभ",
+      "tabCustomers": "ग्राहक",
+      "tabOrders": "ऑर्डर",
+      "tabBookings": "बुकिंग"
+    },
+    "noSite": {
+      "title": "अभी तक कोई वेबसाइट नहीं",
+      "desc": "सदस्यताएँ प्रबंधित करने के लिए पहले एक वेबसाइट बनाएं।",
+      "button": "वेबसाइट बिल्डर पर जाएं"
+    },
+    "periodSuffix": {
+      "free": "निःशुल्क",
+      "monthly": "/माह",
+      "yearly": "/वर्ष",
+      "oneTime": " एक बार"
+    },
+    "periodOption": {
+      "free": "निःशुल्क",
+      "monthly": "मासिक",
+      "yearly": "वार्षिक",
+      "oneTime": "एकमुश्त"
+    },
+    "perkType": {
+      "discount": "छूट",
+      "freebie": "उपहार",
+      "coupon": "कूपन कोड",
+      "pointsMultiplier": "पॉइंट्स गुणक",
+      "custom": "कस्टम"
+    },
+    "tierModal": {
+      "title": "सदस्यता स्तर",
+      "nameLabel": "नाम",
+      "namePlaceholder": "गोल्ड सदस्य",
+      "descriptionLabel": "विवरण",
+      "descriptionPlaceholder": "विशेष लाभ अनलॉक करें…",
+      "priceLabel": "मूल्य",
+      "periodLabel": "अवधि",
+      "colorLabel": "रंग",
+      "iconLabel": "आइकन (इमोजी)",
+      "iconPlaceholder": "⭐",
+      "defaultCheckbox": "डिफ़ॉल्ट स्तर (नए ग्राहकों को स्वतः असाइन)"
+    },
+    "perkModal": {
+      "title": "सदस्यता लाभ",
+      "typeLabel": "प्रकार",
+      "nameLabel": "नाम",
+      "namePlaceholder": "हर 3 घंटे में एक मुफ्त पेय",
+      "descriptionLabel": "विवरण (वैकल्पिक)",
+      "discountValueLabel": "छूट मूल्य",
+      "discountTypeLabel": "प्रकार",
+      "percentOption": "प्रतिशत (%)",
+      "fixedOption": "निश्चित ($)",
+      "couponCodeLabel": "कूपन कोड",
+      "couponCodePlaceholder": "MEMBER10",
+      "cooldownLabel": "कूलडाउन (घंटे)",
+      "cooldownPlaceholder": "उदा. 3",
+      "minPurchaseLabel": "न्यूनतम खरीद ($)",
+      "activeCheckbox": "सक्रिय"
+    },
+    "modal": {
+      "cancel": "रद्द करें",
+      "save": "सहेजें"
+    },
+    "tiers": {
+      "sectionTitle": "सदस्यता स्तर",
+      "addTier": "स्तर जोड़ें",
+      "empty": "अभी तक कोई स्तर नहीं। अपना पहला सदस्यता स्तर बनाएं।",
+      "defaultBadge": "डिफ़ॉल्ट",
+      "freePrice": "निःशुल्क",
+      "perksTitle": "लाभ",
+      "addPerk": "लाभ जोड़ें",
+      "noPerks": "अभी तक कोई लाभ नहीं।",
+      "cooldownSuffix": "घं कूलडाउन",
+      "confirmDelete": "इस स्तर और इसके सभी लाभ हटाएं?"
+    },
+    "customers": {
+      "sectionTitle": "ग्राहक",
+      "empty": "अभी तक कोई ग्राहक नहीं। आपकी साइट पर पंजीकरण करने पर वे यहाँ दिखेंगे।",
+      "headerCustomer": "ग्राहक",
+      "headerEmail": "ईमेल",
+      "headerJoined": "शामिल हुए"
+    },
+    "orders": {
+      "sectionTitle": "ऑर्डर",
+      "empty": "अभी तक कोई ऑर्डर नहीं।",
+      "guest": "अतिथि"
+    },
+    "bookings": {
+      "sectionTitle": "बुकिंग",
+      "empty": "अभी तक कोई बुकिंग नहीं।",
+      "partyOf": "समूह"
+    }
+  },
+  "toast": {
+    "dbConnectionFailed": "डेटाबेस कनेक्शन विफल",
+    "notConnected": "SpacetimeDB से कनेक्ट नहीं है"
   }
 }

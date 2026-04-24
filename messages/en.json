@@ -77,5 +77,169 @@
     "useDifferentMethod": "Use a different method",
     "step": "Step",
     "registrationFailed": "Registration failed"
+  },
+  "status": {
+    "pending": "Pending",
+    "confirmed": "Confirmed",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
+  },
+  "storefront": {
+    "auth": {
+      "signInTitle": "Sign In",
+      "createAccountTitle": "Create Account",
+      "yourNamePlaceholder": "Your name",
+      "emailPlaceholder": "Email",
+      "passwordPlaceholder": "Password",
+      "signInButton": "Sign In",
+      "createAccountButton": "Create Account",
+      "noAccount": "Don't have an account?",
+      "hasAccount": "Already have an account?",
+      "register": "Register",
+      "somethingWrong": "Something went wrong."
+    },
+    "cart": {
+      "title": "Cart",
+      "empty": "Your cart is empty.",
+      "total": "Total",
+      "checkout": "Checkout"
+    },
+    "topbar": {
+      "signIn": "Sign In",
+      "signOut": "Sign out",
+      "back": "Back"
+    },
+    "notFound": {
+      "site": "Site not found",
+      "siteDesc": "This site doesn't exist or hasn't been published yet.",
+      "noPages": "No pages have been added to this site yet.",
+      "page": "Page not found",
+      "pageDesc": "This page doesn't exist.",
+      "product": "Product not found",
+      "productDesc": "This product page doesn't exist.",
+      "backToSite": "Back to site"
+    },
+    "product": {
+      "addToCart": "Add to Cart"
+    },
+    "account": {
+      "notSignedIn": "You're not signed in.",
+      "backToSite": "Back to site",
+      "signOut": "Sign Out",
+      "tabMembership": "Membership",
+      "tabOrders": "Orders",
+      "tabBookings": "Bookings",
+      "noOrders": "No orders yet.",
+      "noBookings": "No bookings yet.",
+      "partyOf": "Party of",
+      "noMembership": "You don't have a membership yet.",
+      "askStaff": "Ask staff to assign you a membership tier.",
+      "pointsBalance": "Points Balance",
+      "yourPerks": "Your Perks",
+      "codeLabel": "Code:",
+      "availableAt": "Available",
+      "claim": "Claim",
+      "claimed": "Claimed!"
+    }
+  },
+  "membership": {
+    "header": {
+      "title": "Membership & Commerce",
+      "tabTiers": "Tiers & Perks",
+      "tabCustomers": "Customers",
+      "tabOrders": "Orders",
+      "tabBookings": "Bookings"
+    },
+    "noSite": {
+      "title": "No website yet",
+      "desc": "Create a website first to manage memberships.",
+      "button": "Go to Website Builder"
+    },
+    "periodSuffix": {
+      "free": "Free",
+      "monthly": "/mo",
+      "yearly": "/yr",
+      "oneTime": " once"
+    },
+    "periodOption": {
+      "free": "Free",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "oneTime": "One-time"
+    },
+    "perkType": {
+      "discount": "Discount",
+      "freebie": "Freebie",
+      "coupon": "Coupon Code",
+      "pointsMultiplier": "Points Multiplier",
+      "custom": "Custom"
+    },
+    "tierModal": {
+      "title": "Membership Tier",
+      "nameLabel": "Name",
+      "namePlaceholder": "Gold Member",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Unlock exclusive perks…",
+      "priceLabel": "Price",
+      "periodLabel": "Period",
+      "colorLabel": "Color",
+      "iconLabel": "Icon (emoji)",
+      "iconPlaceholder": "⭐",
+      "defaultCheckbox": "Default tier (auto-assigned to new customers)"
+    },
+    "perkModal": {
+      "title": "Membership Perk",
+      "typeLabel": "Type",
+      "nameLabel": "Name",
+      "namePlaceholder": "Free drink every 3 hours",
+      "descriptionLabel": "Description (optional)",
+      "discountValueLabel": "Discount value",
+      "discountTypeLabel": "Type",
+      "percentOption": "Percent (%)",
+      "fixedOption": "Fixed ($)",
+      "couponCodeLabel": "Coupon code",
+      "couponCodePlaceholder": "MEMBER10",
+      "cooldownLabel": "Cooldown (hours)",
+      "cooldownPlaceholder": "e.g. 3",
+      "minPurchaseLabel": "Min. purchase ($)",
+      "activeCheckbox": "Active"
+    },
+    "modal": {
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "tiers": {
+      "sectionTitle": "Membership Tiers",
+      "addTier": "Add Tier",
+      "empty": "No tiers yet. Create your first membership tier.",
+      "defaultBadge": "Default",
+      "freePrice": "Free",
+      "perksTitle": "Perks",
+      "addPerk": "Add Perk",
+      "noPerks": "No perks yet.",
+      "cooldownSuffix": "h cooldown",
+      "confirmDelete": "Delete this tier and all its perks?"
+    },
+    "customers": {
+      "sectionTitle": "Customers",
+      "empty": "No customers yet. They'll appear here once they register on your site.",
+      "headerCustomer": "Customer",
+      "headerEmail": "Email",
+      "headerJoined": "Joined"
+    },
+    "orders": {
+      "sectionTitle": "Orders",
+      "empty": "No orders yet.",
+      "guest": "Guest"
+    },
+    "bookings": {
+      "sectionTitle": "Bookings",
+      "empty": "No bookings yet.",
+      "partyOf": "Party of"
+    }
+  },
+  "toast": {
+    "dbConnectionFailed": "Database connection failed",
+    "notConnected": "Not connected to SpacetimeDB"
   }
 }
