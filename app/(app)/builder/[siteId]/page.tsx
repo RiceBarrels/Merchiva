@@ -11,12 +11,14 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useSidebarOpen } from "@/components/sidebar";
 import { BuilderEditor } from "@/components/builder/editor";
 import type { Site, SitePage, Product } from "@/lib/types";
+import { useT } from "@/lib/i18n/context";
 
 export default function BuilderPage({
   params,
 }: {
   params: Promise<{ siteId: string }>;
 }) {
+  const t = useT();
   const { siteId } = use(params);
   const { organizationId } = usePermissions();
   const openSidebar = useSidebarOpen();
@@ -83,7 +85,7 @@ export default function BuilderPage({
   if (!site) {
     return (
       <div className="flex h-screen items-center justify-center text-muted-foreground">
-        Site not found.
+        {t("builder.site.notFound")}
       </div>
     );
   }

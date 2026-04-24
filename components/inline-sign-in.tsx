@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { storeAuthTokens } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
+import { useT } from "@/lib/i18n/context";
 
 export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: string }) {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -41,7 +43,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
           setLoading(false);
           return;
         }
-        setError(data.error ?? "Authentication failed");
+        setError(data.error ?? t("components.inlineSignIn.authFailed"));
         setLoading(false);
         return;
       }
@@ -49,7 +51,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
       storeAuthTokens(data.accessToken, data.refreshToken, data.user);
       window.location.href = redirectTo;
     } catch {
-      setError("Something went wrong.");
+      setError(t("components.inlineSignIn.somethingWrong"));
       setLoading(false);
     }
   };
@@ -71,7 +73,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? "Invalid code. Please try again.");
+        setError(data.error ?? t("components.inlineSignIn.invalidCode"));
         setLoading(false);
         return;
       }
@@ -79,7 +81,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
       storeAuthTokens(data.accessToken, data.refreshToken, data.user);
       window.location.href = redirectTo;
     } catch {
-      setError("Invalid code. Please try again.");
+      setError(t("components.inlineSignIn.invalidCode"));
       setLoading(false);
     }
   };
@@ -88,13 +90,13 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
     return (
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">Two-factor authentication</h1>
-          <p className="text-sm text-muted-foreground">Enter the code from your authenticator app</p>
+          <h1 className="text-xl font-semibold tracking-tight">{t("components.inlineSignIn.twoFactorTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{t("components.inlineSignIn.twoFactorSubtitle")}</p>
         </div>
 
         <form onSubmit={handle2FA} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="inline-2fa">Verification code</Label>
+            <Label htmlFor="inline-2fa">{t("components.inlineSignIn.verificationCode")}</Label>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-muted-foreground shrink-0" />
               <Input
@@ -115,7 +117,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("components.inlineSignIn.verify")}
           </Button>
         </form>
 
@@ -126,7 +128,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
           className="h-auto p-0 text-sm text-muted-foreground hover:text-foreground hover:bg-transparent gap-1.5 font-normal"
         >
           <ArrowLeft className="h-3 w-3" />
-          Back to sign in
+          {t("components.inlineSignIn.backToSignIn")}
         </Button>
       </div>
     );
@@ -135,13 +137,13 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
   return (
     <div className="w-full max-w-sm space-y-6">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
-        <p className="text-sm text-muted-foreground">Enter your credentials to continue</p>
+        <h1 className="text-xl font-semibold tracking-tight">{t("components.inlineSignIn.title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("components.inlineSignIn.subtitle")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="inline-email">Email</Label>
+          <Label htmlFor="inline-email">{t("components.inlineSignIn.email")}</Label>
           <Input
             id="inline-email"
             type="email"
@@ -152,7 +154,7 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="inline-password">Password</Label>
+          <Label htmlFor="inline-password">{t("components.inlineSignIn.password")}</Label>
           <Input
             id="inline-password"
             type="password"
@@ -166,14 +168,14 @@ export function InlineSignIn({ redirectTo = "/dashboard" }: { redirectTo?: strin
         {error && <p className="text-sm text-destructive">{error}</p>}
 
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("components.inlineSignIn.signInBtn")}
         </Button>
       </form>
 
       <p className="text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
+        {t("components.inlineSignIn.noAccount")}{" "}
         <Link href="/signup" className="font-medium text-foreground underline underline-offset-4">
-          Sign up
+          {t("components.inlineSignIn.signUp")}
         </Link>
       </p>
     </div>

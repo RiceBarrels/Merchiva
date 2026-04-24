@@ -15,7 +15,6 @@ import {
   ShoppingBag,
   CalendarDays,
   X,
-  Check,
   Edit2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,22 +33,23 @@ import type {
   SiteOrder,
   SiteBooking,
 } from "@/lib/types";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const PERIOD_LABELS: Record<string, string> = {
-  free: "Free",
-  monthly: "/mo",
-  yearly: "/yr",
-  "one-time": " once",
+const PERIOD_LABEL_KEYS: Record<string, string> = {
+  free: "builder.membership.free",
+  monthly: "builder.membership.perMonth",
+  yearly: "builder.membership.perYear",
+  "one-time": "builder.membership.once",
 };
 
-const PERK_TYPE_LABELS: Record<string, string> = {
-  discount: "Discount",
-  freebie: "Freebie",
-  coupon: "Coupon Code",
-  "points-multiplier": "Points Multiplier",
-  custom: "Custom",
+const PERK_TYPE_LABEL_KEYS: Record<string, string> = {
+  discount: "builder.membership.perkDiscount",
+  freebie: "builder.membership.perkFreebie",
+  coupon: "builder.membership.perkCoupon",
+  "points-multiplier": "builder.membership.perkPoints",
+  custom: "builder.membership.perkCustom",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -57,6 +57,13 @@ const STATUS_COLORS: Record<string, string> = {
   confirmed: "bg-blue-100 text-blue-800",
   completed: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
+};
+
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  pending: "builder.membership.statusPending",
+  confirmed: "builder.membership.statusConfirmed",
+  completed: "builder.membership.statusCompleted",
+  cancelled: "builder.membership.statusCancelled",
 };
 
 // ─── Empty tier form ───────────────────────────────────────────────────────────
@@ -122,6 +129,7 @@ function TierModal({
   onSave: (data: typeof initial) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [form, setForm] = useState(initial);
   const f = (k: keyof typeof form, v: unknown) =>
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -131,59 +139,59 @@ function TierModal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 bg-background border border-border rounded-sm w-full max-w-sm shadow-lg overflow-y-auto max-h-[85vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background">
-          <h2 className="font-semibold text-sm">Membership Tier</h2>
+          <h2 className="font-semibold text-sm">{t("builder.membership.modalTier")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
         <div className="p-4 space-y-3">
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">Name</label>
-            <input value={form.name} onChange={(e) => f("name", e.target.value)} placeholder="Gold Member" className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
+            <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.name")}</label>
+            <input value={form.name} onChange={(e) => f("name", e.target.value)} placeholder={t("builder.membership.tierNamePlaceholder")} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
           </div>
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">Description</label>
-            <textarea value={form.description ?? ""} onChange={(e) => f("description", e.target.value)} rows={2} placeholder="Unlock exclusive perks…" className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring resize-none" />
+            <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.description")}</label>
+            <textarea value={form.description ?? ""} onChange={(e) => f("description", e.target.value)} rows={2} placeholder={t("builder.membership.tierDescPlaceholder")} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring resize-none" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Price</label>
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.price")}</label>
               <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => f("price", Number(e.target.value))} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
             </div>
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Period</label>
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.period")}</label>
               <select value={form.pricePeriod} onChange={(e) => f("pricePeriod", e.target.value)} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring">
-                <option value="free">Free</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="one-time">One-time</option>
+                <option value="free">{t("builder.membership.free")}</option>
+                <option value="monthly">{t("builder.membership.monthly")}</option>
+                <option value="yearly">{t("builder.membership.yearly")}</option>
+                <option value="one-time">{t("builder.membership.oneTime")}</option>
               </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Color</label>
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.color")}</label>
               <div className="flex gap-2 items-center">
                 <input type="color" value={form.color} onChange={(e) => f("color", e.target.value)} className="h-8 w-10 rounded border border-border cursor-pointer" />
                 <input value={form.color} onChange={(e) => f("color", e.target.value)} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono outline-none focus:ring-1 focus:ring-ring" />
               </div>
             </div>
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Icon (emoji)</label>
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.iconEmoji")}</label>
               <input value={form.icon} onChange={(e) => f("icon", e.target.value)} placeholder="⭐" className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
             </div>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.isDefault} onChange={(e) => f("isDefault", e.target.checked)} className="rounded" />
-            <span className="text-sm">Default tier (auto-assigned to new customers)</span>
+            <span className="text-sm">{t("builder.membership.defaultTier")}</span>
           </label>
         </div>
         <div className="flex gap-2 px-4 pb-4">
-          <button onClick={onClose} className="flex-1 rounded border border-border px-3 py-2 text-sm hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="flex-1 rounded border border-border px-3 py-2 text-sm hover:bg-muted">{t("builder.membership.cancel")}</button>
           <button
             onClick={() => { onSave(form); onClose(); }}
             disabled={!form.name.trim()}
             className="flex-1 rounded bg-foreground px-3 py-2 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50"
           >
-            Save
+            {t("builder.membership.save")}
           </button>
         </div>
       </div>
@@ -202,6 +210,7 @@ function PerkModal({
   onSave: (data: typeof initial) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const [form, setForm] = useState(initial);
   const f = (k: keyof typeof form, v: unknown) =>
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -211,24 +220,24 @@ function PerkModal({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative z-10 bg-background border border-border rounded-sm w-full max-w-sm shadow-lg overflow-y-auto max-h-[85vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background">
-          <h2 className="font-semibold text-sm">Membership Perk</h2>
+          <h2 className="font-semibold text-sm">{t("builder.membership.modalPerk")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
         <div className="p-4 space-y-3">
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">Type</label>
+            <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.type")}</label>
             <select value={form.type} onChange={(e) => f("type", e.target.value)} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring">
-              {Object.entries(PERK_TYPE_LABELS).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
+              {Object.entries(PERK_TYPE_LABEL_KEYS).map(([v, k]) => (
+                <option key={v} value={v}>{t(k)}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">Name</label>
-            <input value={form.name} onChange={(e) => f("name", e.target.value)} placeholder="Free drink every 3 hours" className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
+            <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.name")}</label>
+            <input value={form.name} onChange={(e) => f("name", e.target.value)} placeholder={t("builder.membership.perkNamePlaceholder")} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
           </div>
           <div>
-            <label className="block text-[11px] text-muted-foreground mb-1">Description (optional)</label>
+            <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.descriptionOptional")}</label>
             <textarea value={form.description ?? ""} onChange={(e) => f("description", e.target.value || null)} rows={2} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring resize-none" />
           </div>
 
@@ -236,21 +245,21 @@ function PerkModal({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">Discount value</label>
+                  <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.discountValue")}</label>
                   <input type="number" min="0" value={form.discountValue ?? ""} onChange={(e) => f("discountValue", e.target.value ? Number(e.target.value) : null)} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">Type</label>
+                  <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.type")}</label>
                   <select value={form.discountType ?? "percent"} onChange={(e) => f("discountType", e.target.value)} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring">
-                    <option value="percent">Percent (%)</option>
-                    <option value="fixed">Fixed ($)</option>
+                    <option value="percent">{t("builder.membership.percent")}</option>
+                    <option value="fixed">{t("builder.membership.fixed")}</option>
                   </select>
                 </div>
               </div>
               {form.type === "coupon" && (
                 <div>
-                  <label className="block text-[11px] text-muted-foreground mb-1">Coupon code</label>
-                  <input value={form.couponCode ?? ""} onChange={(e) => f("couponCode", e.target.value || null)} placeholder="MEMBER10" className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm font-mono outline-none focus:ring-1 focus:ring-ring uppercase" />
+                  <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.couponCode")}</label>
+                  <input value={form.couponCode ?? ""} onChange={(e) => f("couponCode", e.target.value || null)} placeholder={t("builder.membership.couponCodePlaceholder")} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm font-mono outline-none focus:ring-1 focus:ring-ring uppercase" />
                 </div>
               )}
             </>
@@ -258,28 +267,28 @@ function PerkModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Cooldown (hours)</label>
-              <input type="number" min="0" value={form.cooldownHours ?? ""} onChange={(e) => f("cooldownHours", e.target.value ? Number(e.target.value) : null)} placeholder="e.g. 3" className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.cooldown")}</label>
+              <input type="number" min="0" value={form.cooldownHours ?? ""} onChange={(e) => f("cooldownHours", e.target.value ? Number(e.target.value) : null)} placeholder={t("builder.membership.cooldownPlaceholder")} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
             </div>
             <div>
-              <label className="block text-[11px] text-muted-foreground mb-1">Min. purchase ($)</label>
+              <label className="block text-[11px] text-muted-foreground mb-1">{t("builder.membership.minPurchase")}</label>
               <input type="number" min="0" step="0.01" value={form.minPurchase ?? ""} onChange={(e) => f("minPurchase", e.target.value ? Number(e.target.value) : null)} className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
             </div>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.active} onChange={(e) => f("active", e.target.checked)} className="rounded" />
-            <span className="text-sm">Active</span>
+            <span className="text-sm">{t("builder.membership.active")}</span>
           </label>
         </div>
         <div className="flex gap-2 px-4 pb-4">
-          <button onClick={onClose} className="flex-1 rounded border border-border px-3 py-2 text-sm hover:bg-muted">Cancel</button>
+          <button onClick={onClose} className="flex-1 rounded border border-border px-3 py-2 text-sm hover:bg-muted">{t("builder.membership.cancel")}</button>
           <button
             onClick={() => { onSave(form); onClose(); }}
             disabled={!form.name.trim()}
             className="flex-1 rounded bg-foreground px-3 py-2 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50"
           >
-            Save
+            {t("builder.membership.save")}
           </button>
         </div>
       </div>
@@ -290,6 +299,7 @@ function PerkModal({
 // ─── Tiers tab ────────────────────────────────────────────────────────────────
 
 function TiersTab({ siteId }: { siteId: string }) {
+  const t = useT();
   const [tiers, setTiers] = useState<MembershipTier[]>([]);
   const [perksMap, setPerksMap] = useState<Record<string, MembershipPerk[]>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -332,7 +342,7 @@ function TiersTab({ siteId }: { siteId: string }) {
   };
 
   const handleDeleteTier = async (id: string) => {
-    if (!confirm("Delete this tier and all its perks?")) return;
+    if (!confirm(t("builder.membership.confirmDeleteTier"))) return;
     await deleteTier(id).catch(console.error);
     setTiers((prev) => prev.filter((t) => t.id !== id));
   };
@@ -368,18 +378,18 @@ function TiersTab({ siteId }: { siteId: string }) {
 
   return (
     <div>
-      <SectionHeader title="Membership Tiers">
+      <SectionHeader title={t("builder.membership.tiersHeader")}>
         <button
           onClick={() => { setEditTier(null); setShowTierModal(true); }}
           className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded bg-foreground text-background hover:bg-foreground/90"
         >
-          <Plus className="h-3.5 w-3.5" /> Add Tier
+          <Plus className="h-3.5 w-3.5" /> {t("builder.membership.addTier")}
         </button>
       </SectionHeader>
 
       {tiers.length === 0 && (
         <div className="rounded border border-dashed border-border py-12 text-center text-muted-foreground text-sm">
-          No tiers yet. Create your first membership tier.
+          {t("builder.membership.noTiers")}
         </div>
       )}
 
@@ -395,12 +405,12 @@ function TiersTab({ siteId }: { siteId: string }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm">{tier.name}</span>
-                  {tier.isDefault && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">Default</span>}
+                  {tier.isDefault && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{t("builder.membership.default")}</span>}
                 </div>
                 {tier.description && <p className="text-xs text-muted-foreground truncate">{tier.description}</p>}
               </div>
               <span className="text-sm font-mono font-semibold flex-shrink-0" style={{ color: tier.color }}>
-                {tier.price === 0 ? "Free" : `$${tier.price}${PERIOD_LABELS[tier.pricePeriod] ?? ""}`}
+                {tier.price === 0 ? t("builder.membership.free") : `$${tier.price}${PERIOD_LABEL_KEYS[tier.pricePeriod] ? t(PERIOD_LABEL_KEYS[tier.pricePeriod]) : ""}`}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
@@ -422,16 +432,16 @@ function TiersTab({ siteId }: { siteId: string }) {
             {expanded === tier.id && (
               <div className="border-t border-border bg-muted/30 px-4 py-3">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Perks</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("builder.membership.perks")}</span>
                   <button
                     onClick={() => { setEditPerk(null); setShowPerkModal(tier.id); }}
                     className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border border-border hover:bg-background"
                   >
-                    <Plus className="h-3 w-3" /> Add Perk
+                    <Plus className="h-3 w-3" /> {t("builder.membership.addPerk")}
                   </button>
                 </div>
                 {(perksMap[tier.id] ?? []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">No perks yet.</p>
+                  <p className="text-xs text-muted-foreground text-center py-3">{t("builder.membership.noPerks")}</p>
                 ) : (
                   <div className="space-y-1.5">
                     {(perksMap[tier.id] ?? []).map((perk) => (
@@ -439,7 +449,7 @@ function TiersTab({ siteId }: { siteId: string }) {
                         <Gift className={cn("h-3.5 w-3.5 flex-shrink-0", perk.active ? "text-green-600" : "text-muted-foreground")} />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium">{perk.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{PERK_TYPE_LABELS[perk.type]}{perk.cooldownHours ? ` · ${perk.cooldownHours}h cooldown` : ""}</p>
+                          <p className="text-[11px] text-muted-foreground">{PERK_TYPE_LABEL_KEYS[perk.type] ? t(PERK_TYPE_LABEL_KEYS[perk.type]) : perk.type}{perk.cooldownHours ? ` · ${perk.cooldownHours}${t("builder.membership.hoursCooldown")}` : ""}</p>
                         </div>
                         <button
                           onClick={() => { setEditPerk({ tierId: tier.id, perk }); setShowPerkModal(tier.id); }}
@@ -508,6 +518,7 @@ function TiersTab({ siteId }: { siteId: string }) {
 // ─── Customers tab ────────────────────────────────────────────────────────────
 
 function CustomersTab({ siteId }: { siteId: string }) {
+  const t = useT();
   const [customers, setCustomers] = useState<SiteCustomer[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -522,19 +533,19 @@ function CustomersTab({ siteId }: { siteId: string }) {
 
   return (
     <div>
-      <SectionHeader title={`Customers (${customers.length})`} />
+      <SectionHeader title={`${t("builder.membership.customersHeader")} (${customers.length})`} />
       {customers.length === 0 ? (
         <div className="rounded border border-dashed border-border py-12 text-center text-muted-foreground text-sm">
-          No customers yet. They&apos;ll appear here once they register on your site.
+          {t("builder.membership.noCustomers")}
         </div>
       ) : (
         <div className="rounded border border-border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Customer</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Email</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Joined</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("builder.membership.customer")}</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("builder.membership.email")}</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("builder.membership.joined")}</th>
               </tr>
             </thead>
             <tbody>
@@ -563,6 +574,7 @@ function CustomersTab({ siteId }: { siteId: string }) {
 // ─── Orders tab ───────────────────────────────────────────────────────────────
 
 function OrdersTab({ siteId }: { siteId: string }) {
+  const t = useT();
   const [orders, setOrders] = useState<SiteOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -582,10 +594,10 @@ function OrdersTab({ siteId }: { siteId: string }) {
 
   return (
     <div>
-      <SectionHeader title={`Orders (${orders.length})`} />
+      <SectionHeader title={`${t("builder.membership.ordersHeader")} (${orders.length})`} />
       {orders.length === 0 ? (
         <div className="rounded border border-dashed border-border py-12 text-center text-muted-foreground text-sm">
-          No orders yet.
+          {t("builder.membership.noOrders")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -593,7 +605,7 @@ function OrdersTab({ siteId }: { siteId: string }) {
             <div key={order.id} className="rounded border border-border p-4">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
-                  <p className="font-medium text-sm">{order.customerName ?? "Guest"}</p>
+                  <p className="font-medium text-sm">{order.customerName ?? t("builder.membership.guest")}</p>
                   <p className="text-xs text-muted-foreground font-mono">{order.customerEmail ?? "—"}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
@@ -602,10 +614,10 @@ function OrdersTab({ siteId }: { siteId: string }) {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_COLORS[order.status])}>{order.status}</span>
+                <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_COLORS[order.status])}>{t(STATUS_LABEL_KEYS[order.status] ?? order.status)}</span>
                 {(["pending", "confirmed", "completed", "cancelled"] as SiteOrder["status"][]).map((s) =>
                   s !== order.status ? (
-                    <button key={s} onClick={() => handleStatus(order.id, s)} className="px-2 py-0.5 rounded text-[11px] border border-border hover:bg-muted">{s}</button>
+                    <button key={s} onClick={() => handleStatus(order.id, s)} className="px-2 py-0.5 rounded text-[11px] border border-border hover:bg-muted">{t(STATUS_LABEL_KEYS[s] ?? s)}</button>
                   ) : null
                 )}
               </div>
@@ -627,6 +639,7 @@ function OrdersTab({ siteId }: { siteId: string }) {
 // ─── Bookings tab ─────────────────────────────────────────────────────────────
 
 function BookingsTab({ siteId }: { siteId: string }) {
+  const t = useT();
   const [bookings, setBookings] = useState<SiteBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -646,10 +659,10 @@ function BookingsTab({ siteId }: { siteId: string }) {
 
   return (
     <div>
-      <SectionHeader title={`Bookings (${bookings.length})`} />
+      <SectionHeader title={`${t("builder.membership.bookingsHeader")} (${bookings.length})`} />
       {bookings.length === 0 ? (
         <div className="rounded border border-dashed border-border py-12 text-center text-muted-foreground text-sm">
-          No bookings yet.
+          {t("builder.membership.noBookings")}
         </div>
       ) : (
         <div className="space-y-2">
@@ -662,14 +675,14 @@ function BookingsTab({ siteId }: { siteId: string }) {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-semibold text-sm">{booking.date} {booking.time}</p>
-                  <p className="text-xs text-muted-foreground">Party of {booking.partySize}</p>
+                  <p className="text-xs text-muted-foreground">{t("builder.membership.partyOf")} {booking.partySize}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_COLORS[booking.status])}>{booking.status}</span>
+                <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_COLORS[booking.status])}>{t(STATUS_LABEL_KEYS[booking.status] ?? booking.status)}</span>
                 {(["pending", "confirmed", "cancelled"] as SiteBooking["status"][]).map((s) =>
                   s !== booking.status ? (
-                    <button key={s} onClick={() => handleStatus(booking.id, s)} className="px-2 py-0.5 rounded text-[11px] border border-border hover:bg-muted">{s}</button>
+                    <button key={s} onClick={() => handleStatus(booking.id, s)} className="px-2 py-0.5 rounded text-[11px] border border-border hover:bg-muted">{t(STATUS_LABEL_KEYS[s] ?? s)}</button>
                   ) : null
                 )}
               </div>
@@ -685,6 +698,7 @@ function BookingsTab({ siteId }: { siteId: string }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function MembershipAdminPage({ params }: { params: Promise<{ siteId: string }> }) {
+  const t = useT();
   const { siteId } = use(params);
   const [tab, setTab] = useState<"tiers" | "customers" | "orders" | "bookings">("tiers");
 
@@ -695,22 +709,22 @@ export default function MembershipAdminPage({ params }: { params: Promise<{ site
         <Link href={`/builder/${siteId}`} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <span className="text-sm font-semibold">Membership & Commerce</span>
+        <span className="text-sm font-semibold">{t("builder.membership.title")}</span>
       </header>
 
       {/* Tabs */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-border bg-muted/20">
         <TabBtn active={tab === "tiers"} onClick={() => setTab("tiers")}>
-          <Star className="h-3.5 w-3.5 inline mr-1" />Tiers & Perks
+          <Star className="h-3.5 w-3.5 inline mr-1" />{t("builder.membership.tiersPerks")}
         </TabBtn>
         <TabBtn active={tab === "customers"} onClick={() => setTab("customers")}>
-          <Users className="h-3.5 w-3.5 inline mr-1" />Customers
+          <Users className="h-3.5 w-3.5 inline mr-1" />{t("builder.membership.customers")}
         </TabBtn>
         <TabBtn active={tab === "orders"} onClick={() => setTab("orders")}>
-          <ShoppingBag className="h-3.5 w-3.5 inline mr-1" />Orders
+          <ShoppingBag className="h-3.5 w-3.5 inline mr-1" />{t("builder.membership.orders")}
         </TabBtn>
         <TabBtn active={tab === "bookings"} onClick={() => setTab("bookings")}>
-          <CalendarDays className="h-3.5 w-3.5 inline mr-1" />Bookings
+          <CalendarDays className="h-3.5 w-3.5 inline mr-1" />{t("builder.membership.bookings")}
         </TabBtn>
       </div>
 

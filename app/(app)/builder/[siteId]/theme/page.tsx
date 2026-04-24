@@ -11,6 +11,7 @@ import { buildGoogleFontsUrl } from "@/components/site-renderer";
 import type { SiteTheme } from "@/lib/types";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Font options ───────────────────────────────────────────────────────────
 
@@ -146,6 +147,15 @@ const PRESETS: Record<string, SiteTheme> = {
 
 const DEFAULT_THEME: SiteTheme = PRESETS["Clean Light"];
 
+const PRESET_LABEL_KEYS: Record<string, string> = {
+  "Modern Dark": "builder.theme.presetModernDark",
+  "Clean Light": "builder.theme.presetCleanLight",
+  "Warm Coffee": "builder.theme.presetWarmCoffee",
+  "Ocean Blue": "builder.theme.presetOceanBlue",
+  "Forest Green": "builder.theme.presetForestGreen",
+  "Minimal Mono": "builder.theme.presetMinimalMono",
+};
+
 // ─── Color picker row ──────────────────────────────────────────────────────
 
 function ColorRow({
@@ -188,6 +198,7 @@ function FontSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = FONT_OPTIONS.find((f) => f.value === value) ?? FONT_OPTIONS[0];
@@ -219,7 +230,7 @@ function FontSelect({
         <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-border rounded shadow-xl max-h-56 overflow-y-auto">
           {/* Google fonts section */}
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 bg-stone-50 border-b border-border sticky top-0">
-            Google Fonts
+            {t("builder.theme.googleFonts")}
           </div>
           {GOOGLE_FONT_LIST.map((f) => (
             <button
@@ -238,7 +249,7 @@ function FontSelect({
           ))}
           {/* System fonts section */}
           <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 bg-stone-50 border-t border-b border-border sticky top-0">
-            System Fonts
+            {t("builder.theme.systemFonts")}
           </div>
           {SYSTEM_FONT_LIST.map((f) => (
             <button
@@ -264,6 +275,7 @@ function FontSelect({
 // ─── Live preview mini-site ───────────────────────────────────────────────
 
 function Preview({ theme }: { theme: SiteTheme }) {
+  const t = useT();
   // Load fonts for the preview
   const fontsUrl = useMemo(
     () => buildGoogleFontsUrl([theme.headingFont, theme.bodyFont]),
@@ -308,10 +320,10 @@ function Preview({ theme }: { theme: SiteTheme }) {
             margin: "0 0 6px",
           }}
         >
-          Your Business Name
+          {t("builder.theme.previewBusinessName")}
         </h1>
         <p style={{ fontSize: 13, color: theme.secondary, margin: "0 0 14px" }}>
-          Great coffee · Fresh food · Good vibes
+          {t("builder.theme.previewTagline")}
         </p>
         <button
           style={{
@@ -326,7 +338,7 @@ function Preview({ theme }: { theme: SiteTheme }) {
             cursor: "pointer",
           }}
         >
-          Reserve a Table
+          {t("builder.theme.previewButton")}
         </button>
       </div>
 
@@ -356,6 +368,7 @@ function Preview({ theme }: { theme: SiteTheme }) {
 // ─── Theme page ───────────────────────────────────────────────────────────
 
 export default function ThemePage({ params }: { params: Promise<{ siteId: string }> }) {
+  const t = useT();
   const { siteId } = use(params);
   const storageKey = `site_theme_${siteId}`;
 
@@ -402,7 +415,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
         {/* ─── Left panel: controls ─────────────────────────────── */}
         <div className="w-72 shrink-0 border-r border-border bg-white flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-bold tracking-tight">Theme Editor</h2>
+            <h2 className="text-sm font-bold tracking-tight">{t("builder.theme.title")}</h2>
             <button
               onClick={save}
               className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
@@ -411,14 +424,14 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                   : "bg-stone-900 text-white hover:bg-stone-700"
               }`}
             >
-              {saved ? "Saved ✓" : "Save"}
+              {saved ? t("builder.theme.saved") : t("builder.theme.save")}
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5">
             {/* Presets */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Presets</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">{t("builder.theme.presets")}</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {Object.entries(PRESETS).map(([name, p]) => (
                   <button
@@ -435,7 +448,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                       className="inline-block h-2.5 w-2.5 rounded-full mr-1.5"
                       style={{ background: p.accent }}
                     />
-                    {name}
+                    {t(PRESET_LABEL_KEYS[name] ?? name)}
                   </button>
                 ))}
               </div>
@@ -443,29 +456,29 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
 
             {/* Colors */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">Colors</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">{t("builder.theme.colors")}</p>
               <div className="border border-border rounded divide-y divide-border px-3">
-                <ColorRow label="Background" value={theme.background} onChange={(v) => update({ background: v })} />
-                <ColorRow label="Text" value={theme.text} onChange={(v) => update({ text: v })} />
-                <ColorRow label="Accent / CTA" value={theme.accent} onChange={(v) => update({ accent: v })} />
-                <ColorRow label="Secondary" value={theme.secondary} onChange={(v) => update({ secondary: v })} />
-                <ColorRow label="Primary" value={theme.primary} onChange={(v) => update({ primary: v })} />
+                <ColorRow label={t("builder.theme.background")} value={theme.background} onChange={(v) => update({ background: v })} />
+                <ColorRow label={t("builder.theme.text")} value={theme.text} onChange={(v) => update({ text: v })} />
+                <ColorRow label={t("builder.theme.accent")} value={theme.accent} onChange={(v) => update({ accent: v })} />
+                <ColorRow label={t("builder.theme.secondary")} value={theme.secondary} onChange={(v) => update({ secondary: v })} />
+                <ColorRow label={t("builder.theme.primary")} value={theme.primary} onChange={(v) => update({ primary: v })} />
               </div>
             </div>
 
             {/* Fonts */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Fonts</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">{t("builder.theme.fonts")}</p>
               <div className="space-y-2">
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Heading font</label>
+                  <label className="text-xs font-medium text-stone-600 block mb-1">{t("builder.theme.headingFont")}</label>
                   <FontSelect
                     value={theme.headingFont}
                     onChange={(v) => { hapticLight(); update({ headingFont: v }); }}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">Body font</label>
+                  <label className="text-xs font-medium text-stone-600 block mb-1">{t("builder.theme.bodyFont")}</label>
                   <FontSelect
                     value={theme.bodyFont}
                     onChange={(v) => { hapticLight(); update({ bodyFont: v }); }}
@@ -477,7 +490,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
             {/* Border radius */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
-                Border Radius
+                {t("builder.theme.borderRadius")}
               </p>
               <div className="flex items-center gap-3">
                 <input
@@ -491,14 +504,14 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                 <span className="font-mono text-xs text-stone-500 w-8 text-right">{theme.borderRadius}px</span>
               </div>
               <div className="flex justify-between text-[10px] text-stone-400 mt-0.5">
-                <span>Sharp</span>
-                <span>Rounded</span>
+                <span>{t("builder.theme.sharp")}</span>
+                <span>{t("builder.theme.rounded")}</span>
               </div>
             </div>
 
             {/* Preview tokens */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">Preview tokens</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">{t("builder.theme.previewTokens")}</p>
               <div className="flex gap-2 flex-wrap">
                 {[theme.background, theme.text, theme.accent, theme.secondary, theme.primary].map((c, i) => (
                   <div
@@ -523,7 +536,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                     cursor: "default",
                   }}
                 >
-                  Button
+                  {t("builder.theme.button")}
                 </button>
                 <div
                   style={{
@@ -536,7 +549,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                     background: theme.background,
                   }}
                 >
-                  Card
+                  {t("builder.theme.card")}
                 </div>
               </div>
             </div>
@@ -558,13 +571,13 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                       : "bg-white text-stone-600 hover:bg-stone-50"
                   }`}
                 >
-                  {tab}
+                  {t(`builder.theme.${tab}`)}
                 </button>
               ))}
             </div>
-            <span className="text-xs text-stone-400">Site ID: {siteId}</span>
+            <span className="text-xs text-stone-400">{t("builder.theme.siteId")} {siteId}</span>
             <span className="ml-auto text-xs text-stone-400 font-mono">
-              Preview updates live
+              {t("builder.theme.previewLive")}
             </span>
           </div>
 

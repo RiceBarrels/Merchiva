@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n/context";
 
 import { tables } from "@/lib/spacetimedb/generated";
 import { getConnection, setActiveOrgId } from "@/lib/spacetimedb/client";
@@ -19,6 +20,7 @@ import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
 // New-user onboarding: shown when SpacetimeDB is ready but the user has no org membership yet.
 function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSignOut: () => void }) {
+  const t = useT();
   const [displayName, setDisplayName] = useState("");
   const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,17 +29,17 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
     if (!displayName.trim() || !storeName.trim()) return;
     const conn = getConnection();
     if (!conn) {
-      toast.error("Not connected to database", { description: "Please wait a moment and try again." });
+      toast.error(t("layout.notConnected"), { description: t("layout.pleaseWait") });
       return;
     }
     setLoading(true);
-    toast.info("Connecting to database...");
+    toast.info(t("layout.connectingDb"));
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const r = (conn as any).reducers;
       console.log("[Setup] Available reducers:", Object.keys(r || {}));
       console.log("[Setup] Calling createUser...");
-      toast.info("Creating account...");
+      toast.info(t("layout.creatingAccount"));
       await r.createUser({
         email: "",
         passwordHash: undefined,
@@ -47,12 +49,12 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await r.createOrg({ name: storeName.trim() });
       console.log("[Setup] createOrg done, reloading in 1.5s...");
-      toast.success("Account created! Loading dashboard...");
+      toast.success(t("layout.accountCreated"));
       setTimeout(onComplete, 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Setup failed:", msg, err);
-      toast.error("Setup failed", { description: msg, duration: 10000 });
+      toast.error(t("layout.setupFailed"), { description: msg, duration: 10000 });
       setLoading(false);
     }
   };
@@ -61,21 +63,21 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
     <div className="flex flex-1 min-h-screen flex-col justify-center px-6 bg-background">
       <div className="mx-auto w-full max-w-sm space-y-8">
         <div>
-          <h1 className="text-2xl font-bold">Set up your account</h1>
-          <p className="text-muted-foreground text-sm mt-1">One last step to get started</p>
+          <h1 className="text-2xl font-bold">{t("layout.newUser.title")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("layout.newUser.description")}</p>
         </div>
         <div className="space-y-4">
           <Input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Your name"
+            placeholder={t("layout.newUser.yourName")}
             className="h-12 text-base"
             autoFocus
           />
           <Input
             value={storeName}
             onChange={(e) => setStoreName(e.target.value)}
-            placeholder="Your store name"
+            placeholder={t("layout.newUser.yourStoreName")}
             className="h-12 text-base"
             onKeyDown={(e) => e.key === "Enter" && !loading && handleSetup()}
           />
@@ -84,11 +86,11 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
             disabled={loading || !displayName.trim() || !storeName.trim()}
             className="w-full h-11"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Get started"}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("layout.newUser.getStarted")}
           </Button>
         </div>
         <button onClick={onSignOut} className="block text-sm text-muted-foreground underline underline-offset-4">
-          Sign out
+          {t("common.signOut")}
         </button>
       </div>
     </div>
@@ -97,6 +99,7 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
 
 // Inner component — runs inside SpacetimeProvider so useTable/useSpacetimeDB are available.
 function AuthLoader({ children }: { children: React.ReactNode }) {
+  const t = useT();
   const stdb = useSpacetimeDB();
   const [orgMembers, membersReady] = useTable(tables.orgMember);
   const [organizations, orgsReady] = useTable(tables.organization);
@@ -183,15 +186,15 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
-        <p className="text-xs text-stone-500">Connecting…</p>
+        <p className="text-xs text-stone-500">{t("layout.connecting")}</p>
         {timedOut && (
           <div className="flex flex-col items-center gap-2 mt-2">
-            <p className="text-xs text-red-500">Connection timed out</p>
+            <p className="text-xs text-red-500">{t("layout.connectionTimedOut")}</p>
             <button
               onClick={handleSignOut}
               className="rounded border border-stone-300 bg-white px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-50"
             >
-              Sign out and try again
+              {t("layout.signOutAndRetry")}
             </button>
           </div>
         )}
