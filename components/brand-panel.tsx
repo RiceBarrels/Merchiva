@@ -1,6 +1,10 @@
+"use client";
+
 import { MerchivaLogo } from "@/components/logo";
+import { useT } from "@/lib/i18n/context";
 
 export function BrandPanel() {
+  const t = useT();
   return (
     <div className="hidden lg:flex flex-col flex-1 min-w-0 h-full bg-stone-50 border-r border-stone-200 p-7">
       {/* Top — Logo */}
@@ -14,34 +18,33 @@ export function BrandPanel() {
       {/* Middle — Tagline */}
       <div className="flex-1 flex flex-col justify-center max-w-md">
         <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider mb-3">
-          Small Business &middot; Daily Ops
+          {t("components.brandPanel.tagline")}
         </span>
         <h2 className="text-[28px] font-semibold text-stone-900 leading-tight tracking-tight">
-          Run the shop,
+          {t("components.brandPanel.heroLine1")}
           <br />
-          not the spreadsheet.
+          {t("components.brandPanel.heroLine2")}
         </h2>
         <p className="text-[13px] text-stone-500 mt-3 leading-relaxed">
-          Inventory, sales, staffing, and products — managed from one
-          workspace. Connect Square for live data or start from scratch.
+          {t("components.brandPanel.description")}
         </p>
 
         {/* Mini inventory preview */}
         <div className="mt-8 rounded border border-stone-200 bg-white overflow-hidden">
           <div className="px-3 py-2 border-b border-stone-100 flex items-center justify-between">
             <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">
-              Live Inventory
+              {t("components.brandPanel.liveInventory")}
             </span>
             <span className="text-[10px] font-mono text-stone-400">
-              3 items
+              {t("components.brandPanel.itemCount")}
             </span>
           </div>
           <table className="w-full text-[12px]">
             <thead>
               <tr className="text-left text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
-                <th className="px-3 py-1.5">SKU</th>
-                <th className="px-3 py-1.5">Product</th>
-                <th className="px-3 py-1.5 text-right">Qty</th>
+                <th className="px-3 py-1.5">{t("components.brandPanel.sku")}</th>
+                <th className="px-3 py-1.5">{t("components.brandPanel.product")}</th>
+                <th className="px-3 py-1.5 text-right">{t("components.brandPanel.qty")}</th>
               </tr>
             </thead>
             <tbody className="text-stone-700 font-mono">
@@ -67,16 +70,16 @@ export function BrandPanel() {
 
       {/* Bottom — Footer */}
       <div className="flex items-center justify-between text-[11px] text-stone-400">
-        <span>&copy; 2026 Merchiva</span>
+        <span>{t("components.brandPanel.copyright")}</span>
         <div className="flex items-center gap-3">
           <a href="#" className="hover:text-stone-600 transition-colors">
-            Privacy
+            {t("components.brandPanel.privacy")}
           </a>
           <a href="#" className="hover:text-stone-600 transition-colors">
-            Terms
+            {t("components.brandPanel.terms")}
           </a>
           <a href="#" className="hover:text-stone-600 transition-colors">
-            Status
+            {t("components.brandPanel.status")}
           </a>
         </div>
       </div>

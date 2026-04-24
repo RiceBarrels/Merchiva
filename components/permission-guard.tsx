@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ShieldAlert } from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
 import type { Permissions } from "@/lib/types";
+import { useT } from "@/lib/i18n/context";
 
 /**
  * Wraps page content with a permission check.
@@ -19,6 +20,7 @@ export function PermissionGuard({
   section: keyof Permissions;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const { can } = usePermissions();
   const router = useRouter();
   const hasView = can(section, "view");
@@ -33,7 +35,7 @@ export function PermissionGuard({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
         <ShieldAlert className="h-10 w-10 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">You don&apos;t have access to this page.</p>
+        <p className="text-sm text-muted-foreground">{t("components.permissionGuard.noAccess")}</p>
       </div>
     );
   }

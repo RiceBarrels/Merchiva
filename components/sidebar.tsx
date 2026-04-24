@@ -158,7 +158,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
       // and switches the active org.
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create store");
+      setError(err instanceof Error ? err.message : t("components.sidebar.failedToCreateStore"));
     } finally {
       setLoading(false);
     }
@@ -273,7 +273,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
         <MerchivaLogo size={28} fg="var(--background)" bg="var(--foreground)" rounded />
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold leading-tight tracking-tight truncate">Merchiva <span className="text-[10px] font-normal text-muted-foreground">beta</span></p>
+            <p className="text-[13px] font-semibold leading-tight tracking-tight truncate">Merchiva <span className="text-[10px] font-normal text-muted-foreground">{t("components.sidebar.beta")}</span></p>
             {storeMachine && deviceName && (
               <p className="text-[10.5px] text-muted-foreground leading-tight truncate">{deviceName}</p>
             )}
@@ -355,7 +355,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
           </div>
         )}
         {onToggleCollapse && (
-          <SidebarTooltip label={collapsed ? "Expand" : "Collapse"} show={!!collapsed}>
+          <SidebarTooltip label={collapsed ? t("components.sidebar.expand") : t("components.sidebar.collapse")} show={!!collapsed}>
             <button
               onClick={onToggleCollapse}
               className={cn(
@@ -364,12 +364,12 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
               )}
             >
               {collapsed ? <PanelLeftOpen className="h-[15px] w-[15px]" /> : <PanelLeftClose className="h-[15px] w-[15px]" />}
-              {!collapsed && <span>Collapse</span>}
+              {!collapsed && <span>{t("components.sidebar.collapse")}</span>}
             </button>
           </SidebarTooltip>
         )}
         {!collapsed && (
-          <p className="px-2.5 pt-2 pb-1 text-[10px] text-stone-400 font-mono">merchiva · beta-0.1.0</p>
+          <p className="px-2.5 pt-2 pb-1 text-[10px] text-stone-400 font-mono">{t("components.sidebar.version")}</p>
         )}
       </div>
     </aside>
@@ -378,29 +378,31 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 }
 
 function StoreTopBar({ deviceName }: { deviceName: string }) {
+  const t = useT();
   return (
     <header className="h-11 shrink-0 border-b border-stone-800 bg-stone-900 text-white flex items-center px-4 gap-3 z-30">
-      <span className="font-mono text-xs font-bold tracking-[0.18em]">BIZOPS</span>
+      <span className="font-mono text-xs font-bold tracking-[0.18em]">{t("components.store.appName")}</span>
       <span className="w-px h-4 bg-stone-700" />
-      <span className="text-[13px] font-semibold">Time Clock</span>
+      <span className="text-[13px] font-semibold">{t("components.store.timeClock")}</span>
       <span className="inline-flex items-center gap-1.5 ml-1.5 px-2 py-0.5 rounded-full border border-stone-700 text-[10px] font-mono tracking-wider text-stone-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />ONLINE
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{t("components.store.online")}
       </span>
       <span className="ml-auto text-[11px] font-mono text-stone-400 truncate">
-        {deviceName ? deviceName.toUpperCase() : "TERMINAL"}
+        {deviceName ? deviceName.toUpperCase() : t("components.store.terminal")}
       </span>
     </header>
   );
 }
 
 function StoreFooter() {
+  const t = useT();
   const now = new Date();
   return (
     <footer className="h-9 shrink-0 border-t border-stone-200 bg-stone-50 flex items-center px-4 text-[11px] text-stone-400 font-mono gap-4 z-30">
-      <span>Merchiva · beta-0.1.0</span>
+      <span>{t("components.store.footerVersion")}</span>
       <span className="hidden sm:inline">·</span>
-      <span className="hidden sm:inline">All times recorded in local timezone</span>
-      <span className="ml-auto">SYNC OK · {now.toISOString().slice(0, 19).replace("T", " ")}Z</span>
+      <span className="hidden sm:inline">{t("components.store.allTimesLocal")}</span>
+      <span className="ml-auto">{t("components.store.syncOk")} · {now.toISOString().slice(0, 19).replace("T", " ")}Z</span>
     </footer>
   );
 }

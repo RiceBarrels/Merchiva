@@ -2,6 +2,7 @@
 
 import { ArrowRight, ArrowLeft, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useT } from "@/lib/i18n/context";
 
 interface FloatingNavButtonProps {
   /** "back" = plain back arrow; "menu" = animated hamburger/X/ArrowRight */
@@ -58,6 +59,7 @@ export function FloatingNavButton({
   zIndex = 50,
   tabBarMode = false,
 }: FloatingNavButtonProps) {
+  const t = useT();
   const handleClick = () => {
     if (mode === "back") {
       onBack?.();
@@ -108,7 +110,7 @@ export function FloatingNavButton({
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0, rotate: 180 }}
               transition={{ type: "spring", damping: 18, stiffness: 350 }}
-              aria-label="Go back"
+              aria-label={t("components.mobile.goBack")}
             >
               <ArrowLeft className="h-5 w-5" />
             </motion.button>
@@ -145,12 +147,12 @@ export function FloatingNavButton({
         style={buttonStyle}
         aria-label={
           mode === "back"
-            ? "Go back"
+            ? t("components.mobile.goBack")
             : hasDialog
-            ? "Go back"
+            ? t("components.mobile.goBack")
             : isOpen
-            ? "Close menu"
-            : "Open menu"
+            ? t("components.mobile.closeMenu")
+            : t("components.mobile.openMenu")
         }
       >
         {mode === "back" ? (

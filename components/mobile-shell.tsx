@@ -4,11 +4,13 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { SidebarContent } from "@/components/sidebar";
 import { MerchivaLogo } from "@/components/logo";
+import { useT } from "@/lib/i18n/context";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 30;
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
+  const t = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -157,7 +159,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={isOpen ? closeSidebar : openSidebar}
               className="p-1 rounded text-muted-foreground hover:bg-muted"
-              aria-label={isOpen ? "Close menu" : "Open menu"}
+              aria-label={isOpen ? t("components.mobile.closeMenu") : t("components.mobile.openMenu")}
             >
               {isOpen ? (
                 <X className="h-4 w-4" />
@@ -167,7 +169,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="flex items-center gap-2">
               <MerchivaLogo size={24} fg="var(--background)" bg="var(--foreground)" rounded />
-              <p className="text-sm font-semibold tracking-tight">Merchiva</p>
+              <p className="text-sm font-semibold tracking-tight">{t("components.mobile.brand")}</p>
             </div>
           </div>
 
