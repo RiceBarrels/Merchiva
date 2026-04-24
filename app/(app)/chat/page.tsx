@@ -28,8 +28,9 @@ import { getTeamForScheduling } from "@/lib/db/staffing";
 import { getAvatarMap } from "@/lib/db/avatars";
 import type { ChatConversation, ChatMessage, OrgMember } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { useT } from "@/lib/i18n/context";
 
-function formatTimeSeparator(date: Date): string {
+function formatTimeSeparator(date: Date, t: (k: string) => string): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const sameDay = date.toDateString() === now.toDateString();
@@ -39,8 +40,8 @@ function formatTimeSeparator(date: Date): string {
 
   const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  if (sameDay) return `Today ${time}`;
-  if (isYesterday) return `Yesterday ${time}`;
+  if (sameDay) return `${t("chat.timeToday")} ${time}`;
+  if (isYesterday) return `${t("chat.timeYesterday")} ${time}`;
   if (diff < 7 * 24 * 60 * 60 * 1000) {
     return `${date.toLocaleDateString([], { weekday: "short" })} ${time}`;
   }
@@ -55,6 +56,7 @@ function shouldShowTimeSeparator(msgs: ChatMessage[], i: number): boolean {
 }
 
 export default function ChatPage() {
+  const t = useT();
   const { organizationId, role } = usePermissions();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [team, setTeam] = useState<OrgMember[]>([]);
@@ -144,7 +146,7 @@ export default function ChatPage() {
     setReplyTo(null);
     setSending(true);
     try {
-      await sendMessage(activeConv.id, content || (attachment ? `Sent ${attachment.type === "image" ? "a photo" : attachment.type === "video" ? "a video" : "a file"}` : ""), replyId, attachment);
+      await sendMessage(activeConv.id, content || (attachment ? (attachment.type === "image" ? t("chat.sentPhoto") : attachment.type === "video" ? t("chat.sentVideo") : t("chat.sentFile")) : ""), replyId, attachment);
     } catch (err) {
       console.error("Send failed:", err);
       setInput(content);
@@ -231,8 +233,8 @@ export default function ChatPage() {
   };
 
   const getMemberName = useCallback(
-    (uid: string) => team.find((m) => m.userId === uid)?.displayName ?? "Unknown",
-    [team]
+    (uid: string) => team.find((m) => m.userId === uid)?.displayName ?? t("chat.unknown"),
+    [team, t]
   );
 
   const getAvatar = useCallback(
@@ -263,9 +265,9 @@ export default function ChatPage() {
   };
 
   const getConvDisplayName = (conv: ChatConversation) => {
-    if (conv.type === "group") return conv.name ?? "Group";
+    if (conv.type === "group") return conv.name ?? t("chat.groupFallback");
     const other = conv.members?.find((m) => m.userId !== userId);
-    return other ? getMemberName(other.userId) : "Chat";
+    return other ? getMemberName(other.userId) : t("chat.chatFallback");
   };
 
   const filteredTeam = team.filter(
@@ -290,14 +292,14 @@ export default function ChatPage() {
         <div className="w-full sm:w-80 sm:border-r border-border flex flex-col shrink-0">
           <div className="p-3 border-b border-border space-y-2">
             <div className="flex items-center justify-between">
-              <h1 className="text-lg font-bold">Messages</h1>
+              <h1 className="text-lg font-bold">{t("chat.messages")}</h1>
               <div className="flex gap-1">
                 <Button size="sm" variant="outline" onClick={() => setNewDmDialog(true)} className="gap-1 h-8 text-xs">
-                  <MessageSquare className="h-3.5 w-3.5" /> DM
+                  <MessageSquare className="h-3.5 w-3.5" /> {t("chat.dm")}
                 </Button>
                 {isManager && (
                   <Button size="sm" onClick={() => setNewGroupDialog(true)} className="gap-1 h-8 text-xs">
-                    <Plus className="h-3.5 w-3.5" /> Group
+                    <Plus className="h-3.5 w-3.5" /> {t("chat.group")}
                   </Button>
                 )}
               </div>
@@ -308,8 +310,8 @@ export default function ChatPage() {
             {conversations.length === 0 ? (
               <div className="p-8 text-center space-y-2">
                 <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground opacity-40" />
-                <p className="text-sm text-muted-foreground">No conversations yet</p>
-                <p className="text-xs text-muted-foreground">Start a DM or create a group</p>
+                <p className="text-sm text-muted-foreground">{t("chat.noConversations")}</p>
+                <p className="text-xs text-muted-foreground">{t("chat.startDMPrompt")}</p>
               </div>
             ) : (
               conversations.map((conv) => {
@@ -343,10 +345,10 @@ export default function ChatPage() {
                         </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {lastMsg
-                            ? `${lastMsg.senderId === userId ? "You" : getMemberName(lastMsg.senderId)}: ${lastMsg.content}`
+                            ? `${lastMsg.senderId === userId ? t("chat.you") : getMemberName(lastMsg.senderId)}: ${lastMsg.content}`
                             : conv.type === "group"
-                            ? `${memberCount} members`
-                            : "No messages yet"
+                            ? `${memberCount} ${t("chat.memberPlural").toLowerCase()}`
+                            : t("chat.noMessagesShort")
                           }
                         </p>
                       </div>
@@ -390,7 +392,7 @@ export default function ChatPage() {
             <div className="flex flex-1 items-center justify-center">
               <div className="text-center space-y-2">
                 <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground opacity-30" />
-                <p className="text-sm text-muted-foreground">Select a conversation</p>
+                <p className="text-sm text-muted-foreground">{t("chat.selectConversation")}</p>
               </div>
             </div>
           )}
@@ -399,8 +401,8 @@ export default function ChatPage() {
         {/* Mobile: Dialog */}
         <Dialog open={showChat && isMobile} onOpenChange={(open) => { if (!open) setActiveConv(null); }}>
           <DialogContent showCloseButton={false} noPadding>
-            <DialogTitle mobileTitle={activeConv ? getConvDisplayName(activeConv) : "Chat"} className="hidden">
-              {activeConv ? getConvDisplayName(activeConv) : "Chat"}
+            <DialogTitle mobileTitle={activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")} className="hidden">
+              {activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")}
             </DialogTitle>
             {activeConv && (
               <div className="flex flex-col h-full">
@@ -439,8 +441,8 @@ export default function ChatPage() {
       <Dialog open={newDmDialog} onOpenChange={setNewDmDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle mobileTitle="New Message">New Direct Message</DialogTitle>
-            <DialogDescription>Choose a team member to message</DialogDescription>
+            <DialogTitle mobileTitle={t("chat.newMessageShort")}>{t("chat.newDirectMessage")}</DialogTitle>
+            <DialogDescription>{t("chat.chooseTeamMember")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-1">
             {team
@@ -468,26 +470,26 @@ export default function ChatPage() {
       <Dialog open={newGroupDialog} onOpenChange={setNewGroupDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle mobileTitle="New Group">Create Group Chat</DialogTitle>
-            <DialogDescription>Name the group and add members</DialogDescription>
+            <DialogTitle mobileTitle={t("chat.newGroup")}>{t("chat.createGroupChat")}</DialogTitle>
+            <DialogDescription>{t("chat.nameGroupAddMembers")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Group Name *</Label>
+              <Label>{t("chat.groupNameRequired")}</Label>
               <Input
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
-                placeholder="e.g. Morning Shift, All Staff"
+                placeholder={t("chat.groupNamePlaceholder")}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Members</Label>
+              <Label>{t("chat.membersLabel")}</Label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
-                  placeholder="Search team..."
+                  placeholder={t("chat.searchTeam")}
                   className="pl-8"
                 />
               </div>
@@ -527,7 +529,7 @@ export default function ChatPage() {
                           {m.displayName[0]?.toUpperCase()}
                         </div>
                         <span className="text-sm flex-1">{m.displayName}</span>
-                        {selected && <span className="text-xs text-primary font-medium">Added</span>}
+                        {selected && <span className="text-xs text-primary font-medium">{t("chat.added")}</span>}
                       </button>
                     );
                   })}
@@ -538,7 +540,7 @@ export default function ChatPage() {
               disabled={!groupName.trim() || selectedMembers.length === 0}
               className="w-full"
             >
-              Create Group ({selectedMembers.length} members)
+              {t("chat.createGroup")} ({selectedMembers.length} {t("chat.memberPlural").toLowerCase()})
             </Button>
           </div>
         </DialogContent>
@@ -548,8 +550,8 @@ export default function ChatPage() {
       <Dialog open={addMemberDialog} onOpenChange={setAddMemberDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle mobileTitle="Add Members">Add Members to Group</DialogTitle>
-            <DialogDescription>Select team members to add</DialogDescription>
+            <DialogTitle mobileTitle={t("chat.addMembersMobile")}>{t("chat.addMembersToGroup")}</DialogTitle>
+            <DialogDescription>{t("chat.selectMembersDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="relative">
@@ -557,7 +559,7 @@ export default function ChatPage() {
               <Input
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search team..."
+                placeholder={t("chat.searchTeam")}
                 className="pl-8"
               />
             </div>
@@ -585,7 +587,7 @@ export default function ChatPage() {
                         {m.displayName[0]?.toUpperCase()}
                       </div>
                       <span className="text-sm flex-1">{m.displayName}</span>
-                      {selected && <span className="text-xs text-primary font-medium">Added</span>}
+                      {selected && <span className="text-xs text-primary font-medium">{t("chat.added")}</span>}
                     </button>
                   );
                 })}
@@ -595,7 +597,7 @@ export default function ChatPage() {
               disabled={selectedMembers.length === 0}
               className="w-full"
             >
-              Add {selectedMembers.length} Member{selectedMembers.length !== 1 ? "s" : ""}
+              {t("chat.add")} {selectedMembers.length} {selectedMembers.length !== 1 ? t("chat.memberPlural") : t("chat.memberSingular")}
             </Button>
           </div>
         </DialogContent>
@@ -638,6 +640,7 @@ function ChatView({
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   hideHeader?: boolean;
 }) {
+  const t = useT();
   const [menuMsg, setMenuMsg] = useState<ChatMessage | null>(null);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
@@ -678,18 +681,18 @@ function ChatView({
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{getConvDisplayName(conv)}</p>
           <p className="text-[11px] text-muted-foreground">
-            {conv.type === "group" ? `${conv.members?.length ?? 0} members` : "Direct message"}
+            {conv.type === "group" ? `${conv.members?.length ?? 0} ${t("chat.memberPlural").toLowerCase()}` : t("chat.directMessage")}
           </p>
         </div>
         {conv.type === "group" && isManager && (
           <Button size="sm" variant="outline" onClick={onAddMembers} className="gap-1 h-8 text-xs">
-            <UserPlus className="h-3.5 w-3.5" /> Add
+            <UserPlus className="h-3.5 w-3.5" /> {t("chat.add")}
           </Button>
         )}
       </div>}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col">
         {messages.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-8">No messages yet. Say hello!</p>
+          <p className="text-center text-sm text-muted-foreground py-8">{t("chat.noMessagesHello")}</p>
         )}
         {messages.map((msg, i) => {
           const isMe = msg.senderId === userId;
@@ -711,7 +714,7 @@ function ChatView({
             <div key={msg.id}>
               {showTime && (
                 <p className="text-center text-[10px] text-muted-foreground py-3">
-                  {formatTimeSeparator(new Date(msg.createdAt))}
+                  {formatTimeSeparator(new Date(msg.createdAt), t)}
                 </p>
               )}
               <div className={`flex items-end gap-2 ${gap} ${isMe ? "justify-end" : "justify-start"}`}>
@@ -745,7 +748,7 @@ function ChatView({
                     {msg.replyToId && (() => {
                       const replied = messages.find((m) => m.id === msg.replyToId);
                       if (!replied) return null;
-                      const repliedName = replied.senderId === userId ? "You" : getMemberName(replied.senderId);
+                      const repliedName = replied.senderId === userId ? t("chat.you") : getMemberName(replied.senderId);
                       return (
                         <div className={`mb-1.5 border-l-2 pl-2 pb-0.5 ${
                           isMe ? "border-primary-foreground/40" : "border-foreground/20"
@@ -762,7 +765,7 @@ function ChatView({
                     {/* Attachment */}
                     {msg.attachmentUrl && msg.attachmentType === "image" && (
                       <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer">
-                        <img src={msg.attachmentUrl} alt={msg.attachmentName ?? "image"} className="rounded-lg max-w-full max-h-48 object-cover mt-1 cursor-pointer hover:opacity-90 transition-opacity" />
+                        <img src={msg.attachmentUrl} alt={msg.attachmentName ?? ""} className="rounded-lg max-w-full max-h-48 object-cover mt-1 cursor-pointer hover:opacity-90 transition-opacity" />
                       </a>
                     )}
                     {msg.attachmentUrl && msg.attachmentType === "video" && (
@@ -772,7 +775,7 @@ function ChatView({
                     )}
                     {msg.attachmentUrl && msg.attachmentType === "file" && (
                       <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 mt-1 text-xs underline ${isMe ? "text-primary-foreground/80" : "text-foreground/60"}`}>
-                        📎 {msg.attachmentName ?? "File"}
+                        📎 {msg.attachmentName ?? t("chat.fileFallback")}
                       </a>
                     )}
                     {msg.content && (() => {
@@ -898,13 +901,13 @@ function ChatView({
                 transition={{ delay: 0.08, type: "spring", damping: 22, stiffness: 350 }}
               >
                 <p className="px-3 pt-2 pb-1 text-[9px] text-muted-foreground uppercase tracking-wide">
-                  {formatTimeSeparator(new Date(menuMsg.createdAt))}
+                  {formatTimeSeparator(new Date(menuMsg.createdAt), t)}
                 </p>
                 <button
                   onClick={() => { onReply(menuMsg); setMenuMsg(null); }}
                   className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted/80 transition-colors"
                 >
-                  <ArrowLeft className="h-4 w-4 text-muted-foreground" /> Reply
+                  <ArrowLeft className="h-4 w-4 text-muted-foreground" /> {t("chat.reply")}
                 </button>
                 {menuMsg.senderId !== userId && (
                   <button
@@ -916,34 +919,34 @@ function ChatView({
                     }}
                     className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted/80 transition-colors"
                   >
-                    <span className="text-sm font-bold text-muted-foreground w-4 text-center">@</span> Mention
+                    <span className="text-sm font-bold text-muted-foreground w-4 text-center">@</span> {t("chat.mention")}
                   </button>
                 )}
                 <button
                   onClick={() => { navigator.clipboard.writeText(menuMsg.content); setMenuMsg(null); }}
                   className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted/80 transition-colors"
                 >
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" /> Copy
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" /> {t("chat.copy")}
                 </button>
                 {isMe && (
                   <button
                     onClick={() => { onDeleteMsg(menuMsg.id); setMenuMsg(null); }}
                     className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                   >
-                    <X className="h-4 w-4" /> Delete
+                    <X className="h-4 w-4" /> {t("chat.delete")}
                   </button>
                 )}
                 {!isMe && (
                   <button
                     onClick={() => {
                       setMenuMsg(null);
-                      if (confirm(`Report this message from ${getMemberName(menuMsg.senderId)}? Your manager will be notified.`)) {
-                        alert("Report submitted. Your manager has been notified and will review this message.");
+                      if (confirm(`${t("chat.reportConfirmPrefix")} ${getMemberName(menuMsg.senderId)}${t("chat.reportConfirmSuffix")}`)) {
+                        alert(t("chat.reportSubmitted"));
                       }
                     }}
                     className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10 transition-colors"
                   >
-                    <AlertTriangle className="h-4 w-4" /> Report Abuse
+                    <AlertTriangle className="h-4 w-4" /> {t("chat.reportAbuse")}
                   </button>
                 )}
               </motion.div>
@@ -967,7 +970,7 @@ function ChatView({
               <div className="flex items-start gap-2 px-3 pt-2 pb-1 bg-muted/50">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-muted-foreground">
-                    Replying to <span className="font-semibold text-foreground">{replyTo.senderId === userId ? "yourself" : getMemberName(replyTo.senderId)}</span>
+                    {t("chat.replyingTo")} <span className="font-semibold text-foreground">{replyTo.senderId === userId ? t("chat.yourself") : getMemberName(replyTo.senderId)}</span>
                   </p>
                   <p className="text-sm truncate text-foreground/80">{replyTo.content}</p>
                 </div>
@@ -1003,7 +1006,7 @@ function ChatView({
               setShowMentionPicker(false);
             }}
             onKeyDown={onKeyDown}
-            placeholder="Type a message..."
+            placeholder={t("chat.typePlaceholder")}
             className="flex-1"
             autoComplete="off"
           />
@@ -1017,7 +1020,7 @@ function ChatView({
       <Drawer open={showMentionPicker} onOpenChange={setShowMentionPicker}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle>Select @ mention</DrawerTitle>
+            <DrawerTitle>{t("chat.selectMention")}</DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-2">
             <div className="relative">
@@ -1025,7 +1028,7 @@ function ChatView({
               <Input
                 value={mentionSearch}
                 onChange={(e) => setMentionSearch(e.target.value)}
-                placeholder="Search..."
+                placeholder={t("chat.searchShort")}
                 className="pl-8 h-9"
               />
             </div>
@@ -1048,8 +1051,8 @@ function ChatView({
                   <Users className="h-5 w-5 text-primary" />
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-medium">everyone</p>
-                  <p className="text-xs text-muted-foreground">Notify all members</p>
+                  <p className="text-sm font-medium">{t("chat.everyone")}</p>
+                  <p className="text-xs text-muted-foreground">{t("chat.notifyAll")}</p>
                 </div>
               </button>
             )}
