@@ -474,5 +474,486 @@
   "toast": {
     "dbConnectionFailed": "Database connection failed",
     "notConnected": "Not connected to SpacetimeDB"
+  },
+  "products": {
+    "title": "Products",
+    "subtitle": "Track performance, margins, and AI-flagged underperformers",
+    "flagged": "{count} flagged",
+    "addProduct": "Add Product",
+    "summary": {
+      "products": "Products",
+      "revenueMonth": "Revenue (month)",
+      "avgMargin": "Avg Margin",
+      "needReview": "Need Review"
+    },
+    "empty": {
+      "title": "No products yet",
+      "description": "Add products manually or connect Square in Settings to import your catalog automatically."
+    },
+    "chart": {
+      "title": "Revenue by Product",
+      "legend": "Red = flagged for removal · Yellow = underperforming",
+      "revenue": "Revenue"
+    },
+    "insight": {
+      "title": "AI Product Insight",
+      "attentionSingular": "{count} product needs attention. Review flagged items below and consider removing low-performing SKUs to reduce operational complexity.",
+      "attentionPlural": "{count} products need attention. Review flagged items below and consider removing low-performing SKUs to reduce operational complexity.",
+      "healthy": "All products are performing within acceptable thresholds. Keep monitoring weekly trends for early signals."
+    },
+    "top": {
+      "label": "Top Performer",
+      "revenueSuffix": "revenue",
+      "marginSuffix": "margin",
+      "ratingSuffix": "/5"
+    },
+    "filters": {
+      "searchPlaceholder": "Search products…",
+      "category": "Category",
+      "alertsOnly": "Alerts Only"
+    },
+    "table": {
+      "product": "Product",
+      "category": "Category",
+      "price": "Price",
+      "unitsSold": "Units Sold",
+      "revenue": "Revenue",
+      "margin": "Margin",
+      "rating": "Rating",
+      "trend": "Trend",
+      "status": "Status",
+      "noResults": "No products found."
+    },
+    "trends": {
+      "up": "Up",
+      "down": "Down",
+      "stable": "Stable"
+    },
+    "alerts": {
+      "healthy": "Healthy",
+      "underperforming": "Underperforming",
+      "remove": "Remove",
+      "flagForRemoval": "Flag for Removal"
+    },
+    "dialog": {
+      "title": "Add Product",
+      "description": "Add a product to track its performance.",
+      "nameLabel": "Product Name *",
+      "namePlaceholder": "e.g. Latte",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "e.g. Hot Beverages",
+      "priceLabel": "Price ($)",
+      "costLabel": "Cost ($)",
+      "unitsThisMonth": "Units Sold This Month",
+      "unitsLastMonth": "Units Sold Last Month",
+      "ratingLabel": "Rating (1–5)",
+      "statusLabel": "Status",
+      "cancel": "Cancel",
+      "submit": "Add Product"
+    },
+    "toasts": {
+      "nameRequired": "Name is required",
+      "added": "Product added",
+      "addFailed": "Failed to add product",
+      "deleted": "Product deleted",
+      "deleteFailed": "Failed to delete product",
+      "templateSaved": "Template saved"
+    },
+    "detail": {
+      "breadcrumb": "Products",
+      "notFound": "Product not found.",
+      "tabs": {
+        "details": "Details",
+        "template": "Page Template"
+      },
+      "details": {
+        "nameLabel": "Product Name",
+        "categoryLabel": "Category",
+        "priceLabel": "Price ($)",
+        "costLabel": "Cost ($)",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Describe this product for customers on your website…",
+        "imageUrlLabel": "Image URL",
+        "imageUrlPlaceholder": "https://example.com/image.jpg",
+        "imageAlt": "Preview",
+        "save": "Save Details"
+      },
+      "template": {
+        "noDescription": "No description available.",
+        "addToCart": "Add to Cart"
+      }
+    }
+  },
+  "staffing": {
+    "title": "Staffing",
+    "subtitle": "Schedule, roles, and requests",
+    "store": "Store",
+    "staff": "Staff",
+    "unknown": "Unknown",
+    "unnamed": "Unnamed",
+    "pending": "Pending",
+    "active": "active",
+    "permissions": {
+      "viewSchedule": "View schedule",
+      "editSchedule": "Edit schedule",
+      "viewInventory": "View inventory",
+      "editInventory": "Edit inventory",
+      "viewSales": "View sales",
+      "handleCash": "Handle cash",
+      "closeStore": "Close store"
+    },
+    "shiftTypes": {
+      "morning": "Morning",
+      "afternoon": "Afternoon",
+      "evening": "Evening",
+      "closing": "Closing"
+    },
+    "days": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "schedule": "Schedule",
+      "myShifts": "My Shifts",
+      "roles": "Roles",
+      "table": "Table"
+    },
+    "header": {
+      "staff": "Staff",
+      "total": "Total",
+      "addShift": "Add Shift",
+      "addShiftShort": "Add shift",
+      "requests": "Requests"
+    },
+    "schedule": {
+      "noShifts": "No shifts",
+      "noShiftsScheduled": "No shifts scheduled",
+      "weekOf": "Week of {date}",
+      "shiftsCountSingular": "{count} shift",
+      "shiftsCountPlural": "{count} shifts",
+      "selectRoleDetails": "Select a role to see details"
+    },
+    "myShifts": {
+      "trade": "Trade",
+      "cover": "Cover",
+      "todaysTasks": "Today's Tasks",
+      "loadingTasks": "Loading tasks...",
+      "noShiftsToday": "No shifts today",
+      "noTasksAssigned": "No tasks assigned"
+    },
+    "overview": {
+      "onShiftNow": "On shift now",
+      "todayHours": "Today hours",
+      "openRequests": "Open requests",
+      "thisWeek": "This week",
+      "currentlyOnShift": "Currently on shift",
+      "nobodyOnShift": "No one is currently on shift",
+      "upNextToday": "Up next today",
+      "needsAttention": "Needs attention",
+      "timeOffRequestSingular": "{count} time-off request",
+      "timeOffRequestPlural": "{count} time-off requests",
+      "shiftTradeSingular": "{count} shift trade",
+      "shiftTradePlural": "{count} shift trades",
+      "awaitingApproval": "Awaiting approval",
+      "inMinutes": "in {min}m",
+      "inHours": "in {h}h",
+      "inHoursMinutes": "in {h}h {min}m"
+    },
+    "roles": {
+      "title": "Roles",
+      "noRolesYet": "No roles yet",
+      "tasksCountSingular": "{count} task",
+      "tasksCountPlural": "{count} tasks",
+      "membersAssignedSingular": "{count} member assigned",
+      "membersAssignedPlural": "{count} members assigned",
+      "taskTimeline": "Task Timeline",
+      "addTask": "Add Task",
+      "noTasksYet": "No tasks yet",
+      "noTasksYetDot": "No tasks yet.",
+      "assignedMembers": "Assigned Members",
+      "noTasksDefined": "No tasks defined for this role yet.",
+      "rolePlaceholder": "Role",
+      "roleTasksTitle": "{role} Tasks",
+      "roleTasksDefaultDesc": "Tasks for your shift role today."
+    },
+    "requests": {
+      "title": "Requests",
+      "timeOff": "Time Off",
+      "trades": "Trades",
+      "approve": "Approve",
+      "accept": "Accept",
+      "deny": "Deny",
+      "noPending": "No pending requests"
+    },
+    "shiftDialog": {
+      "createTitle": "Create a shift",
+      "editTitle": "Edit shift",
+      "createDescription": "Schedule a shift.",
+      "editDescription": "Update shift details.",
+      "assignEmployee": "Assign employee",
+      "rolesLabel": "Roles",
+      "selectPlaceholder": "Select...",
+      "timeTemplate": "Time Template",
+      "addTemplate": "Add",
+      "noTemplatesYet": "No templates yet. Add one to quickly fill shift times.",
+      "shiftNotes": "Shift notes",
+      "shiftNotesHint": "Let the employee know any important details about the shift.",
+      "createCta": "Create shift",
+      "saveCta": "Save shift",
+      "hourSuffix": "hr"
+    },
+    "roleDialog": {
+      "editTitle": "Edit Role",
+      "addTitle": "Add Role",
+      "editDescription": "Update this role's details and permissions.",
+      "addDescription": "Define a new staff role.",
+      "icon": "Icon",
+      "roleName": "Role Name *",
+      "roleNamePlaceholder": "e.g. Barista, Shift Lead, Cashier",
+      "color": "Color",
+      "description": "Description",
+      "descriptionPlaceholder": "What does this role do?",
+      "permissionsLabel": "Permissions",
+      "saveCta": "Save",
+      "addCta": "Add Role"
+    },
+    "taskDialog": {
+      "editTitle": "Edit Task",
+      "addTitle": "Add Task",
+      "editDescription": "Update this time-period task.",
+      "addDescription": "Add a task for a specific time period in this role.",
+      "taskTitle": "Task Title *",
+      "taskTitlePlaceholder": "e.g. Open register, Prep station",
+      "taskTitlePlaceholderAlt": "e.g. Open register, Prep station, Brief team",
+      "details": "Details",
+      "optional": "(optional)",
+      "detailsPlaceholder": "Step-by-step instructions or notes...",
+      "timeWindow": "Time Window",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "requireEvidence": "Require Evidence",
+      "requireEvidenceHint": "Staff must upload a photo/video to complete",
+      "notifyChat": "Notify Chat on Completion",
+      "notifyChatHint": "Send a message to selected chats when this task is completed",
+      "noGroupChats": "No group chats available",
+      "saveCta": "Save",
+      "addCta": "Add Task"
+    },
+    "viewTasksDialog": {
+      "closeCta": "Close"
+    },
+    "tradeDialog": {
+      "title": "Trade Shift",
+      "description": "Select a co-worker's shift to trade with.",
+      "yourShift": "Your shift",
+      "filterByDate": "Filter by date",
+      "searchCoworkers": "Search co-workers",
+      "namePlaceholder": "Name...",
+      "noCoworkers": "No co-workers with upcoming shifts.",
+      "sendRequest": "Send Request"
+    },
+    "coverDialog": {
+      "title": "Find Cover",
+      "description": "Select a co-worker to cover your shift.",
+      "yourShift": "Your shift",
+      "noOtherMembers": "No other team members.",
+      "sendRequest": "Send Request"
+    },
+    "availDialog": {
+      "title": "Set Availability",
+      "description": "Set your regular availability for scheduling.",
+      "type": "Type",
+      "permanent": "permanent",
+      "temporary": "temporary",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "availableDays": "Available Days",
+      "status": "Status",
+      "available": "Available",
+      "unavailable": "Unavailable",
+      "preferred": "Preferred",
+      "fullDay": "Full Day",
+      "comments": "Comments",
+      "commentsPlaceholder": "Any notes about your availability...",
+      "saveCta": "Save"
+    },
+    "timeOffDialog": {
+      "title": "Request Time Off",
+      "description": "Submit a time off request for your manager to review.",
+      "fullDays": "Full Days",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "comments": "Comments",
+      "commentsPlaceholder": "Reason for time off...",
+      "submitCta": "Create time off request"
+    },
+    "presetDialog": {
+      "editTitle": "Edit Preset",
+      "addTitle": "New Preset",
+      "description": "Save a reusable shift time template.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Early Morning",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "color": "Color",
+      "deleteCta": "Delete",
+      "saveCta": "Save",
+      "createCta": "Create"
+    },
+    "deletePresetDialog": {
+      "title": "Delete Template",
+      "description": "Are you sure you want to delete this time template? This action cannot be undone.",
+      "deleteCta": "Delete"
+    },
+    "exportDialog": {
+      "title": "Export Schedule",
+      "description": "Select date range and format.",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "format": "Format",
+      "exportCta": "Export"
+    },
+    "shiftDetails": {
+      "title": "Shift Details",
+      "descriptionPrefix": "Your shift on {date}",
+      "workingWith": "Working with",
+      "noOtherStaff": "No other staff scheduled.",
+      "tasks": "Tasks",
+      "tasksDone": "{done}/{total} done",
+      "findCover": "Find Cover",
+      "tradeShift": "Trade Shift"
+    },
+    "toasts": {
+      "shiftAdded": "Shift added",
+      "shiftUpdated": "Shift updated",
+      "shiftDeleted": "Shift deleted",
+      "failedSaveShift": "Failed to save shift",
+      "failedDeleteShift": "Failed to delete shift",
+      "roleAdded": "Role added",
+      "roleUpdated": "Role updated",
+      "roleDeleted": "Role deleted",
+      "failedSaveRole": "Failed to save role",
+      "failedDeleteRole": "Failed to delete role",
+      "failedSaveTask": "Failed to save task",
+      "tradeSent": "Trade request sent",
+      "failedTrade": "Failed to send trade request",
+      "coverSent": "Cover request sent",
+      "failedCover": "Failed to send cover request",
+      "failedAvailability": "Failed to save availability",
+      "failedTimeOff": "Failed to submit time-off request"
+    }
+  },
+  "pos": {
+    "tabs": {
+      "register": "Register",
+      "orders": "Orders"
+    },
+    "receipt": {
+      "fallbackName": "Receipt",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "tax": "Tax",
+      "total": "Total",
+      "payment": "Payment",
+      "txnId": "Txn ID",
+      "customer": "Customer",
+      "thankYou": "Thank you!",
+      "print": "Print",
+      "newOrder": "New Order"
+    },
+    "refund": {
+      "title": "Refund",
+      "originalTotal": "Original total",
+      "refundAmount": "Refund amount",
+      "full": "Full",
+      "partial": "Partial",
+      "reason": "Reason",
+      "reasonPlaceholder": "Optional refund reason",
+      "processing": "Processing...",
+      "refundButton": "Refund",
+      "failed": "Refund failed"
+    },
+    "orders": {
+      "searchPlaceholder": "Search orders...",
+      "noMatch": "No matching orders",
+      "empty": "No orders yet",
+      "noMore": "No more orders",
+      "refunded": "Refunded",
+      "completed": "Completed",
+      "onDate": "on",
+      "reason": "Reason:",
+      "refundAction": "Refund"
+    },
+    "register": {
+      "all": "All",
+      "searchProducts": "Search products...",
+      "custom": "Custom",
+      "customerPlaceholder": "Customer name (optional)",
+      "tapToAdd": "Tap a product to add",
+      "addDiscount": "Add discount",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "tax": "Tax ({rate}%)",
+      "total": "Total",
+      "addItems": "Add items to charge",
+      "charge": "Charge",
+      "noProducts": "No products",
+      "addInProducts": "Add products in the Products page",
+      "noResults": "No results",
+      "each": "each"
+    },
+    "customItem": {
+      "title": "Custom item",
+      "itemName": "Item name",
+      "itemPlaceholder": "e.g. Service fee",
+      "price": "Price",
+      "add": "Add item"
+    },
+    "discountDialog": {
+      "title": "Apply discount",
+      "percent": "Percent",
+      "dollar": "Dollar",
+      "percentPlaceholder": "e.g. 10",
+      "dollarPlaceholder": "e.g. 5.00",
+      "saves": "Saves {amount}",
+      "apply": "Apply discount"
+    },
+    "charge": {
+      "title": "Charge",
+      "selectMethod": "Select a payment method",
+      "card": "Card",
+      "cardDescription": "Credit or debit card",
+      "cashOnly": "Configure Square to enable",
+      "cash": "Cash",
+      "cashDescription": "Record a cash payment",
+      "other": "Other",
+      "otherDescription": "Record a manual payment",
+      "back": "Back",
+      "processing": "Processing...",
+      "pay": "Pay",
+      "amountTendered": "Amount tendered",
+      "changeDue": "Change due:",
+      "recording": "Recording...",
+      "completeSale": "Complete sale",
+      "noteLabel": "Note",
+      "notePlaceholder": "Optional note"
+    },
+    "errors": {
+      "recordFailed": "Failed to record payment",
+      "initFailed": "Failed to initialize payment",
+      "verificationFailed": "Verification failed",
+      "verifyFailed": "Verification failed",
+      "cardDeclined": "Card was declined",
+      "paymentFailed": "Payment failed",
+      "moduleUnavailable": "Payment module unavailable"
+    }
   }
 }

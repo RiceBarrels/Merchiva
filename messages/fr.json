@@ -474,5 +474,486 @@
   "toast": {
     "dbConnectionFailed": "Échec de la connexion à la base de données",
     "notConnected": "Non connecté à SpacetimeDB"
+  },
+  "products": {
+    "title": "Produits",
+    "subtitle": "Suivez les performances, les marges et les produits peu performants signalés par l'IA",
+    "flagged": "{count} signalé(s)",
+    "addProduct": "Ajouter un produit",
+    "summary": {
+      "products": "Produits",
+      "revenueMonth": "Revenus (mois)",
+      "avgMargin": "Marge moy.",
+      "needReview": "À revoir"
+    },
+    "empty": {
+      "title": "Aucun produit pour l'instant",
+      "description": "Ajoutez des produits manuellement ou connectez Square dans les paramètres pour importer votre catalogue automatiquement."
+    },
+    "chart": {
+      "title": "Revenus par produit",
+      "legend": "Rouge = signalé à retirer · Jaune = sous-performant",
+      "revenue": "Revenus"
+    },
+    "insight": {
+      "title": "Analyse IA des produits",
+      "attentionSingular": "{count} produit nécessite votre attention. Passez en revue les éléments signalés ci-dessous et envisagez de retirer les SKU peu performants pour simplifier les opérations.",
+      "attentionPlural": "{count} produits nécessitent votre attention. Passez en revue les éléments signalés ci-dessous et envisagez de retirer les SKU peu performants pour simplifier les opérations.",
+      "healthy": "Tous les produits se situent dans des seuils acceptables. Continuez à surveiller les tendances hebdomadaires pour détecter les signaux précoces."
+    },
+    "top": {
+      "label": "Meilleure performance",
+      "revenueSuffix": "de revenus",
+      "marginSuffix": "de marge",
+      "ratingSuffix": "/5"
+    },
+    "filters": {
+      "searchPlaceholder": "Rechercher des produits…",
+      "category": "Catégorie",
+      "alertsOnly": "Alertes uniquement"
+    },
+    "table": {
+      "product": "Produit",
+      "category": "Catégorie",
+      "price": "Prix",
+      "unitsSold": "Unités vendues",
+      "revenue": "Revenus",
+      "margin": "Marge",
+      "rating": "Note",
+      "trend": "Tendance",
+      "status": "Statut",
+      "noResults": "Aucun produit trouvé."
+    },
+    "trends": {
+      "up": "Hausse",
+      "down": "Baisse",
+      "stable": "Stable"
+    },
+    "alerts": {
+      "healthy": "Sain",
+      "underperforming": "Sous-performant",
+      "remove": "Retirer",
+      "flagForRemoval": "Signaler à retirer"
+    },
+    "dialog": {
+      "title": "Ajouter un produit",
+      "description": "Ajoutez un produit pour suivre ses performances.",
+      "nameLabel": "Nom du produit *",
+      "namePlaceholder": "p. ex. Latte",
+      "categoryLabel": "Catégorie",
+      "categoryPlaceholder": "p. ex. Boissons chaudes",
+      "priceLabel": "Prix ($)",
+      "costLabel": "Coût ($)",
+      "unitsThisMonth": "Unités vendues ce mois-ci",
+      "unitsLastMonth": "Unités vendues le mois dernier",
+      "ratingLabel": "Note (1–5)",
+      "statusLabel": "Statut",
+      "cancel": "Annuler",
+      "submit": "Ajouter le produit"
+    },
+    "toasts": {
+      "nameRequired": "Le nom est requis",
+      "added": "Produit ajouté",
+      "addFailed": "Échec de l'ajout du produit",
+      "deleted": "Produit supprimé",
+      "deleteFailed": "Échec de la suppression du produit",
+      "templateSaved": "Modèle enregistré"
+    },
+    "detail": {
+      "breadcrumb": "Produits",
+      "notFound": "Produit introuvable.",
+      "tabs": {
+        "details": "Détails",
+        "template": "Modèle de page"
+      },
+      "details": {
+        "nameLabel": "Nom du produit",
+        "categoryLabel": "Catégorie",
+        "priceLabel": "Prix ($)",
+        "costLabel": "Coût ($)",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Décrivez ce produit pour les visiteurs de votre site…",
+        "imageUrlLabel": "URL de l'image",
+        "imageUrlPlaceholder": "https://example.com/image.jpg",
+        "imageAlt": "Aperçu",
+        "save": "Enregistrer les détails"
+      },
+      "template": {
+        "noDescription": "Aucune description disponible.",
+        "addToCart": "Ajouter au panier"
+      }
+    }
+  },
+  "staffing": {
+    "title": "Personnel",
+    "subtitle": "Planning, rôles et demandes",
+    "store": "Magasin",
+    "staff": "Personnel",
+    "unknown": "Inconnu",
+    "unnamed": "Sans nom",
+    "pending": "En attente",
+    "active": "actif",
+    "permissions": {
+      "viewSchedule": "Voir le planning",
+      "editSchedule": "Modifier le planning",
+      "viewInventory": "Voir l'inventaire",
+      "editInventory": "Modifier l'inventaire",
+      "viewSales": "Voir les ventes",
+      "handleCash": "Gérer la caisse",
+      "closeStore": "Fermer le magasin"
+    },
+    "shiftTypes": {
+      "morning": "Matin",
+      "afternoon": "Après-midi",
+      "evening": "Soirée",
+      "closing": "Fermeture"
+    },
+    "days": {
+      "sun": "Dim",
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mer",
+      "thu": "Jeu",
+      "fri": "Ven",
+      "sat": "Sam"
+    },
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "schedule": "Planning",
+      "myShifts": "Mes quarts",
+      "roles": "Rôles",
+      "table": "Tableau"
+    },
+    "header": {
+      "staff": "Personnel",
+      "total": "Total",
+      "addShift": "Ajouter un quart",
+      "addShiftShort": "Ajouter",
+      "requests": "Demandes"
+    },
+    "schedule": {
+      "noShifts": "Aucun quart",
+      "noShiftsScheduled": "Aucun quart planifié",
+      "weekOf": "Semaine du {date}",
+      "shiftsCountSingular": "{count} quart",
+      "shiftsCountPlural": "{count} quarts",
+      "selectRoleDetails": "Sélectionnez un rôle pour voir les détails"
+    },
+    "myShifts": {
+      "trade": "Échanger",
+      "cover": "Remplacer",
+      "todaysTasks": "Tâches du jour",
+      "loadingTasks": "Chargement des tâches…",
+      "noShiftsToday": "Aucun quart aujourd'hui",
+      "noTasksAssigned": "Aucune tâche attribuée"
+    },
+    "overview": {
+      "onShiftNow": "En service",
+      "todayHours": "Heures du jour",
+      "openRequests": "Demandes ouvertes",
+      "thisWeek": "Cette semaine",
+      "currentlyOnShift": "Actuellement en service",
+      "nobodyOnShift": "Personne n'est actuellement en service",
+      "upNextToday": "À venir aujourd'hui",
+      "needsAttention": "Nécessite votre attention",
+      "timeOffRequestSingular": "{count} demande de congé",
+      "timeOffRequestPlural": "{count} demandes de congé",
+      "shiftTradeSingular": "{count} échange de quart",
+      "shiftTradePlural": "{count} échanges de quart",
+      "awaitingApproval": "En attente d'approbation",
+      "inMinutes": "dans {min} min",
+      "inHours": "dans {h} h",
+      "inHoursMinutes": "dans {h} h {min} min"
+    },
+    "roles": {
+      "title": "Rôles",
+      "noRolesYet": "Aucun rôle pour l'instant",
+      "tasksCountSingular": "{count} tâche",
+      "tasksCountPlural": "{count} tâches",
+      "membersAssignedSingular": "{count} membre attribué",
+      "membersAssignedPlural": "{count} membres attribués",
+      "taskTimeline": "Chronologie des tâches",
+      "addTask": "Ajouter une tâche",
+      "noTasksYet": "Aucune tâche pour l'instant",
+      "noTasksYetDot": "Aucune tâche pour l'instant.",
+      "assignedMembers": "Membres attribués",
+      "noTasksDefined": "Aucune tâche définie pour ce rôle.",
+      "rolePlaceholder": "Rôle",
+      "roleTasksTitle": "Tâches — {role}",
+      "roleTasksDefaultDesc": "Tâches pour votre rôle du jour."
+    },
+    "requests": {
+      "title": "Demandes",
+      "timeOff": "Congés",
+      "trades": "Échanges",
+      "approve": "Approuver",
+      "accept": "Accepter",
+      "deny": "Refuser",
+      "noPending": "Aucune demande en attente"
+    },
+    "shiftDialog": {
+      "createTitle": "Créer un quart",
+      "editTitle": "Modifier le quart",
+      "createDescription": "Planifiez un quart.",
+      "editDescription": "Mettez à jour les détails du quart.",
+      "assignEmployee": "Attribuer un employé",
+      "rolesLabel": "Rôles",
+      "selectPlaceholder": "Sélectionner…",
+      "timeTemplate": "Modèle horaire",
+      "addTemplate": "Ajouter",
+      "noTemplatesYet": "Aucun modèle. Ajoutez-en un pour remplir rapidement les horaires.",
+      "shiftNotes": "Notes du quart",
+      "shiftNotesHint": "Indiquez à l'employé les détails importants du quart.",
+      "createCta": "Créer le quart",
+      "saveCta": "Enregistrer le quart",
+      "hourSuffix": "h"
+    },
+    "roleDialog": {
+      "editTitle": "Modifier le rôle",
+      "addTitle": "Ajouter un rôle",
+      "editDescription": "Mettez à jour les détails et autorisations de ce rôle.",
+      "addDescription": "Définissez un nouveau rôle.",
+      "icon": "Icône",
+      "roleName": "Nom du rôle *",
+      "roleNamePlaceholder": "p. ex. Barista, Chef de quart, Caissier",
+      "color": "Couleur",
+      "description": "Description",
+      "descriptionPlaceholder": "Que fait ce rôle ?",
+      "permissionsLabel": "Autorisations",
+      "saveCta": "Enregistrer",
+      "addCta": "Ajouter le rôle"
+    },
+    "taskDialog": {
+      "editTitle": "Modifier la tâche",
+      "addTitle": "Ajouter une tâche",
+      "editDescription": "Mettez à jour cette tâche.",
+      "addDescription": "Ajoutez une tâche pour une plage horaire de ce rôle.",
+      "taskTitle": "Titre de la tâche *",
+      "taskTitlePlaceholder": "p. ex. Ouvrir la caisse, Préparer le poste",
+      "taskTitlePlaceholderAlt": "p. ex. Ouvrir la caisse, Préparer le poste, Briefing équipe",
+      "details": "Détails",
+      "optional": "(facultatif)",
+      "detailsPlaceholder": "Instructions étape par étape ou notes…",
+      "timeWindow": "Plage horaire",
+      "startTime": "Heure de début",
+      "endTime": "Heure de fin",
+      "requireEvidence": "Exiger une preuve",
+      "requireEvidenceHint": "Le personnel doit téléverser une photo/vidéo pour terminer",
+      "notifyChat": "Notifier un chat à la fin",
+      "notifyChatHint": "Envoyer un message aux chats sélectionnés lorsque cette tâche est terminée",
+      "noGroupChats": "Aucun chat de groupe disponible",
+      "saveCta": "Enregistrer",
+      "addCta": "Ajouter la tâche"
+    },
+    "viewTasksDialog": {
+      "closeCta": "Fermer"
+    },
+    "tradeDialog": {
+      "title": "Échanger un quart",
+      "description": "Sélectionnez le quart d'un collègue pour l'échanger.",
+      "yourShift": "Votre quart",
+      "filterByDate": "Filtrer par date",
+      "searchCoworkers": "Rechercher des collègues",
+      "namePlaceholder": "Nom…",
+      "noCoworkers": "Aucun collègue avec des quarts à venir.",
+      "sendRequest": "Envoyer la demande"
+    },
+    "coverDialog": {
+      "title": "Trouver un remplaçant",
+      "description": "Sélectionnez un collègue pour remplacer votre quart.",
+      "yourShift": "Votre quart",
+      "noOtherMembers": "Aucun autre membre de l'équipe.",
+      "sendRequest": "Envoyer la demande"
+    },
+    "availDialog": {
+      "title": "Définir la disponibilité",
+      "description": "Définissez votre disponibilité habituelle pour la planification.",
+      "type": "Type",
+      "permanent": "permanente",
+      "temporary": "temporaire",
+      "startDate": "Date de début",
+      "endDate": "Date de fin",
+      "availableDays": "Jours disponibles",
+      "status": "Statut",
+      "available": "Disponible",
+      "unavailable": "Indisponible",
+      "preferred": "Préféré",
+      "fullDay": "Journée entière",
+      "comments": "Commentaires",
+      "commentsPlaceholder": "Remarques sur votre disponibilité…",
+      "saveCta": "Enregistrer"
+    },
+    "timeOffDialog": {
+      "title": "Demander un congé",
+      "description": "Soumettez une demande de congé pour révision par votre responsable.",
+      "fullDays": "Journées entières",
+      "startDate": "Date de début",
+      "endDate": "Date de fin",
+      "startTime": "Heure de début",
+      "endTime": "Heure de fin",
+      "comments": "Commentaires",
+      "commentsPlaceholder": "Motif du congé…",
+      "submitCta": "Créer la demande de congé"
+    },
+    "presetDialog": {
+      "editTitle": "Modifier le préréglage",
+      "addTitle": "Nouveau préréglage",
+      "description": "Enregistrez un modèle d'horaire réutilisable.",
+      "name": "Nom",
+      "namePlaceholder": "p. ex. Tôt le matin",
+      "startTime": "Heure de début",
+      "endTime": "Heure de fin",
+      "color": "Couleur",
+      "deleteCta": "Supprimer",
+      "saveCta": "Enregistrer",
+      "createCta": "Créer"
+    },
+    "deletePresetDialog": {
+      "title": "Supprimer le modèle",
+      "description": "Êtes-vous sûr de vouloir supprimer ce modèle horaire ? Cette action est irréversible.",
+      "deleteCta": "Supprimer"
+    },
+    "exportDialog": {
+      "title": "Exporter le planning",
+      "description": "Sélectionnez la plage de dates et le format.",
+      "startDate": "Date de début",
+      "endDate": "Date de fin",
+      "format": "Format",
+      "exportCta": "Exporter"
+    },
+    "shiftDetails": {
+      "title": "Détails du quart",
+      "descriptionPrefix": "Votre quart le {date}",
+      "workingWith": "En équipe avec",
+      "noOtherStaff": "Aucun autre personnel planifié.",
+      "tasks": "Tâches",
+      "tasksDone": "{done}/{total} terminées",
+      "findCover": "Trouver un remplaçant",
+      "tradeShift": "Échanger le quart"
+    },
+    "toasts": {
+      "shiftAdded": "Quart ajouté",
+      "shiftUpdated": "Quart mis à jour",
+      "shiftDeleted": "Quart supprimé",
+      "failedSaveShift": "Échec de l'enregistrement du quart",
+      "failedDeleteShift": "Échec de la suppression du quart",
+      "roleAdded": "Rôle ajouté",
+      "roleUpdated": "Rôle mis à jour",
+      "roleDeleted": "Rôle supprimé",
+      "failedSaveRole": "Échec de l'enregistrement du rôle",
+      "failedDeleteRole": "Échec de la suppression du rôle",
+      "failedSaveTask": "Échec de l'enregistrement de la tâche",
+      "tradeSent": "Demande d'échange envoyée",
+      "failedTrade": "Échec de l'envoi de la demande d'échange",
+      "coverSent": "Demande de remplacement envoyée",
+      "failedCover": "Échec de l'envoi de la demande de remplacement",
+      "failedAvailability": "Échec de l'enregistrement de la disponibilité",
+      "failedTimeOff": "Échec de la soumission de la demande de congé"
+    }
+  },
+  "pos": {
+    "tabs": {
+      "register": "Caisse",
+      "orders": "Commandes"
+    },
+    "receipt": {
+      "fallbackName": "Reçu",
+      "subtotal": "Sous-total",
+      "discount": "Remise",
+      "tax": "Taxe",
+      "total": "Total",
+      "payment": "Paiement",
+      "txnId": "ID transaction",
+      "customer": "Client",
+      "thankYou": "Merci !",
+      "print": "Imprimer",
+      "newOrder": "Nouvelle commande"
+    },
+    "refund": {
+      "title": "Remboursement",
+      "originalTotal": "Total d'origine",
+      "refundAmount": "Montant du remboursement",
+      "full": "Total",
+      "partial": "Partiel",
+      "reason": "Motif",
+      "reasonPlaceholder": "Motif du remboursement (facultatif)",
+      "processing": "Traitement...",
+      "refundButton": "Rembourser",
+      "failed": "Échec du remboursement"
+    },
+    "orders": {
+      "searchPlaceholder": "Rechercher des commandes...",
+      "noMatch": "Aucune commande correspondante",
+      "empty": "Aucune commande pour le moment",
+      "noMore": "Plus de commandes",
+      "refunded": "Remboursé",
+      "completed": "Terminé",
+      "onDate": "le",
+      "reason": "Motif :",
+      "refundAction": "Rembourser"
+    },
+    "register": {
+      "all": "Tous",
+      "searchProducts": "Rechercher des produits...",
+      "custom": "Personnalisé",
+      "customerPlaceholder": "Nom du client (facultatif)",
+      "tapToAdd": "Appuyez sur un produit pour ajouter",
+      "addDiscount": "Ajouter une remise",
+      "subtotal": "Sous-total",
+      "discount": "Remise",
+      "tax": "Taxe ({rate}%)",
+      "total": "Total",
+      "addItems": "Ajoutez des articles à facturer",
+      "charge": "Encaisser",
+      "noProducts": "Aucun produit",
+      "addInProducts": "Ajoutez des produits dans la page Produits",
+      "noResults": "Aucun résultat",
+      "each": "pièce"
+    },
+    "customItem": {
+      "title": "Article personnalisé",
+      "itemName": "Nom de l'article",
+      "itemPlaceholder": "ex. Frais de service",
+      "price": "Prix",
+      "add": "Ajouter l'article"
+    },
+    "discountDialog": {
+      "title": "Appliquer une remise",
+      "percent": "Pourcentage",
+      "dollar": "Montant",
+      "percentPlaceholder": "ex. 10",
+      "dollarPlaceholder": "ex. 5.00",
+      "saves": "Économise {amount}",
+      "apply": "Appliquer la remise"
+    },
+    "charge": {
+      "title": "Encaisser",
+      "selectMethod": "Sélectionnez un mode de paiement",
+      "card": "Carte",
+      "cardDescription": "Carte de crédit ou de débit",
+      "cashOnly": "Configurez Square pour activer",
+      "cash": "Espèces",
+      "cashDescription": "Enregistrer un paiement en espèces",
+      "other": "Autre",
+      "otherDescription": "Enregistrer un paiement manuel",
+      "back": "Retour",
+      "processing": "Traitement...",
+      "pay": "Payer",
+      "amountTendered": "Montant remis",
+      "changeDue": "Monnaie :",
+      "recording": "Enregistrement...",
+      "completeSale": "Finaliser la vente",
+      "noteLabel": "Note",
+      "notePlaceholder": "Note facultative"
+    },
+    "errors": {
+      "recordFailed": "Échec de l'enregistrement du paiement",
+      "initFailed": "Échec de l'initialisation du paiement",
+      "verificationFailed": "Échec de la vérification",
+      "verifyFailed": "Échec de la vérification",
+      "cardDeclined": "Carte refusée",
+      "paymentFailed": "Échec du paiement",
+      "moduleUnavailable": "Module de paiement indisponible"
+    }
   }
 }

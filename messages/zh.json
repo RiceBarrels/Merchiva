@@ -474,5 +474,486 @@
   "toast": {
     "dbConnectionFailed": "数据库连接失败",
     "notConnected": "未连接到 SpacetimeDB"
+  },
+  "products": {
+    "title": "商品",
+    "subtitle": "追踪业绩、利润率和 AI 标记的表现不佳商品",
+    "flagged": "已标记 {count} 个",
+    "addProduct": "添加商品",
+    "summary": {
+      "products": "商品数",
+      "revenueMonth": "本月营收",
+      "avgMargin": "平均利润率",
+      "needReview": "需审查"
+    },
+    "empty": {
+      "title": "暂无商品",
+      "description": "手动添加商品，或在设置中连接 Square 以自动导入您的商品目录。"
+    },
+    "chart": {
+      "title": "各商品营收",
+      "legend": "红色 = 建议下架 · 黄色 = 表现不佳",
+      "revenue": "营收"
+    },
+    "insight": {
+      "title": "AI 商品洞察",
+      "attentionSingular": "有 {count} 个商品需要关注。请审查下方被标记的商品，并考虑下架表现不佳的 SKU 以减少运营复杂度。",
+      "attentionPlural": "有 {count} 个商品需要关注。请审查下方被标记的商品，并考虑下架表现不佳的 SKU 以减少运营复杂度。",
+      "healthy": "所有商品表现均在可接受范围内。请持续关注每周趋势以捕捉早期信号。"
+    },
+    "top": {
+      "label": "最佳商品",
+      "revenueSuffix": "营收",
+      "marginSuffix": "利润率",
+      "ratingSuffix": "/5"
+    },
+    "filters": {
+      "searchPlaceholder": "搜索商品…",
+      "category": "分类",
+      "alertsOnly": "仅显示警报"
+    },
+    "table": {
+      "product": "商品",
+      "category": "分类",
+      "price": "价格",
+      "unitsSold": "销量",
+      "revenue": "营收",
+      "margin": "利润率",
+      "rating": "评分",
+      "trend": "趋势",
+      "status": "状态",
+      "noResults": "未找到商品。"
+    },
+    "trends": {
+      "up": "上升",
+      "down": "下降",
+      "stable": "平稳"
+    },
+    "alerts": {
+      "healthy": "健康",
+      "underperforming": "表现不佳",
+      "remove": "下架",
+      "flagForRemoval": "标记为下架"
+    },
+    "dialog": {
+      "title": "添加商品",
+      "description": "添加一个商品以追踪其表现。",
+      "nameLabel": "商品名称 *",
+      "namePlaceholder": "例如：拿铁",
+      "categoryLabel": "分类",
+      "categoryPlaceholder": "例如：热饮",
+      "priceLabel": "价格（$）",
+      "costLabel": "成本（$）",
+      "unitsThisMonth": "本月销量",
+      "unitsLastMonth": "上月销量",
+      "ratingLabel": "评分（1–5）",
+      "statusLabel": "状态",
+      "cancel": "取消",
+      "submit": "添加商品"
+    },
+    "toasts": {
+      "nameRequired": "请填写名称",
+      "added": "商品已添加",
+      "addFailed": "添加商品失败",
+      "deleted": "商品已删除",
+      "deleteFailed": "删除商品失败",
+      "templateSaved": "模板已保存"
+    },
+    "detail": {
+      "breadcrumb": "商品",
+      "notFound": "未找到该商品。",
+      "tabs": {
+        "details": "详情",
+        "template": "页面模板"
+      },
+      "details": {
+        "nameLabel": "商品名称",
+        "categoryLabel": "分类",
+        "priceLabel": "价格（$）",
+        "costLabel": "成本（$）",
+        "descriptionLabel": "描述",
+        "descriptionPlaceholder": "为网站访客描述这款商品…",
+        "imageUrlLabel": "图片链接",
+        "imageUrlPlaceholder": "https://example.com/image.jpg",
+        "imageAlt": "预览",
+        "save": "保存详情"
+      },
+      "template": {
+        "noDescription": "暂无描述。",
+        "addToCart": "加入购物车"
+      }
+    }
+  },
+  "staffing": {
+    "title": "排班",
+    "subtitle": "日程、岗位与申请",
+    "store": "门店",
+    "staff": "员工",
+    "unknown": "未知",
+    "unnamed": "未命名",
+    "pending": "待处理",
+    "active": "在岗",
+    "permissions": {
+      "viewSchedule": "查看排班",
+      "editSchedule": "编辑排班",
+      "viewInventory": "查看库存",
+      "editInventory": "编辑库存",
+      "viewSales": "查看销售",
+      "handleCash": "现金管理",
+      "closeStore": "关店"
+    },
+    "shiftTypes": {
+      "morning": "早班",
+      "afternoon": "午班",
+      "evening": "晚班",
+      "closing": "闭店班"
+    },
+    "days": {
+      "sun": "周日",
+      "mon": "周一",
+      "tue": "周二",
+      "wed": "周三",
+      "thu": "周四",
+      "fri": "周五",
+      "sat": "周六"
+    },
+    "tabs": {
+      "overview": "概览",
+      "schedule": "日程",
+      "myShifts": "我的班次",
+      "roles": "岗位",
+      "table": "表格"
+    },
+    "header": {
+      "staff": "员工",
+      "total": "合计",
+      "addShift": "添加班次",
+      "addShiftShort": "添加班次",
+      "requests": "申请"
+    },
+    "schedule": {
+      "noShifts": "无班次",
+      "noShiftsScheduled": "暂无排班",
+      "weekOf": "{date} 的周",
+      "shiftsCountSingular": "{count} 个班次",
+      "shiftsCountPlural": "{count} 个班次",
+      "selectRoleDetails": "选择岗位以查看详情"
+    },
+    "myShifts": {
+      "trade": "换班",
+      "cover": "代班",
+      "todaysTasks": "今日任务",
+      "loadingTasks": "任务加载中…",
+      "noShiftsToday": "今日无班次",
+      "noTasksAssigned": "未分配任务"
+    },
+    "overview": {
+      "onShiftNow": "当前在岗",
+      "todayHours": "今日工时",
+      "openRequests": "未处理申请",
+      "thisWeek": "本周",
+      "currentlyOnShift": "当前在岗",
+      "nobodyOnShift": "目前无人在岗",
+      "upNextToday": "今日即将上岗",
+      "needsAttention": "待处理事项",
+      "timeOffRequestSingular": "{count} 个请假申请",
+      "timeOffRequestPlural": "{count} 个请假申请",
+      "shiftTradeSingular": "{count} 个换班申请",
+      "shiftTradePlural": "{count} 个换班申请",
+      "awaitingApproval": "等待审批",
+      "inMinutes": "{min} 分钟后",
+      "inHours": "{h} 小时后",
+      "inHoursMinutes": "{h} 小时 {min} 分钟后"
+    },
+    "roles": {
+      "title": "岗位",
+      "noRolesYet": "暂无岗位",
+      "tasksCountSingular": "{count} 个任务",
+      "tasksCountPlural": "{count} 个任务",
+      "membersAssignedSingular": "已分配 {count} 名员工",
+      "membersAssignedPlural": "已分配 {count} 名员工",
+      "taskTimeline": "任务时间轴",
+      "addTask": "添加任务",
+      "noTasksYet": "暂无任务",
+      "noTasksYetDot": "暂无任务。",
+      "assignedMembers": "已分配员工",
+      "noTasksDefined": "此岗位尚未定义任务。",
+      "rolePlaceholder": "岗位",
+      "roleTasksTitle": "{role} 任务",
+      "roleTasksDefaultDesc": "今日班次岗位任务。"
+    },
+    "requests": {
+      "title": "申请",
+      "timeOff": "请假",
+      "trades": "换班",
+      "approve": "批准",
+      "accept": "接受",
+      "deny": "拒绝",
+      "noPending": "暂无待处理申请"
+    },
+    "shiftDialog": {
+      "createTitle": "创建班次",
+      "editTitle": "编辑班次",
+      "createDescription": "安排一个班次。",
+      "editDescription": "更新班次详情。",
+      "assignEmployee": "分配员工",
+      "rolesLabel": "岗位",
+      "selectPlaceholder": "选择…",
+      "timeTemplate": "时间模板",
+      "addTemplate": "添加",
+      "noTemplatesYet": "暂无模板。添加一个以快速填充班次时间。",
+      "shiftNotes": "班次备注",
+      "shiftNotesHint": "告知员工与本次班次相关的重要信息。",
+      "createCta": "创建班次",
+      "saveCta": "保存班次",
+      "hourSuffix": "小时"
+    },
+    "roleDialog": {
+      "editTitle": "编辑岗位",
+      "addTitle": "添加岗位",
+      "editDescription": "更新此岗位的信息与权限。",
+      "addDescription": "定义一个新的员工岗位。",
+      "icon": "图标",
+      "roleName": "岗位名称 *",
+      "roleNamePlaceholder": "例如：咖啡师、组长、收银员",
+      "color": "颜色",
+      "description": "描述",
+      "descriptionPlaceholder": "此岗位的职责是什么？",
+      "permissionsLabel": "权限",
+      "saveCta": "保存",
+      "addCta": "添加岗位"
+    },
+    "taskDialog": {
+      "editTitle": "编辑任务",
+      "addTitle": "添加任务",
+      "editDescription": "更新此时段任务。",
+      "addDescription": "为此岗位添加特定时段的任务。",
+      "taskTitle": "任务标题 *",
+      "taskTitlePlaceholder": "例如：开收银机、准备工位",
+      "taskTitlePlaceholderAlt": "例如：开收银机、准备工位、团队简报",
+      "details": "详情",
+      "optional": "（可选）",
+      "detailsPlaceholder": "分步说明或备注…",
+      "timeWindow": "时段",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "requireEvidence": "需要凭证",
+      "requireEvidenceHint": "员工须上传照片或视频以完成",
+      "notifyChat": "完成后通知群聊",
+      "notifyChatHint": "任务完成后向所选群聊发送消息",
+      "noGroupChats": "无可用群聊",
+      "saveCta": "保存",
+      "addCta": "添加任务"
+    },
+    "viewTasksDialog": {
+      "closeCta": "关闭"
+    },
+    "tradeDialog": {
+      "title": "换班",
+      "description": "选择要与之换班的同事班次。",
+      "yourShift": "你的班次",
+      "filterByDate": "按日期筛选",
+      "searchCoworkers": "搜索同事",
+      "namePlaceholder": "姓名…",
+      "noCoworkers": "没有有可换班次的同事。",
+      "sendRequest": "发送申请"
+    },
+    "coverDialog": {
+      "title": "寻求代班",
+      "description": "选择一位同事来代你的班。",
+      "yourShift": "你的班次",
+      "noOtherMembers": "没有其他团队成员。",
+      "sendRequest": "发送申请"
+    },
+    "availDialog": {
+      "title": "设置可用时间",
+      "description": "设置你常规的可排班时间。",
+      "type": "类型",
+      "permanent": "长期",
+      "temporary": "临时",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "availableDays": "可用日期",
+      "status": "状态",
+      "available": "可安排",
+      "unavailable": "不可安排",
+      "preferred": "优先",
+      "fullDay": "全天",
+      "comments": "备注",
+      "commentsPlaceholder": "关于可用时间的任何说明…",
+      "saveCta": "保存"
+    },
+    "timeOffDialog": {
+      "title": "申请请假",
+      "description": "提交请假申请交给你的主管审核。",
+      "fullDays": "全天",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "comments": "备注",
+      "commentsPlaceholder": "请假原因…",
+      "submitCta": "创建请假申请"
+    },
+    "presetDialog": {
+      "editTitle": "编辑预设",
+      "addTitle": "新建预设",
+      "description": "保存可复用的班次时间模板。",
+      "name": "名称",
+      "namePlaceholder": "例如：早班",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "color": "颜色",
+      "deleteCta": "删除",
+      "saveCta": "保存",
+      "createCta": "创建"
+    },
+    "deletePresetDialog": {
+      "title": "删除模板",
+      "description": "确定要删除此时间模板吗？此操作无法撤销。",
+      "deleteCta": "删除"
+    },
+    "exportDialog": {
+      "title": "导出日程",
+      "description": "选择日期范围与格式。",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "format": "格式",
+      "exportCta": "导出"
+    },
+    "shiftDetails": {
+      "title": "班次详情",
+      "descriptionPrefix": "{date} 的班次",
+      "workingWith": "同班同事",
+      "noOtherStaff": "无其他员工排班。",
+      "tasks": "任务",
+      "tasksDone": "已完成 {done}/{total}",
+      "findCover": "寻求代班",
+      "tradeShift": "换班"
+    },
+    "toasts": {
+      "shiftAdded": "班次已添加",
+      "shiftUpdated": "班次已更新",
+      "shiftDeleted": "班次已删除",
+      "failedSaveShift": "保存班次失败",
+      "failedDeleteShift": "删除班次失败",
+      "roleAdded": "岗位已添加",
+      "roleUpdated": "岗位已更新",
+      "roleDeleted": "岗位已删除",
+      "failedSaveRole": "保存岗位失败",
+      "failedDeleteRole": "删除岗位失败",
+      "failedSaveTask": "保存任务失败",
+      "tradeSent": "换班申请已发送",
+      "failedTrade": "发送换班申请失败",
+      "coverSent": "代班申请已发送",
+      "failedCover": "发送代班申请失败",
+      "failedAvailability": "保存可用时间失败",
+      "failedTimeOff": "提交请假申请失败"
+    }
+  },
+  "pos": {
+    "tabs": {
+      "register": "收银",
+      "orders": "订单"
+    },
+    "receipt": {
+      "fallbackName": "收据",
+      "subtotal": "小计",
+      "discount": "折扣",
+      "tax": "税",
+      "total": "合计",
+      "payment": "支付方式",
+      "txnId": "交易号",
+      "customer": "顾客",
+      "thankYou": "谢谢惠顾！",
+      "print": "打印",
+      "newOrder": "新订单"
+    },
+    "refund": {
+      "title": "退款",
+      "originalTotal": "原订单金额",
+      "refundAmount": "退款金额",
+      "full": "全额",
+      "partial": "部分",
+      "reason": "原因",
+      "reasonPlaceholder": "可填写退款原因",
+      "processing": "处理中...",
+      "refundButton": "退款",
+      "failed": "退款失败"
+    },
+    "orders": {
+      "searchPlaceholder": "搜索订单...",
+      "noMatch": "没有匹配的订单",
+      "empty": "暂无订单",
+      "noMore": "没有更多订单",
+      "refunded": "已退款",
+      "completed": "已完成",
+      "onDate": "于",
+      "reason": "原因：",
+      "refundAction": "退款"
+    },
+    "register": {
+      "all": "全部",
+      "searchProducts": "搜索商品...",
+      "custom": "自定义",
+      "customerPlaceholder": "顾客姓名（可选）",
+      "tapToAdd": "点击商品添加",
+      "addDiscount": "添加折扣",
+      "subtotal": "小计",
+      "discount": "折扣",
+      "tax": "税（{rate}%）",
+      "total": "合计",
+      "addItems": "请先添加商品",
+      "charge": "收款",
+      "noProducts": "暂无商品",
+      "addInProducts": "请到商品页添加",
+      "noResults": "没有结果",
+      "each": "每件"
+    },
+    "customItem": {
+      "title": "自定义商品",
+      "itemName": "商品名称",
+      "itemPlaceholder": "例如：服务费",
+      "price": "价格",
+      "add": "添加"
+    },
+    "discountDialog": {
+      "title": "应用折扣",
+      "percent": "百分比",
+      "dollar": "金额",
+      "percentPlaceholder": "例如：10",
+      "dollarPlaceholder": "例如：5.00",
+      "saves": "可省 {amount}",
+      "apply": "应用折扣"
+    },
+    "charge": {
+      "title": "收款",
+      "selectMethod": "请选择支付方式",
+      "card": "银行卡",
+      "cardDescription": "信用卡或借记卡",
+      "cashOnly": "请配置 Square 后启用",
+      "cash": "现金",
+      "cashDescription": "记录一笔现金付款",
+      "other": "其他",
+      "otherDescription": "记录一笔手动付款",
+      "back": "返回",
+      "processing": "处理中...",
+      "pay": "支付",
+      "amountTendered": "实收金额",
+      "changeDue": "应找零：",
+      "recording": "记录中...",
+      "completeSale": "完成交易",
+      "noteLabel": "备注",
+      "notePlaceholder": "可选备注"
+    },
+    "errors": {
+      "recordFailed": "记录付款失败",
+      "initFailed": "初始化付款失败",
+      "verificationFailed": "验证失败",
+      "verifyFailed": "验证失败",
+      "cardDeclined": "银行卡被拒绝",
+      "paymentFailed": "付款失败",
+      "moduleUnavailable": "支付模块不可用"
+    }
   }
 }

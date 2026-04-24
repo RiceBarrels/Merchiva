@@ -474,5 +474,486 @@
   "toast": {
     "dbConnectionFailed": "فشل الاتصال بقاعدة البيانات",
     "notConnected": "غير متصل بـ SpacetimeDB"
+  },
+  "products": {
+    "title": "المنتجات",
+    "subtitle": "تتبع الأداء والهوامش والمنتجات ضعيفة الأداء التي رصدها الذكاء الاصطناعي",
+    "flagged": "{count} مُعلَّم",
+    "addProduct": "إضافة منتج",
+    "summary": {
+      "products": "المنتجات",
+      "revenueMonth": "الإيرادات (الشهر)",
+      "avgMargin": "متوسط الهامش",
+      "needReview": "بحاجة لمراجعة"
+    },
+    "empty": {
+      "title": "لا توجد منتجات بعد",
+      "description": "أضف المنتجات يدويًا أو اربط Square من الإعدادات لاستيراد الكتالوج تلقائيًا."
+    },
+    "chart": {
+      "title": "الإيرادات حسب المنتج",
+      "legend": "أحمر = مُقترح للحذف · أصفر = ضعيف الأداء",
+      "revenue": "الإيرادات"
+    },
+    "insight": {
+      "title": "رؤية المنتج بالذكاء الاصطناعي",
+      "attentionSingular": "يحتاج {count} منتج إلى الانتباه. راجع العناصر المُعلَّمة أدناه وفكّر في إزالة الأصناف ضعيفة الأداء لتقليل التعقيد التشغيلي.",
+      "attentionPlural": "تحتاج {count} منتجات إلى الانتباه. راجع العناصر المُعلَّمة أدناه وفكّر في إزالة الأصناف ضعيفة الأداء لتقليل التعقيد التشغيلي.",
+      "healthy": "جميع المنتجات ضمن الحدود المقبولة. استمر في مراقبة الاتجاهات الأسبوعية لاكتشاف الإشارات المبكرة."
+    },
+    "top": {
+      "label": "الأفضل أداءً",
+      "revenueSuffix": "إيرادات",
+      "marginSuffix": "هامش",
+      "ratingSuffix": "/5"
+    },
+    "filters": {
+      "searchPlaceholder": "ابحث عن منتجات…",
+      "category": "الفئة",
+      "alertsOnly": "التنبيهات فقط"
+    },
+    "table": {
+      "product": "المنتج",
+      "category": "الفئة",
+      "price": "السعر",
+      "unitsSold": "الوحدات المباعة",
+      "revenue": "الإيرادات",
+      "margin": "الهامش",
+      "rating": "التقييم",
+      "trend": "الاتجاه",
+      "status": "الحالة",
+      "noResults": "لم يُعثر على منتجات."
+    },
+    "trends": {
+      "up": "صاعد",
+      "down": "هابط",
+      "stable": "مستقر"
+    },
+    "alerts": {
+      "healthy": "سليم",
+      "underperforming": "ضعيف الأداء",
+      "remove": "إزالة",
+      "flagForRemoval": "تعليم للإزالة"
+    },
+    "dialog": {
+      "title": "إضافة منتج",
+      "description": "أضف منتجًا لتتبع أدائه.",
+      "nameLabel": "اسم المنتج *",
+      "namePlaceholder": "مثال: لاتيه",
+      "categoryLabel": "الفئة",
+      "categoryPlaceholder": "مثال: مشروبات ساخنة",
+      "priceLabel": "السعر ($)",
+      "costLabel": "التكلفة ($)",
+      "unitsThisMonth": "الوحدات المباعة هذا الشهر",
+      "unitsLastMonth": "الوحدات المباعة الشهر الماضي",
+      "ratingLabel": "التقييم (1–5)",
+      "statusLabel": "الحالة",
+      "cancel": "إلغاء",
+      "submit": "إضافة منتج"
+    },
+    "toasts": {
+      "nameRequired": "الاسم مطلوب",
+      "added": "تمت إضافة المنتج",
+      "addFailed": "فشل إضافة المنتج",
+      "deleted": "تم حذف المنتج",
+      "deleteFailed": "فشل حذف المنتج",
+      "templateSaved": "تم حفظ القالب"
+    },
+    "detail": {
+      "breadcrumb": "المنتجات",
+      "notFound": "لم يُعثر على المنتج.",
+      "tabs": {
+        "details": "التفاصيل",
+        "template": "قالب الصفحة"
+      },
+      "details": {
+        "nameLabel": "اسم المنتج",
+        "categoryLabel": "الفئة",
+        "priceLabel": "السعر ($)",
+        "costLabel": "التكلفة ($)",
+        "descriptionLabel": "الوصف",
+        "descriptionPlaceholder": "اكتب وصفًا لهذا المنتج لعملاء موقعك…",
+        "imageUrlLabel": "رابط الصورة",
+        "imageUrlPlaceholder": "https://example.com/image.jpg",
+        "imageAlt": "معاينة",
+        "save": "حفظ التفاصيل"
+      },
+      "template": {
+        "noDescription": "لا يوجد وصف متاح.",
+        "addToCart": "أضف إلى السلة"
+      }
+    }
+  },
+  "staffing": {
+    "title": "الموظفون",
+    "subtitle": "الجدول والأدوار والطلبات",
+    "store": "المتجر",
+    "staff": "الموظفون",
+    "unknown": "غير معروف",
+    "unnamed": "بدون اسم",
+    "pending": "قيد الانتظار",
+    "active": "نشط",
+    "permissions": {
+      "viewSchedule": "عرض الجدول",
+      "editSchedule": "تعديل الجدول",
+      "viewInventory": "عرض المخزون",
+      "editInventory": "تعديل المخزون",
+      "viewSales": "عرض المبيعات",
+      "handleCash": "التعامل مع النقد",
+      "closeStore": "إغلاق المتجر"
+    },
+    "shiftTypes": {
+      "morning": "صباحية",
+      "afternoon": "بعد الظهر",
+      "evening": "مسائية",
+      "closing": "الإغلاق"
+    },
+    "days": {
+      "sun": "أحد",
+      "mon": "إثن",
+      "tue": "ثلا",
+      "wed": "أرب",
+      "thu": "خمي",
+      "fri": "جمع",
+      "sat": "سبت"
+    },
+    "tabs": {
+      "overview": "نظرة عامة",
+      "schedule": "الجدول",
+      "myShifts": "ورديّاتي",
+      "roles": "الأدوار",
+      "table": "جدول"
+    },
+    "header": {
+      "staff": "الموظفون",
+      "total": "الإجمالي",
+      "addShift": "إضافة وردية",
+      "addShiftShort": "إضافة وردية",
+      "requests": "الطلبات"
+    },
+    "schedule": {
+      "noShifts": "لا توجد ورديات",
+      "noShiftsScheduled": "لا توجد ورديات مجدولة",
+      "weekOf": "أسبوع {date}",
+      "shiftsCountSingular": "{count} وردية",
+      "shiftsCountPlural": "{count} وردية",
+      "selectRoleDetails": "اختر دورًا لعرض التفاصيل"
+    },
+    "myShifts": {
+      "trade": "تبادل",
+      "cover": "تغطية",
+      "todaysTasks": "مهام اليوم",
+      "loadingTasks": "جارٍ تحميل المهام...",
+      "noShiftsToday": "لا توجد ورديات اليوم",
+      "noTasksAssigned": "لم يتم تعيين مهام"
+    },
+    "overview": {
+      "onShiftNow": "في الوردية الآن",
+      "todayHours": "ساعات اليوم",
+      "openRequests": "طلبات مفتوحة",
+      "thisWeek": "هذا الأسبوع",
+      "currentlyOnShift": "في الوردية حاليًا",
+      "nobodyOnShift": "لا أحد في الوردية حاليًا",
+      "upNextToday": "التالي اليوم",
+      "needsAttention": "يتطلب الاهتمام",
+      "timeOffRequestSingular": "{count} طلب إجازة",
+      "timeOffRequestPlural": "{count} طلبات إجازة",
+      "shiftTradeSingular": "{count} تبادل وردية",
+      "shiftTradePlural": "{count} تبادلات ورديات",
+      "awaitingApproval": "بانتظار الموافقة",
+      "inMinutes": "خلال {min} د",
+      "inHours": "خلال {h} س",
+      "inHoursMinutes": "خلال {h} س {min} د"
+    },
+    "roles": {
+      "title": "الأدوار",
+      "noRolesYet": "لا توجد أدوار بعد",
+      "tasksCountSingular": "{count} مهمة",
+      "tasksCountPlural": "{count} مهام",
+      "membersAssignedSingular": "{count} عضو معيَّن",
+      "membersAssignedPlural": "{count} أعضاء معيَّنون",
+      "taskTimeline": "الجدول الزمني للمهام",
+      "addTask": "إضافة مهمة",
+      "noTasksYet": "لا توجد مهام بعد",
+      "noTasksYetDot": "لا توجد مهام بعد.",
+      "assignedMembers": "الأعضاء المعيَّنون",
+      "noTasksDefined": "لم يتم تعريف مهام لهذا الدور بعد.",
+      "rolePlaceholder": "الدور",
+      "roleTasksTitle": "مهام {role}",
+      "roleTasksDefaultDesc": "مهام دور ورديتك اليوم."
+    },
+    "requests": {
+      "title": "الطلبات",
+      "timeOff": "إجازات",
+      "trades": "تبادلات",
+      "approve": "موافقة",
+      "accept": "قبول",
+      "deny": "رفض",
+      "noPending": "لا توجد طلبات معلقة"
+    },
+    "shiftDialog": {
+      "createTitle": "إنشاء وردية",
+      "editTitle": "تعديل الوردية",
+      "createDescription": "جدولة وردية.",
+      "editDescription": "تحديث تفاصيل الوردية.",
+      "assignEmployee": "تعيين موظف",
+      "rolesLabel": "الأدوار",
+      "selectPlaceholder": "اختر...",
+      "timeTemplate": "قالب الوقت",
+      "addTemplate": "إضافة",
+      "noTemplatesYet": "لا توجد قوالب بعد. أضف قالبًا لملء أوقات الوردية بسرعة.",
+      "shiftNotes": "ملاحظات الوردية",
+      "shiftNotesHint": "أبلغ الموظف بأي تفاصيل مهمة عن الوردية.",
+      "createCta": "إنشاء الوردية",
+      "saveCta": "حفظ الوردية",
+      "hourSuffix": "س"
+    },
+    "roleDialog": {
+      "editTitle": "تعديل الدور",
+      "addTitle": "إضافة دور",
+      "editDescription": "تحديث تفاصيل وصلاحيات هذا الدور.",
+      "addDescription": "عرّف دور موظف جديدًا.",
+      "icon": "الأيقونة",
+      "roleName": "اسم الدور *",
+      "roleNamePlaceholder": "مثال: باريستا، قائد وردية، أمين صندوق",
+      "color": "اللون",
+      "description": "الوصف",
+      "descriptionPlaceholder": "ما الذي يقوم به هذا الدور؟",
+      "permissionsLabel": "الصلاحيات",
+      "saveCta": "حفظ",
+      "addCta": "إضافة دور"
+    },
+    "taskDialog": {
+      "editTitle": "تعديل المهمة",
+      "addTitle": "إضافة مهمة",
+      "editDescription": "تحديث هذه المهمة المرتبطة بوقت محدد.",
+      "addDescription": "أضف مهمة لفترة زمنية محددة في هذا الدور.",
+      "taskTitle": "عنوان المهمة *",
+      "taskTitlePlaceholder": "مثال: فتح الصندوق، تجهيز المحطة",
+      "taskTitlePlaceholderAlt": "مثال: فتح الصندوق، تجهيز المحطة، اجتماع الفريق",
+      "details": "التفاصيل",
+      "optional": "(اختياري)",
+      "detailsPlaceholder": "تعليمات خطوة بخطوة أو ملاحظات...",
+      "timeWindow": "نافذة الوقت",
+      "startTime": "وقت البدء",
+      "endTime": "وقت الانتهاء",
+      "requireEvidence": "اطلب دليلاً",
+      "requireEvidenceHint": "على الموظفين رفع صورة/فيديو للإكمال",
+      "notifyChat": "إشعار المحادثة عند الإكمال",
+      "notifyChatHint": "أرسل رسالة إلى المحادثات المحددة عند اكتمال هذه المهمة",
+      "noGroupChats": "لا توجد محادثات جماعية متاحة",
+      "saveCta": "حفظ",
+      "addCta": "إضافة مهمة"
+    },
+    "viewTasksDialog": {
+      "closeCta": "إغلاق"
+    },
+    "tradeDialog": {
+      "title": "تبادل الوردية",
+      "description": "اختر وردية زميل لتبادلها.",
+      "yourShift": "وردياتك",
+      "filterByDate": "تصفية حسب التاريخ",
+      "searchCoworkers": "ابحث عن زملاء",
+      "namePlaceholder": "الاسم...",
+      "noCoworkers": "لا يوجد زملاء لديهم ورديات قادمة.",
+      "sendRequest": "إرسال الطلب"
+    },
+    "coverDialog": {
+      "title": "البحث عن تغطية",
+      "description": "اختر زميلاً لتغطية وردياتك.",
+      "yourShift": "وردياتك",
+      "noOtherMembers": "لا يوجد أعضاء آخرون في الفريق.",
+      "sendRequest": "إرسال الطلب"
+    },
+    "availDialog": {
+      "title": "تعيين التوفر",
+      "description": "عيّن توفرك المعتاد للجدولة.",
+      "type": "النوع",
+      "permanent": "دائم",
+      "temporary": "مؤقت",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "availableDays": "الأيام المتاحة",
+      "status": "الحالة",
+      "available": "متاح",
+      "unavailable": "غير متاح",
+      "preferred": "مفضل",
+      "fullDay": "يوم كامل",
+      "comments": "ملاحظات",
+      "commentsPlaceholder": "أي ملاحظات حول توفرك...",
+      "saveCta": "حفظ"
+    },
+    "timeOffDialog": {
+      "title": "طلب إجازة",
+      "description": "قدّم طلب إجازة ليقوم مديرك بمراجعته.",
+      "fullDays": "أيام كاملة",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "startTime": "وقت البدء",
+      "endTime": "وقت الانتهاء",
+      "comments": "ملاحظات",
+      "commentsPlaceholder": "سبب الإجازة...",
+      "submitCta": "إنشاء طلب الإجازة"
+    },
+    "presetDialog": {
+      "editTitle": "تعديل الإعداد المسبق",
+      "addTitle": "إعداد مسبق جديد",
+      "description": "احفظ قالب وقت وردية قابل لإعادة الاستخدام.",
+      "name": "الاسم",
+      "namePlaceholder": "مثال: صباح مبكر",
+      "startTime": "وقت البدء",
+      "endTime": "وقت الانتهاء",
+      "color": "اللون",
+      "deleteCta": "حذف",
+      "saveCta": "حفظ",
+      "createCta": "إنشاء"
+    },
+    "deletePresetDialog": {
+      "title": "حذف القالب",
+      "description": "هل أنت متأكد من حذف قالب الوقت هذا؟ لا يمكن التراجع عن هذا الإجراء.",
+      "deleteCta": "حذف"
+    },
+    "exportDialog": {
+      "title": "تصدير الجدول",
+      "description": "اختر النطاق الزمني والتنسيق.",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "format": "التنسيق",
+      "exportCta": "تصدير"
+    },
+    "shiftDetails": {
+      "title": "تفاصيل الوردية",
+      "descriptionPrefix": "وردياتك في {date}",
+      "workingWith": "تعمل مع",
+      "noOtherStaff": "لا يوجد موظفون آخرون مجدولون.",
+      "tasks": "المهام",
+      "tasksDone": "{done}/{total} مكتملة",
+      "findCover": "البحث عن تغطية",
+      "tradeShift": "تبادل الوردية"
+    },
+    "toasts": {
+      "shiftAdded": "تمت إضافة الوردية",
+      "shiftUpdated": "تم تحديث الوردية",
+      "shiftDeleted": "تم حذف الوردية",
+      "failedSaveShift": "فشل حفظ الوردية",
+      "failedDeleteShift": "فشل حذف الوردية",
+      "roleAdded": "تمت إضافة الدور",
+      "roleUpdated": "تم تحديث الدور",
+      "roleDeleted": "تم حذف الدور",
+      "failedSaveRole": "فشل حفظ الدور",
+      "failedDeleteRole": "فشل حذف الدور",
+      "failedSaveTask": "فشل حفظ المهمة",
+      "tradeSent": "تم إرسال طلب التبادل",
+      "failedTrade": "فشل إرسال طلب التبادل",
+      "coverSent": "تم إرسال طلب التغطية",
+      "failedCover": "فشل إرسال طلب التغطية",
+      "failedAvailability": "فشل حفظ التوفر",
+      "failedTimeOff": "فشل إرسال طلب الإجازة"
+    }
+  },
+  "pos": {
+    "tabs": {
+      "register": "الصندوق",
+      "orders": "الطلبات"
+    },
+    "receipt": {
+      "fallbackName": "إيصال",
+      "subtotal": "المجموع الفرعي",
+      "discount": "الخصم",
+      "tax": "الضريبة",
+      "total": "الإجمالي",
+      "payment": "الدفع",
+      "txnId": "رقم المعاملة",
+      "customer": "العميل",
+      "thankYou": "شكراً لك!",
+      "print": "طباعة",
+      "newOrder": "طلب جديد"
+    },
+    "refund": {
+      "title": "استرداد",
+      "originalTotal": "الإجمالي الأصلي",
+      "refundAmount": "مبلغ الاسترداد",
+      "full": "كامل",
+      "partial": "جزئي",
+      "reason": "السبب",
+      "reasonPlaceholder": "سبب الاسترداد (اختياري)",
+      "processing": "جارٍ المعالجة...",
+      "refundButton": "استرداد",
+      "failed": "فشل الاسترداد"
+    },
+    "orders": {
+      "searchPlaceholder": "البحث في الطلبات...",
+      "noMatch": "لا توجد طلبات مطابقة",
+      "empty": "لا توجد طلبات بعد",
+      "noMore": "لا مزيد من الطلبات",
+      "refunded": "تم الاسترداد",
+      "completed": "مكتمل",
+      "onDate": "في",
+      "reason": "السبب:",
+      "refundAction": "استرداد"
+    },
+    "register": {
+      "all": "الكل",
+      "searchProducts": "البحث عن المنتجات...",
+      "custom": "مخصص",
+      "customerPlaceholder": "اسم العميل (اختياري)",
+      "tapToAdd": "اضغط على منتج للإضافة",
+      "addDiscount": "إضافة خصم",
+      "subtotal": "المجموع الفرعي",
+      "discount": "الخصم",
+      "tax": "الضريبة ({rate}%)",
+      "total": "الإجمالي",
+      "addItems": "أضف عناصر للدفع",
+      "charge": "الدفع",
+      "noProducts": "لا توجد منتجات",
+      "addInProducts": "أضف المنتجات في صفحة المنتجات",
+      "noResults": "لا توجد نتائج",
+      "each": "للقطعة"
+    },
+    "customItem": {
+      "title": "عنصر مخصص",
+      "itemName": "اسم العنصر",
+      "itemPlaceholder": "مثال: رسوم الخدمة",
+      "price": "السعر",
+      "add": "إضافة عنصر"
+    },
+    "discountDialog": {
+      "title": "تطبيق الخصم",
+      "percent": "نسبة مئوية",
+      "dollar": "مبلغ",
+      "percentPlaceholder": "مثال: 10",
+      "dollarPlaceholder": "مثال: 5.00",
+      "saves": "يوفر {amount}",
+      "apply": "تطبيق الخصم"
+    },
+    "charge": {
+      "title": "الدفع",
+      "selectMethod": "اختر طريقة الدفع",
+      "card": "بطاقة",
+      "cardDescription": "بطاقة ائتمان أو خصم",
+      "cashOnly": "قم بتكوين Square للتمكين",
+      "cash": "نقد",
+      "cashDescription": "تسجيل دفعة نقدية",
+      "other": "آخر",
+      "otherDescription": "تسجيل دفعة يدوية",
+      "back": "رجوع",
+      "processing": "جارٍ المعالجة...",
+      "pay": "ادفع",
+      "amountTendered": "المبلغ المقدم",
+      "changeDue": "الباقي:",
+      "recording": "جارٍ التسجيل...",
+      "completeSale": "إتمام البيع",
+      "noteLabel": "ملاحظة",
+      "notePlaceholder": "ملاحظة اختيارية"
+    },
+    "errors": {
+      "recordFailed": "فشل تسجيل الدفع",
+      "initFailed": "فشل تهيئة الدفع",
+      "verificationFailed": "فشل التحقق",
+      "verifyFailed": "فشل التحقق",
+      "cardDeclined": "تم رفض البطاقة",
+      "paymentFailed": "فشل الدفع",
+      "moduleUnavailable": "وحدة الدفع غير متوفرة"
+    }
   }
 }
