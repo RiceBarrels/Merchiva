@@ -81,6 +81,8 @@ import {
 } from "lucide-react";
 import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
+import { useT } from "@/lib/i18n/context";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 40;
@@ -88,7 +90,7 @@ const SNAP_THRESHOLD = 0.4;
 const VELOCITY_THRESHOLD = 0.3; // px/ms
 
 type NavItem = {
-  label: string;
+  labelKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permissionKey?: keyof Permissions;
@@ -96,19 +98,20 @@ type NavItem = {
 
 // Punch-in is only shown in store-machine mode; see `visibleNavItems` below.
 const navItems: NavItem[] = [
-  { label: "Home",              href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
-  { label: "Inventory",        href: "/inventory",   icon: Package,         permissionKey: "inventory" },
-  { label: "Sales Prediction", href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
-  { label: "Staffing",         href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
-  { label: "Products",         href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
-  { label: "POS",              href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
-  { label: "Punch In",         href: "/punch-in",    icon: KeyRound },
-  { label: "Chat",             href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
-  { label: "Website",          href: "/builder",     icon: Globe,           permissionKey: "website"   },
-  { label: "Membership",       href: "/membership",  icon: Crown },
+  { labelKey: "nav.home",      href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { labelKey: "nav.inventory", href: "/inventory",   icon: Package,         permissionKey: "inventory" },
+  { labelKey: "nav.sales",     href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
+  { labelKey: "nav.staffing",  href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
+  { labelKey: "nav.products",  href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
+  { labelKey: "nav.pos",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
+  { labelKey: "nav.punchIn",   href: "/punch-in",    icon: KeyRound },
+  { labelKey: "nav.chat",      href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
+  { labelKey: "nav.website",   href: "/builder",     icon: Globe,           permissionKey: "website"   },
+  { labelKey: "nav.membership", href: "/membership", icon: Crown },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {
+  const t = useT();
   const router = useRouter();
   const { currentOrg, organizations, switchOrg } = usePermissions();
   const [open, setOpen] = useState(false);
@@ -167,7 +170,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
         onClick={() => { hapticLight(); setOpen((v) => !v); setCreating(false); setError(null); }}
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
       >
-        <span className="flex-1 truncate text-left">{currentOrg?.name ?? "Select store"}</span>
+        <span className="flex-1 truncate text-left">{currentOrg?.name ?? t("nav.selectStore")}</span>
         <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
 
@@ -193,7 +196,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <Plus className="h-3.5 w-3.5 shrink-0" />
-                Create New Store
+                {t("nav.createNewStore")}
               </button>
             ) : (
               <form onSubmit={handleCreateStore} className="px-3 py-2 space-y-2">
@@ -201,7 +204,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                   autoFocus
                   value={newStoreName}
                   onChange={(e) => setNewStoreName(e.target.value)}
-                  placeholder="Store name"
+                  placeholder={t("nav.storeName")}
                   className="w-full rounded border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-foreground/20"
                 />
                 {error && <p className="text-xs text-destructive">{error}</p>}
@@ -211,14 +214,14 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                     disabled={loading || !newStoreName.trim()}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded bg-foreground px-2 py-1 text-xs font-medium text-background disabled:opacity-50"
                   >
-                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Create"}
+                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : t("nav.create")}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setCreating(false); setError(null); setNewStoreName(""); }}
                     className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </div>
               </form>
@@ -231,6 +234,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
 }
 
 export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
+  const t = useT();
   const pathname = usePathname();
   const router   = useRouter();
   const { can, isOwner } = usePermissions();
@@ -284,15 +288,16 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         {!collapsed && (
           <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Daily Management
+            {t("nav.dailyManagement")}
           </p>
         )}
         {visibleNavItems.map((item) => {
           const hasQuery = item.href.includes("?");
           const isActive = !hasQuery &&
             (pathname === item.href || pathname.startsWith(item.href + "/"));
+          const label = t(item.labelKey);
           return (
-            <SidebarTooltip key={item.href} label={item.label} show={!!collapsed}>
+            <SidebarTooltip key={item.href} label={label} show={!!collapsed}>
               <Link
                 href={item.href}
                 onClick={handleNavClick}
@@ -305,7 +310,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
                 )}
               >
                 <item.icon className="h-[15px] w-[15px] shrink-0" />
-                {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                {!collapsed && <span className="flex-1 truncate">{label}</span>}
               </Link>
             </SidebarTooltip>
           );
@@ -316,7 +321,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
       {/* Bottom links */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
-        <SidebarTooltip label="Settings" show={!!collapsed}>
+        <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
             href="/settings"
             onClick={handleNavClick}
@@ -329,10 +334,10 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             )}
           >
             <Settings className="h-[15px] w-[15px] shrink-0" />
-            {!collapsed && "Settings"}
+            {!collapsed && t("nav.settings")}
           </Link>
         </SidebarTooltip>
-        <SidebarTooltip label="Sign out" show={!!collapsed}>
+        <SidebarTooltip label={t("common.signOut")} show={!!collapsed}>
           <button
             onClick={handleLogout}
             className={cn(
@@ -341,9 +346,14 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             )}
           >
             <LogOut className="h-[15px] w-[15px] shrink-0" />
-            {!collapsed && "Sign out"}
+            {!collapsed && t("common.signOut")}
           </button>
         </SidebarTooltip>
+        {!collapsed && (
+          <div className="px-1.5 pt-2">
+            <LanguageSwitcher className="w-full" />
+          </div>
+        )}
         {onToggleCollapse && (
           <SidebarTooltip label={collapsed ? "Expand" : "Collapse"} show={!!collapsed}>
             <button

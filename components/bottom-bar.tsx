@@ -11,31 +11,33 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { hapticLight } from "@/lib/haptics";
 import { getSafeAreaInsets } from "@/lib/safe-area";
+import { useT } from "@/lib/i18n/context";
 import type { Permissions } from "@/lib/types";
 
 interface NavItem {
-  label: string;
+  labelKey: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permissionKey?: keyof Permissions;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Home",      href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
-  { label: "Inventory", href: "/inventory",   icon: Package,         permissionKey: "inventory" },
-  { label: "Sales",     href: "/sales",       icon: TrendingUp,      permissionKey: "sales" },
-  { label: "Staffing",  href: "/staffing",    icon: Users,           permissionKey: "staffing" },
-  { label: "Products",  href: "/products",    icon: ShoppingBag,     permissionKey: "products" },
-  { label: "POS",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos" },
-  { label: "Punch In",  href: "/punch-in",    icon: KeyRound },
-  { label: "Chat",      href: "/chat",        icon: MessageSquare,   permissionKey: "staffing" },
-  { label: "Website",   href: "/builder",     icon: Globe,           permissionKey: "website" },
-  { label: "Membership",href: "/membership",  icon: Crown },
+  { labelKey: "nav.home",      href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { labelKey: "nav.inventory", href: "/inventory",   icon: Package,         permissionKey: "inventory" },
+  { labelKey: "nav.sales",     href: "/sales",       icon: TrendingUp,      permissionKey: "sales" },
+  { labelKey: "nav.staffing",  href: "/staffing",    icon: Users,           permissionKey: "staffing" },
+  { labelKey: "nav.products",  href: "/products",    icon: ShoppingBag,     permissionKey: "products" },
+  { labelKey: "nav.pos",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos" },
+  { labelKey: "nav.punchIn",   href: "/punch-in",    icon: KeyRound },
+  { labelKey: "nav.chat",      href: "/chat",        icon: MessageSquare,   permissionKey: "staffing" },
+  { labelKey: "nav.website",   href: "/builder",     icon: Globe,           permissionKey: "website" },
+  { labelKey: "nav.membership", href: "/membership", icon: Crown },
 ];
 
 const STORE_MACHINE_HREFS = new Set(["/pos", "/inventory", "/punch-in"]);
 
 export function BottomBar() {
+  const t = useT();
   const pathname = usePathname();
   const { can } = usePermissions();
   const [storeMachine] = useStoreMachineMode();
@@ -51,7 +53,7 @@ export function BottomBar() {
   // Show up to 4 nav items + Settings
   const tabs: NavItem[] = [
     ...permitted.slice(0, 4),
-    { label: "Settings", href: "/settings", icon: Settings },
+    { labelKey: "nav.settings", href: "/settings", icon: Settings },
   ];
 
   return (
@@ -75,7 +77,7 @@ export function BottomBar() {
               }`}
             >
               <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+              <span className="text-[10px] font-medium leading-tight">{t(item.labelKey)}</span>
             </Link>
           );
         })}
