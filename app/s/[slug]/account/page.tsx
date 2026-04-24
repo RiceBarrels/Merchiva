@@ -7,6 +7,7 @@ import { claimPerk } from "@/lib/spacetimedb/actions";
 import { getCustomer, getCustomerOrders, getCustomerBookings, getCustomerMembership, canClaimPerk } from "@/lib/db/membership";
 import type { SiteCustomer, SiteOrder, SiteBooking, MembershipTier, MembershipPerk } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Session helpers ──────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 // ─── Orders tab ───────────────────────────────────────────────────────────────
 
 function OrdersTab({ customerId }: { customerId: string }) {
+  const t = useT();
   const [orders, setOrders] = useState<SiteOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +63,7 @@ function OrdersTab({ customerId }: { customerId: string }) {
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>;
 
   if (!orders.length) {
-    return <p className="text-center py-10 text-sm text-gray-500">No orders yet.</p>;
+    return <p className="text-center py-10 text-sm text-gray-500">{t("storefront.account.noOrders")}</p>;
   }
 
   return (
@@ -73,7 +75,7 @@ function OrdersTab({ customerId }: { customerId: string }) {
               <p className="font-semibold text-sm">${order.total.toFixed(2)}</p>
               <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
             </div>
-            <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_PILL[order.status])}>{order.status}</span>
+            <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_PILL[order.status])}>{t(`status.${order.status}`)}</span>
           </div>
           {order.items.length > 0 && (
             <p className="text-xs text-gray-500">{order.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
@@ -87,6 +89,7 @@ function OrdersTab({ customerId }: { customerId: string }) {
 // ─── Bookings tab ─────────────────────────────────────────────────────────────
 
 function BookingsTab({ customerId }: { customerId: string }) {
+  const t = useT();
   const [bookings, setBookings] = useState<SiteBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,7 +103,7 @@ function BookingsTab({ customerId }: { customerId: string }) {
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>;
 
   if (!bookings.length) {
-    return <p className="text-center py-10 text-sm text-gray-500">No bookings yet.</p>;
+    return <p className="text-center py-10 text-sm text-gray-500">{t("storefront.account.noBookings")}</p>;
   }
 
   return (
@@ -110,10 +113,10 @@ function BookingsTab({ customerId }: { customerId: string }) {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-semibold text-sm">{b.date} at {b.time}</p>
-              <p className="text-xs text-gray-500">Party of {b.partySize}</p>
+              <p className="text-xs text-gray-500">{t("storefront.account.partyOf")} {b.partySize}</p>
               {b.notes && <p className="text-xs text-gray-400 mt-0.5">{b.notes}</p>}
             </div>
-            <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_PILL[b.status])}>{b.status}</span>
+            <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_PILL[b.status])}>{t(`status.${b.status}`)}</span>
           </div>
         </div>
       ))}
@@ -124,6 +127,7 @@ function BookingsTab({ customerId }: { customerId: string }) {
 // ─── Membership tab ───────────────────────────────────────────────────────────
 
 function MembershipTab({ customerId, siteId }: { customerId: string; siteId: string }) {
+  const t = useT();
   const [tier, setTier] = useState<MembershipTier | null>(null);
   const [perks, setPerks] = useState<MembershipPerk[]>([]);
   const [points, setPoints] = useState(0);
@@ -152,7 +156,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
     setClaiming(perkId);
     try {
       await claimPerk({ customerId, perkId });
-      setClaimed((prev) => ({ ...prev, [perkId]: "Claimed!" }));
+      setClaimed((prev) => ({ ...prev, [perkId]: t("storefront.account.claimed") }));
       setPerkStatus((prev) => ({ ...prev, [perkId]: { canClaim: false, nextClaimAt: null } }));
     } catch (err) {
       console.error("Claim failed:", err);
@@ -167,8 +171,8 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
     return (
       <div className="text-center py-10">
         <Star className="h-8 w-8 mx-auto text-gray-300 mb-3" />
-        <p className="text-sm text-gray-500">You don&apos;t have a membership yet.</p>
-        <p className="text-xs text-gray-400 mt-1">Ask staff to assign you a membership tier.</p>
+        <p className="text-sm text-gray-500">{t("storefront.account.noMembership")}</p>
+        <p className="text-xs text-gray-400 mt-1">{t("storefront.account.askStaff")}</p>
       </div>
     );
   }
@@ -185,7 +189,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
           </div>
         </div>
         <div className="rounded px-3 py-2 flex justify-between items-center" style={{ background: `${tier.color}15`, border: `1px solid ${tier.color}30` }}>
-          <span className="text-sm font-medium">Points Balance</span>
+          <span className="text-sm font-medium">{t("storefront.account.pointsBalance")}</span>
           <span className="font-mono font-bold text-lg" style={{ color: tier.color }}>{points}</span>
         </div>
       </div>
@@ -193,7 +197,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
       {/* Perks */}
       {perks.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Your Perks</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">{t("storefront.account.yourPerks")}</p>
           <div className="space-y-2">
             {perks.map((perk) => {
               const status = perkStatus[perk.id];
@@ -205,10 +209,10 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
                     <p className="text-sm font-medium">{perk.name}</p>
                     {perk.description && <p className="text-xs text-gray-500">{perk.description}</p>}
                     {alreadyClaimed && (
-                      <p className="text-xs font-mono font-bold mt-0.5" style={{ color: tier.color }}>Code: {alreadyClaimed}</p>
+                      <p className="text-xs font-mono font-bold mt-0.5" style={{ color: tier.color }}>{t("storefront.account.codeLabel")} {alreadyClaimed}</p>
                     )}
                     {!alreadyClaimed && status?.nextClaimAt && (
-                      <p className="text-xs text-gray-400">Available {new Date(status.nextClaimAt).toLocaleTimeString()}</p>
+                      <p className="text-xs text-gray-400">{t("storefront.account.availableAt")} {new Date(status.nextClaimAt).toLocaleTimeString()}</p>
                     )}
                   </div>
                   {!alreadyClaimed && perk.active && (
@@ -218,7 +222,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
                       className="flex-shrink-0 px-3 py-1.5 rounded text-xs font-semibold text-white disabled:opacity-40"
                       style={{ background: tier.color }}
                     >
-                      {claiming === perk.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Claim"}
+                      {claiming === perk.id ? <Loader2 className="h-3 w-3 animate-spin" /> : t("storefront.account.claim")}
                     </button>
                   )}
                 </div>
@@ -234,6 +238,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CustomerAccountPage({ params }: { params: Promise<{ slug: string }> }) {
+  const t = useT();
   const { slug } = use(params);
   const [customer, setCustomer] = useState<SiteCustomer | null | "loading">("loading");
   const [siteId, setSiteId] = useState<string | null>(null);
@@ -264,9 +269,9 @@ export default function CustomerAccountPage({ params }: { params: Promise<{ slug
   if (!customer) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 gap-4">
-        <p className="text-gray-600 text-sm">You&apos;re not signed in.</p>
+        <p className="text-gray-600 text-sm">{t("storefront.account.notSignedIn")}</p>
         <Link href={`/s/${slug}`} className="px-4 py-2 rounded bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800">
-          Back to site
+          {t("storefront.account.backToSite")}
         </Link>
       </div>
     );
@@ -289,20 +294,20 @@ export default function CustomerAccountPage({ params }: { params: Promise<{ slug
           onClick={handleLogout}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 text-xs text-gray-500 hover:text-gray-900 hover:bg-gray-50"
         >
-          <LogOut className="h-3.5 w-3.5" /> Sign Out
+          <LogOut className="h-3.5 w-3.5" /> {t("storefront.account.signOut")}
         </button>
       </header>
 
       {/* Tabs */}
       <div className="flex items-center gap-1 px-4 py-2 bg-white border-b border-gray-200 max-w-2xl mx-auto">
         <TabBtn active={tab === "membership"} onClick={() => setTab("membership")}>
-          <Star className="h-3.5 w-3.5 inline mr-1" />Membership
+          <Star className="h-3.5 w-3.5 inline mr-1" />{t("storefront.account.tabMembership")}
         </TabBtn>
         <TabBtn active={tab === "orders"} onClick={() => setTab("orders")}>
-          <ShoppingBag className="h-3.5 w-3.5 inline mr-1" />Orders
+          <ShoppingBag className="h-3.5 w-3.5 inline mr-1" />{t("storefront.account.tabOrders")}
         </TabBtn>
         <TabBtn active={tab === "bookings"} onClick={() => setTab("bookings")}>
-          <CalendarDays className="h-3.5 w-3.5 inline mr-1" />Bookings
+          <CalendarDays className="h-3.5 w-3.5 inline mr-1" />{t("storefront.account.tabBookings")}
         </TabBtn>
       </div>
 

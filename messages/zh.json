@@ -310,5 +310,169 @@
       "perYear": "/年",
       "once": " 一次性"
     }
+  },
+  "status": {
+    "pending": "待处理",
+    "confirmed": "已确认",
+    "completed": "已完成",
+    "cancelled": "已取消"
+  },
+  "storefront": {
+    "auth": {
+      "signInTitle": "登录",
+      "createAccountTitle": "创建账号",
+      "yourNamePlaceholder": "您的姓名",
+      "emailPlaceholder": "邮箱",
+      "passwordPlaceholder": "密码",
+      "signInButton": "登录",
+      "createAccountButton": "创建账号",
+      "noAccount": "还没有账号？",
+      "hasAccount": "已有账号？",
+      "register": "注册",
+      "somethingWrong": "出现错误。"
+    },
+    "cart": {
+      "title": "购物车",
+      "empty": "购物车为空。",
+      "total": "总计",
+      "checkout": "结账"
+    },
+    "topbar": {
+      "signIn": "登录",
+      "signOut": "退出登录",
+      "back": "返回"
+    },
+    "notFound": {
+      "site": "站点未找到",
+      "siteDesc": "此站点不存在或尚未发布。",
+      "noPages": "此站点尚未添加任何页面。",
+      "page": "页面未找到",
+      "pageDesc": "此页面不存在。",
+      "product": "商品未找到",
+      "productDesc": "此商品页面不存在。",
+      "backToSite": "返回站点"
+    },
+    "product": {
+      "addToCart": "加入购物车"
+    },
+    "account": {
+      "notSignedIn": "您尚未登录。",
+      "backToSite": "返回站点",
+      "signOut": "退出登录",
+      "tabMembership": "会员",
+      "tabOrders": "订单",
+      "tabBookings": "预约",
+      "noOrders": "暂无订单。",
+      "noBookings": "暂无预约。",
+      "partyOf": "人数",
+      "noMembership": "您还没有会员资格。",
+      "askStaff": "请联系员工为您分配会员等级。",
+      "pointsBalance": "积分余额",
+      "yourPerks": "您的权益",
+      "codeLabel": "代码：",
+      "availableAt": "可用时间",
+      "claim": "领取",
+      "claimed": "已领取！"
+    }
+  },
+  "membership": {
+    "header": {
+      "title": "会员与商务",
+      "tabTiers": "等级与权益",
+      "tabCustomers": "客户",
+      "tabOrders": "订单",
+      "tabBookings": "预约"
+    },
+    "noSite": {
+      "title": "还没有网站",
+      "desc": "请先创建网站以管理会员。",
+      "button": "前往网站构建器"
+    },
+    "periodSuffix": {
+      "free": "免费",
+      "monthly": "/月",
+      "yearly": "/年",
+      "oneTime": " 一次性"
+    },
+    "periodOption": {
+      "free": "免费",
+      "monthly": "按月",
+      "yearly": "按年",
+      "oneTime": "一次性"
+    },
+    "perkType": {
+      "discount": "折扣",
+      "freebie": "赠品",
+      "coupon": "优惠码",
+      "pointsMultiplier": "积分倍数",
+      "custom": "自定义"
+    },
+    "tierModal": {
+      "title": "会员等级",
+      "nameLabel": "名称",
+      "namePlaceholder": "黄金会员",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "解锁专属权益…",
+      "priceLabel": "价格",
+      "periodLabel": "周期",
+      "colorLabel": "颜色",
+      "iconLabel": "图标（表情）",
+      "iconPlaceholder": "⭐",
+      "defaultCheckbox": "默认等级（自动分配给新客户）"
+    },
+    "perkModal": {
+      "title": "会员权益",
+      "typeLabel": "类型",
+      "nameLabel": "名称",
+      "namePlaceholder": "每 3 小时一杯免费饮品",
+      "descriptionLabel": "描述（可选）",
+      "discountValueLabel": "折扣值",
+      "discountTypeLabel": "类型",
+      "percentOption": "百分比 (%)",
+      "fixedOption": "固定金额 ($)",
+      "couponCodeLabel": "优惠码",
+      "couponCodePlaceholder": "MEMBER10",
+      "cooldownLabel": "冷却时间（小时）",
+      "cooldownPlaceholder": "例如 3",
+      "minPurchaseLabel": "最低消费 ($)",
+      "activeCheckbox": "启用"
+    },
+    "modal": {
+      "cancel": "取消",
+      "save": "保存"
+    },
+    "tiers": {
+      "sectionTitle": "会员等级",
+      "addTier": "添加等级",
+      "empty": "暂无等级。创建您的第一个会员等级。",
+      "defaultBadge": "默认",
+      "freePrice": "免费",
+      "perksTitle": "权益",
+      "addPerk": "添加权益",
+      "noPerks": "暂无权益。",
+      "cooldownSuffix": "小时冷却",
+      "confirmDelete": "删除此等级及其所有权益？"
+    },
+    "customers": {
+      "sectionTitle": "客户",
+      "empty": "暂无客户。客户在您的站点注册后会显示在此处。",
+      "headerCustomer": "客户",
+      "headerEmail": "邮箱",
+      "headerJoined": "加入时间"
+    },
+    "orders": {
+      "sectionTitle": "订单",
+      "empty": "暂无订单。",
+      "guest": "访客"
+    },
+    "bookings": {
+      "sectionTitle": "预约",
+      "empty": "暂无预约。",
+      "partyOf": "人数"
+    }
+  },
+  "toast": {
+    "dbConnectionFailed": "数据库连接失败",
+    "notConnected": "未连接到 SpacetimeDB"
   }
 }

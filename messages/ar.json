@@ -30,45 +30,45 @@
     "pos": "نقطة البيع",
     "punchIn": "تسجيل الحضور",
     "chat": "المحادثة",
-    "website": "الموقع الإلكتروني",
+    "website": "الموقع",
     "membership": "العضوية",
     "team": "الفريق",
     "settings": "الإعدادات",
-    "selectStore": "اختر متجرًا",
+    "selectStore": "اختر المتجر",
     "createNewStore": "إنشاء متجر جديد",
     "storeName": "اسم المتجر",
     "create": "إنشاء"
   },
   "login": {
     "title": "تسجيل الدخول إلى Merchiva",
-    "subtitle": "أدخل بيانات الاعتماد للمتابعة",
-    "forgot": "هل نسيتها؟",
+    "subtitle": "أدخل بياناتك للمتابعة",
+    "forgot": "نسيت؟",
     "emailPlaceholder": "you@company.com",
     "passwordPlaceholder": "••••••••",
     "keepSignedIn": "إبقائي مسجّل الدخول لمدة 30 يومًا",
     "continueWith": "أو تابع باستخدام",
-    "noAccount": "ليس لديك حساب؟",
-    "register": "سجّل مساحة عمل",
-    "verifyTitle": "تحقق من بريدك الإلكتروني",
-    "verifySubtitle": "أدخل الرمز المرسل إلى",
+    "noAccount": "لا تملك حسابًا؟",
+    "register": "تسجيل مساحة عمل",
+    "verifyTitle": "تحقّق من بريدك الإلكتروني",
+    "verifySubtitle": "أدخل الرمز المُرسَل إلى",
     "verificationCode": "رمز التحقق",
-    "verify": "تحقق",
-    "backToSignIn": "العودة إلى تسجيل الدخول",
-    "twoFactorTitle": "المصادقة الثنائية",
+    "verify": "تحقّق",
+    "backToSignIn": "العودة لتسجيل الدخول",
+    "twoFactorTitle": "التحقق بخطوتين",
     "twoFactorSubtitle": "أدخل الرمز من تطبيق المصادقة",
-    "authFailed": "فشل المصادقة",
-    "invalidCode": "رمز غير صالح. حاول مرة أخرى.",
+    "authFailed": "فشل تسجيل الدخول",
+    "invalidCode": "الرمز غير صحيح. يُرجى المحاولة مجددًا.",
     "verificationFailed": "فشل التحقق",
-    "genericError": "حدث خطأ ما. حاول مرة أخرى.",
-    "oauthFailed": "فشل بدء OAuth"
+    "genericError": "حدث خطأ ما. يُرجى المحاولة مجددًا.",
+    "oauthFailed": "تعذّر بدء OAuth"
   },
   "signup": {
-    "title": "أنشئ مساحة العمل",
+    "title": "أنشئ مساحة العمل الخاصة بك",
     "subtitle": "حساب واحد لإدارة عملك.",
     "emailPlaceholder": "you@company.com",
     "passwordPlaceholder": "8 أحرف على الأقل",
     "strengthWeak": "ضعيفة",
-    "strengthFair": "مقبولة",
+    "strengthFair": "متوسطة",
     "strengthStrong": "قوية",
     "strengthExcellent": "ممتازة",
     "agreePrefix": "أوافق على",
@@ -80,8 +80,8 @@
     "verifyTitle": "أدخل رمز التحقق",
     "verifySubtitle": "أرسلنا رمزًا من 6 أرقام إلى",
     "code": "الرمز",
-    "verifyAndContinue": "تحقق وتابع",
-    "useDifferentMethod": "استخدم طريقة أخرى",
+    "verifyAndContinue": "تحقّق وتابع",
+    "useDifferentMethod": "استخدام طريقة أخرى",
     "step": "الخطوة",
     "registrationFailed": "فشل التسجيل"
   },
@@ -310,5 +310,169 @@
       "perYear": "/سنة",
       "once": " مرة واحدة"
     }
+  },
+  "status": {
+    "pending": "قيد الانتظار",
+    "confirmed": "مؤكّد",
+    "completed": "مكتمل",
+    "cancelled": "ملغى"
+  },
+  "storefront": {
+    "auth": {
+      "signInTitle": "تسجيل الدخول",
+      "createAccountTitle": "إنشاء حساب",
+      "yourNamePlaceholder": "اسمك",
+      "emailPlaceholder": "البريد الإلكتروني",
+      "passwordPlaceholder": "كلمة المرور",
+      "signInButton": "تسجيل الدخول",
+      "createAccountButton": "إنشاء حساب",
+      "noAccount": "لا تملك حسابًا؟",
+      "hasAccount": "لديك حساب بالفعل؟",
+      "register": "تسجيل",
+      "somethingWrong": "حدث خطأ ما."
+    },
+    "cart": {
+      "title": "السلّة",
+      "empty": "سلّتك فارغة.",
+      "total": "الإجمالي",
+      "checkout": "إتمام الشراء"
+    },
+    "topbar": {
+      "signIn": "تسجيل الدخول",
+      "signOut": "تسجيل الخروج",
+      "back": "رجوع"
+    },
+    "notFound": {
+      "site": "الموقع غير موجود",
+      "siteDesc": "هذا الموقع غير موجود أو لم يُنشر بعد.",
+      "noPages": "لم تتم إضافة أي صفحات إلى هذا الموقع بعد.",
+      "page": "الصفحة غير موجودة",
+      "pageDesc": "هذه الصفحة غير موجودة.",
+      "product": "المنتج غير موجود",
+      "productDesc": "صفحة هذا المنتج غير موجودة.",
+      "backToSite": "العودة إلى الموقع"
+    },
+    "product": {
+      "addToCart": "أضف إلى السلّة"
+    },
+    "account": {
+      "notSignedIn": "لم تسجّل الدخول.",
+      "backToSite": "العودة إلى الموقع",
+      "signOut": "تسجيل الخروج",
+      "tabMembership": "العضوية",
+      "tabOrders": "الطلبات",
+      "tabBookings": "الحجوزات",
+      "noOrders": "لا توجد طلبات بعد.",
+      "noBookings": "لا توجد حجوزات بعد.",
+      "partyOf": "مجموعة من",
+      "noMembership": "ليس لديك عضوية بعد.",
+      "askStaff": "اطلب من الموظفين تعيين فئة عضوية لك.",
+      "pointsBalance": "رصيد النقاط",
+      "yourPerks": "مزاياك",
+      "codeLabel": "الرمز:",
+      "availableAt": "متاح",
+      "claim": "مطالبة",
+      "claimed": "تمت المطالبة!"
+    }
+  },
+  "membership": {
+    "header": {
+      "title": "العضوية والتجارة",
+      "tabTiers": "الفئات والمزايا",
+      "tabCustomers": "العملاء",
+      "tabOrders": "الطلبات",
+      "tabBookings": "الحجوزات"
+    },
+    "noSite": {
+      "title": "لا يوجد موقع بعد",
+      "desc": "أنشئ موقعًا أولاً لإدارة العضويات.",
+      "button": "الذهاب إلى منشئ المواقع"
+    },
+    "periodSuffix": {
+      "free": "مجاني",
+      "monthly": "/شهر",
+      "yearly": "/سنة",
+      "oneTime": " مرة واحدة"
+    },
+    "periodOption": {
+      "free": "مجاني",
+      "monthly": "شهري",
+      "yearly": "سنوي",
+      "oneTime": "دفعة واحدة"
+    },
+    "perkType": {
+      "discount": "خصم",
+      "freebie": "هدية",
+      "coupon": "رمز كوبون",
+      "pointsMultiplier": "مضاعف النقاط",
+      "custom": "مخصص"
+    },
+    "tierModal": {
+      "title": "فئة العضوية",
+      "nameLabel": "الاسم",
+      "namePlaceholder": "عضو ذهبي",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "افتح مزايا حصرية…",
+      "priceLabel": "السعر",
+      "periodLabel": "الفترة",
+      "colorLabel": "اللون",
+      "iconLabel": "الأيقونة (إيموجي)",
+      "iconPlaceholder": "⭐",
+      "defaultCheckbox": "الفئة الافتراضية (تُعيَّن تلقائيًا للعملاء الجدد)"
+    },
+    "perkModal": {
+      "title": "ميزة العضوية",
+      "typeLabel": "النوع",
+      "nameLabel": "الاسم",
+      "namePlaceholder": "مشروب مجاني كل 3 ساعات",
+      "descriptionLabel": "الوصف (اختياري)",
+      "discountValueLabel": "قيمة الخصم",
+      "discountTypeLabel": "النوع",
+      "percentOption": "نسبة مئوية (%)",
+      "fixedOption": "ثابت ($)",
+      "couponCodeLabel": "رمز الكوبون",
+      "couponCodePlaceholder": "MEMBER10",
+      "cooldownLabel": "فترة الانتظار (ساعات)",
+      "cooldownPlaceholder": "مثال: 3",
+      "minPurchaseLabel": "الحد الأدنى للشراء ($)",
+      "activeCheckbox": "نشط"
+    },
+    "modal": {
+      "cancel": "إلغاء",
+      "save": "حفظ"
+    },
+    "tiers": {
+      "sectionTitle": "فئات العضوية",
+      "addTier": "إضافة فئة",
+      "empty": "لا توجد فئات بعد. أنشئ أول فئة عضوية.",
+      "defaultBadge": "افتراضي",
+      "freePrice": "مجاني",
+      "perksTitle": "المزايا",
+      "addPerk": "إضافة ميزة",
+      "noPerks": "لا توجد مزايا بعد.",
+      "cooldownSuffix": "س انتظار",
+      "confirmDelete": "حذف هذه الفئة وجميع مزاياها؟"
+    },
+    "customers": {
+      "sectionTitle": "العملاء",
+      "empty": "لا يوجد عملاء بعد. سيظهرون هنا فور تسجيلهم في موقعك.",
+      "headerCustomer": "العميل",
+      "headerEmail": "البريد الإلكتروني",
+      "headerJoined": "تاريخ الانضمام"
+    },
+    "orders": {
+      "sectionTitle": "الطلبات",
+      "empty": "لا توجد طلبات بعد.",
+      "guest": "زائر"
+    },
+    "bookings": {
+      "sectionTitle": "الحجوزات",
+      "empty": "لا توجد حجوزات بعد.",
+      "partyOf": "مجموعة من"
+    }
+  },
+  "toast": {
+    "dbConnectionFailed": "فشل الاتصال بقاعدة البيانات",
+    "notConnected": "غير متصل بـ SpacetimeDB"
   }
 }
