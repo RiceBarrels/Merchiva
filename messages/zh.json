@@ -77,5 +77,186 @@
     "useDifferentMethod": "使用其他方式",
     "step": "步骤",
     "registrationFailed": "注册失败"
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "早上好",
+      "afternoon": "下午好",
+      "evening": "晚上好"
+    },
+    "time": {
+      "justNow": "刚刚",
+      "minutesAgo": "{n} 分钟前",
+      "hoursAgo": "{n} 小时前",
+      "daysAgo": "{n} 天前"
+    },
+    "todo": {
+      "title": "待办事项",
+      "remaining": "还剩 {n} 项",
+      "add": "添加",
+      "placeholder": "需要做什么？",
+      "empty": "暂无任务",
+      "checkedBy": "由 {name} 完成",
+      "you": "你"
+    },
+    "alerts": {
+      "title": "提醒"
+    },
+    "shifts": {
+      "today": "今日班次",
+      "upcoming": "即将到来的班次",
+      "viewAll": "查看全部",
+      "emptyToday": "今日无排班"
+    },
+    "chat": {
+      "title": "最近消息",
+      "open": "打开聊天",
+      "empty": "暂无消息",
+      "fallback": "聊天"
+    },
+    "evidence": {
+      "prompt": "请上传至少一张照片或视频作为凭证以完成此任务。",
+      "video": "视频",
+      "addMore": "继续添加",
+      "choose": "选择文件",
+      "complete": "完成"
+    }
+  },
+  "inventory": {
+    "title": "库存",
+    "subtitle": "跟踪库存水平、损耗及补货需求",
+    "addItem": "添加商品",
+    "status": {
+      "inStock": "有库存",
+      "lowStock": "库存紧张",
+      "outOfStock": "缺货"
+    },
+    "summary": {
+      "totalItems": "商品总数",
+      "totalValue": "总价值",
+      "lowStock": "库存紧张",
+      "outOfStock": "缺货"
+    },
+    "tabs": {
+      "items": "商品",
+      "transactions": "交易记录",
+      "losses": "损耗跟踪"
+    },
+    "filters": {
+      "searchPlaceholder": "搜索商品或供应商…",
+      "categoryPlaceholder": "分类",
+      "all": "全部"
+    },
+    "emptyItems": {
+      "title": "暂无库存商品",
+      "hint": "添加您的第一个商品，或在设置中从 Square 同步。"
+    },
+    "tableHeaders": {
+      "item": "商品",
+      "category": "分类",
+      "stock": "库存",
+      "level": "水平",
+      "costPerUnit": "单位成本",
+      "lossRate": "损耗率",
+      "status": "状态",
+      "supplier": "供应商",
+      "date": "日期",
+      "type": "类型",
+      "quantity": "数量",
+      "note": "备注"
+    },
+    "noItems": "未找到商品。",
+    "transactions": {
+      "title": "最近交易",
+      "description": "库存变动 — 到货、消耗与损耗",
+      "empty": "暂无交易记录。开始跟踪库存变动后将显示在此处。"
+    },
+    "losses": {
+      "title": "各商品损耗率",
+      "description": "历史损耗百分比 — 连接 Square API 可自动填充",
+      "empty": "添加库存商品以跟踪损耗率。",
+      "lossSuffix": "% 损耗",
+      "footnote": "损耗数据可连接 Square API 实现自动跟踪，请在设置中配置。"
+    },
+    "dialog": {
+      "editTitle": "编辑商品",
+      "addTitle": "添加库存商品",
+      "editDescription": "更新此库存商品的详细信息。",
+      "addDescription": "向您的库存中添加新商品。",
+      "name": "商品名称 *",
+      "category": "分类",
+      "currentStock": "当前库存",
+      "minStock": "最低库存",
+      "maxStock": "最高库存",
+      "unit": "单位",
+      "costPerUnit": "单位成本（$）",
+      "supplier": "供应商",
+      "lossRate": "损耗率（%）",
+      "namePlaceholder": "例如：阿拉比卡咖啡豆",
+      "categoryPlaceholder": "例如：饮料",
+      "unitPlaceholder": "千克、升、件…",
+      "supplierPlaceholder": "供应商名称",
+      "cancel": "取消",
+      "save": "保存更改",
+      "saving": "保存中…",
+      "add": "添加商品"
+    },
+    "toast": {
+      "nameRequired": "名称为必填项",
+      "itemUpdated": "商品已更新",
+      "itemAdded": "商品已添加",
+      "saveFailed": "保存商品失败",
+      "itemDeleted": "商品已删除",
+      "deleteFailed": "删除商品失败"
+    }
+  },
+  "sales": {
+    "title": "销售预测",
+    "subtitle": "基于天气、客流量和历史数据的 AI 预测",
+    "accuracyBadge": "预测准确率 {n}%",
+    "summary": {
+      "avgDaily": "日均销售额",
+      "today": "今日（截至当前）",
+      "accuracy": "预测准确率",
+      "records": "记录"
+    },
+    "summarySub": {
+      "last30": "最近 30 天",
+      "hourly": "每小时实际值",
+      "vsActual": "对比实际结果",
+      "daysTracked": "已跟踪天数"
+    },
+    "empty": {
+      "title": "暂无销售数据",
+      "description": "在设置中连接 Square 以自动导入销售历史，或通过 API 手动添加记录。"
+    },
+    "tabs": {
+      "history": "历史分析",
+      "hourly": "今日分时"
+    },
+    "history": {
+      "title": "30 天销售历史",
+      "description": "实际销售对比 AI 预测",
+      "predicted": "预测",
+      "actual": "实际"
+    },
+    "factors": {
+      "weatherTitle": "天气影响",
+      "weatherDesc": "晴天通常可带来 10–20% 的客流增长。连接天气 API 可将实时天气纳入预测。",
+      "weatherBadge": "天气 API — 待接入",
+      "trafficTitle": "客流量",
+      "trafficDesc": "Google 地图热度数据与销售高度相关。高峰时段：8–10 点与 12–14 点。",
+      "trafficBadge": "Google 地图 API — 待接入",
+      "holidayTitle": "日期与节假日",
+      "holidayDesc": "周末和节假日通常出现稳定的需求高峰。在销售记录中标注节假日可提高预测准确性。",
+      "holidayBadge": "节假日日历 — 就绪"
+    },
+    "hourly": {
+      "title": "今日 — 分时统计",
+      "description": "按小时对比预测与实际销售",
+      "forecast": "预测",
+      "actual": "实际",
+      "empty": "今日暂无分时数据"
+    }
   }
 }
