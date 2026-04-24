@@ -77,5 +77,486 @@
     "useDifferentMethod": "दूसरी विधि का उपयोग करें",
     "step": "चरण",
     "registrationFailed": "पंजीकरण विफल"
+  },
+  "products": {
+    "title": "उत्पाद",
+    "subtitle": "प्रदर्शन, मार्जिन और AI द्वारा चिह्नित कम प्रदर्शन वाले उत्पादों पर नज़र रखें",
+    "flagged": "{count} चिह्नित",
+    "addProduct": "उत्पाद जोड़ें",
+    "summary": {
+      "products": "उत्पाद",
+      "revenueMonth": "राजस्व (माह)",
+      "avgMargin": "औसत मार्जिन",
+      "needReview": "समीक्षा आवश्यक"
+    },
+    "empty": {
+      "title": "अभी तक कोई उत्पाद नहीं",
+      "description": "उत्पाद मैन्युअल रूप से जोड़ें या सेटिंग्स में Square कनेक्ट करें ताकि आपका कैटलॉग स्वचालित रूप से आयात हो जाए।"
+    },
+    "chart": {
+      "title": "उत्पाद के अनुसार राजस्व",
+      "legend": "लाल = हटाने के लिए चिह्नित · पीला = कम प्रदर्शन",
+      "revenue": "राजस्व"
+    },
+    "insight": {
+      "title": "AI उत्पाद अंतर्दृष्टि",
+      "attentionSingular": "{count} उत्पाद पर ध्यान देने की आवश्यकता है। नीचे चिह्नित वस्तुओं की समीक्षा करें और कम प्रदर्शन वाले SKU हटाने पर विचार करें।",
+      "attentionPlural": "{count} उत्पादों पर ध्यान देने की आवश्यकता है। नीचे चिह्नित वस्तुओं की समीक्षा करें और कम प्रदर्शन वाले SKU हटाने पर विचार करें।",
+      "healthy": "सभी उत्पाद स्वीकार्य सीमा के भीतर प्रदर्शन कर रहे हैं। शुरुआती संकेतों के लिए साप्ताहिक रुझानों पर नज़र रखते रहें।"
+    },
+    "top": {
+      "label": "शीर्ष प्रदर्शक",
+      "revenueSuffix": "राजस्व",
+      "marginSuffix": "मार्जिन",
+      "ratingSuffix": "/5"
+    },
+    "filters": {
+      "searchPlaceholder": "उत्पाद खोजें…",
+      "category": "श्रेणी",
+      "alertsOnly": "केवल अलर्ट"
+    },
+    "table": {
+      "product": "उत्पाद",
+      "category": "श्रेणी",
+      "price": "कीमत",
+      "unitsSold": "बेची गई इकाइयाँ",
+      "revenue": "राजस्व",
+      "margin": "मार्जिन",
+      "rating": "रेटिंग",
+      "trend": "रुझान",
+      "status": "स्थिति",
+      "noResults": "कोई उत्पाद नहीं मिला।"
+    },
+    "trends": {
+      "up": "ऊपर",
+      "down": "नीचे",
+      "stable": "स्थिर"
+    },
+    "alerts": {
+      "healthy": "स्वस्थ",
+      "underperforming": "कम प्रदर्शन",
+      "remove": "हटाएँ",
+      "flagForRemoval": "हटाने के लिए चिह्नित करें"
+    },
+    "dialog": {
+      "title": "उत्पाद जोड़ें",
+      "description": "इसके प्रदर्शन पर नज़र रखने के लिए एक उत्पाद जोड़ें।",
+      "nameLabel": "उत्पाद का नाम *",
+      "namePlaceholder": "उदा. लाटे",
+      "categoryLabel": "श्रेणी",
+      "categoryPlaceholder": "उदा. गर्म पेय",
+      "priceLabel": "कीमत ($)",
+      "costLabel": "लागत ($)",
+      "unitsThisMonth": "इस माह बिकीं इकाइयाँ",
+      "unitsLastMonth": "पिछले माह बिकीं इकाइयाँ",
+      "ratingLabel": "रेटिंग (1–5)",
+      "statusLabel": "स्थिति",
+      "cancel": "रद्द करें",
+      "submit": "उत्पाद जोड़ें"
+    },
+    "toasts": {
+      "nameRequired": "नाम आवश्यक है",
+      "added": "उत्पाद जोड़ा गया",
+      "addFailed": "उत्पाद जोड़ने में विफल",
+      "deleted": "उत्पाद हटाया गया",
+      "deleteFailed": "उत्पाद हटाने में विफल",
+      "templateSaved": "टेम्पलेट सहेजा गया"
+    },
+    "detail": {
+      "breadcrumb": "उत्पाद",
+      "notFound": "उत्पाद नहीं मिला।",
+      "tabs": {
+        "details": "विवरण",
+        "template": "पेज टेम्पलेट"
+      },
+      "details": {
+        "nameLabel": "उत्पाद का नाम",
+        "categoryLabel": "श्रेणी",
+        "priceLabel": "कीमत ($)",
+        "costLabel": "लागत ($)",
+        "descriptionLabel": "विवरण",
+        "descriptionPlaceholder": "अपनी वेबसाइट के ग्राहकों के लिए इस उत्पाद का वर्णन करें…",
+        "imageUrlLabel": "चित्र URL",
+        "imageUrlPlaceholder": "https://example.com/image.jpg",
+        "imageAlt": "पूर्वावलोकन",
+        "save": "विवरण सहेजें"
+      },
+      "template": {
+        "noDescription": "कोई विवरण उपलब्ध नहीं है।",
+        "addToCart": "कार्ट में जोड़ें"
+      }
+    }
+  },
+  "staffing": {
+    "title": "स्टाफिंग",
+    "subtitle": "शेड्यूल, भूमिकाएँ और अनुरोध",
+    "store": "स्टोर",
+    "staff": "स्टाफ",
+    "unknown": "अज्ञात",
+    "unnamed": "नामहीन",
+    "pending": "लंबित",
+    "active": "सक्रिय",
+    "permissions": {
+      "viewSchedule": "शेड्यूल देखें",
+      "editSchedule": "शेड्यूल संपादित करें",
+      "viewInventory": "इन्वेंटरी देखें",
+      "editInventory": "इन्वेंटरी संपादित करें",
+      "viewSales": "बिक्री देखें",
+      "handleCash": "नकद संभालें",
+      "closeStore": "स्टोर बंद करें"
+    },
+    "shiftTypes": {
+      "morning": "सुबह",
+      "afternoon": "दोपहर",
+      "evening": "शाम",
+      "closing": "क्लोज़िंग"
+    },
+    "days": {
+      "sun": "रवि",
+      "mon": "सोम",
+      "tue": "मंगल",
+      "wed": "बुध",
+      "thu": "गुरु",
+      "fri": "शुक्र",
+      "sat": "शनि"
+    },
+    "tabs": {
+      "overview": "अवलोकन",
+      "schedule": "शेड्यूल",
+      "myShifts": "मेरी शिफ्ट",
+      "roles": "भूमिकाएँ",
+      "table": "तालिका"
+    },
+    "header": {
+      "staff": "स्टाफ",
+      "total": "कुल",
+      "addShift": "शिफ्ट जोड़ें",
+      "addShiftShort": "शिफ्ट जोड़ें",
+      "requests": "अनुरोध"
+    },
+    "schedule": {
+      "noShifts": "कोई शिफ्ट नहीं",
+      "noShiftsScheduled": "कोई शिफ्ट निर्धारित नहीं",
+      "weekOf": "{date} का सप्ताह",
+      "shiftsCountSingular": "{count} शिफ्ट",
+      "shiftsCountPlural": "{count} शिफ्ट",
+      "selectRoleDetails": "विवरण देखने के लिए भूमिका चुनें"
+    },
+    "myShifts": {
+      "trade": "ट्रेड",
+      "cover": "कवर",
+      "todaysTasks": "आज के कार्य",
+      "loadingTasks": "कार्य लोड हो रहे हैं...",
+      "noShiftsToday": "आज कोई शिफ्ट नहीं",
+      "noTasksAssigned": "कोई कार्य नहीं सौंपा गया"
+    },
+    "overview": {
+      "onShiftNow": "अभी शिफ्ट पर",
+      "todayHours": "आज के घंटे",
+      "openRequests": "खुले अनुरोध",
+      "thisWeek": "इस सप्ताह",
+      "currentlyOnShift": "अभी शिफ्ट पर",
+      "nobodyOnShift": "फिलहाल कोई भी शिफ्ट पर नहीं है",
+      "upNextToday": "आज आगामी",
+      "needsAttention": "ध्यान चाहिए",
+      "timeOffRequestSingular": "{count} छुट्टी अनुरोध",
+      "timeOffRequestPlural": "{count} छुट्टी अनुरोध",
+      "shiftTradeSingular": "{count} शिफ्ट ट्रेड",
+      "shiftTradePlural": "{count} शिफ्ट ट्रेड",
+      "awaitingApproval": "अनुमोदन की प्रतीक्षा",
+      "inMinutes": "{min} मिनट में",
+      "inHours": "{h} घंटे में",
+      "inHoursMinutes": "{h} घंटे {min} मिनट में"
+    },
+    "roles": {
+      "title": "भूमिकाएँ",
+      "noRolesYet": "अभी कोई भूमिका नहीं",
+      "tasksCountSingular": "{count} कार्य",
+      "tasksCountPlural": "{count} कार्य",
+      "membersAssignedSingular": "{count} सदस्य सौंपा गया",
+      "membersAssignedPlural": "{count} सदस्य सौंपे गए",
+      "taskTimeline": "कार्य टाइमलाइन",
+      "addTask": "कार्य जोड़ें",
+      "noTasksYet": "अभी कोई कार्य नहीं",
+      "noTasksYetDot": "अभी कोई कार्य नहीं।",
+      "assignedMembers": "सौंपे गए सदस्य",
+      "noTasksDefined": "इस भूमिका के लिए अभी कोई कार्य नहीं।",
+      "rolePlaceholder": "भूमिका",
+      "roleTasksTitle": "{role} कार्य",
+      "roleTasksDefaultDesc": "आज की शिफ्ट भूमिका के कार्य।"
+    },
+    "requests": {
+      "title": "अनुरोध",
+      "timeOff": "छुट्टी",
+      "trades": "ट्रेड",
+      "approve": "स्वीकृत",
+      "accept": "स्वीकार",
+      "deny": "अस्वीकार",
+      "noPending": "कोई लंबित अनुरोध नहीं"
+    },
+    "shiftDialog": {
+      "createTitle": "शिफ्ट बनाएं",
+      "editTitle": "शिफ्ट संपादित करें",
+      "createDescription": "एक शिफ्ट शेड्यूल करें।",
+      "editDescription": "शिफ्ट विवरण अपडेट करें।",
+      "assignEmployee": "कर्मचारी सौंपें",
+      "rolesLabel": "भूमिकाएँ",
+      "selectPlaceholder": "चुनें...",
+      "timeTemplate": "समय टेम्पलेट",
+      "addTemplate": "जोड़ें",
+      "noTemplatesYet": "अभी कोई टेम्पलेट नहीं। शिफ्ट समय जल्दी भरने के लिए एक जोड़ें।",
+      "shiftNotes": "शिफ्ट नोट्स",
+      "shiftNotesHint": "कर्मचारी को शिफ्ट के महत्वपूर्ण विवरण बताएँ।",
+      "createCta": "शिफ्ट बनाएं",
+      "saveCta": "शिफ्ट सहेजें",
+      "hourSuffix": "घं"
+    },
+    "roleDialog": {
+      "editTitle": "भूमिका संपादित करें",
+      "addTitle": "भूमिका जोड़ें",
+      "editDescription": "इस भूमिका के विवरण और अनुमतियाँ अपडेट करें।",
+      "addDescription": "एक नई स्टाफ भूमिका परिभाषित करें।",
+      "icon": "आइकन",
+      "roleName": "भूमिका का नाम *",
+      "roleNamePlaceholder": "उदा. बरिस्ता, शिफ्ट लीड, कैशियर",
+      "color": "रंग",
+      "description": "विवरण",
+      "descriptionPlaceholder": "यह भूमिका क्या करती है?",
+      "permissionsLabel": "अनुमतियाँ",
+      "saveCta": "सहेजें",
+      "addCta": "भूमिका जोड़ें"
+    },
+    "taskDialog": {
+      "editTitle": "कार्य संपादित करें",
+      "addTitle": "कार्य जोड़ें",
+      "editDescription": "इस समय-आधारित कार्य को अपडेट करें।",
+      "addDescription": "इस भूमिका में विशिष्ट समय अवधि के लिए कार्य जोड़ें।",
+      "taskTitle": "कार्य शीर्षक *",
+      "taskTitlePlaceholder": "उदा. कैश रजिस्टर खोलें, स्टेशन तैयार करें",
+      "taskTitlePlaceholderAlt": "उदा. कैश रजिस्टर खोलें, स्टेशन तैयार करें, टीम ब्रीफ़ करें",
+      "details": "विवरण",
+      "optional": "(वैकल्पिक)",
+      "detailsPlaceholder": "चरण-दर-चरण निर्देश या नोट्स...",
+      "timeWindow": "समय विंडो",
+      "startTime": "आरंभ समय",
+      "endTime": "समाप्ति समय",
+      "requireEvidence": "सबूत आवश्यक",
+      "requireEvidenceHint": "पूरा करने के लिए स्टाफ को फ़ोटो/वीडियो अपलोड करना होगा",
+      "notifyChat": "पूर्ण होने पर चैट को सूचित करें",
+      "notifyChatHint": "कार्य पूरा होने पर चयनित चैट को संदेश भेजें",
+      "noGroupChats": "कोई समूह चैट उपलब्ध नहीं",
+      "saveCta": "सहेजें",
+      "addCta": "कार्य जोड़ें"
+    },
+    "viewTasksDialog": {
+      "closeCta": "बंद करें"
+    },
+    "tradeDialog": {
+      "title": "शिफ्ट ट्रेड",
+      "description": "ट्रेड करने के लिए सहकर्मी की शिफ्ट चुनें।",
+      "yourShift": "आपकी शिफ्ट",
+      "filterByDate": "तारीख से फ़िल्टर करें",
+      "searchCoworkers": "सहकर्मी खोजें",
+      "namePlaceholder": "नाम...",
+      "noCoworkers": "आगामी शिफ्ट वाले कोई सहकर्मी नहीं।",
+      "sendRequest": "अनुरोध भेजें"
+    },
+    "coverDialog": {
+      "title": "कवर खोजें",
+      "description": "अपनी शिफ्ट को कवर करने के लिए सहकर्मी चुनें।",
+      "yourShift": "आपकी शिफ्ट",
+      "noOtherMembers": "अन्य कोई टीम सदस्य नहीं।",
+      "sendRequest": "अनुरोध भेजें"
+    },
+    "availDialog": {
+      "title": "उपलब्धता सेट करें",
+      "description": "शेड्यूलिंग के लिए अपनी नियमित उपलब्धता सेट करें।",
+      "type": "प्रकार",
+      "permanent": "स्थायी",
+      "temporary": "अस्थायी",
+      "startDate": "आरंभ तारीख",
+      "endDate": "समाप्ति तारीख",
+      "availableDays": "उपलब्ध दिन",
+      "status": "स्थिति",
+      "available": "उपलब्ध",
+      "unavailable": "अनुपलब्ध",
+      "preferred": "पसंदीदा",
+      "fullDay": "पूरा दिन",
+      "comments": "टिप्पणियाँ",
+      "commentsPlaceholder": "आपकी उपलब्धता के बारे में कोई नोट्स...",
+      "saveCta": "सहेजें"
+    },
+    "timeOffDialog": {
+      "title": "छुट्टी का अनुरोध",
+      "description": "अपने मैनेजर की समीक्षा के लिए छुट्टी का अनुरोध प्रस्तुत करें।",
+      "fullDays": "पूरे दिन",
+      "startDate": "आरंभ तारीख",
+      "endDate": "समाप्ति तारीख",
+      "startTime": "आरंभ समय",
+      "endTime": "समाप्ति समय",
+      "comments": "टिप्पणियाँ",
+      "commentsPlaceholder": "छुट्टी का कारण...",
+      "submitCta": "छुट्टी अनुरोध बनाएं"
+    },
+    "presetDialog": {
+      "editTitle": "प्रीसेट संपादित करें",
+      "addTitle": "नया प्रीसेट",
+      "description": "पुन: उपयोगी शिफ्ट समय टेम्पलेट सहेजें।",
+      "name": "नाम",
+      "namePlaceholder": "उदा. सुबह जल्दी",
+      "startTime": "आरंभ समय",
+      "endTime": "समाप्ति समय",
+      "color": "रंग",
+      "deleteCta": "हटाएं",
+      "saveCta": "सहेजें",
+      "createCta": "बनाएं"
+    },
+    "deletePresetDialog": {
+      "title": "टेम्पलेट हटाएं",
+      "description": "क्या आप वाकई इस समय टेम्पलेट को हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।",
+      "deleteCta": "हटाएं"
+    },
+    "exportDialog": {
+      "title": "शेड्यूल निर्यात करें",
+      "description": "तिथि सीमा और प्रारूप चुनें।",
+      "startDate": "आरंभ तारीख",
+      "endDate": "समाप्ति तारीख",
+      "format": "प्रारूप",
+      "exportCta": "निर्यात"
+    },
+    "shiftDetails": {
+      "title": "शिफ्ट विवरण",
+      "descriptionPrefix": "{date} की आपकी शिफ्ट",
+      "workingWith": "साथ काम कर रहे",
+      "noOtherStaff": "अन्य कोई स्टाफ शेड्यूल नहीं।",
+      "tasks": "कार्य",
+      "tasksDone": "{done}/{total} पूर्ण",
+      "findCover": "कवर खोजें",
+      "tradeShift": "शिफ्ट ट्रेड"
+    },
+    "toasts": {
+      "shiftAdded": "शिफ्ट जोड़ी गई",
+      "shiftUpdated": "शिफ्ट अपडेट हुई",
+      "shiftDeleted": "शिफ्ट हटाई गई",
+      "failedSaveShift": "शिफ्ट सहेजने में विफल",
+      "failedDeleteShift": "शिफ्ट हटाने में विफल",
+      "roleAdded": "भूमिका जोड़ी गई",
+      "roleUpdated": "भूमिका अपडेट हुई",
+      "roleDeleted": "भूमिका हटाई गई",
+      "failedSaveRole": "भूमिका सहेजने में विफल",
+      "failedDeleteRole": "भूमिका हटाने में विफल",
+      "failedSaveTask": "कार्य सहेजने में विफल",
+      "tradeSent": "ट्रेड अनुरोध भेजा गया",
+      "failedTrade": "ट्रेड अनुरोध भेजने में विफल",
+      "coverSent": "कवर अनुरोध भेजा गया",
+      "failedCover": "कवर अनुरोध भेजने में विफल",
+      "failedAvailability": "उपलब्धता सहेजने में विफल",
+      "failedTimeOff": "छुट्टी अनुरोध भेजने में विफल"
+    }
+  },
+  "pos": {
+    "tabs": {
+      "register": "रजिस्टर",
+      "orders": "ऑर्डर"
+    },
+    "receipt": {
+      "fallbackName": "रसीद",
+      "subtotal": "उप-योग",
+      "discount": "छूट",
+      "tax": "कर",
+      "total": "कुल",
+      "payment": "भुगतान",
+      "txnId": "लेनदेन ID",
+      "customer": "ग्राहक",
+      "thankYou": "धन्यवाद!",
+      "print": "प्रिंट",
+      "newOrder": "नया ऑर्डर"
+    },
+    "refund": {
+      "title": "रिफंड",
+      "originalTotal": "मूल कुल",
+      "refundAmount": "रिफंड राशि",
+      "full": "पूर्ण",
+      "partial": "आंशिक",
+      "reason": "कारण",
+      "reasonPlaceholder": "वैकल्पिक रिफंड कारण",
+      "processing": "प्रसंस्करण...",
+      "refundButton": "रिफंड करें",
+      "failed": "रिफंड विफल"
+    },
+    "orders": {
+      "searchPlaceholder": "ऑर्डर खोजें...",
+      "noMatch": "कोई मेल खाता ऑर्डर नहीं",
+      "empty": "अभी कोई ऑर्डर नहीं",
+      "noMore": "और ऑर्डर नहीं",
+      "refunded": "रिफंड किया गया",
+      "completed": "पूर्ण",
+      "onDate": "को",
+      "reason": "कारण:",
+      "refundAction": "रिफंड"
+    },
+    "register": {
+      "all": "सभी",
+      "searchProducts": "उत्पाद खोजें...",
+      "custom": "कस्टम",
+      "customerPlaceholder": "ग्राहक का नाम (वैकल्पिक)",
+      "tapToAdd": "जोड़ने के लिए उत्पाद पर टैप करें",
+      "addDiscount": "छूट जोड़ें",
+      "subtotal": "उप-योग",
+      "discount": "छूट",
+      "tax": "कर ({rate}%)",
+      "total": "कुल",
+      "addItems": "चार्ज करने के लिए आइटम जोड़ें",
+      "charge": "चार्ज करें",
+      "noProducts": "कोई उत्पाद नहीं",
+      "addInProducts": "उत्पाद पृष्ठ पर उत्पाद जोड़ें",
+      "noResults": "कोई परिणाम नहीं",
+      "each": "प्रति"
+    },
+    "customItem": {
+      "title": "कस्टम आइटम",
+      "itemName": "आइटम का नाम",
+      "itemPlaceholder": "जैसे सेवा शुल्क",
+      "price": "मूल्य",
+      "add": "आइटम जोड़ें"
+    },
+    "discountDialog": {
+      "title": "छूट लागू करें",
+      "percent": "प्रतिशत",
+      "dollar": "राशि",
+      "percentPlaceholder": "जैसे 10",
+      "dollarPlaceholder": "जैसे 5.00",
+      "saves": "{amount} की बचत",
+      "apply": "छूट लागू करें"
+    },
+    "charge": {
+      "title": "चार्ज",
+      "selectMethod": "भुगतान विधि चुनें",
+      "card": "कार्ड",
+      "cardDescription": "क्रेडिट या डेबिट कार्ड",
+      "cashOnly": "सक्षम करने के लिए Square कॉन्फ़िगर करें",
+      "cash": "नकद",
+      "cashDescription": "नकद भुगतान दर्ज करें",
+      "other": "अन्य",
+      "otherDescription": "मैनुअल भुगतान दर्ज करें",
+      "back": "वापस",
+      "processing": "प्रसंस्करण...",
+      "pay": "भुगतान करें",
+      "amountTendered": "दी गई राशि",
+      "changeDue": "वापस देना:",
+      "recording": "रिकॉर्ड हो रहा है...",
+      "completeSale": "बिक्री पूरी करें",
+      "noteLabel": "नोट",
+      "notePlaceholder": "वैकल्पिक नोट"
+    },
+    "errors": {
+      "recordFailed": "भुगतान रिकॉर्ड करने में विफल",
+      "initFailed": "भुगतान आरंभ करने में विफल",
+      "verificationFailed": "सत्यापन विफल",
+      "verifyFailed": "सत्यापन विफल",
+      "cardDeclined": "कार्ड अस्वीकृत",
+      "paymentFailed": "भुगतान विफल",
+      "moduleUnavailable": "भुगतान मॉड्यूल अनुपलब्ध"
+    }
   }
 }

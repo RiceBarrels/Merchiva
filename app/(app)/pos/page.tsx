@@ -14,6 +14,7 @@ import { getPaymentConfig, getRecentPayments } from "@/lib/db/payments";
 import { getCached, setCache } from "@/lib/cache";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
+import { useT } from "@/lib/i18n/context";
 import type { Product, CartItem, Payment } from "@/lib/types";
 
 // ─── Category color palette ───────────────────────────────────────────────────
@@ -47,7 +48,7 @@ function fmtDate(iso: string): string {
 
 // ─── Payment SDK loader ───────────────────────────────────────────────────────
 
-function loadPaymentScript(): Promise<void> {
+function loadPaymentScript(errorMsg: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") { reject(); return; }
     const existing = document.querySelector('script[data-pay-sdk]');
@@ -56,7 +57,7 @@ function loadPaymentScript(): Promise<void> {
     script.src = "https://secure.helcim.app/helcim-pay/services/start.js";
     script.setAttribute("data-pay-sdk", "1");
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Payment module unavailable"));
+    script.onerror = () => reject(new Error(errorMsg));
     document.head.appendChild(script);
   });
 }
@@ -100,11 +101,12 @@ function CartRow({ item, onQtyChange, onRemove }: {
   onQtyChange: (id: string, qty: number) => void;
   onRemove: (id: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b border-border last:border-0">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium truncate">{item.name}</p>
-        <p className="text-[11px] text-muted-foreground">{fmt(item.price)} each</p>
+        <p className="text-[11px] text-muted-foreground">{fmt(item.price)} {t("pos.register.each")}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button
@@ -134,6 +136,7 @@ function CartRow({ item, onQtyChange, onRemove }: {
 // ─── Receipt screen ───────────────────────────────────────────────────────────
 
 function ReceiptScreen({ data, onNewOrder }: { data: ReceiptData; onNewOrder: () => void }) {
+  const t = useT();
   const { payment, businessName } = data;
   return (
     <div className="flex flex-col items-center justify-center flex-1 p-6">
@@ -142,7 +145,7 @@ function ReceiptScreen({ data, onNewOrder }: { data: ReceiptData; onNewOrder: ()
         className="w-full max-w-xs border border-border rounded bg-white p-5 space-y-3 font-mono text-sm"
       >
         <div className="text-center space-y-0.5">
-          <p className="font-bold text-base">{businessName || "Receipt"}</p>
+          <p className="font-bold text-base">{businessName || t("pos.receipt.fallbackName")}</p>
           <p className="text-xs text-muted-foreground">{fmtDate(payment.createdAt)}</p>
         </div>
         <div className="border-t border-dashed border-border" />
@@ -155,39 +158,39 @@ function ReceiptScreen({ data, onNewOrder }: { data: ReceiptData; onNewOrder: ()
         <div className="border-t border-dashed border-border" />
         <div className="space-y-1 text-xs">
           <div className="flex justify-between">
-            <span>Subtotal</span>
+            <span>{t("pos.receipt.subtotal")}</span>
             <span>{fmt(payment.amount + payment.discountAmount - payment.taxAmount)}</span>
           </div>
           {payment.discountAmount > 0 && (
             <div className="flex justify-between text-emerald-600">
-              <span>Discount</span><span>−{fmt(payment.discountAmount)}</span>
+              <span>{t("pos.receipt.discount")}</span><span>−{fmt(payment.discountAmount)}</span>
             </div>
           )}
           <div className="flex justify-between">
-            <span>Tax</span><span>{fmt(payment.taxAmount)}</span>
+            <span>{t("pos.receipt.tax")}</span><span>{fmt(payment.taxAmount)}</span>
           </div>
           <div className="flex justify-between font-bold text-sm border-t border-border pt-1 mt-1">
-            <span>TOTAL</span><span>{fmt(payment.amount)}</span>
+            <span>{t("pos.receipt.total")}</span><span>{fmt(payment.amount)}</span>
           </div>
         </div>
         <div className="border-t border-dashed border-border" />
         <div className="text-xs space-y-0.5">
           <div className="flex justify-between">
-            <span>Payment</span><span className="capitalize">{payment.method}</span>
+            <span>{t("pos.receipt.payment")}</span><span className="capitalize">{payment.method}</span>
           </div>
           {payment.processorId && (
             <div className="flex justify-between">
-              <span>Txn ID</span>
+              <span>{t("pos.receipt.txnId")}</span>
               <span className="truncate ml-2 text-[10px]">{payment.processorId}</span>
             </div>
           )}
           {payment.customerName && (
             <div className="flex justify-between">
-              <span>Customer</span><span>{payment.customerName}</span>
+              <span>{t("pos.receipt.customer")}</span><span>{payment.customerName}</span>
             </div>
           )}
         </div>
-        <div className="text-center text-[10px] text-muted-foreground pt-1">Thank you!</div>
+        <div className="text-center text-[10px] text-muted-foreground pt-1">{t("pos.receipt.thankYou")}</div>
       </div>
       <div className="flex gap-2 mt-4 w-full max-w-xs">
         <button
@@ -195,14 +198,14 @@ function ReceiptScreen({ data, onNewOrder }: { data: ReceiptData; onNewOrder: ()
           onClick={() => window.print()}
           className="flex-1 flex items-center justify-center gap-1.5 rounded border border-border py-2 text-sm hover:bg-muted transition-colors"
         >
-          <Printer className="h-4 w-4" />Print
+          <Printer className="h-4 w-4" />{t("pos.receipt.print")}
         </button>
         <button
           type="button"
           onClick={() => { hapticSuccess(); onNewOrder(); }}
           className="flex-1 flex items-center justify-center gap-1.5 rounded bg-stone-900 text-white py-2 text-sm hover:bg-stone-800 transition-colors"
         >
-          <RotateCcw className="h-4 w-4" />New Order
+          <RotateCcw className="h-4 w-4" />{t("pos.receipt.newOrder")}
         </button>
       </div>
     </div>
@@ -220,6 +223,7 @@ function RefundDialog({
   onClose: () => void;
   onSuccess: (updated: Payment) => void;
 }) {
+  const t = useT();
   const [mode, setMode] = useState<"full" | "partial">("full");
   const [partialAmount, setPartialAmount] = useState("");
   const [reason, setReason] = useState("");
@@ -244,7 +248,7 @@ function RefundDialog({
       );
     } catch (err) {
       setProcessing(false);
-      toast.error("Refund failed", { description: err instanceof Error ? err.message : String(err) });
+      toast.error(t("pos.refund.failed"), { description: err instanceof Error ? err.message : String(err) });
       return;
     }
     setProcessing(false);
@@ -264,7 +268,7 @@ function RefundDialog({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
       <div className="w-full sm:max-w-sm rounded-t-xl sm:rounded-xl border border-border bg-background shadow-lg">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <p className="text-sm font-semibold">Refund Order</p>
+          <p className="text-sm font-semibold">{t("pos.refund.title")}</p>
           <button type="button" onClick={onClose} disabled={processing}>
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -274,7 +278,7 @@ function RefundDialog({
           {/* Order summary */}
           <div className="rounded border border-border bg-muted/30 px-3 py-2.5 text-xs space-y-1">
             <div className="flex justify-between font-semibold">
-              <span>Original total</span>
+              <span>{t("pos.refund.originalTotal")}</span>
               <span>{fmt(payment.amount)}</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
@@ -285,7 +289,7 @@ function RefundDialog({
 
           {/* Refund type */}
           <div>
-            <p className="text-xs font-medium mb-1.5">Refund amount</p>
+            <p className="text-xs font-medium mb-1.5">{t("pos.refund.refundAmount")}</p>
             <div className="flex rounded border border-border overflow-hidden">
               {(["full", "partial"] as const).map((m, i) => (
                 <button
@@ -298,7 +302,7 @@ function RefundDialog({
                     mode === m ? "bg-stone-900 text-white" : "hover:bg-muted"
                   )}
                 >
-                  {m === "full" ? `Full — ${fmt(payment.amount)}` : "Partial"}
+                  {m === "full" ? `${t("pos.refund.full")} — ${fmt(payment.amount)}` : t("pos.refund.partial")}
                 </button>
               ))}
             </div>
@@ -322,12 +326,12 @@ function RefundDialog({
 
           {/* Reason */}
           <div>
-            <label className="text-xs font-medium">Reason (optional)</label>
+            <label className="text-xs font-medium">{t("pos.refund.reason")}</label>
             <input
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Customer returned item"
+              placeholder={t("pos.refund.reasonPlaceholder")}
               className="mt-1 w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -346,7 +350,7 @@ function RefundDialog({
             className="w-full flex items-center justify-center gap-2 rounded bg-destructive py-3 text-sm font-bold text-white hover:bg-destructive/90 disabled:opacity-50 transition-colors"
           >
             {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
-            {processing ? "Processing refund…" : `Refund ${fmt(refundAmt)}`}
+            {processing ? t("pos.refund.processing") : `${t("pos.refund.refundButton")} ${fmt(refundAmt)}`}
           </button>
         </div>
       </div>
@@ -363,6 +367,7 @@ function OrderRow({
   payment: Payment;
   onRefund: (p: Payment) => void;
 }) {
+  const t = useT();
   const isRefunded = payment.status === "refunded";
   const isNegative = payment.amount < 0; // audit-trail refund record
 
@@ -391,7 +396,7 @@ function OrderRow({
                 ? "bg-red-100 text-red-600"
                 : "bg-emerald-100 text-emerald-700"
             )}>
-              {isRefunded ? "Refunded" : "Completed"}
+              {isRefunded ? t("pos.orders.refunded") : t("pos.orders.completed")}
             </span>
           </div>
           <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -406,8 +411,8 @@ function OrderRow({
           {/* Refund details */}
           {isRefunded && payment.refundAmount != null && (
             <div className="mt-1 text-[11px] text-red-500 space-y-0.5">
-              <p>Refunded {fmt(payment.refundAmount)}{payment.refundedAt ? ` on ${fmtDate(payment.refundedAt)}` : ""}</p>
-              {payment.refundReason && <p className="text-muted-foreground">Reason: {payment.refundReason}</p>}
+              <p>{t("pos.orders.refunded")} {fmt(payment.refundAmount)}{payment.refundedAt ? ` ${t("pos.orders.onDate")} ${fmtDate(payment.refundedAt)}` : ""}</p>
+              {payment.refundReason && <p className="text-muted-foreground">{t("pos.orders.reason")} {payment.refundReason}</p>}
             </div>
           )}
         </div>
@@ -419,7 +424,7 @@ function OrderRow({
             onClick={() => { hapticLight(); onRefund(payment); }}
             className="shrink-0 rounded border border-border px-2.5 py-1 text-xs hover:bg-muted transition-colors"
           >
-            Refund
+            {t("pos.orders.refundAction")}
           </button>
         )}
       </div>
@@ -440,6 +445,7 @@ function OrdersTab({
   organizationId: string;
   onPaymentUpdated: (p: Payment) => void;
 }) {
+  const t = useT();
   const [orders, setOrders] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -541,7 +547,7 @@ function OrdersTab({
             type="search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by customer, note, or transaction ID…"
+            placeholder={t("pos.orders.searchPlaceholder")}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
           {searchInput && (
@@ -561,7 +567,7 @@ function OrdersTab({
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
             <History className="h-8 w-8 opacity-30" />
-            <p className="text-sm">{searchQuery ? "No matching orders" : "No orders yet"}</p>
+            <p className="text-sm">{searchQuery ? t("pos.orders.noMatch") : t("pos.orders.empty")}</p>
           </div>
         ) : (
           <>
@@ -577,7 +583,7 @@ function OrdersTab({
               {loadingMore ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
               ) : !hasMore ? (
-                <p className="text-xs text-muted-foreground">No more orders</p>
+                <p className="text-xs text-muted-foreground">{t("pos.orders.noMore")}</p>
               ) : null}
             </div>
           </>
@@ -598,6 +604,7 @@ function OrdersTab({
 // ─── Main POS page ────────────────────────────────────────────────────────────
 
 export default function POSPage() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -784,7 +791,7 @@ export default function POSPage() {
       setReceipt({ payment: optimisticPayment, businessName });
     } catch (err) {
       console.error("POS: payment record failed:", err);
-      setPaymentError("Failed to record payment. Please try again.");
+      setPaymentError(t("pos.errors.recordFailed"));
     } finally {
       setProcessing(false);
     }
@@ -801,11 +808,11 @@ export default function POSPage() {
       });
       if (!sessionRes.ok) {
         const err = await sessionRes.json();
-        throw new Error(err.error ?? "Failed to initialize payment");
+        throw new Error(err.error ?? t("pos.errors.initFailed"));
       }
       const { checkoutToken, testMode } = await sessionRes.json();
 
-      await loadPaymentScript();
+      await loadPaymentScript(t("pos.errors.moduleUnavailable"));
 
       const listener = async (event: MessageEvent) => {
         if (event.origin !== "https://secure.helcim.app") return;
@@ -822,20 +829,20 @@ export default function POSPage() {
               body: JSON.stringify({ checkoutToken, transactionId: evData?.transaction?.transactionId }),
             });
             const verifyData = await verifyRes.json();
-            if (!verifyData.verified) throw new Error("Payment verification failed");
+            if (!verifyData.verified) throw new Error(t("pos.errors.verificationFailed"));
             await completePayment("card", {
               processorId: String(verifyData.transactionId ?? ""),
               processorResponse: verifyData.responseData,
             });
           } catch (err) {
             console.error("POS: card verify error:", err);
-            setPaymentError("Payment could not be verified. Please check with your payment provider.");
+            setPaymentError(t("pos.errors.verifyFailed"));
             setProcessing(false);
           }
         } else if (eventType === "FAILED_PURCHASE") {
           window.removeEventListener("message", listener);
           paymentListenerRef.current = null;
-          setPaymentError("Card payment was declined.");
+          setPaymentError(t("pos.errors.cardDeclined"));
           setProcessing(false);
         } else if (eventType === "CANCEL_TRANSACTION" || eventType === "CLOSE_IFRAME") {
           window.removeEventListener("message", listener);
@@ -849,7 +856,7 @@ export default function POSPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).appendHelcimIframe?.(checkoutToken, testMode ? 1 : 0);
     } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : "Payment failed");
+      setPaymentError(err instanceof Error ? err.message : t("pos.errors.paymentFailed"));
       setProcessing(false);
     }
   };
@@ -892,7 +899,7 @@ export default function POSPage() {
           )}
         >
           <ShoppingCart className="h-3.5 w-3.5" />
-          Register
+          {t("pos.tabs.register")}
         </button>
         <button
           type="button"
@@ -905,7 +912,7 @@ export default function POSPage() {
           )}
         >
           <History className="h-3.5 w-3.5" />
-          Orders
+          {t("pos.tabs.orders")}
         </button>
       </div>
 
@@ -930,7 +937,7 @@ export default function POSPage() {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search products…"
+                  placeholder={t("pos.register.searchProducts")}
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
                 {search && (
@@ -951,7 +958,7 @@ export default function POSPage() {
                         ? "bg-stone-900 text-white"
                         : "bg-muted text-muted-foreground hover:text-foreground"
                     )}
-                  >{cat}</button>
+                  >{cat === "All" ? t("pos.register.all") : cat}</button>
                 ))}
               </div>
             </div>
@@ -959,11 +966,11 @@ export default function POSPage() {
             <div className="flex-1 overflow-y-auto p-3">
               {filteredProducts.length === 0 && !search ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-                  <p className="text-sm">No products yet</p>
-                  <p className="text-xs">Add products in the Products page</p>
+                  <p className="text-sm">{t("pos.register.noProducts")}</p>
+                  <p className="text-xs">{t("pos.register.addInProducts")}</p>
                 </div>
               ) : filteredProducts.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-8">No results</p>
+                <p className="text-center text-sm text-muted-foreground py-8">{t("pos.register.noResults")}</p>
               ) : (
                 <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))" }}>
                   {filteredProducts.map((p) => (
@@ -981,7 +988,7 @@ export default function POSPage() {
                     style={{ minHeight: 100 }}
                   >
                     <Plus className="h-5 w-5" />
-                    <span className="text-[10px]">Custom</span>
+                    <span className="text-[10px]">{t("pos.register.custom")}</span>
                   </button>
                 </div>
               )}
@@ -996,7 +1003,7 @@ export default function POSPage() {
                 type="text"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Customer name (optional)"
+                placeholder={t("pos.register.customerPlaceholder")}
                 className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -1005,7 +1012,7 @@ export default function POSPage() {
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-1.5">
                   <Receipt className="h-8 w-8 opacity-30" />
-                  <p className="text-xs">Tap products to add</p>
+                  <p className="text-xs">{t("pos.register.tapToAdd")}</p>
                 </div>
               ) : (
                 cart.map((item) => (
@@ -1023,8 +1030,8 @@ export default function POSPage() {
                 >
                   <Tag className="h-3.5 w-3.5" />
                   {discountAmount > 0
-                    ? <span className="text-emerald-600 font-medium">Discount: −{fmt(discountAmount)}</span>
-                    : <span>Add discount</span>
+                    ? <span className="text-emerald-600 font-medium">{t("pos.register.discount")}: −{fmt(discountAmount)}</span>
+                    : <span>{t("pos.register.addDiscount")}</span>
                   }
                 </button>
                 {discountAmount > 0 && (
@@ -1036,20 +1043,20 @@ export default function POSPage() {
 
               <div className="px-3 py-2.5 space-y-1 text-xs">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal</span><span>{fmt(subtotal)}</span>
+                  <span>{t("pos.register.subtotal")}</span><span>{fmt(subtotal)}</span>
                 </div>
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-emerald-600">
-                    <span>Discount</span><span>−{fmt(discountAmount)}</span>
+                    <span>{t("pos.register.discount")}</span><span>−{fmt(discountAmount)}</span>
                   </div>
                 )}
                 {taxRate > 0 && (
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Tax ({taxRate}%)</span><span>{fmt(taxAmount)}</span>
+                    <span>{t("pos.register.tax").replace("{rate}", String(taxRate))}</span><span>{fmt(taxAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-base pt-1 border-t border-border">
-                  <span>Total</span><span>{fmt(total)}</span>
+                  <span>{t("pos.register.total")}</span><span>{fmt(total)}</span>
                 </div>
               </div>
 
@@ -1065,7 +1072,7 @@ export default function POSPage() {
                       : "bg-stone-900 text-white hover:bg-stone-800 active:scale-98"
                   )}
                 >
-                  {cart.length === 0 ? "Add items to charge" : `Charge ${fmt(total)}`}
+                  {cart.length === 0 ? t("pos.register.addItems") : `${t("pos.register.charge")} ${fmt(total)}`}
                 </button>
               </div>
             </div>
@@ -1078,25 +1085,25 @@ export default function POSPage() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-xs rounded border border-border bg-background shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p className="text-sm font-semibold">Custom Item</p>
+              <p className="text-sm font-semibold">{t("pos.customItem.title")}</p>
               <button type="button" onClick={() => setCustomDialog(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
             </div>
             <div className="p-4 space-y-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium">Item name</label>
+                <label className="text-xs font-medium">{t("pos.customItem.itemName")}</label>
                 <input autoFocus type="text" value={customName} onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="e.g. Special order"
+                  placeholder={t("pos.customItem.itemPlaceholder")}
                   className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium">Price ($)</label>
+                <label className="text-xs font-medium">{t("pos.customItem.price")}</label>
                 <input type="number" value={customPrice} onChange={(e) => setCustomPrice(e.target.value)}
                   placeholder="0.00" min="0" step="0.01"
                   className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
               </div>
               <button type="button" onClick={addCustomItem} disabled={!customName.trim() || !customPrice}
                 className="w-full rounded bg-stone-900 py-2 text-sm text-white hover:bg-stone-800 disabled:opacity-40 transition-colors">
-                Add to cart
+                {t("pos.customItem.add")}
               </button>
             </div>
           </div>
@@ -1108,31 +1115,31 @@ export default function POSPage() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-xs rounded border border-border bg-background shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p className="text-sm font-semibold">Apply Discount</p>
+              <p className="text-sm font-semibold">{t("pos.discountDialog.title")}</p>
               <button type="button" onClick={() => setDiscountDialog(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
             </div>
             <div className="p-4 space-y-3">
               <div className="flex rounded border border-border overflow-hidden">
-                {(["percent", "dollar"] as const).map((t, i) => (
-                  <button key={t} type="button" onClick={() => setDiscountType(t)}
+                {(["percent", "dollar"] as const).map((dt, i) => (
+                  <button key={dt} type="button" onClick={() => setDiscountType(dt)}
                     className={cn("flex-1 py-1.5 text-xs font-medium transition-colors",
                       i > 0 ? "border-l border-border" : "",
-                      discountType === t ? "bg-stone-900 text-white" : "hover:bg-muted"
+                      discountType === dt ? "bg-stone-900 text-white" : "hover:bg-muted"
                     )}>
-                    {t === "percent" ? "Percent %" : "Dollar $"}
+                    {dt === "percent" ? t("pos.discountDialog.percent") : t("pos.discountDialog.dollar")}
                   </button>
                 ))}
               </div>
               <input autoFocus type="number" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder={discountType === "percent" ? "e.g. 10" : "e.g. 5.00"}
+                placeholder={discountType === "percent" ? t("pos.discountDialog.percentPlaceholder") : t("pos.discountDialog.dollarPlaceholder")}
                 min="0" step={discountType === "percent" ? "1" : "0.01"}
                 className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
               {discountAmount > 0 && (
-                <p className="text-xs text-muted-foreground">Saves {fmt(discountAmount)} on this order</p>
+                <p className="text-xs text-muted-foreground">{t("pos.discountDialog.saves").replace("{amount}", fmt(discountAmount))}</p>
               )}
               <button type="button" onClick={() => { hapticLight(); setDiscountDialog(false); }}
                 className="w-full rounded bg-stone-900 py-2 text-sm text-white hover:bg-stone-800 transition-colors">
-                Apply
+                {t("pos.discountDialog.apply")}
               </button>
             </div>
           </div>
@@ -1144,7 +1151,7 @@ export default function POSPage() {
         <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
           <div className="w-full sm:max-w-sm rounded-t-xl sm:rounded-xl border border-border bg-background shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <p className="text-sm font-semibold">Charge {fmt(total)}</p>
+              <p className="text-sm font-semibold">{t("pos.charge.title")} {fmt(total)}</p>
               <button type="button" onClick={() => { if (!processing) setChargeDialog(false); }}>
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
@@ -1153,33 +1160,33 @@ export default function POSPage() {
             <div className="p-4 space-y-3">
               {!selectedMethod && (
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Select payment method</p>
+                  <p className="text-xs text-muted-foreground">{t("pos.charge.selectMethod")}</p>
                   <button type="button" disabled={!cardAvailable} onClick={() => setSelectedMethod("card")}
                     className={cn("flex w-full items-center gap-3 rounded border px-4 py-3 text-left transition-colors",
                       cardAvailable ? "border-border hover:bg-muted" : "border-border opacity-50 cursor-not-allowed")}>
                     <CreditCard className="h-5 w-5 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Card Payment</p>
-                      <p className="text-xs text-muted-foreground">{cardAvailable ? "Credit or debit card" : "Cash only mode"}</p>
+                      <p className="text-sm font-medium">{t("pos.charge.card")}</p>
+                      <p className="text-xs text-muted-foreground">{cardAvailable ? t("pos.charge.cardDescription") : t("pos.charge.cashOnly")}</p>
                     </div>
                     {!cardAvailable && <AlertCircle className="h-4 w-4 text-amber-500" />}
                   </button>
                   <button type="button" onClick={() => setSelectedMethod("cash")}
                     className="flex w-full items-center gap-3 rounded border border-border px-4 py-3 text-left hover:bg-muted transition-colors">
                     <Banknote className="h-5 w-5 shrink-0" />
-                    <div><p className="text-sm font-medium">Cash</p><p className="text-xs text-muted-foreground">Record cash payment</p></div>
+                    <div><p className="text-sm font-medium">{t("pos.charge.cash")}</p><p className="text-xs text-muted-foreground">{t("pos.charge.cashDescription")}</p></div>
                   </button>
                   <button type="button" onClick={() => setSelectedMethod("other")}
                     className="flex w-full items-center gap-3 rounded border border-border px-4 py-3 text-left hover:bg-muted transition-colors">
                     <MoreHorizontal className="h-5 w-5 shrink-0" />
-                    <div><p className="text-sm font-medium">Other</p><p className="text-xs text-muted-foreground">Check, transfer, gift card…</p></div>
+                    <div><p className="text-sm font-medium">{t("pos.charge.other")}</p><p className="text-xs text-muted-foreground">{t("pos.charge.otherDescription")}</p></div>
                   </button>
                 </div>
               )}
 
               {selectedMethod === "card" && (
                 <div className="space-y-3">
-                  <button type="button" onClick={() => setSelectedMethod(null)} className="text-xs text-muted-foreground hover:text-foreground">← Back</button>
+                  <button type="button" onClick={() => setSelectedMethod(null)} className="text-xs text-muted-foreground hover:text-foreground">{t("pos.charge.back")}</button>
                   {paymentError && (
                     <div className="flex items-start gap-2 rounded border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive">
                       <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />{paymentError}
@@ -1188,23 +1195,23 @@ export default function POSPage() {
                   <button type="button" onClick={handleCardPayment} disabled={processing}
                     className="w-full flex items-center justify-center gap-2 rounded bg-stone-900 py-3 text-sm font-bold text-white hover:bg-stone-800 disabled:opacity-60 transition-colors">
                     {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                    {processing ? "Processing…" : `Pay ${fmt(total)}`}
+                    {processing ? t("pos.charge.processing") : `${t("pos.charge.pay")} ${fmt(total)}`}
                   </button>
                 </div>
               )}
 
               {selectedMethod === "cash" && (
                 <div className="space-y-3">
-                  <button type="button" onClick={() => setSelectedMethod(null)} className="text-xs text-muted-foreground hover:text-foreground">← Back</button>
+                  <button type="button" onClick={() => setSelectedMethod(null)} className="text-xs text-muted-foreground hover:text-foreground">{t("pos.charge.back")}</button>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium">Amount tendered</label>
+                    <label className="text-xs font-medium">{t("pos.charge.amountTendered")}</label>
                     <input autoFocus type="number" value={cashEntered} onChange={(e) => setCashEntered(e.target.value)}
                       placeholder={fmt(total).replace("$", "")} min={total} step="0.01"
                       className="w-full rounded border border-border bg-background px-3 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-ring" />
                   </div>
                   {cashEntered && parseFloat(cashEntered) >= total && (
                     <div className="rounded bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm">
-                      <span className="text-muted-foreground text-xs">Change due: </span>
+                      <span className="text-muted-foreground text-xs">{t("pos.charge.changeDue")} </span>
                       <span className="font-bold text-emerald-700">{fmt(cashChange)}</span>
                     </div>
                   )}
@@ -1213,18 +1220,18 @@ export default function POSPage() {
                     disabled={processing || !cashEntered || parseFloat(cashEntered) < total}
                     className="w-full flex items-center justify-center gap-2 rounded bg-stone-900 py-3 text-sm font-bold text-white hover:bg-stone-800 disabled:opacity-60 transition-colors">
                     {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    {processing ? "Recording…" : "Complete Sale"}
+                    {processing ? t("pos.charge.recording") : t("pos.charge.completeSale")}
                   </button>
                 </div>
               )}
 
               {selectedMethod === "other" && (
                 <div className="space-y-3">
-                  <button type="button" onClick={() => setSelectedMethod(null)} className="text-xs text-muted-foreground hover:text-foreground">← Back</button>
+                  <button type="button" onClick={() => setSelectedMethod(null)} className="text-xs text-muted-foreground hover:text-foreground">{t("pos.charge.back")}</button>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium">Note (optional)</label>
+                    <label className="text-xs font-medium">{t("pos.charge.noteLabel")}</label>
                     <input autoFocus type="text" value={otherNote} onChange={(e) => setOtherNote(e.target.value)}
-                      placeholder="e.g. Check #1234, Zelle transfer…"
+                      placeholder={t("pos.charge.notePlaceholder")}
                       className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring" />
                   </div>
                   {paymentError && <p className="text-xs text-destructive">{paymentError}</p>}
@@ -1232,7 +1239,7 @@ export default function POSPage() {
                     disabled={processing}
                     className="w-full flex items-center justify-center gap-2 rounded bg-stone-900 py-3 text-sm font-bold text-white hover:bg-stone-800 disabled:opacity-60 transition-colors">
                     {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                    {processing ? "Recording…" : "Complete Sale"}
+                    {processing ? t("pos.charge.recording") : t("pos.charge.completeSale")}
                   </button>
                 </div>
               )}

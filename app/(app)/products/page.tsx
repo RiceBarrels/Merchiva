@@ -68,12 +68,13 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
+import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 
 const alertConfig = {
-  none:           { label: "Healthy",         icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-  underperforming:{ label: "Underperforming",  icon: AlertTriangle, color: "text-amber-600",  bg: "bg-amber-50"   },
-  remove:         { label: "Remove",           icon: XCircle,       color: "text-destructive", bg: "bg-destructive/5" },
+  none:           { labelKey: "products.alerts.healthy",          icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+  underperforming:{ labelKey: "products.alerts.underperforming",  icon: AlertTriangle, color: "text-amber-600",  bg: "bg-amber-50"   },
+  remove:         { labelKey: "products.alerts.remove",           icon: XCircle,       color: "text-destructive", bg: "bg-destructive/5" },
 };
 
 const trendIcon = (t: Product["trend"]) => {
@@ -96,6 +97,7 @@ const BLANK: Partial<Product> = {
 };
 
 export default function ProductsPage() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const router = useRouter();
   // Data via SpacetimeDB migration hook
@@ -119,7 +121,7 @@ export default function ProductsPage() {
 
   const handleAdd = async () => {
     if (!form.name) {
-      toast.error("Name is required");
+      toast.error(t("products.toasts.nameRequired"));
       return;
     }
     setSaving(true);
@@ -132,13 +134,13 @@ export default function ProductsPage() {
         { ...(BLANK as Omit<Product, "id">), ...form, margin } as Omit<Product, "id">,
       );
       hapticSuccess();
-      toast.success("Product added");
+      toast.success(t("products.toasts.added"));
       void newProd;
       setDialogOpen(false);
       setForm(BLANK);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to add product");
+      toast.error(t("products.toasts.addFailed"));
     } finally {
       setSaving(false);
     }
@@ -148,10 +150,10 @@ export default function ProductsPage() {
     hapticWarning();
     try {
       await deleteProduct(id);
-      toast.success("Product deleted");
+      toast.success(t("products.toasts.deleted"));
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete product");
+      toast.error(t("products.toasts.deleteFailed"));
     }
   };
 
@@ -176,9 +178,9 @@ export default function ProductsPage() {
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Products</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("products.title")}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Track performance, margins, and AI-flagged underperformers
+            {t("products.subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -186,20 +188,20 @@ export default function ProductsPage() {
           {atRisk > 0 && (
             <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
               <Zap className="h-3.5 w-3.5 text-violet-500" />
-              {atRisk} flagged
+              {t("products.flagged").replace("{count}", String(atRisk))}
             </Badge>
           )}
           <Button onClick={() => { setForm(BLANK); setDialogOpen(true); }} className="gap-2">
-            <Plus className="h-4 w-4" /> Add Product
+            <Plus className="h-4 w-4" /> {t("products.addProduct")}
           </Button>
         </div>
       </div>
 
       <><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SummaryCard label="Products"       value={String(products.length)} icon={ShoppingBag} />
-        <SummaryCard label="Revenue (month)"value={`$${totalRevenue.toLocaleString()}`} icon={TrendingUp} />
-        <SummaryCard label="Avg Margin"     value={`${avgMargin}%`}         icon={ArrowUpRight} />
-        <SummaryCard label="Need Review"    value={String(atRisk)}          icon={AlertTriangle} urgent={atRisk > 0} />
+        <SummaryCard label={t("products.summary.products")}     value={String(products.length)} icon={ShoppingBag} />
+        <SummaryCard label={t("products.summary.revenueMonth")} value={`$${totalRevenue.toLocaleString()}`} icon={TrendingUp} />
+        <SummaryCard label={t("products.summary.avgMargin")}    value={`${avgMargin}%`}         icon={ArrowUpRight} />
+        <SummaryCard label={t("products.summary.needReview")}   value={String(atRisk)}          icon={AlertTriangle} urgent={atRisk > 0} />
       </div>
 
       {products.length === 0 ? (
@@ -207,9 +209,9 @@ export default function ProductsPage() {
           <CardContent className="py-16 text-center space-y-3">
             <ShoppingBag className="h-10 w-10 mx-auto text-muted-foreground opacity-40" />
             <div>
-              <p className="font-semibold">No products yet</p>
+              <p className="font-semibold">{t("products.empty.title")}</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                Add products manually or connect Square in Settings to import your catalog automatically.
+                {t("products.empty.description")}
               </p>
             </div>
           </CardContent>
@@ -220,8 +222,8 @@ export default function ProductsPage() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
             <Card className="lg:col-span-3">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Revenue by Product</CardTitle>
-                <CardDescription>Red = flagged for removal · Yellow = underperforming</CardDescription>
+                <CardTitle className="text-base">{t("products.chart.title")}</CardTitle>
+                <CardDescription>{t("products.chart.legend")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
@@ -229,7 +231,7 @@ export default function ProductsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" horizontal={false} />
                     <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
-                    <Tooltip contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }} formatter={(v) => [`$${v}`, "Revenue"]} />
+                    <Tooltip contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }} formatter={(v) => [`$${v}`, t("products.chart.revenue")]} />
                     <Bar dataKey="revenue" radius={[0, 2, 2, 0]}>
                       {chartData.map((entry, i) => (
                         <Cell key={i} fill={entry.alert === "remove" ? "#dc2626" : entry.alert === "underperforming" ? "#78716c" : "#44403c"} />
@@ -245,11 +247,14 @@ export default function ProductsPage() {
                 <CardContent className="p-3 flex gap-2.5">
                   <Zap className="h-4 w-4 text-stone-500 mt-0.5 shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-stone-800">AI Product Insight</p>
+                    <p className="text-sm font-semibold text-stone-800">{t("products.insight.title")}</p>
                     <p className="text-sm text-stone-600 leading-relaxed">
                       {atRisk > 0
-                        ? `${atRisk} product${atRisk > 1 ? "s need" : " needs"} attention. Review flagged items below and consider removing low-performing SKUs to reduce operational complexity.`
-                        : "All products are performing within acceptable thresholds. Keep monitoring weekly trends for early signals."}
+                        ? (atRisk > 1
+                            ? t("products.insight.attentionPlural")
+                            : t("products.insight.attentionSingular")
+                          ).replace("{count}", String(atRisk))
+                        : t("products.insight.healthy")}
                     </p>
                   </div>
                 </CardContent>
@@ -258,18 +263,18 @@ export default function ProductsPage() {
               {topProduct && (
                 <Card>
                   <CardContent className="p-4 space-y-1">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Top Performer</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{t("products.top.label")}</p>
                     <p className="text-lg font-bold">{topProduct.name}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-muted-foreground">${topProduct.revenue.toLocaleString()} revenue</span>
-                      <span className="text-xs bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5 font-semibold">{topProduct.margin}% margin</span>
+                      <span className="text-sm text-muted-foreground">${topProduct.revenue.toLocaleString()} {t("products.top.revenueSuffix")}</span>
+                      <span className="text-xs bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5 font-semibold">{topProduct.margin}% {t("products.top.marginSuffix")}</span>
                       {trendIcon(topProduct.trend)}
                     </div>
                     <div className="flex items-center gap-1 mt-1">
                       {[1, 2, 3, 4, 5].map((s) => (
                         <Star key={s} className={`h-3.5 w-3.5 ${s <= Math.round(topProduct.rating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />
                       ))}
-                      <span className="text-xs text-muted-foreground ml-1">{topProduct.rating}/5</span>
+                      <span className="text-xs text-muted-foreground ml-1">{topProduct.rating}{t("products.top.ratingSuffix")}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -283,10 +288,10 @@ export default function ProductsPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search products…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+                  <Input placeholder={t("products.filters.searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
                 </div>
                 <Select value={category} onValueChange={(v) => setCategory(v ?? "All")}>
-                  <SelectTrigger className="w-44"><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectTrigger className="w-44"><SelectValue placeholder={t("products.filters.category")} /></SelectTrigger>
                   <SelectContent>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
                 <Button
@@ -295,7 +300,7 @@ export default function ProductsPage() {
                   onClick={() => setFilterAlert((f) => f === "all" ? "alerts" : "all")}
                   className="gap-1.5 shrink-0"
                 >
-                  <AlertTriangle className="h-3.5 w-3.5" /> Alerts Only
+                  <AlertTriangle className="h-3.5 w-3.5" /> {t("products.filters.alertsOnly")}
                 </Button>
               </div>
             </CardHeader>
@@ -304,15 +309,15 @@ export default function ProductsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Units Sold</TableHead>
-                    <TableHead>Revenue</TableHead>
-                    <TableHead>Margin</TableHead>
-                    <TableHead>Rating</TableHead>
-                    <TableHead>Trend</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>{t("products.table.product")}</TableHead>
+                    <TableHead>{t("products.table.category")}</TableHead>
+                    <TableHead>{t("products.table.price")}</TableHead>
+                    <TableHead>{t("products.table.unitsSold")}</TableHead>
+                    <TableHead>{t("products.table.revenue")}</TableHead>
+                    <TableHead>{t("products.table.margin")}</TableHead>
+                    <TableHead>{t("products.table.rating")}</TableHead>
+                    <TableHead>{t("products.table.trend")}</TableHead>
+                    <TableHead>{t("products.table.status")}</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -363,13 +368,13 @@ export default function ProductsPage() {
                         <TableCell>
                           <div className="flex items-center gap-1">
                             {trendIcon(p.trend)}
-                            <span className="text-xs capitalize text-muted-foreground">{p.trend}</span>
+                            <span className="text-xs text-muted-foreground">{t(`products.trends.${p.trend}`)}</span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${cfg.bg} ${cfg.color}`}>
                             <AlertIcon className="h-3 w-3" />
-                            {cfg.label}
+                            {t(cfg.labelKey)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -382,7 +387,7 @@ export default function ProductsPage() {
                   })}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-10">No products found.</TableCell>
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-10">{t("products.table.noResults")}</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -399,62 +404,62 @@ export default function ProductsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Product</DialogTitle>
-            <DialogDescription>Add a product to track its performance.</DialogDescription>
+            <DialogTitle>{t("products.dialog.title")}</DialogTitle>
+            <DialogDescription>{t("products.dialog.description")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Product Name *</Label>
-                <Input value={form.name ?? ""} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Latte" />
+                <Label>{t("products.dialog.nameLabel")}</Label>
+                <Input value={form.name ?? ""} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("products.dialog.namePlaceholder")} />
               </div>
               <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Input value={form.category ?? ""} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder="e.g. Hot Beverages" />
+                <Label>{t("products.dialog.categoryLabel")}</Label>
+                <Input value={form.category ?? ""} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder={t("products.dialog.categoryPlaceholder")} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Price ($)</Label>
+                <Label>{t("products.dialog.priceLabel")}</Label>
                 <Input type="number" step="0.01" value={form.price ?? 0} onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))} />
               </div>
               <div className="space-y-1.5">
-                <Label>Cost ($)</Label>
+                <Label>{t("products.dialog.costLabel")}</Label>
                 <Input type="number" step="0.01" value={form.cost ?? 0} onChange={(e) => setForm((f) => ({ ...f, cost: Number(e.target.value) }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Units Sold This Month</Label>
+                <Label>{t("products.dialog.unitsThisMonth")}</Label>
                 <Input type="number" value={form.unitsSoldThisMonth ?? 0} onChange={(e) => setForm((f) => ({ ...f, unitsSoldThisMonth: Number(e.target.value) }))} />
               </div>
               <div className="space-y-1.5">
-                <Label>Units Sold Last Month</Label>
+                <Label>{t("products.dialog.unitsLastMonth")}</Label>
                 <Input type="number" value={form.unitsSoldLastMonth ?? 0} onChange={(e) => setForm((f) => ({ ...f, unitsSoldLastMonth: Number(e.target.value) }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Rating (1–5)</Label>
+                <Label>{t("products.dialog.ratingLabel")}</Label>
                 <Input type="number" min="1" max="5" step="0.1" value={form.rating ?? 5} onChange={(e) => setForm((f) => ({ ...f, rating: Number(e.target.value) }))} />
               </div>
               <div className="space-y-1.5">
-                <Label>Status</Label>
+                <Label>{t("products.dialog.statusLabel")}</Label>
                 <Select value={form.alert ?? "none"} onValueChange={(v) => setForm((f) => ({ ...f, alert: (v ?? "none") as Product["alert"] }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Healthy</SelectItem>
-                    <SelectItem value="underperforming">Underperforming</SelectItem>
-                    <SelectItem value="remove">Flag for Removal</SelectItem>
+                    <SelectItem value="none">{t("products.alerts.healthy")}</SelectItem>
+                    <SelectItem value="underperforming">{t("products.alerts.underperforming")}</SelectItem>
+                    <SelectItem value="remove">{t("products.alerts.flagForRemoval")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("products.dialog.cancel")}</Button>
             <Button onClick={handleAdd} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Product"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("products.dialog.submit")}
             </Button>
           </div>
         </DialogContent>

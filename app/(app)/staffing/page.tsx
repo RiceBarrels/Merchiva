@@ -52,6 +52,7 @@ import { getCached, setCache } from "@/lib/cache";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
 import { useSpacetimeDB } from "spacetimedb/react";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n/context";
 
 const ROLE_COLORS = [
   "#44403c", "#dc2626", "#ea580c", "#ca8a04",
@@ -85,14 +86,14 @@ function RoleIconComp({ name, className, style }: { name: string; className?: st
   return <Comp className={className} style={style} />;
 }
 
-const ROLE_PERMISSION_LABELS: { key: keyof StaffRolePermissions; label: string }[] = [
-  { key: "canViewSchedule", label: "View schedule" },
-  { key: "canEditSchedule", label: "Edit schedule" },
-  { key: "canViewInventory", label: "View inventory" },
-  { key: "canEditInventory", label: "Edit inventory" },
-  { key: "canViewSales", label: "View sales" },
-  { key: "canHandleCash", label: "Handle cash" },
-  { key: "canCloseStore", label: "Close store" },
+const ROLE_PERMISSION_KEYS: { key: keyof StaffRolePermissions; tKey: string }[] = [
+  { key: "canViewSchedule", tKey: "staffing.permissions.viewSchedule" },
+  { key: "canEditSchedule", tKey: "staffing.permissions.editSchedule" },
+  { key: "canViewInventory", tKey: "staffing.permissions.viewInventory" },
+  { key: "canEditInventory", tKey: "staffing.permissions.editInventory" },
+  { key: "canViewSales", tKey: "staffing.permissions.viewSales" },
+  { key: "canHandleCash", tKey: "staffing.permissions.handleCash" },
+  { key: "canCloseStore", tKey: "staffing.permissions.closeStore" },
 ];
 
 const SHIFT_COLORS: Record<ShiftType, string> = {
@@ -102,11 +103,11 @@ const SHIFT_COLORS: Record<ShiftType, string> = {
   closing:   "#dc2626",
 };
 
-const SHIFT_LABELS: Record<ShiftType, string> = {
-  morning:   "Morning",
-  afternoon: "Afternoon",
-  evening:   "Evening",
-  closing:   "Closing",
+const SHIFT_LABEL_KEYS: Record<ShiftType, string> = {
+  morning:   "staffing.shiftTypes.morning",
+  afternoon: "staffing.shiftTypes.afternoon",
+  evening:   "staffing.shiftTypes.evening",
+  closing:   "staffing.shiftTypes.closing",
 };
 
 const AVATAR_BG = [
@@ -118,8 +119,7 @@ const AVATAR_BG = [
   "bg-amber-100 text-amber-800",
 ];
 
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_ABBR  = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY_NAME_KEYS = ["staffing.days.sun", "staffing.days.mon", "staffing.days.tue", "staffing.days.wed", "staffing.days.thu", "staffing.days.fri", "staffing.days.sat"];
 
 function strHash(s: string): number {
   let h = 0;
@@ -270,6 +270,7 @@ interface StaffingDesktopProps {
 }
 
 function StaffingDesktop(props: StaffingDesktopProps) {
+  const t = useT();
   const {
     canEdit, isStaff, currentOrg, team, shifts, roles,
     weekStart, setWeekStart, weekDates, weekShifts, myShifts,
@@ -330,7 +331,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 transition-colors"
             >
-              <Plus className="h-3.5 w-3.5" /> Add Shift
+              <Plus className="h-3.5 w-3.5" /> {t("staffing.header.addShift")}
             </button>
           )}
         </div>
@@ -343,7 +344,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           >
             {/* Header row */}
             <div className="sticky top-0 z-10 bg-stone-50 border-b border-r border-border px-3 py-2.5 flex items-center">
-              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Staff</span>
+              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.header.staff")}</span>
             </div>
             {weekDates.map((d) => {
               const ds = isoDate(d);
@@ -365,7 +366,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               );
             })}
             <div className="sticky top-0 z-10 bg-stone-50 border-b border-border px-2 py-2.5 text-center">
-              <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wide">Total</span>
+              <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.header.total")}</span>
             </div>
 
             {/* Staff rows */}
@@ -381,7 +382,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     </div>
                     <div className="min-w-0">
                       <div className="text-[13px] font-medium text-stone-900 truncate leading-tight">{member.displayName}</div>
-                      <div className="text-[11px] text-stone-400 truncate leading-tight">{member.role ?? "staff"}</div>
+                      <div className="text-[11px] text-stone-400 truncate leading-tight">{member.role ?? t("staffing.staff").toLowerCase()}</div>
                     </div>
                   </div>
 
@@ -490,7 +491,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
             {/* Bottom total row */}
             <div className="bg-stone-50 border-r border-border px-3 py-2 flex items-center">
-              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Total</span>
+              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.header.total")}</span>
             </div>
             {weekDates.map((d) => {
               const ds = isoDate(d);
@@ -554,7 +555,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   {/* Shifts */}
                   <div className="flex-1 min-w-0">
                     {dayShifts.length === 0 ? (
-                      <p className="text-[13px] text-stone-400 py-2">No shifts</p>
+                      <p className="text-[13px] text-stone-400 py-2">{t("staffing.schedule.noShifts")}</p>
                     ) : (
                       <div className="space-y-2">
                         {dayShifts.map((shift) => {
@@ -575,7 +576,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                                   {formatTime(shift.startTime)} &ndash; {formatTime(shift.endTime)}
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[11px] text-stone-500">{SHIFT_LABELS[shift.shiftType]}</span>
+                                  <span className="text-[11px] text-stone-500">{t(SHIFT_LABEL_KEYS[shift.shiftType])}</span>
                                   {matchedRoles.map((r) => (
                                     <span key={r.id} className="inline-flex items-center gap-1">
                                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
@@ -586,10 +587,10 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
                                 <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 text-stone-600 transition-colors">
-                                  Trade
+                                  {t("staffing.myShifts.trade")}
                                 </button>
                                 <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 text-stone-600 transition-colors">
-                                  Cover
+                                  {t("staffing.myShifts.cover")}
                                 </button>
                               </div>
                             </div>
@@ -610,7 +611,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Sun className="h-4 w-4 text-stone-500" />
-                <span className="text-[13px] font-semibold text-stone-900">Today&apos;s Tasks</span>
+                <span className="text-[13px] font-semibold text-stone-900">{t("staffing.myShifts.todaysTasks")}</span>
               </div>
               {todayTasks.length > 0 && (
                 <span className="text-[11px] font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200 rounded-[0.3rem]">
@@ -621,7 +622,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
             {todayTasks.length === 0 ? (
               <p className="text-[13px] text-stone-400">
-                {loadingTodayTasks ? "Loading tasks..." : todayShifts.length === 0 ? "No shifts today" : "No tasks assigned"}
+                {loadingTodayTasks ? t("staffing.myShifts.loadingTasks") : todayShifts.length === 0 ? t("staffing.myShifts.noShiftsToday") : t("staffing.myShifts.noTasksAssigned")}
               </p>
             ) : (
               <div className="space-y-0.5">
@@ -664,7 +665,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
         {/* Left: Role list */}
         <div className="w-[280px] shrink-0 border-r border-border bg-white overflow-y-auto">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <span className="text-[13px] font-semibold text-stone-800">Roles</span>
+            <span className="text-[13px] font-semibold text-stone-800">{t("staffing.roles.title")}</span>
             {canEdit && (
               <button
                 onClick={() => {
@@ -682,7 +683,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           {roles.length === 0 ? (
             <div className="text-center py-12 px-4">
               <Shield className="h-7 w-7 mx-auto text-stone-300 mb-2" />
-              <p className="text-[13px] text-stone-400">No roles yet</p>
+              <p className="text-[13px] text-stone-400">{t("staffing.roles.noRolesYet")}</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -705,7 +706,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-medium text-stone-900 truncate">{r.name}</div>
-                      <div className="text-[11px] text-stone-400">{tasks.length} task{tasks.length !== 1 ? "s" : ""}</div>
+                      <div className="text-[11px] text-stone-400">{(tasks.length === 1 ? t("staffing.roles.tasksCountSingular") : t("staffing.roles.tasksCountPlural")).replace("{count}", String(tasks.length))}</div>
                     </div>
                   </button>
                 );
@@ -718,7 +719,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
         <div className="flex-1 min-w-0 overflow-y-auto bg-white">
           {!selectedRole ? (
             <div className="flex items-center justify-center h-full text-[13px] text-stone-400">
-              Select a role to see details
+              {t("staffing.schedule.selectRoleDetails")}
             </div>
           ) : (
             <div className="px-6 py-5">
@@ -744,7 +745,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                       (s.staffRoles ?? []).some((rn) => rn.toLowerCase() === selectedRole.name.toLowerCase())
                     ).map((s) => s.memberId).filter((v, i, a) => a.indexOf(v) === i).length;
                     return (
-                      <p className="text-[11px] text-stone-400 mt-0.5">{memberCount} member{memberCount !== 1 ? "s" : ""} assigned</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">{(memberCount === 1 ? t("staffing.roles.membersAssignedSingular") : t("staffing.roles.membersAssignedPlural")).replace("{count}", String(memberCount))}</p>
                     );
                   })()}
                 </div>
@@ -778,7 +779,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
               {/* Tasks */}
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Task Timeline</p>
+                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.roles.taskTimeline")}</p>
                 {canEdit && (
                   <button
                     onClick={() => {
@@ -787,7 +788,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     }}
                     className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 transition-colors"
                   >
-                    <Plus className="h-3 w-3" /> Add Task
+                    <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
                   </button>
                 )}
               </div>
@@ -799,7 +800,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
                 <div className="text-center py-10">
                   <ClipboardList className="h-7 w-7 mx-auto text-stone-300 mb-2" />
-                  <p className="text-[13px] text-stone-400">No tasks yet</p>
+                  <p className="text-[13px] text-stone-400">{t("staffing.roles.noTasksYet")}</p>
                 </div>
               ) : (
                 <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
@@ -861,7 +862,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 if (assignedMembers.length === 0) return null;
                 return (
                   <div className="mt-6">
-                    <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-2">Assigned Members</p>
+                    <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-2">{t("staffing.roles.assignedMembers")}</p>
                     <div className="flex flex-wrap gap-2">
                       {assignedMembers.map((m) => (
                         <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded-[0.3rem]">
@@ -901,7 +902,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
             <span className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-widest"
               style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
             >
-              Requests
+              {t("staffing.requests.title")}
             </span>
           </div>
           <PanelRightOpen className="h-3.5 w-3.5 text-stone-400" />
@@ -915,7 +916,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
         <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Inbox className="h-4 w-4 text-stone-500" />
-            <span className="text-[13px] font-semibold text-stone-800">Requests</span>
+            <span className="text-[13px] font-semibold text-stone-800">{t("staffing.requests.title")}</span>
             {pendingCount > 0 && (
               <span className="h-5 min-w-[20px] px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
                 {pendingCount}
@@ -935,7 +936,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           {/* Time Off */}
           {orgTimeOffRequests.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">Time Off</p>
+              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">{t("staffing.requests.timeOff")}</p>
               <div className="space-y-2">
                 {orgTimeOffRequests.map((req) => (
                   <div key={req.id} className="border border-border rounded-[0.3rem] p-3">
@@ -959,13 +960,13 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                         onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
                         className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
                       >
-                        <Check className="h-3 w-3" /> Approve
+                        <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
                       </button>
                       <button
                         onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
                         className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
                       >
-                        <Ban className="h-3 w-3" /> Deny
+                        <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                       </button>
                     </div>
                   </div>
@@ -977,7 +978,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           {/* Trades */}
           {orgShiftTrades.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">Trades</p>
+              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">{t("staffing.requests.trades")}</p>
               <div className="space-y-2">
                 {orgShiftTrades.map((trade) => {
                   const shift = shifts.find((s) => s.id === trade.shiftId);
@@ -1003,13 +1004,13 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                           onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
                           className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
                         >
-                          <Check className="h-3 w-3" /> Approve
+                          <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
                         </button>
                         <button
                           onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
                           className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
                         >
-                          <Ban className="h-3 w-3" /> Deny
+                          <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                         </button>
                       </div>
                     </div>
@@ -1022,7 +1023,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           {orgTimeOffRequests.length === 0 && orgShiftTrades.length === 0 && (
             <div className="text-center py-8">
               <Inbox className="h-6 w-6 mx-auto text-stone-300 mb-2" />
-              <p className="text-[13px] text-stone-400">No pending requests</p>
+              <p className="text-[13px] text-stone-400">{t("staffing.requests.noPending")}</p>
             </div>
           )}
         </div>
@@ -1032,9 +1033,9 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
   // ─── Desktop Return ───────────────────────────────────────
   const tabLabels: Record<DesktopTab, string> = {
-    schedule: "Schedule",
-    myShifts: "My Shifts",
-    roles: "Roles",
+    schedule: t("staffing.tabs.schedule"),
+    myShifts: t("staffing.tabs.myShifts"),
+    roles: t("staffing.tabs.roles"),
   };
   const desktopTabs: DesktopTab[] = isStaff ? ["myShifts", "roles"] : ["schedule", "myShifts", "roles"];
 
@@ -1042,8 +1043,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     <PermissionGuard section="staffing">
       <div className="flex flex-col h-full bg-stone-50/30">
         <PageHeader
-          title="Staffing"
-          subtitle="Schedule, roles, and requests"
+          title={t("staffing.title")}
+          subtitle={t("staffing.subtitle")}
           right={
             refreshing ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-stone-400" /> : undefined
           }
@@ -1093,6 +1094,7 @@ import React from "react";
 
 export default function StaffingPage() {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
+  const t = useT();
 
   const [presetDialog, setPresetDialog] = useState(false);
   const [editingPreset, setEditingPreset] = useState<ShiftPreset | null>(null);
@@ -1305,8 +1307,8 @@ export default function StaffingPage() {
   // ─── Helper ────────────────────────────────────────────────────────────────
 
   const getMemberName = useCallback(
-    (memberId: string) => team.find((m) => m.id === memberId)?.displayName ?? "Unknown",
-    [team]
+    (memberId: string) => team.find((m) => m.id === memberId)?.displayName ?? t("staffing.unknown"),
+    [team, t]
   );
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -1504,11 +1506,11 @@ export default function StaffingPage() {
         setShifts((prev) => [...prev, { id: shiftId, memberId: member.id, staffName: member.displayName, staffRoles: shiftForm.roleNames, date: shiftForm.date, shiftType: shiftForm.shiftType, startTime: shiftForm.startTime, endTime: shiftForm.endTime } as any]);
       }
       hapticSuccess();
-      toast.success(editingShift ? "Shift updated" : "Shift added");
+      toast.success(editingShift ? t("staffing.toasts.shiftUpdated") : t("staffing.toasts.shiftAdded"));
       setAddDialog(false);
       setEditingShift(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save shift");
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedSaveShift"));
     } finally {
       setSaving(false);
     }
@@ -1519,10 +1521,10 @@ export default function StaffingPage() {
     try {
       await deleteShift(id);
       setShifts((prev) => prev.filter((s) => s.id !== id));
-      toast.success("Shift deleted");
+      toast.success(t("staffing.toasts.shiftDeleted"));
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete shift");
+      toast.error(t("staffing.toasts.failedDeleteShift"));
     }
   };
 
@@ -1542,12 +1544,12 @@ export default function StaffingPage() {
         setRoles((prev) => [...prev, { id: roleId, ...roleForm } as any]);
       }
       hapticSuccess();
-      toast.success(editingRole ? "Role updated" : "Role added");
+      toast.success(editingRole ? t("staffing.toasts.roleUpdated") : t("staffing.toasts.roleAdded"));
       setRoleDialog(false);
       setEditingRole(null);
       setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save role");
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedSaveRole"));
     } finally {
       setSaving(false);
     }
@@ -1621,7 +1623,7 @@ export default function StaffingPage() {
       setTaskDialog({ open: false, task: null });
       setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save task");
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedSaveTask"));
     } finally {
       setSavingTask(false);
     }
@@ -1641,10 +1643,10 @@ export default function StaffingPage() {
     try {
       await deleteStaffRole(id);
       setRoles((prev) => prev.filter((r) => r.id !== id));
-      toast.success("Role deleted");
+      toast.success(t("staffing.toasts.roleDeleted"));
     } catch (err) {
       console.error(err);
-      toast.error("Failed to delete role");
+      toast.error(t("staffing.toasts.failedDeleteRole"));
     }
   };
 
@@ -1678,10 +1680,10 @@ export default function StaffingPage() {
         comments:      "",
       });
       hapticSuccess();
-      toast.success("Trade request sent");
+      toast.success(t("staffing.toasts.tradeSent"));
       setTradeDialog({ open: false, shift: null });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send trade request");
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedTrade"));
     } finally {
       setSavingTrade(false);
     }
@@ -1701,10 +1703,10 @@ export default function StaffingPage() {
         comments:      "",
       });
       hapticSuccess();
-      toast.success("Cover request sent");
+      toast.success(t("staffing.toasts.coverSent"));
       setCoverDialog({ open: false, shift: null });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send cover request");
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedCover"));
     } finally {
       setSavingCover(false);
     }
@@ -1756,7 +1758,7 @@ export default function StaffingPage() {
       });
       setAvailDialog(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save availability");
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedAvailability"));
     } finally {
       setSavingAvail(false);
     }
@@ -1781,7 +1783,7 @@ export default function StaffingPage() {
       setMyTimeOffRequests((prev) => [{ id: reqId, userId, organizationId, ...timeOffForm, status: "pending", createdAt: new Date().toISOString() } as any, ...prev]);
       setTimeOffDialog(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit time-off request");
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedTimeOff"));
     } finally {
       setSavingTimeOff(false);
     }
@@ -2238,7 +2240,7 @@ export default function StaffingPage() {
     a.click();
   };
 
-  const [downloadDialog, setDownloadDialog] = useDialogUrl("Export Schedule");
+  const [downloadDialog, setDownloadDialog] = useDialogUrl(t("staffing.exportDialog.title"));
   const [downloadRange, setDownloadRange] = useState({ start: "", end: "" });
   const [downloadFormat, setDownloadFormat] = useState<"pdf" | "png" | "csv">("pdf");
 
@@ -2312,11 +2314,11 @@ export default function StaffingPage() {
       <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
         <DialogContent className="max-w-md" noPadding>
           <DialogHeader>
-            <DialogTitle mobileTitle={editingShift ? "Edit shift" : "Create a shift"}>
-              {editingShift ? "Edit shift" : "Create a shift"}
+            <DialogTitle mobileTitle={editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}>
+              {editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}
             </DialogTitle>
             <DialogDescription className="hidden">
-              {editingShift ? "Update shift details." : "Schedule a shift."}
+              {editingShift ? t("staffing.shiftDialog.editDescription") : t("staffing.shiftDialog.createDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col h-full">
@@ -2338,10 +2340,10 @@ export default function StaffingPage() {
               <div className="px-4 py-4 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Assign employee</Label>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.assignEmployee")}</Label>
                     <Select value={shiftForm.memberId} onValueChange={(v) => setShiftForm((f) => ({ ...f, memberId: v ?? "" }))}>
                       <SelectTrigger className="mt-1 border-0 border-b border-border rounded-none px-0 shadow-none focus:ring-0">
-                        <SelectValue placeholder="Select...">{team.find((m) => m.id === shiftForm.memberId)?.displayName ?? "Select..."}</SelectValue>
+                        <SelectValue placeholder={t("staffing.shiftDialog.selectPlaceholder")}>{team.find((m) => m.id === shiftForm.memberId)?.displayName ?? t("staffing.shiftDialog.selectPlaceholder")}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {team.map((m) => (<SelectItem key={m.id} value={m.id}>{m.displayName}</SelectItem>))}
@@ -2349,7 +2351,7 @@ export default function StaffingPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Roles</Label>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.rolesLabel")}</Label>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {roles.map((r) => {
                         const selected = shiftForm.roleNames.includes(r.name);
@@ -2368,7 +2370,7 @@ export default function StaffingPage() {
             </div>
             <div className="px-4 py-4 border-t border-border mt-auto">
               <Button onClick={handleAddShift} disabled={saving || (!editingShift && !shiftForm.memberId)} className="w-full h-12 text-sm font-semibold">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? "Save shift" : "Create shift"}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? t("staffing.shiftDialog.saveCta") : t("staffing.shiftDialog.createCta")}
               </Button>
             </div>
           </div>
@@ -2378,12 +2380,12 @@ export default function StaffingPage() {
       <Dialog open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
         <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingRole ? "Edit Role" : "Add Role"}</DialogTitle>
-            <DialogDescription>{editingRole ? "Update this role's details and permissions." : "Define a new staff role."}</DialogDescription>
+            <DialogTitle>{editingRole ? t("staffing.roleDialog.editTitle") : t("staffing.roleDialog.addTitle")}</DialogTitle>
+            <DialogDescription>{editingRole ? t("staffing.roleDialog.editDescription") : t("staffing.roleDialog.addDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
-              <Label>Icon</Label>
+              <Label>{t("staffing.roleDialog.icon")}</Label>
               <div className="grid grid-cols-8 gap-1">
                 {ROLE_ICON_LIST.map((iconName) => (
                   <button key={iconName} type="button" onClick={() => setRoleForm((f) => ({ ...f, icon: iconName }))}
@@ -2394,11 +2396,11 @@ export default function StaffingPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Role Name *</Label>
-              <Input value={roleForm.name} onChange={(e) => setRoleForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Barista, Shift Lead, Cashier" />
+              <Label>{t("staffing.roleDialog.roleName")}</Label>
+              <Input value={roleForm.name} onChange={(e) => setRoleForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("staffing.roleDialog.roleNamePlaceholder")} />
             </div>
             <div className="space-y-1.5">
-              <Label>Color</Label>
+              <Label>{t("staffing.roleDialog.color")}</Label>
               <div className="flex gap-2">
                 {ROLE_COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
@@ -2407,13 +2409,13 @@ export default function StaffingPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Textarea value={roleForm.description} onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))} placeholder="What does this role do?" className="resize-none text-sm" rows={2} />
+              <Label>{t("staffing.roleDialog.description")}</Label>
+              <Textarea value={roleForm.description} onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))} placeholder={t("staffing.roleDialog.descriptionPlaceholder")} className="resize-none text-sm" rows={2} />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setRoleDialog(false)}>Cancel</Button>
-            <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? "Save" : "Add Role"}</Button>
+            <Button variant="outline" onClick={() => setRoleDialog(false)}>{t("common.cancel")}</Button>
+            <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -2421,20 +2423,20 @@ export default function StaffingPage() {
       <Dialog open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{taskDialog.task ? "Edit Task" : "Add Task"}</DialogTitle>
-            <DialogDescription>{taskDialog.task ? "Update this time-period task." : "Add a task for a specific time period in this role."}</DialogDescription>
+            <DialogTitle>{taskDialog.task ? t("staffing.taskDialog.editTitle") : t("staffing.taskDialog.addTitle")}</DialogTitle>
+            <DialogDescription>{taskDialog.task ? t("staffing.taskDialog.editDescription") : t("staffing.taskDialog.addDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
-              <Label>Task Title *</Label>
-              <Input value={taskForm.title} onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Open register, Prep station" />
+              <Label>{t("staffing.taskDialog.taskTitle")}</Label>
+              <Input value={taskForm.title} onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("staffing.taskDialog.taskTitlePlaceholder")} />
             </div>
             <div className="space-y-1.5">
-              <Label>Details <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Textarea value={taskForm.description} onChange={(e) => setTaskForm((f) => ({ ...f, description: e.target.value }))} placeholder="Step-by-step instructions or notes..." className="resize-none text-sm" rows={3} />
+              <Label>{t("staffing.taskDialog.details")} <span className="text-muted-foreground font-normal">{t("staffing.taskDialog.optional")}</span></Label>
+              <Textarea value={taskForm.description} onChange={(e) => setTaskForm((f) => ({ ...f, description: e.target.value }))} placeholder={t("staffing.taskDialog.detailsPlaceholder")} className="resize-none text-sm" rows={3} />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Time Window</Label>
+              <Label>{t("staffing.taskDialog.timeWindow")}</Label>
               <button onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${taskForm.hasTime ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}>
                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"}`} />
@@ -2442,14 +2444,14 @@ export default function StaffingPage() {
             </div>
             {taskForm.hasTime && (
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Start Time</Label><Input type="time" value={taskForm.startTime} onChange={(e) => setTaskForm((f) => ({ ...f, startTime: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label>End Time</Label><Input type="time" value={taskForm.endTime} onChange={(e) => setTaskForm((f) => ({ ...f, endTime: e.target.value }))} /></div>
+                <div className="space-y-1.5"><Label>{t("staffing.taskDialog.startTime")}</Label><Input type="time" value={taskForm.startTime} onChange={(e) => setTaskForm((f) => ({ ...f, startTime: e.target.value }))} /></div>
+                <div className="space-y-1.5"><Label>{t("staffing.taskDialog.endTime")}</Label><Input type="time" value={taskForm.endTime} onChange={(e) => setTaskForm((f) => ({ ...f, endTime: e.target.value }))} /></div>
               </div>
             )}
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>Cancel</Button>
-            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>{savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? "Save" : "Add Task"}</Button>
+            <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>{t("common.cancel")}</Button>
+            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>{savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -2595,9 +2597,9 @@ export default function StaffingPage() {
         {/* ─── TopBar: sticky, border-b, white bg ──────────────── */}
         <div className="sticky top-0 z-20 bg-white border-b border-stone-200 px-4 py-3 flex items-center justify-between">
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold text-stone-900 leading-tight">Staffing</h1>
+            <h1 className="text-xl font-semibold text-stone-900 leading-tight">{t("staffing.title")}</h1>
             <p className="text-[12px] text-stone-500 leading-tight">
-              {currentOrg?.name ?? "Store"} &middot; {activeMembers.length} active
+              {currentOrg?.name ?? t("staffing.store")} &middot; {activeMembers.length} {t("staffing.active")}
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -2645,13 +2647,13 @@ export default function StaffingPage() {
             <button
               key={tab}
               onClick={() => { hapticLight(); setMobileSection(tab); }}
-              className={`flex-1 py-2.5 text-[13px] text-center capitalize transition-colors ${
+              className={`flex-1 py-2.5 text-[13px] text-center transition-colors ${
                 mobileSection === tab
                   ? "font-semibold text-stone-900 border-b-2 border-stone-900"
                   : "font-medium text-stone-500"
               }`}
             >
-              {tab}
+              {t(`staffing.tabs.${tab}`)}
             </button>
           ))}
         </div>
@@ -2666,7 +2668,7 @@ export default function StaffingPage() {
             <div className="grid grid-cols-2 border-b border-stone-200">
               {/* On shift now */}
               <div className="px-4 py-3 border-r border-b border-stone-200">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">On shift now</p>
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.onShiftNow")}</p>
                 <p className="text-2xl font-semibold text-stone-900 mt-0.5">
                   {nowOnShift.length}
                   <span className="text-[15px] text-stone-400 font-normal"> / {activeMembers.length}</span>
@@ -2674,19 +2676,19 @@ export default function StaffingPage() {
               </div>
               {/* Today hours */}
               <div className="px-4 py-3 border-b border-stone-200">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Today hours</p>
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.todayHours")}</p>
                 <p className="text-2xl font-semibold text-stone-900 font-mono tabular-nums mt-0.5">{todayScheduledHours}h</p>
               </div>
               {/* Open requests */}
               <div className="px-4 py-3 border-r border-stone-200">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Open requests</p>
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.openRequests")}</p>
                 <p className={`text-2xl font-semibold mt-0.5 ${pendingCount > 0 ? "text-amber-600" : "text-stone-900"}`}>
                   {pendingCount}
                 </p>
               </div>
               {/* This week */}
               <div className="px-4 py-3">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">This week</p>
+                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.thisWeek")}</p>
                 <p className="text-2xl font-semibold text-stone-900 font-mono tabular-nums mt-0.5">{weekTotalHours}h</p>
               </div>
             </div>
@@ -2695,19 +2697,19 @@ export default function StaffingPage() {
             <div className="border-b border-stone-200">
               <div className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Currently on shift</p>
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.currentlyOnShift")}</p>
                   <span className="text-[10.5px] font-semibold text-stone-400 bg-stone-100 rounded px-1.5 py-0.5">{nowOnShift.length}</span>
                 </div>
               </div>
               {nowOnShift.length === 0 ? (
                 <div className="px-4 pb-3">
-                  <p className="text-[12px] text-stone-400">No one is currently on shift</p>
+                  <p className="text-[12px] text-stone-400">{t("staffing.overview.nobodyOnShift")}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-stone-200">
                   {nowOnShift.map((shift) => {
                     const member = team.find((m) => m.id === shift.memberId);
-                    const name = member?.displayName ?? shift.staffName ?? "Staff";
+                    const name = member?.displayName ?? shift.staffName ?? t("staffing.staff");
                     const matchedRoles = (shift.staffRoles ?? [])
                       .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
                       .filter(Boolean) as StaffRole[];
@@ -2723,7 +2725,7 @@ export default function StaffingPage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-medium text-stone-900 truncate leading-tight">{name}</p>
                           <p className="text-[11px] text-stone-500 leading-tight">
-                            {matchedRoles.map((r) => r.name).join(", ") || "Staff"}
+                            {matchedRoles.map((r) => r.name).join(", ") || t("staffing.staff")}
                           </p>
                         </div>
                         <span className="text-[11px] font-mono tabular-nums text-stone-700 shrink-0">
@@ -2741,18 +2743,22 @@ export default function StaffingPage() {
             {upNextToday.length > 0 && (
               <div className="border-b border-stone-200">
                 <div className="flex items-center gap-2 px-4 py-2.5">
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Up next today</p>
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.upNextToday")}</p>
                   <span className="text-[10.5px] font-semibold text-stone-400 bg-stone-100 rounded px-1.5 py-0.5">{upNextToday.length}</span>
                 </div>
                 <div className="divide-y divide-stone-200">
                   {upNextToday.map((shift) => {
                     const member = team.find((m) => m.id === shift.memberId);
-                    const name = member?.displayName ?? shift.staffName ?? "Staff";
+                    const name = member?.displayName ?? shift.staffName ?? t("staffing.staff");
                     const matchedRoles = (shift.staffRoles ?? [])
                       .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
                       .filter(Boolean) as StaffRole[];
                     const mins = minutesUntil(shift.startTime);
-                    const inLabel = mins >= 60 ? `in ${Math.floor(mins / 60)}h${mins % 60 > 0 ? ` ${mins % 60}m` : ""}` : `in ${mins}m`;
+                    const inLabel = mins >= 60
+                      ? (mins % 60 > 0
+                          ? t("staffing.overview.inHoursMinutes").replace("{h}", String(Math.floor(mins / 60))).replace("{min}", String(mins % 60))
+                          : t("staffing.overview.inHours").replace("{h}", String(Math.floor(mins / 60))))
+                      : t("staffing.overview.inMinutes").replace("{min}", String(mins));
                     return (
                       <button
                         key={shift.id}
@@ -2765,7 +2771,7 @@ export default function StaffingPage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-medium text-stone-900 truncate leading-tight">{name}</p>
                           <p className="text-[11px] text-stone-500 leading-tight">
-                            {matchedRoles.map((r) => r.name).join(", ") || "Staff"}
+                            {matchedRoles.map((r) => r.name).join(", ") || t("staffing.staff")}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
@@ -2785,7 +2791,7 @@ export default function StaffingPage() {
             {!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0) && (
               <div className="border-b border-stone-200">
                 <div className="flex items-center gap-2 px-4 py-2.5">
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Needs attention</p>
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.needsAttention")}</p>
                 </div>
                 <div className="divide-y divide-stone-200">
                   {/* Time off row */}
@@ -2798,10 +2804,10 @@ export default function StaffingPage() {
                         <CalendarX className="h-4 w-4 text-stone-700" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{pendingTimeOff.length} time-off request{pendingTimeOff.length !== 1 ? "s" : ""}</p>
-                        <p className="text-[11px] text-stone-500 leading-tight">Awaiting approval</p>
+                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{(pendingTimeOff.length === 1 ? t("staffing.overview.timeOffRequestSingular") : t("staffing.overview.timeOffRequestPlural")).replace("{count}", String(pendingTimeOff.length))}</p>
+                        <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.awaitingApproval")}</p>
                       </div>
-                      <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">Pending</span>
+                      <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">{t("staffing.pending")}</span>
                     </button>
                   )}
                   {/* Trades row */}
@@ -2814,10 +2820,10 @@ export default function StaffingPage() {
                         <ArrowLeftRight className="h-4 w-4 text-stone-700" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{pendingTrades.length} shift trade{pendingTrades.length !== 1 ? "s" : ""}</p>
-                        <p className="text-[11px] text-stone-500 leading-tight">Awaiting approval</p>
+                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{(pendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(pendingTrades.length))}</p>
+                        <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.awaitingApproval")}</p>
                       </div>
-                      <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">Pending</span>
+                      <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">{t("staffing.pending")}</span>
                     </button>
                   )}
                 </div>
@@ -2836,7 +2842,7 @@ export default function StaffingPage() {
             <div className="bg-white border-b border-stone-200">
               {/* Week nav header */}
               <div className="flex items-center justify-between px-4 py-2">
-                <p className="text-[12px] font-semibold text-stone-700">Week of {weekOfLabel}</p>
+                <p className="text-[12px] font-semibold text-stone-700">{t("staffing.schedule.weekOf").replace("{date}", weekOfLabel)}</p>
                 <div className="flex items-center gap-1">
                   <button onClick={prevWeek} className="h-7 w-7 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors">
                     <ChevronLeft className="h-3.5 w-3.5 text-stone-600" />
@@ -2889,7 +2895,7 @@ export default function StaffingPage() {
               <div>
                 <p className="text-[15px] font-semibold text-stone-900">{selectedDayLabel}</p>
                 <p className="text-[11px] font-mono tabular-nums text-stone-500">
-                  {selectedDayShifts.length} shift{selectedDayShifts.length !== 1 ? "s" : ""} &middot; {selectedDayHours}h
+                  {(selectedDayShifts.length === 1 ? t("staffing.schedule.shiftsCountSingular") : t("staffing.schedule.shiftsCountPlural")).replace("{count}", String(selectedDayShifts.length))} &middot; {selectedDayHours}h
                 </p>
               </div>
               {canEdit && (
@@ -2909,7 +2915,7 @@ export default function StaffingPage() {
                   }}
                   className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold border border-stone-200 rounded hover:bg-stone-100 text-stone-700 transition-colors"
                 >
-                  <Plus className="h-3 w-3" /> Add shift
+                  <Plus className="h-3 w-3" /> {t("staffing.header.addShiftShort")}
                 </button>
               )}
             </div>
@@ -2919,7 +2925,7 @@ export default function StaffingPage() {
               {selectedDayShifts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
                   <Clock className="h-6 w-6 text-stone-300 mb-2" />
-                  <p className="text-[13px] text-stone-400">No shifts scheduled</p>
+                  <p className="text-[13px] text-stone-400">{t("staffing.schedule.noShiftsScheduled")}</p>
                 </div>
               ) : (
                 <div className="relative" style={{ height: `${TIMELINE_HOURS_COUNT * 48}px` }}>
@@ -2964,7 +2970,7 @@ export default function StaffingPage() {
                     const matchedRoles = (shift.staffRoles ?? [])
                       .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
                       .filter(Boolean) as StaffRole[];
-                    const name = team.find((m) => m.id === shift.memberId)?.displayName ?? shift.staffName ?? "Staff";
+                    const name = team.find((m) => m.id === shift.memberId)?.displayName ?? shift.staffName ?? t("staffing.staff");
                     const firstName = name.split(" ")[0];
 
                     return (
@@ -3027,7 +3033,7 @@ export default function StaffingPage() {
                   onClick={() => setShowRequests(!showRequests)}
                   className="flex items-center gap-2 w-full px-4 py-2.5 border-b border-stone-200"
                 >
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Requests</p>
+                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.requests.title")}</p>
                   <span className="text-[10.5px] font-semibold text-white bg-stone-900 rounded px-1.5 py-0.5">
                     {pendingCount}
                   </span>
@@ -3049,13 +3055,13 @@ export default function StaffingPage() {
                             onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
                             className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
                           >
-                            <Check className="h-3 w-3" /> Approve
+                            <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
                           </button>
                           <button
                             onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
                             className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
                           >
-                            <Ban className="h-3 w-3" /> Deny
+                            <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                           </button>
                         </div>
                       </div>
@@ -3077,13 +3083,13 @@ export default function StaffingPage() {
                               onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
                               className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
                             >
-                              <Check className="h-3 w-3" /> Accept
+                              <Check className="h-3 w-3" /> {t("staffing.requests.accept")}
                             </button>
                             <button
                               onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
                               className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
                             >
-                              <Ban className="h-3 w-3" /> Deny
+                              <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                             </button>
                           </div>
                         </div>
@@ -3100,10 +3106,10 @@ export default function StaffingPage() {
         <Dialog open={roleDetailOpen && !!selectedRole} onOpenChange={(open) => { if (!open) { setRoleDetailOpen(false); } }}>
           <DialogContent noPadding>
             <DialogHeader>
-              <DialogTitle mobileTitle={selectedRole?.name ?? "Role"}>
-                {selectedRole?.name ?? "Role"}
+              <DialogTitle mobileTitle={selectedRole?.name ?? t("staffing.roles.rolePlaceholder")}>
+                {selectedRole?.name ?? t("staffing.roles.rolePlaceholder")}
               </DialogTitle>
-              <DialogDescription className="hidden">Role details and tasks</DialogDescription>
+              <DialogDescription className="hidden">{t("staffing.roleDialog.editDescription")}</DialogDescription>
             </DialogHeader>
             {selectedRole && (
               <div className="space-y-4 px-4 pb-4 overflow-y-auto">
@@ -3154,7 +3160,7 @@ export default function StaffingPage() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">Task Timeline</p>
+                    <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.roles.taskTimeline")}</p>
                     {canEdit && (
                       <button
                         onClick={() => {
@@ -3163,7 +3169,7 @@ export default function StaffingPage() {
                         }}
                         className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-stone-200 hover:bg-stone-50 transition-colors rounded"
                       >
-                        <Plus className="h-3 w-3" /> Add Task
+                        <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
                       </button>
                     )}
                   </div>
@@ -3174,7 +3180,7 @@ export default function StaffingPage() {
                   ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
                     <div className="text-center py-10">
                       <ClipboardList className="h-7 w-7 mx-auto text-stone-300 mb-2" />
-                      <p className="text-[13px] text-stone-400">No tasks yet.</p>
+                      <p className="text-[13px] text-stone-400">{t("staffing.roles.noTasksYetDot")}</p>
                     </div>
                   ) : (
                     <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
@@ -3230,11 +3236,11 @@ export default function StaffingPage() {
       <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
         <DialogContent className="max-w-md" noPadding>
           <DialogHeader>
-            <DialogTitle mobileTitle={editingShift ? "Edit shift" : "Create a shift"}>
-              {editingShift ? "Edit shift" : "Create a shift"}
+            <DialogTitle mobileTitle={editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}>
+              {editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}
             </DialogTitle>
             <DialogDescription className="hidden">
-              {editingShift ? "Update shift details." : "Schedule a shift."}
+              {editingShift ? t("staffing.shiftDialog.editDescription") : t("staffing.shiftDialog.createDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -3283,18 +3289,18 @@ export default function StaffingPage() {
                 {/* Time Template */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">Time Template</span>
+                    <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">{t("staffing.shiftDialog.timeTemplate")}</span>
                     {canEdit && (
                       <button
                         onClick={() => { setEditingPreset(null); setPresetForm({ name: "", startTime: shiftForm.startTime, endTime: shiftForm.endTime, color: "#44403c" }); setPresetDialog(true); }}
                         className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
                       >
-                        <Plus className="h-3 w-3" /> Add
+                        <Plus className="h-3 w-3" /> {t("staffing.shiftDialog.addTemplate")}
                       </button>
                     )}
                   </div>
                   {allPresets.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No templates yet. Add one to quickly fill shift times.</p>
+                    <p className="text-xs text-muted-foreground">{t("staffing.shiftDialog.noTemplatesYet")}</p>
                   ) : (
                     <div className="flex gap-1.5 flex-wrap">
                       {allPresets.map((p) => {
@@ -3335,14 +3341,14 @@ export default function StaffingPage() {
                 {/* Employee & Role side by side */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Assign employee</Label>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.assignEmployee")}</Label>
                     <Select
                       value={shiftForm.memberId}
                       onValueChange={(v) => setShiftForm((f) => ({ ...f, memberId: v ?? "" }))}
                     >
                       <SelectTrigger className="mt-1 border-0 border-b border-border rounded-none px-0 shadow-none focus:ring-0">
-                        <SelectValue placeholder="Select...">
-                          {team.find((m) => m.id === shiftForm.memberId)?.displayName ?? "Select..."}
+                        <SelectValue placeholder={t("staffing.shiftDialog.selectPlaceholder")}>
+                          {team.find((m) => m.id === shiftForm.memberId)?.displayName ?? t("staffing.shiftDialog.selectPlaceholder")}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -3353,7 +3359,7 @@ export default function StaffingPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Roles</Label>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.rolesLabel")}</Label>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {roles.map((r) => {
                         const selected = shiftForm.roleNames.includes(r.name);
@@ -3383,9 +3389,9 @@ export default function StaffingPage() {
 
                 {/* Shift notes */}
                 <div>
-                  <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Shift notes</Label>
+                  <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.shiftNotes")}</Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Let the employee know any important details about the shift.
+                    {t("staffing.shiftDialog.shiftNotesHint")}
                   </p>
                 </div>
               </div>
@@ -3398,7 +3404,7 @@ export default function StaffingPage() {
                 disabled={saving || (!editingShift && !shiftForm.memberId)}
                 className="w-full h-12 text-sm font-semibold"
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? "Save shift" : "Create shift"}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? t("staffing.shiftDialog.saveCta") : t("staffing.shiftDialog.createCta")}
               </Button>
             </div>
           </div>
@@ -3409,15 +3415,15 @@ export default function StaffingPage() {
       <Dialog open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
         <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingRole ? "Edit Role" : "Add Role"}</DialogTitle>
+            <DialogTitle>{editingRole ? t("staffing.roleDialog.editTitle") : t("staffing.roleDialog.addTitle")}</DialogTitle>
             <DialogDescription>
-              {editingRole ? "Update this role's details and permissions." : "Define a new staff role."}
+              {editingRole ? t("staffing.roleDialog.editDescription") : t("staffing.roleDialog.addDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             {/* Icon picker */}
             <div className="space-y-1.5">
-              <Label>Icon</Label>
+              <Label>{t("staffing.roleDialog.icon")}</Label>
               <div className="grid grid-cols-8 gap-1">
                 {ROLE_ICON_LIST.map((iconName) => (
                   <button
@@ -3439,17 +3445,17 @@ export default function StaffingPage() {
 
             {/* Role name */}
             <div className="space-y-1.5">
-              <Label>Role Name *</Label>
+              <Label>{t("staffing.roleDialog.roleName")}</Label>
               <Input
                 value={roleForm.name}
                 onChange={(e) => setRoleForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Barista, Shift Lead, Cashier"
+                placeholder={t("staffing.roleDialog.roleNamePlaceholder")}
               />
             </div>
 
             {/* Color picker */}
             <div className="space-y-1.5">
-              <Label>Color</Label>
+              <Label>{t("staffing.roleDialog.color")}</Label>
               <div className="flex gap-2">
                 {ROLE_COLORS.map((c) => (
                   <button
@@ -3467,11 +3473,11 @@ export default function StaffingPage() {
 
             {/* Description */}
             <div className="space-y-1.5">
-              <Label>Description</Label>
+              <Label>{t("staffing.roleDialog.description")}</Label>
               <Textarea
                 value={roleForm.description}
                 onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="What does this role do?"
+                placeholder={t("staffing.roleDialog.descriptionPlaceholder")}
                 className="resize-none text-sm"
                 rows={2}
               />
@@ -3480,10 +3486,10 @@ export default function StaffingPage() {
             {/* Permissions */}
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
-                <Shield className="h-3.5 w-3.5" /> Permissions
+                <Shield className="h-3.5 w-3.5" /> {t("staffing.roleDialog.permissionsLabel")}
               </Label>
               <div className="space-y-0.5">
-                {ROLE_PERMISSION_LABELS.map(({ key, label }) => (
+                {ROLE_PERMISSION_KEYS.map(({ key, tKey }) => (
                   <label key={key} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-muted/50 cursor-pointer">
                     <input
                       type="checkbox"
@@ -3496,16 +3502,16 @@ export default function StaffingPage() {
                       }
                       className="h-4 w-4 accent-stone-900 cursor-pointer"
                     />
-                    <span className="text-sm">{label}</span>
+                    <span className="text-sm">{t(tKey)}</span>
                   </label>
                 ))}
               </div>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setRoleDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRoleDialog(false)}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? "Save" : "Add Role"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}
             </Button>
           </div>
         </DialogContent>
@@ -3515,32 +3521,32 @@ export default function StaffingPage() {
       <Dialog open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{taskDialog.task ? "Edit Task" : "Add Task"}</DialogTitle>
+            <DialogTitle>{taskDialog.task ? t("staffing.taskDialog.editTitle") : t("staffing.taskDialog.addTitle")}</DialogTitle>
             <DialogDescription>
-              {taskDialog.task ? "Update this time-period task." : "Add a task for a specific time period in this role."}
+              {taskDialog.task ? t("staffing.taskDialog.editDescription") : t("staffing.taskDialog.addDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
-              <Label>Task Title *</Label>
+              <Label>{t("staffing.taskDialog.taskTitle")}</Label>
               <Input
                 value={taskForm.title}
                 onChange={(e) => setTaskForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. Open register, Prep station, Brief team"
+                placeholder={t("staffing.taskDialog.taskTitlePlaceholderAlt")}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Details <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label>{t("staffing.taskDialog.details")} <span className="text-muted-foreground font-normal">{t("staffing.taskDialog.optional")}</span></Label>
               <Textarea
                 value={taskForm.description}
                 onChange={(e) => setTaskForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Step-by-step instructions or notes..."
+                placeholder={t("staffing.taskDialog.detailsPlaceholder")}
                 className="resize-none text-sm"
                 rows={3}
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Time Window</Label>
+              <Label>{t("staffing.taskDialog.timeWindow")}</Label>
               <button
                 onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
@@ -3555,7 +3561,7 @@ export default function StaffingPage() {
             {taskForm.hasTime && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Start Time</Label>
+                  <Label>{t("staffing.taskDialog.startTime")}</Label>
                   <Input
                     type="time"
                     value={taskForm.startTime}
@@ -3563,7 +3569,7 @@ export default function StaffingPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>End Time</Label>
+                  <Label>{t("staffing.taskDialog.endTime")}</Label>
                   <Input
                     type="time"
                     value={taskForm.endTime}
@@ -3574,8 +3580,8 @@ export default function StaffingPage() {
             )}
             <div className="flex items-center justify-between">
               <div>
-                <Label>Require Evidence</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Staff must upload a photo/video to complete</p>
+                <Label>{t("staffing.taskDialog.requireEvidence")}</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("staffing.taskDialog.requireEvidenceHint")}</p>
               </div>
               <button
                 onClick={() => setTaskForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
@@ -3589,8 +3595,8 @@ export default function StaffingPage() {
               </button>
             </div>
             <div className="space-y-1.5">
-              <Label>Notify Chat on Completion</Label>
-              <p className="text-xs text-muted-foreground">Send a message to selected chats when this task is completed</p>
+              <Label>{t("staffing.taskDialog.notifyChat")}</Label>
+              <p className="text-xs text-muted-foreground">{t("staffing.taskDialog.notifyChatHint")}</p>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {chatOptions.filter((c) => c.type === "group").map((c) => {
                   const selected = taskForm.notifyChats.includes(c.id);
@@ -3609,20 +3615,20 @@ export default function StaffingPage() {
                           : "border-border text-stone-500 hover:bg-stone-50"
                       }`}
                     >
-                      {c.name ?? "Unnamed"}
+                      {c.name ?? t("staffing.unnamed")}
                     </button>
                   );
                 })}
                 {chatOptions.filter((c) => c.type === "group").length === 0 && (
-                  <p className="text-xs text-muted-foreground">No group chats available</p>
+                  <p className="text-xs text-muted-foreground">{t("staffing.taskDialog.noGroupChats")}</p>
                 )}
               </div>
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>Cancel</Button>
+            <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>
-              {savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? "Save" : "Add Task"}
+              {savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}
             </Button>
           </div>
         </DialogContent>
@@ -3638,16 +3644,16 @@ export default function StaffingPage() {
                   <RoleIconComp name={viewTasksDialog.role.icon} className="h-4 w-4" />
                 </div>
               )}
-              {viewTasksDialog.role?.name ?? "Role"} Tasks
+              {t("staffing.roles.roleTasksTitle").replace("{role}", viewTasksDialog.role?.name ?? t("staffing.roles.rolePlaceholder"))}
             </DialogTitle>
             <DialogDescription>
-              {viewTasksDialog.role?.description || "Tasks for your shift role today."}
+              {viewTasksDialog.role?.description || t("staffing.roles.roleTasksDefaultDesc")}
             </DialogDescription>
           </DialogHeader>
           {viewTasksDialog.role && (
             <div className="py-1">
               {(roleTasksCache[viewTasksDialog.role.id] ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">No tasks defined for this role yet.</p>
+                <p className="text-sm text-muted-foreground text-center py-6">{t("staffing.roles.noTasksDefined")}</p>
               ) : (
                 <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: viewTasksDialog.role.color }}>
                   {(roleTasksCache[viewTasksDialog.role.id] ?? []).map((task) => (
@@ -3672,7 +3678,7 @@ export default function StaffingPage() {
             </div>
           )}
           <div className="flex justify-end pt-1">
-            <Button variant="outline" onClick={() => setViewTasksDialog({ open: false, role: null })}>Close</Button>
+            <Button variant="outline" onClick={() => setViewTasksDialog({ open: false, role: null })}>{t("staffing.viewTasksDialog.closeCta")}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -3681,14 +3687,14 @@ export default function StaffingPage() {
       <Dialog open={tradeDialog.open} onOpenChange={(open) => { if (!open) setTradeDialog({ open: false, shift: null }); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Trade Shift</DialogTitle>
-            <DialogDescription>Select a co-worker&apos;s shift to trade with.</DialogDescription>
+            <DialogTitle>{t("staffing.tradeDialog.title")}</DialogTitle>
+            <DialogDescription>{t("staffing.tradeDialog.description")}</DialogDescription>
           </DialogHeader>
           {tradeDialog.shift && (
             <div className="space-y-4 py-1">
               {/* Your shift */}
               <div className="bg-stone-50 border border-border p-3">
-                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Your shift</p>
+                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">{t("staffing.tradeDialog.yourShift")}</p>
                 <p className="text-sm font-semibold text-stone-900">
                   {new Date(tradeDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
                     weekday: "short", month: "short", day: "numeric",
@@ -3696,14 +3702,14 @@ export default function StaffingPage() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {formatTime(tradeDialog.shift.startTime)} – {formatTime(tradeDialog.shift.endTime)}
-                  &nbsp;&middot;&nbsp;{currentOrg?.name ?? "Store"}
+                  &nbsp;&middot;&nbsp;{currentOrg?.name ?? t("staffing.store")}
                 </p>
               </div>
 
               {/* Filters */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Filter by date</Label>
+                  <Label className="text-xs">{t("staffing.tradeDialog.filterByDate")}</Label>
                   <Input
                     type="date"
                     value={tradeDate}
@@ -3712,13 +3718,13 @@ export default function StaffingPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Search co-workers</Label>
+                  <Label className="text-xs">{t("staffing.tradeDialog.searchCoworkers")}</Label>
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
                     <Input
                       value={tradeSearch}
                       onChange={(e) => setTradeSearch(e.target.value)}
-                      placeholder="Name..."
+                      placeholder={t("staffing.tradeDialog.namePlaceholder")}
                       className="h-8 pl-7 text-sm"
                     />
                   </div>
@@ -3728,7 +3734,7 @@ export default function StaffingPage() {
               {/* Coworker list */}
               <div className="border border-border divide-y divide-border max-h-48 overflow-y-auto">
                 {filteredCoworkers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No co-workers with upcoming shifts.</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t("staffing.tradeDialog.noCoworkers")}</p>
                 ) : (
                   filteredCoworkers.flatMap((c) =>
                     (tradeDate
@@ -3775,9 +3781,9 @@ export default function StaffingPage() {
             </div>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setTradeDialog({ open: false, shift: null })}>Cancel</Button>
+            <Button variant="outline" onClick={() => setTradeDialog({ open: false, shift: null })}>{t("common.cancel")}</Button>
             <Button onClick={handleTradeRequest} disabled={savingTrade || !selectedTradeTarget}>
-              {savingTrade ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Request"}
+              {savingTrade ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.tradeDialog.sendRequest")}
             </Button>
           </div>
         </DialogContent>
@@ -3787,14 +3793,14 @@ export default function StaffingPage() {
       <Dialog open={coverDialog.open} onOpenChange={(open) => { if (!open) setCoverDialog({ open: false, shift: null }); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Find Cover</DialogTitle>
-            <DialogDescription>Select a co-worker to cover your shift.</DialogDescription>
+            <DialogTitle>{t("staffing.coverDialog.title")}</DialogTitle>
+            <DialogDescription>{t("staffing.coverDialog.description")}</DialogDescription>
           </DialogHeader>
           {coverDialog.shift && (
             <div className="space-y-4 py-1">
               {/* Your shift */}
               <div className="bg-stone-50 border border-border p-3">
-                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Your shift</p>
+                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">{t("staffing.coverDialog.yourShift")}</p>
                 <p className="text-sm font-semibold text-stone-900">
                   {new Date(coverDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
                     weekday: "short", month: "short", day: "numeric",
@@ -3802,14 +3808,14 @@ export default function StaffingPage() {
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {formatTime(coverDialog.shift.startTime)} – {formatTime(coverDialog.shift.endTime)}
-                  &nbsp;&middot;&nbsp;{currentOrg?.name ?? "Store"}
+                  &nbsp;&middot;&nbsp;{currentOrg?.name ?? t("staffing.store")}
                 </p>
               </div>
 
               {/* Team list */}
               <div className="border border-border divide-y divide-border max-h-52 overflow-y-auto">
                 {team.filter((m) => m.id !== myMemberId).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No other team members.</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t("staffing.coverDialog.noOtherMembers")}</p>
                 ) : (
                   team
                     .filter((m) => m.id !== myMemberId)
@@ -3840,9 +3846,9 @@ export default function StaffingPage() {
             </div>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setCoverDialog({ open: false, shift: null })}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCoverDialog({ open: false, shift: null })}>{t("common.cancel")}</Button>
             <Button onClick={handleCoverRequest} disabled={savingCover || !selectedCover}>
-              {savingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Request"}
+              {savingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.coverDialog.sendRequest")}
             </Button>
           </div>
         </DialogContent>
@@ -3852,27 +3858,27 @@ export default function StaffingPage() {
       <Dialog open={availDialog} onOpenChange={setAvailDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Set Availability</DialogTitle>
-            <DialogDescription>Set your regular availability for scheduling.</DialogDescription>
+            <DialogTitle>{t("staffing.availDialog.title")}</DialogTitle>
+            <DialogDescription>{t("staffing.availDialog.description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             {/* Type */}
             <div className="space-y-1.5">
-              <Label>Type</Label>
+              <Label>{t("staffing.availDialog.type")}</Label>
               <div className="flex border border-border overflow-hidden w-fit">
-                {(["permanent", "temporary"] as const).map((t, i) => (
+                {(["permanent", "temporary"] as const).map((tp, i) => (
                   <button
-                    key={t}
-                    onClick={() => setAvailForm((f) => ({ ...f, type: t }))}
+                    key={tp}
+                    onClick={() => setAvailForm((f) => ({ ...f, type: tp }))}
                     className={`px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${
                       i > 0 ? "border-l border-border" : ""
                     } ${
-                      availForm.type === t
+                      availForm.type === tp
                         ? "bg-stone-900 text-white"
                         : "bg-white text-stone-600 hover:bg-stone-50"
                     }`}
                   >
-                    {t}
+                    {t(`staffing.availDialog.${tp}`)}
                   </button>
                 ))}
               </div>
@@ -3882,7 +3888,7 @@ export default function StaffingPage() {
             {availForm.type === "temporary" && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Start Date</Label>
+                  <Label>{t("staffing.availDialog.startDate")}</Label>
                   <Input
                     type="date"
                     value={availForm.startDate}
@@ -3890,7 +3896,7 @@ export default function StaffingPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>End Date</Label>
+                  <Label>{t("staffing.availDialog.endDate")}</Label>
                   <Input
                     type="date"
                     value={availForm.endDate}
@@ -3902,13 +3908,13 @@ export default function StaffingPage() {
 
             {/* Day selector */}
             <div className="space-y-1.5">
-              <Label>Available Days</Label>
+              <Label>{t("staffing.availDialog.availableDays")}</Label>
               <div className="flex gap-1.5">
-                {DAY_NAMES.map((d, i) => {
+                {DAY_NAME_KEYS.map((dKey, i) => {
                   const enabled = !!availForm.dayTimes[i]?.enabled;
                   return (
                     <button
-                      key={d}
+                      key={dKey}
                       onClick={() =>
                         setAvailForm((f) => {
                           const base = normalizeDayTimes(f.dayTimes);
@@ -3922,7 +3928,7 @@ export default function StaffingPage() {
                           : "bg-white text-stone-500 border-border hover:bg-stone-50"
                       }`}
                     >
-                      {d}
+                      {t(dKey)}
                     </button>
                   );
                 })}
@@ -3931,16 +3937,16 @@ export default function StaffingPage() {
 
             {/* Status */}
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label>{t("staffing.availDialog.status")}</Label>
               <Select
                 value={availForm.status}
                 onValueChange={(v) => setAvailForm((f) => ({ ...f, status: v ?? f.status }))}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="unavailable">Unavailable</SelectItem>
-                  <SelectItem value="preferred">Preferred</SelectItem>
+                  <SelectItem value="available">{t("staffing.availDialog.available")}</SelectItem>
+                  <SelectItem value="unavailable">{t("staffing.availDialog.unavailable")}</SelectItem>
+                  <SelectItem value="preferred">{t("staffing.availDialog.preferred")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -3950,11 +3956,11 @@ export default function StaffingPage() {
               {availForm.dayTimes.map((dt, i) => {
                 if (!dt.enabled) return null;
                 return (
-                  <div key={DAY_NAMES[i]} className="space-y-1.5 rounded border border-border p-2.5">
+                  <div key={DAY_NAME_KEYS[i]} className="space-y-1.5 rounded border border-border p-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-stone-700">{DAY_NAMES[i]}</span>
+                      <span className="text-xs font-semibold text-stone-700">{t(DAY_NAME_KEYS[i])}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-muted-foreground">Full Day</span>
+                        <span className="text-[10px] text-muted-foreground">{t("staffing.availDialog.fullDay")}</span>
                         <button onClick={() => setAvailForm((f) => {
                           const dayTimes = f.dayTimes.map((d, j) => j === i ? { ...d, fullDay: !d.fullDay } : d);
                           return { ...f, dayTimes };
@@ -3984,20 +3990,20 @@ export default function StaffingPage() {
 
             {/* Comments */}
             <div className="space-y-1.5">
-              <Label>Comments</Label>
+              <Label>{t("staffing.availDialog.comments")}</Label>
               <Textarea
                 value={availForm.comments}
                 onChange={(e) => setAvailForm((f) => ({ ...f, comments: e.target.value }))}
-                placeholder="Any notes about your availability..."
+                placeholder={t("staffing.availDialog.commentsPlaceholder")}
                 rows={2}
                 className="resize-none text-sm"
               />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setAvailDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAvailDialog(false)}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveAvailability} disabled={savingAvail}>
-              {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.availDialog.saveCta")}
             </Button>
           </div>
         </DialogContent>
@@ -4007,13 +4013,13 @@ export default function StaffingPage() {
       <Dialog open={timeOffDialog} onOpenChange={setTimeOffDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Request Time Off</DialogTitle>
-            <DialogDescription>Submit a time off request for your manager to review.</DialogDescription>
+            <DialogTitle>{t("staffing.timeOffDialog.title")}</DialogTitle>
+            <DialogDescription>{t("staffing.timeOffDialog.description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-1">
             {/* Full Days toggle */}
             <div className="flex items-center justify-between">
-              <Label className="cursor-pointer">Full Days</Label>
+              <Label className="cursor-pointer">{t("staffing.timeOffDialog.fullDays")}</Label>
               <button
                 onClick={() => setTimeOffForm((f) => ({ ...f, fullDays: !f.fullDays }))}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
@@ -4032,7 +4038,7 @@ export default function StaffingPage() {
             {/* Dates */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Start Date</Label>
+                <Label>{t("staffing.timeOffDialog.startDate")}</Label>
                 <Input
                   type="date"
                   value={timeOffForm.startDate}
@@ -4040,7 +4046,7 @@ export default function StaffingPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>End Date</Label>
+                <Label>{t("staffing.timeOffDialog.endDate")}</Label>
                 <Input
                   type="date"
                   value={timeOffForm.endDate}
@@ -4053,7 +4059,7 @@ export default function StaffingPage() {
             {!timeOffForm.fullDays && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Start Time</Label>
+                  <Label>{t("staffing.timeOffDialog.startTime")}</Label>
                   <Input
                     type="time"
                     value={timeOffForm.startTime}
@@ -4061,7 +4067,7 @@ export default function StaffingPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>End Time</Label>
+                  <Label>{t("staffing.timeOffDialog.endTime")}</Label>
                   <Input
                     type="time"
                     value={timeOffForm.endTime}
@@ -4073,11 +4079,11 @@ export default function StaffingPage() {
 
             {/* Comments */}
             <div className="space-y-1.5">
-              <Label>Comments</Label>
+              <Label>{t("staffing.timeOffDialog.comments")}</Label>
               <Textarea
                 value={timeOffForm.comments}
                 onChange={(e) => setTimeOffForm((f) => ({ ...f, comments: e.target.value }))}
-                placeholder="Reason for time off..."
+                placeholder={t("staffing.timeOffDialog.commentsPlaceholder")}
                 rows={3}
                 className="resize-none text-sm"
               />
@@ -4088,7 +4094,7 @@ export default function StaffingPage() {
             disabled={savingTimeOff || !timeOffForm.startDate || !timeOffForm.endDate}
             className="w-full mt-1 bg-stone-900 hover:bg-stone-800 text-white"
           >
-            {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create time off request"}
+            {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.timeOffDialog.submitCta")}
           </Button>
         </DialogContent>
       </Dialog>
@@ -4096,20 +4102,20 @@ export default function StaffingPage() {
       <AlertDialog open={!!deletePresetConfirm} onOpenChange={(open) => { if (!open) setDeletePresetConfirm(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogTitle>{t("staffing.deletePresetDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this time template? This action cannot be undone.
+              {t("staffing.deletePresetDialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeletePresetConfirm(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeletePresetConfirm(null)}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletePresetConfirm) handleDeletePreset(deletePresetConfirm);
                 setDeletePresetConfirm(null);
               }}
             >
-              Delete
+              {t("staffing.deletePresetDialog.deleteCta")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -4119,26 +4125,26 @@ export default function StaffingPage() {
       <Dialog open={presetDialog} onOpenChange={(open) => { if (!open) { setPresetDialog(false); setEditingPreset(null); } }}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle>{editingPreset ? "Edit Preset" : "New Preset"}</DialogTitle>
-            <DialogDescription>Save a reusable shift time template.</DialogDescription>
+            <DialogTitle>{editingPreset ? t("staffing.presetDialog.editTitle") : t("staffing.presetDialog.addTitle")}</DialogTitle>
+            <DialogDescription>{t("staffing.presetDialog.description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
-              <Label>Name</Label>
-              <Input value={presetForm.name} onChange={(e) => setPresetForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Early Morning" />
+              <Label>{t("staffing.presetDialog.name")}</Label>
+              <Input value={presetForm.name} onChange={(e) => setPresetForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("staffing.presetDialog.namePlaceholder")} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Start Time</Label>
+                <Label>{t("staffing.presetDialog.startTime")}</Label>
                 <Input type="time" value={presetForm.startTime} onChange={(e) => setPresetForm((f) => ({ ...f, startTime: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <Label>End Time</Label>
+                <Label>{t("staffing.presetDialog.endTime")}</Label>
                 <Input type="time" value={presetForm.endTime} onChange={(e) => setPresetForm((f) => ({ ...f, endTime: e.target.value }))} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Color</Label>
+              <Label>{t("staffing.presetDialog.color")}</Label>
               <div className="flex gap-2 flex-wrap">
                 {["#44403c", "#dc2626", "#ea580c", "#d97706", "#16a34a", "#0891b2", "#2563eb", "#7c3aed", "#db2777"].map((c) => (
                   <button
@@ -4155,14 +4161,14 @@ export default function StaffingPage() {
             <div>
               {editingPreset && (
                 <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => { handleDeletePreset(editingPreset.id); setPresetDialog(false); setEditingPreset(null); }}>
-                  Delete
+                  {t("staffing.presetDialog.deleteCta")}
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => { setPresetDialog(false); setEditingPreset(null); }}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setPresetDialog(false); setEditingPreset(null); }}>{t("common.cancel")}</Button>
               <Button onClick={handleSavePreset} disabled={!presetForm.name}>
-                {editingPreset ? "Save" : "Create"}
+                {editingPreset ? t("staffing.presetDialog.saveCta") : t("staffing.presetDialog.createCta")}
               </Button>
             </div>
           </div>
@@ -4173,20 +4179,20 @@ export default function StaffingPage() {
       <Dialog open={downloadDialog} onOpenChange={(open) => { if (!open) setDownloadDialog(false); }}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle>Export Schedule</DialogTitle>
-            <DialogDescription>Select date range and format.</DialogDescription>
+            <DialogTitle>{t("staffing.exportDialog.title")}</DialogTitle>
+            <DialogDescription>{t("staffing.exportDialog.description")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
-              <Label>Start Date</Label>
+              <Label>{t("staffing.exportDialog.startDate")}</Label>
               <Input type="date" value={downloadRange.start} onChange={(e) => setDownloadRange((r) => ({ ...r, start: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label>End Date</Label>
+              <Label>{t("staffing.exportDialog.endDate")}</Label>
               <Input type="date" value={downloadRange.end} onChange={(e) => setDownloadRange((r) => ({ ...r, end: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label>Format</Label>
+              <Label>{t("staffing.exportDialog.format")}</Label>
               <div className="flex border border-border overflow-hidden w-fit rounded">
                 {(["pdf", "png", "csv"] as const).map((fmt, i) => (
                   <button key={fmt} onClick={() => setDownloadFormat(fmt)}
@@ -4197,7 +4203,7 @@ export default function StaffingPage() {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setDownloadDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDownloadDialog(false)}>{t("common.cancel")}</Button>
             <Button
               disabled={!downloadRange.start || !downloadRange.end || downloadRange.start > downloadRange.end}
               onClick={() => {
@@ -4208,7 +4214,7 @@ export default function StaffingPage() {
                 else handleDownloadCSV(start, end);
               }}
             >
-              <Download className="h-4 w-4 mr-1.5" /> Export
+              <Download className="h-4 w-4 mr-1.5" /> {t("staffing.exportDialog.exportCta")}
             </Button>
           </div>
         </DialogContent>
@@ -4231,8 +4237,8 @@ export default function StaffingPage() {
           <Dialog open onOpenChange={(open) => { if (!open) setShiftDetailShift(null); }}>
             <DialogContent className="max-w-sm p-0 overflow-hidden">
               <DialogHeader className="sr-only">
-                <DialogTitle>Shift Details</DialogTitle>
-                <DialogDescription>Your shift on {dateLabel}</DialogDescription>
+                <DialogTitle>{t("staffing.shiftDetails.title")}</DialogTitle>
+                <DialogDescription>{t("staffing.shiftDetails.descriptionPrefix").replace("{date}", dateLabel)}</DialogDescription>
               </DialogHeader>
 
               {/* Top section */}
@@ -4248,7 +4254,7 @@ export default function StaffingPage() {
                     className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: SHIFT_COLORS[s.shiftType] }}
                   />
-                  <span className="text-sm text-stone-700">{currentOrg?.name ?? "Store"} · {SHIFT_LABELS[s.shiftType]}</span>
+                  <span className="text-sm text-stone-700">{currentOrg?.name ?? t("staffing.store")} · {t(SHIFT_LABEL_KEYS[s.shiftType])}</span>
                   {matchedRoles.map((r) => (
                     <span key={r.id} className="inline-flex items-center gap-1.5">
                       <span className="text-stone-300">·</span>
@@ -4261,14 +4267,14 @@ export default function StaffingPage() {
 
               {/* Working with */}
               <div className="border-t border-border px-5 py-3">
-                <p className="text-xs font-semibold text-stone-500 mb-2.5">Working with</p>
+                <p className="text-xs font-semibold text-stone-500 mb-2.5">{t("staffing.shiftDetails.workingWith")}</p>
                 {coworkerShifts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No other staff scheduled.</p>
+                  <p className="text-sm text-muted-foreground">{t("staffing.shiftDetails.noOtherStaff")}</p>
                 ) : (
                   <div className="space-y-2.5">
                     {coworkerShifts.map((cs) => {
                       const member = team.find((m) => m.id === cs.memberId);
-                      const name = member?.displayName ?? cs.staffName ?? "Staff";
+                      const name = member?.displayName ?? cs.staffName ?? t("staffing.staff");
                       const cwRoles = (cs.staffRoles ?? [])
                         .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
                         .filter(Boolean) as StaffRole[];
@@ -4300,9 +4306,11 @@ export default function StaffingPage() {
               {s.date === todayStr && todayTasks.length > 0 && (
                 <div className="border-t border-border px-5 py-3">
                   <div className="flex items-center justify-between mb-2.5">
-                    <p className="text-xs font-semibold text-stone-500">Tasks</p>
+                    <p className="text-xs font-semibold text-stone-500">{t("staffing.shiftDetails.tasks")}</p>
                     <span className="text-xs font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200">
-                      {todayTasks.filter((t) => taskCompletions[t.id]).length}/{todayTasks.length} done
+                      {t("staffing.shiftDetails.tasksDone")
+                        .replace("{done}", String(todayTasks.filter((tk) => taskCompletions[tk.id]).length))
+                        .replace("{total}", String(todayTasks.length))}
                     </span>
                   </div>
                   <div className="space-y-0.5">
@@ -4340,14 +4348,14 @@ export default function StaffingPage() {
                   className="w-full"
                   onClick={() => { setShiftDetailShift(null); openCoverDialog(s); }}
                 >
-                  <UserPlus className="h-4 w-4 mr-2" /> Find Cover
+                  <UserPlus className="h-4 w-4 mr-2" /> {t("staffing.shiftDetails.findCover")}
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full"
                   onClick={() => { setShiftDetailShift(null); openTradeDialog(s); }}
                 >
-                  <ArrowLeftRight className="h-4 w-4 mr-2" /> Trade Shift
+                  <ArrowLeftRight className="h-4 w-4 mr-2" /> {t("staffing.shiftDetails.tradeShift")}
                 </Button>
               </div>
             </DialogContent>

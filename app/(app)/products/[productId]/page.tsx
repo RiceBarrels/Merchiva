@@ -29,6 +29,7 @@ import { updateProduct } from "@/lib/spacetimedb/actions";
 import { getProductById } from "@/lib/db/products";
 import type { Product, SiteElement, SiteTheme } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 
 // ─── Default theme for preview ────────────────────────────────────────────────
@@ -46,7 +47,10 @@ const PREVIEW_THEME: SiteTheme = {
 
 // ─── Default template generator ───────────────────────────────────────────────
 
-function buildDefaultTemplate(product: Product): SiteElement[] {
+function buildDefaultTemplate(
+  product: Product,
+  t: (path: string) => string,
+): SiteElement[] {
   const base = Date.now();
   return [
     {
@@ -77,7 +81,7 @@ function buildDefaultTemplate(product: Product): SiteElement[] {
       id: `pt-desc-${base}`,
       type: "text",
       props: {
-        content: product.description || "No description available.",
+        content: product.description || t("products.detail.template.noDescription"),
         tag: "p",
         align: "center",
         padding: "0.5rem 2rem",
@@ -88,7 +92,7 @@ function buildDefaultTemplate(product: Product): SiteElement[] {
       id: `pt-btn-${base}`,
       type: "button",
       props: {
-        label: "Add to Cart",
+        label: t("products.detail.template.addToCart"),
         href: "#",
         variant: "primary",
         size: "lg",
@@ -142,6 +146,7 @@ function DetailsTab({
   product: Product;
   onSave: (updates: Partial<Product>) => Promise<void>;
 }) {
+  const t = useT();
   const [name, setName] = useState(product.name);
   const [category, setCategory] = useState(product.category);
   const [price, setPrice] = useState(product.price);
@@ -164,49 +169,49 @@ function DetailsTab({
     <div className="max-w-xl space-y-4 py-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label>Product Name</Label>
+          <Label>{t("products.detail.details.nameLabel")}</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Category</Label>
+          <Label>{t("products.detail.details.categoryLabel")}</Label>
           <Input value={category} onChange={(e) => setCategory(e.target.value)} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label>Price ($)</Label>
+          <Label>{t("products.detail.details.priceLabel")}</Label>
           <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(Number(e.target.value))} />
         </div>
         <div className="space-y-1.5">
-          <Label>Cost ($)</Label>
+          <Label>{t("products.detail.details.costLabel")}</Label>
           <Input type="number" step="0.01" value={cost} onChange={(e) => setCost(Number(e.target.value))} />
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>Description</Label>
+        <Label>{t("products.detail.details.descriptionLabel")}</Label>
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe this product for customers on your website…"
+          placeholder={t("products.detail.details.descriptionPlaceholder")}
           className="min-h-[100px] resize-none"
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Image URL</Label>
+        <Label>{t("products.detail.details.imageUrlLabel")}</Label>
         <Input
           value={imageUrl}
           onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://example.com/image.jpg"
+          placeholder={t("products.detail.details.imageUrlPlaceholder")}
         />
         {imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt="Preview" className="mt-2 h-32 w-32 object-cover rounded border" />
+          <img src={imageUrl} alt={t("products.detail.details.imageAlt")} className="mt-2 h-32 w-32 object-cover rounded border" />
         )}
       </div>
       <div className="flex justify-end pt-2">
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Details
+          {t("products.detail.details.save")}
         </Button>
       </div>
     </div>
@@ -224,17 +229,18 @@ function TemplateTab({
   productId: string;
   onSave: (updates: Partial<Product>) => Promise<void>;
 }) {
-  const elements = product.pageTemplate?.length ? product.pageTemplate : buildDefaultTemplate(product);
+  const t = useT();
+  const elements = product.pageTemplate?.length ? product.pageTemplate : buildDefaultTemplate(product, t);
   const initialState = siteElementsToCraftState(elements);
 
   const handleAutoSave = useCallback(async (newElements: SiteElement[]) => {
     try {
       await onSave({ pageTemplate: newElements });
-      toast.success("Template saved", { duration: 1500 });
+      toast.success(t("products.toasts.templateSaved"), { duration: 1500 });
     } catch (err) {
       console.error("Failed to save template:", err);
     }
-  }, [onSave]);
+  }, [onSave, t]);
 
   return (
     <div className="flex h-[calc(100vh-8rem)] overflow-hidden border rounded-[0.3rem]">
@@ -269,6 +275,7 @@ export default function ProductDetailPage({
 }: {
   params: Promise<{ productId: string }>;
 }) {
+  const t = useT();
   const { productId } = use(params);
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
@@ -298,7 +305,7 @@ export default function ProductDetailPage({
   if (!product) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground text-sm">Product not found.</p>
+        <p className="text-muted-foreground text-sm">{t("products.detail.notFound")}</p>
       </div>
     );
   }
@@ -313,7 +320,7 @@ export default function ProductDetailPage({
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Products
+            {t("products.detail.breadcrumb")}
           </button>
           <span className="text-muted-foreground">/</span>
           <span className="text-sm font-semibold truncate">{product.name}</span>
@@ -325,13 +332,13 @@ export default function ProductDetailPage({
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1.5 text-sm font-medium capitalize border-b-2 transition-colors -mb-px ${
+              className={`px-3 py-1.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 activeTab === tab
                   ? "border-foreground text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab === "template" ? "Page Template" : "Details"}
+              {tab === "template" ? t("products.detail.tabs.template") : t("products.detail.tabs.details")}
             </button>
           ))}
         </div>
