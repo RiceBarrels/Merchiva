@@ -81,6 +81,8 @@ import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
 import { useNavMode, type NavMode } from "@/lib/nav-mode";
 import { uploadFiles } from "@/lib/uploadthing";
 import { toast } from "sonner";
+import { useT, useI18n } from "@/lib/i18n/context";
+import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 
 interface SquareLocation {
   id: string;
@@ -89,6 +91,8 @@ interface SquareLocation {
 }
 
 export default function SettingsPage() {
+  const t = useT();
+  const { locale, setLocale } = useI18n();
   const searchParams = useSearchParams();
   const { role, organizationId, can } = usePermissions();
   const { signOut } = useAuth();
@@ -273,18 +277,18 @@ export default function SettingsPage() {
   useEffect(() => {
     // Square
     if (searchParams.get("connected") === "true") {
-      toast.success("Square connected successfully!");
+      toast.success(t("settings.toastSquareConnected"));
     }
     if (searchParams.get("error")) {
       const err = searchParams.get("error");
       const messages: Record<string, string> = {
-        oauth_denied: "Square authorization was denied.",
-        invalid_state: "Security check failed. Please try again.",
-        no_code: "No authorization code received.",
-        token_exchange_failed: "Failed to exchange authorization code.",
-        exchange_failed: "Connection failed. Please try again.",
+        oauth_denied: t("settings.sqErrOauthDenied"),
+        invalid_state: t("settings.sqErrInvalidState"),
+        no_code: t("settings.sqErrNoCode"),
+        token_exchange_failed: t("settings.sqErrTokenExchange"),
+        exchange_failed: t("settings.sqErrExchange"),
       };
-      toast.error(messages[err!] ?? "An error occurred connecting to Square.");
+      toast.error(messages[err!] ?? t("settings.sqErrDefault"));
     }
     if (searchParams.get("pickLocation") === "true") {
       setShowLocationPicker(true);
@@ -293,7 +297,7 @@ export default function SettingsPage() {
 
     // Clover
     if (searchParams.get("clover_connected") === "true") {
-      toast.success("Clover connected successfully!");
+      toast.success(t("settings.toastCloverConnected"));
       // Reload settings to reflect new connection
       getSettings()
         .then(setSettings)
@@ -302,12 +306,12 @@ export default function SettingsPage() {
     if (searchParams.get("clover_error")) {
       const err = searchParams.get("clover_error");
       const messages: Record<string, string> = {
-        no_code: "No authorization code received from Clover.",
-        token_exchange_failed: "Failed to exchange authorization code with Clover.",
-        missing_token: "Clover did not return a valid token.",
-        exchange_failed: "Connection failed. Please try again.",
+        no_code: t("settings.clErrNoCode"),
+        token_exchange_failed: t("settings.clErrTokenExchange"),
+        missing_token: t("settings.clErrMissingToken"),
+        exchange_failed: t("settings.clErrExchange"),
       };
-      toast.error(messages[err!] ?? "An error occurred connecting to Clover.");
+      toast.error(messages[err!] ?? t("settings.clErrDefault"));
     }
   }, [searchParams]);
 
@@ -318,7 +322,7 @@ export default function SettingsPage() {
       const json = await res.json();
       setLocations(json.locations ?? []);
     } catch {
-      toast.error("Failed to load locations.");
+      toast.error(t("settings.toastFailedLoadLocations"));
     } finally {
       setLoadingLocations(false);
     }
@@ -334,15 +338,15 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         setShowLocationPicker(false);
-        toast.success("Square connected successfully!");
+        toast.success(t("settings.toastSquareConnected"));
         const updated = await getSettings();
         setSettings(updated);
       } else {
         const err = await res.json();
-        toast.error(err.error ?? "Failed to select location.");
+        toast.error(err.error ?? t("settings.toastFailedSelectLocation"));
       }
     } catch {
-      toast.error("Failed to select location.");
+      toast.error(t("settings.toastFailedSelectLocation"));
     } finally {
       setSelectingLocation(false);
     }
@@ -359,7 +363,7 @@ export default function SettingsPage() {
         return next;
       });
       hapticSuccess();
-      toast.success("Profile saved");
+      toast.success(t("settings.toastProfileSaved"));
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 2500);
     } finally {
@@ -376,7 +380,7 @@ export default function SettingsPage() {
         taxRate: parseFloat(paymentTaxRate) || 0,
         currency: paymentCurrency,
       });
-      toast.success("Payment settings saved");
+      toast.success(t("settings.toastPaymentSaved"));
       setPaymentSaved(true);
       setTimeout(() => setPaymentSaved(false), 2500);
     } finally {
@@ -428,10 +432,10 @@ export default function SettingsPage() {
         const updated = await getSettings();
         setSettings(updated);
       } else {
-        setSquareSyncResult(`Error: ${json.error}`);
+        setSquareSyncResult(`${t("settings.errorPrefix")}: ${json.error}`);
       }
     } catch {
-      setSquareSyncResult("Sync failed. Check your connection and try again.");
+      setSquareSyncResult(t("settings.syncFailedGeneric"));
     } finally {
       setSquareSyncing(false);
     }
@@ -459,16 +463,24 @@ export default function SettingsPage() {
         const updated = await getSettings();
         setSettings(updated);
       } else {
-        setCloverSyncResult(`Error: ${json.error}`);
+        setCloverSyncResult(`${t("settings.errorPrefix")}: ${json.error}`);
       }
     } catch {
-      setCloverSyncResult("Sync failed. Check your connection and try again.");
+      setCloverSyncResult(t("settings.syncFailedGeneric"));
     } finally {
       setCloverSyncing(false);
     }
   };
 
-  const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const DAY_NAMES = [
+    t("availability.daySun"),
+    t("availability.dayMon"),
+    t("availability.dayTue"),
+    t("availability.dayWed"),
+    t("availability.dayThu"),
+    t("availability.dayFri"),
+    t("availability.daySat"),
+  ];
 
   const loadTeam = async () => {
     if (!organizationId) return;
@@ -534,16 +546,16 @@ export default function SettingsPage() {
           });
           if (!res.ok) {
             const { error } = await res.json().catch(() => ({ error: "email error" }));
-            toast.warning(`Invitation created, but email failed: ${error}`);
+            toast.warning(`${t("settings.toastInviteEmailFailedPrefix")} ${error}`);
           } else {
-            toast.success("Invitation sent");
+            toast.success(t("settings.toastInvitationSent"));
           }
         } catch (emailErr) {
           console.error("Invite email failed:", emailErr);
-          toast.warning("Invitation created, but email failed to send.");
+          toast.warning(t("settings.toastInviteEmailFailed"));
         }
       } else {
-        toast.warning("Invitation created, but could not send email (token not found).");
+        toast.warning(t("settings.toastInviteNoToken"));
       }
 
       setInviteDialog(false);
@@ -552,7 +564,7 @@ export default function SettingsPage() {
       setInvitePerms(defaultPermissions());
       loadTeam();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send invitation.");
+      toast.error(err instanceof Error ? err.message : t("settings.toastFailedSendInvitation"));
     } finally {
       setInviting(false);
     }
@@ -683,28 +695,28 @@ export default function SettingsPage() {
         <Dialog open={availDialog} onOpenChange={setAvailDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle mobileTitle="Availability">Set Availability</DialogTitle>
-              <DialogDescription>Set your regular availability for scheduling.</DialogDescription>
+              <DialogTitle mobileTitle={t("availability.mobileTitle")}>{t("availability.title")}</DialogTitle>
+              <DialogDescription>{t("availability.subtitle")}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Type</Label>
+                <Label>{t("availability.type")}</Label>
                 <div className="flex border border-border overflow-hidden w-fit rounded">
-                  {(["permanent", "temporary"] as const).map((t, i) => (
-                    <button key={t} onClick={() => setAvailForm((f) => ({ ...f, type: t }))}
-                      className={`px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${i > 0 ? "border-l border-border" : ""} ${availForm.type === t ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}
-                    >{t}</button>
+                  {(["permanent", "temporary"] as const).map((type, i) => (
+                    <button key={type} onClick={() => setAvailForm((f) => ({ ...f, type }))}
+                      className={`px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${i > 0 ? "border-l border-border" : ""} ${availForm.type === type ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}
+                    >{t(`availability.${type}`)}</button>
                   ))}
                 </div>
               </div>
               {availForm.type === "temporary" && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label>Start Date</Label><Input type="date" value={availForm.startDate} onChange={(e) => setAvailForm((f) => ({ ...f, startDate: e.target.value }))} /></div>
-                  <div className="space-y-1.5"><Label>End Date</Label><Input type="date" value={availForm.endDate} onChange={(e) => setAvailForm((f) => ({ ...f, endDate: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>{t("availability.startDate")}</Label><Input type="date" value={availForm.startDate} onChange={(e) => setAvailForm((f) => ({ ...f, startDate: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>{t("availability.endDate")}</Label><Input type="date" value={availForm.endDate} onChange={(e) => setAvailForm((f) => ({ ...f, endDate: e.target.value }))} /></div>
                 </div>
               )}
               <div className="space-y-1.5">
-                <Label>Available Days</Label>
+                <Label>{t("availability.availableDays")}</Label>
                 <div className="flex gap-1.5">
                   {DAY_NAMES.map((d, i) => (
                     <button key={d} onClick={() => setAvailForm((f) => {
@@ -717,13 +729,13 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Status</Label>
+                <Label>{t("availability.status")}</Label>
                 <Select value={availForm.status} onValueChange={(v) => setAvailForm((f) => ({ ...f, status: v ?? f.status }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="available">Available</SelectItem>
-                    <SelectItem value="unavailable">Unavailable</SelectItem>
-                    <SelectItem value="preferred">Preferred</SelectItem>
+                    <SelectItem value="available">{t("availability.available")}</SelectItem>
+                    <SelectItem value="unavailable">{t("availability.unavailable")}</SelectItem>
+                    <SelectItem value="preferred">{t("availability.preferred")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -736,7 +748,7 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-stone-700">{DAY_NAMES[i]}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground">Full Day</span>
+                          <span className="text-[10px] text-muted-foreground">{t("availability.fullDay")}</span>
                           <button onClick={() => setAvailForm((f) => {
                             const dayTimes = f.dayTimes.map((d, j) => j === i ? { ...d, fullDay: !d.fullDay } : d);
                             return { ...f, dayTimes };
@@ -763,11 +775,11 @@ export default function SettingsPage() {
                 })}
               </div>
               <div className="space-y-1.5">
-                <Label>Comments</Label>
-                <Textarea value={availForm.comments} onChange={(e) => setAvailForm((f) => ({ ...f, comments: e.target.value }))} placeholder="Any notes..." rows={2} className="resize-none text-sm" />
+                <Label>{t("availability.comments")}</Label>
+                <Textarea value={availForm.comments} onChange={(e) => setAvailForm((f) => ({ ...f, comments: e.target.value }))} placeholder={t("availability.anyNotes")} rows={2} className="resize-none text-sm" />
               </div>
               <Button onClick={handleSaveAvailability} disabled={savingAvail} className="w-full">
-                {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Availability"}
+                {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : t("availability.saveAvailability")}
               </Button>
             </div>
           </DialogContent>
@@ -777,33 +789,33 @@ export default function SettingsPage() {
         <Dialog open={timeOffDialog} onOpenChange={setTimeOffDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle mobileTitle="Time Off">Request Time Off</DialogTitle>
-              <DialogDescription>Submit a request for your manager to review.</DialogDescription>
+              <DialogTitle mobileTitle={t("settings.timeOffMobileTitle")}>{t("settings.timeOffTitle")}</DialogTitle>
+              <DialogDescription>{t("settings.timeOffSubtitle")}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Full Days</Label>
+                <Label>{t("settings.fullDays")}</Label>
                 <button onClick={() => setTimeOffForm((f) => ({ ...f, fullDays: !f.fullDays }))}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${timeOffForm.fullDays ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}>
                   <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${timeOffForm.fullDays ? "translate-x-4" : "translate-x-0.5"}`} />
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Start Date</Label><Input type="date" value={timeOffForm.startDate} onChange={(e) => setTimeOffForm((f) => ({ ...f, startDate: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label>End Date</Label><Input type="date" value={timeOffForm.endDate} onChange={(e) => setTimeOffForm((f) => ({ ...f, endDate: e.target.value }))} /></div>
+                <div className="space-y-1.5"><Label>{t("settings.startDate")}</Label><Input type="date" value={timeOffForm.startDate} onChange={(e) => setTimeOffForm((f) => ({ ...f, startDate: e.target.value }))} /></div>
+                <div className="space-y-1.5"><Label>{t("settings.endDate")}</Label><Input type="date" value={timeOffForm.endDate} onChange={(e) => setTimeOffForm((f) => ({ ...f, endDate: e.target.value }))} /></div>
               </div>
               {!timeOffForm.fullDays && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5"><Label>Start Time</Label><Input type="time" value={timeOffForm.startTime} onChange={(e) => setTimeOffForm((f) => ({ ...f, startTime: e.target.value }))} /></div>
-                  <div className="space-y-1.5"><Label>End Time</Label><Input type="time" value={timeOffForm.endTime} onChange={(e) => setTimeOffForm((f) => ({ ...f, endTime: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>{t("settings.startTime")}</Label><Input type="time" value={timeOffForm.startTime} onChange={(e) => setTimeOffForm((f) => ({ ...f, startTime: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>{t("settings.endTime")}</Label><Input type="time" value={timeOffForm.endTime} onChange={(e) => setTimeOffForm((f) => ({ ...f, endTime: e.target.value }))} /></div>
                 </div>
               )}
               <div className="space-y-1.5">
-                <Label>Comments</Label>
-                <Textarea value={timeOffForm.comments} onChange={(e) => setTimeOffForm((f) => ({ ...f, comments: e.target.value }))} placeholder="Reason for time off..." rows={3} className="resize-none text-sm" />
+                <Label>{t("settings.comments")}</Label>
+                <Textarea value={timeOffForm.comments} onChange={(e) => setTimeOffForm((f) => ({ ...f, comments: e.target.value }))} placeholder={t("settings.timeOffReasonPlaceholder")} rows={3} className="resize-none text-sm" />
               </div>
               <Button onClick={handleTimeOffRequest} disabled={savingTimeOff || !timeOffForm.startDate || !timeOffForm.endDate} className="w-full">
-                {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Time Off Request"}
+                {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.createTimeOffRequest")}
               </Button>
             </div>
           </DialogContent>
@@ -813,8 +825,8 @@ export default function SettingsPage() {
         <Dialog open={teamDialog} onOpenChange={setTeamDialog}>
           <DialogContent noPadding>
             <DialogHeader>
-              <DialogTitle mobileTitle="Team">Team Members</DialogTitle>
-              <DialogDescription className="hidden">Manage your team</DialogDescription>
+              <DialogTitle mobileTitle={t("settings.teamDialogMobileTitle")}>{t("settings.teamDialogTitle")}</DialogTitle>
+              <DialogDescription className="hidden">{t("settings.teamDialogDesc")}</DialogDescription>
             </DialogHeader>
             <div className="flex flex-col h-full">
               {teamLoading ? (
@@ -826,7 +838,7 @@ export default function SettingsPage() {
                   {/* Active members */}
                   <div className="bg-muted/40 px-4 py-2">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Active · {teamMembers.filter((m) => m.status === "active").length}
+                      {t("settings.activeLabel")} · {teamMembers.filter((m) => m.status === "active").length}
                     </p>
                   </div>
                   <div className="divide-y divide-border">
@@ -838,7 +850,7 @@ export default function SettingsPage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
                             {m.displayName || m.email}
-                            {m.userId === userId && <span className="text-xs text-muted-foreground ml-1">(you)</span>}
+                            {m.userId === userId && <span className="text-xs text-muted-foreground ml-1">{t("settings.youParenthetical")}</span>}
                           </p>
                           {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
                         </div>
@@ -850,7 +862,7 @@ export default function SettingsPage() {
                             onClick={() => { setResetCodeMember(m); setResetCodeInput(""); }}
                             className="text-xs text-muted-foreground hover:underline shrink-0"
                           >
-                            Reset code
+                            {t("settings.resetCode")}
                           </button>
                         )}
                         {m.role !== "owner" && m.userId !== userId && (
@@ -861,7 +873,7 @@ export default function SettingsPage() {
                             }}
                             className="text-xs text-destructive hover:underline shrink-0"
                           >
-                            Remove
+                            {t("settings.remove")}
                           </button>
                         )}
                       </div>
@@ -873,7 +885,7 @@ export default function SettingsPage() {
                     <>
                       <div className="bg-muted/40 px-4 py-2">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                          Pending · {teamInvitations.length}
+                          {t("settings.pending")} · {teamInvitations.length}
                         </p>
                       </div>
                       <div className="divide-y divide-border">
@@ -884,7 +896,7 @@ export default function SettingsPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{inv.email}</p>
-                              <p className="text-xs text-muted-foreground">Expires {new Date(inv.expiresAt).toLocaleDateString()}</p>
+                              <p className="text-xs text-muted-foreground">{t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}</p>
                             </div>
                             <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{inv.role}</Badge>
                             <button
@@ -894,7 +906,7 @@ export default function SettingsPage() {
                               }}
                               className="text-xs text-destructive hover:underline shrink-0"
                             >
-                              Cancel
+                              {t("settings.cancel")}
                             </button>
                           </div>
                         ))}
@@ -909,7 +921,7 @@ export default function SettingsPage() {
                       variant="outline"
                       className="w-full gap-2"
                     >
-                      <UserPlus className="h-4 w-4" /> Invite Member
+                      <UserPlus className="h-4 w-4" /> {t("settings.inviteMember")}
                     </Button>
                   </div>
                 </div>
@@ -922,21 +934,21 @@ export default function SettingsPage() {
         <Dialog open={inviteDialog} onOpenChange={setInviteDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle mobileTitle="Invite">Invite Team Member</DialogTitle>
-              <DialogDescription>Send an invitation email to join your team.</DialogDescription>
+              <DialogTitle mobileTitle={t("settings.inviteDialogMobileTitle")}>{t("settings.inviteDialogTitle")}</DialogTitle>
+              <DialogDescription>{t("settings.inviteDialogDesc")}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Email</Label>
+                <Label>{t("settings.email")}</Label>
                 <Input
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="colleague@example.com"
+                  placeholder={t("settings.colleagueEmailPlaceholder")}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Role</Label>
+                <Label>{t("settings.role")}</Label>
                 <div className="flex gap-2">
                   {(["staff", "manager"] as const).map((r) => (
                     <button
@@ -947,23 +959,23 @@ export default function SettingsPage() {
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border bg-card text-foreground hover:bg-muted"
                       }`}
-                    >{r}</button>
+                    >{t(r === "staff" ? "settings.roleStaff" : "settings.roleManager")}</button>
                   ))}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Permissions</Label>
+                <Label>{t("settings.permissions")}</Label>
                 <div className="space-y-0.5">
                   {([
-                    { key: "dashboard" as const, label: "Dashboard", actions: ["view"] as const },
-                    { key: "inventory" as const, label: "Inventory", actions: ["view", "edit"] as const },
-                    { key: "sales" as const, label: "Sales", actions: ["view"] as const },
-                    { key: "staffing" as const, label: "Staffing", actions: ["view", "edit"] as const },
-                    { key: "products" as const, label: "Products", actions: ["view", "edit"] as const },
-                    { key: "pos" as const, label: "POS", actions: ["view"] as const },
-                    { key: "settings" as const, label: "Settings", actions: ["view"] as const },
-                    { key: "team" as const, label: "Team", actions: ["view", "invite", "edit"] as const },
-                    { key: "website" as const, label: "Website", actions: ["view", "edit"] as const },
+                    { key: "dashboard" as const, label: t("settings.permDashboard"), actions: ["view"] as const },
+                    { key: "inventory" as const, label: t("settings.permInventory"), actions: ["view", "edit"] as const },
+                    { key: "sales" as const, label: t("settings.permSales"), actions: ["view"] as const },
+                    { key: "staffing" as const, label: t("settings.permStaffing"), actions: ["view", "edit"] as const },
+                    { key: "products" as const, label: t("settings.permProducts"), actions: ["view", "edit"] as const },
+                    { key: "pos" as const, label: t("settings.permPOS"), actions: ["view"] as const },
+                    { key: "settings" as const, label: t("settings.permSettings"), actions: ["view"] as const },
+                    { key: "team" as const, label: t("settings.permTeam"), actions: ["view", "invite", "edit"] as const },
+                    { key: "website" as const, label: t("settings.permWebsite"), actions: ["view", "edit"] as const },
                   ]).map(({ key, label, actions }) => (
                     <div key={key} className="flex items-center gap-3 px-1 py-1.5 rounded hover:bg-muted/50">
                       <span className="text-sm flex-1">{label}</span>
@@ -981,7 +993,7 @@ export default function SettingsPage() {
                             }}
                             className="h-3.5 w-3.5 accent-primary"
                           />
-                          {action}
+                          {t(action === "view" ? "settings.actionView" : action === "edit" ? "settings.actionEdit" : "settings.actionInvite")}
                         </label>
                       ))}
                     </div>
@@ -989,7 +1001,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="w-full">
-                {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Invitation"}
+                {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.sendInvitation")}
               </Button>
             </div>
           </DialogContent>
@@ -999,22 +1011,22 @@ export default function SettingsPage() {
         <Dialog open={deviceNameDialog} onOpenChange={setDeviceNameDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle mobileTitle="Device name">
-                {deviceName ? "Rename this device" : "Name this device"}
+              <DialogTitle mobileTitle={t("settings.deviceNameMobileTitle")}>
+                {deviceName ? t("settings.renameDevice") : t("settings.nameDevice")}
               </DialogTitle>
               <DialogDescription>
                 {deviceName
-                  ? "Update how this machine is labeled."
-                  : "Give this device a name (e.g. \"Front Counter\" or \"Kitchen iPad\") so staff can tell it apart from other store machines."}
+                  ? t("settings.deviceNameUpdateDesc")
+                  : t("settings.deviceNameNewDesc")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Device name</Label>
+                <Label>{t("settings.deviceName")}</Label>
                 <Input
                   value={deviceNameInput}
                   onChange={(e) => setDeviceNameInput(e.target.value.slice(0, 40))}
-                  placeholder="Front Counter"
+                  placeholder={t("settings.deviceNamePlaceholder")}
                   className="h-11"
                   autoFocus
                   onKeyDown={(e) => {
@@ -1033,12 +1045,12 @@ export default function SettingsPage() {
                   setDeviceNameDialog(false);
                   if (!storeMachine) setStoreMachine(true);
                   hapticSuccess();
-                  toast.success("Device name saved");
+                  toast.success(t("settings.toastDeviceNameSaved"));
                 }}
                 disabled={!deviceNameInput.trim()}
                 className="w-full"
               >
-                Save
+                {t("settings.save")}
               </Button>
             </div>
           </DialogContent>
@@ -1048,23 +1060,23 @@ export default function SettingsPage() {
         <Dialog open={myCodeDialog} onOpenChange={setMyCodeDialog}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle mobileTitle="Punch-in code">
-                {myCode ? "Change your punch-in code" : "Set your punch-in code"}
+              <DialogTitle mobileTitle={t("settings.punchInCodeMobileTitle")}>
+                {myCode ? t("settings.changePunchCode") : t("settings.setPunchCode")}
               </DialogTitle>
               <DialogDescription>
                 {myCode
-                  ? "Update the 4-digit code you enter at this store to punch in."
-                  : "Pick a 4-digit code you'll enter at this store to punch in."}
+                  ? t("settings.updatePunchCodeDesc")
+                  : t("settings.setPunchCodeDesc")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>New code</Label>
+                <Label>{t("settings.newCode")}</Label>
                 <Input
                   value={myCodeInput}
                   onChange={(e) => setMyCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   inputMode="numeric"
-                  placeholder="4 digits"
+                  placeholder={t("settings.fourDigitsPlaceholder")}
                   className="h-11 font-mono text-base tracking-[0.3em]"
                   autoFocus
                 />
@@ -1072,17 +1084,17 @@ export default function SettingsPage() {
               <div className="flex gap-2">
                 <Button
                   onClick={async () => {
-                    if (!myMember) { toast.error("Not a member of this store"); return; }
-                    if (!/^[0-9]{4}$/.test(myCodeInput)) { toast.error("Code must be 4 digits"); return; }
+                    if (!myMember) { toast.error(t("settings.toastNotMemberOfStore")); return; }
+                    if (!/^[0-9]{4}$/.test(myCodeInput)) { toast.error(t("settings.toastCodeMustBe4")); return; }
                     setSavingMyCode(true);
                     try {
                       await setPunchInCode(myMember.id.toString(), myCodeInput);
                       hapticSuccess();
-                      toast.success("Code saved");
+                      toast.success(t("settings.toastCodeSaved"));
                       setMyCodeDialog(false);
                       setMyCodeInput("");
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : "Failed to save code");
+                      toast.error(err instanceof Error ? err.message : t("settings.toastFailedSaveCode"));
                     } finally {
                       setSavingMyCode(false);
                     }
@@ -1090,7 +1102,7 @@ export default function SettingsPage() {
                   disabled={savingMyCode || myCodeInput.length < 4}
                   className="flex-1"
                 >
-                  {savingMyCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  {savingMyCode ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.save")}
                 </Button>
                 {myCode && (
                   <Button
@@ -1100,18 +1112,18 @@ export default function SettingsPage() {
                       setSavingMyCode(true);
                       try {
                         await setPunchInCode(myMember.id.toString(), null);
-                        toast.success("Code cleared");
+                        toast.success(t("settings.toastCodeCleared"));
                         setMyCodeDialog(false);
                         setMyCodeInput("");
                       } catch (err) {
-                        toast.error(err instanceof Error ? err.message : "Failed to clear code");
+                        toast.error(err instanceof Error ? err.message : t("settings.toastFailedClearCode"));
                       } finally {
                         setSavingMyCode(false);
                       }
                     }}
                     disabled={savingMyCode}
                   >
-                    Clear
+                    {t("settings.clear")}
                   </Button>
                 )}
               </div>
@@ -1123,21 +1135,21 @@ export default function SettingsPage() {
         <Dialog open={!!resetCodeMember} onOpenChange={(o) => { if (!o) setResetCodeMember(null); }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle mobileTitle="Reset code">Reset punch-in code</DialogTitle>
+              <DialogTitle mobileTitle={t("settings.resetCodeMobileTitle")}>{t("settings.resetPunchCodeTitle")}</DialogTitle>
               <DialogDescription>
                 {resetCodeMember?.displayName || resetCodeMember?.email
-                  ? <>Set a new code for <span className="font-medium">{resetCodeMember.displayName || resetCodeMember.email}</span>.</>
-                  : "Set a new code."}
+                  ? <>{t("settings.setNewCodeFor")} <span className="font-medium">{resetCodeMember.displayName || resetCodeMember.email}</span>{t("settings.setNewCodePeriod")}</>
+                  : t("settings.setNewCode")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>New code (4 digits)</Label>
+                <Label>{t("settings.newCodeFourDigitsLabel")}</Label>
                 <Input
                   value={resetCodeInput}
                   onChange={(e) => setResetCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
                   inputMode="numeric"
-                  placeholder="e.g. 1234"
+                  placeholder={t("settings.codeDigitsExample")}
                   className="h-11 font-mono text-base tracking-[0.3em]"
                   autoFocus
                 />
@@ -1147,17 +1159,17 @@ export default function SettingsPage() {
                   onClick={async () => {
                     if (!resetCodeMember) return;
                     if (!/^[0-9]{4}$/.test(resetCodeInput)) {
-                      toast.error("Code must be 4 digits");
+                      toast.error(t("settings.toastCodeMustBe4"));
                       return;
                     }
                     setResettingCode(true);
                     try {
                       await setPunchInCode(resetCodeMember.id, resetCodeInput);
-                      toast.success("Code reset");
+                      toast.success(t("settings.toastCodeReset"));
                       setResetCodeMember(null);
                       setResetCodeInput("");
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : "Failed to reset code");
+                      toast.error(err instanceof Error ? err.message : t("settings.toastFailedResetCode"));
                     } finally {
                       setResettingCode(false);
                     }
@@ -1165,7 +1177,7 @@ export default function SettingsPage() {
                   disabled={resettingCode || resetCodeInput.length < 4}
                   className="flex-1"
                 >
-                  {resettingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  {resettingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.save")}
                 </Button>
                 <Button
                   variant="outline"
@@ -1174,18 +1186,18 @@ export default function SettingsPage() {
                     setResettingCode(true);
                     try {
                       await setPunchInCode(resetCodeMember.id, null);
-                      toast.success("Code cleared");
+                      toast.success(t("settings.toastCodeCleared"));
                       setResetCodeMember(null);
                       setResetCodeInput("");
                     } catch (err) {
-                      toast.error(err instanceof Error ? err.message : "Failed to clear code");
+                      toast.error(err instanceof Error ? err.message : t("settings.toastFailedClearCode"));
                     } finally {
                       setResettingCode(false);
                     }
                   }}
                   disabled={resettingCode}
                 >
-                  Clear
+                  {t("settings.clear")}
                 </Button>
               </div>
             </div>
@@ -1321,8 +1333,8 @@ export default function SettingsPage() {
         <SettingsIcon className="h- w-5 text-stone-900" />
         <div className="flex items-center justify-between flex-1">
           <div>
-            <h1 className="text-xl font-semibold text-stone-900">Settings</h1>
-            <p className="text-xs text-stone-500">{businessName || "Your Business"} {activeStaffCount > 0 ? `· ${activeStaffCount} members` : ""}</p>
+            <h1 className="text-xl font-semibold text-stone-900">{t("settings.title")}</h1>
+            <p className="text-xs text-stone-500">{businessName || t("settings.yourBusiness")} {activeStaffCount > 0 ? `· ${activeStaffCount} ${t("settings.membersSuffix")}` : ""}</p>
           </div>
           <button className="h-8 w-8 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-center">
             <Search className="h-4 w-4 text-stone-500" />
@@ -1348,41 +1360,41 @@ export default function SettingsPage() {
           </label>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-stone-900 truncate">{businessName || userEmail || "Your Name"}</p>
-          <p className="text-xs font-mono text-stone-500 truncate tabular-nums">{userEmail || "email"}</p>
+          <p className="text-base font-semibold text-stone-900 truncate">{businessName || userEmail || t("settings.yourName")}</p>
+          <p className="text-xs font-mono text-stone-500 truncate tabular-nums">{userEmail || t("settings.emailFallback")}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <SBadge tone="outline">{role ?? "member"}</SBadge>
+          <SBadge tone="outline">{role ?? t("settings.memberFallback")}</SBadge>
           {userId && <SBadge>{userId.slice(0, 6)}</SBadge>}
         </div>
       </div>
 
       {/* ─── Workspace Group ────────────────────────────────── */}
-      <SGroupHeader label="Workspace" />
+      <SGroupHeader label={t("settings.groupWorkspace")} />
       <div className="bg-white">
         <SRow
           icon={<Building2 className="h-4 w-4 text-stone-700" />}
-          title="Business profile"
-          meta={businessName || "Not set"}
+          title={t("settings.businessProfile")}
+          meta={businessName || t("settings.notSet")}
           right={<span className="text-xs text-stone-500 font-mono truncate max-w-[120px]">{timezone}</span>}
           isFirst
         />
         <SRow
           icon={<MapPin className="h-4 w-4 text-stone-700" />}
-          title="Locations"
-          meta="Manage store locations"
+          title={t("settings.locations")}
+          meta={t("settings.manageLocations")}
           right={<SBadge>1</SBadge>}
         />
         <SRow
           icon={<CreditCard className="h-4 w-4 text-stone-700" />}
-          title="Billing"
-          meta="Current subscription"
-          right={<SBadge tone="ok">Active</SBadge>}
+          title={t("settings.billing")}
+          meta={t("settings.currentSubscription")}
+          right={<SBadge tone="ok">{t("settings.active")}</SBadge>}
         />
         <SRow
           icon={<FileText className="h-4 w-4 text-stone-700" />}
-          title="Tax & compliance"
-          meta={`Tax ${paymentTaxRate}% · ${paymentCurrency}`}
+          title={t("settings.taxCompliance")}
+          meta={`${t("settings.taxPrefix")} ${paymentTaxRate}% · ${paymentCurrency}`}
           right={<span className="text-xs text-stone-500 font-mono tabular-nums">{paymentTaxRate}%</span>}
         />
       </div>
@@ -1390,37 +1402,37 @@ export default function SettingsPage() {
       {/* ─── Team & Access Group ────────────────────────────── */}
       {isAdmin && (
         <>
-          <SGroupHeader label="Team & access" />
+          <SGroupHeader label={t("settings.groupTeamAccess")} />
           <div className="bg-white">
             <SRow
               icon={<Users className="h-4 w-4 text-stone-700" />}
-              title="Members"
-              meta="Manage your team"
+              title={t("settings.members")}
+              meta={t("settings.manageTeam")}
               onClick={() => setTeamDialog(true)}
               right={<SBadge>{String(activeStaffCount)}</SBadge>}
               isFirst
             />
             <SRow
               icon={<Shield className="h-4 w-4 text-stone-700" />}
-              title="Roles & permissions"
-              meta="Configure access levels"
+              title={t("settings.rolesPermissions")}
+              meta={t("settings.configureAccess")}
               onClick={() => setTeamDialog(true)}
             />
             <SRow
               icon={<Clock className="h-4 w-4 text-stone-700" />}
-              title="Schedule rules"
-              meta="Availability and time off"
+              title={t("settings.scheduleRules")}
+              meta={t("settings.availabilityAndTimeOff")}
               onClick={() => setAvailDialog(true)}
             />
             <SRow
               icon={<Zap className="h-4 w-4 text-stone-700" />}
-              title="API & integrations"
+              title={t("settings.apiIntegrations")}
               meta={
                 settings?.squareConnected
-                  ? "Square connected"
+                  ? t("settings.squareConnectedShort")
                   : settings?.cloverConnected
-                    ? "Clover connected"
-                    : "Connect POS"
+                    ? t("settings.cloverConnectedShort")
+                    : t("settings.connectPOS")
               }
               onClick={() => {
                 if (settings?.squareConnected) { handleSquareSync(); }
@@ -1428,7 +1440,7 @@ export default function SettingsPage() {
               }}
               right={
                 (settings?.squareConnected || settings?.cloverConnected)
-                  ? <SBadge tone="ok">{settings?.squareConnected ? "Square" : "Clover"}</SBadge>
+                  ? <SBadge tone="ok">{settings?.squareConnected ? t("settings.square") : t("settings.clover")}</SBadge>
                   : undefined
               }
             />
@@ -1437,44 +1449,44 @@ export default function SettingsPage() {
       )}
 
       {/* ─── Notifications Group ────────────────────────────── */}
-      <SGroupHeader label="Notifications" />
+      <SGroupHeader label={t("settings.groupNotifications")} />
       <div className="bg-white">
         <SToggleRow
           icon={<Clock className="h-4 w-4 text-stone-700" />}
-          title="Shift reminders"
-          meta="Before your shift starts"
+          title={t("settings.shiftReminders")}
+          meta={t("settings.beforeShift")}
           checked={shiftReminders}
           onChange={() => setShiftReminders(!shiftReminders)}
           isFirst
         />
         <SToggleRow
           icon={<Package className="h-4 w-4 text-stone-700" />}
-          title="Low stock alerts"
-          meta="When items fall below threshold"
+          title={t("settings.lowStockAlerts")}
+          meta={t("settings.belowThreshold")}
           checked={lowStockAlerts}
           onChange={() => setLowStockAlerts(!lowStockAlerts)}
         />
         <SToggleRow
           icon={<Bell className="h-4 w-4 text-stone-700" />}
-          title="Weekly summary"
-          meta="Performance digest every Monday"
+          title={t("settings.weeklySummary")}
+          meta={t("settings.performanceDigest")}
           checked={weeklySummary}
           onChange={() => setWeeklySummary(!weeklySummary)}
         />
       </div>
 
       {/* ─── Preferences Group ──────────────────────────────── */}
-      <SGroupHeader label="Preferences" />
+      <SGroupHeader label={t("settings.groupPreferences")} />
       <div className="bg-white">
         <SRow
           icon={<PanelLeft className="h-4 w-4 text-stone-700" />}
-          title="Navigation mode"
-          meta={navMode === "sidebar" ? "Sidebar" : "Bottom bar"}
+          title={t("settings.navigationMode")}
+          meta={navMode === "sidebar" ? t("settings.sidebar") : t("settings.bottomBar")}
           right={
             <div className="flex gap-1 shrink-0">
               {([
-                { mode: "sidebar" as NavMode, label: "Side" },
-                { mode: "bottombar" as NavMode, label: "Tab" },
+                { mode: "sidebar" as NavMode, label: t("settings.side") },
+                { mode: "bottombar" as NavMode, label: t("settings.tab") },
               ]).map(({ mode, label }) => (
                 <button
                   key={mode}
@@ -1494,30 +1506,42 @@ export default function SettingsPage() {
         />
         <SToggleRow
           icon={<Moon className="h-4 w-4 text-stone-700" />}
-          title="Dark mode"
-          meta="Switch to dark theme"
+          title={t("settings.darkMode")}
+          meta={t("settings.switchDarkTheme")}
           checked={darkMode}
           onChange={() => setDarkMode(!darkMode)}
         />
-        <SRow
-          icon={<Languages className="h-4 w-4 text-stone-700" />}
-          title="Language"
-          meta="English (US)"
-        />
+        <div className="flex items-center gap-3 px-[18px] py-3.5 w-full border-t border-stone-200">
+          <IconTile><Languages className="h-4 w-4 text-stone-700" /></IconTile>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-stone-900">{t("settings.language")}</p>
+            <p className="text-xs text-stone-500 mt-0.5">{LOCALE_LABELS[locale]}</p>
+          </div>
+          <Select value={locale} onValueChange={(v) => { if (v) setLocale(v as Locale); }}>
+            <SelectTrigger className="h-8 w-[130px] shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LOCALES.map((loc) => (
+                <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <SRow
           icon={<Calendar className="h-4 w-4 text-stone-700" />}
-          title="Week starts on"
-          meta="Monday"
+          title={t("settings.weekStartsOn")}
+          meta={t("settings.monday")}
         />
       </div>
 
       {/* ─── Device Group ───────────────────────────────────── */}
-      <SGroupHeader label="Device" />
+      <SGroupHeader label={t("settings.groupDevice")} />
       <div className="bg-white">
         <SToggleRow
           icon={<MonitorSmartphone className="h-4 w-4 text-stone-700" />}
-          title="Store machine mode"
-          meta="Restrict to POS, Inventory, Punch-in"
+          title={t("settings.storeMachineMode")}
+          meta={t("settings.restrictToStoreApps")}
           checked={storeMachine}
           onChange={() => {
             if (!storeMachine && !deviceName) {
@@ -1531,56 +1555,56 @@ export default function SettingsPage() {
         />
         <SRow
           icon={<MonitorSmartphone className="h-4 w-4 text-stone-700" />}
-          title="Device name"
-          meta={deviceName || "Not set"}
+          title={t("settings.deviceName")}
+          meta={deviceName || t("settings.notSet")}
           onClick={() => { setDeviceNameInput(deviceName); setDeviceNameDialog(true); }}
           right={deviceName ? <span className="text-xs text-stone-500 font-mono truncate max-w-[100px]">{deviceName}</span> : undefined}
         />
         <SRow
           icon={<KeyRound className="h-4 w-4 text-stone-700" />}
-          title="Punch-in code"
-          meta={myCode ? "Code set" : "Set a 4-digit code"}
+          title={t("settings.punchInCode")}
+          meta={myCode ? t("settings.codeSet") : t("settings.setFourDigit")}
           onClick={() => { setMyCodeInput(""); setMyCodeDialog(true); }}
-          right={myCode ? <SBadge tone="ok">Set</SBadge> : undefined}
+          right={myCode ? <SBadge tone="ok">{t("settings.setBadge")}</SBadge> : undefined}
         />
       </div>
 
       {/* ─── Data Group ─────────────────────────────────────── */}
-      <SGroupHeader label="Data" />
+      <SGroupHeader label={t("settings.groupData")} />
       <div className="bg-white">
         <SRow
           icon={<Download className="h-4 w-4 text-stone-700" />}
-          title="Export data"
-          meta="Download your data as CSV"
+          title={t("settings.exportData")}
+          meta={t("settings.downloadCSV")}
           isFirst
         />
         <SRow
           icon={<Activity className="h-4 w-4 text-stone-700" />}
-          title="Activity log"
-          meta="Recent account activity"
+          title={t("settings.activityLog")}
+          meta={t("settings.recentActivity")}
         />
       </div>
 
       {/* ─── About Group ────────────────────────────────────── */}
-      <SGroupHeader label="About" />
+      <SGroupHeader label={t("settings.groupAbout")} />
       <div className="bg-white">
         <SRow
           icon={<Info className="h-4 w-4 text-stone-700" />}
-          title="Merchiva"
+          title={t("settings.aboutAppName")}
           right={<span className="text-xs text-stone-400 font-mono tabular-nums">beta-0.1.0</span>}
           isFirst
         />
         <SRow
           icon={<FileText className="h-4 w-4 text-stone-700" />}
-          title="Terms of service"
+          title={t("settings.terms")}
         />
         <SRow
           icon={<Shield className="h-4 w-4 text-stone-700" />}
-          title="Privacy policy"
+          title={t("settings.privacy")}
         />
         <SRow
           icon={<HelpCircle className="h-4 w-4 text-stone-700" />}
-          title="Help & support"
+          title={t("settings.helpSupport")}
         />
       </div>
 
@@ -1591,7 +1615,7 @@ export default function SettingsPage() {
           className="flex items-center justify-center gap-2 w-full h-11 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm font-medium transition-colors active:bg-red-100"
         >
           <LogOut className="h-4 w-4" />
-          Sign out
+          {t("settings.signOut")}
         </button>
       </div>
     </div>
@@ -1664,7 +1688,8 @@ type DesktopSection =
   | "storemachine"
   | "punchcode"
   | "devicename"
-  | "team";
+  | "team"
+  | "language";
 
 interface SettingsDesktopProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1743,6 +1768,8 @@ interface SectionCardDef {
 }
 
 function SettingsDesktop(props: SettingsDesktopProps) {
+  const t = useT();
+  const { locale, setLocale } = useI18n();
   const [activeSection, setActiveSection] = useState<DesktopSection | null>(null);
 
   // Load team data when opening team detail
@@ -1756,65 +1783,72 @@ function SettingsDesktop(props: SettingsDesktopProps) {
 
   const groups: { title: string; cards: SectionCardDef[]; adminOnly?: boolean }[] = [
     {
-      title: "ACCOUNT",
+      title: t("settings.gACCOUNT"),
       cards: [
-        { id: "business", icon: Building2, label: "Business Name", desc: props.businessName || "Not set" },
-        { id: "timezone", icon: Globe, label: "Timezone", desc: props.timezone.replace(/_/g, " ") },
+        { id: "business", icon: Building2, label: t("settings.businessNameLabel"), desc: props.businessName || t("settings.notSet") },
+        { id: "timezone", icon: Globe, label: t("settings.timezoneLabel"), desc: props.timezone.replace(/_/g, " ") },
       ],
     },
     {
-      title: "SCHEDULING",
+      title: t("settings.gSCHEDULING"),
       cards: [
-        { id: "availability", icon: Star, label: "Availability", desc: "Set your weekly availability" },
-        { id: "timeoff", icon: Calendar, label: "Time Off", desc: "Request time off" },
+        { id: "availability", icon: Star, label: t("settings.availabilityCardLabel"), desc: t("settings.availabilityCardDesc") },
+        { id: "timeoff", icon: Calendar, label: t("settings.timeOffCardLabel"), desc: t("settings.timeOffCardDesc") },
       ],
     },
     {
-      title: "POS INTEGRATIONS",
+      title: t("settings.gPOS_INTEGRATIONS"),
       adminOnly: true,
       cards: [
-        { id: "square", icon: Zap, label: "Square", desc: props.settings?.squareConnected ? "Connected" : "Not connected" },
-        { id: "clover", icon: Zap, label: "Clover", desc: props.settings?.cloverConnected ? "Connected" : "Not connected" },
+        { id: "square", icon: Zap, label: t("settings.square"), desc: props.settings?.squareConnected ? t("settings.connected") : t("settings.notConnected") },
+        { id: "clover", icon: Zap, label: t("settings.clover"), desc: props.settings?.cloverConnected ? t("settings.connected") : t("settings.notConnected") },
       ],
     },
     {
-      title: "PAYMENTS",
+      title: t("settings.gPAYMENTS"),
       adminOnly: true,
       cards: [
-        { id: "taxrate", icon: CreditCard, label: "Tax Rate", desc: `${props.paymentTaxRate}%` },
-        { id: "currency", icon: CreditCard, label: "Currency", desc: props.paymentCurrency },
+        { id: "taxrate", icon: CreditCard, label: t("settings.taxRate"), desc: `${props.paymentTaxRate}%` },
+        { id: "currency", icon: CreditCard, label: t("settings.currency"), desc: props.paymentCurrency },
       ],
     },
     {
-      title: "DEVICE",
+      title: t("settings.groupPreferences"),
       cards: [
-        { id: "storemachine", icon: MonitorSmartphone, label: "Store Machine Mode", desc: props.storeMachine ? "Enabled" : "Disabled" },
-        { id: "punchcode", icon: KeyRound, label: "Punch-in Code", desc: props.myCode ? "Code set" : "Not set" },
-        { id: "devicename", icon: MonitorSmartphone, label: "Device Name", desc: props.deviceName || "Not set" },
+        { id: "language", icon: Languages, label: t("settings.language"), desc: LOCALE_LABELS[locale] },
       ],
     },
     {
-      title: "TEAM",
+      title: t("settings.gDEVICE"),
+      cards: [
+        { id: "storemachine", icon: MonitorSmartphone, label: t("settings.storeMachineModeLabel"), desc: props.storeMachine ? t("settings.enabled") : t("settings.disabled") },
+        { id: "punchcode", icon: KeyRound, label: t("settings.punchInCodeLabel"), desc: props.myCode ? t("settings.codeSet") : t("settings.notSet") },
+        { id: "devicename", icon: MonitorSmartphone, label: t("settings.deviceNameLabel"), desc: props.deviceName || t("settings.notSet") },
+      ],
+    },
+    {
+      title: t("settings.gTEAM"),
       adminOnly: true,
       cards: [
-        { id: "team", icon: Users, label: "Team Members", desc: "Manage members, roles, invitations" },
+        { id: "team", icon: Users, label: t("settings.teamMembersCard"), desc: t("settings.manageMembersRoles") },
       ],
     },
   ];
 
   const sectionMeta: Record<DesktopSection, { icon: React.ElementType; title: string; desc: string }> = {
-    business: { icon: Building2, title: "Business Name", desc: "Your business identity" },
-    timezone: { icon: Globe, title: "Timezone", desc: "Set your local timezone for scheduling" },
-    availability: { icon: Star, title: "Availability", desc: "Set your weekly availability" },
-    timeoff: { icon: Calendar, title: "Time Off", desc: "Request time off" },
-    square: { icon: Zap, title: "Square", desc: "POS integration with Square" },
-    clover: { icon: Zap, title: "Clover", desc: "POS integration with Clover" },
-    taxrate: { icon: CreditCard, title: "Tax Rate", desc: "Configure tax rate for transactions" },
-    currency: { icon: CreditCard, title: "Currency", desc: "Set your primary currency" },
-    storemachine: { icon: MonitorSmartphone, title: "Store Machine Mode", desc: "Restrict this device to POS, Inventory, and Punch-in" },
-    punchcode: { icon: KeyRound, title: "Punch-in Code", desc: "Your 4-digit code for punch-in" },
-    devicename: { icon: MonitorSmartphone, title: "Device Name", desc: "Identify this machine" },
-    team: { icon: Users, title: "Team Members", desc: "Manage members, roles, and invitations" },
+    business: { icon: Building2, title: t("settings.businessNameLabel"), desc: t("settings.businessIdentity") },
+    timezone: { icon: Globe, title: t("settings.timezoneLabel"), desc: t("settings.timezoneDesc") },
+    availability: { icon: Star, title: t("settings.availabilityCardLabel"), desc: t("settings.availabilityCardDesc") },
+    timeoff: { icon: Calendar, title: t("settings.timeOffCardLabel"), desc: t("settings.timeOffCardDesc") },
+    square: { icon: Zap, title: t("settings.square"), desc: t("settings.squareIntegrationDesc") },
+    clover: { icon: Zap, title: t("settings.clover"), desc: t("settings.cloverIntegrationDesc") },
+    taxrate: { icon: CreditCard, title: t("settings.taxRate"), desc: t("settings.taxRateDesc") },
+    currency: { icon: CreditCard, title: t("settings.currency"), desc: t("settings.currencyDesc") },
+    storemachine: { icon: MonitorSmartphone, title: t("settings.storeMachineModeLabel"), desc: t("settings.restrictDeviceDesc") },
+    punchcode: { icon: KeyRound, title: t("settings.punchInCodeLabel"), desc: t("settings.punchInCodeCardDesc") },
+    devicename: { icon: MonitorSmartphone, title: t("settings.deviceNameLabel"), desc: t("settings.identifyMachine") },
+    team: { icon: Users, title: t("settings.teamMembersCard"), desc: t("settings.manageMembersRolesFull") },
+    language: { icon: Languages, title: t("settings.language"), desc: LOCALE_LABELS[locale] },
   };
 
   const handleCardClick = (id: DesktopSection) => {
@@ -1855,42 +1889,42 @@ function SettingsDesktop(props: SettingsDesktopProps) {
           <div>
 
             {activeSection === "business" && (
-              <DesktopCard title="Business Info" desc="Manage your business identity">
-                <DesktopField label="Avatar" hint="Upload a logo or photo">
+              <DesktopCard title={t("settings.businessInfo")} desc={t("settings.manageBusinessIdentity")}>
+                <DesktopField label={t("settings.avatar")} hint={t("settings.uploadLogo")}>
                   <div className="flex items-center gap-3">
                     {props.avatarUrl ? (
-                      <img src={props.avatarUrl} alt="Avatar" className="h-10 w-10 rounded-[0.3rem] object-cover border border-border" />
+                      <img src={props.avatarUrl} alt={t("settings.avatar")} className="h-10 w-10 rounded-[0.3rem] object-cover border border-border" />
                     ) : (
                       <div className="h-10 w-10 rounded-[0.3rem] bg-stone-100 flex items-center justify-center text-sm font-bold text-stone-500 border border-border">
                         {props.userEmail?.[0]?.toUpperCase() ?? "?"}
                       </div>
                     )}
                     <label className="text-[12px] text-stone-500 hover:text-stone-900 cursor-pointer transition-colors">
-                      {props.uploadingAvatar ? "Uploading..." : "Change"}
+                      {props.uploadingAvatar ? t("settings.uploading") : t("settings.change")}
                       <input type="file" accept="image/*" className="hidden" onChange={props.handleAvatarUpload} disabled={props.uploadingAvatar} />
                     </label>
                   </div>
                 </DesktopField>
-                <DesktopField label="Business Name" hint="Shown to your team and customers">
+                <DesktopField label={t("settings.businessNameLabel")} hint={t("settings.shownToCustomers")}>
                   <Input
                     value={props.businessName}
                     onChange={(e) => props.setBusinessName(e.target.value)}
-                    placeholder="e.g. My Coffee Shop"
+                    placeholder={t("settings.businessNamePlaceholder")}
                     className="max-w-sm"
                   />
                 </DesktopField>
                 <div className="py-3 flex justify-end">
                   <Button onClick={props.handleSaveProfile} disabled={props.savingProfile} size="sm" className="gap-2">
                     {props.savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.profileSaved ? "Saved!" : "Save"}
+                    {props.profileSaved ? t("settings.saved") : t("settings.save")}
                   </Button>
                 </div>
               </DesktopCard>
             )}
 
             {activeSection === "timezone" && (
-              <DesktopCard title="Timezone" desc="Used for scheduling and reporting">
-                <DesktopField label="Timezone" hint="Your local timezone">
+              <DesktopCard title={t("settings.timezoneLabel")} desc={t("settings.timezoneUsedFor")}>
+                <DesktopField label={t("settings.timezoneLabel")} hint={t("settings.timezoneHint")}>
                   <Select value={props.timezone} onValueChange={(v) => { if (v) props.setTimezone(v); }}>
                     <SelectTrigger className="max-w-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1903,28 +1937,43 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                 <div className="py-3 flex justify-end">
                   <Button onClick={props.handleSaveProfile} disabled={props.savingProfile} size="sm" className="gap-2">
                     {props.savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.profileSaved ? "Saved!" : "Save"}
+                    {props.profileSaved ? t("settings.saved") : t("settings.save")}
                   </Button>
                 </div>
               </DesktopCard>
             )}
 
+            {activeSection === "language" && (
+              <DesktopCard title={t("settings.language")} desc={LOCALE_LABELS[locale]}>
+                <DesktopField label={t("settings.language")} hint={t("common.language")}>
+                  <Select value={locale} onValueChange={(v) => { if (v) setLocale(v as Locale); }}>
+                    <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LOCALES.map((loc) => (
+                        <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </DesktopField>
+              </DesktopCard>
+            )}
+
             {activeSection === "square" && (
-              <DesktopCard title="Square" desc="Connect your Square account to sync catalog and orders">
-                <DesktopField label="Status" hint="Connection status">
+              <DesktopCard title={t("settings.square")} desc={t("settings.squareConnectCardDesc")}>
+                <DesktopField label={t("settings.statusLabel")} hint={t("settings.connectionStatus")}>
                   <div className="flex items-center gap-2">
                     {props.settings?.squareConnected ? (
                       <>
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        <span className="text-[13px] text-emerald-700 font-medium">Connected</span>
+                        <span className="text-[13px] text-emerald-700 font-medium">{t("settings.connected")}</span>
                         {props.settings.squareLastSyncedAt && (
                           <span className="text-[11.5px] text-stone-500 ml-2">
-                            Last synced {new Date(props.settings.squareLastSyncedAt).toLocaleDateString()}
+                            {t("settings.lastSynced")} {new Date(props.settings.squareLastSyncedAt).toLocaleDateString()}
                           </span>
                         )}
                       </>
                     ) : (
-                      <span className="text-[13px] text-stone-500">Not connected</span>
+                      <span className="text-[13px] text-stone-500">{t("settings.notConnected")}</span>
                     )}
                   </div>
                 </DesktopField>
@@ -1938,17 +1987,17 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     <>
                       <Button onClick={props.handleSquareSync} disabled={props.squareSyncing} size="sm" variant="outline" className="gap-2">
                         {props.squareSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                        Sync Now
+                        {t("settings.syncNow")}
                       </Button>
                       <Button onClick={props.handleDisconnectSquare} size="sm" variant="outline" className="gap-2 text-destructive hover:text-destructive">
                         <Unlink className="h-3.5 w-3.5" />
-                        Disconnect
+                        {t("settings.disconnect")}
                       </Button>
                     </>
                   ) : (
                     <Button onClick={() => { window.location.href = "/api/square/oauth/authorize"; }} size="sm" className="gap-2">
                       <ExternalLink className="h-3.5 w-3.5" />
-                      Connect Square
+                      {t("settings.connectSquare")}
                     </Button>
                   )}
                 </div>
@@ -1956,21 +2005,21 @@ function SettingsDesktop(props: SettingsDesktopProps) {
             )}
 
             {activeSection === "clover" && (
-              <DesktopCard title="Clover" desc="Connect your Clover account to sync items and orders">
-                <DesktopField label="Status" hint="Connection status">
+              <DesktopCard title={t("settings.clover")} desc={t("settings.cloverConnectCardDesc")}>
+                <DesktopField label={t("settings.statusLabel")} hint={t("settings.connectionStatus")}>
                   <div className="flex items-center gap-2">
                     {props.settings?.cloverConnected ? (
                       <>
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        <span className="text-[13px] text-emerald-700 font-medium">Connected</span>
+                        <span className="text-[13px] text-emerald-700 font-medium">{t("settings.connected")}</span>
                         {props.settings.cloverLastSyncedAt && (
                           <span className="text-[11.5px] text-stone-500 ml-2">
-                            Last synced {new Date(props.settings.cloverLastSyncedAt).toLocaleDateString()}
+                            {t("settings.lastSynced")} {new Date(props.settings.cloverLastSyncedAt).toLocaleDateString()}
                           </span>
                         )}
                       </>
                     ) : (
-                      <span className="text-[13px] text-stone-500">Not connected</span>
+                      <span className="text-[13px] text-stone-500">{t("settings.notConnected")}</span>
                     )}
                   </div>
                 </DesktopField>
@@ -1984,17 +2033,17 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     <>
                       <Button onClick={props.handleCloverSync} disabled={props.cloverSyncing} size="sm" variant="outline" className="gap-2">
                         {props.cloverSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                        Sync Now
+                        {t("settings.syncNow")}
                       </Button>
                       <Button onClick={props.handleDisconnectClover} size="sm" variant="outline" className="gap-2 text-destructive hover:text-destructive">
                         <Unlink className="h-3.5 w-3.5" />
-                        Disconnect
+                        {t("settings.disconnect")}
                       </Button>
                     </>
                   ) : (
                     <Button onClick={() => { window.location.href = "/api/clover/connect"; }} size="sm" className="gap-2">
                       <ExternalLink className="h-3.5 w-3.5" />
-                      Connect Clover
+                      {t("settings.connectClover")}
                     </Button>
                   )}
                 </div>
@@ -2002,8 +2051,8 @@ function SettingsDesktop(props: SettingsDesktopProps) {
             )}
 
             {activeSection === "taxrate" && (
-              <DesktopCard title="Tax Rate" desc="Configure your tax rate for transactions">
-                <DesktopField label="Tax Rate (%)" hint="Applied to sales transactions">
+              <DesktopCard title={t("settings.taxRate")} desc={t("settings.taxRateFullDesc")}>
+                <DesktopField label={t("settings.taxRatePercentLabel")} hint={t("settings.appliedToSales")}>
                   <Input
                     type="number"
                     value={props.paymentTaxRate}
@@ -2018,38 +2067,38 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                 <div className="py-3 flex justify-end">
                   <Button onClick={props.handleSavePaymentSettings} disabled={props.savingPayment} size="sm" className="gap-2">
                     {props.savingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.paymentSaved ? "Saved!" : "Save"}
+                    {props.paymentSaved ? t("settings.saved") : t("settings.save")}
                   </Button>
                 </div>
               </DesktopCard>
             )}
 
             {activeSection === "currency" && (
-              <DesktopCard title="Currency" desc="Set your primary currency">
-                <DesktopField label="Currency" hint="Used for pricing and reporting">
+              <DesktopCard title={t("settings.currency")} desc={t("settings.currencyDesc")}>
+                <DesktopField label={t("settings.currency")} hint={t("settings.currencyUsedFor")}>
                   <Select value={props.paymentCurrency} onValueChange={(v) => props.setPaymentCurrency(v ?? props.paymentCurrency)}>
                     <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                      <SelectItem value="USD">{t("settings.usdDollar")}</SelectItem>
+                      <SelectItem value="CAD">{t("settings.cadDollar")}</SelectItem>
+                      <SelectItem value="EUR">{t("settings.eurEuro")}</SelectItem>
+                      <SelectItem value="GBP">{t("settings.gbpPound")}</SelectItem>
+                      <SelectItem value="AUD">{t("settings.audDollar")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </DesktopField>
                 <div className="py-3 flex justify-end">
                   <Button onClick={props.handleSavePaymentSettings} disabled={props.savingPayment} size="sm" className="gap-2">
                     {props.savingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.paymentSaved ? "Saved!" : "Save"}
+                    {props.paymentSaved ? t("settings.saved") : t("settings.save")}
                   </Button>
                 </div>
               </DesktopCard>
             )}
 
             {activeSection === "storemachine" && (
-              <DesktopCard title="Store Machine Mode" desc="Restrict this device to POS, Inventory, and Punch-in">
-                <DesktopField label="Enabled" hint="Only show POS, Inventory, and Punch-in on this device">
+              <DesktopCard title={t("settings.storeMachineModeLabel")} desc={t("settings.restrictDeviceDesc")}>
+                <DesktopField label={t("settings.enabledLabel")} hint={t("settings.onlyShowDesc")}>
                   <button
                     onClick={() => {
                       props.hapticSuccess();
@@ -2061,7 +2110,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                       props.setStoreMachine(!props.storeMachine);
                     }}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full border shrink-0 transition-colors ${props.storeMachine ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}
-                    aria-label="Toggle store machine mode"
+                    aria-label={t("settings.storeMachineModeLabel")}
                   >
                     <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${props.storeMachine ? "translate-x-4" : "translate-x-0.5"}`} />
                   </button>
@@ -2071,12 +2120,12 @@ function SettingsDesktop(props: SettingsDesktopProps) {
 
             {activeSection === "team" && (
               <DesktopCard
-                title="Team Members"
-                desc={`${props.teamMembers.filter((m) => m.status === "active").length} active members`}
+                title={t("settings.teamMembersCard")}
+                desc={`${props.teamMembers.filter((m) => m.status === "active").length} ${t("settings.activeMembersCount")}`}
                 right={
                   <Button onClick={() => props.setInviteDialog(true)} size="sm" variant="outline" className="gap-2">
                     <UserPlus className="h-3.5 w-3.5" />
-                    Invite
+                    {t("settings.inviteShort")}
                   </Button>
                 }
               >
@@ -2089,11 +2138,11 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-border">
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Member</th>
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Role</th>
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Email</th>
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Status</th>
-                          <th className="text-right text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2">Actions</th>
+                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colMember")}</th>
+                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colRole")}</th>
+                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colEmail")}</th>
+                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colStatus")}</th>
+                          <th className="text-right text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2">{t("settings.colActions")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -2106,7 +2155,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                                 </div>
                                 <span className="text-[13px] font-medium truncate max-w-[160px]">
                                   {m.displayName || m.email}
-                                  {m.userId === props.userId && <span className="text-[11px] text-stone-400 ml-1">(you)</span>}
+                                  {m.userId === props.userId && <span className="text-[11px] text-stone-400 ml-1">{t("settings.youParenthetical")}</span>}
                                 </span>
                               </div>
                             </td>
@@ -2121,7 +2170,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                             <td className="py-2.5 pr-3">
                               <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                Active
+                                {t("settings.activeLabel")}
                               </span>
                             </td>
                             <td className="py-2.5 text-right">
@@ -2131,7 +2180,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                                     onClick={() => { props.setResetCodeMember(m); props.setResetCodeInput(""); }}
                                     className="text-[11px] text-stone-500 hover:text-stone-900 hover:underline"
                                   >
-                                    Reset code
+                                    {t("settings.resetCode")}
                                   </button>
                                 )}
                                 {m.role !== "owner" && m.userId !== props.userId && (
@@ -2142,7 +2191,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                                     }}
                                     className="text-[11px] text-destructive hover:underline"
                                   >
-                                    Remove
+                                    {t("settings.remove")}
                                   </button>
                                 )}
                               </div>
@@ -2155,7 +2204,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     {props.teamInvitations.length > 0 && (
                       <div className="mt-4">
                         <div className="text-[10.5px] font-medium text-stone-500 uppercase tracking-wide mb-2">
-                          Pending Invitations ({props.teamInvitations.length})
+                          {t("settings.pendingInvitationsLabel")} ({props.teamInvitations.length})
                         </div>
                         <div className="divide-y divide-border">
                           {props.teamInvitations.map((inv) => (
@@ -2165,7 +2214,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <span className="text-[13px] font-medium truncate block">{inv.email}</span>
-                                <span className="text-[11px] text-stone-500">Expires {new Date(inv.expiresAt).toLocaleDateString()}</span>
+                                <span className="text-[11px] text-stone-500">{t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}</span>
                               </div>
                               <Badge variant="secondary" className="text-[10px] capitalize">{inv.role}</Badge>
                               <button
@@ -2175,7 +2224,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                                 }}
                                 className="text-[11px] text-destructive hover:underline"
                               >
-                                Cancel
+                                {t("settings.cancel")}
                               </button>
                             </div>
                           ))}
@@ -2195,7 +2244,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Settings" subtitle="Configure your business, team, and integrations" />
+      <PageHeader title={t("settings.title")} subtitle={t("settings.pageSubtitle")} />
       <div className="flex-1 overflow-auto bg-stone-50">
         <div className="max-w-6xl mx-auto px-8 py-8">
           {groups.map((group) => {
