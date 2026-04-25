@@ -6,9 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'out',
   // for testing
   server: {
-    url: 'https://project-management-phi-red.vercel.app/login',
-    iosScheme: 'https',
-    androidScheme: 'https',
+    url: 'https://project-management-phi-red.vercel.app',
+    cleartext: true,
   },
   // // for production
   // server: {

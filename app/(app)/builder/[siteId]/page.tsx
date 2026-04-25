@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import { Loader2 } from "lucide-react";
+import { Editor } from "@craftjs/core";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSiteById, getPages } from "@/lib/db/sites";
@@ -10,8 +11,22 @@ import { getProducts } from "@/lib/db/products";
 import { usePermissions } from "@/lib/context/permissions";
 import { useSidebarOpen } from "@/components/sidebar";
 import { BuilderEditor } from "@/components/builder/editor";
+import { MobileBuilderLayout } from "@/components/builder/mobile/mobile-builder";
+import { resolver } from "@/components/builder/craft-components/resolver";
+import { RenderNode } from "@/components/builder/render-node";
 import type { Site, SitePage, Product } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
 
 export default function BuilderPage({
   params,
@@ -19,6 +34,7 @@ export default function BuilderPage({
   params: Promise<{ siteId: string }>;
 }) {
   const t = useT();
+  const isMobile = useIsMobile();
   const { siteId } = use(params);
   const { organizationId } = usePermissions();
   const openSidebar = useSidebarOpen();
@@ -27,12 +43,13 @@ export default function BuilderPage({
   const [pages, setPages] = useState<SitePage[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activePageId, setActivePageId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  // Subscribe to SpacetimeDB tables for live updates
   const siteRows = useTable(tables.site);
   const pageRows = useTable(tables.sitePage);
 
-  // Load data when tables are ready
   useEffect(() => {
     if (!siteId || !organizationId) return;
 
@@ -59,6 +76,7 @@ export default function BuilderPage({
         }
 
         setPages(p);
+        if (!activePageId && p.length > 0) setActivePageId(p[0].id);
       } catch (err) {
         console.error("Failed to load builder data:", err);
       } finally {
@@ -67,12 +85,13 @@ export default function BuilderPage({
     }
 
     load();
-    return () => {
-      cancelled = true;
-    };
-    // Re-run when SpacetimeDB table subscriptions change
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId, organizationId, siteRows, pageRows]);
+
+  const handlePageSwitch = useCallback((pageId: string) => {
+    setActivePageId(pageId);
+  }, []);
 
   if (loading) {
     return (
@@ -87,6 +106,26 @@ export default function BuilderPage({
       <div className="flex h-screen items-center justify-center text-muted-foreground">
         {t("builder.site.notFound")}
       </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <Editor
+        key={activePageId}
+        resolver={resolver}
+        enabled={true}
+        onRender={RenderNode}
+      >
+        <MobileBuilderLayout
+          site={site}
+          pages={pages}
+          activePageId={activePageId || pages[0]?.id || ""}
+          onPageSwitch={handlePageSwitch}
+          saving={saving}
+          savedAt={savedAt}
+        />
+      </Editor>
     );
   }
 

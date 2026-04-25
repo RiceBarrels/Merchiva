@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
@@ -45,6 +45,7 @@ const strengthColors: Record<number, string> = {
 
 function SignupForm() {
   const t = useT();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
 
@@ -87,7 +88,7 @@ function SignupForm() {
 
       // No verification needed — directly authenticated
       storeAuthTokens(data.accessToken, data.refreshToken, data.user);
-      window.location.href = next;
+      router.push(next);
     } catch {
       setError(t("login.genericError"));
       setLoading(false);
@@ -116,7 +117,7 @@ function SignupForm() {
       }
 
       storeAuthTokens(data.accessToken, data.refreshToken, data.user);
-      window.location.href = next;
+      router.push(next);
     } catch {
       setError(t("login.genericError"));
       setLoading(false);

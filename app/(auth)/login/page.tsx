@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Loader2,
@@ -26,6 +26,7 @@ import { apiUrl } from "@/lib/api-client";
 
 function LoginForm() {
   const t = useT();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
 
@@ -82,7 +83,7 @@ function LoginForm() {
       }
 
       storeAuthTokens(data.accessToken, data.refreshToken, data.user);
-      window.location.href = next;
+      router.push(next);
     } catch {
       setError(t("login.genericError"));
       setLoading(false);
@@ -112,7 +113,7 @@ function LoginForm() {
       }
 
       storeAuthTokens(data.accessToken, data.refreshToken, data.user);
-      window.location.href = next;
+      router.push(next);
     } catch {
       setError(t("login.invalidCode"));
       setLoading(false);
@@ -141,7 +142,7 @@ function LoginForm() {
       }
 
       storeAuthTokens(data.accessToken, data.refreshToken, data.user);
-      window.location.href = next;
+      router.push(next);
     } catch {
       setError(t("login.verificationFailed") + ". " + t("login.genericError"));
       setLoading(false);
