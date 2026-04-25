@@ -594,6 +594,29 @@ const punchEventTable = table(
   }
 );
 
+// ─── Store Devices ──────────────────────────────────────────────────────────
+
+const storeDeviceTable = table(
+  {
+    name: 'store_device',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byDeviceId', algorithm: 'btree', columns: ['deviceId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    deviceId: t.string(),
+    name: t.string(),
+    enabled: t.bool(),
+    lastSeenAt: t.timestamp(),
+    registeredBy: t.identity(),
+    createdAt: t.timestamp(),
+  }
+);
+
 // ─── Sites ────────────────────────────────────────────────────────────────────
 
 const siteTable = table(
@@ -883,6 +906,7 @@ const spacetimedb = schema({
   chatMessage: chatMessageTable,
   todo: todoTable,
   punchEvent: punchEventTable,
+  storeDevice: storeDeviceTable,
   site: siteTable,
   sitePage: sitePageTable,
   siteComponent: siteComponentTable,
@@ -1343,6 +1367,80 @@ export const recordPunch = spacetimedb.reducer(
       pairEventId: pairId,
       createdAt: ctx.timestamp,
     });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STORE DEVICE REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const registerDevice = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    deviceId: t.string(),
+    name: t.string(),
+  },
+  (ctx, { organizationId, deviceId, name }) => {
+    findActiveMember(ctx, organizationId);
+    const existing = [...ctx.db.storeDevice.byOrganizationId.filter(organizationId)]
+      .find(d => d.deviceId === deviceId);
+    if (existing) {
+      ctx.db.storeDevice.delete(existing);
+      ctx.db.storeDevice.insert({
+        ...existing,
+        name,
+        enabled: true,
+        lastSeenAt: ctx.timestamp,
+      });
+    } else {
+      ctx.db.storeDevice.insert({
+        id: ctx.newUuidV4(),
+        organizationId,
+        deviceId,
+        name,
+        enabled: true,
+        lastSeenAt: ctx.timestamp,
+        registeredBy: ctx.sender,
+        createdAt: ctx.timestamp,
+      });
+    }
+  }
+);
+
+export const updateStoreDevice = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    deviceId: t.string(),
+    name: t.option(t.string()),
+    enabled: t.option(t.bool()),
+  },
+  (ctx, { organizationId, deviceId, name, enabled }) => {
+    findActiveMember(ctx, organizationId);
+    const device = [...ctx.db.storeDevice.byOrganizationId.filter(organizationId)]
+      .find(d => d.deviceId === deviceId);
+    if (!device) throw new Error('Device not found');
+    ctx.db.storeDevice.delete(device);
+    ctx.db.storeDevice.insert({
+      ...device,
+      name: name ?? device.name,
+      enabled: enabled ?? device.enabled,
+      lastSeenAt: ctx.timestamp,
+    });
+  }
+);
+
+export const removeStoreDevice = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    deviceId: t.string(),
+  },
+  (ctx, { organizationId, deviceId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role !== 'owner' && member.role !== 'manager') unauthorized('Only owners/managers can remove devices');
+    const device = [...ctx.db.storeDevice.byOrganizationId.filter(organizationId)]
+      .find(d => d.deviceId === deviceId);
+    if (!device) throw new Error('Device not found');
+    ctx.db.storeDevice.delete(device);
   }
 );
 

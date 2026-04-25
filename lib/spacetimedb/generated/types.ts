@@ -445,6 +445,18 @@ export const StaffRole = __t.object("StaffRole", {
 });
 export type StaffRole = __Infer<typeof StaffRole>;
 
+export const StoreDevice = __t.object("StoreDevice", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  deviceId: __t.string(),
+  name: __t.string(),
+  enabled: __t.bool(),
+  lastSeenAt: __t.timestamp(),
+  registeredBy: __t.identity(),
+  createdAt: __t.timestamp(),
+});
+export type StoreDevice = __Infer<typeof StoreDevice>;
+
 export const TimeOffRequest = __t.object("TimeOffRequest", {
   id: __t.uuid(),
   userId: __t.identity(),

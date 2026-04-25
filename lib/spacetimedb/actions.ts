@@ -550,6 +550,31 @@ export async function recordPunch(code: string, action: string): Promise<void> {
   });
 }
 
+// ─── Store Devices ───────────────────────────────────────────────────────────
+
+export async function registerStoreDevice(deviceId: string, name: string): Promise<void> {
+  const c = conn();
+  if (!c.reducers.registerDevice) return;
+  return c.reducers.registerDevice({ organizationId: orgId(), deviceId, name });
+}
+
+export async function updateStoreDevice(deviceId: string, data: { name?: string; enabled?: boolean }): Promise<void> {
+  const c = conn();
+  if (!c.reducers.updateStoreDevice) return;
+  return c.reducers.updateStoreDevice({
+    organizationId: orgId(),
+    deviceId,
+    name: data.name ?? undefined,
+    enabled: data.enabled ?? undefined,
+  });
+}
+
+export async function removeStoreDevice(deviceId: string): Promise<void> {
+  const c = conn();
+  if (!c.reducers.removeStoreDevice) return;
+  return c.reducers.removeStoreDevice({ organizationId: orgId(), deviceId });
+}
+
 // ─── Sales records ────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

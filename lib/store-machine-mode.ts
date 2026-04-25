@@ -4,7 +4,31 @@ import { useEffect, useState } from "react";
 
 const KEY = "store_machine_mode";
 const NAME_KEY = "store_machine_device_name";
+const DEVICE_ID_KEY = "store_device_id";
 const EVENT = "store-machine-mode-change";
+
+export function getOrCreateDeviceId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return "";
+  }
+}
+
+export function getDeviceId(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem(DEVICE_ID_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 export function getStoreMachineMode(): boolean {
   if (typeof window === "undefined") return false;

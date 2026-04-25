@@ -1,6 +1,6 @@
 {
-  "name": "BizOps",
-  "short_name": "BizOps",
+  "name": "Merchiva",
+  "short_name": "Merchiva",
   "description": "AI-Powered Business Management",
   "start_url": "/dashboard",
   "display": "standalone",

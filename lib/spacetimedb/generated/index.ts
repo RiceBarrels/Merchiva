@@ -84,6 +84,8 @@ import RecordPunchReducer from "./record_punch_reducer";
 import RedeemPointsReducer from "./redeem_points_reducer";
 import RefundPaymentReducer from "./refund_payment_reducer";
 import RegisterCustomerReducer from "./register_customer_reducer";
+import RegisterDeviceReducer from "./register_device_reducer";
+import RemoveStoreDeviceReducer from "./remove_store_device_reducer";
 import SaveComponentReducer from "./save_component_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
@@ -106,6 +108,7 @@ import UpdateShiftTradeStatusReducer from "./update_shift_trade_status_reducer";
 import UpdateSiteReducer from "./update_site_reducer";
 import UpdateStaffMemberReducer from "./update_staff_member_reducer";
 import UpdateStaffRoleReducer from "./update_staff_role_reducer";
+import UpdateStoreDeviceReducer from "./update_store_device_reducer";
 import UpdateTierReducer from "./update_tier_reducer";
 import UpdateTimeOffStatusReducer from "./update_time_off_status_reducer";
 import UpsertAvailabilityReducer from "./upsert_availability_reducer";
@@ -144,6 +147,7 @@ import SitePageRow from "./site_page_table";
 import StaffAvailabilityRow from "./staff_availability_table";
 import StaffMemberRow from "./staff_member_table";
 import StaffRoleRow from "./staff_role_table";
+import StoreDeviceRow from "./store_device_table";
 import TimeOffRequestRow from "./time_off_request_table";
 import TodoRow from "./todo_table";
 import UserRow from "./user_table";
@@ -655,6 +659,23 @@ const tablesSchema = __schema({
       { name: 'staff_role_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, StaffRoleRow),
+  storeDevice: __table({
+    name: 'store_device',
+    indexes: [
+      { accessor: 'byDeviceId', name: 'store_device_device_id_idx_btree', algorithm: 'btree', columns: [
+        'deviceId',
+      ] },
+      { accessor: 'id', name: 'store_device_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'store_device_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'store_device_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, StoreDeviceRow),
   timeOffRequest: __table({
     name: 'time_off_request',
     indexes: [
@@ -757,6 +778,8 @@ const reducersSchema = __reducers(
   __reducerSchema("redeem_points", RedeemPointsReducer),
   __reducerSchema("refund_payment", RefundPaymentReducer),
   __reducerSchema("register_customer", RegisterCustomerReducer),
+  __reducerSchema("register_device", RegisterDeviceReducer),
+  __reducerSchema("remove_store_device", RemoveStoreDeviceReducer),
   __reducerSchema("save_component", SaveComponentReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
@@ -779,6 +802,7 @@ const reducersSchema = __reducers(
   __reducerSchema("update_site", UpdateSiteReducer),
   __reducerSchema("update_staff_member", UpdateStaffMemberReducer),
   __reducerSchema("update_staff_role", UpdateStaffRoleReducer),
+  __reducerSchema("update_store_device", UpdateStoreDeviceReducer),
   __reducerSchema("update_tier", UpdateTierReducer),
   __reducerSchema("update_time_off_status", UpdateTimeOffStatusReducer),
   __reducerSchema("upsert_availability", UpsertAvailabilityReducer),

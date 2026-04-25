@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Settings,
@@ -77,7 +77,8 @@ import { defaultPermissions } from "@/lib/db/team";
 import { usePermissions } from "@/lib/context/permissions";
 import { hapticSuccess } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth/context";
-import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
+import { useStoreMachineMode, useDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
+import { registerStoreDevice, removeStoreDevice, updateStoreDevice } from "@/lib/spacetimedb/actions";
 import { useNavMode, type NavMode } from "@/lib/nav-mode";
 import { uploadFiles } from "@/lib/uploadthing";
 import { toast } from "sonner";
@@ -179,6 +180,26 @@ export default function SettingsPage() {
   const [deviceName, setDeviceNameValue] = useDeviceName();
   const [deviceNameDialog, setDeviceNameDialog] = useState(false);
   const [deviceNameInput, setDeviceNameInput] = useState("");
+
+  // Exit store mode PIN dialog
+  const [exitPinDialog, setExitPinDialog] = useState(false);
+  const [exitPinInput, setExitPinInput] = useState("");
+  const [exitPinError, setExitPinError] = useState("");
+
+  // Store devices management
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const storeDeviceTable = (tables as any).storeDevice;
+  const [storeDeviceRows] = useTable(storeDeviceTable ?? tables.orgMember);
+  const hasStoreDeviceTable = !!storeDeviceTable;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orgDevices = useMemo(() => {
+    if (!hasStoreDeviceTable || !organizationId) return [];
+    return (storeDeviceRows as unknown as any[]).filter((d) => d.organizationId === organizationId);
+  }, [storeDeviceRows, organizationId, hasStoreDeviceTable]);
+  const [manageDeviceDialog, setManageDeviceDialog] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [manageDeviceTarget, setManageDeviceTarget] = useState<any>(null);
+  const [manageDeviceNameInput, setManageDeviceNameInput] = useState("");
 
   // Punch-in code reset dialog (managers/team.edit resetting another member's code)
   const [resetCodeMember, setResetCodeMember] = useState<OrgMember | null>(null);
@@ -646,6 +667,13 @@ export default function SettingsPage() {
         deviceName={deviceName}
         setDeviceNameInput={setDeviceNameInput}
         setDeviceNameDialog={setDeviceNameDialog}
+        setExitPinDialog={setExitPinDialog}
+        setExitPinInput={setExitPinInput}
+        setExitPinError={setExitPinError}
+        orgDevices={orgDevices}
+        setManageDeviceDialog={setManageDeviceDialog}
+        setManageDeviceTarget={setManageDeviceTarget}
+        setManageDeviceNameInput={setManageDeviceNameInput}
         myCode={myCode}
         setMyCodeInput={setMyCodeInput}
         setMyCodeDialog={setMyCodeDialog}
@@ -1034,6 +1062,7 @@ export default function SettingsPage() {
                       setDeviceNameValue(deviceNameInput);
                       setDeviceNameDialog(false);
                       if (!storeMachine) setStoreMachine(true);
+                      registerStoreDevice(getOrCreateDeviceId(), deviceNameInput.trim()).catch(console.error);
                     }
                   }}
                 />
@@ -1044,6 +1073,7 @@ export default function SettingsPage() {
                   setDeviceNameValue(deviceNameInput);
                   setDeviceNameDialog(false);
                   if (!storeMachine) setStoreMachine(true);
+                  registerStoreDevice(getOrCreateDeviceId(), deviceNameInput.trim()).catch(console.error);
                   hapticSuccess();
                   toast.success(t("settings.toastDeviceNameSaved"));
                 }}
@@ -1051,6 +1081,109 @@ export default function SettingsPage() {
                 className="w-full"
               >
                 {t("settings.save")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── Exit Store Mode PIN Dialog ─────────────────────── */}
+        <Dialog open={exitPinDialog} onOpenChange={(o) => { if (!o) setExitPinDialog(false); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle mobileTitle="Exit store mode">Enter PIN to exit store mode</DialogTitle>
+              <DialogDescription>Enter an owner or manager punch-in code to disable store machine mode.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Punch-in code</Label>
+                <Input
+                  value={exitPinInput}
+                  onChange={(e) => { setExitPinInput(e.target.value.replace(/\D/g, "").slice(0, 4)); setExitPinError(""); }}
+                  inputMode="numeric"
+                  placeholder="4 digits"
+                  className="h-11 font-mono text-base tracking-[0.3em]"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && exitPinInput.length === 4) {
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const match = (memberRows as unknown as any[]).find(
+                        (m) => m.organizationId === organizationId && m.status === "active" && m.punchInCode === exitPinInput && (m.role === "owner" || m.role === "manager"),
+                      );
+                      if (!match) { setExitPinError("Invalid code"); return; }
+                      setStoreMachine(false);
+                      updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
+                      setExitPinDialog(false);
+                      hapticSuccess();
+                      toast.success("Store mode disabled");
+                    }
+                  }}
+                />
+                {exitPinError && <p className="text-xs text-red-500 mt-1">{exitPinError}</p>}
+              </div>
+              <Button
+                onClick={() => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const match = (memberRows as unknown as any[]).find(
+                    (m) => m.organizationId === organizationId && m.status === "active" && m.punchInCode === exitPinInput && (m.role === "owner" || m.role === "manager"),
+                  );
+                  if (!match) { setExitPinError("Invalid code. Must be an owner or manager code."); return; }
+                  setStoreMachine(false);
+                  updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
+                  setExitPinDialog(false);
+                  hapticSuccess();
+                  toast.success("Store mode disabled");
+                }}
+                disabled={exitPinInput.length !== 4}
+                className="w-full"
+              >
+                Disable Store Mode
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── Manage Device Dialog ───────────────────────────── */}
+        <Dialog open={manageDeviceDialog} onOpenChange={setManageDeviceDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle mobileTitle="Manage device">Manage Device</DialogTitle>
+              <DialogDescription>Rename or remove this store device.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Device name</Label>
+                <Input
+                  value={manageDeviceNameInput}
+                  onChange={(e) => setManageDeviceNameInput(e.target.value.slice(0, 40))}
+                  placeholder="Front Counter"
+                  className="h-11"
+                  autoFocus
+                />
+              </div>
+              <Button
+                onClick={async () => {
+                  if (!manageDeviceTarget || !manageDeviceNameInput.trim()) return;
+                  await updateStoreDevice(manageDeviceTarget.deviceId, { name: manageDeviceNameInput.trim() });
+                  setManageDeviceDialog(false);
+                  hapticSuccess();
+                  toast.success("Device renamed");
+                }}
+                disabled={!manageDeviceNameInput.trim()}
+                className="w-full"
+              >
+                Save
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!manageDeviceTarget) return;
+                  await removeStoreDevice(manageDeviceTarget.deviceId);
+                  setManageDeviceDialog(false);
+                  toast.success("Device removed");
+                }}
+                className="w-full text-red-600 border-red-200 hover:bg-red-50"
+              >
+                Remove Device
               </Button>
             </div>
           </DialogContent>
@@ -1544,12 +1677,18 @@ export default function SettingsPage() {
           meta={t("settings.restrictToStoreApps")}
           checked={storeMachine}
           onChange={() => {
-            if (!storeMachine && !deviceName) {
+            if (storeMachine) {
+              setExitPinInput(""); setExitPinError("");
+              setExitPinDialog(true);
+              return;
+            }
+            if (!deviceName) {
               setDeviceNameInput("");
               setDeviceNameDialog(true);
               return;
             }
-            setStoreMachine(!storeMachine);
+            setStoreMachine(true);
+            registerStoreDevice(getOrCreateDeviceId(), deviceName).catch(console.error);
           }}
           isFirst
         />
@@ -1568,6 +1707,36 @@ export default function SettingsPage() {
           right={myCode ? <SBadge tone="ok">{t("settings.setBadge")}</SBadge> : undefined}
         />
       </div>
+
+      {/* ─── Store Devices Group (admin only) ─────────────── */}
+      {isAdmin && (
+        <>
+          <SGroupHeader label="Store Devices" />
+          <div className="bg-white">
+            {orgDevices.length === 0 ? (
+              <div className="px-[18px] py-4">
+                <p className="text-xs text-stone-500">No devices registered. Enable store machine mode on a device to register it.</p>
+              </div>
+            ) : (
+              orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean; lastSeenAt: { toDate?: () => Date } }, i: number) => (
+                <SRow
+                  key={device.id.toString()}
+                  icon={<MonitorSmartphone className="h-4 w-4 text-stone-700" />}
+                  title={device.name || "Unnamed device"}
+                  meta={device.deviceId.slice(0, 8)}
+                  isFirst={i === 0}
+                  right={device.enabled ? <SBadge tone="ok">Active</SBadge> : <SBadge>Off</SBadge>}
+                  onClick={() => {
+                    setManageDeviceTarget(device);
+                    setManageDeviceNameInput(device.name);
+                    setManageDeviceDialog(true);
+                  }}
+                />
+              ))
+            )}
+          </div>
+        </>
+      )}
 
       {/* ─── Data Group ─────────────────────────────────────── */}
       <SGroupHeader label={t("settings.groupData")} />
@@ -1688,6 +1857,7 @@ type DesktopSection =
   | "storemachine"
   | "punchcode"
   | "devicename"
+  | "storedevices"
   | "team"
   | "language";
 
@@ -1712,6 +1882,15 @@ interface SettingsDesktopProps {
   deviceName: string;
   setDeviceNameInput: (v: string) => void;
   setDeviceNameDialog: (v: boolean) => void;
+  setExitPinDialog: (v: boolean) => void;
+  setExitPinInput: (v: string) => void;
+  setExitPinError: (v: string) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  orgDevices: any[];
+  setManageDeviceDialog: (v: boolean) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setManageDeviceTarget: (d: any) => void;
+  setManageDeviceNameInput: (v: string) => void;
   myCode: string | null;
   setMyCodeInput: (v: string) => void;
   setMyCodeDialog: (v: boolean) => void;
@@ -1819,11 +1998,10 @@ function SettingsDesktop(props: SettingsDesktopProps) {
       ],
     },
     {
-      title: t("settings.gDEVICE"),
+      title: t("settings.gSTOREDEVICES") ?? "STORE DEVICES",
+      adminOnly: true,
       cards: [
-        { id: "storemachine", icon: MonitorSmartphone, label: t("settings.storeMachineModeLabel"), desc: props.storeMachine ? t("settings.enabled") : t("settings.disabled") },
-        { id: "punchcode", icon: KeyRound, label: t("settings.punchInCodeLabel"), desc: props.myCode ? t("settings.codeSet") : t("settings.notSet") },
-        { id: "devicename", icon: MonitorSmartphone, label: t("settings.deviceNameLabel"), desc: props.deviceName || t("settings.notSet") },
+        { id: "storedevices", icon: MonitorSmartphone, label: "Store Devices", desc: `${props.orgDevices.length} registered` },
       ],
     },
     {
@@ -1847,6 +2025,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
     storemachine: { icon: MonitorSmartphone, title: t("settings.storeMachineModeLabel"), desc: t("settings.restrictDeviceDesc") },
     punchcode: { icon: KeyRound, title: t("settings.punchInCodeLabel"), desc: t("settings.punchInCodeCardDesc") },
     devicename: { icon: MonitorSmartphone, title: t("settings.deviceNameLabel"), desc: t("settings.identifyMachine") },
+    storedevices: { icon: MonitorSmartphone, title: "Store Devices", desc: "View and manage all registered store devices" },
     team: { icon: Users, title: t("settings.teamMembersCard"), desc: t("settings.manageMembersRolesFull") },
     language: { icon: Languages, title: t("settings.language"), desc: LOCALE_LABELS[locale] },
   };
@@ -2101,13 +2280,19 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                 <DesktopField label={t("settings.enabledLabel")} hint={t("settings.onlyShowDesc")}>
                   <button
                     onClick={() => {
-                      props.hapticSuccess();
-                      if (!props.storeMachine && !props.deviceName) {
+                      if (props.storeMachine) {
+                        props.setExitPinInput(""); props.setExitPinError("");
+                        props.setExitPinDialog(true);
+                        return;
+                      }
+                      if (!props.deviceName) {
                         props.setDeviceNameInput("");
                         props.setDeviceNameDialog(true);
                         return;
                       }
-                      props.setStoreMachine(!props.storeMachine);
+                      props.setStoreMachine(true);
+                      registerStoreDevice(getOrCreateDeviceId(), props.deviceName).catch(console.error);
+                      props.hapticSuccess();
                     }}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full border shrink-0 transition-colors ${props.storeMachine ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}
                     aria-label={t("settings.storeMachineModeLabel")}
@@ -2115,6 +2300,49 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${props.storeMachine ? "translate-x-4" : "translate-x-0.5"}`} />
                   </button>
                 </DesktopField>
+              </DesktopCard>
+            )}
+
+            {activeSection === "storedevices" && (
+              <DesktopCard title="Store Devices" desc={`${props.orgDevices.length} devices registered`}>
+                {props.orgDevices.length === 0 ? (
+                  <p className="text-sm text-stone-500 py-4">No devices registered yet. Enable store machine mode on any device to register it.</p>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Device</th>
+                        <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Status</th>
+                        <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Device ID</th>
+                        <th className="text-right text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {props.orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean }) => (
+                        <tr key={device.id.toString()}>
+                          <td className="py-2.5 pr-3 text-[13px] font-medium">{device.name || "Unnamed"}</td>
+                          <td className="py-2.5 pr-3">
+                            <Badge variant={device.enabled ? "default" : "secondary"} className="text-[10px]">
+                              {device.enabled ? "Active" : "Disabled"}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 pr-3 text-[12px] text-stone-500 font-mono">{device.deviceId.slice(0, 8)}…</td>
+                          <td className="py-2.5 text-right space-x-1">
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              props.setManageDeviceTarget(device);
+                              props.setManageDeviceNameInput(device.name);
+                              props.setManageDeviceDialog(true);
+                            }}>Rename</Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={async () => {
+                              await removeStoreDevice(device.deviceId);
+                              toast.success("Device removed");
+                            }}>Remove</Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </DesktopCard>
             )}
 

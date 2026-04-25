@@ -354,7 +354,11 @@ try {
   execSync("bun next build", {
     cwd: ROOT,
     stdio: "inherit",
-    env: { ...process.env, NEXT_OUTPUT: "static" },
+    env: {
+      ...process.env,
+      NEXT_OUTPUT: "static",
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_APP_URL || "",
+    },
   });
   // Post-process HTML files
   console.log("📝 Step 4: Post-processing HTML...\n");

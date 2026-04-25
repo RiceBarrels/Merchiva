@@ -4,10 +4,17 @@ const config: CapacitorConfig = {
   appId: 'com.merchiva.app',
   appName: 'Merchiva',
   webDir: 'out',
+  // for testing
   server: {
-    iosScheme: 'merchiva',
-    androidScheme: 'merchiva',
+    url: 'https://project-management-phi-red.vercel.app/login',
+    iosScheme: 'https',
+    androidScheme: 'https',
   },
+  // // for production
+  // server: {
+  //   iosScheme: 'merchiva',
+  //   androidScheme: 'merchiva',
+  // },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

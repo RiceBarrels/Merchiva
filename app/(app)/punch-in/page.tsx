@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ const ACTION_META: Record<PunchAction, { label: string; verb: string; tone: stri
 const pad = (n: number) => String(n).padStart(2, "0");
 const fmtClock = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 const fmtHM = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const fmtDate = (d: Date) => d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+const fmtDate = (d: Date) => d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 const fmtDur = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
@@ -107,6 +107,9 @@ export default function PunchInPage() {
 
   const identity = stdb?.identity;
 
+  // ─── Mobile side panel toggle ─────────────────────────────────────
+  const [showPanel, setShowPanel] = useState(false);
+
   // ─── Set-code dialog (for first-time users) ─────────────────────────
   const myMember = useMemo(() => {
     if (!identity || !organizationId) return null;
@@ -151,9 +154,7 @@ export default function PunchInPage() {
   const [successTime, setSuccessTime] = useState<Date | null>(null);
   const [memberState, setMemberState] = useState<"off" | "on" | "break">("off");
 
-  // Auto-clear error
   useEffect(() => { if (!error) return; const t = setTimeout(() => { setError(null); setPin(""); }, 3500); return () => clearTimeout(t); }, [error]);
-  // Auto-reset from success
   useEffect(() => { if (stage !== "success") return; const t = setTimeout(() => handleCancel(), 5000); return () => clearTimeout(t); }, [stage]);
 
   // ─── Derived data ───────────────────────────────────────────────────
@@ -193,7 +194,6 @@ export default function PunchInPage() {
     });
   }, [stage]);
 
-  // Auto-submit on 4th digit
   useEffect(() => {
     if (pin.length !== 4 || stage !== "entry") return;
     const t = setTimeout(() => attemptPunch(pin), 200);
@@ -288,165 +288,240 @@ export default function PunchInPage() {
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] min-h-0">
 
           {/* ═══ LEFT: Punch panel ═══ */}
-          <main className="p-4 lg:p-6 overflow-y-auto">
-            <div className="relative bg-white border border-stone-200 rounded-[0.3rem] p-5 lg:p-6">
-              <Corners />
-              {/* Header row */}
-              <div className="flex justify-between items-start gap-4 mb-5">
-                <div>
-                  <div className="font-mono text-[11px] tracking-[0.14em] text-stone-400 mb-2">01 · AUTHENTICATE</div>
-                  <h1 className="text-xl lg:text-2xl font-bold tracking-tight">Enter your 4-digit PIN</h1>
-                  <p className="text-[13px] text-stone-400 mt-1.5 max-w-[440px] leading-relaxed">
-                    Punch in or out by keying your employee PIN. The terminal auto-detects the action based on your last punch.
-                  </p>
-                </div>
-                <div className="hidden sm:block text-right border border-stone-200 rounded-[0.3rem] px-3.5 py-2.5 bg-stone-50 shrink-0">
-                  <div className="font-mono text-2xl font-semibold tracking-tight leading-none">{fmtClock(now)}</div>
-                  <div className="font-mono text-[10px] tracking-[0.14em] text-stone-400 mt-1.5">{fmtDate(now).toUpperCase()}</div>
-                </div>
-              </div>
+          <main className="flex flex-col min-h-0 overflow-y-auto">
+            <div className="flex-1 flex flex-col p-3 sm:p-4 lg:p-6">
+              <div className="relative bg-white border border-stone-200 rounded-[0.3rem] p-4 sm:p-5 lg:p-6 flex-1 flex flex-col">
+                <Corners />
 
-              {/* ─── Stage: Entry ─── */}
-              {stage === "entry" && (
-                <div className="space-y-4">
-                  <div className={cn("relative border-[1.5px] rounded-[0.3rem] p-4", error ? "border-red-400" : "border-stone-300")}>
-                    <div className="absolute -top-2 left-3 bg-white px-1.5 font-mono text-[10px] tracking-[0.14em] text-stone-400">PIN</div>
-                    <div className="grid grid-cols-4 gap-3">
-                      {[0, 1, 2, 3].map(i => (
-                        <div key={i} className={cn(
-                          "relative aspect-[1/0.72] border-[1.5px] rounded-[0.3rem] flex items-center justify-center transition-all",
-                          i < pin.length ? "border-stone-900 bg-stone-900 text-white" :
-                          i === pin.length ? "border-stone-900 bg-white" : "border-stone-300 bg-white",
-                        )}>
-                          <span className="font-mono text-[40px] font-semibold leading-none">{i < pin.length ? "●" : "·"}</span>
-                          <span className="absolute top-1.5 left-2 font-mono text-[10px] text-stone-400">{i + 1}</span>
+                {/* Header — compact on mobile */}
+                <div className="flex justify-between items-start gap-3 mb-4 sm:mb-5">
+                  <div className="min-w-0">
+                    <div className="hidden sm:block font-mono text-[11px] tracking-[0.14em] text-stone-400 mb-2">01 · AUTHENTICATE</div>
+                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold tracking-tight">Enter your PIN</h1>
+                    <p className="text-[12px] sm:text-[13px] text-stone-400 mt-1 leading-relaxed hidden sm:block">
+                      Punch in or out by keying your employee PIN.
+                    </p>
+                  </div>
+                  <div className="text-right border border-stone-200 rounded-[0.3rem] px-2.5 sm:px-3.5 py-2 sm:py-2.5 bg-stone-50 shrink-0">
+                    <div className="font-mono text-lg sm:text-2xl font-semibold tracking-tight leading-none">{fmtClock(now)}</div>
+                    <div className="font-mono text-[9px] sm:text-[10px] tracking-[0.14em] text-stone-400 mt-1">{fmtDate(now).toUpperCase()}</div>
+                  </div>
+                </div>
+
+                {/* ─── Stage: Entry ─── */}
+                {stage === "entry" && (
+                  <div className="flex-1 flex flex-col gap-3 sm:gap-4">
+                    {/* PIN display */}
+                    <div className={cn("relative border-[1.5px] rounded-[0.3rem] p-3 sm:p-4", error ? "border-red-400" : "border-stone-300")}>
+                      <div className="absolute -top-2 left-3 bg-white px-1.5 font-mono text-[10px] tracking-[0.14em] text-stone-400">PIN</div>
+                      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                        {[0, 1, 2, 3].map(i => (
+                          <div key={i} className={cn(
+                            "relative aspect-[1/0.65] sm:aspect-[1/0.72] border-[1.5px] rounded-[0.3rem] flex items-center justify-center transition-all",
+                            i < pin.length ? "border-stone-900 bg-stone-900 text-white" :
+                            i === pin.length ? "border-stone-900 bg-white" : "border-stone-300 bg-white",
+                          )}>
+                            <span className="font-mono text-[32px] sm:text-[40px] font-semibold leading-none">{i < pin.length ? "●" : "·"}</span>
+                            <span className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 font-mono text-[9px] sm:text-[10px] text-stone-400">{i + 1}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between items-center mt-2.5 sm:mt-3.5">
+                        <span className="font-mono text-[10px] sm:text-[11px] tracking-wider text-stone-400">
+                          {error ? "▲ ERROR" : pin.length === 0 ? "READY" : pin.length < 4 ? `${pin.length}/4 ENTERED` : "VERIFYING…"}
+                        </span>
+                        <span className={cn("font-mono text-[10px] sm:text-[11px] tracking-wider", error ? "text-red-500" : "text-stone-400")}>
+                          {error ?? <span className="hidden sm:inline">PRESS DIGITS OR USE KEYBOARD</span>}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Keypad — fills remaining space on mobile */}
+                    <div className="flex-1 grid grid-cols-3 grid-rows-4 gap-1.5 sm:gap-2.5 min-h-0">
+                      {["1","2","3","4","5","6","7","8","9"].map(k => (
+                        <button key={k} onClick={() => handleDigit(k)} className="rounded-[0.3rem] border border-stone-300 bg-white text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none active:bg-stone-100 transition-all select-none min-h-[52px]">{k}</button>
+                      ))}
+                      <button onClick={() => { setPin(""); setError(null); }} className="rounded-[0.3rem] border border-stone-200 bg-stone-50 font-mono text-xs sm:text-sm font-medium text-stone-600 shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none active:bg-stone-100 transition-all select-none min-h-[52px]">Clear</button>
+                      <button onClick={() => handleDigit("0")} className="rounded-[0.3rem] border border-stone-300 bg-white text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none active:bg-stone-100 transition-all select-none min-h-[52px]">0</button>
+                      <button onClick={() => setPin(p => p.slice(0, -1))} className="rounded-[0.3rem] border border-stone-200 bg-stone-50 text-stone-600 shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none active:bg-stone-100 transition-all select-none flex items-center justify-center min-h-[52px]">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3.5-7.1L3 8" /><path d="M3 3v5h5" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ─── Stage: Confirm ─── */}
+                {stage === "confirm" && matched && (
+                  <div className="border-[1.5px] border-stone-900 rounded-[0.3rem] p-4 sm:p-5 space-y-4 sm:space-y-5">
+                    <div className="flex items-center gap-3 sm:gap-5">
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-[0.3rem] bg-stone-900 text-white flex items-center justify-center font-mono text-sm sm:text-base font-semibold tracking-wider shrink-0">{initials(matched.displayName)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-[10px] sm:text-[11px] text-stone-400 tracking-wider">EMPLOYEE</div>
+                        <div className="text-xl sm:text-2xl font-bold leading-tight truncate">{matched.displayName}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-mono text-[10px] sm:text-[11px] text-stone-400 tracking-wider">ACTION</div>
+                        <div className="mt-1">
+                          {actionBadge(needsChoice ? chosenAction : detectedAction!)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {needsChoice && (
+                      <div>
+                        <div className="font-mono text-[10px] tracking-[0.14em] text-stone-400 mb-2">SELECT AN ACTION</div>
+                        <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+                          {([["out", "End shift", "Punch out"], ["break-start", "Start break", "Meal / rest"]] as const).map(([act, title, sub]) => (
+                            <button key={act} onClick={() => setChosenAction(act)} className={cn(
+                              "text-left p-2.5 sm:p-3 rounded-[0.3rem] border-[1.5px] flex items-center gap-2 sm:gap-2.5 transition-all",
+                              chosenAction === act ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-stone-50",
+                            )}>
+                              <span className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border-[1.5px] shrink-0", chosenAction === act ? "border-white bg-stone-900 shadow-[inset_0_0_0_3px_white]" : "border-stone-300 bg-white")} />
+                              <span>
+                                <div className="text-sm font-semibold leading-tight">{title}</div>
+                                <div className="text-[11px] opacity-70 mt-0.5">{sub}</div>
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-3 gap-px bg-stone-200 border border-stone-200 rounded-[0.3rem] overflow-hidden">
+                      {[["TIME", fmtClock(now)], ["DATE", now.toLocaleDateString(undefined, { month: "short", day: "numeric" })], ["STATE", memberState === "off" ? "OFF" : memberState === "break" ? "BREAK" : "ON"]].map(([k, v]) => (
+                        <div key={k} className="bg-white px-2.5 sm:px-3.5 py-2.5 sm:py-3">
+                          <div className="font-mono text-[9px] sm:text-[10px] tracking-wider text-stone-400">{k}</div>
+                          <div className="font-mono text-[13px] sm:text-[15px] font-semibold mt-0.5">{v}</div>
                         </div>
                       ))}
                     </div>
-                    <div className="flex justify-between items-center mt-3.5">
-                      <span className="font-mono text-[11px] tracking-wider text-stone-400">
-                        {error ? "▲ ERROR" : pin.length === 0 ? "READY" : pin.length < 4 ? `${pin.length}/4 ENTERED` : "VERIFYING…"}
-                      </span>
-                      <span className={cn("font-mono text-[11px] tracking-wider", error ? "text-red-500" : "text-stone-400")}>
-                        {error ?? "PRESS DIGITS OR USE KEYBOARD"}
-                      </span>
+
+                    <div className="flex gap-2 sm:gap-2.5">
+                      <button onClick={handleCancel} className="flex-1 h-11 rounded-[0.3rem] border border-stone-900 bg-white text-sm font-semibold hover:bg-stone-50 active:bg-stone-100 transition-colors">Cancel</button>
+                      <button onClick={handleConfirm} disabled={confirming} className="flex-[2] h-11 rounded-[0.3rem] border border-stone-900 bg-stone-900 text-white text-sm font-semibold disabled:opacity-50 hover:bg-stone-800 active:bg-stone-700 transition-colors flex items-center justify-center gap-2">
+                        {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Confirm<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg></>}
+                      </button>
                     </div>
                   </div>
+                )}
 
-                  {/* Keypad */}
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {["1","2","3","4","5","6","7","8","9"].map(k => (
-                      <button key={k} onClick={() => handleDigit(k)} className="h-[60px] rounded-[0.3rem] border border-stone-300 bg-white text-[28px] font-medium shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none transition-all select-none">{k}</button>
-                    ))}
-                    <button onClick={() => { setPin(""); setError(null); }} className="h-[60px] rounded-[0.3rem] border border-stone-200 bg-stone-50 font-mono text-sm font-medium text-stone-600 shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none transition-all select-none">Clear</button>
-                    <button onClick={() => handleDigit("0")} className="h-[60px] rounded-[0.3rem] border border-stone-300 bg-white text-[28px] font-medium shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none transition-all select-none">0</button>
-                    <button onClick={() => setPin(p => p.slice(0, -1))} className="h-[60px] rounded-[0.3rem] border border-stone-200 bg-stone-50 text-stone-600 shadow-[0_1px_0_var(--border)] active:translate-y-px active:shadow-none transition-all select-none flex items-center justify-center">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3.5-7.1L3 8" /><path d="M3 3v5h5" /></svg>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ─── Stage: Confirm ─── */}
-              {stage === "confirm" && matched && (
-                <div className="border-[1.5px] border-stone-900 rounded-[0.3rem] p-5 space-y-5">
-                  <div className="flex items-center gap-5">
-                    <div className="h-12 w-12 rounded-[0.3rem] bg-stone-900 text-white flex items-center justify-center font-mono text-base font-semibold tracking-wider shrink-0">{initials(matched.displayName)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-mono text-[11px] text-stone-400 tracking-wider">EMPLOYEE · PIN ••••</div>
-                      <div className="text-2xl font-bold leading-tight truncate">{matched.displayName}</div>
-                      <div className="text-[13px] text-stone-400">{matched.email}</div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-mono text-[11px] text-stone-400 tracking-wider">ACTION</div>
-                      <div className="mt-1">
-                        {actionBadge(needsChoice ? chosenAction : detectedAction!)}
+                {/* ─── Stage: Success ─── */}
+                {stage === "success" && successMember && successAction && successTime && (
+                  <div className="border-[1.5px] border-stone-900 rounded-[0.3rem] p-4 sm:p-6 bg-stone-900 text-white" onClick={handleCancel}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[0.3rem] bg-emerald-500 flex items-center justify-center">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                       </div>
+                      <span className="font-mono text-xs tracking-wider text-stone-400">PUNCH RECORDED</span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl lg:text-[44px] font-bold mt-3 sm:mt-4 leading-[1.05] tracking-tight">
+                      {successAction === "in" ? `Welcome, ${successMember.displayName.split(" ")[0]}.` :
+                       successAction === "out" ? `Goodbye, ${successMember.displayName.split(" ")[0]}.` :
+                       successAction === "break-start" ? "Break started." :
+                       `Welcome back, ${successMember.displayName.split(" ")[0]}.`}
+                    </div>
+                    <div className="text-[13px] sm:text-[15px] text-stone-400 mt-1.5">
+                      {successAction === "in" ? "Your shift is now open." :
+                       successAction === "out" ? "Your shift has been closed." :
+                       successAction === "break-start" ? "Clock paused — end your break when ready." :
+                       "Break ended — shift is active again."}
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-white/15 border border-white/15 rounded-[0.3rem] overflow-hidden mt-4 sm:mt-5">
+                      {[
+                        [successAction === "in" ? "IN AT" : successAction === "out" ? "OUT AT" : successAction === "break-start" ? "BREAK AT" : "RESUMED", fmtClock(successTime)],
+                        ["TERMINAL", (deviceName || "TC-01").toUpperCase().slice(0, 10)],
+                        ["LOCATION", (deviceName || "—").toUpperCase().slice(0, 16)],
+                        ["CONF. ID", "0x" + Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase().padStart(6, "0")],
+                      ].map(([k, v]) => (
+                        <div key={k} className="bg-stone-900 px-2.5 sm:px-3.5 py-2.5 sm:py-3">
+                          <div className="font-mono text-[9px] sm:text-[10px] tracking-wider text-stone-500">{k}</div>
+                          <div className="font-mono text-xs sm:text-sm font-semibold mt-0.5">{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="font-mono text-[10px] sm:text-[11px] tracking-wider text-stone-500 mt-4 sm:mt-5">
+                      TAP TO DISMISS · AUTO-RESET IN 5S
                     </div>
                   </div>
+                )}
+              </div>
+            </div>
 
-                  {needsChoice && (
-                    <div>
-                      <div className="font-mono text-[10px] tracking-[0.14em] text-stone-400 mb-2">SELECT AN ACTION</div>
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {([["out", "End shift", "Punch out for the day"], ["break-start", "Start break", "Pause — meal, rest, etc."]] as const).map(([act, title, sub]) => (
-                          <button key={act} onClick={() => setChosenAction(act)} className={cn(
-                            "text-left p-3 rounded-[0.3rem] border-[1.5px] flex items-center gap-2.5 transition-all",
-                            chosenAction === act ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 bg-white hover:bg-stone-50",
-                          )}>
-                            <span className={cn("w-4 h-4 rounded-full border-[1.5px] shrink-0", chosenAction === act ? "border-white bg-stone-900 shadow-[inset_0_0_0_3px_white]" : "border-stone-300 bg-white")} />
-                            <span>
-                              <div className="text-sm font-semibold leading-tight">{title}</div>
-                              <div className="text-xs opacity-70 mt-0.5">{sub}</div>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
+            {/* ═══ Mobile: Collapsible shift info ═══ */}
+            <div className="lg:hidden border-t border-stone-200 bg-white">
+              <button
+                onClick={() => setShowPanel(!showPanel)}
+                className="w-full flex items-center justify-between px-4 py-3 active:bg-stone-50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-[11px] tracking-wider text-stone-400">ON SHIFT</span>
+                  <span className="font-mono text-sm font-bold">{onShift.length}</span>
+                  {onShift.length > 0 && (
+                    <div className="flex -space-x-1.5">
+                      {onShift.slice(0, 4).map(s => (
+                        <div key={s.id} className={cn(
+                          "w-6 h-6 rounded-[0.3rem] flex items-center justify-center font-mono text-[9px] font-semibold border-2 border-white",
+                          s.onBreak ? "bg-stone-100 text-stone-600" : "bg-stone-900 text-white",
+                        )}>{s.avatar}</div>
+                      ))}
+                      {onShift.length > 4 && <div className="w-6 h-6 rounded-[0.3rem] bg-stone-100 text-stone-500 flex items-center justify-center font-mono text-[9px] border-2 border-white">+{onShift.length - 4}</div>}
                     </div>
                   )}
-
-                  <div className="grid grid-cols-3 gap-px bg-stone-200 border border-stone-200 rounded-[0.3rem] overflow-hidden">
-                    {[["TIME", fmtClock(now)], ["DATE", now.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })], ["STATE", memberState === "off" ? "OFF SHIFT" : memberState === "break" ? "ON BREAK" : "ON SHIFT"]].map(([k, v]) => (
-                      <div key={k} className="bg-white px-3.5 py-3">
-                        <div className="font-mono text-[10px] tracking-wider text-stone-400">{k}</div>
-                        <div className="font-mono text-[15px] font-semibold mt-0.5">{v}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2.5">
-                    <button onClick={handleCancel} className="flex-1 h-11 rounded-[0.3rem] border border-stone-900 bg-white text-sm font-semibold hover:bg-stone-50 transition-colors">Cancel (Esc)</button>
-                    <button onClick={handleConfirm} disabled={confirming} className="flex-[2] h-11 rounded-[0.3rem] border border-stone-900 bg-stone-900 text-white text-sm font-semibold disabled:opacity-50 hover:bg-stone-800 transition-colors flex items-center justify-center gap-2">
-                      {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Confirm {ACTION_META[needsChoice ? chosenAction : detectedAction!]?.verb} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg></>}
-                    </button>
-                  </div>
                 </div>
-              )}
+                {showPanel ? <ChevronDown className="h-4 w-4 text-stone-400" /> : <ChevronUp className="h-4 w-4 text-stone-400" />}
+              </button>
 
-              {/* ─── Stage: Success ─── */}
-              {stage === "success" && successMember && successAction && successTime && (
-                <div className="border-[1.5px] border-stone-900 rounded-[0.3rem] p-6 bg-stone-900 text-white">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-[0.3rem] bg-emerald-500 flex items-center justify-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                    </div>
-                    <span className="font-mono text-xs tracking-wider text-stone-400">PUNCH RECORDED</span>
-                  </div>
-                  <div className="text-3xl lg:text-[44px] font-bold mt-4 leading-[1.05] tracking-tight">
-                    {successAction === "in" ? `Welcome, ${successMember.displayName.split(" ")[0]}.` :
-                     successAction === "out" ? `Goodbye, ${successMember.displayName.split(" ")[0]}.` :
-                     successAction === "break-start" ? "Break started." :
-                     `Welcome back, ${successMember.displayName.split(" ")[0]}.`}
-                  </div>
-                  <div className="text-[15px] text-stone-400 mt-1.5">
-                    {successAction === "in" ? "Your shift is now open." :
-                     successAction === "out" ? "Your shift has been closed." :
-                     successAction === "break-start" ? "Clock is paused — don't forget to end your break." :
-                     "Break ended — your shift is active again."}
-                  </div>
-                  <div className="grid grid-cols-4 gap-px bg-white/15 border border-white/15 rounded-[0.3rem] overflow-hidden mt-5">
-                    {[
-                      [successAction === "in" ? "IN AT" : successAction === "out" ? "OUT AT" : successAction === "break-start" ? "BREAK AT" : "RESUMED AT", fmtClock(successTime)],
-                      ["TERMINAL", (deviceName || "TC-01").toUpperCase().slice(0, 10)],
-                      ["LOCATION", (deviceName || "—").toUpperCase().slice(0, 16)],
-                      ["CONF. ID", "0x" + Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase().padStart(6, "0")],
-                    ].map(([k, v]) => (
-                      <div key={k} className="bg-stone-900 px-3.5 py-3">
-                        <div className="font-mono text-[10px] tracking-wider text-stone-500">{k}</div>
-                        <div className="font-mono text-sm font-semibold mt-0.5">{v}</div>
+              {showPanel && (
+                <div className="border-t border-stone-100 max-h-[50vh] overflow-y-auto">
+                  {/* On shift */}
+                  <div className="px-4 py-3">
+                    {onShift.length === 0 ? (
+                      <div className="text-[13px] text-stone-400 py-2">No active shifts.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {onShift.map(s => (
+                          <div key={s.id} className="flex items-center gap-2.5">
+                            <div className={cn(
+                              "w-7 h-7 rounded-[0.3rem] flex items-center justify-center font-mono text-[11px] font-semibold shrink-0",
+                              s.onBreak ? "bg-stone-100 text-stone-600 border border-stone-300" : "bg-stone-900 text-white",
+                            )}>{s.avatar}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[13px] font-semibold truncate">{s.name}</div>
+                            </div>
+                            <span className={cn("font-mono text-xs", s.onBreak ? "text-amber-600" : "text-stone-400")}>{fmtDur(now.getTime() - s.at.getTime())}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                  <div className="font-mono text-[11px] tracking-wider text-stone-500 mt-5">
-                    RETURNING TO ENTRY IN 5S · TAP ANY DIGIT TO DISMISS
+
+                  {/* Recent punches */}
+                  <div className="border-t border-stone-100">
+                    <div className="px-4 py-2.5 flex items-center justify-between">
+                      <span className="font-mono text-[11px] tracking-wider text-stone-400">RECENT PUNCHES</span>
+                      <span className="font-mono text-[10px] tracking-wider text-stone-400">LIVE</span>
+                    </div>
+                    {recentPunches.length === 0 ? (
+                      <div className="text-center py-6 text-stone-400 text-sm">No punches today</div>
+                    ) : (
+                      <div className="space-y-0">
+                        {recentPunches.slice(0, 8).map(p => (
+                          <div key={p.id} className="flex items-center gap-2.5 px-4 py-2 border-t border-stone-50">
+                            <span className="font-mono text-xs text-stone-400 w-11 shrink-0">{fmtHM(p.at)}</span>
+                            <span className="text-[13px] font-medium flex-1 truncate">{p.who}</span>
+                            {tableBadge(p.action)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
           </main>
 
-          {/* ═══ RIGHT: Side panel ═══ */}
-          <aside className="border-l border-stone-200 bg-white flex flex-col min-h-0 overflow-y-auto">
+          {/* ═══ RIGHT: Side panel (desktop only) ═══ */}
+          <aside className="hidden lg:flex border-l border-stone-200 bg-white flex-col min-h-0 overflow-y-auto">
             {/* On shift now */}
             <div className="p-5 border-b border-stone-200">
               <div className="font-mono text-[11px] tracking-[0.14em] text-stone-400 mb-1">02 · ON SHIFT NOW</div>
