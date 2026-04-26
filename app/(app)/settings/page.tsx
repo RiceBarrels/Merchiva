@@ -63,8 +63,8 @@ import { getSettings, type UserSettings } from "@/lib/db/settings";
 import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
+  DynamicUIElement, DynamicUIElementContent, DynamicUIElementHeader, DynamicUIElementTitle, DynamicUIElementDescription,
+} from "@/components/ui/dynamic-ui-element";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -723,13 +723,13 @@ export default function SettingsPage() {
   function renderDialogs() {
     return (
       <>
-        {/* ─── Availability Dialog ─────────────────────────── */}
-        <Dialog open={availDialog} onOpenChange={setAvailDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle={t("availability.mobileTitle")}>{t("availability.title")}</DialogTitle>
-              <DialogDescription>{t("availability.subtitle")}</DialogDescription>
-            </DialogHeader>
+        {/* ─── Availability DynamicUIElement ─────────────────────────── */}
+        <DynamicUIElement open={availDialog} onOpenChange={setAvailDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("availability.mobileTitle")}>{t("availability.title")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("availability.subtitle")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>{t("availability.type")}</Label>
@@ -814,16 +814,16 @@ export default function SettingsPage() {
                 {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : t("availability.saveAvailability")}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── Time Off Dialog ─────────────────────────────── */}
-        <Dialog open={timeOffDialog} onOpenChange={setTimeOffDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle={t("settings.timeOffMobileTitle")}>{t("settings.timeOffTitle")}</DialogTitle>
-              <DialogDescription>{t("settings.timeOffSubtitle")}</DialogDescription>
-            </DialogHeader>
+        {/* ─── Time Off DynamicUIElement ─────────────────────────────── */}
+        <DynamicUIElement open={timeOffDialog} onOpenChange={setTimeOffDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.timeOffMobileTitle")}>{t("settings.timeOffTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("settings.timeOffSubtitle")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label>{t("settings.fullDays")}</Label>
@@ -850,16 +850,16 @@ export default function SettingsPage() {
                 {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.createTimeOffRequest")}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── Team Dialog ──────────────────────────────────── */}
-        <Dialog open={teamDialog} onOpenChange={setTeamDialog}>
-          <DialogContent noPadding>
-            <DialogHeader>
-              <DialogTitle mobileTitle={t("settings.teamDialogMobileTitle")}>{t("settings.teamDialogTitle")}</DialogTitle>
-              <DialogDescription className="hidden">{t("settings.teamDialogDesc")}</DialogDescription>
-            </DialogHeader>
+        {/* ─── Team DynamicUIElement ──────────────────────────────────── */}
+        <DynamicUIElement open={teamDialog} onOpenChange={setTeamDialog}>
+          <DynamicUIElementContent noPadding>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.teamDialogMobileTitle")}>{t("settings.teamDynamicUIElementTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription className="hidden">{t("settings.teamDialogDesc")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="flex flex-col h-full">
               {teamLoading ? (
                 <div className="flex items-center justify-center py-12">
@@ -959,16 +959,16 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── Invite Member Dialog ─────────────────────────── */}
-        <Dialog open={inviteDialog} onOpenChange={setInviteDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle={t("settings.inviteDialogMobileTitle")}>{t("settings.inviteDialogTitle")}</DialogTitle>
-              <DialogDescription>{t("settings.inviteDialogDesc")}</DialogDescription>
-            </DialogHeader>
+        {/* ─── Invite Member DynamicUIElement ─────────────────────────── */}
+        <DynamicUIElement open={inviteDialog} onOpenChange={setInviteDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.inviteDialogMobileTitle")}>{t("settings.inviteDynamicUIElementTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("settings.inviteDialogDesc")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>{t("settings.email")}</Label>
@@ -1036,22 +1036,22 @@ export default function SettingsPage() {
                 {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.sendInvitation")}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── Device Name Dialog ──────────────────────────────── */}
-        <Dialog open={deviceNameDialog} onOpenChange={setDeviceNameDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle={t("settings.deviceNameMobileTitle")}>
+        {/* ─── Device Name DynamicUIElement ──────────────────────────────── */}
+        <DynamicUIElement open={deviceNameDialog} onOpenChange={setDeviceNameDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.deviceNameMobileTitle")}>
                 {deviceName ? t("settings.renameDevice") : t("settings.nameDevice")}
-              </DialogTitle>
-              <DialogDescription>
+              </DynamicUIElementTitle>
+              <DynamicUIElementDescription>
                 {deviceName
                   ? t("settings.deviceNameUpdateDesc")
                   : t("settings.deviceNameNewDesc")}
-              </DialogDescription>
-            </DialogHeader>
+              </DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>{t("settings.deviceName")}</Label>
@@ -1087,16 +1087,16 @@ export default function SettingsPage() {
                 {t("settings.save")}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── Exit Store Mode PIN Dialog ─────────────────────── */}
-        <Dialog open={exitPinDialog} onOpenChange={(o) => { if (!o) setExitPinDialog(false); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle="Exit store mode">Enter PIN to exit store mode</DialogTitle>
-              <DialogDescription>Enter an owner or manager punch-in code to disable store machine mode.</DialogDescription>
-            </DialogHeader>
+        {/* ─── Exit Store Mode PIN DynamicUIElement ─────────────────────── */}
+        <DynamicUIElement open={exitPinDialog} onOpenChange={(o) => { if (!o) setExitPinDialog(false); }}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle="Exit store mode">Enter PIN to exit store mode</DynamicUIElementTitle>
+              <DynamicUIElementDescription>Enter an owner or manager punch-in code to disable store machine mode.</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Punch-in code</Label>
@@ -1143,16 +1143,16 @@ export default function SettingsPage() {
                 Disable Store Mode
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── Manage Device Dialog ───────────────────────────── */}
-        <Dialog open={manageDeviceDialog} onOpenChange={setManageDeviceDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle="Manage device">Manage Device</DialogTitle>
-              <DialogDescription>Rename or remove this store device.</DialogDescription>
-            </DialogHeader>
+        {/* ─── Manage Device DynamicUIElement ───────────────────────────── */}
+        <DynamicUIElement open={manageDeviceDialog} onOpenChange={setManageDeviceDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle="Manage device">Manage Device</DynamicUIElementTitle>
+              <DynamicUIElementDescription>Rename or remove this store device.</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Device name</Label>
@@ -1190,22 +1190,22 @@ export default function SettingsPage() {
                 Remove Device
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── My Punch-in Code Dialog ─────────────────────────── */}
-        <Dialog open={myCodeDialog} onOpenChange={setMyCodeDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle={t("settings.punchInCodeMobileTitle")}>
+        {/* ─── My Punch-in Code DynamicUIElement ─────────────────────────── */}
+        <DynamicUIElement open={myCodeDialog} onOpenChange={setMyCodeDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.punchInCodeMobileTitle")}>
                 {myCode ? t("settings.changePunchCode") : t("settings.setPunchCode")}
-              </DialogTitle>
-              <DialogDescription>
+              </DynamicUIElementTitle>
+              <DynamicUIElementDescription>
                 {myCode
                   ? t("settings.updatePunchCodeDesc")
                   : t("settings.setPunchCodeDesc")}
-              </DialogDescription>
-            </DialogHeader>
+              </DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>{t("settings.newCode")}</Label>
@@ -1265,20 +1265,20 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
 
-        {/* ─── Reset Punch-in Code Dialog ──────────────────────── */}
-        <Dialog open={!!resetCodeMember} onOpenChange={(o) => { if (!o) setResetCodeMember(null); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle mobileTitle={t("settings.resetCodeMobileTitle")}>{t("settings.resetPunchCodeTitle")}</DialogTitle>
-              <DialogDescription>
+        {/* ─── Reset Punch-in Code DynamicUIElement ──────────────────────── */}
+        <DynamicUIElement open={!!resetCodeMember} onOpenChange={(o) => { if (!o) setResetCodeMember(null); }}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.resetCodeMobileTitle")}>{t("settings.resetPunchCodeTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>
                 {resetCodeMember?.displayName || resetCodeMember?.email
                   ? <>{t("settings.setNewCodeFor")} <span className="font-medium">{resetCodeMember.displayName || resetCodeMember.email}</span>{t("settings.setNewCodePeriod")}</>
                   : t("settings.setNewCode")}
-              </DialogDescription>
-            </DialogHeader>
+              </DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label>{t("settings.newCodeFourDigitsLabel")}</Label>
@@ -1338,8 +1338,8 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
       </>
     );
   }
@@ -1652,11 +1652,11 @@ export default function SettingsPage() {
           </div>
           <ChevronRight className="h-4 w-4 text-stone-400 shrink-0" />
         </button>
-        <Dialog open={langDialogOpen} onOpenChange={setLangDialogOpen}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>{t("settings.language")}</DialogTitle>
-            </DialogHeader>
+        <DynamicUIElement open={langDialogOpen} onOpenChange={setLangDialogOpen}>
+          <DynamicUIElementContent className="max-w-sm">
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle>{t("settings.language")}</DynamicUIElementTitle>
+            </DynamicUIElementHeader>
             <div className="space-y-1 py-2">
               {LOCALES.map((loc) => (
                 <button
@@ -1674,8 +1674,8 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
         <SRow
           icon={<Calendar className="h-4 w-4 text-stone-700" />}
           title={t("settings.weekStartsOn")}
@@ -2526,10 +2526,10 @@ function SettingsDesktop(props: SettingsDesktopProps) {
       </div>
 
       {/* ─── Detail dialog ─── */}
-      <Dialog open={!!activeSection} onOpenChange={(o) => { if (!o) setActiveSection(null); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
+      <DynamicUIElement open={!!activeSection} onOpenChange={(o) => { if (!o) setActiveSection(null); }}>
+        <DynamicUIElementContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-[0.3rem] bg-stone-900 text-white flex items-center justify-center shrink-0">
                 <DetailIcon className="h-4 w-4" />
               </div>
@@ -2537,12 +2537,12 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                 <div className="text-[16px] font-semibold">{detailMeta?.title}</div>
                 <div className="text-[12px] text-stone-500 font-normal">{detailMeta?.desc}</div>
               </div>
-            </DialogTitle>
-            <DialogDescription className="hidden">{detailMeta?.desc}</DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{detailMeta?.desc}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           {renderDetail()}
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </div>
   );
 }

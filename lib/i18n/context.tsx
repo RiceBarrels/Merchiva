@@ -13,6 +13,7 @@ import {
   LOCALE_COOKIE,
   RTL_LOCALES,
   detectBrowserLocale,
+  detectNativeLocale,
   isLocale,
   type Locale,
 } from "./config";
@@ -46,8 +47,16 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const cookieVal = readCookie(LOCALE_COOKIE);
-    const initial = isLocale(cookieVal) ? cookieVal : detectBrowserLocale();
-    if (initial !== locale) setLocaleState(initial);
+    if (isLocale(cookieVal)) {
+      if (cookieVal !== locale) setLocaleState(cookieVal);
+      return;
+    }
+    // No cookie — try native device language first, then browser
+    detectNativeLocale().then((native) => {
+      const initial = native ?? detectBrowserLocale();
+      writeCookie(LOCALE_COOKIE, initial);
+      if (initial !== locale) setLocaleState(initial);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

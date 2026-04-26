@@ -28,3 +28,17 @@ export function detectBrowserLocale(): Locale {
   }
   return DEFAULT_LOCALE;
 }
+
+export async function detectNativeLocale(): Promise<Locale | null> {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return null;
+    const { Device } = await import("@capacitor/device");
+    const info = await Device.getLanguageCode();
+    const short = info.value?.toLowerCase().split("-")[0];
+    if (short && isLocale(short)) return short;
+  } catch {
+    /* not running in Capacitor */
+  }
+  return null;
+}

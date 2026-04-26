@@ -11,12 +11,12 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+  DynamicUIElementFooter,
+} from "@/components/ui/dynamic-ui-element";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -379,11 +379,11 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
         </ContextMenuContent>
       </ContextMenu>
 
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Save as Component</DialogTitle>
-          </DialogHeader>
+      <DynamicUIElement open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DynamicUIElementContent className="sm:max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle className="text-sm">Save as Component</DynamicUIElementTitle>
+          </DynamicUIElementHeader>
           <Input
             value={componentName}
             onChange={(e) => setComponentName(e.target.value)}
@@ -394,7 +394,7 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
               if (e.key === "Enter" && componentName.trim()) handleSaveComponent();
             }}
           />
-          <DialogFooter>
+          <DynamicUIElementFooter>
             <Button
               size="sm"
               variant="secondary"
@@ -411,9 +411,9 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
             >
               {saving ? "Saving..." : "Save"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DynamicUIElementFooter>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </>
   );
 }

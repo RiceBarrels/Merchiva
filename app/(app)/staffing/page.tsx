@@ -20,8 +20,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, useDialogUrl,
-} from "@/components/ui/dialog";
+  DynamicUIElement, DynamicUIElementContent, DynamicUIElementDescription, DynamicUIElementHeader, DynamicUIElementTitle, useDynamicUIElementUrl,
+} from "@/components/ui/dynamic-ui-element";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -1132,7 +1132,7 @@ export default function StaffingPage() {
   });
   const [saving, setSaving] = useState(false);
 
-  // ─── Role Dialog ───
+  // ─── Role DynamicUIElement ───
   const [roleDialog,   setRoleDialog]   = useState(false);
   const [editingRole,  setEditingRole]  = useState<StaffRole | null>(null);
   const [roleForm,     setRoleForm]     = useState({
@@ -1163,7 +1163,7 @@ export default function StaffingPage() {
   const menuRef = useRef<HTMLDivElement>(null);
 
 
-  // ─── Trade Dialog ───
+  // ─── Trade DynamicUIElement ───
   const [tradeDialog, setTradeDialog] = useState<{ open: boolean; shift: Shift | null }>({ open: false, shift: null });
   const [tradeSearch, setTradeSearch] = useState("");
   const [tradeDate,   setTradeDate]   = useState("");
@@ -1174,18 +1174,18 @@ export default function StaffingPage() {
     shifts: { id: string; date: string; startTime: string; endTime: string }[];
   }[]>([]);
 
-  // ─── Cover Dialog ───
+  // ─── Cover DynamicUIElement ───
   const [coverDialog, setCoverDialog] = useState<{ open: boolean; shift: Shift | null }>({ open: false, shift: null });
   const [selectedCover, setSelectedCover] = useState<string | null>(null);
   const [savingCover, setSavingCover] = useState(false);
 
-  // ─── Availability Dialog ───
+  // ─── Availability DynamicUIElement ───
   const [availDialog, setAvailDialog] = useState(false);
   // myAvailability managed by useStaffing hook below
   const [availForm, setAvailForm] = useState({ ...DEFAULT_AVAIL_FORM });
   const [savingAvail, setSavingAvail] = useState(false);
 
-  // ─── Time Off Dialog ───
+  // ─── Time Off DynamicUIElement ───
   const [timeOffDialog, setTimeOffDialog] = useState(false);
   // myTimeOffRequests managed by useStaffing hook below
   const [timeOffForm, setTimeOffForm] = useState({
@@ -1281,7 +1281,7 @@ export default function StaffingPage() {
     return () => el.removeEventListener("touchmove", handler);
   });
 
-  // ─── Shift Details Dialog ──────────────────────────────────────────────────
+  // ─── Shift Details DynamicUIElement ──────────────────────────────────────────────────
   const [shiftDetailShift, setShiftDetailShift] = useState<Shift | null>(null);
 
   // ─── Computed ──────────────────────────────────────────────────────────────
@@ -2240,7 +2240,7 @@ export default function StaffingPage() {
     a.click();
   };
 
-  const [downloadDialog, setDownloadDialog] = useDialogUrl(t("staffing.exportDialog.title"));
+  const [downloadDialog, setDownloadDialog] = useDynamicUIElementUrl(t("staffing.exportDialog.title"));
   const [downloadRange, setDownloadRange] = useState({ start: "", end: "" });
   const [downloadFormat, setDownloadFormat] = useState<"pdf" | "png" | "csv">("pdf");
 
@@ -2310,17 +2310,17 @@ export default function StaffingPage() {
         refreshing={refreshing}
       />
       {/* ─── Dialogs still need to render (they are portals) ─── */}
-      {/* Add / Edit Shift Dialog */}
-      <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
-        <DialogContent className="max-w-md" noPadding>
-          <DialogHeader>
-            <DialogTitle mobileTitle={editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}>
+      {/* Add / Edit Shift DynamicUIElement */}
+      <DynamicUIElement open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}>
               {editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}
-            </DialogTitle>
-            <DialogDescription className="hidden">
+            </DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">
               {editingShift ? t("staffing.shiftDialog.editDescription") : t("staffing.shiftDialog.createDescription")}
-            </DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto">
               <div className="px-4 pt-2 pb-4 space-y-4">
@@ -2374,15 +2374,15 @@ export default function StaffingPage() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-      {/* Role Dialog */}
-      <Dialog open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
-        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingRole ? t("staffing.roleDialog.editTitle") : t("staffing.roleDialog.addTitle")}</DialogTitle>
-            <DialogDescription>{editingRole ? t("staffing.roleDialog.editDescription") : t("staffing.roleDialog.addDescription")}</DialogDescription>
-          </DialogHeader>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+      {/* Role DynamicUIElement */}
+      <DynamicUIElement open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
+        <DynamicUIElementContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{editingRole ? t("staffing.roleDialog.editTitle") : t("staffing.roleDialog.addTitle")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{editingRole ? t("staffing.roleDialog.editDescription") : t("staffing.roleDialog.addDescription")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
               <Label>{t("staffing.roleDialog.icon")}</Label>
@@ -2417,15 +2417,15 @@ export default function StaffingPage() {
             <Button variant="outline" onClick={() => setRoleDialog(false)}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}</Button>
           </div>
-        </DialogContent>
-      </Dialog>
-      {/* Task Dialog */}
-      <Dialog open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{taskDialog.task ? t("staffing.taskDialog.editTitle") : t("staffing.taskDialog.addTitle")}</DialogTitle>
-            <DialogDescription>{taskDialog.task ? t("staffing.taskDialog.editDescription") : t("staffing.taskDialog.addDescription")}</DialogDescription>
-          </DialogHeader>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+      {/* Task DynamicUIElement */}
+      <DynamicUIElement open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
+        <DynamicUIElementContent className="max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{taskDialog.task ? t("staffing.taskDialog.editTitle") : t("staffing.taskDialog.addTitle")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{taskDialog.task ? t("staffing.taskDialog.editDescription") : t("staffing.taskDialog.addDescription")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
               <Label>{t("staffing.taskDialog.taskTitle")}</Label>
@@ -2453,8 +2453,8 @@ export default function StaffingPage() {
             <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>{savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}</Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </>
   );
 
@@ -3073,14 +3073,14 @@ export default function StaffingPage() {
         )}
 
         {/* ── Role detail dialog (shared between tabs) ── */}
-        <Dialog open={roleDetailOpen && !!selectedRole} onOpenChange={(open) => { if (!open) { setRoleDetailOpen(false); } }}>
-          <DialogContent noPadding>
-            <DialogHeader>
-              <DialogTitle mobileTitle={selectedRole?.name ?? t("staffing.roles.rolePlaceholder")}>
+        <DynamicUIElement open={roleDetailOpen && !!selectedRole} onOpenChange={(open) => { if (!open) { setRoleDetailOpen(false); } }}>
+          <DynamicUIElementContent noPadding>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={selectedRole?.name ?? t("staffing.roles.rolePlaceholder")}>
                 {selectedRole?.name ?? t("staffing.roles.rolePlaceholder")}
-              </DialogTitle>
-              <DialogDescription className="hidden">{t("staffing.roleDialog.editDescription")}</DialogDescription>
-            </DialogHeader>
+              </DynamicUIElementTitle>
+              <DynamicUIElementDescription className="hidden">{t("staffing.roleDialog.editDescription")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
             {selectedRole && (
               <div className="space-y-4 px-4 pb-4 overflow-y-auto">
                 <div className="flex items-center gap-2 pt-2">
@@ -3199,20 +3199,20 @@ export default function StaffingPage() {
                 </div>
               </div>
             )}
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
       </div>
-      {/* ─── Add / Edit Shift Dialog (7shifts-style) ─────────────── */}
-      <Dialog open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
-        <DialogContent className="max-w-md" noPadding>
-          <DialogHeader>
-            <DialogTitle mobileTitle={editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}>
+      {/* ─── Add / Edit Shift DynamicUIElement (7shifts-style) ─────────────── */}
+      <DynamicUIElement open={addDialog} onOpenChange={(open) => { setAddDialog(open); if (!open) setEditingShift(null); }}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}>
               {editingShift ? t("staffing.shiftDialog.editTitle") : t("staffing.shiftDialog.createTitle")}
-            </DialogTitle>
-            <DialogDescription className="hidden">
+            </DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">
               {editingShift ? t("staffing.shiftDialog.editDescription") : t("staffing.shiftDialog.createDescription")}
-            </DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
 
           <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto">
@@ -3378,18 +3378,18 @@ export default function StaffingPage() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Role Dialog ─────────────────────────────────────────── */}
-      <Dialog open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
-        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingRole ? t("staffing.roleDialog.editTitle") : t("staffing.roleDialog.addTitle")}</DialogTitle>
-            <DialogDescription>
+      {/* ─── Role DynamicUIElement ─────────────────────────────────────────── */}
+      <DynamicUIElement open={roleDialog} onOpenChange={(open) => { setRoleDialog(open); if (!open) setEditingRole(null); }}>
+        <DynamicUIElementContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{editingRole ? t("staffing.roleDialog.editTitle") : t("staffing.roleDialog.addTitle")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>
               {editingRole ? t("staffing.roleDialog.editDescription") : t("staffing.roleDialog.addDescription")}
-            </DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4 py-1">
             {/* Icon picker */}
             <div className="space-y-1.5">
@@ -3484,18 +3484,18 @@ export default function StaffingPage() {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Add/Edit Task Dialog ────────────────────────────────── */}
-      <Dialog open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{taskDialog.task ? t("staffing.taskDialog.editTitle") : t("staffing.taskDialog.addTitle")}</DialogTitle>
-            <DialogDescription>
+      {/* ─── Add/Edit Task DynamicUIElement ────────────────────────────────── */}
+      <DynamicUIElement open={taskDialog.open} onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}>
+        <DynamicUIElementContent className="max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{taskDialog.task ? t("staffing.taskDialog.editTitle") : t("staffing.taskDialog.addTitle")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>
               {taskDialog.task ? t("staffing.taskDialog.editDescription") : t("staffing.taskDialog.addDescription")}
-            </DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4 py-1">
             <div className="space-y-1.5">
               <Label>{t("staffing.taskDialog.taskTitle")}</Label>
@@ -3601,25 +3601,25 @@ export default function StaffingPage() {
               {savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── View Role Tasks Dialog (read-only for staff) ─────────── */}
-      <Dialog open={viewTasksDialog.open} onOpenChange={(open) => { if (!open) setViewTasksDialog({ open: false, role: null }); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+      {/* ─── View Role Tasks DynamicUIElement (read-only for staff) ─────────── */}
+      <DynamicUIElement open={viewTasksDialog.open} onOpenChange={(open) => { if (!open) setViewTasksDialog({ open: false, role: null }); }}>
+        <DynamicUIElementContent className="max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle className="flex items-center gap-2">
               {viewTasksDialog.role && (
                 <div className="h-6 w-6 flex items-center justify-center" style={{ color: viewTasksDialog.role.color }}>
                   <RoleIconComp name={viewTasksDialog.role.icon} className="h-4 w-4" />
                 </div>
               )}
               {t("staffing.roles.roleTasksTitle").replace("{role}", viewTasksDialog.role?.name ?? t("staffing.roles.rolePlaceholder"))}
-            </DialogTitle>
-            <DialogDescription>
+            </DynamicUIElementTitle>
+            <DynamicUIElementDescription>
               {viewTasksDialog.role?.description || t("staffing.roles.roleTasksDefaultDesc")}
-            </DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           {viewTasksDialog.role && (
             <div className="py-1">
               {(roleTasksCache[viewTasksDialog.role.id] ?? []).length === 0 ? (
@@ -3650,16 +3650,16 @@ export default function StaffingPage() {
           <div className="flex justify-end pt-1">
             <Button variant="outline" onClick={() => setViewTasksDialog({ open: false, role: null })}>{t("staffing.viewTasksDialog.closeCta")}</Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Trade Shift Dialog ───────────────────────────────────── */}
-      <Dialog open={tradeDialog.open} onOpenChange={(open) => { if (!open) setTradeDialog({ open: false, shift: null }); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("staffing.tradeDialog.title")}</DialogTitle>
-            <DialogDescription>{t("staffing.tradeDialog.description")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── Trade Shift DynamicUIElement ───────────────────────────────────── */}
+      <DynamicUIElement open={tradeDialog.open} onOpenChange={(open) => { if (!open) setTradeDialog({ open: false, shift: null }); }}>
+        <DynamicUIElementContent className="max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{t("staffing.tradeDialog.title")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("staffing.tradeDialog.description")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           {tradeDialog.shift && (
             <div className="space-y-4 py-1">
               {/* Your shift */}
@@ -3756,16 +3756,16 @@ export default function StaffingPage() {
               {savingTrade ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.tradeDialog.sendRequest")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Find Cover Dialog ────────────────────────────────────── */}
-      <Dialog open={coverDialog.open} onOpenChange={(open) => { if (!open) setCoverDialog({ open: false, shift: null }); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("staffing.coverDialog.title")}</DialogTitle>
-            <DialogDescription>{t("staffing.coverDialog.description")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── Find Cover DynamicUIElement ────────────────────────────────────── */}
+      <DynamicUIElement open={coverDialog.open} onOpenChange={(open) => { if (!open) setCoverDialog({ open: false, shift: null }); }}>
+        <DynamicUIElementContent className="max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{t("staffing.coverDialog.title")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("staffing.coverDialog.description")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           {coverDialog.shift && (
             <div className="space-y-4 py-1">
               {/* Your shift */}
@@ -3821,16 +3821,16 @@ export default function StaffingPage() {
               {savingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.coverDialog.sendRequest")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Availability Dialog ──────────────────────────────────── */}
-      <Dialog open={availDialog} onOpenChange={setAvailDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("staffing.availDialog.title")}</DialogTitle>
-            <DialogDescription>{t("staffing.availDialog.description")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── Availability DynamicUIElement ──────────────────────────────────── */}
+      <DynamicUIElement open={availDialog} onOpenChange={setAvailDialog}>
+        <DynamicUIElementContent className="max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{t("staffing.availDialog.title")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("staffing.availDialog.description")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4 py-1">
             {/* Type */}
             <div className="space-y-1.5">
@@ -3976,16 +3976,16 @@ export default function StaffingPage() {
               {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.availDialog.saveCta")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Time Off Request Dialog ──────────────────────────────── */}
-      <Dialog open={timeOffDialog} onOpenChange={setTimeOffDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("staffing.timeOffDialog.title")}</DialogTitle>
-            <DialogDescription>{t("staffing.timeOffDialog.description")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── Time Off Request DynamicUIElement ──────────────────────────────── */}
+      <DynamicUIElement open={timeOffDialog} onOpenChange={setTimeOffDialog}>
+        <DynamicUIElementContent className="max-w-sm">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{t("staffing.timeOffDialog.title")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("staffing.timeOffDialog.description")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4 py-1">
             {/* Full Days toggle */}
             <div className="flex items-center justify-between">
@@ -4066,8 +4066,8 @@ export default function StaffingPage() {
           >
             {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.timeOffDialog.submitCta")}
           </Button>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
       {/* ─── Delete Preset Confirm ─────────────────────────────── */}
       <AlertDialog open={!!deletePresetConfirm} onOpenChange={(open) => { if (!open) setDeletePresetConfirm(null); }}>
         <AlertDialogContent>
@@ -4091,13 +4091,13 @@ export default function StaffingPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ─── Shift Preset Dialog ──────────────────────────────── */}
-      <Dialog open={presetDialog} onOpenChange={(open) => { if (!open) { setPresetDialog(false); setEditingPreset(null); } }}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle>{editingPreset ? t("staffing.presetDialog.editTitle") : t("staffing.presetDialog.addTitle")}</DialogTitle>
-            <DialogDescription>{t("staffing.presetDialog.description")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── Shift Preset DynamicUIElement ──────────────────────────────── */}
+      <DynamicUIElement open={presetDialog} onOpenChange={(open) => { if (!open) { setPresetDialog(false); setEditingPreset(null); } }}>
+        <DynamicUIElementContent className="max-w-xs">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{editingPreset ? t("staffing.presetDialog.editTitle") : t("staffing.presetDialog.addTitle")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("staffing.presetDialog.description")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
               <Label>{t("staffing.presetDialog.name")}</Label>
@@ -4142,16 +4142,16 @@ export default function StaffingPage() {
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Export Schedule Dialog ─────────────────────────── */}
-      <Dialog open={downloadDialog} onOpenChange={(open) => { if (!open) setDownloadDialog(false); }}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle>{t("staffing.exportDialog.title")}</DialogTitle>
-            <DialogDescription>{t("staffing.exportDialog.description")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── Export Schedule DynamicUIElement ─────────────────────────── */}
+      <DynamicUIElement open={downloadDialog} onOpenChange={(open) => { if (!open) setDownloadDialog(false); }}>
+        <DynamicUIElementContent className="max-w-xs">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{t("staffing.exportDialog.title")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("staffing.exportDialog.description")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
               <Label>{t("staffing.exportDialog.startDate")}</Label>
@@ -4187,10 +4187,10 @@ export default function StaffingPage() {
               <Download className="h-4 w-4 mr-1.5" /> {t("staffing.exportDialog.exportCta")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Shift Details Dialog ─────────────────────────────── */}
+      {/* ─── Shift Details DynamicUIElement ─────────────────────────────── */}
       {shiftDetailShift && (() => {
         const s = shiftDetailShift;
         const dateLabel = new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
@@ -4204,12 +4204,12 @@ export default function StaffingPage() {
           (cs) => cs.date === s.date && cs.memberId !== myMemberId && cs.memberId !== null
         );
         return (
-          <Dialog open onOpenChange={(open) => { if (!open) setShiftDetailShift(null); }}>
-            <DialogContent className="max-w-sm p-0 overflow-hidden">
-              <DialogHeader className="sr-only">
-                <DialogTitle>{t("staffing.shiftDetails.title")}</DialogTitle>
-                <DialogDescription>{t("staffing.shiftDetails.descriptionPrefix").replace("{date}", dateLabel)}</DialogDescription>
-              </DialogHeader>
+          <DynamicUIElement open onOpenChange={(open) => { if (!open) setShiftDetailShift(null); }}>
+            <DynamicUIElementContent className="max-w-sm p-0 overflow-hidden">
+              <DynamicUIElementHeader className="sr-only">
+                <DynamicUIElementTitle>{t("staffing.shiftDetails.title")}</DynamicUIElementTitle>
+                <DynamicUIElementDescription>{t("staffing.shiftDetails.descriptionPrefix").replace("{date}", dateLabel)}</DynamicUIElementDescription>
+              </DynamicUIElementHeader>
 
               {/* Top section */}
               <div className="px-5 pt-5 pb-4 space-y-3">
@@ -4328,8 +4328,8 @@ export default function StaffingPage() {
                   <ArrowLeftRight className="h-4 w-4 mr-2" /> {t("staffing.shiftDetails.tradeShift")}
                 </Button>
               </div>
-            </DialogContent>
-          </Dialog>
+            </DynamicUIElementContent>
+          </DynamicUIElement>
         );
       })()}
 

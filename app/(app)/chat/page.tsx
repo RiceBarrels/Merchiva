@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
+  DynamicUIElement, DynamicUIElementContent, DynamicUIElementHeader, DynamicUIElementTitle, DynamicUIElementDescription,
+} from "@/components/ui/dynamic-ui-element";
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@/components/ui/drawer";
@@ -398,12 +398,12 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* Mobile: Dialog */}
-        <Dialog open={showChat && isMobile} onOpenChange={(open) => { if (!open) setActiveConv(null); }}>
-          <DialogContent showCloseButton={false} noPadding>
-            <DialogTitle mobileTitle={activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")} className="hidden">
+        {/* Mobile: DynamicUIElement */}
+        <DynamicUIElement open={showChat && isMobile} onOpenChange={(open) => { if (!open) setActiveConv(null); }}>
+          <DynamicUIElementContent showCloseButton={false} noPadding>
+            <DynamicUIElementTitle mobileTitle={activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")} className="hidden">
               {activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")}
-            </DialogTitle>
+            </DynamicUIElementTitle>
             {activeConv && (
               <div className="flex flex-col h-full">
                 <ChatView
@@ -433,17 +433,17 @@ export default function ChatPage() {
                 />
               </div>
             )}
-          </DialogContent>
-        </Dialog>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
       </div>
 
-      {/* ─── New DM Dialog ─────────────────────────── */}
-      <Dialog open={newDmDialog} onOpenChange={setNewDmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle mobileTitle={t("chat.newMessageShort")}>{t("chat.newDirectMessage")}</DialogTitle>
-            <DialogDescription>{t("chat.chooseTeamMember")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── New DM DynamicUIElement ─────────────────────────── */}
+      <DynamicUIElement open={newDmDialog} onOpenChange={setNewDmDialog}>
+        <DynamicUIElementContent>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("chat.newMessageShort")}>{t("chat.newDirectMessage")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("chat.chooseTeamMember")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-1">
             {team
               .filter((m) => m.userId !== userId)
@@ -463,16 +463,16 @@ export default function ChatPage() {
                 </button>
               ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── New Group Dialog ──────────────────────── */}
-      <Dialog open={newGroupDialog} onOpenChange={setNewGroupDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle mobileTitle={t("chat.newGroup")}>{t("chat.createGroupChat")}</DialogTitle>
-            <DialogDescription>{t("chat.nameGroupAddMembers")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── New Group DynamicUIElement ──────────────────────── */}
+      <DynamicUIElement open={newGroupDialog} onOpenChange={setNewGroupDialog}>
+        <DynamicUIElementContent>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("chat.newGroup")}>{t("chat.createGroupChat")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("chat.nameGroupAddMembers")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>{t("chat.groupNameRequired")}</Label>
@@ -543,16 +543,16 @@ export default function ChatPage() {
               {t("chat.createGroup")} ({selectedMembers.length} {t("chat.memberPlural").toLowerCase()})
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Add Members Dialog ────────────────────── */}
-      <Dialog open={addMemberDialog} onOpenChange={setAddMemberDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle mobileTitle={t("chat.addMembersMobile")}>{t("chat.addMembersToGroup")}</DialogTitle>
-            <DialogDescription>{t("chat.selectMembersDesc")}</DialogDescription>
-          </DialogHeader>
+      {/* ─── Add Members DynamicUIElement ────────────────────── */}
+      <DynamicUIElement open={addMemberDialog} onOpenChange={setAddMemberDialog}>
+        <DynamicUIElementContent>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("chat.addMembersMobile")}>{t("chat.addMembersToGroup")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("chat.selectMembersDesc")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -600,8 +600,8 @@ export default function ChatPage() {
               {t("chat.add")} {selectedMembers.length} {selectedMembers.length !== 1 ? t("chat.memberPlural") : t("chat.memberSingular")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </PermissionGuard>
   );
 }

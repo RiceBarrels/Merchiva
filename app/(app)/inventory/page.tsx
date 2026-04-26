@@ -35,12 +35,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementDescription,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+} from "@/components/ui/dynamic-ui-element";
 import {
   Table,
   TableBody,
@@ -485,17 +485,17 @@ export default function InventoryPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editItem ? t("inventory.dialog.editTitle") : t("inventory.dialog.addTitle")}</DialogTitle>
-            <DialogDescription>
+      {/* Add/Edit DynamicUIElement */}
+      <DynamicUIElement open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DynamicUIElementContent className="max-w-lg">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{editItem ? t("inventory.dialog.editTitle") : t("inventory.dialog.addTitle")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>
               {editItem
                 ? t("inventory.dialog.editDescription")
                 : t("inventory.dialog.addDescription")}
-            </DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -594,8 +594,8 @@ export default function InventoryPage() {
               )}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
       </>
     </div>
     </PermissionGuard>

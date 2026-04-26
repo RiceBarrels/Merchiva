@@ -16,6 +16,9 @@ import {
   LayoutDashboard,
   Trash2,
   X,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -139,14 +142,25 @@ function MobilePageSwitcher({
 // ─── Mobile Design Panel (bottom sheet) ─────────────────────────────────────
 
 function MobileDesignPanel() {
-  const { selected, selectedNodeId, selectedNodeName, selectedNodeProps, selectedNodeType, parentId, currentIndex, siblingCount, actions } = useEditor((state) => {
+  const { selected, selectedNodeId, selectedNodeName, selectedNodeProps, selectedNodeType, parentId, currentIndex, siblingCount, grandparentId, canMoveOut, canMoveInPrev, canMoveInNext, actions, query } = useEditor((state) => {
     const [currentNodeId] = state.events.selected;
-    if (!currentNodeId) return { selected: false, selectedNodeId: "", selectedNodeName: "", selectedNodeProps: {} as Record<string, unknown>, selectedNodeType: "", parentId: "", currentIndex: 0, siblingCount: 0 };
+    const empty = { selected: false, selectedNodeId: "", selectedNodeName: "", selectedNodeProps: {} as Record<string, unknown>, selectedNodeType: "", parentId: "", currentIndex: 0, siblingCount: 0, grandparentId: "", canMoveOut: false, canMoveInPrev: false, canMoveInNext: false };
+    if (!currentNodeId) return empty;
     const node = state.nodes[currentNodeId];
-    if (!node) return { selected: false, selectedNodeId: "", selectedNodeName: "", selectedNodeProps: {} as Record<string, unknown>, selectedNodeType: "", parentId: "", currentIndex: 0, siblingCount: 0 };
+    if (!node) return empty;
     const pid = node.data.parent;
     const parentNode = pid ? state.nodes[pid] : null;
     const siblings = parentNode?.data.nodes || [];
+    const idx = siblings.indexOf(currentNodeId);
+
+    const gpid = parentNode?.data.parent || "";
+    const canOut = !!gpid && pid !== "ROOT";
+
+    const prevSibling = idx > 0 ? state.nodes[siblings[idx - 1]] : null;
+    const nextSibling = idx < siblings.length - 1 ? state.nodes[siblings[idx + 1]] : null;
+    const canInPrev = !!prevSibling?.data.isCanvas;
+    const canInNext = !!nextSibling?.data.isCanvas;
+
     return {
       selected: true,
       selectedNodeId: currentNodeId,
@@ -154,8 +168,12 @@ function MobileDesignPanel() {
       selectedNodeProps: node.data.props || {},
       selectedNodeType: node.data.type?.toString() || "",
       parentId: pid || "",
-      currentIndex: siblings.indexOf(currentNodeId),
+      currentIndex: idx,
       siblingCount: siblings.length,
+      grandparentId: gpid,
+      canMoveOut: canOut,
+      canMoveInPrev: canInPrev,
+      canMoveInNext: canInNext,
     };
   });
 
@@ -186,8 +204,10 @@ function MobileDesignPanel() {
     <div className="border-t border-border bg-background shrink-0 max-h-[45vh] overflow-y-auto">
       {/* Header */}
       <div className="flex items-center gap-1 px-3 py-2 border-b border-border sticky top-0 bg-background z-10">
+        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
         <span className="text-xs font-medium text-foreground truncate">{selectedNodeName}</span>
         <div className="flex-1" />
+        {/* Reorder within parent */}
         <Button
           variant="ghost"
           size="icon-xs"
@@ -206,6 +226,48 @@ function MobileDesignPanel() {
         >
           <ArrowLeft className="h-3.5 w-3.5 -rotate-90" />
         </Button>
+        {/* Move out of parent container */}
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={!canMoveOut}
+          onClick={() => {
+            if (!canMoveOut || !grandparentId) return;
+            hapticLight();
+            const gpParent = query.node(grandparentId).get();
+            if (!gpParent) return;
+            const parentSiblings = gpParent.data.nodes || [];
+            const parentIdx = parentSiblings.indexOf(parentId);
+            actions.move(selectedNodeId, grandparentId, parentIdx + 1);
+          }}
+          title="Move out of container"
+        >
+          <ArrowUpFromLine className="h-3.5 w-3.5" />
+        </Button>
+        {/* Move into adjacent container */}
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={!canMoveInPrev && !canMoveInNext}
+          onClick={() => {
+            const parentNode = query.node(parentId).get();
+            if (!parentNode) return;
+            const siblings = parentNode.data.nodes || [];
+            hapticLight();
+            if (canMoveInPrev) {
+              const prevId = siblings[currentIndex - 1];
+              const prevNode = query.node(prevId).get();
+              actions.move(selectedNodeId, prevId, (prevNode?.data.nodes || []).length);
+            } else if (canMoveInNext) {
+              const nextId = siblings[currentIndex + 1];
+              actions.move(selectedNodeId, nextId, 0);
+            }
+          }}
+          title="Move into container"
+        >
+          <ArrowDownToLine className="h-3.5 w-3.5" />
+        </Button>
+        <div className="w-px h-4 bg-border mx-0.5" />
         <Button
           variant="ghost"
           size="icon-xs"

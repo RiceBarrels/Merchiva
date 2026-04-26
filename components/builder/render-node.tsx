@@ -6,6 +6,17 @@ import { useNode, useEditor } from "@craftjs/core";
 import { ROOT_NODE } from "@craftjs/utils";
 import { ArrowUp, GripVertical, Trash2 } from "lucide-react";
 
+// ─── Pointer helpers (mouse + touch) ───────────────────────────────────────
+
+function getPointerCoords(e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent): { clientX: number; clientY: number } | null {
+  if ("touches" in e) {
+    const touch = e.touches[0] || e.changedTouches[0];
+    if (!touch) return null;
+    return { clientX: touch.clientX, clientY: touch.clientY };
+  }
+  return { clientX: (e as MouseEvent).clientX, clientY: (e as MouseEvent).clientY };
+}
+
 // ─── Resize handles ────────────────────────────────────────────────────────
 
 type HandlePosition = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
@@ -41,18 +52,18 @@ function ResizeHandles({
     };
   }, [dom]);
 
-  const handleMouseDown = useCallback(
-    (handle: HandlePosition, e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+  const startResize = useCallback(
+    (handle: HandlePosition, clientX: number, clientY: number) => {
       const r = dom.getBoundingClientRect();
-      dragging.current = { handle, startX: e.clientX, startY: e.clientY, startW: r.width, startH: r.height };
+      dragging.current = { handle, startX: clientX, startY: clientY, startW: r.width, startH: r.height };
 
-      const onMouseMove = (ev: MouseEvent) => {
+      const onPointerMove = (ev: MouseEvent | TouchEvent) => {
         if (!dragging.current) return;
+        const coords = getPointerCoords(ev);
+        if (!coords) return;
         const { handle: h, startX, startY, startW, startH } = dragging.current;
-        const dx = ev.clientX - startX;
-        const dy = ev.clientY - startY;
+        const dx = coords.clientX - startX;
+        const dy = coords.clientY - startY;
 
         let newW = startW;
         let newH = startH;
@@ -62,43 +73,64 @@ function ResizeHandles({
         if (h.includes("s")) newH = Math.max(20, startH + dy);
         if (h.includes("n")) newH = Math.max(20, startH - dy);
 
-        // Live preview
         if (h.includes("e") || h.includes("w")) dom.style.width = `${newW}px`;
         if (h.includes("s") || h.includes("n")) dom.style.height = `${newH}px`;
 
         setRect(dom.getBoundingClientRect());
       };
 
-      const onMouseUp = () => {
+      const onPointerUp = () => {
         if (!dragging.current) return;
-        const r2 = dom.getBoundingClientRect();
-        const dw = r2.width - dragging.current.startW;
-        const dh = r2.height - dragging.current.startH;
         dragging.current = null;
-        onResize(r2.width, r2.height);
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
+        onResize(dom.getBoundingClientRect().width, dom.getBoundingClientRect().height);
+        document.removeEventListener("mousemove", onPointerMove);
+        document.removeEventListener("mouseup", onPointerUp);
+        document.removeEventListener("touchmove", onPointerMove);
+        document.removeEventListener("touchend", onPointerUp);
       };
 
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("mousemove", onPointerMove);
+      document.addEventListener("mouseup", onPointerUp);
+      document.addEventListener("touchmove", onPointerMove, { passive: false });
+      document.addEventListener("touchend", onPointerUp);
     },
     [dom, onResize]
   );
 
+  const handleMouseDown = useCallback(
+    (handle: HandlePosition, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startResize(handle, e.clientX, e.clientY);
+    },
+    [startResize]
+  );
+
+  const handleTouchStart = useCallback(
+    (handle: HandlePosition, e: React.TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const touch = e.touches[0];
+      if (!touch) return;
+      startResize(handle, touch.clientX, touch.clientY);
+    },
+    [startResize]
+  );
+
   if (!rect) return null;
 
+  const handleSize = "ontouchstart" in window ? 14 : 6;
+  const handleOffset = handleSize / 2;
+
   const handles: { pos: HandlePosition; style: React.CSSProperties }[] = [
-    // Corners
-    { pos: "nw", style: { left: rect.left - 3, top: rect.top - 3 } },
-    { pos: "ne", style: { left: rect.right - 3, top: rect.top - 3 } },
-    { pos: "sw", style: { left: rect.left - 3, top: rect.bottom - 3 } },
-    { pos: "se", style: { left: rect.right - 3, top: rect.bottom - 3 } },
-    // Edges
-    { pos: "n", style: { left: rect.left + rect.width / 2 - 3, top: rect.top - 3 } },
-    { pos: "s", style: { left: rect.left + rect.width / 2 - 3, top: rect.bottom - 3 } },
-    { pos: "w", style: { left: rect.left - 3, top: rect.top + rect.height / 2 - 3 } },
-    { pos: "e", style: { left: rect.right - 3, top: rect.top + rect.height / 2 - 3 } },
+    { pos: "nw", style: { left: rect.left - handleOffset, top: rect.top - handleOffset } },
+    { pos: "ne", style: { left: rect.right - handleOffset, top: rect.top - handleOffset } },
+    { pos: "sw", style: { left: rect.left - handleOffset, top: rect.bottom - handleOffset } },
+    { pos: "se", style: { left: rect.right - handleOffset, top: rect.bottom - handleOffset } },
+    { pos: "n", style: { left: rect.left + rect.width / 2 - handleOffset, top: rect.top - handleOffset } },
+    { pos: "s", style: { left: rect.left + rect.width / 2 - handleOffset, top: rect.bottom - handleOffset } },
+    { pos: "w", style: { left: rect.left - handleOffset, top: rect.top + rect.height / 2 - handleOffset } },
+    { pos: "e", style: { left: rect.right - handleOffset, top: rect.top + rect.height / 2 - handleOffset } },
   ];
 
   return ReactDOM.createPortal(
@@ -107,15 +139,17 @@ function ResizeHandles({
         <div
           key={h.pos}
           onMouseDown={(e) => handleMouseDown(h.pos, e)}
+          onTouchStart={(e) => handleTouchStart(h.pos, e)}
           style={{
             position: "fixed",
-            width: 6,
-            height: 6,
+            width: handleSize,
+            height: handleSize,
             background: "white",
             border: "1px solid #3b82f6",
             borderRadius: 1,
             cursor: HANDLE_CURSORS[h.pos],
             zIndex: 9998,
+            touchAction: "none",
             ...h.style,
           }}
         />
@@ -229,22 +263,23 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
   useEffect(() => {
     if (!dom || !isStylePositioned || !isActive) return;
 
-    const onMouseDown = (e: MouseEvent) => {
-      if ((e.target as HTMLElement).closest("[data-resize-handle]") || (e.target as HTMLElement).closest("[data-node-toolbar]")) return;
-      e.stopPropagation();
+    const startDrag = (clientX: number, clientY: number) => {
       const startLeft = parseFloat(dom.style.left) || 0;
       const startTop = parseFloat(dom.style.top) || 0;
-      styleDragging.current = { startX: e.clientX, startY: e.clientY, startLeft, startTop };
+      styleDragging.current = { startX: clientX, startY: clientY, startLeft, startTop };
 
-      const onMouseMove = (ev: MouseEvent) => {
+      const onPointerMove = (ev: MouseEvent | TouchEvent) => {
         if (!styleDragging.current) return;
-        const dx = ev.clientX - styleDragging.current.startX;
-        const dy = ev.clientY - styleDragging.current.startY;
+        const coords = getPointerCoords(ev);
+        if (!coords) return;
+        if ("cancelable" in ev && ev.cancelable) ev.preventDefault();
+        const dx = coords.clientX - styleDragging.current.startX;
+        const dy = coords.clientY - styleDragging.current.startY;
         dom.style.left = `${styleDragging.current.startLeft + dx}px`;
         dom.style.top = `${styleDragging.current.startTop + dy}px`;
       };
 
-      const onMouseUp = () => {
+      const onPointerUp = () => {
         if (!styleDragging.current) return;
         const finalLeft = Math.round(parseFloat(dom.style.left) || 0);
         const finalTop = Math.round(parseFloat(dom.style.top) || 0);
@@ -254,25 +289,47 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
           const s = (props.style as Record<string, string>) || {};
           s.left = `${finalLeft}px`;
           s.top = `${finalTop}px`;
-          // Clear opposing anchors so left/top are the source of truth
           delete s.right;
           delete s.bottom;
           props.style = { ...s };
         });
 
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
+        document.removeEventListener("mousemove", onPointerMove);
+        document.removeEventListener("mouseup", onPointerUp);
+        document.removeEventListener("touchmove", onPointerMove);
+        document.removeEventListener("touchend", onPointerUp);
       };
 
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("mousemove", onPointerMove);
+      document.addEventListener("mouseup", onPointerUp);
+      document.addEventListener("touchmove", onPointerMove, { passive: false });
+      document.addEventListener("touchend", onPointerUp);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest("[data-resize-handle]") || (e.target as HTMLElement).closest("[data-node-toolbar]")) return;
+      e.stopPropagation();
+      startDrag(e.clientX, e.clientY);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if ((e.target as HTMLElement).closest("[data-resize-handle]") || (e.target as HTMLElement).closest("[data-node-toolbar]")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const touch = e.touches[0];
+      if (!touch) return;
+      startDrag(touch.clientX, touch.clientY);
     };
 
     dom.style.cursor = "move";
+    dom.style.touchAction = "none";
     dom.addEventListener("mousedown", onMouseDown);
+    dom.addEventListener("touchstart", onTouchStart, { passive: false });
     return () => {
       dom.style.cursor = "";
+      dom.style.touchAction = "";
       dom.removeEventListener("mousedown", onMouseDown);
+      dom.removeEventListener("touchstart", onTouchStart);
     };
   }, [dom, isStylePositioned, isActive, actions, id]);
 
@@ -282,47 +339,65 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
   useEffect(() => {
     if (!dom || !isFixedNode || !isActive) return;
 
-    const onMouseDown = (e: MouseEvent) => {
-      // Don't intercept if clicking on resize handles or toolbar
-      if ((e.target as HTMLElement).closest("[data-resize-handle]") || (e.target as HTMLElement).closest("[data-node-toolbar]")) return;
+    const startDrag = (clientX: number, clientY: number) => {
+      fixedDragging.current = { startX: clientX, startY: clientY, startPropX: fixedX, startPropY: fixedY };
 
-      e.stopPropagation();
-      fixedDragging.current = { startX: e.clientX, startY: e.clientY, startPropX: fixedX, startPropY: fixedY };
-
-      const onMouseMove = (ev: MouseEvent) => {
+      const onPointerMove = (ev: MouseEvent | TouchEvent) => {
         if (!fixedDragging.current) return;
-        const dx = ev.clientX - fixedDragging.current.startX;
-        const dy = ev.clientY - fixedDragging.current.startY;
-        // Live preview
+        const coords = getPointerCoords(ev);
+        if (!coords) return;
+        if ("cancelable" in ev && ev.cancelable) ev.preventDefault();
+        const dx = coords.clientX - fixedDragging.current.startX;
+        const dy = coords.clientY - fixedDragging.current.startY;
         dom.style.left = `${fixedDragging.current.startPropX + dx}px`;
         dom.style.top = `${fixedDragging.current.startPropY + dy}px`;
       };
 
-      const onMouseUp = () => {
+      const onPointerUp = () => {
         if (!fixedDragging.current) return;
-        const finalX = fixedDragging.current.startPropX + (parseInt(dom.style.left) - fixedDragging.current.startPropX);
-        const finalY = fixedDragging.current.startPropY + (parseInt(dom.style.top) - fixedDragging.current.startPropY);
         fixedDragging.current = null;
 
-        // Commit x/y to CraftFixed props
         actions.setProp(id, (props: Record<string, unknown>) => {
           props.x = Math.round(parseFloat(dom.style.left) || 0);
           props.y = Math.round(parseFloat(dom.style.top) || 0);
         });
 
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
+        document.removeEventListener("mousemove", onPointerMove);
+        document.removeEventListener("mouseup", onPointerUp);
+        document.removeEventListener("touchmove", onPointerMove);
+        document.removeEventListener("touchend", onPointerUp);
       };
 
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("mousemove", onPointerMove);
+      document.addEventListener("mouseup", onPointerUp);
+      document.addEventListener("touchmove", onPointerMove, { passive: false });
+      document.addEventListener("touchend", onPointerUp);
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest("[data-resize-handle]") || (e.target as HTMLElement).closest("[data-node-toolbar]")) return;
+      e.stopPropagation();
+      startDrag(e.clientX, e.clientY);
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if ((e.target as HTMLElement).closest("[data-resize-handle]") || (e.target as HTMLElement).closest("[data-node-toolbar]")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const touch = e.touches[0];
+      if (!touch) return;
+      startDrag(touch.clientX, touch.clientY);
     };
 
     dom.style.cursor = "move";
+    dom.style.touchAction = "none";
     dom.addEventListener("mousedown", onMouseDown);
+    dom.addEventListener("touchstart", onTouchStart, { passive: false });
     return () => {
       dom.style.cursor = "";
+      dom.style.touchAction = "";
       dom.removeEventListener("mousedown", onMouseDown);
+      dom.removeEventListener("touchstart", onTouchStart);
     };
   }, [dom, isFixedNode, isActive, actions, id, fixedX, fixedY]);
 

@@ -11,8 +11,8 @@ import { hapticSuccess, hapticLight } from "@/lib/haptics";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
+  DynamicUIElement, DynamicUIElementContent, DynamicUIElementHeader, DynamicUIElementTitle, DynamicUIElementDescription,
+} from "@/components/ui/dynamic-ui-element";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -596,14 +596,14 @@ export default function PunchInPage() {
       </div>
 
       {/* ─── Set-code dialog (first-time setup) ──────────── */}
-      <Dialog open={setCodeOpen} onOpenChange={setSetCodeOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle mobileTitle="Punch-in code">{myCode ? "Change your punch-in code" : "Set your punch-in code"}</DialogTitle>
-            <DialogDescription>
+      <DynamicUIElement open={setCodeOpen} onOpenChange={setSetCodeOpen}>
+        <DynamicUIElementContent>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle="Punch-in code">{myCode ? "Change your punch-in code" : "Set your punch-in code"}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>
               {myCode ? "Update the 4-digit code you enter at this store." : "Pick a 4-digit code you'll remember. You'll enter it every time you punch in."}
-            </DialogDescription>
-          </DialogHeader>
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>New code</Label>
@@ -613,8 +613,8 @@ export default function PunchInPage() {
               {savingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save code"}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </PermissionGuard>
   );
 }

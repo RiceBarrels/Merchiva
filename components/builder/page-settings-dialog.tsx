@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+  DynamicUIElementFooter,
+} from "@/components/ui/dynamic-ui-element";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -83,11 +83,11 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Page Settings</DialogTitle>
-        </DialogHeader>
+    <DynamicUIElement open={open} onOpenChange={onOpenChange}>
+      <DynamicUIElementContent className="sm:max-w-md">
+        <DynamicUIElementHeader>
+          <DynamicUIElementTitle className="text-sm">Page Settings</DynamicUIElementTitle>
+        </DynamicUIElementHeader>
 
         <div className="space-y-4">
           {/* Basics */}
@@ -190,7 +190,7 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
           )}
         </div>
 
-        <DialogFooter>
+        <DynamicUIElementFooter>
           <Button
             variant="secondary"
             size="sm"
@@ -207,8 +207,8 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
           >
             {saving ? "Saving..." : "Save"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DynamicUIElementFooter>
+      </DynamicUIElementContent>
+    </DynamicUIElement>
   );
 }

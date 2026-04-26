@@ -36,12 +36,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementDescription,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+} from "@/components/ui/dynamic-ui-element";
 import { Progress } from "@/components/ui/progress";
 import {
   Table,
@@ -400,13 +400,13 @@ export default function ProductsPage() {
 
       </>
 
-      {/* Add Product Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t("products.dialog.title")}</DialogTitle>
-            <DialogDescription>{t("products.dialog.description")}</DialogDescription>
-          </DialogHeader>
+      {/* Add Product DynamicUIElement */}
+      <DynamicUIElement open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DynamicUIElementContent className="max-w-lg">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{t("products.dialog.title")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("products.dialog.description")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -462,8 +462,8 @@ export default function ProductsPage() {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("products.dialog.submit")}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </div>
     </PermissionGuard>
   );

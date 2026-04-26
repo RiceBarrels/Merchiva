@@ -61,7 +61,7 @@ import {
   MonitorSmartphone,
   KeyRound,
 } from "lucide-react";
-import { useOpenDialogCount, useDialogTitle, useDialogSwipeProgress } from "@/components/ui/dialog";
+import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
 import { BottomBar } from "@/components/bottom-bar";
@@ -349,11 +349,6 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             {!collapsed && t("common.signOut")}
           </button>
         </SidebarTooltip>
-        {!collapsed && (
-          <div className="px-1.5 pt-2">
-            <LanguageSwitcher className="w-full" />
-          </div>
-        )}
         {onToggleCollapse && (
           <SidebarTooltip label={collapsed ? t("components.sidebar.expand") : t("components.sidebar.collapse")} show={!!collapsed}>
             <button
@@ -416,10 +411,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const useBottomBar = navMode === "bottombar" && !storeMachineMode;
   // Builder subpages (/builder/[siteId]/...) need full viewport — force drawer mode
   const isBuilderPage = pathname.startsWith("/builder/");
-  const openDialogs = useOpenDialogCount();
+  const openDialogs = useOpenDynamicUIElementCount();
   const hasDialog = openDialogs > 0;
-  const dialogTitle = useDialogTitle();
-  const dialogSwipe = useDialogSwipeProgress();
+  const dialogTitle = useDynamicUIElementTitle();
+  const dialogSwipe = useDynamicUIElementSwipeProgress();
   const [isOpen, setIsOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -544,6 +539,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           velocity > VELOCITY_THRESHOLD;
       }
 
+      if (shouldOpen && !isOpenRef.current) hapticLight();
       setIsOpen(shouldOpen);
       setDragging(false);
       setDragOffset(0);
@@ -581,7 +577,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarCollapsedContext.Provider value={{ collapsed: sidebarCollapsed, toggle: toggleSidebarCollapse }}>
-    <SidebarOpenContext.Provider value={() => setIsOpen(true)}>
+    <SidebarOpenContext.Provider value={() => { hapticLight(); setIsOpen(true); }}>
     <>
       {/* ── Mobile / tablet layout (touch devices) + builder full-viewport ── */}
       <div className={cn("relative h-screen overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex" : "hidden")}>

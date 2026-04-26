@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
  * SafeDialog: waits for document.readyState === "complete" before allowing open.
  * If the page is still loading, retries every 1s until ready, then opens.
  */
-function Dialog({
+function DynamicUIElement({
   open,
   onOpenChange,
   ...props
@@ -69,19 +69,19 @@ function Dialog({
   )
 }
 
-function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
+function DynamicUIElementTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
-function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
+function DynamicUIElementPortal({ ...props }: DialogPrimitive.Portal.Props) {
   return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
 }
 
-function DialogClose({ ...props }: DialogPrimitive.Close.Props) {
+function DynamicUIElementClose({ ...props }: DialogPrimitive.Close.Props) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
-function DialogOverlay({
+function DynamicUIElementOverlay({
   className,
   ...props
 }: DialogPrimitive.Backdrop.Props) {
@@ -99,53 +99,53 @@ function DialogOverlay({
 }
 
 // Track stacked mobile dialogs for iOS-like depth effect
-const MobileDialogDepthContext = React.createContext(0);
+const MobileDynamicUIElementDepthContext = React.createContext(0);
 // Global counter for open mobile dialogs
-let globalDialogCount = 0;
-const globalDialogIds: string[] = [];
-const dialogListeners = new Set<(count: number) => void>();
-export function useOpenDialogCount() {
-  const [count, setCount] = React.useState(globalDialogCount);
+let globalDynamicUIElementCount = 0;
+const globalDynamicUIElementIds: string[] = [];
+const dynamicUIElementListeners = new Set<(count: number) => void>();
+export function useOpenDynamicUIElementCount() {
+  const [count, setCount] = React.useState(globalDynamicUIElementCount);
   React.useEffect(() => {
-    dialogListeners.add(setCount);
-    setCount(globalDialogCount);
-    return () => { dialogListeners.delete(setCount); };
+    dynamicUIElementListeners.add(setCount);
+    setCount(globalDynamicUIElementCount);
+    return () => { dynamicUIElementListeners.delete(setCount); };
   }, []);
   return count;
 }
-function notifyDialogListeners() {
-  dialogListeners.forEach((fn) => fn(globalDialogCount));
+function notifyDynamicUIElementListeners() {
+  dynamicUIElementListeners.forEach((fn) => fn(globalDynamicUIElementCount));
 }
 // Global swipe progress for the topmost dialog (0 = fully open, 1 = fully swiped away)
-let globalSwipeProgress = 0;
-const swipeListeners = new Set<(p: number) => void>();
-export function useDialogSwipeProgress() {
+let globalDynamicUIElementSwipeProgress = 0;
+const dynamicUIElementSwipeListeners = new Set<(p: number) => void>();
+export function useDynamicUIElementSwipeProgress() {
   const [p, setP] = React.useState(0);
   React.useEffect(() => {
-    swipeListeners.add(setP);
-    return () => { swipeListeners.delete(setP); };
+    dynamicUIElementSwipeListeners.add(setP);
+    return () => { dynamicUIElementSwipeListeners.delete(setP); };
   }, []);
   return p;
 }
 function setGlobalSwipeProgress(p: number) {
-  globalSwipeProgress = p;
-  swipeListeners.forEach((fn) => fn(p));
+  globalDynamicUIElementSwipeProgress = p;
+  dynamicUIElementSwipeListeners.forEach((fn) => fn(p));
 }
 // Title registry — immune to Strict Mode double-mount
-const titleRegistry = new Map<string, string>(); // instanceId → title
-let titleIdSeq = 0;
-const titleListeners = new Set<(title: string) => void>();
+const dynamicUIElementTitleRegistry = new Map<string, string>(); // instanceId → title
+let dynamicUIElementTitleIdSeq = 0;
+const dynamicUIElementTitleListeners = new Set<(title: string) => void>();
 
-function getTitles(): string[] { return Array.from(titleRegistry.values()); }
+function getTitles(): string[] { return Array.from(dynamicUIElementTitleRegistry.values()); }
 function getTopTitle(): string { const t = getTitles(); return t[t.length - 1] ?? ""; }
-function notifyTitles() { const t = getTopTitle(); titleListeners.forEach((fn) => fn(t)); syncDialogsToUrl(); }
+function notifyTitles() { const t = getTopTitle(); dynamicUIElementTitleListeners.forEach((fn) => fn(t)); syncDynamicUIElementsToUrl(); }
 
-export function useDialogTitle() {
+export function useDynamicUIElementTitle() {
   const [title, setTitle] = React.useState(getTopTitle());
   React.useEffect(() => {
-    titleListeners.add(setTitle);
+    dynamicUIElementTitleListeners.add(setTitle);
     setTitle(getTopTitle());
-    return () => { titleListeners.delete(setTitle); };
+    return () => { dynamicUIElementTitleListeners.delete(setTitle); };
   }, []);
   return title;
 }
@@ -155,7 +155,7 @@ let prevTitleCount = 0;
 // Track whether a popstate is being handled to avoid pushing during close
 let handlingPopstate = false;
 
-function syncDialogsToUrl() {
+function syncDynamicUIElementsToUrl() {
   if (typeof window === "undefined") return;
   if (syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
@@ -179,7 +179,7 @@ function syncDialogsToUrl() {
 // Listen for back/forward button → close or reopen dialogs
 if (typeof window !== "undefined") {
   window.addEventListener("popstate", () => {
-    const urlDialogs = getDialogsFromUrl();
+    const urlDialogs = getDynamicUIElementsFromUrl();
     const openDialogs = getTitles();
 
     if (urlDialogs.length > openDialogs.length) {
@@ -187,7 +187,7 @@ if (typeof window !== "undefined") {
       handlingPopstate = true;
       urlDialogs.forEach((title) => {
         if (!openDialogs.includes(title)) {
-          requestDialogOpen(title);
+          requestDynamicUIElementOpen(title);
         }
       });
       setTimeout(() => { handlingPopstate = false; }, 100);
@@ -210,7 +210,7 @@ if (typeof window !== "undefined") {
 }
 
 /** Parse dialog titles from the current URL's ?dialogs= param */
-function getDialogsFromUrl(): string[] {
+function getDynamicUIElementsFromUrl(): string[] {
   if (typeof window === "undefined") return [];
   const params = new URLSearchParams(window.location.search);
   const raw = params.get("dialogs");
@@ -219,10 +219,10 @@ function getDialogsFromUrl(): string[] {
 }
 
 // Event system for forward-navigation dialog reopening
-const dialogOpenListeners = new Map<string, Set<() => void>>(); // title → callbacks
+const dynamicUIElementOpenListeners = new Map<string, Set<() => void>>(); // title → callbacks
 
-function requestDialogOpen(title: string) {
-  dialogOpenListeners.get(title)?.forEach((fn) => fn());
+function requestDynamicUIElementOpen(title: string) {
+  dynamicUIElementOpenListeners.get(title)?.forEach((fn) => fn());
 }
 
 /**
@@ -230,20 +230,20 @@ function requestDialogOpen(title: string) {
  * Auto-opens the dialog if its title is in the URL's ?dialogs= param on mount.
  * Also reopens when the user presses the browser forward button.
  */
-export function useDialogUrl(title: string): [boolean, React.Dispatch<React.SetStateAction<boolean>>] {
-  const [open, setOpen] = React.useState(() => getDialogsFromUrl().includes(title));
+export function useDynamicUIElementUrl(title: string): [boolean, React.Dispatch<React.SetStateAction<boolean>>] {
+  const [open, setOpen] = React.useState(() => getDynamicUIElementsFromUrl().includes(title));
 
   React.useEffect(() => {
     const cb = () => setOpen(true);
-    let set = dialogOpenListeners.get(title);
+    let set = dynamicUIElementOpenListeners.get(title);
     if (!set) {
       set = new Set();
-      dialogOpenListeners.set(title, set);
+      dynamicUIElementOpenListeners.set(title, set);
     }
     set.add(cb);
     return () => {
       set!.delete(cb);
-      if (set!.size === 0) dialogOpenListeners.delete(title);
+      if (set!.size === 0) dynamicUIElementOpenListeners.delete(title);
     };
   }, [title]);
 
@@ -251,22 +251,22 @@ export function useDialogUrl(title: string): [boolean, React.Dispatch<React.SetS
 }
 
 function registerTitle(title: string): string {
-  const id = `dt-${++titleIdSeq}`;
-  titleRegistry.set(id, title);
+  const id = `dt-${++dynamicUIElementTitleIdSeq}`;
+  dynamicUIElementTitleRegistry.set(id, title);
   notifyTitles();
   return id;
 }
 function unregisterTitle(id: string) {
-  titleRegistry.delete(id);
+  dynamicUIElementTitleRegistry.delete(id);
   notifyTitles();
 }
 // Pass title to mobile header bar
-const MobileDialogTitleContext = React.createContext<{
+const MobileDynamicUIElementTitleContext = React.createContext<{
   title: string;
   setTitle: (t: string) => void;
 }>({ title: "", setTitle: () => {} });
 
-function MobileDialogPage({
+function MobileDynamicUIElementPage({
   children,
   className,
   noPadding = false,
@@ -279,16 +279,16 @@ function MobileDialogPage({
 
   // Register on mount, unregister on unmount
   React.useEffect(() => {
-    myDepth.current = globalDialogCount;
+    myDepth.current = globalDynamicUIElementCount;
     myId.current = `mobile-dialog-${myDepth.current}`;
-    globalDialogIds.push(myId.current);
-    globalDialogCount++;
-    notifyDialogListeners();
+    globalDynamicUIElementIds.push(myId.current);
+    globalDynamicUIElementCount++;
+    notifyDynamicUIElementListeners();
     return () => {
-      globalDialogCount--;
-      const idx = globalDialogIds.indexOf(myId.current);
-      if (idx >= 0) globalDialogIds.splice(idx, 1);
-      notifyDialogListeners();
+      globalDynamicUIElementCount--;
+      const idx = globalDynamicUIElementIds.indexOf(myId.current);
+      if (idx >= 0) globalDynamicUIElementIds.splice(idx, 1);
+      notifyDynamicUIElementListeners();
     };
   }, []);
 
@@ -398,8 +398,8 @@ function MobileDialogPage({
   }, [entered, exiting, bgShift, transition, depth]);
 
   return (
-    <MobileDialogDepthContext.Provider value={depth + 1}>
-      <MobileDialogTitleContext.Provider value={{ title: mobileTitle, setTitle: setMobileTitle }}>
+    <MobileDynamicUIElementDepthContext.Provider value={depth + 1}>
+      <MobileDynamicUIElementTitleContext.Provider value={{ title: mobileTitle, setTitle: setMobileTitle }}>
       {/* Foreground dialog page */}
       <div
         id={`mobile-dialog-${depth}`}
@@ -434,12 +434,12 @@ function MobileDialogPage({
         </div>
       </DialogPrimitive.Popup>
       </div>
-      </MobileDialogTitleContext.Provider>
-    </MobileDialogDepthContext.Provider>
+      </MobileDynamicUIElementTitleContext.Provider>
+    </MobileDynamicUIElementDepthContext.Provider>
   );
 }
 
-function DialogContent({
+function DynamicUIElementContent({
   className,
   children,
   showCloseButton = true,
@@ -452,7 +452,7 @@ function DialogContent({
   side?: "right"
 }) {
   // Detect mobile via matchMedia — initialize with correct value to avoid
-  // false→true transition that causes MobileDialogPage double-mount
+  // false→true transition that causes MobileDynamicUIElementPage double-mount
   const [isMobile, setIsMobile] = React.useState(
     () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches
   );
@@ -467,20 +467,20 @@ function DialogContent({
 
   if (isMobile) {
     return (
-      <DialogPortal>
-        <MobileDialogPage className={className} noPadding={noPadding} {...props}>
+      <DynamicUIElementPortal>
+        <MobileDynamicUIElementPage className={className} noPadding={noPadding} {...props}>
           <div className="w-full" style={{ height: getSafeAreaInsets().top }} />
           {children}
-        </MobileDialogPage>
-      </DialogPortal>
+        </MobileDynamicUIElementPage>
+      </DynamicUIElementPortal>
     );
   }
 
   // Desktop right-side panel (Sheet behaviour)
   if (side === "right") {
     return (
-      <DialogPortal>
-        <DialogOverlay />
+      <DynamicUIElementPortal>
+        <DynamicUIElementOverlay />
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           className={cn(
@@ -506,13 +506,13 @@ function DialogContent({
             </DialogPrimitive.Close>
           )}
         </DialogPrimitive.Popup>
-      </DialogPortal>
+      </DynamicUIElementPortal>
     );
   }
 
   return (
-    <DialogPortal>
-      <DialogOverlay />
+    <DynamicUIElementPortal>
+      <DynamicUIElementOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
@@ -538,11 +538,11 @@ function DialogContent({
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
-    </DialogPortal>
+    </DynamicUIElementPortal>
   )
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function DynamicUIElementHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
@@ -552,7 +552,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function DialogFooter({
+function DynamicUIElementFooter({
   className,
   showCloseButton = false,
   children,
@@ -579,8 +579,8 @@ function DialogFooter({
   )
 }
 
-function DialogTitle({ className, children, mobileTitle, ...props }: DialogPrimitive.Title.Props & { mobileTitle?: string }) {
-  const { setTitle } = React.useContext(MobileDialogTitleContext);
+function DynamicUIElementTitle({ className, children, mobileTitle, ...props }: DialogPrimitive.Title.Props & { mobileTitle?: string }) {
+  const { setTitle } = React.useContext(MobileDynamicUIElementTitleContext);
   const text = mobileTitle || (typeof children === "string" ? children : "");
 
   // Set mobile header title via context
@@ -617,7 +617,7 @@ function DialogTitle({ className, children, mobileTitle, ...props }: DialogPrimi
   )
 }
 
-function DialogDescription({
+function DynamicUIElementDescription({
   className,
   ...props
 }: DialogPrimitive.Description.Props) {
@@ -634,14 +634,14 @@ function DialogDescription({
 }
 
 export {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
+  DynamicUIElement,
+  DynamicUIElementClose,
+  DynamicUIElementContent,
+  DynamicUIElementDescription,
+  DynamicUIElementFooter,
+  DynamicUIElementHeader,
+  DynamicUIElementOverlay,
+  DynamicUIElementPortal,
+  DynamicUIElementTitle,
+  DynamicUIElementTrigger,
 }
