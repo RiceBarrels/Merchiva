@@ -5,6 +5,7 @@ import { Menu, X } from "lucide-react";
 import { SidebarContent } from "@/components/sidebar";
 import { MerchivaLogo } from "@/components/logo";
 import { useT } from "@/lib/i18n/context";
+import { hapticLight } from "@/lib/haptics";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 30;
@@ -35,6 +36,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     isOpenRef.current = true;
     setIsDragging(false);
     setDragOffset(SIDEBAR_WIDTH);
+    hapticLight();
   }, []);
 
   const closeSidebar = useCallback(() => {
@@ -107,6 +109,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       const shouldOpen = currentOffset > SIDEBAR_WIDTH * 0.4 || velocity > 0.4;
 
       if (shouldOpen) {
+        if (!isOpenRef.current) hapticLight();
         setIsOpen(true);
         isOpenRef.current = true;
         setDragOffset(SIDEBAR_WIDTH);
