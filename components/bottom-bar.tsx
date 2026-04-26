@@ -13,6 +13,7 @@ import { hapticLight } from "@/lib/haptics";
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
 import type { Permissions } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   labelKey: string;
@@ -76,7 +77,12 @@ export function BottomBar() {
                   : "text-muted-foreground"
               }`}
             >
-              <Icon className={`h-6 w-6 ${active ? "[stroke-width:2.2]" : "[stroke-width:1.5]"}`} />
+              <div 
+                className={cn("w-12 h-7 justify-center items-center flex rounded-full", active && "bg-primary/5")}
+                
+              >
+                <Icon className="w-5 h-5" />
+              </div>
               <span className={`text-[10px] leading-tight ${active ? "font-semibold" : "font-normal"}`}>{t(item.labelKey)}</span>
             </Link>
           );
