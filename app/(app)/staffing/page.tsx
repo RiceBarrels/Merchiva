@@ -2594,52 +2594,22 @@ export default function StaffingPage() {
     <PermissionGuard section="staffing">
       <div className="flex flex-col min-h-screen bg-white">
 
-        {/* ─── TopBar: sticky, border-b, white bg ──────────────── */}
-        <div className="sticky top-0 z-20 bg-white border-b border-stone-200 px-4 py-3 flex items-center justify-between">
-          <div className="min-w-0">
-            <h1 className="text-xl font-semibold text-stone-900 leading-tight">{t("staffing.title")}</h1>
-            <p className="text-[12px] text-stone-500 leading-tight">
-              {currentOrg?.name ?? t("staffing.store")} &middot; {activeMembers.length} {t("staffing.active")}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-stone-400" />}
-            <button className="h-8 w-8 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors">
-              <Search className="h-4 w-4 text-stone-700" />
-            </button>
-            <button
-              onClick={() => { hapticLight(); setShowRequests(!showRequests); }}
-              className="h-8 w-8 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors relative"
-            >
-              <Bell className="h-4 w-4 text-stone-700" />
-              {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-0.5 flex items-center justify-center bg-stone-900 text-white text-[9px] font-bold rounded-full">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-            {canEdit && (
-              <button
-                onClick={() => {
-                  hapticLight();
-                  setEditingShift(null);
-                  setShiftForm({
-                    memberId: team[0]?.id ?? "",
-                    date: selectedDay,
-                    shiftType: "morning",
-                    startTime: "07:00",
-                    endTime: "14:00",
-                    roleNames: [],
-                  });
-                  setAddDialog(true);
-                }}
-                className="h-8 w-8 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors"
-              >
-                <Plus className="h-4 w-4 text-stone-700" />
-              </button>
-            )}
-          </div>
-        </div>
+        <PageHeader
+          title={t("staffing.title")}
+          subtitle={`${currentOrg?.name ?? t("staffing.store")} · ${activeMembers.length} ${t("staffing.active")}`}
+          actions={[
+            { icon: <Search className="h-4 w-4" /> },
+            { icon: <Bell className="h-4 w-4" />, onClick: () => { hapticLight(); setShowRequests(!showRequests); }, badge: pendingCount },
+            ...(canEdit ? [{ icon: <Plus className="h-4 w-4" />, onClick: () => {
+              hapticLight();
+              setEditingShift(null);
+              setShiftForm({ memberId: team[0]?.id ?? "", date: selectedDay, shiftType: "morning" as const, startTime: "07:00", endTime: "14:00", roleNames: [] });
+              setAddDialog(true);
+            } }] : []),
+          ]}
+        >
+          {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </PageHeader>
 
         {/* ─── Tabs: Overview | Schedule ────────────────────────── */}
         <div className="flex border-b border-stone-200 bg-white">

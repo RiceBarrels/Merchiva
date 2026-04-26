@@ -1465,19 +1465,11 @@ export default function SettingsPage() {
   return (
     <>
     <div className="min-h-screen bg-white pb-28">
-      {/* ─── TopBar ─────────────────────────────────────────── */}
-      <div className="flex items-center sticky top-0 z-10 py-4 px-6 gap-6 bg-white border-b border-stone-200">
-        <SettingsIcon className="h- w-5 text-stone-900" />
-        <div className="flex items-center justify-between flex-1">
-          <div>
-            <h1 className="text-xl font-semibold text-stone-900">{t("settings.title")}</h1>
-            <p className="text-xs text-stone-500">{businessName || t("settings.yourBusiness")} {activeStaffCount > 0 ? `· ${activeStaffCount} ${t("settings.membersSuffix")}` : ""}</p>
-          </div>
-          <button className="h-8 w-8 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-center">
-            <Search className="h-4 w-4 text-stone-500" />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={t("settings.title")}
+        subtitle={`${businessName || t("settings.yourBusiness")}${activeStaffCount > 0 ? ` · ${activeStaffCount} ${t("settings.membersSuffix")}` : ""}`}
+        actions={[{ icon: <Search className="h-4 w-4" /> }]}
+      />
 
       {/* ─── User Card ──────────────────────────────────────── */}
       <div
