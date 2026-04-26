@@ -58,10 +58,10 @@ export function BottomBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-white/95 backdrop-blur-sm"
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm"
       style={{ paddingBottom: safeArea.bottom }}
     >
-      <div className="flex items-stretch justify-around h-13">
+      <div className="flex items-stretch justify-around pt-2 pb-1.5">
         {tabs.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -70,14 +70,14 @@ export function BottomBar() {
               key={item.href}
               href={item.href}
               onClick={() => hapticLight()}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors ${
+              className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors ${
                 active
-                  ? "text-stone-900"
-                  : "text-stone-400"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
               }`}
             >
-              <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium leading-tight">{t(item.labelKey)}</span>
+              <Icon className={`h-6 w-6 ${active ? "[stroke-width:2.2]" : "[stroke-width:1.5]"}`} />
+              <span className={`text-[10px] leading-tight ${active ? "font-semibold" : "font-normal"}`}>{t(item.labelKey)}</span>
             </Link>
           );
         })}

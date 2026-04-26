@@ -139,17 +139,23 @@ function MobilePageSwitcher({
 // ─── Mobile Design Panel (bottom sheet) ─────────────────────────────────────
 
 function MobileDesignPanel() {
-  const { selected, selectedNodeId, selectedNodeName, selectedNodeProps, selectedNodeType, actions } = useEditor((state) => {
+  const { selected, selectedNodeId, selectedNodeName, selectedNodeProps, selectedNodeType, parentId, currentIndex, siblingCount, actions } = useEditor((state) => {
     const [currentNodeId] = state.events.selected;
-    if (!currentNodeId) return { selected: false, selectedNodeId: "", selectedNodeName: "", selectedNodeProps: {} as Record<string, unknown>, selectedNodeType: "" };
+    if (!currentNodeId) return { selected: false, selectedNodeId: "", selectedNodeName: "", selectedNodeProps: {} as Record<string, unknown>, selectedNodeType: "", parentId: "", currentIndex: 0, siblingCount: 0 };
     const node = state.nodes[currentNodeId];
-    if (!node) return { selected: false, selectedNodeId: "", selectedNodeName: "", selectedNodeProps: {} as Record<string, unknown>, selectedNodeType: "" };
+    if (!node) return { selected: false, selectedNodeId: "", selectedNodeName: "", selectedNodeProps: {} as Record<string, unknown>, selectedNodeType: "", parentId: "", currentIndex: 0, siblingCount: 0 };
+    const pid = node.data.parent;
+    const parentNode = pid ? state.nodes[pid] : null;
+    const siblings = parentNode?.data.nodes || [];
     return {
       selected: true,
       selectedNodeId: currentNodeId,
       selectedNodeName: node.data.displayName || node.data.type?.toString() || "Element",
       selectedNodeProps: node.data.props || {},
       selectedNodeType: node.data.type?.toString() || "",
+      parentId: pid || "",
+      currentIndex: siblings.indexOf(currentNodeId),
+      siblingCount: siblings.length,
     };
   });
 
@@ -179,9 +185,27 @@ function MobileDesignPanel() {
   return (
     <div className="border-t border-border bg-background shrink-0 max-h-[45vh] overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border sticky top-0 bg-background z-10">
+      <div className="flex items-center gap-1 px-3 py-2 border-b border-border sticky top-0 bg-background z-10">
         <span className="text-xs font-medium text-foreground truncate">{selectedNodeName}</span>
         <div className="flex-1" />
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={currentIndex <= 0}
+          onClick={() => { if (parentId && currentIndex > 0) { hapticLight(); actions.move(selectedNodeId, parentId, currentIndex - 1); } }}
+          title="Move up"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 rotate-90" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={currentIndex >= siblingCount - 1}
+          onClick={() => { if (parentId && currentIndex < siblingCount - 1) { hapticLight(); actions.move(selectedNodeId, parentId, currentIndex + 2); } }}
+          title="Move down"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 -rotate-90" />
+        </Button>
         <Button
           variant="ghost"
           size="icon-xs"
