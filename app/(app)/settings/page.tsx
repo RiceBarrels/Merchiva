@@ -14,6 +14,7 @@ import {
   Save,
   MapPin,
   Camera,
+  Check,
   ChevronRight,
   Clock,
   Users,
@@ -54,6 +55,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { upsertSettings, disconnectSquare, disconnectClover, setPunchInCode } from "@/lib/spacetimedb/actions";
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
@@ -205,6 +207,8 @@ export default function SettingsPage() {
   const [resetCodeMember, setResetCodeMember] = useState<OrgMember | null>(null);
   const [resetCodeInput, setResetCodeInput] = useState("");
   const [resettingCode, setResettingCode] = useState(false);
+
+  const [langDialogOpen, setLangDialogOpen] = useState(false);
 
   // My own punch-in code dialog
   const [myCodeDialog, setMyCodeDialog] = useState(false);
@@ -1644,23 +1648,42 @@ export default function SettingsPage() {
           checked={darkMode}
           onChange={() => setDarkMode(!darkMode)}
         />
-        <div className="flex items-center gap-3 px-[18px] py-3.5 w-full border-t border-stone-200">
+        <button
+          type="button"
+          onClick={() => setLangDialogOpen(true)}
+          className="flex items-center gap-3 px-[18px] py-3.5 w-full border-t border-stone-200 text-left"
+        >
           <IconTile><Languages className="h-4 w-4 text-stone-700" /></IconTile>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-stone-900">{t("settings.language")}</p>
             <p className="text-xs text-stone-500 mt-0.5">{LOCALE_LABELS[locale]}</p>
           </div>
-          <Select value={locale} onValueChange={(v) => { if (v) setLocale(v as Locale); }}>
-            <SelectTrigger className="h-8 w-[130px] shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
+          <ChevronRight className="h-4 w-4 text-stone-400 shrink-0" />
+        </button>
+        <Dialog open={langDialogOpen} onOpenChange={setLangDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>{t("settings.language")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-1 py-2">
               {LOCALES.map((loc) => (
-                <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
+                <button
+                  key={loc}
+                  onClick={() => { setLocale(loc); setLangDialogOpen(false); }}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+                    locale === loc ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                  )}
+                >
+                  <span className="text-sm font-medium">{LOCALE_LABELS[loc]}</span>
+                  <span className={cn("text-xs font-mono", locale === loc ? "text-primary-foreground/70" : "text-muted-foreground")}>{loc}</span>
+                  <div className="flex-1" />
+                  {locale === loc && <Check className="h-4 w-4" />}
+                </button>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         <SRow
           icon={<Calendar className="h-4 w-4 text-stone-700" />}
           title={t("settings.weekStartsOn")}
