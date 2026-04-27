@@ -1313,120 +1313,89 @@ export default function StaffingPage() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
-  const prevWeek = () => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; }); };
-  const nextWeek = () => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; }); };
+  const prevWeek = useCallback(() => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; }); }, []);
+  const nextWeek = useCallback(() => { hapticLight(); setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; }); }, []);
 
-  // Swipe left/right — 3-panel slide carousel
-  const [swipeOffset, setSwipeOffset] = useState(0);
-  const [swiping, setSwiping] = useState(false);
-  const [slideAnim, setSlideAnim] = useState(false);
-  const swipeStartX = useRef(0);
-  const swipeStartY = useRef(0);
-  const swipeAxis = useRef<"h" | "v" | null>(null);
-  const panelW = useRef(0);
-  const swipeStartTime = useRef(0);
-  const prevWeekRef = useRef(prevWeek);
-  const nextWeekRef = useRef(nextWeek);
-  prevWeekRef.current = prevWeek;
-  nextWeekRef.current = nextWeek;
+  // Touch-swipe week carousel
+  const weekStripRef = useRef<HTMLDivElement>(null);
+  const weekSwipeStartX = useRef(0);
+  const weekSwipeLastX = useRef(0);
+  const weekSwipeStartTime = useRef(0);
+  const weekSwipeDragging = useRef(false);
+  const weekSwipeAxis = useRef<boolean | null>(null);
+  const weekSwipeStartY = useRef(0);
+  const [weekSwipeOffset, setWeekSwipeOffset] = useState(0);
+  const [weekSwiping, setWeekSwiping] = useState(false);
+  const prevWeekCb = useRef(prevWeek);
+  const nextWeekCb = useRef(nextWeek);
+  prevWeekCb.current = prevWeek;
+  nextWeekCb.current = nextWeek;
 
-  const calendarRef = useCallback((el: HTMLDivElement | null) => {
-    if (!el) return;
-    panelW.current = el.offsetWidth;
-
-    function onStart(e: TouchEvent) {
-      if (slideAnim) return;
-      swipeStartX.current = e.touches[0].clientX;
-      swipeStartY.current = e.touches[0].clientY;
-      swipeAxis.current = null;
-      swipeStartTime.current = Date.now();
-      panelW.current = el!.offsetWidth;
-    }
-
-    function onMove(e: TouchEvent) {
-      if (slideAnim) return;
-      const dx = e.touches[0].clientX - swipeStartX.current;
-      const dy = e.touches[0].clientY - swipeStartY.current;
-
-      if (swipeAxis.current === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-        swipeAxis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
-      }
-      if (swipeAxis.current !== "h") return;
-
-      e.preventDefault();
-      e.stopPropagation();
-      setSwiping(true);
-      setSwipeOffset(dx);
-    }
-
-    function onEnd(e: TouchEvent) {
-      if (swipeAxis.current !== "h") { swipeAxis.current = null; return; }
-
-      const dx = e.changedTouches[0].clientX - swipeStartX.current;
-      const elapsed = Math.max(1, Date.now() - swipeStartTime.current);
-      const velocity = Math.abs(dx) / elapsed; // px/ms
-
-      setSwiping(false);
-      setSlideAnim(true);
-      if (Math.abs(dx) > 50 || velocity > 0.5) {
-        if (dx < 0) nextWeekRef.current(); else prevWeekRef.current();
-      }
-      setSwipeOffset(0);
-      setTimeout(() => setSlideAnim(false), 400);
-      swipeAxis.current = null;
-    }
-
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: false });
-    el.addEventListener("touchend", onEnd, { passive: true });
-  }, [slideAnim]);
-
-  // Swipe handler for content area below calendar
-  const contentRef = useCallback((el: HTMLDivElement | null) => {
+  useEffect(() => {
+    const el = weekStripRef.current;
     if (!el) return;
 
-    function onStart(e: TouchEvent) {
-      if (slideAnim) return;
-      swipeStartX.current = e.touches[0].clientX;
-      swipeStartY.current = e.touches[0].clientY;
-      swipeAxis.current = null;
-      swipeStartTime.current = Date.now();
-      panelW.current = el!.offsetWidth;
+    function onTouchStart(e: TouchEvent) {
+      const t = e.touches[0];
+      weekSwipeStartX.current = t.clientX;
+      weekSwipeStartY.current = t.clientY;
+      weekSwipeLastX.current = t.clientX;
+      weekSwipeStartTime.current = Date.now();
+      weekSwipeDragging.current = false;
+      weekSwipeAxis.current = null;
     }
 
-    function onMove(e: TouchEvent) {
-      if (slideAnim) return;
-      const dx = e.touches[0].clientX - swipeStartX.current;
-      const dy = e.touches[0].clientY - swipeStartY.current;
-      if (swipeAxis.current === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-        swipeAxis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+    function onTouchMove(e: TouchEvent) {
+      const t = e.touches[0];
+      const dx = t.clientX - weekSwipeStartX.current;
+      const dy = t.clientY - weekSwipeStartY.current;
+
+      if (weekSwipeAxis.current === null && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+        weekSwipeAxis.current = Math.abs(dx) > Math.abs(dy);
       }
-      if (swipeAxis.current !== "h") return;
+      if (weekSwipeAxis.current === false) return;
+
       e.preventDefault();
-      e.stopPropagation();
-      setSwiping(true);
-      setSwipeOffset(dx);
+      weekSwipeLastX.current = t.clientX;
+      weekSwipeDragging.current = true;
+      setWeekSwiping(true);
+      setWeekSwipeOffset(dx);
     }
 
-    function onEnd(e: TouchEvent) {
-      if (swipeAxis.current !== "h") { swipeAxis.current = null; return; }
-      const dx = e.changedTouches[0].clientX - swipeStartX.current;
-      const elapsed = Math.max(1, Date.now() - swipeStartTime.current);
-      const velocity = Math.abs(dx) / elapsed;
-      setSwiping(false);
-      setSlideAnim(true);
-      if (Math.abs(dx) > 50 || velocity > 0.5) {
-        if (dx < 0) nextWeekRef.current(); else prevWeekRef.current();
+    function onTouchEnd() {
+      if (!weekSwipeDragging.current) {
+        weekSwipeAxis.current = null;
+        return;
       }
-      setSwipeOffset(0);
-      setTimeout(() => setSlideAnim(false), 400);
-      swipeAxis.current = null;
+
+      const dx = weekSwipeLastX.current - weekSwipeStartX.current;
+      const dt = Math.max(1, Date.now() - weekSwipeStartTime.current);
+      const velocity = dx / dt;
+      const threshold = (el?.clientWidth ?? 300) * 0.25;
+
+      if (dx < -threshold || velocity < -0.3) {
+        nextWeekCb.current();
+      } else if (dx > threshold || velocity > 0.3) {
+        prevWeekCb.current();
+      }
+
+      setWeekSwiping(false);
+      setWeekSwipeOffset(0);
+      weekSwipeDragging.current = false;
+      weekSwipeAxis.current = null;
     }
 
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: false });
-    el.addEventListener("touchend", onEnd, { passive: true });
-  }, [slideAnim]);
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, []);
+
+
 
   // Merge default shift types with custom presets
   const allPresets = presets.map((p) => ({ name: p.name, startTime: p.startTime, endTime: p.endTime, color: p.color, id: p.id }));
@@ -2823,40 +2792,49 @@ export default function StaffingPage() {
                 </div>
               </div>
 
-              {/* 7-column day buttons */}
-              <div className="grid grid-cols-7 gap-0 px-2 pb-2" ref={calendarRef}>
-                {weekDates.map((d) => {
-                  const ds = isoDate(d);
-                  const isSelected = ds === selectedDay;
-                  const dayShiftCount = weekShifts.filter((s) => s.date === ds).length;
-                  return (
-                    <button
-                      key={ds}
-                      onClick={() => { hapticLight(); setSelectedDay(ds); }}
-                      className={`flex flex-col items-center py-1.5 rounded transition-colors ${
-                        isSelected
-                          ? "bg-stone-900 text-white"
-                          : "hover:bg-stone-100"
-                      }`}
-                    >
-                      <span className={`text-[10px] font-semibold uppercase tracking-wide ${
-                        isSelected ? "text-stone-300" : "text-stone-500"
-                      }`}>
-                        {d.toLocaleDateString("en-US", { weekday: "short" })}
-                      </span>
-                      <span className={`text-[17px] font-mono tabular-nums font-semibold leading-snug ${
-                        isSelected ? "text-white" : "text-stone-900"
-                      }`}>
-                        {d.getDate()}
-                      </span>
-                      <span className={`text-[9.5px] font-mono tabular-nums ${
-                        isSelected ? "text-stone-400" : "text-stone-400"
-                      }`}>
-                        {dayShiftCount > 0 ? `${dayShiftCount}` : " "}
-                      </span>
-                    </button>
-                  );
-                })}
+              {/* 7-column day buttons — touch-swipe */}
+              <div
+                ref={weekStripRef}
+                className="overflow-hidden pb-2"
+              >
+                <div
+                  className="grid grid-cols-7 gap-0 px-2"
+                  style={{
+                    transform: weekSwiping ? `translateX(${weekSwipeOffset}px)` : undefined,
+                    transition: weekSwiping ? "none" : "transform 0.25s ease-out",
+                  }}
+                >
+                  {weekDates.map((d) => {
+                    const ds = isoDate(d);
+                    const isSelected = ds === selectedDay;
+                    const dayShiftCount = weekShifts.filter((s) => s.date === ds).length;
+                    return (
+                      <button
+                        key={ds}
+                        onClick={() => { hapticLight(); setSelectedDay(ds); }}
+                        className={`flex flex-col items-center py-1.5 rounded-[0.3rem] transition-colors ${
+                          isSelected ? "bg-foreground text-background" : "hover:bg-muted"
+                        }`}
+                      >
+                        <span className={`text-[10px] font-semibold uppercase tracking-wide ${
+                          isSelected ? "text-muted-foreground" : "text-muted-foreground"
+                        }`}>
+                          {d.toLocaleDateString("en-US", { weekday: "short" })}
+                        </span>
+                        <span className={`text-[17px] font-mono tabular-nums font-semibold leading-snug ${
+                          isSelected ? "text-background" : "text-foreground"
+                        }`}>
+                          {d.getDate()}
+                        </span>
+                        <span className={`text-[9.5px] font-mono tabular-nums ${
+                          isSelected ? "text-muted-foreground" : "text-muted-foreground"
+                        }`}>
+                          {dayShiftCount > 0 ? `${dayShiftCount}` : " "}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -2891,7 +2869,7 @@ export default function StaffingPage() {
             </div>
 
             {/* ── Day Timeline ── */}
-            <div className="px-0" ref={contentRef}>
+            <div className="px-0">
               {selectedDayShifts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
                   <Clock className="h-6 w-6 text-stone-300 mb-2" />
@@ -4316,14 +4294,14 @@ export default function StaffingPage() {
               <div className="border-t border-border p-4 space-y-2">
                 <Button
                   className="w-full"
-                  onClick={() => { setShiftDetailShift(null); openCoverDialog(s); }}
+                  onClick={() => { openCoverDialog(s); }}
                 >
                   <UserPlus className="h-4 w-4 mr-2" /> {t("staffing.shiftDetails.findCover")}
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => { setShiftDetailShift(null); openTradeDialog(s); }}
+                  onClick={() => { openTradeDialog(s); }}
                 >
                   <ArrowLeftRight className="h-4 w-4 mr-2" /> {t("staffing.shiftDetails.tradeShift")}
                 </Button>
