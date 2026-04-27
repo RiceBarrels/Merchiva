@@ -758,7 +758,10 @@
       "searchCoworkers": "ابحث عن زملاء",
       "namePlaceholder": "الاسم...",
       "noCoworkers": "لا يوجد زملاء لديهم ورديات قادمة.",
-      "sendRequest": "إرسال الطلب"
+      "sendRequest": "إرسال الطلب",
+      "offerToEveryone": "عرض للجميع",
+      "pickSpecificPeople": "اختر شخصاً محدداً",
+      "broadcastHint": "سيتم عرض وردتك للجميع. أول من يقبل يحصل عليها."
     },
     "coverDialog": {
       "title": "البحث عن تغطية",

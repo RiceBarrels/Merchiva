@@ -758,7 +758,10 @@
       "searchCoworkers": "Rechercher des collègues",
       "namePlaceholder": "Nom…",
       "noCoworkers": "Aucun collègue avec des quarts à venir.",
-      "sendRequest": "Envoyer la demande"
+      "sendRequest": "Envoyer la demande",
+      "offerToEveryone": "Offrir à tous",
+      "pickSpecificPeople": "Choisir une personne",
+      "broadcastHint": "Votre quart sera offert à tous. Le premier à accepter l'obtient."
     },
     "coverDialog": {
       "title": "Trouver un remplaçant",

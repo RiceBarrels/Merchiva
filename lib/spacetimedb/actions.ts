@@ -247,6 +247,14 @@ export async function updateTradeStatus(tradeId: string, status: string, _orgIdP
   return conn().reducers.updateShiftTradeStatus({ organizationId: orgId(), tradeId, status });
 }
 
+export async function acceptShiftTrade(tradeId: string, acceptorId: string, acceptorShiftId?: string | null): Promise<void> {
+  return conn().reducers.acceptShiftTrade({ organizationId: orgId(), tradeId, acceptorId, acceptorShiftId: acceptorShiftId ?? null });
+}
+
+export async function managerApproveShiftTrade(tradeId: string, managerId: string, approved: boolean): Promise<void> {
+  return conn().reducers.managerApproveShiftTrade({ organizationId: orgId(), tradeId, managerId, approved });
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

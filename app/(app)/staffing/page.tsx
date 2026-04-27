@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Plus, Loader2, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2,
-  ArrowLeftRight, UserPlus, CalendarX, Search, Check, Ban,
+  ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban,
   ChevronDown, ChevronUp, User, Coffee, Utensils, ChefHat, Truck, Package,
   Clipboard, Wrench, Headphones, Store, Banknote, Sparkles, Box,
   ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera,
@@ -39,6 +39,7 @@ import {
   upsertAvailability,
   createTimeOffRequest, updateTimeOffStatus,
   createShiftTrade, updateTradeStatus,
+  acceptShiftTrade, managerApproveShiftTrade,
 } from "@/lib/spacetimedb/actions";
 import { getCoworkersWithShifts } from "@/lib/db/availability";
 import type {
@@ -46,6 +47,7 @@ import type {
   StaffAvailability, TimeOffRequest, ShiftTrade, RoleTask,
 } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { NotificationPanel } from "@/components/notification-panel";
 import { PageHeader } from "@/components/page-header";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
@@ -992,7 +994,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                       <p className="text-[13px] font-medium text-stone-900 mb-0.5">
                         {getMemberName(trade.requesterId)}
                         <span className="text-stone-400 font-normal mx-1">&rarr;</span>
-                        {getMemberName(trade.targetId)}
+                        {trade.targetId ? getMemberName(trade.targetId) : t("staffing.unknown")}
                       </p>
                       {shift && (
                         <p className="text-[12px] text-stone-500 mb-2">
@@ -1165,9 +1167,11 @@ export default function StaffingPage() {
 
   // ─── Trade DynamicUIElement ───
   const [tradeDialog, setTradeDialog] = useState<{ open: boolean; shift: Shift | null }>({ open: false, shift: null });
+  const [tradeMode, setTradeMode] = useState<"broadcast" | "specific">("broadcast");
   const [tradeSearch, setTradeSearch] = useState("");
   const [tradeDate,   setTradeDate]   = useState("");
   const [selectedTradeTarget, setSelectedTradeTarget] = useState<{ memberId: string; shiftId: string } | null>(null);
+  const [selectedTradeTargets, setSelectedTradeTargets] = useState<Set<string>>(new Set());
   const [savingTrade, setSavingTrade] = useState(false);
   const [coworkersCache, setCoworkersCache] = useState<{
     memberId: string; name: string;
@@ -1200,6 +1204,7 @@ export default function StaffingPage() {
 
   // ─── Manager Requests ───
   const [showRequests, setShowRequests] = useState(false);
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
   // orgTimeOffRequests, orgShiftTrades managed by useStaffing hook below
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
@@ -1292,7 +1297,7 @@ export default function StaffingPage() {
   const myShifts = weekShifts.filter((s) => s.memberId === myMemberId);
 
   const pendingCount = orgTimeOffRequests.filter((r) => r.status === "pending").length
-    + orgShiftTrades.filter((t) => t.status === "pending").length;
+    + orgShiftTrades.filter((t) => t.status === "pending" || (t.status === "accepted" && !t.managerApproved)).length;
 
   const visibleTabs: MainTab[] = isStaff ? ["myShifts", "roles"] : ["myShifts", "schedule", "table", "roles"];
 
@@ -1636,21 +1641,25 @@ export default function StaffingPage() {
   };
 
   const handleTradeRequest = async () => {
-    if (!tradeDialog.shift || !selectedTradeTarget || !myMemberId || !organizationId) return;
+    if (!tradeDialog.shift || !myMemberId || !organizationId) return;
+    if (tradeMode === "specific" && !selectedTradeTarget) return;
     setSavingTrade(true);
     try {
       await createShiftTrade({
         organizationId,
         shiftId:       tradeDialog.shift.id,
         requesterId:   myMemberId,
-        targetId:      selectedTradeTarget.memberId,
-        targetShiftId: selectedTradeTarget.shiftId,
+        broadcastToAll: tradeMode === "broadcast",
+        targetIds:     tradeMode === "specific" && selectedTradeTarget ? [selectedTradeTarget.memberId] : [],
+        targetId:      tradeMode === "specific" ? selectedTradeTarget?.memberId ?? null : null,
+        targetShiftId: tradeMode === "specific" ? selectedTradeTarget?.shiftId ?? null : null,
         type:          "trade",
         comments:      "",
       });
       hapticSuccess();
       toast.success(t("staffing.toasts.tradeSent"));
       setTradeDialog({ open: false, shift: null });
+      setTradeMode("broadcast");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedTrade"));
     } finally {
@@ -1659,14 +1668,17 @@ export default function StaffingPage() {
   };
 
   const handleCoverRequest = async () => {
-    if (!coverDialog.shift || !selectedCover || !myMemberId || !organizationId) return;
+    if (!coverDialog.shift || !myMemberId || !organizationId) return;
+    const isBroadcast = !selectedCover;
     setSavingCover(true);
     try {
       await createShiftTrade({
         organizationId,
         shiftId:       coverDialog.shift.id,
         requesterId:   myMemberId,
-        targetId:      selectedCover,
+        broadcastToAll: isBroadcast,
+        targetIds:     selectedCover ? [selectedCover] : [],
+        targetId:      selectedCover || null,
         targetShiftId: null,
         type:          "cover",
         comments:      "",
@@ -1767,6 +1779,26 @@ export default function StaffingPage() {
   const handleTradeStatusUpdate = async (id: string, status: "accepted" | "denied") => {
     await updateTradeStatus(id, status, userId ?? undefined);
     setOrgShiftTrades((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleStaffAcceptTrade = async (tradeId: string) => {
+    if (!myMemberId) return;
+    try {
+      await acceptShiftTrade(tradeId, myMemberId);
+      hapticSuccess();
+      toast.success("Trade accepted — awaiting manager approval");
+      setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, status: "accepted" as const, acceptedById: myMemberId, targetId: myMemberId } : t));
+    } catch { toast.error("Failed to accept trade"); }
+  };
+
+  const handleManagerApproveTrade = async (tradeId: string, approved: boolean) => {
+    if (!userId) return;
+    try {
+      await managerApproveShiftTrade(tradeId, userId, approved);
+      hapticSuccess();
+      toast.success(approved ? "Trade approved" : "Trade denied");
+      setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, managerApproved: approved, managerId: userId, status: approved ? "accepted" as const : "denied" as const } : t));
+    } catch { toast.error("Failed to update trade"); }
   };
 
   const todayStr = isoDate(new Date());
@@ -2570,7 +2602,7 @@ export default function StaffingPage() {
           subtitle={`${currentOrg?.name ?? t("staffing.store")} · ${activeMembers.length} ${t("staffing.active")}`}
           actions={[
             { icon: <Search className="h-4 w-4" /> },
-            { icon: <Bell className="h-4 w-4" />, onClick: () => { hapticLight(); setShowRequests(!showRequests); }, badge: pendingCount },
+            { icon: <Bell className="h-4 w-4" />, onClick: () => { hapticLight(); setNotifPanelOpen(true); }, badge: pendingCount },
             ...(canEdit ? [{ icon: <Plus className="h-4 w-4" />, onClick: () => {
               hapticLight();
               setEditingShift(null);
@@ -2754,7 +2786,10 @@ export default function StaffingPage() {
                   {/* Trades row — managers see all, staff see only trades targeted at them */}
                   {((!isStaff && pendingTrades.length > 0) || hasTradesForMe) && (
                     <button
-                      onClick={() => { hapticLight(); setShowRequests(true); setMobileSection("schedule"); }}
+                      onClick={() => {
+                        hapticLight(); setShowRequests(true); setMobileSection("schedule");
+                        setTimeout(() => document.getElementById("mobile-requests-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+                      }}
                       className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
                     >
                       <div className="h-9 w-9 shrink-0 rounded border border-stone-200 bg-stone-100 flex items-center justify-center">
@@ -2987,7 +3022,7 @@ export default function StaffingPage() {
 
             {/* ── Requests Section (in Schedule tab) — managers see all, staff see trades targeted at them ── */}
             {((!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
-              <div className="border-t border-stone-200">
+              <div id="mobile-requests-panel" className="border-t border-stone-200">
                 <button
                   onClick={() => setShowRequests(!showRequests)}
                   className="flex items-center gap-2 w-full px-4 py-2.5 border-b border-stone-200"
@@ -3031,7 +3066,7 @@ export default function StaffingPage() {
                       return (
                         <div key={trade.id} className="px-4 py-3">
                           <p className="text-[13px] font-medium text-stone-900">
-                            {getMemberName(trade.requesterId)} &rarr; {getMemberName(trade.targetId)}
+                            {getMemberName(trade.requesterId)} &rarr; {trade.targetId ? getMemberName(trade.targetId) : t("staffing.unknown")}
                           </p>
                           {shift && (
                             <p className="text-[11px] text-stone-500 mt-0.5">
@@ -3677,7 +3712,34 @@ export default function StaffingPage() {
                 </p>
               </div>
 
-              {/* Filters */}
+              {/* Broadcast or specific */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setTradeMode("broadcast")}
+                  className={`flex flex-col items-center gap-1 rounded-[0.3rem] border p-2.5 text-xs font-medium transition-colors ${
+                    tradeMode === "broadcast" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <Users className="h-4 w-4" />
+                  {t("staffing.tradeDialog.offerToEveryone")}
+                </button>
+                <button
+                  onClick={() => setTradeMode("specific")}
+                  className={`flex flex-col items-center gap-1 rounded-[0.3rem] border p-2.5 text-xs font-medium transition-colors ${
+                    tradeMode === "specific" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  {t("staffing.tradeDialog.pickSpecificPeople")}
+                </button>
+              </div>
+
+              {tradeMode === "broadcast" && (
+                <p className="text-xs text-muted-foreground px-1">{t("staffing.tradeDialog.broadcastHint")}</p>
+              )}
+
+              {/* Filters + Coworker list — only show for specific mode */}
+              {tradeMode === "specific" && (<>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">{t("staffing.tradeDialog.filterByDate")}</Label>
@@ -3749,11 +3811,12 @@ export default function StaffingPage() {
                   )
                 )}
               </div>
+              </>)}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setTradeDialog({ open: false, shift: null })}>{t("common.cancel")}</Button>
-            <Button onClick={handleTradeRequest} disabled={savingTrade || !selectedTradeTarget}>
+            <Button onClick={handleTradeRequest} disabled={savingTrade || (tradeMode === "specific" && !selectedTradeTarget)}>
               {savingTrade ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.tradeDialog.sendRequest")}
             </Button>
           </div>
@@ -4333,6 +4396,27 @@ export default function StaffingPage() {
           </DynamicUIElement>
         );
       })()}
+
+      <DynamicUIElement open={notifPanelOpen} onOpenChange={setNotifPanelOpen}>
+        <DynamicUIElementContent side="right">
+          <DynamicUIElementTitle mobileTitle="Notifications">Notifications</DynamicUIElementTitle>
+          <NotificationPanel
+            trades={isStaff ? myPendingTrades : orgShiftTrades.filter(t => t.status === "pending" || (t.status === "accepted" && !t.managerApproved))}
+            timeOff={isStaff ? [] : pendingTimeOff}
+            shifts={shifts}
+            myMemberId={myMemberId}
+            isStaff={isStaff}
+            getMemberName={getMemberName}
+            formatTime={formatTime}
+            formatDateShort={formatDateShort}
+            onAcceptTrade={handleStaffAcceptTrade}
+            onDenyTrade={(id) => handleTradeStatusUpdate(id, "denied")}
+            onManagerApproveTrade={handleManagerApproveTrade}
+            onApproveTimeOff={(id) => handleTimeOffStatusUpdate(id, "approved")}
+            onDenyTimeOff={(id) => handleTimeOffStatusUpdate(id, "denied")}
+          />
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
     </PermissionGuard>
   );

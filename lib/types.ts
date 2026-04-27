@@ -220,13 +220,18 @@ export interface ShiftTrade {
   organizationId: string;
   shiftId: string;
   requesterId: string;
-  targetId: string;
+  broadcastToAll: boolean;
+  targetIds: string[];
+  targetId: string | null;
+  acceptedById: string | null;
   targetShiftId: string | null;
   type: "trade" | "cover";
   status: "pending" | "accepted" | "denied" | "cancelled";
   managerApproved: boolean;
   managerId: string | null;
+  managerReviewedAt: string | null;
   comments: string;
+  createdAt: string;
 }
 
 // ─── Todos ──────────────────────────────────────────────────────────────────

@@ -758,7 +758,10 @@
       "searchCoworkers": "सहकर्मी खोजें",
       "namePlaceholder": "नाम...",
       "noCoworkers": "आगामी शिफ्ट वाले कोई सहकर्मी नहीं।",
-      "sendRequest": "अनुरोध भेजें"
+      "sendRequest": "अनुरोध भेजें",
+      "offerToEveryone": "सभी को ऑफर करें",
+      "pickSpecificPeople": "विशिष्ट व्यक्ति चुनें",
+      "broadcastHint": "आपकी शिफ्ट सभी को ऑफर की जाएगी।"
     },
     "coverDialog": {
       "title": "कवर खोजें",

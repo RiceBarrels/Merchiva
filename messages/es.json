@@ -758,7 +758,10 @@
       "searchCoworkers": "Buscar compañeros",
       "namePlaceholder": "Nombre...",
       "noCoworkers": "No hay compañeros con próximos turnos.",
-      "sendRequest": "Enviar solicitud"
+      "sendRequest": "Enviar solicitud",
+      "offerToEveryone": "Ofrecer a todos",
+      "pickSpecificPeople": "Elegir persona",
+      "broadcastHint": "Tu turno se ofrecerá a todos. El primero en aceptar se lo queda."
     },
     "coverDialog": {
       "title": "Buscar cobertura",

@@ -758,7 +758,10 @@
       "searchCoworkers": "Search co-workers",
       "namePlaceholder": "Name...",
       "noCoworkers": "No co-workers with upcoming shifts.",
-      "sendRequest": "Send Request"
+      "sendRequest": "Send Request",
+      "offerToEveryone": "Offer to everyone",
+      "pickSpecificPeople": "Pick specific person",
+      "broadcastHint": "Your shift will be offered to all team members. First to accept gets it."
     },
     "coverDialog": {
       "title": "Find Cover",
