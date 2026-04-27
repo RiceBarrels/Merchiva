@@ -142,6 +142,18 @@ export function KeyboardShortcuts() {
     [query]
   );
 
+  const isLocked = useCallback(
+    (nodeId: string): boolean => {
+      try {
+        const n = query.node(nodeId).get();
+        return !!(n.data.custom as { locked?: boolean } | undefined)?.locked;
+      } catch {
+        return false;
+      }
+    },
+    [query]
+  );
+
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (isInputFocused()) return;
@@ -179,6 +191,7 @@ export function KeyboardShortcuts() {
         const id = getSelectedId();
         if (!id) return;
         e.preventDefault();
+        if (isLocked(id)) return;
         try {
           const serialized = JSON.parse(query.serialize());
           clipboardNodes.current = serialized;
@@ -228,6 +241,7 @@ export function KeyboardShortcuts() {
         const id = getSelectedId();
         if (!id) return;
         e.preventDefault();
+        if (isLocked(id)) return;
         try {
           if (query.node(id).isDeletable()) {
             actions.delete(id);
@@ -246,7 +260,7 @@ export function KeyboardShortcuts() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [actions, query, getSelectedId, isInputFocused, getParentId]);
+  }, [actions, query, getSelectedId, isInputFocused, getParentId, isLocked]);
 
   return null;
 }

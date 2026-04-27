@@ -97,6 +97,8 @@ export function siteElementsToCraftState(elements: SiteElement[]): string {
         y: el.y,
         width: el.width,
         height: el.height,
+        locked: el.locked,
+        lockLabel: el.lockLabel,
       },
       parent: parentId,
       nodes: [],
@@ -143,6 +145,8 @@ function nodeToElement(nodes: Record<string, CraftNode>, nodeId: string): SiteEl
     ...(node.custom?.y != null ? { y: node.custom.y as number } : {}),
     ...(node.custom?.width != null ? { width: node.custom.width as number } : {}),
     ...(node.custom?.height != null ? { height: node.custom.height as number } : {}),
+    ...(node.custom?.locked ? { locked: true as const } : {}),
+    ...(node.custom?.lockLabel ? { lockLabel: node.custom.lockLabel as string } : {}),
   };
 }
 

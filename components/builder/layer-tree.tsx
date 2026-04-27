@@ -37,6 +37,7 @@ import {
   Flame,
   CalendarCheck,
   Component as ComponentIcon,
+  Lock,
   Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -106,16 +107,17 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
   const [dropPosition, setDropPosition] = useState<"above" | "inside" | "below" | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
-  const { node, selected, hovered, actions, query, childIds, isFixedNode, isComponentNode, componentName } = useEditor(
+  const { node, selected, hovered, actions, query, childIds, isFixedNode, isComponentNode, componentName, isLocked, lockLabel } = useEditor(
     (state) => {
       const n = state.nodes[nodeId];
-      if (!n) return { node: null, selected: false, hovered: false, childIds: [], isFixedNode: false, isComponentNode: false, componentName: null };
+      if (!n) return { node: null, selected: false, hovered: false, childIds: [], isFixedNode: false, isComponentNode: false, componentName: null, isLocked: false, lockLabel: null };
       const resolvedName = typeof n.data.type === "object" && n.data.type !== null && "resolvedName" in n.data.type
         ? (n.data.type as { resolvedName: string }).resolvedName
         : "";
       const style = (n.data.props?.style as Record<string, string> | undefined) || {};
       const hasFixedPosition = style.position === "fixed" || style.position === "absolute";
       const fromComp = (n.data.custom as { fromComponent?: { id: string; name: string } } | undefined)?.fromComponent;
+      const custom = n.data.custom as { locked?: boolean; lockLabel?: string } | undefined;
       return {
         node: n,
         selected: state.events.selected.has(nodeId),
@@ -124,6 +126,8 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
         isFixedNode: resolvedName === "CraftFixed" || hasFixedPosition,
         isComponentNode: !!fromComp,
         componentName: fromComp?.name ?? null,
+        isLocked: !!custom?.locked,
+        lockLabel: custom?.lockLabel ?? null,
       };
     }
   );
@@ -377,6 +381,16 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
 
         {/* Node name */}
         <span className="flex-1 truncate">{displayName}</span>
+
+        {/* Lock indicator */}
+        {isLocked && (
+          <span
+            title={lockLabel ? `Required: ${lockLabel}` : "Locked — required by template"}
+            className="flex h-4 shrink-0 items-center text-amber-600"
+          >
+            <Lock className="h-3 w-3" />
+          </span>
+        )}
 
         {/* Visibility toggle */}
         <button

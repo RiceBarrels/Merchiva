@@ -374,6 +374,12 @@ export interface SiteElement {
   y?: number;
   width?: number;
   height?: number;
+  // Page-template lock: when true, the node cannot be deleted or cut
+  // by the user (style/position editing still allowed). Locked nodes
+  // come from preset page templates.
+  locked?: boolean;
+  // Optional human-readable label shown in the lock badge.
+  lockLabel?: string;
 }
 
 export interface PageMetadata {

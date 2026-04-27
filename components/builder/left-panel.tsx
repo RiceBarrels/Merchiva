@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useEditor } from "@craftjs/core";
 import { ChevronDown, Plus, Globe, Component, Trash2, Settings } from "lucide-react";
 import { PageSettingsDialog } from "./page-settings-dialog";
+import { PageTemplateDialog } from "./page-template-dialog";
 import { LayerTree, draggedNodeId } from "./layer-tree";
 import { CraftLayout } from "./craft-components/craft-layout";
 import { CraftFixed } from "./craft-components/craft-fixed";
@@ -13,10 +14,10 @@ import { useSiteComponents } from "@/lib/spacetimedb/hooks";
 import { deleteComponent } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import React from "react";
 import type { Site, SitePage, SiteElement } from "@/lib/types";
+import type { PageTemplateId } from "@/lib/builder/page-templates";
 import { componentDragState } from "./component-drag-state";
 
 interface LeftPanelProps {
@@ -25,7 +26,7 @@ interface LeftPanelProps {
   activePageId: string;
   onPageSwitch: (pageId: string) => void;
   onPublish: () => void;
-  onAddPage: (name: string) => void;
+  onAddPage: (name: string, templateId: PageTemplateId) => void;
 }
 
 const PAGE_COLORS = [
@@ -97,7 +98,6 @@ export function LeftPanel({
   onPublish,
 }: LeftPanelProps) {
   const [isAddingPage, setIsAddingPage] = useState(false);
-  const [newPageName, setNewPageName] = useState("");
   const [componentsOpen, setComponentsOpen] = useState(true);
   const [settingsPageId, setSettingsPageId] = useState<string | null>(null);
   const { actions, query } = useEditor();
@@ -157,23 +157,6 @@ export function LeftPanel({
       console.error("Delete component failed:", err);
     }
   }, []);
-
-  function handleAddPage() {
-    const name = newPageName.trim();
-    if (!name) return;
-    onAddPage(name);
-    setNewPageName("");
-    setIsAddingPage(false);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      handleAddPage();
-    } else if (e.key === "Escape") {
-      setIsAddingPage(false);
-      setNewPageName("");
-    }
-  }
 
   return (
     <div className="flex h-full w-60 flex-col border-r border-border bg-background text-foreground">
@@ -254,24 +237,6 @@ export function LeftPanel({
             );
           })}
 
-          {isAddingPage && (
-            <div className="px-1 pt-1">
-              <Input
-                type="text"
-                value={newPageName}
-                onChange={(e) => setNewPageName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={() => {
-                  if (!newPageName.trim()) {
-                    setIsAddingPage(false);
-                  }
-                }}
-                placeholder="Page name..."
-                autoFocus
-                className="h-7 text-xs"
-              />
-            </div>
-          )}
         </div>
       </div>
 
@@ -397,6 +362,13 @@ export function LeftPanel({
           <LayerTree filter="fixed" />
         </DropSection>
       </div>
+
+      <PageTemplateDialog
+        open={isAddingPage}
+        onOpenChange={setIsAddingPage}
+        existingNames={pages.map((p) => p.name)}
+        onCreate={(name, templateId) => onAddPage(name, templateId)}
+      />
 
       {settingsPageId && (() => {
         const targetPage = pages.find((p) => p.id === settingsPageId);

@@ -15,6 +15,7 @@ import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { CraftCanvas } from "./craft-components/craft-canvas";
 import { themeVars } from "@/components/site-renderer";
 import { createPage, updateSite } from "@/lib/spacetimedb/actions";
+import { buildPageTemplate, type PageTemplateId } from "@/lib/builder/page-templates";
 import type { Site, SitePage, Product } from "@/lib/types";
 
 interface BuilderEditorProps {
@@ -85,14 +86,16 @@ export function BuilderEditor({
   }, [site.id]);
 
   const handleAddPage = useCallback(
-    async (name: string) => {
+    async (name: string, templateId: PageTemplateId) => {
       try {
-        await createPage(
-          site.id,
+        const elements = buildPageTemplate(templateId);
+        await createPage({
+          siteId: site.id,
           name,
-          name.toLowerCase().replace(/\s+/g, "-"),
-          pages.length
-        );
+          slug: name.toLowerCase().replace(/\s+/g, "-"),
+          sortOrder: pages.length,
+          elements: JSON.stringify(elements),
+        });
       } catch (err) {
         console.error("Add page failed:", err);
       }

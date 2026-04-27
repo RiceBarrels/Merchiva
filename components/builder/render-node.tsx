@@ -4,7 +4,7 @@ import React, { useEffect, useCallback, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { useNode, useEditor } from "@craftjs/core";
 import { ROOT_NODE } from "@craftjs/utils";
-import { ArrowUp, GripVertical, Trash2 } from "lucide-react";
+import { ArrowUp, GripVertical, Lock, Trash2 } from "lucide-react";
 
 // ─── Pointer helpers (mouse + touch) ───────────────────────────────────────
 
@@ -173,6 +173,8 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
     name,
     moveable,
     deletable,
+    isLocked,
+    lockLabel,
     connectors: { drag },
     parent,
     nodeStyle,
@@ -185,12 +187,15 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
     const resolvedName = typeof node.data.type === "object" && node.data.type !== null && "resolvedName" in node.data.type
       ? (node.data.type as { resolvedName: string }).resolvedName : "";
     const style = (node.data.props?.style as Record<string, string> | undefined) || {};
+    const locked = !!(node.data.custom as { locked?: boolean } | undefined)?.locked;
     return {
       isHover: node.events.hovered,
       dom: node.dom,
       name: node.data.custom?.displayName || node.data.displayName,
       moveable: query.node(node.id).isDraggable(),
-      deletable: query.node(node.id).isDeletable(),
+      deletable: query.node(node.id).isDeletable() && !locked,
+      isLocked: locked,
+      lockLabel: (node.data.custom as { lockLabel?: string } | undefined)?.lockLabel ?? null,
       parent: node.data.parent,
       nodeStyle: (node.data.props?.style as Record<string, string>) || null,
       isFixedNode: resolvedName === "CraftFixed",
@@ -460,6 +465,15 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
               <span className="mr-1 truncate font-medium" style={{ maxWidth: 100 }}>
                 {name}
               </span>
+              {isLocked && (
+                <span
+                  title={lockLabel ? `Required: ${lockLabel}` : "Locked — required by template"}
+                  className="flex h-5 items-center gap-0.5 rounded bg-amber-400/90 px-1 text-[9px] font-semibold uppercase tracking-wide text-amber-950"
+                >
+                  <Lock className="h-2.5 w-2.5" />
+                  {lockLabel ? <span className="truncate" style={{ maxWidth: 80 }}>{lockLabel}</span> : null}
+                </span>
+              )}
               {moveable && (
                 <button
                   ref={(r) => { if (r) drag(r); }}

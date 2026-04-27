@@ -113,6 +113,16 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
     return query.getEvent("selected").first() ?? null;
   }, [query]);
 
+  const isLocked = useCallback((id: string | null): boolean => {
+    if (!id) return false;
+    try {
+      const n = query.node(id).get();
+      return !!(n.data.custom as { locked?: boolean } | undefined)?.locked;
+    } catch {
+      return false;
+    }
+  }, [query]);
+
   const handleCopy = useCallback(() => {
     const id = getSelectedId();
     if (!id) return;
@@ -123,10 +133,11 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
   const handleCut = useCallback(() => {
     const id = getSelectedId();
     if (!id) return;
+    if (isLocked(id)) return;
     clipboardNodes = JSON.parse(query.serialize());
     clipboardRootId = id;
     try { actions.delete(id); } catch {}
-  }, [getSelectedId, query, actions]);
+  }, [getSelectedId, query, actions, isLocked]);
 
   const handlePaste = useCallback(() => {
     if (!clipboardNodes || !clipboardRootId) return;
@@ -154,10 +165,11 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
   const handleDelete = useCallback(() => {
     const id = getSelectedId();
     if (!id) return;
+    if (isLocked(id)) return;
     try {
       if (query.node(id).isDeletable()) actions.delete(id);
     } catch {}
-  }, [getSelectedId, query, actions]);
+  }, [getSelectedId, query, actions, isLocked]);
 
   const handleHide = useCallback(() => {
     const id = getSelectedId();
@@ -248,6 +260,7 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
   }, [dropComponentAt]);
 
   const selected = getSelectedId();
+  const selectedLocked = isLocked(selected);
   const hasClipboard = !!clipboardNodes && !!clipboardRootId;
 
   // ── Component drag overlay (3x3 alignment zones) ─────────────────────────
@@ -341,7 +354,7 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
             Copy
             <ContextMenuShortcut>&#8984;C</ContextMenuShortcut>
           </ContextMenuItem>
-          <ContextMenuItem onClick={handleCut} disabled={!selected}>
+          <ContextMenuItem onClick={handleCut} disabled={!selected || selectedLocked}>
             <Scissors className="mr-2 h-4 w-4" />
             Cut
             <ContextMenuShortcut>&#8984;X</ContextMenuShortcut>
@@ -371,9 +384,9 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
             Toggle visibility
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={handleDelete} disabled={!selected} className="text-destructive focus:text-destructive">
+          <ContextMenuItem onClick={handleDelete} disabled={!selected || selectedLocked} className="text-destructive focus:text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+            Delete{selectedLocked ? " (locked)" : ""}
             <ContextMenuShortcut>&#9003;</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuContent>
