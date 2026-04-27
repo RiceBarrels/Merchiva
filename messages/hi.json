@@ -663,7 +663,8 @@
       "awaitingApproval": "अनुमोदन की प्रतीक्षा",
       "inMinutes": "{min} मिनट में",
       "inHours": "{h} घंटे में",
-      "inHoursMinutes": "{h} घंटे {min} मिनट में"
+      "inHoursMinutes": "{h} घंटे {min} मिनट में",
+      "tradeTargetHint": "कोई आपसे बदलाव चाहता है"
     },
     "roles": {
       "title": "भूमिकाएँ",
@@ -689,7 +690,8 @@
       "approve": "स्वीकृत",
       "accept": "स्वीकार",
       "deny": "अस्वीकार",
-      "noPending": "कोई लंबित अनुरोध नहीं"
+      "noPending": "कोई लंबित अनुरोध नहीं",
+      "reassign": "पुनः सौंपें"
     },
     "shiftDialog": {
       "createTitle": "शिफ्ट बनाएं",

@@ -663,7 +663,8 @@
       "awaitingApproval": "En attente d'approbation",
       "inMinutes": "dans {min} min",
       "inHours": "dans {h} h",
-      "inHoursMinutes": "dans {h} h {min} min"
+      "inHoursMinutes": "dans {h} h {min} min",
+      "tradeTargetHint": "Quelqu'un veut échanger avec vous"
     },
     "roles": {
       "title": "Rôles",
@@ -689,7 +690,8 @@
       "approve": "Approuver",
       "accept": "Accepter",
       "deny": "Refuser",
-      "noPending": "Aucune demande en attente"
+      "noPending": "Aucune demande en attente",
+      "reassign": "Réattribuer"
     },
     "shiftDialog": {
       "createTitle": "Créer un quart",

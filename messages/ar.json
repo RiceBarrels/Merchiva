@@ -663,7 +663,8 @@
       "awaitingApproval": "بانتظار الموافقة",
       "inMinutes": "خلال {min} د",
       "inHours": "خلال {h} س",
-      "inHoursMinutes": "خلال {h} س {min} د"
+      "inHoursMinutes": "خلال {h} س {min} د",
+      "tradeTargetHint": "يريد شخص ما التبادل معك"
     },
     "roles": {
       "title": "الأدوار",
@@ -689,7 +690,8 @@
       "approve": "موافقة",
       "accept": "قبول",
       "deny": "رفض",
-      "noPending": "لا توجد طلبات معلقة"
+      "noPending": "لا توجد طلبات معلقة",
+      "reassign": "إعادة تعيين"
     },
     "shiftDialog": {
       "createTitle": "إنشاء وردية",

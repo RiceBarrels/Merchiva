@@ -2442,6 +2442,8 @@ export default function StaffingPage() {
   const todayStaffIds = [...new Set(todayAllShifts.map((s) => s.memberId))];
   const pendingTimeOff = orgTimeOffRequests.filter((r) => r.status === "pending");
   const pendingTrades = orgShiftTrades.filter((t) => t.status === "pending");
+  const myPendingTrades = pendingTrades.filter((t) => t.targetId === myMemberId);
+  const hasTradesForMe = myPendingTrades.length > 0;
 
   // Find earliest opening shift for today display
   const todayOpenTime = (() => {
@@ -2726,15 +2728,15 @@ export default function StaffingPage() {
               </div>
             )}
 
-            {/* ── Section: Needs attention ── */}
-            {!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0) && (
+            {/* ── Section: Needs attention — managers see all, staff see trades targeted at them ── */}
+            {((!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
               <div className="border-b border-stone-200">
                 <div className="flex items-center gap-2 px-4 py-2.5">
                   <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.needsAttention")}</p>
                 </div>
                 <div className="divide-y divide-stone-200">
-                  {/* Time off row */}
-                  {pendingTimeOff.length > 0 && (
+                  {/* Time off row — managers only */}
+                  {!isStaff && pendingTimeOff.length > 0 && (
                     <button
                       onClick={() => { hapticLight(); setTimeOffDialog(true); }}
                       className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
@@ -2749,18 +2751,27 @@ export default function StaffingPage() {
                       <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">{t("staffing.pending")}</span>
                     </button>
                   )}
-                  {/* Trades row */}
-                  {pendingTrades.length > 0 && (
+                  {/* Trades row — managers see all, staff see only trades targeted at them */}
+                  {((!isStaff && pendingTrades.length > 0) || hasTradesForMe) && (
                     <button
-                      onClick={() => { hapticLight(); setMobileSection("schedule"); }}
+                      onClick={() => { hapticLight(); setShowRequests(true); setMobileSection("schedule"); }}
                       className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
                     >
                       <div className="h-9 w-9 shrink-0 rounded border border-stone-200 bg-stone-100 flex items-center justify-center">
                         <ArrowLeftRight className="h-4 w-4 text-stone-700" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{(pendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(pendingTrades.length))}</p>
-                        <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.awaitingApproval")}</p>
+                        {isStaff ? (
+                          <>
+                            <p className="text-[13px] font-medium text-stone-900 leading-tight">{(myPendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(myPendingTrades.length))}</p>
+                            <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.tradeTargetHint")}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-[13px] font-medium text-stone-900 leading-tight">{(pendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(pendingTrades.length))}</p>
+                            <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.awaitingApproval")}</p>
+                          </>
+                        )}
                       </div>
                       <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">{t("staffing.pending")}</span>
                     </button>
@@ -2974,8 +2985,8 @@ export default function StaffingPage() {
               )}
             </div>
 
-            {/* ── Manager Requests Section (in Schedule tab) ── */}
-            {!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0) && (
+            {/* ── Requests Section (in Schedule tab) — managers see all, staff see trades targeted at them ── */}
+            {((!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
               <div className="border-t border-stone-200">
                 <button
                   onClick={() => setShowRequests(!showRequests)}
@@ -3014,8 +3025,9 @@ export default function StaffingPage() {
                         </div>
                       </div>
                     ))}
-                    {pendingTrades.map((trade) => {
+                    {(isStaff ? myPendingTrades : pendingTrades).map((trade) => {
                       const shift = shifts.find((s) => s.id === trade.shiftId);
+                      const isTarget = trade.targetId === myMemberId;
                       return (
                         <div key={trade.id} className="px-4 py-3">
                           <p className="text-[13px] font-medium text-stone-900">
@@ -3031,7 +3043,7 @@ export default function StaffingPage() {
                               onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
                               className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
                             >
-                              <Check className="h-3 w-3" /> {t("staffing.requests.accept")}
+                              <Check className="h-3 w-3" /> {isTarget ? t("staffing.requests.accept") : t("staffing.requests.approve")}
                             </button>
                             <button
                               onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
@@ -3039,6 +3051,17 @@ export default function StaffingPage() {
                             >
                               <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                             </button>
+                            {!isStaff && (
+                              <button
+                                onClick={() => {
+                                  hapticLight();
+                                  setTradeDialog({ open: true, shift: shift ?? null });
+                                }}
+                                className="h-7 px-2 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <UserPlus className="h-3 w-3" /> {t("staffing.requests.reassign")}
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -3268,7 +3291,7 @@ export default function StaffingPage() {
                             {canEdit && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setDeletePresetConfirm(p.id); }}
-                                className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-stone-400 text-white flex items-center justify-center hover:bg-destructive transition-colors"
+                                className="absolute -top-1.5 -right-1.5 rounded-full flex items-center justify-center hover:bg-destructive transition-colors"
                               >
                                 <X className="h-2.5 w-2.5" />
                               </button>

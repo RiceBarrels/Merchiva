@@ -663,7 +663,8 @@
       "awaitingApproval": "Awaiting approval",
       "inMinutes": "in {min}m",
       "inHours": "in {h}h",
-      "inHoursMinutes": "in {h}h {min}m"
+      "inHoursMinutes": "in {h}h {min}m",
+      "tradeTargetHint": "Someone wants to trade with you"
     },
     "roles": {
       "title": "Roles",
@@ -689,7 +690,8 @@
       "approve": "Approve",
       "accept": "Accept",
       "deny": "Deny",
-      "noPending": "No pending requests"
+      "noPending": "No pending requests",
+      "reassign": "Reassign"
     },
     "shiftDialog": {
       "createTitle": "Create a shift",

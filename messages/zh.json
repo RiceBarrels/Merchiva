@@ -663,7 +663,8 @@
       "awaitingApproval": "等待审批",
       "inMinutes": "{min} 分钟后",
       "inHours": "{h} 小时后",
-      "inHoursMinutes": "{h} 小时 {min} 分钟后"
+      "inHoursMinutes": "{h} 小时 {min} 分钟后",
+      "tradeTargetHint": "有人想和你换班"
     },
     "roles": {
       "title": "岗位",
@@ -689,7 +690,8 @@
       "approve": "批准",
       "accept": "接受",
       "deny": "拒绝",
-      "noPending": "暂无待处理申请"
+      "noPending": "暂无待处理申请",
+      "reassign": "重新分配"
     },
     "shiftDialog": {
       "createTitle": "创建班次",
