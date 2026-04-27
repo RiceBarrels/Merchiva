@@ -446,6 +446,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const draggingRef = useRef(false);
   const useBottomBarRef = useRef(false);
   const lastHapticOffset = useRef(0);
+  const hasDialogRef = useRef(false);
+  hasDialogRef.current = hasDialog;
   useBottomBarRef.current = useBottomBar;
 
   const safeAreaInsets = getSafeAreaInsets();
@@ -460,13 +462,18 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     setIsOpen(false);
   }, [pathname]);
 
+  // Close sidebar when a dialog opens to avoid transform conflicts
+  useEffect(() => {
+    if (hasDialog && isOpen) setIsOpen(false);
+  }, [hasDialog]);
+
   // Attach touch listeners with passive:false on touchmove for preventDefault
   useEffect(() => {
     const el = contentRef.current;
     if (!el) return;
 
     function onTouchStart(e: TouchEvent) {
-      if (useBottomBarRef.current) return;
+      if (useBottomBarRef.current || hasDialogRef.current) return;
       const t = e.touches[0];
       startX.current = t.clientX;
       startY.current = t.clientY;
@@ -505,7 +512,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         offset = Math.max(0, Math.min(SIDEBAR_WIDTH, dx));
       }
 
-      if (Math.abs(offset - lastHapticOffset.current) >= 10) {
+      if (Math.abs(offset - lastHapticOffset.current) >= 25) {
         hapticLight();
         lastHapticOffset.current = offset;
       }
@@ -636,7 +643,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           ref={contentRef}
           className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden border"
           style={{
-            ...(!useBottomBar && {
+            ...(!useBottomBar && !hasDialog && {
               transform: `translateX(${translateX}px)`,
               transition: transitionStyle,
               ...(translateX > 0 && {
@@ -679,7 +686,6 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
                 <div
                   className="sticky top-0 left-0 right-0 pointer-events-none"
                   style={{
-                    height: safeAreaInsets.top + 48,
                     background: "linear-gradient(to bottom, var(--background) 60%, transparent)",
                   }}
                 />
