@@ -1784,7 +1784,7 @@ export default function StaffingPage() {
   const handleStaffAcceptTrade = async (tradeId: string) => {
     if (!myMemberId) return;
     try {
-      await acceptShiftTrade(tradeId, myMemberId);
+      await updateTradeStatus(tradeId, "accepted");
       hapticSuccess();
       toast.success("Trade accepted — awaiting manager approval");
       setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, status: "accepted" as const, acceptedById: myMemberId, targetId: myMemberId } : t));
@@ -1794,7 +1794,7 @@ export default function StaffingPage() {
   const handleManagerApproveTrade = async (tradeId: string, approved: boolean) => {
     if (!userId) return;
     try {
-      await managerApproveShiftTrade(tradeId, userId, approved);
+      await updateTradeStatus(tradeId, approved ? "accepted" : "denied");
       hapticSuccess();
       toast.success(approved ? "Trade approved" : "Trade denied");
       setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, managerApproved: approved, managerId: userId, status: approved ? "accepted" as const : "denied" as const } : t));
