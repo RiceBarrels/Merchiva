@@ -377,7 +377,7 @@
   },
   "membership": {
     "header": {
-      "title": "Abonnement & commerce",
+      "title": "Abonnement",
       "tabTiers": "Niveaux & avantages",
       "tabCustomers": "Clients",
       "tabOrders": "Commandes",
@@ -1194,7 +1194,8 @@
     "colActions": "Actions",
     "activeMembersCount": "membres actifs",
     "pendingInvitationsLabel": "Invitations en attente",
-    "inviteShort": "Inviter"
+    "inviteShort": "Inviter",
+    "resend": "Renvoyer"
   },
   "availability": {
     "title": "Définir la disponibilité",

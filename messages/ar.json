@@ -377,7 +377,7 @@
   },
   "membership": {
     "header": {
-      "title": "العضوية والتجارة",
+      "title": "العضوية",
       "tabTiers": "الفئات والمزايا",
       "tabCustomers": "العملاء",
       "tabOrders": "الطلبات",
@@ -1194,7 +1194,8 @@
     "colActions": "الإجراءات",
     "activeMembersCount": "أعضاء نشطون",
     "pendingInvitationsLabel": "الدعوات المعلقة",
-    "inviteShort": "دعوة"
+    "inviteShort": "دعوة",
+    "resend": "إعادة إرسال"
   },
   "availability": {
     "title": "تعيين التوفر",

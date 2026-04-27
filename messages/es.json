@@ -377,7 +377,7 @@
   },
   "membership": {
     "header": {
-      "title": "Membresía y comercio",
+      "title": "Membresía",
       "tabTiers": "Niveles y beneficios",
       "tabCustomers": "Clientes",
       "tabOrders": "Pedidos",
@@ -1194,7 +1194,8 @@
     "colActions": "Acciones",
     "activeMembersCount": "miembros activos",
     "pendingInvitationsLabel": "Invitaciones pendientes",
-    "inviteShort": "Invitar"
+    "inviteShort": "Invitar",
+    "resend": "Reenviar"
   },
   "availability": {
     "title": "Configurar disponibilidad",

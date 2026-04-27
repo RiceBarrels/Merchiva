@@ -377,7 +377,7 @@
   },
   "membership": {
     "header": {
-      "title": "Membership & Commerce",
+      "title": "Membership",
       "tabTiers": "Tiers & Perks",
       "tabCustomers": "Customers",
       "tabOrders": "Orders",
@@ -1194,7 +1194,8 @@
     "colActions": "Actions",
     "activeMembersCount": "active members",
     "pendingInvitationsLabel": "Pending Invitations",
-    "inviteShort": "Invite"
+    "inviteShort": "Invite",
+    "resend": "Resend"
   },
   "availability": {
     "title": "Set Availability",

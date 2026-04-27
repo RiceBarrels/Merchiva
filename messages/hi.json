@@ -377,7 +377,7 @@
   },
   "membership": {
     "header": {
-      "title": "सदस्यता और वाणिज्य",
+      "title": "सदस्यता",
       "tabTiers": "स्तर और लाभ",
       "tabCustomers": "ग्राहक",
       "tabOrders": "ऑर्डर",
@@ -1194,7 +1194,8 @@
     "colActions": "क्रियाएं",
     "activeMembersCount": "सक्रिय सदस्य",
     "pendingInvitationsLabel": "लंबित निमंत्रण",
-    "inviteShort": "आमंत्रित"
+    "inviteShort": "आमंत्रित",
+    "resend": "पुनः भेजें"
   },
   "availability": {
     "title": "उपलब्धता सेट करें",

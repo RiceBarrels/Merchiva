@@ -377,7 +377,7 @@
   },
   "membership": {
     "header": {
-      "title": "会员与商务",
+      "title": "会员",
       "tabTiers": "等级与权益",
       "tabCustomers": "客户",
       "tabOrders": "订单",
@@ -1194,7 +1194,8 @@
     "colActions": "操作",
     "activeMembersCount": "位活跃成员",
     "pendingInvitationsLabel": "待处理邀请",
-    "inviteShort": "邀请"
+    "inviteShort": "邀请",
+    "resend": "重新发送"
   },
   "availability": {
     "title": "设置可用时间",

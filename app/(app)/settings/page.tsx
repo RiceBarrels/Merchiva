@@ -933,6 +933,34 @@ export default function SettingsPage() {
                             <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{inv.role}</Badge>
                             <button
                               onClick={async () => {
+                                try {
+                                  const res = await fetch("/api/team/send-invite-email", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      to: inv.email,
+                                      token: inv.token,
+                                      orgName: businessName || "your team",
+                                      inviterEmail: userEmail || "a teammate",
+                                      role: inv.role,
+                                    }),
+                                  });
+                                  if (res.ok) {
+                                    hapticSuccess();
+                                    toast.success(t("settings.toastInvitationSent"));
+                                  } else {
+                                    toast.error(t("settings.toastInviteEmailFailedPrefix"));
+                                  }
+                                } catch {
+                                  toast.error(t("settings.toastInviteEmailFailedPrefix"));
+                                }
+                              }}
+                              className="text-xs text-foreground hover:underline shrink-0"
+                            >
+                              {t("settings.resend")}
+                            </button>
+                            <button
+                              onClick={async () => {
                                 await cancelInvitation(inv.id);
                                 setTeamInvitations((prev) => prev.filter((x) => x.id !== inv.id));
                               }}
