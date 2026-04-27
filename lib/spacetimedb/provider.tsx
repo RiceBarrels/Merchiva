@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SpacetimeDBProvider } from "spacetimedb/react";
 import { DbConnection } from "./generated";
 import {
@@ -21,6 +21,10 @@ interface SpacetimeProviderProps {
 export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   const { getToken, isSignedIn } = useAuth();
   const t = useT();
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -88,13 +92,13 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       .onConnectError((_ctx, error) => {
         console.error("[SpacetimeDB] Connection error:", error);
         import("sonner").then(({ toast }) => {
-          toast.error(t("toast.dbConnectionFailed"), {
+          toast.error(tRef.current("toast.dbConnectionFailed"), {
             description: String(error),
             duration: 10000,
           });
         });
       });
-  }, [authToken, t]);
+  }, [authToken]);
 
   if (!builder) {
     return (
