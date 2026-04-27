@@ -68,7 +68,7 @@ import { BottomBar } from "@/components/bottom-bar";
 import { MerchivaLogo } from "@/components/logo";
 import { useNavMode } from "@/lib/nav-mode";
 import { cn } from "@/lib/utils";
-import { hapticLight, hapticMedium, hapticSuccess } from "@/lib/haptics";
+import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/context/permissions";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -445,6 +445,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const isOpenRef = useRef(false);
   const draggingRef = useRef(false);
   const useBottomBarRef = useRef(false);
+  const lastHapticOffset = useRef(0);
   useBottomBarRef.current = useBottomBar;
 
   const safeAreaInsets = getSafeAreaInsets();
@@ -474,6 +475,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       isHoriz.current = null;
       // Always allow horizontal swipe — open from anywhere, close when open
       isEdge.current = true;
+      lastHapticOffset.current = isOpenRef.current ? SIDEBAR_WIDTH : 0;
     }
 
     function onTouchMove(e: TouchEvent) {
@@ -501,6 +503,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       } else {
         // Sidebar closed: drag right from edge to open (offset grows from 0 to SIDEBAR_WIDTH)
         offset = Math.max(0, Math.min(SIDEBAR_WIDTH, dx));
+      }
+
+      if (Math.abs(offset - lastHapticOffset.current) >= 10) {
+        hapticLight();
+        lastHapticOffset.current = offset;
       }
 
       setDragging(true);
@@ -539,7 +546,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           velocity > VELOCITY_THRESHOLD;
       }
 
-      if (shouldOpen && !isOpenRef.current) hapticLight();
+      if (shouldOpen !== isOpenRef.current) hapticHeavy();
       setIsOpen(shouldOpen);
       setDragging(false);
       setDragOffset(0);
@@ -644,7 +651,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             <AnimatePresence>
               {isOpen && (
                 <motion.div
-                  className="absolute inset-0 z-20 backdrop-blur-sm bg-foreground/20"
+                  className="absolute inset-0 z-30 backdrop-blur-sm bg-foreground/20"
                   onClick={() => setIsOpen(false)}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: translateX / 280 }}
