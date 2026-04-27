@@ -101,7 +101,15 @@
     "setupFailed": "सेटअप विफल",
     "connecting": "कनेक्ट हो रहा है…",
     "connectionTimedOut": "कनेक्शन समय समाप्त",
-    "signOutAndRetry": "साइन आउट करें और पुनः प्रयास करें"
+    "signOutAndRetry": "साइन आउट करें और पुनः प्रयास करें",
+    "namePrompt": {
+      "title": "आपका नाम क्या है?",
+      "description": "ताकि आपकी टीम आपको जान सके।",
+      "placeholder": "आपका नाम",
+      "continue": "जारी रखें",
+      "saved": "नाम सहेजा गया!",
+      "failed": "नाम सहेजने में विफल"
+    }
   },
   "components": {
     "sidebar": {

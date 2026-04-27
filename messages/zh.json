@@ -101,7 +101,15 @@
     "setupFailed": "设置失败",
     "connecting": "连接中…",
     "connectionTimedOut": "连接超时",
-    "signOutAndRetry": "退出登录并重试"
+    "signOutAndRetry": "退出登录并重试",
+    "namePrompt": {
+      "title": "你叫什么名字？",
+      "description": "让团队认识你。",
+      "placeholder": "你的名字",
+      "continue": "继续",
+      "saved": "名字已保存！",
+      "failed": "保存失败"
+    }
   },
   "components": {
     "sidebar": {

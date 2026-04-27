@@ -101,7 +101,15 @@
     "setupFailed": "Échec de la configuration",
     "connecting": "Connexion…",
     "connectionTimedOut": "Délai de connexion dépassé",
-    "signOutAndRetry": "Se déconnecter et réessayer"
+    "signOutAndRetry": "Se déconnecter et réessayer",
+    "namePrompt": {
+      "title": "Comment vous appelez-vous ?",
+      "description": "Pour que votre équipe vous connaisse.",
+      "placeholder": "Votre nom",
+      "continue": "Continuer",
+      "saved": "Nom enregistré !",
+      "failed": "Échec de l'enregistrement"
+    }
   },
   "components": {
     "sidebar": {

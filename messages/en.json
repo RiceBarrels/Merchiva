@@ -101,7 +101,15 @@
     "setupFailed": "Setup failed",
     "connecting": "Connecting…",
     "connectionTimedOut": "Connection timed out",
-    "signOutAndRetry": "Sign out and try again"
+    "signOutAndRetry": "Sign out and try again",
+    "namePrompt": {
+      "title": "What's your name?",
+      "description": "So your team knows who you are.",
+      "placeholder": "Your name",
+      "continue": "Continue",
+      "saved": "Name saved!",
+      "failed": "Failed to save name"
+    }
   },
   "components": {
     "sidebar": {

@@ -101,7 +101,15 @@
     "setupFailed": "Configuración fallida",
     "connecting": "Conectando…",
     "connectionTimedOut": "Tiempo de conexión agotado",
-    "signOutAndRetry": "Cerrar sesión e intentar de nuevo"
+    "signOutAndRetry": "Cerrar sesión e intentar de nuevo",
+    "namePrompt": {
+      "title": "¿Cómo te llamas?",
+      "description": "Para que tu equipo te conozca.",
+      "placeholder": "Tu nombre",
+      "continue": "Continuar",
+      "saved": "¡Nombre guardado!",
+      "failed": "Error al guardar"
+    }
   },
   "components": {
     "sidebar": {

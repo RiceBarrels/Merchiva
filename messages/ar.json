@@ -101,7 +101,15 @@
     "setupFailed": "فشل الإعداد",
     "connecting": "جارٍ الاتصال…",
     "connectionTimedOut": "انتهت مهلة الاتصال",
-    "signOutAndRetry": "تسجيل الخروج والمحاولة مرة أخرى"
+    "signOutAndRetry": "تسجيل الخروج والمحاولة مرة أخرى",
+    "namePrompt": {
+      "title": "ما اسمك؟",
+      "description": "ليعرفك فريقك.",
+      "placeholder": "اسمك",
+      "continue": "متابعة",
+      "saved": "تم حفظ الاسم!",
+      "failed": "فشل في حفظ الاسم"
+    }
   },
   "components": {
     "sidebar": {

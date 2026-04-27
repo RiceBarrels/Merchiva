@@ -97,6 +97,54 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
   );
 }
 
+function NamePrompt({ memberId, onComplete }: { memberId: string; onComplete: () => void }) {
+  const t = useT();
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const conn = getConnection();
+      if (!conn) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (conn as any).reducers.updateMemberPermissions({
+        organizationId: "",
+        memberId,
+        displayName: name.trim(),
+      });
+      toast.success(t("layout.namePrompt.saved"));
+      setTimeout(onComplete, 500);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("layout.namePrompt.failed"));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-1 min-h-screen flex-col justify-center px-6 bg-background">
+      <div className="mx-auto w-full max-w-sm space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">{t("layout.namePrompt.title")}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t("layout.namePrompt.description")}</p>
+        </div>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("layout.namePrompt.placeholder")}
+          className="h-12 text-base"
+          autoFocus
+          onKeyDown={(e) => e.key === "Enter" && !saving && handleSave()}
+        />
+        <Button onClick={handleSave} disabled={saving || !name.trim()} className="w-full h-11">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("layout.namePrompt.continue")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Inner component — runs inside SpacetimeProvider so useTable/useSpacetimeDB are available.
 function AuthLoader({ children }: { children: React.ReactNode }) {
   const t = useT();
@@ -160,7 +208,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       }
     })();
 
-    return { role, permissions, organizationId: orgId.toString(), organizations: orgs, currentOrg };
+    const memberDisplayName = activeMembership.displayName ?? "";
+    return { role, permissions, organizationId: orgId.toString(), organizations: orgs, currentOrg, memberDisplayName, memberId: activeMembership.id.toString() };
   }, [isReady, identity, orgMembers, organizations]);
 
   // Start 8-second timeout while loading; clear it once loaded.
@@ -215,6 +264,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // Make organizationId available to non-React write helpers.
   setActiveOrgId(authState.organizationId);
 
+  const needsName = !authState.memberDisplayName || !authState.memberDisplayName.trim();
+
   return (
     <PermissionsProvider
       role={authState.role}
@@ -223,7 +274,11 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       organizations={authState.organizations}
       currentOrg={authState.currentOrg}
     >
-      <MobileShell>{children}</MobileShell>
+      {needsName ? (
+        <NamePrompt memberId={authState.memberId} onComplete={() => window.location.reload()} />
+      ) : (
+        <MobileShell>{children}</MobileShell>
+      )}
     </PermissionsProvider>
   );
 }
