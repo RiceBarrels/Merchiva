@@ -1777,8 +1777,19 @@ export default function StaffingPage() {
   };
 
   const handleTradeStatusUpdate = async (id: string, status: "accepted" | "denied") => {
-    await updateTradeStatus(id, status, userId ?? undefined);
-    setOrgShiftTrades((prev) => prev.filter((t) => t.id !== id));
+    try {
+      await updateTradeStatus(id, status, userId ?? undefined);
+      hapticSuccess();
+      if (status === "accepted") {
+        toast.success("Trade accepted — awaiting manager approval");
+        setOrgShiftTrades((prev) => prev.map((t) => t.id === id ? { ...t, status: "accepted" as const, acceptedById: myMemberId, targetId: myMemberId } : t));
+      } else {
+        toast.success("Trade denied");
+        setOrgShiftTrades((prev) => prev.filter((t) => t.id !== id));
+      }
+    } catch {
+      toast.error("Failed to update trade");
+    }
   };
 
   const handleStaffAcceptTrade = async (tradeId: string) => {
