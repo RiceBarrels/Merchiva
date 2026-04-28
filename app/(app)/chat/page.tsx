@@ -28,7 +28,9 @@ import { getTeamForScheduling } from "@/lib/db/staffing";
 import { getAvatarMap } from "@/lib/db/avatars";
 import type { ChatConversation, ChatMessage, OrgMember } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { PageHeader } from "@/components/page-header";
 import { useT } from "@/lib/i18n/context";
+import { useSpacetimeDB } from "spacetimedb/react";
 
 function formatTimeSeparator(date: Date, t: (k: string) => string): string {
   const now = new Date();
@@ -90,11 +92,10 @@ export default function ChatPage() {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  const stdb = useSpacetimeDB();
   useEffect(() => {
-    // SpacetimeDB: identity is stored in localStorage token
-    const token = localStorage.getItem("stdb_token");
-    if (token) setUserId(token.slice(0, 36)); // use token prefix as stable ID
-  }, []);
+    if (stdb?.identity) setUserId(stdb.identity.toHexString());
+  }, [stdb?.identity]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -290,9 +291,10 @@ export default function ChatPage() {
       <div className="flex h-full">
         {/* ─── Conversation List ─────────────────────── */}
         <div className="w-full sm:w-80 sm:border-r border-border flex flex-col shrink-0">
-          <div className="p-3 border-b border-border space-y-2">
-            <div className="flex items-center justify-between">
-              <h1 className="text-lg font-bold">{t("chat.messages")}</h1>
+          <PageHeader
+            title={t("chat.messages")}
+            sticky={false}
+            right={
               <div className="flex gap-1">
                 <Button size="sm" variant="outline" onClick={() => setNewDmDialog(true)} className="gap-1 h-8 text-xs">
                   <MessageSquare className="h-3.5 w-3.5" /> {t("chat.dm")}
@@ -303,8 +305,8 @@ export default function ChatPage() {
                   </Button>
                 )}
               </div>
-            </div>
-          </div>
+            }
+          />
 
           <div className="flex-1 overflow-y-auto">
             {conversations.length === 0 ? (
