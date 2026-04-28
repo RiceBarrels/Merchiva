@@ -647,7 +647,10 @@ export default function SettingsPage() {
   const [shiftReminders, setShiftReminders] = useState(true);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof document === "undefined") return false;
+    return document.documentElement.classList.contains("dark");
+  });
 
   if (isDesktop) return (
     <>
@@ -736,7 +739,7 @@ export default function SettingsPage() {
                 <div className="flex border border-border overflow-hidden w-fit rounded">
                   {(["permanent", "temporary"] as const).map((type, i) => (
                     <button key={type} onClick={() => setAvailForm((f) => ({ ...f, type }))}
-                      className={`px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${i > 0 ? "border-l border-border" : ""} ${availForm.type === type ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}
+                      className={`px-3.5 py-1.5 text-sm font-medium capitalize transition-colors ${i > 0 ? "border-l border-border" : ""} ${availForm.type === type ? "bg-foreground text-background" : "bg-background text-muted-foreground hover:bg-muted"}`}
                     >{t(`availability.${type}`)}</button>
                   ))}
                 </div>
@@ -755,7 +758,7 @@ export default function SettingsPage() {
                       const dayTimes = f.dayTimes.map((dt, j) => j === i ? { ...dt, enabled: !dt.enabled } : dt);
                       return { ...f, dayTimes };
                     })}
-                      className={`flex-1 py-1.5 text-xs font-semibold border rounded transition-colors ${availForm.dayTimes[i].enabled ? "bg-stone-900 text-white border-stone-900" : "bg-white text-stone-500 border-border hover:bg-stone-50"}`}
+                      className={`flex-1 py-1.5 text-xs font-semibold border rounded transition-colors ${availForm.dayTimes[i].enabled ? "bg-foreground text-background border-foreground" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}
                     >{d}</button>
                   ))}
                 </div>
@@ -778,14 +781,14 @@ export default function SettingsPage() {
                   return (
                     <div key={DAY_NAMES[i]} className="space-y-1.5 rounded border border-border p-2.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-stone-700">{DAY_NAMES[i]}</span>
+                        <span className="text-xs font-semibold text-foreground">{DAY_NAMES[i]}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground">{t("availability.fullDay")}</span>
                           <button onClick={() => setAvailForm((f) => {
                             const dayTimes = f.dayTimes.map((d, j) => j === i ? { ...d, fullDay: !d.fullDay } : d);
                             return { ...f, dayTimes };
                           })}
-                            className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}>
+                            className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
                             <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`} />
                           </button>
                         </div>
@@ -828,7 +831,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <Label>{t("settings.fullDays")}</Label>
                 <button onClick={() => setTimeOffForm((f) => ({ ...f, fullDays: !f.fullDays }))}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${timeOffForm.fullDays ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}>
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${timeOffForm.fullDays ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
                   <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${timeOffForm.fullDays ? "translate-x-4" : "translate-x-0.5"}`} />
                 </button>
               </div>
@@ -876,7 +879,7 @@ export default function SettingsPage() {
                   <div className="divide-y divide-border">
                     {teamMembers.filter((m) => m.status === "active").map((m) => (
                       <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-                        <div className="h-9 w-9 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-stone-500 shrink-0">
+                        <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
                           {(m.displayName || "?")[0].toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -923,7 +926,7 @@ export default function SettingsPage() {
                       <div className="divide-y divide-border">
                         {teamInvitations.map((inv) => (
                           <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
-                            <div className="h-9 w-9 rounded-full bg-stone-100 flex items-center justify-center text-sm text-stone-400 shrink-0">
+                            <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-sm text-muted-foreground shrink-0">
                               @
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1390,7 +1393,7 @@ export default function SettingsPage() {
 
   // ─── Helper: icon tile (32px, rounded-lg, stone-100 bg, 1px border) ──
   const IconTile = ({ children }: { children: React.ReactNode }) => (
-    <div className="h-8 w-8 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center shrink-0">
+    <div className="h-8 w-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0">
       {children}
     </div>
   );
@@ -1415,16 +1418,16 @@ export default function SettingsPage() {
     return (
       <Wrapper
         onClick={onClick}
-        className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${isFirst ? "" : "border-t border-stone-200"}`}
+        className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${isFirst ? "" : "border-t border-border"}`}
       >
         <IconTile>{icon}</IconTile>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-stone-900">{title}</p>
-          {meta && <p className="text-xs text-stone-500 mt-0.5 truncate">{meta}</p>}
+          <p className="text-sm font-medium text-foreground">{title}</p>
+          {meta && <p className="text-xs text-muted-foreground mt-0.5 truncate">{meta}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {right}
-          {onClick && <ChevronRight className="h-4 w-4 text-stone-400 shrink-0" />}
+          {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
         </div>
       </Wrapper>
     );
@@ -1446,15 +1449,15 @@ export default function SettingsPage() {
     onChange: () => void;
     isFirst?: boolean;
   }) => (
-    <div className={`flex items-center gap-3 px-[18px] py-3.5 w-full ${isFirst ? "" : "border-t border-stone-200"}`}>
+    <div className={`flex items-center gap-3 px-[18px] py-3.5 w-full ${isFirst ? "" : "border-t border-border"}`}>
       <IconTile>{icon}</IconTile>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-stone-900">{title}</p>
-        {meta && <p className="text-xs text-stone-500 mt-0.5">{meta}</p>}
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        {meta && <p className="text-xs text-muted-foreground mt-0.5">{meta}</p>}
       </div>
       <button
         onClick={() => { hapticSuccess(); onChange(); }}
-        className={`relative inline-flex h-5 w-[34px] items-center rounded-full shrink-0 transition-colors ${checked ? "bg-stone-900" : "bg-stone-100 border border-stone-200"}`}
+        className={`relative inline-flex h-5 w-[34px] items-center rounded-full shrink-0 transition-colors ${checked ? "bg-foreground" : "bg-muted border border-border"}`}
         aria-label={`Toggle ${title}`}
       >
         <span className={`inline-block h-3.5 w-3.5 rounded-full shadow transition-transform ${checked ? "bg-white translate-x-[15px]" : "bg-white translate-x-[2px]"}`} />
@@ -1464,8 +1467,8 @@ export default function SettingsPage() {
 
   // ─── Helper: SGroup header ─────────────────────────────────────
   const SGroupHeader = ({ label }: { label: string }) => (
-    <div className="px-[18px] pt-5 pb-1.5 border-b border-stone-200">
-      <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{label}</p>
+    <div className="px-[18px] pt-5 pb-1.5 border-b border-border">
+      <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
     </div>
   );
 
@@ -1478,8 +1481,8 @@ export default function SettingsPage() {
     tone?: "default" | "outline" | "ok" | "warn";
   }) => {
     const cls = {
-      default: "bg-stone-100 text-stone-700 border-stone-200",
-      outline: "bg-white text-stone-700 border-stone-200",
+      default: "bg-muted text-foreground border-border",
+      outline: "bg-background text-foreground border-border",
       ok: "bg-green-50 text-green-700 border-green-200",
       warn: "bg-amber-50 text-amber-700 border-amber-200",
     }[tone];
@@ -1492,7 +1495,7 @@ export default function SettingsPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-white pb-28">
+    <div className="min-h-screen bg-background pb-28">
       <PageHeader
         title={t("settings.title")}
         subtitle={`${businessName || t("settings.yourBusiness")}${activeStaffCount > 0 ? ` · ${activeStaffCount} ${t("settings.membersSuffix")}` : ""}`}
@@ -1501,24 +1504,24 @@ export default function SettingsPage() {
 
       {/* ─── User Card ──────────────────────────────────────── */}
       <div
-        className="flex items-center gap-3.5 w-full px-[18px] py-4 border-b border-stone-200 text-left"
+        className="flex items-center gap-3.5 w-full px-[18px] py-4 border-b border-border text-left"
       >
         <div className="relative shrink-0">
           {avatarUrl ? (
-            <img src={avatarUrl} alt="Avatar" className="h-11 w-11 rounded-lg object-cover bg-stone-100 border border-stone-200" />
+            <img src={avatarUrl} alt="Avatar" className="h-11 w-11 rounded-lg object-cover bg-muted border border-border" />
           ) : (
-            <div className="h-11 w-11 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center text-base font-semibold text-stone-500">
+            <div className="h-11 w-11 rounded-lg bg-muted border border-border flex items-center justify-center text-base font-semibold text-muted-foreground">
               {(businessName || userEmail)?.[0]?.toUpperCase() ?? "?"}
             </div>
           )}
-          <label className="absolute -bottom-1 -right-1 p-0.5 rounded bg-stone-100 border border-stone-200 cursor-pointer">
-            {uploadingAvatar ? <Loader2 className="h-2.5 w-2.5 animate-spin text-stone-500" /> : <Camera className="h-2.5 w-2.5 text-stone-500" />}
+          <label className="absolute -bottom-1 -right-1 p-0.5 rounded bg-muted border border-border cursor-pointer">
+            {uploadingAvatar ? <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" /> : <Camera className="h-2.5 w-2.5 text-muted-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
           </label>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-stone-900 truncate">{businessName || userEmail || t("settings.yourName")}</p>
-          <p className="text-xs font-mono text-stone-500 truncate tabular-nums">{userEmail || t("settings.emailFallback")}</p>
+          <p className="text-base font-semibold text-foreground truncate">{businessName || userEmail || t("settings.yourName")}</p>
+          <p className="text-xs font-mono text-muted-foreground truncate tabular-nums">{userEmail || t("settings.emailFallback")}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <SBadge tone="outline">{role ?? t("settings.memberFallback")}</SBadge>
@@ -1528,31 +1531,31 @@ export default function SettingsPage() {
 
       {/* ─── Workspace Group ────────────────────────────────── */}
       <SGroupHeader label={t("settings.groupWorkspace")} />
-      <div className="bg-white">
+      <div className="bg-background">
         <SRow
-          icon={<Building2 className="h-4 w-4 text-stone-700" />}
+          icon={<Building2 className="h-4 w-4 text-foreground" />}
           title={t("settings.businessProfile")}
           meta={businessName || t("settings.notSet")}
-          right={<span className="text-xs text-stone-500 font-mono truncate max-w-[120px]">{timezone}</span>}
+          right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{timezone}</span>}
           isFirst
         />
         <SRow
-          icon={<MapPin className="h-4 w-4 text-stone-700" />}
+          icon={<MapPin className="h-4 w-4 text-foreground" />}
           title={t("settings.locations")}
           meta={t("settings.manageLocations")}
           right={<SBadge>1</SBadge>}
         />
         <SRow
-          icon={<CreditCard className="h-4 w-4 text-stone-700" />}
+          icon={<CreditCard className="h-4 w-4 text-foreground" />}
           title={t("settings.billing")}
           meta={t("settings.currentSubscription")}
           right={<SBadge tone="ok">{t("settings.active")}</SBadge>}
         />
         <SRow
-          icon={<FileText className="h-4 w-4 text-stone-700" />}
+          icon={<FileText className="h-4 w-4 text-foreground" />}
           title={t("settings.taxCompliance")}
           meta={`${t("settings.taxPrefix")} ${paymentTaxRate}% · ${paymentCurrency}`}
-          right={<span className="text-xs text-stone-500 font-mono tabular-nums">{paymentTaxRate}%</span>}
+          right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{paymentTaxRate}%</span>}
         />
       </div>
 
@@ -1560,9 +1563,9 @@ export default function SettingsPage() {
       {isAdmin && (
         <>
           <SGroupHeader label={t("settings.groupTeamAccess")} />
-          <div className="bg-white">
+          <div className="bg-background">
             <SRow
-              icon={<Users className="h-4 w-4 text-stone-700" />}
+              icon={<Users className="h-4 w-4 text-foreground" />}
               title={t("settings.members")}
               meta={t("settings.manageTeam")}
               onClick={() => setTeamDialog(true)}
@@ -1570,19 +1573,19 @@ export default function SettingsPage() {
               isFirst
             />
             <SRow
-              icon={<Shield className="h-4 w-4 text-stone-700" />}
+              icon={<Shield className="h-4 w-4 text-foreground" />}
               title={t("settings.rolesPermissions")}
               meta={t("settings.configureAccess")}
               onClick={() => setTeamDialog(true)}
             />
             <SRow
-              icon={<Clock className="h-4 w-4 text-stone-700" />}
+              icon={<Clock className="h-4 w-4 text-foreground" />}
               title={t("settings.scheduleRules")}
               meta={t("settings.availabilityAndTimeOff")}
               onClick={() => setAvailDialog(true)}
             />
             <SRow
-              icon={<Zap className="h-4 w-4 text-stone-700" />}
+              icon={<Zap className="h-4 w-4 text-foreground" />}
               title={t("settings.apiIntegrations")}
               meta={
                 settings?.squareConnected
@@ -1607,9 +1610,9 @@ export default function SettingsPage() {
 
       {/* ─── Notifications Group ────────────────────────────── */}
       <SGroupHeader label={t("settings.groupNotifications")} />
-      <div className="bg-white">
+      <div className="bg-background">
         <SToggleRow
-          icon={<Clock className="h-4 w-4 text-stone-700" />}
+          icon={<Clock className="h-4 w-4 text-foreground" />}
           title={t("settings.shiftReminders")}
           meta={t("settings.beforeShift")}
           checked={shiftReminders}
@@ -1617,14 +1620,14 @@ export default function SettingsPage() {
           isFirst
         />
         <SToggleRow
-          icon={<Package className="h-4 w-4 text-stone-700" />}
+          icon={<Package className="h-4 w-4 text-foreground" />}
           title={t("settings.lowStockAlerts")}
           meta={t("settings.belowThreshold")}
           checked={lowStockAlerts}
           onChange={() => setLowStockAlerts(!lowStockAlerts)}
         />
         <SToggleRow
-          icon={<Bell className="h-4 w-4 text-stone-700" />}
+          icon={<Bell className="h-4 w-4 text-foreground" />}
           title={t("settings.weeklySummary")}
           meta={t("settings.performanceDigest")}
           checked={weeklySummary}
@@ -1634,9 +1637,9 @@ export default function SettingsPage() {
 
       {/* ─── Preferences Group ──────────────────────────────── */}
       <SGroupHeader label={t("settings.groupPreferences")} />
-      <div className="bg-white">
+      <div className="bg-background">
         <SRow
-          icon={<PanelLeft className="h-4 w-4 text-stone-700" />}
+          icon={<PanelLeft className="h-4 w-4 text-foreground" />}
           title={t("settings.navigationMode")}
           meta={navMode === "sidebar" ? t("settings.sidebar") : t("settings.bottomBar")}
           right={
@@ -1650,8 +1653,8 @@ export default function SettingsPage() {
                   onClick={() => { hapticSuccess(); setNavMode(mode); }}
                   className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
                     navMode === mode
-                      ? "bg-stone-900 text-white"
-                      : "bg-stone-100 text-stone-500 border border-stone-200"
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground border border-border"
                   }`}
                 >
                   {label}
@@ -1662,23 +1665,30 @@ export default function SettingsPage() {
           isFirst
         />
         <SToggleRow
-          icon={<Moon className="h-4 w-4 text-stone-700" />}
+          icon={<Moon className="h-4 w-4 text-foreground" />}
           title={t("settings.darkMode")}
           meta={t("settings.switchDarkTheme")}
           checked={darkMode}
-          onChange={() => setDarkMode(!darkMode)}
+          onChange={() => {
+            const next = !darkMode;
+            setDarkMode(next);
+            document.documentElement.classList.toggle("dark", next);
+            localStorage.setItem("merchiva_dark", String(next));
+            const meta = document.getElementById("theme-color-meta") as HTMLMetaElement | null;
+            if (meta) meta.content = next ? "#1a1a1a" : "#ffffff";
+          }}
         />
         <button
           type="button"
           onClick={() => setLangDialogOpen(true)}
-          className="flex items-center gap-3 px-[18px] py-3.5 w-full border-t border-stone-200 text-left"
+          className="flex items-center gap-3 px-[18px] py-3.5 w-full border-t border-border text-left"
         >
-          <IconTile><Languages className="h-4 w-4 text-stone-700" /></IconTile>
+          <IconTile><Languages className="h-4 w-4 text-foreground" /></IconTile>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-stone-900">{t("settings.language")}</p>
-            <p className="text-xs text-stone-500 mt-0.5">{LOCALE_LABELS[locale]}</p>
+            <p className="text-sm font-medium text-foreground">{t("settings.language")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{LOCALE_LABELS[locale]}</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-stone-400 shrink-0" />
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </button>
         <DynamicUIElement open={langDialogOpen} onOpenChange={setLangDialogOpen}>
           <DynamicUIElementContent className="max-w-sm">
@@ -1705,7 +1715,7 @@ export default function SettingsPage() {
           </DynamicUIElementContent>
         </DynamicUIElement>
         <SRow
-          icon={<Calendar className="h-4 w-4 text-stone-700" />}
+          icon={<Calendar className="h-4 w-4 text-foreground" />}
           title={t("settings.weekStartsOn")}
           meta={t("settings.monday")}
         />
@@ -1713,9 +1723,9 @@ export default function SettingsPage() {
 
       {/* ─── Device Group ───────────────────────────────────── */}
       <SGroupHeader label={t("settings.groupDevice")} />
-      <div className="bg-white">
+      <div className="bg-background">
         <SToggleRow
-          icon={<MonitorSmartphone className="h-4 w-4 text-stone-700" />}
+          icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
           title={t("settings.storeMachineMode")}
           meta={t("settings.restrictToStoreApps")}
           checked={storeMachine}
@@ -1736,14 +1746,14 @@ export default function SettingsPage() {
           isFirst
         />
         <SRow
-          icon={<MonitorSmartphone className="h-4 w-4 text-stone-700" />}
+          icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
           title={t("settings.deviceName")}
           meta={deviceName || t("settings.notSet")}
           onClick={() => { setDeviceNameInput(deviceName); setDeviceNameDialog(true); }}
-          right={deviceName ? <span className="text-xs text-stone-500 font-mono truncate max-w-[100px]">{deviceName}</span> : undefined}
+          right={deviceName ? <span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{deviceName}</span> : undefined}
         />
         <SRow
-          icon={<KeyRound className="h-4 w-4 text-stone-700" />}
+          icon={<KeyRound className="h-4 w-4 text-foreground" />}
           title={t("settings.punchInCode")}
           meta={myCode ? t("settings.codeSet") : t("settings.setFourDigit")}
           onClick={() => { setMyCodeInput(""); setMyCodeDialog(true); }}
@@ -1755,16 +1765,16 @@ export default function SettingsPage() {
       {isAdmin && (
         <>
           <SGroupHeader label="Store Devices" />
-          <div className="bg-white">
+          <div className="bg-background">
             {orgDevices.length === 0 ? (
               <div className="px-[18px] py-4">
-                <p className="text-xs text-stone-500">No devices registered. Enable store machine mode on a device to register it.</p>
+                <p className="text-xs text-muted-foreground">No devices registered. Enable store machine mode on a device to register it.</p>
               </div>
             ) : (
               orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean; lastSeenAt: { toDate?: () => Date } }, i: number) => (
                 <SRow
                   key={device.id.toString()}
-                  icon={<MonitorSmartphone className="h-4 w-4 text-stone-700" />}
+                  icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
                   title={device.name || "Unnamed device"}
                   meta={device.deviceId.slice(0, 8)}
                   isFirst={i === 0}
@@ -1783,15 +1793,15 @@ export default function SettingsPage() {
 
       {/* ─── Data Group ─────────────────────────────────────── */}
       <SGroupHeader label={t("settings.groupData")} />
-      <div className="bg-white">
+      <div className="bg-background">
         <SRow
-          icon={<Download className="h-4 w-4 text-stone-700" />}
+          icon={<Download className="h-4 w-4 text-foreground" />}
           title={t("settings.exportData")}
           meta={t("settings.downloadCSV")}
           isFirst
         />
         <SRow
-          icon={<Activity className="h-4 w-4 text-stone-700" />}
+          icon={<Activity className="h-4 w-4 text-foreground" />}
           title={t("settings.activityLog")}
           meta={t("settings.recentActivity")}
         />
@@ -1799,23 +1809,23 @@ export default function SettingsPage() {
 
       {/* ─── About Group ────────────────────────────────────── */}
       <SGroupHeader label={t("settings.groupAbout")} />
-      <div className="bg-white">
+      <div className="bg-background">
         <SRow
-          icon={<Info className="h-4 w-4 text-stone-700" />}
+          icon={<Info className="h-4 w-4 text-foreground" />}
           title={t("settings.aboutAppName")}
-          right={<span className="text-xs text-stone-400 font-mono tabular-nums">beta-0.1.0</span>}
+          right={<span className="text-xs text-muted-foreground font-mono tabular-nums">beta-0.1.0</span>}
           isFirst
         />
         <SRow
-          icon={<FileText className="h-4 w-4 text-stone-700" />}
+          icon={<FileText className="h-4 w-4 text-foreground" />}
           title={t("settings.terms")}
         />
         <SRow
-          icon={<Shield className="h-4 w-4 text-stone-700" />}
+          icon={<Shield className="h-4 w-4 text-foreground" />}
           title={t("settings.privacy")}
         />
         <SRow
-          icon={<HelpCircle className="h-4 w-4 text-stone-700" />}
+          icon={<HelpCircle className="h-4 w-4 text-foreground" />}
           title={t("settings.helpSupport")}
         />
       </div>
@@ -1854,7 +1864,7 @@ function DesktopField({
     <div className="grid grid-cols-[180px_minmax(0,1fr)] gap-4 items-start py-3 border-b last:border-b-0 border-border">
       <div>
         <label className="text-[13px] font-medium">{label}</label>
-        {hint && <div className="text-[11.5px] text-stone-500 mt-0.5">{hint}</div>}
+        {hint && <div className="text-[11.5px] text-muted-foreground mt-0.5">{hint}</div>}
       </div>
       <div>{children}</div>
     </div>
@@ -1873,12 +1883,12 @@ function DesktopCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-border rounded-[0.3rem]">
+    <div className="bg-background border border-border rounded-[0.3rem]">
       {(title || right) && (
         <div className="px-5 py-3 flex items-center justify-between border-b border-border">
           <div>
             {title && <div className="text-[14px] font-semibold">{title}</div>}
-            {desc && <div className="text-[11.5px] text-stone-500 mt-0.5">{desc}</div>}
+            {desc && <div className="text-[11.5px] text-muted-foreground mt-0.5">{desc}</div>}
           </div>
           {right}
         </div>
@@ -2117,11 +2127,11 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     {props.avatarUrl ? (
                       <img src={props.avatarUrl} alt={t("settings.avatar")} className="h-10 w-10 rounded-[0.3rem] object-cover border border-border" />
                     ) : (
-                      <div className="h-10 w-10 rounded-[0.3rem] bg-stone-100 flex items-center justify-center text-sm font-bold text-stone-500 border border-border">
+                      <div className="h-10 w-10 rounded-[0.3rem] bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground border border-border">
                         {props.userEmail?.[0]?.toUpperCase() ?? "?"}
                       </div>
                     )}
-                    <label className="text-[12px] text-stone-500 hover:text-stone-900 cursor-pointer transition-colors">
+                    <label className="text-[12px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
                       {props.uploadingAvatar ? t("settings.uploading") : t("settings.change")}
                       <input type="file" accept="image/*" className="hidden" onChange={props.handleAvatarUpload} disabled={props.uploadingAvatar} />
                     </label>
@@ -2189,19 +2199,19 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                         <span className="text-[13px] text-emerald-700 font-medium">{t("settings.connected")}</span>
                         {props.settings.squareLastSyncedAt && (
-                          <span className="text-[11.5px] text-stone-500 ml-2">
+                          <span className="text-[11.5px] text-muted-foreground ml-2">
                             {t("settings.lastSynced")} {new Date(props.settings.squareLastSyncedAt).toLocaleDateString()}
                           </span>
                         )}
                       </>
                     ) : (
-                      <span className="text-[13px] text-stone-500">{t("settings.notConnected")}</span>
+                      <span className="text-[13px] text-muted-foreground">{t("settings.notConnected")}</span>
                     )}
                   </div>
                 </DesktopField>
                 {props.squareSyncResult && (
                   <div className="py-2">
-                    <p className="text-[12px] text-stone-600">{props.squareSyncResult}</p>
+                    <p className="text-[12px] text-muted-foreground">{props.squareSyncResult}</p>
                   </div>
                 )}
                 <div className="py-3 flex gap-2 justify-end">
@@ -2235,19 +2245,19 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                         <span className="text-[13px] text-emerald-700 font-medium">{t("settings.connected")}</span>
                         {props.settings.cloverLastSyncedAt && (
-                          <span className="text-[11.5px] text-stone-500 ml-2">
+                          <span className="text-[11.5px] text-muted-foreground ml-2">
                             {t("settings.lastSynced")} {new Date(props.settings.cloverLastSyncedAt).toLocaleDateString()}
                           </span>
                         )}
                       </>
                     ) : (
-                      <span className="text-[13px] text-stone-500">{t("settings.notConnected")}</span>
+                      <span className="text-[13px] text-muted-foreground">{t("settings.notConnected")}</span>
                     )}
                   </div>
                 </DesktopField>
                 {props.cloverSyncResult && (
                   <div className="py-2">
-                    <p className="text-[12px] text-stone-600">{props.cloverSyncResult}</p>
+                    <p className="text-[12px] text-muted-foreground">{props.cloverSyncResult}</p>
                   </div>
                 )}
                 <div className="py-3 flex gap-2 justify-end">
@@ -2337,7 +2347,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                       registerStoreDevice(getOrCreateDeviceId(), props.deviceName).catch(console.error);
                       props.hapticSuccess();
                     }}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full border shrink-0 transition-colors ${props.storeMachine ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full border shrink-0 transition-colors ${props.storeMachine ? "bg-foreground border-foreground" : "bg-background border-border"}`}
                     aria-label={t("settings.storeMachineModeLabel")}
                   >
                     <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${props.storeMachine ? "translate-x-4" : "translate-x-0.5"}`} />
@@ -2349,15 +2359,15 @@ function SettingsDesktop(props: SettingsDesktopProps) {
             {activeSection === "storedevices" && (
               <DesktopCard title="Store Devices" desc={`${props.orgDevices.length} devices registered`}>
                 {props.orgDevices.length === 0 ? (
-                  <p className="text-sm text-stone-500 py-4">No devices registered yet. Enable store machine mode on any device to register it.</p>
+                  <p className="text-sm text-muted-foreground py-4">No devices registered yet. Enable store machine mode on any device to register it.</p>
                 ) : (
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Device</th>
-                        <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Status</th>
-                        <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">Device ID</th>
-                        <th className="text-right text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2">Actions</th>
+                        <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">Device</th>
+                        <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">Status</th>
+                        <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">Device ID</th>
+                        <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -2369,7 +2379,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                               {device.enabled ? "Active" : "Disabled"}
                             </Badge>
                           </td>
-                          <td className="py-2.5 pr-3 text-[12px] text-stone-500 font-mono">{device.deviceId.slice(0, 8)}…</td>
+                          <td className="py-2.5 pr-3 text-[12px] text-muted-foreground font-mono">{device.deviceId.slice(0, 8)}…</td>
                           <td className="py-2.5 text-right space-x-1">
                             <Button variant="ghost" size="sm" onClick={() => {
                               props.setManageDeviceTarget(device);
@@ -2409,11 +2419,11 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-border">
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colMember")}</th>
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colRole")}</th>
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colEmail")}</th>
-                          <th className="text-left text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2 pr-3">{t("settings.colStatus")}</th>
-                          <th className="text-right text-[11px] font-medium text-stone-500 uppercase tracking-wide py-2">{t("settings.colActions")}</th>
+                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colMember")}</th>
+                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colRole")}</th>
+                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colEmail")}</th>
+                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colStatus")}</th>
+                          <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2">{t("settings.colActions")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -2421,12 +2431,12 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                           <tr key={m.id}>
                             <td className="py-2.5 pr-3">
                               <div className="flex items-center gap-2.5">
-                                <div className="h-7 w-7 rounded-full bg-stone-100 flex items-center justify-center text-[11px] font-bold text-stone-500 shrink-0">
+                                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold text-muted-foreground shrink-0">
                                   {(m.displayName || "?")[0].toUpperCase()}
                                 </div>
                                 <span className="text-[13px] font-medium truncate max-w-[160px]">
                                   {m.displayName || m.email}
-                                  {m.userId === props.userId && <span className="text-[11px] text-stone-400 ml-1">{t("settings.youParenthetical")}</span>}
+                                  {m.userId === props.userId && <span className="text-[11px] text-muted-foreground ml-1">{t("settings.youParenthetical")}</span>}
                                 </span>
                               </div>
                             </td>
@@ -2436,7 +2446,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                               </Badge>
                             </td>
                             <td className="py-2.5 pr-3">
-                              <span className="text-[12px] text-stone-500 truncate block max-w-[200px]">{m.email}</span>
+                              <span className="text-[12px] text-muted-foreground truncate block max-w-[200px]">{m.email}</span>
                             </td>
                             <td className="py-2.5 pr-3">
                               <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
@@ -2449,7 +2459,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                                 {props.canEditTeam && m.userId !== props.userId && (
                                   <button
                                     onClick={() => { props.setResetCodeMember(m); props.setResetCodeInput(""); }}
-                                    className="text-[11px] text-stone-500 hover:text-stone-900 hover:underline"
+                                    className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
                                   >
                                     {t("settings.resetCode")}
                                   </button>
@@ -2474,18 +2484,18 @@ function SettingsDesktop(props: SettingsDesktopProps) {
 
                     {props.teamInvitations.length > 0 && (
                       <div className="mt-4">
-                        <div className="text-[10.5px] font-medium text-stone-500 uppercase tracking-wide mb-2">
+                        <div className="text-[10.5px] font-medium text-muted-foreground uppercase tracking-wide mb-2">
                           {t("settings.pendingInvitationsLabel")} ({props.teamInvitations.length})
                         </div>
                         <div className="divide-y divide-border">
                           {props.teamInvitations.map((inv) => (
                             <div key={inv.id} className="flex items-center gap-3 py-2.5">
-                              <div className="h-7 w-7 rounded-full bg-stone-100 flex items-center justify-center text-[11px] text-stone-400 shrink-0">
+                              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[11px] text-muted-foreground shrink-0">
                                 @
                               </div>
                               <div className="flex-1 min-w-0">
                                 <span className="text-[13px] font-medium truncate block">{inv.email}</span>
-                                <span className="text-[11px] text-stone-500">{t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}</span>
+                                <span className="text-[11px] text-muted-foreground">{t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}</span>
                               </div>
                               <Badge variant="secondary" className="text-[10px] capitalize">{inv.role}</Badge>
                               <button
@@ -2516,13 +2526,13 @@ function SettingsDesktop(props: SettingsDesktopProps) {
   return (
     <div className="flex flex-col h-full">
       <PageHeader title={t("settings.title")} subtitle={t("settings.pageSubtitle")} />
-      <div className="flex-1 overflow-auto bg-stone-50">
+      <div className="flex-1 overflow-auto bg-muted">
         <div className="max-w-6xl mx-auto px-8 py-8">
           {groups.map((group) => {
             if (group.adminOnly && !props.isAdmin) return null;
             return (
               <div key={group.title} className="mb-8">
-                <h3 className="text-[10.5px] font-medium text-stone-500 uppercase tracking-wide mb-3">
+                <h3 className="text-[10.5px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
                   {group.title}
                 </h3>
                 <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
@@ -2532,15 +2542,15 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                       <button
                         key={card.id}
                         onClick={() => handleCardClick(card.id)}
-                        className="group text-left bg-white border border-border rounded-[0.3rem] p-4 hover:border-stone-400 hover:shadow-sm transition-all"
+                        className="group text-left bg-background border border-border rounded-[0.3rem] p-4 hover:border-muted-foreground hover:shadow-sm transition-all"
                       >
                         <div className="flex items-start gap-3">
-                          <div className="h-9 w-9 rounded-[0.3rem] bg-stone-100 group-hover:bg-stone-900 group-hover:text-white flex items-center justify-center shrink-0 transition-colors">
+                          <div className="h-9 w-9 rounded-[0.3rem] bg-muted group-hover:bg-foreground group-hover:text-background flex items-center justify-center shrink-0 transition-colors">
                             <CardIcon className="h-4 w-4" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-[14px] font-semibold truncate">{card.label}</div>
-                            <div className="text-[11.5px] text-stone-500 mt-0.5 truncate">{card.desc}</div>
+                            <div className="text-[11.5px] text-muted-foreground mt-0.5 truncate">{card.desc}</div>
                           </div>
                         </div>
                       </button>
@@ -2558,12 +2568,12 @@ function SettingsDesktop(props: SettingsDesktopProps) {
         <DynamicUIElementContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DynamicUIElementHeader>
             <DynamicUIElementTitle className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-[0.3rem] bg-stone-900 text-white flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center shrink-0">
                 <DetailIcon className="h-4 w-4" />
               </div>
               <div>
                 <div className="text-[16px] font-semibold">{detailMeta?.title}</div>
-                <div className="text-[12px] text-stone-500 font-normal">{detailMeta?.desc}</div>
+                <div className="text-[12px] text-muted-foreground font-normal">{detailMeta?.desc}</div>
               </div>
             </DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{detailMeta?.desc}</DynamicUIElementDescription>

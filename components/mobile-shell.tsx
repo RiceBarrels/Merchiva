@@ -139,7 +139,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       <div className="md:hidden relative h-screen overflow-hidden">
         {/* Sidebar sits fixed behind main content */}
         <div
-          className="fixed inset-y-0 left-0 z-10 bg-stone-50 border-r border-stone-200"
+          className="fixed inset-y-0 left-0 z-10 bg-muted border-r border-border"
           style={{ width: SIDEBAR_WIDTH }}
         >
           <SidebarContent onClose={closeSidebar} />

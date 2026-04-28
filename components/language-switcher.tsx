@@ -28,7 +28,7 @@ export function LanguageSwitcher({
           size="sm"
           aria-label="Language"
           className={cn(
-            "rounded border border-stone-200 bg-white text-[12px] text-stone-700 hover:bg-stone-50 focus-visible:border-stone-400 focus-visible:ring-0",
+            "rounded border border-border bg-background text-[12px] text-foreground hover:bg-muted focus-visible:border-muted-foreground focus-visible:ring-0",
             className,
           )}
         >
@@ -51,11 +51,11 @@ export function LanguageSwitcher({
         size="sm"
         aria-label="Language"
         className={cn(
-          "w-full gap-2 rounded border border-stone-200 bg-transparent px-2.5 text-[13px] text-stone-600 hover:bg-stone-100 hover:text-stone-900 focus-visible:ring-0",
+          "w-full gap-2 rounded border border-border bg-transparent px-2.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-0",
           className,
         )}
       >
-        <Globe className="h-[15px] w-[15px] shrink-0 text-stone-500" />
+        <Globe className="h-[15px] w-[15px] shrink-0 text-muted-foreground" />
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

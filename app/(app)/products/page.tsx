@@ -244,10 +244,10 @@ export default function ProductsPage() {
             <div className="lg:col-span-2 space-y-3">
               <Card>
                 <CardContent className="p-3 flex gap-2.5">
-                  <Zap className="h-4 w-4 text-stone-500 mt-0.5 shrink-0" />
+                  <Zap className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-stone-800">{t("products.insight.title")}</p>
-                    <p className="text-sm text-stone-600 leading-relaxed">
+                    <p className="text-sm font-semibold text-foreground">{t("products.insight.title")}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
                       {atRisk > 0
                         ? (atRisk > 1
                             ? t("products.insight.attentionPlural")
@@ -482,8 +482,8 @@ function SummaryCard({
   return (
     <Card className={urgent ? "border-red-300" : ""}>
       <CardContent className="p-3 flex items-center gap-3">
-        <div className="rounded-sm p-1.5 bg-stone-100">
-          <Icon className="h-4 w-4 text-stone-600" />
+        <div className="rounded-sm p-1.5 bg-muted">
+          <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
           <p className="text-lg font-bold font-mono">{value}</p>

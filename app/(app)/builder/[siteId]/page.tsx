@@ -7,6 +7,7 @@ import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSiteById, getPages } from "@/lib/db/sites";
 import { createPage } from "@/lib/spacetimedb/actions";
+import { buildPageTemplate, PAGE_TEMPLATES } from "@/lib/builder/page-templates";
 import { getProducts } from "@/lib/db/products";
 import { usePermissions } from "@/lib/context/permissions";
 import { useSidebarOpen } from "@/components/sidebar";
@@ -69,8 +70,20 @@ export default function BuilderPage({
         if (p.length === 0 && s) {
           try {
             await createPage(siteId, "Home", "index", 0);
+            const templates = PAGE_TEMPLATES.filter((t) => t.id !== "blank");
+            for (let i = 0; i < templates.length; i++) {
+              const tpl = templates[i];
+              const elements = buildPageTemplate(tpl.id);
+              await createPage({
+                siteId,
+                name: tpl.defaultName,
+                slug: tpl.defaultSlug,
+                sortOrder: i + 1,
+                elements: JSON.stringify(elements),
+              });
+            }
           } catch (err) {
-            console.error("Failed to auto-create index page:", err);
+            console.error("Failed to auto-create pages:", err);
           }
           return;
         }

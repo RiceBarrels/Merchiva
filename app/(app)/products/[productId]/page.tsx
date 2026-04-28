@@ -249,8 +249,8 @@ function TemplateTab({
         <ProductAutoSaver productId={productId} onSave={handleAutoSave} />
         <div className="flex flex-1 overflow-hidden">
           {/* Canvas */}
-          <div className="flex-1 overflow-y-auto bg-stone-100">
-            <div className="mx-auto max-w-3xl min-h-full bg-white shadow-sm">
+          <div className="flex-1 overflow-y-auto bg-muted">
+            <div className="mx-auto max-w-3xl min-h-full bg-background shadow-sm">
               <Frame data={initialState}>
                 <Element is={CraftCanvas} canvas>
                   {/* Empty — populated from data */}
@@ -259,7 +259,7 @@ function TemplateTab({
             </div>
           </div>
           {/* Design panel */}
-          <div className="w-64 shrink-0 border-l bg-white overflow-y-auto">
+          <div className="w-64 shrink-0 border-l bg-background overflow-y-auto">
             <DesignPanel pages={[]} />
           </div>
         </div>

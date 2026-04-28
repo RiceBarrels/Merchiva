@@ -620,19 +620,29 @@ function tplCheckout(): SiteElement[] {
   ];
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function lockAll(elements: SiteElement[]): SiteElement[] {
+  for (const el of elements) {
+    el.locked = true;
+    if (el.children) lockAll(el.children);
+  }
+  return elements;
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export function buildPageTemplate(id: PageTemplateId): SiteElement[] {
   switch (id) {
     case "blank":           return [];
-    case "product-detail":  return tplProductDetail();
-    case "login":           return tplLogin();
-    case "register":        return tplRegister();
-    case "forgot-password": return tplForgotPassword();
-    case "cart":            return tplCart();
-    case "membership":      return tplMembership();
-    case "my-account":      return tplMyAccount();
-    case "settings":        return tplSettings();
-    case "checkout":        return tplCheckout();
+    case "product-detail":  return lockAll(tplProductDetail());
+    case "login":           return lockAll(tplLogin());
+    case "register":        return lockAll(tplRegister());
+    case "forgot-password": return lockAll(tplForgotPassword());
+    case "cart":            return lockAll(tplCart());
+    case "membership":      return lockAll(tplMembership());
+    case "my-account":      return lockAll(tplMyAccount());
+    case "settings":        return lockAll(tplSettings());
+    case "checkout":        return lockAll(tplCheckout());
   }
 }

@@ -113,7 +113,7 @@ const SHIFT_LABEL_KEYS: Record<ShiftType, string> = {
 };
 
 const AVATAR_BG = [
-  "bg-stone-200 text-stone-700",
+  "bg-muted text-foreground",
   "bg-cyan-100 text-cyan-800",
   "bg-violet-100 text-violet-800",
   "bg-rose-100 text-rose-800",
@@ -308,13 +308,13 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Week nav */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-white shrink-0">
-          <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
-            <ChevronLeft className="h-4 w-4 text-stone-600" />
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background shrink-0">
+          <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
           </button>
-          <span className="text-[13px] font-semibold text-stone-800 min-w-[140px] text-center">{monthYearD}</span>
-          <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
-            <ChevronRight className="h-4 w-4 text-stone-600" />
+          <span className="text-[13px] font-semibold text-foreground min-w-[140px] text-center">{monthYearD}</span>
+          <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
           <div className="flex-1" />
           {canEdit && (
@@ -331,7 +331,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 });
                 setAddDialog(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-border rounded-[0.3rem] hover:bg-muted transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> {t("staffing.header.addShift")}
             </button>
@@ -345,8 +345,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
             style={{ display: "grid", gridTemplateColumns: "180px repeat(7, minmax(0, 1fr)) 68px" }}
           >
             {/* Header row */}
-            <div className="sticky top-0 z-10 bg-stone-50 border-b border-r border-border px-3 py-2.5 flex items-center">
-              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.header.staff")}</span>
+            <div className="sticky top-0 z-10 bg-muted border-b border-r border-border px-3 py-2.5 flex items-center">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.header.staff")}</span>
             </div>
             {weekDates.map((d) => {
               const ds = isoDate(d);
@@ -355,20 +355,20 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 <div
                   key={ds}
                   className={`sticky top-0 z-10 border-b border-r border-border px-2 py-2.5 text-center ${
-                    today ? "bg-stone-900 text-white" : "bg-stone-50 text-stone-600"
+                    today ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
                   }`}
                 >
                   <div className="text-[10.5px] font-semibold uppercase tracking-wide">
                     {d.toLocaleDateString("en-US", { weekday: "short" })}
                   </div>
-                  <div className={`text-[15px] font-bold ${today ? "text-white" : "text-stone-800"}`}>
+                  <div className={`text-[15px] font-bold ${today ? "text-background" : "text-foreground"}`}>
                     {d.getDate()}
                   </div>
                 </div>
               );
             })}
-            <div className="sticky top-0 z-10 bg-stone-50 border-b border-border px-2 py-2.5 text-center">
-              <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.header.total")}</span>
+            <div className="sticky top-0 z-10 bg-muted border-b border-border px-2 py-2.5 text-center">
+              <span className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.header.total")}</span>
             </div>
 
             {/* Staff rows */}
@@ -378,13 +378,13 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               return (
                 <React.Fragment key={member.id}>
                   {/* Name cell */}
-                  <div className="border-b border-r border-border px-3 py-2.5 flex items-center gap-2.5 bg-white">
+                  <div className="border-b border-r border-border px-3 py-2.5 flex items-center gap-2.5 bg-background">
                     <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(member.displayName)}`}>
                       {initials(member.displayName)}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[13px] font-medium text-stone-900 truncate leading-tight">{member.displayName}</div>
-                      <div className="text-[11px] text-stone-400 truncate leading-tight">{member.role ?? t("staffing.staff").toLowerCase()}</div>
+                      <div className="text-[13px] font-medium text-foreground truncate leading-tight">{member.displayName}</div>
+                      <div className="text-[11px] text-muted-foreground truncate leading-tight">{member.role ?? t("staffing.staff").toLowerCase()}</div>
                     </div>
                   </div>
 
@@ -397,7 +397,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                       <div
                         key={ds}
                         className={`border-b border-r border-border px-1.5 py-1.5 group/cell relative min-h-[60px] ${
-                          today ? "bg-stone-50/50" : "bg-white"
+                          today ? "bg-muted/50" : "bg-background"
                         }`}
                       >
                         {dayShifts.length > 0 ? (
@@ -409,7 +409,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                               return (
                                 <div
                                   key={shift.id}
-                                  className="flex items-start gap-1.5 px-1.5 py-1 rounded-[0.3rem] hover:bg-stone-100 cursor-pointer transition-colors group/chip"
+                                  className="flex items-start gap-1.5 px-1.5 py-1 rounded-[0.3rem] hover:bg-muted cursor-pointer transition-colors group/chip"
                                   onClick={() => {
                                     if (canEdit) {
                                       setEditingShift(shift);
@@ -430,7 +430,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                                     style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
                                   />
                                   <div className="min-w-0 flex-1">
-                                    <div className="text-[11px] font-medium text-stone-700 font-mono tabular-nums leading-tight">
+                                    <div className="text-[11px] font-medium text-foreground font-mono tabular-nums leading-tight">
                                       {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                                     </div>
                                     {matchedRoles.length > 0 && (
@@ -449,7 +449,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                                   {canEdit && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleDeleteShift(shift.id); }}
-                                      className="p-0.5 rounded opacity-0 group-hover/chip:opacity-100 hover:bg-red-100 text-stone-400 hover:text-red-600 transition-all shrink-0"
+                                      className="p-0.5 rounded opacity-0 group-hover/chip:opacity-100 hover:bg-red-100 text-muted-foreground hover:text-red-600 transition-all shrink-0"
                                     >
                                       <X className="h-3 w-3" />
                                     </button>
@@ -472,9 +472,9 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                               });
                               setAddDialog(true);
                             }}
-                            className="absolute inset-1 border border-dashed border-transparent group-hover/cell:border-stone-300 rounded-[0.3rem] flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all"
+                            className="absolute inset-1 border border-dashed border-transparent group-hover/cell:border-border rounded-[0.3rem] flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all"
                           >
-                            <Plus className="h-3.5 w-3.5 text-stone-400" />
+                            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                           </button>
                         ) : null}
                       </div>
@@ -482,8 +482,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   })}
 
                   {/* Total cell */}
-                  <div className="border-b border-border px-2 py-2.5 text-center bg-white">
-                    <span className="text-[13px] font-semibold text-stone-700 font-mono tabular-nums">
+                  <div className="border-b border-border px-2 py-2.5 text-center bg-background">
+                    <span className="text-[13px] font-semibold text-foreground font-mono tabular-nums">
                       {totalHrs % 1 === 0 ? `${totalHrs}h` : `${totalHrs.toFixed(1)}h`}
                     </span>
                   </div>
@@ -492,22 +492,22 @@ function StaffingDesktop(props: StaffingDesktopProps) {
             })}
 
             {/* Bottom total row */}
-            <div className="bg-stone-50 border-r border-border px-3 py-2 flex items-center">
-              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.header.total")}</span>
+            <div className="bg-muted border-r border-border px-3 py-2 flex items-center">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.header.total")}</span>
             </div>
             {weekDates.map((d) => {
               const ds = isoDate(d);
               const count = weekShifts.filter((s) => s.date === ds).length;
               const hrs = weekShifts.filter((s) => s.date === ds).reduce((a, s) => a + shiftHours(s), 0);
               return (
-                <div key={ds} className="bg-stone-50 border-r border-border px-2 py-2 text-center">
-                  <div className="text-[13px] font-semibold text-stone-700 font-mono tabular-nums">{count}</div>
-                  <div className="text-[10px] text-stone-400 font-mono">{hrs % 1 === 0 ? `${hrs}h` : `${hrs.toFixed(1)}h`}</div>
+                <div key={ds} className="bg-muted border-r border-border px-2 py-2 text-center">
+                  <div className="text-[13px] font-semibold text-foreground font-mono tabular-nums">{count}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono">{hrs % 1 === 0 ? `${hrs}h` : `${hrs.toFixed(1)}h`}</div>
                 </div>
               );
             })}
-            <div className="bg-stone-50 px-2 py-2 text-center">
-              <div className="text-[13px] font-semibold text-stone-700 font-mono tabular-nums">
+            <div className="bg-muted px-2 py-2 text-center">
+              <div className="text-[13px] font-semibold text-foreground font-mono tabular-nums">
                 {weekShifts.reduce((a, s) => a + shiftHours(s), 0).toFixed(0)}h
               </div>
             </div>
@@ -528,12 +528,12 @@ function StaffingDesktop(props: StaffingDesktopProps) {
         <div className="flex-1 min-w-0 overflow-y-auto px-6 py-4">
           {/* Week nav */}
           <div className="flex items-center gap-3 mb-4">
-            <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
-              <ChevronLeft className="h-4 w-4 text-stone-600" />
+            <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
-            <span className="text-[13px] font-semibold text-stone-800">{monthYearD}</span>
-            <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors">
-              <ChevronRight className="h-4 w-4 text-stone-600" />
+            <span className="text-[13px] font-semibold text-foreground">{monthYearD}</span>
+            <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
 
@@ -545,11 +545,11 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               return (
                 <div key={ds} className="flex gap-4 py-3">
                   {/* Date column */}
-                  <div className={`w-14 shrink-0 text-center py-1.5 rounded-[0.3rem] ${today ? "bg-stone-900 text-white" : ""}`}>
-                    <div className={`text-[10.5px] font-semibold uppercase tracking-wide ${today ? "text-stone-300" : "text-stone-400"}`}>
+                  <div className={`w-14 shrink-0 text-center py-1.5 rounded-[0.3rem] ${today ? "bg-foreground text-background" : ""}`}>
+                    <div className={`text-[10.5px] font-semibold uppercase tracking-wide ${today ? "text-muted-foreground" : "text-muted-foreground"}`}>
                       {d.toLocaleDateString("en-US", { weekday: "short" })}
                     </div>
-                    <div className={`text-[15px] font-bold ${today ? "text-white" : "text-stone-800"}`}>
+                    <div className={`text-[15px] font-bold ${today ? "text-background" : "text-foreground"}`}>
                       {d.getDate()}
                     </div>
                   </div>
@@ -557,7 +557,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   {/* Shifts */}
                   <div className="flex-1 min-w-0">
                     {dayShifts.length === 0 ? (
-                      <p className="text-[13px] text-stone-400 py-2">{t("staffing.schedule.noShifts")}</p>
+                      <p className="text-[13px] text-muted-foreground py-2">{t("staffing.schedule.noShifts")}</p>
                     ) : (
                       <div className="space-y-2">
                         {dayShifts.map((shift) => {
@@ -567,31 +567,31 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                           return (
                             <div
                               key={shift.id}
-                              className="flex items-center gap-3 px-3 py-2 border border-border rounded-[0.3rem] hover:border-stone-300 transition-colors"
+                              className="flex items-center gap-3 px-3 py-2 border border-border rounded-[0.3rem] hover:border-border transition-colors"
                             >
                               <div
                                 className="w-[3px] rounded-full self-stretch shrink-0"
                                 style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
                               />
                               <div className="flex-1 min-w-0">
-                                <div className="text-[13px] font-medium text-stone-800 font-mono tabular-nums">
+                                <div className="text-[13px] font-medium text-foreground font-mono tabular-nums">
                                   {formatTime(shift.startTime)} &ndash; {formatTime(shift.endTime)}
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[11px] text-stone-500">{t(SHIFT_LABEL_KEYS[shift.shiftType])}</span>
+                                  <span className="text-[11px] text-muted-foreground">{t(SHIFT_LABEL_KEYS[shift.shiftType])}</span>
                                   {matchedRoles.map((r) => (
                                     <span key={r.id} className="inline-flex items-center gap-1">
                                       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
-                                      <span className="text-[11px] text-stone-500">{r.name}</span>
+                                      <span className="text-[11px] text-muted-foreground">{r.name}</span>
                                     </span>
                                   ))}
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
-                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 text-stone-600 transition-colors">
+                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted text-muted-foreground transition-colors">
                                   {t("staffing.myShifts.trade")}
                                 </button>
-                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 text-stone-600 transition-colors">
+                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted text-muted-foreground transition-colors">
                                   {t("staffing.myShifts.cover")}
                                 </button>
                               </div>
@@ -608,22 +608,22 @@ function StaffingDesktop(props: StaffingDesktopProps) {
         </div>
 
         {/* Right: Today's tasks */}
-        <div className="w-[320px] shrink-0 border-l border-border bg-white overflow-y-auto">
+        <div className="w-[320px] shrink-0 border-l border-border bg-background overflow-y-auto">
           <div className="px-5 py-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Sun className="h-4 w-4 text-stone-500" />
-                <span className="text-[13px] font-semibold text-stone-900">{t("staffing.myShifts.todaysTasks")}</span>
+                <Sun className="h-4 w-4 text-muted-foreground" />
+                <span className="text-[13px] font-semibold text-foreground">{t("staffing.myShifts.todaysTasks")}</span>
               </div>
               {todayTasks.length > 0 && (
-                <span className="text-[11px] font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200 rounded-[0.3rem]">
+                <span className="text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 border border-border rounded-[0.3rem]">
                   {doneCount}/{todayTasks.length}
                 </span>
               )}
             </div>
 
             {todayTasks.length === 0 ? (
-              <p className="text-[13px] text-stone-400">
+              <p className="text-[13px] text-muted-foreground">
                 {loadingTodayTasks ? t("staffing.myShifts.loadingTasks") : todayShifts.length === 0 ? t("staffing.myShifts.noShiftsToday") : t("staffing.myShifts.noTasksAssigned")}
               </p>
             ) : (
@@ -634,18 +634,18 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     <button
                       key={task.id}
                       onClick={() => toggleTaskDone(task.id)}
-                      className="flex items-start gap-2.5 w-full text-left py-1.5 hover:bg-stone-50 -mx-1 px-1 transition-colors rounded-[0.3rem]"
+                      className="flex items-start gap-2.5 w-full text-left py-1.5 hover:bg-muted -mx-1 px-1 transition-colors rounded-[0.3rem]"
                     >
-                      <div className={`mt-0.5 h-4 w-4 shrink-0 border rounded-[2px] flex items-center justify-center transition-colors ${done ? "bg-stone-900 border-stone-900" : "border-stone-300"}`}>
-                        {done && <Check className="h-2.5 w-2.5 text-white" />}
+                      <div className={`mt-0.5 h-4 w-4 shrink-0 border rounded-[2px] flex items-center justify-center transition-colors ${done ? "bg-foreground border-foreground" : "border-border"}`}>
+                        {done && <Check className="h-2.5 w-2.5 text-background" />}
                       </div>
                       <div className="flex items-center gap-2 min-w-0">
                         {task.startTime && task.endTime && (
-                          <span className="font-mono text-[11px] text-stone-400 shrink-0 tabular-nums">
+                          <span className="font-mono text-[11px] text-muted-foreground shrink-0 tabular-nums">
                             {task.startTime.slice(0, 5)}&ndash;{task.endTime.slice(0, 5)}
                           </span>
                         )}
-                        <span className={`text-[13px] leading-snug ${done ? "line-through text-stone-400" : "text-stone-800"}`}>
+                        <span className={`text-[13px] leading-snug ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
                           {task.title}
                         </span>
                       </div>
@@ -665,9 +665,9 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     return (
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Left: Role list */}
-        <div className="w-[280px] shrink-0 border-r border-border bg-white overflow-y-auto">
+        <div className="w-[280px] shrink-0 border-r border-border bg-background overflow-y-auto">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <span className="text-[13px] font-semibold text-stone-800">{t("staffing.roles.title")}</span>
+            <span className="text-[13px] font-semibold text-foreground">{t("staffing.roles.title")}</span>
             {canEdit && (
               <button
                 onClick={() => {
@@ -675,17 +675,17 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} as StaffRolePermissions });
                   setRoleDialog(true);
                 }}
-                className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors"
+                className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
               >
-                <Plus className="h-3.5 w-3.5 text-stone-500" />
+                <Plus className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             )}
           </div>
 
           {roles.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <Shield className="h-7 w-7 mx-auto text-stone-300 mb-2" />
-              <p className="text-[13px] text-stone-400">{t("staffing.roles.noRolesYet")}</p>
+              <Shield className="h-7 w-7 mx-auto text-muted-foreground mb-2" />
+              <p className="text-[13px] text-muted-foreground">{t("staffing.roles.noRolesYet")}</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -697,7 +697,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     key={r.id}
                     onClick={() => { handleSelectRole(r); }}
                     className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${
-                      isActive ? "bg-stone-100" : "hover:bg-stone-50"
+                      isActive ? "bg-muted" : "hover:bg-muted"
                     }`}
                   >
                     <div
@@ -707,8 +707,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                       <RoleIconComp name={r.icon} className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-[13px] font-medium text-stone-900 truncate">{r.name}</div>
-                      <div className="text-[11px] text-stone-400">{(tasks.length === 1 ? t("staffing.roles.tasksCountSingular") : t("staffing.roles.tasksCountPlural")).replace("{count}", String(tasks.length))}</div>
+                      <div className="text-[13px] font-medium text-foreground truncate">{r.name}</div>
+                      <div className="text-[11px] text-muted-foreground">{(tasks.length === 1 ? t("staffing.roles.tasksCountSingular") : t("staffing.roles.tasksCountPlural")).replace("{count}", String(tasks.length))}</div>
                     </div>
                   </button>
                 );
@@ -718,9 +718,9 @@ function StaffingDesktop(props: StaffingDesktopProps) {
         </div>
 
         {/* Right: Selected role detail */}
-        <div className="flex-1 min-w-0 overflow-y-auto bg-white">
+        <div className="flex-1 min-w-0 overflow-y-auto bg-background">
           {!selectedRole ? (
-            <div className="flex items-center justify-center h-full text-[13px] text-stone-400">
+            <div className="flex items-center justify-center h-full text-[13px] text-muted-foreground">
               {t("staffing.schedule.selectRoleDetails")}
             </div>
           ) : (
@@ -735,11 +735,11 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[15px] font-bold text-stone-900">{selectedRole.name}</span>
+                    <span className="text-[15px] font-bold text-foreground">{selectedRole.name}</span>
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: selectedRole.color }} />
                   </div>
                   {selectedRole.description && (
-                    <p className="text-[13px] text-stone-500 mt-0.5">{selectedRole.description}</p>
+                    <p className="text-[13px] text-muted-foreground mt-0.5">{selectedRole.description}</p>
                   )}
                   {/* Members count */}
                   {(() => {
@@ -747,7 +747,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                       (s.staffRoles ?? []).some((rn) => rn.toLowerCase() === selectedRole.name.toLowerCase())
                     ).map((s) => s.memberId).filter((v, i, a) => a.indexOf(v) === i).length;
                     return (
-                      <p className="text-[11px] text-stone-400 mt-0.5">{(memberCount === 1 ? t("staffing.roles.membersAssignedSingular") : t("staffing.roles.membersAssignedPlural")).replace("{count}", String(memberCount))}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{(memberCount === 1 ? t("staffing.roles.membersAssignedSingular") : t("staffing.roles.membersAssignedPlural")).replace("{count}", String(memberCount))}</p>
                     );
                   })()}
                 </div>
@@ -766,13 +766,13 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                         loadRoleTasksFor(selectedRole.id);
                         setRoleDialog(true);
                       }}
-                      className="p-1.5 rounded-[0.3rem] hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+                      className="p-1.5 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={async () => { await handleDeleteRole(selectedRole.id); setSelectedRole(null); }}
-                      className="p-1.5 rounded-[0.3rem] hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
+                      className="p-1.5 rounded-[0.3rem] hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -782,14 +782,14 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
               {/* Tasks */}
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">{t("staffing.roles.taskTimeline")}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.roles.taskTimeline")}</p>
                 {canEdit && (
                   <button
                     onClick={() => {
                       setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
                       setTaskDialog({ open: true, task: null });
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-stone-50 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted transition-colors"
                   >
                     <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
                   </button>
@@ -798,31 +798,31 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
               {loadingTasks ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
                 <div className="text-center py-10">
-                  <ClipboardList className="h-7 w-7 mx-auto text-stone-300 mb-2" />
-                  <p className="text-[13px] text-stone-400">{t("staffing.roles.noTasksYet")}</p>
+                  <ClipboardList className="h-7 w-7 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-[13px] text-muted-foreground">{t("staffing.roles.noTasksYet")}</p>
                 </div>
               ) : (
                 <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
                   {(roleTasksCache[selectedRole.id] ?? []).map((task) => (
                     <div key={task.id} className="relative pl-4 pb-4 group">
                       <div
-                        className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-white"
+                        className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-background"
                         style={{ borderColor: selectedRole.color }}
                       />
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           {task.startTime && task.endTime && (
-                            <p className="font-mono text-[11px] text-stone-400 leading-none mb-0.5 tabular-nums">
+                            <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5 tabular-nums">
                               {formatTime(task.startTime)} &ndash; {formatTime(task.endTime)}
                             </p>
                           )}
-                          <p className="text-[13px] font-semibold text-stone-900 leading-snug">{task.title}</p>
+                          <p className="text-[13px] font-semibold text-foreground leading-snug">{task.title}</p>
                           {task.description && (
-                            <p className="text-[12px] text-stone-500 mt-0.5 leading-relaxed">{task.description}</p>
+                            <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
                           )}
                         </div>
                         {canEdit && (
@@ -840,7 +840,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                                 });
                                 setTaskDialog({ open: true, task });
                               }}
-                              className="p-1 rounded-[0.3rem] hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+                              className="p-1 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             >
                               <Pencil className="h-3 w-3" />
                             </button>
@@ -865,14 +865,14 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 if (assignedMembers.length === 0) return null;
                 return (
                   <div className="mt-6">
-                    <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-2">{t("staffing.roles.assignedMembers")}</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("staffing.roles.assignedMembers")}</p>
                     <div className="flex flex-wrap gap-2">
                       {assignedMembers.map((m) => (
                         <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded-[0.3rem]">
                           <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold ${avatarBg(m.displayName)}`}>
                             {initials(m.displayName)}
                           </div>
-                          <span className="text-[12px] font-medium text-stone-700">{m.displayName}</span>
+                          <span className="text-[12px] font-medium text-foreground">{m.displayName}</span>
                         </div>
                       ))}
                     </div>
@@ -890,11 +890,11 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   function RequestsRail() {
     if (!railOpen) {
       return (
-        <div className="w-10 shrink-0 border-l border-border bg-white flex flex-col items-center py-4 gap-3 cursor-pointer hover:bg-stone-50 transition-colors"
+        <div className="w-10 shrink-0 border-l border-border bg-background flex flex-col items-center py-4 gap-3 cursor-pointer hover:bg-muted transition-colors"
           onClick={() => setRailOpen(true)}
         >
           <div className="relative">
-            <Inbox className="h-4 w-4 text-stone-500" />
+            <Inbox className="h-4 w-4 text-muted-foreground" />
             {pendingCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-[14px] px-0.5 flex items-center justify-center bg-red-500 text-white text-[8px] font-bold rounded-full">
                 {pendingCount}
@@ -902,24 +902,24 @@ function StaffingDesktop(props: StaffingDesktopProps) {
             )}
           </div>
           <div className="flex-1 flex items-center">
-            <span className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-widest"
+            <span className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-widest"
               style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
             >
               {t("staffing.requests.title")}
             </span>
           </div>
-          <PanelRightOpen className="h-3.5 w-3.5 text-stone-400" />
+          <PanelRightOpen className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
       );
     }
 
     return (
-      <div className="w-[340px] shrink-0 border-l border-border bg-white flex flex-col overflow-hidden">
+      <div className="w-[340px] shrink-0 border-l border-border bg-background flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <Inbox className="h-4 w-4 text-stone-500" />
-            <span className="text-[13px] font-semibold text-stone-800">{t("staffing.requests.title")}</span>
+            <Inbox className="h-4 w-4 text-muted-foreground" />
+            <span className="text-[13px] font-semibold text-foreground">{t("staffing.requests.title")}</span>
             {pendingCount > 0 && (
               <span className="h-5 min-w-[20px] px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
                 {pendingCount}
@@ -928,9 +928,9 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           </div>
           <button
             onClick={() => setRailOpen(false)}
-            className="p-1 rounded-[0.3rem] hover:bg-stone-100 transition-colors"
+            className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
           >
-            <PanelRightClose className="h-3.5 w-3.5 text-stone-400" />
+            <PanelRightClose className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </div>
 
@@ -939,7 +939,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           {/* Time Off */}
           {orgTimeOffRequests.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">{t("staffing.requests.timeOff")}</p>
+              <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("staffing.requests.timeOff")}</p>
               <div className="space-y-2">
                 {orgTimeOffRequests.map((req) => (
                   <div key={req.id} className="border border-border rounded-[0.3rem] p-3">
@@ -947,27 +947,27 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                       <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold ${avatarBg(getMemberName(req.userId))}`}>
                         {initials(getMemberName(req.userId))}
                       </div>
-                      <span className="text-[13px] font-medium text-stone-900">{getMemberName(req.userId)}</span>
+                      <span className="text-[13px] font-medium text-foreground">{getMemberName(req.userId)}</span>
                     </div>
-                    <p className="text-[12px] text-stone-500 mb-1">
+                    <p className="text-[12px] text-muted-foreground mb-1">
                       {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
                       {!req.fullDays && req.startTime && req.endTime && (
                         <> &middot; {formatTime(req.startTime)}&ndash;{formatTime(req.endTime)}</>
                       )}
                     </p>
                     {req.comments && (
-                      <p className="text-[12px] text-stone-400 italic mb-2">&ldquo;{req.comments}&rdquo;</p>
+                      <p className="text-[12px] text-muted-foreground italic mb-2">&ldquo;{req.comments}&rdquo;</p>
                     )}
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
-                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
                       >
                         <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
                       </button>
                       <button
                         onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
-                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
                       >
                         <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                       </button>
@@ -981,37 +981,37 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           {/* Trades */}
           {orgShiftTrades.length > 0 && (
             <div>
-              <p className="text-[10.5px] font-semibold text-stone-400 uppercase tracking-wide mb-2">{t("staffing.requests.trades")}</p>
+              <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("staffing.requests.trades")}</p>
               <div className="space-y-2">
                 {orgShiftTrades.map((trade) => {
                   const shift = shifts.find((s) => s.id === trade.shiftId);
                   return (
                     <div key={trade.id} className="border border-border rounded-[0.3rem] p-3">
                       <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded-[0.2rem]">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-muted text-muted-foreground rounded-[0.2rem]">
                           {trade.type}
                         </span>
                       </div>
-                      <p className="text-[13px] font-medium text-stone-900 mb-0.5">
+                      <p className="text-[13px] font-medium text-foreground mb-0.5">
                         {getMemberName(trade.requesterId)}
-                        <span className="text-stone-400 font-normal mx-1">&rarr;</span>
+                        <span className="text-muted-foreground font-normal mx-1">&rarr;</span>
                         {trade.targetId ? getMemberName(trade.targetId) : t("staffing.unknown")}
                       </p>
                       {shift && (
-                        <p className="text-[12px] text-stone-500 mb-2">
+                        <p className="text-[12px] text-muted-foreground mb-2">
                           {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                         </p>
                       )}
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
-                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
                         >
                           <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
                         </button>
                         <button
                           onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
-                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-stone-600 transition-colors flex items-center justify-center gap-1"
+                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
                         >
                           <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                         </button>
@@ -1025,8 +1025,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
           {orgTimeOffRequests.length === 0 && orgShiftTrades.length === 0 && (
             <div className="text-center py-8">
-              <Inbox className="h-6 w-6 mx-auto text-stone-300 mb-2" />
-              <p className="text-[13px] text-stone-400">{t("staffing.requests.noPending")}</p>
+              <Inbox className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+              <p className="text-[13px] text-muted-foreground">{t("staffing.requests.noPending")}</p>
             </div>
           )}
         </div>
@@ -1044,12 +1044,12 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
   return (
     <PermissionGuard section="staffing">
-      <div className="flex flex-col h-full bg-stone-50/30">
+      <div className="flex flex-col h-full bg-muted/30">
         <PageHeader
           title={t("staffing.title")}
           subtitle={t("staffing.subtitle")}
           right={
-            refreshing ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-stone-400" /> : undefined
+            refreshing ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : undefined
           }
         />
 
@@ -1057,20 +1057,20 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           {/* Main column */}
           <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
             {/* Tab bar */}
-            <div className="flex items-center gap-0 px-6 border-b border-border bg-white shrink-0">
+            <div className="flex items-center gap-0 px-6 border-b border-border bg-background shrink-0">
               {desktopTabs.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setDTab(tab)}
                   className={`px-4 py-2.5 text-[13px] font-medium transition-colors relative ${
                     dTab === tab
-                      ? "text-stone-900"
-                      : "text-stone-500 hover:text-stone-700"
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {tabLabels[tab]}
                   {dTab === tab && (
-                    <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-stone-900 rounded-full" />
+                    <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-foreground rounded-full" />
                   )}
                 </button>
               ))}
@@ -2368,7 +2368,7 @@ export default function StaffingPage() {
                         const selected = shiftForm.roleNames.includes(r.name);
                         return (
                           <button key={r.id} onClick={() => setShiftForm((f) => ({ ...f, roleNames: selected ? f.roleNames.filter((n) => n !== r.name) : [...f.roleNames, r.name] }))}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border rounded transition-colors ${selected ? "border-stone-900 bg-stone-900 text-white" : "border-border text-stone-500 hover:bg-stone-50"}`}>
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border rounded transition-colors ${selected ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:bg-muted"}`}>
                             <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selected ? "white" : r.color }} />
                             {r.name}
                           </button>
@@ -2376,7 +2376,7 @@ export default function StaffingPage() {
                       })}
                       {canEdit && (
                         <button onClick={() => { setEditingRole(null); setRoleForm({ name: "", color: "#44403c", description: "", icon: "briefcase", permissions: {} as StaffRolePermissions }); setRoleDialog(true); }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-border text-muted-foreground rounded hover:bg-stone-50 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-border text-muted-foreground rounded hover:bg-muted transition-colors">
                           <Plus className="h-3 w-3" /> {t("staffing.roles.addRole")}
                         </button>
                       )}
@@ -2406,8 +2406,8 @@ export default function StaffingPage() {
               <div className="grid grid-cols-8 gap-1">
                 {ROLE_ICON_LIST.map((iconName) => (
                   <button key={iconName} type="button" onClick={() => setRoleForm((f) => ({ ...f, icon: iconName }))}
-                    className={`h-8 w-8 flex items-center justify-center transition-colors ${roleForm.icon === iconName ? "border-2 border-stone-900 bg-stone-100" : "border border-transparent bg-stone-100 hover:bg-stone-200"}`} title={iconName}>
-                    <RoleIconComp name={iconName} className="h-4 w-4 text-stone-700" />
+                    className={`h-8 w-8 flex items-center justify-center transition-colors ${roleForm.icon === iconName ? "border-2 border-foreground bg-muted" : "border border-transparent bg-muted hover:bg-muted/80"}`} title={iconName}>
+                    <RoleIconComp name={iconName} className="h-4 w-4 text-foreground" />
                   </button>
                 ))}
               </div>
@@ -2421,7 +2421,7 @@ export default function StaffingPage() {
               <div className="flex gap-2">
                 {ROLE_COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
-                    className={`h-6 w-6 rounded-full transition-all ${roleForm.color === c ? "ring-2 ring-offset-1 ring-stone-900 scale-110" : ""}`} style={{ backgroundColor: c }} />
+                    className={`h-6 w-6 rounded-full transition-all ${roleForm.color === c ? "ring-2 ring-offset-1 ring-foreground scale-110" : ""}`} style={{ backgroundColor: c }} />
                 ))}
               </div>
             </div>
@@ -2448,7 +2448,7 @@ export default function StaffingPage() {
                         setTaskForm({ title: task.title, description: task.description ?? "", hasTime: !!(task.startTime && task.endTime), startTime: task.startTime ?? "09:00", endTime: task.endTime ?? "17:00", requiresEvidence: task.requiresEvidence ?? false, notifyChats: task.notifyChats ?? [] });
                         setTaskDialog({ open: true, task });
                       }}
-                        className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-xs rounded hover:bg-stone-50 transition-colors border border-border">
+                        className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-xs rounded hover:bg-muted transition-colors border border-border">
                         <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: editingRole.color }} />
                         <span className="flex-1 truncate font-medium">{task.title}</span>
                         {task.startTime && <span className="text-muted-foreground font-mono tabular-nums text-[10px]">{task.startTime}</span>}
@@ -2484,7 +2484,7 @@ export default function StaffingPage() {
             <div className="flex items-center justify-between">
               <Label>{t("staffing.taskDialog.timeWindow")}</Label>
               <button onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${taskForm.hasTime ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}>
+                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${taskForm.hasTime ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"}`} />
               </button>
             </div>
@@ -2640,7 +2640,7 @@ export default function StaffingPage() {
 
   return (
     <PermissionGuard section="staffing">
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-screen bg-background">
 
         <PageHeader
           title={t("staffing.title")}
@@ -2660,15 +2660,15 @@ export default function StaffingPage() {
         </PageHeader>
 
         {/* ─── Tabs: Overview | Schedule ────────────────────────── */}
-        <div className="flex border-b border-stone-200 bg-white">
+        <div className="flex border-b border-border bg-background">
           {(["overview", "schedule"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => { hapticLight(); setMobileSection(tab); }}
               className={`flex-1 py-2.5 text-[13px] text-center transition-colors ${
                 mobileSection === tab
-                  ? "font-semibold text-stone-900 border-b-2 border-stone-900"
-                  : "font-medium text-stone-500"
+                  ? "font-semibold text-foreground border-b-2 border-foreground"
+                  : "font-medium text-muted-foreground"
               }`}
             >
               {t(`staffing.tabs.${tab}`)}
@@ -2683,48 +2683,48 @@ export default function StaffingPage() {
           <div className="flex-1 overflow-y-auto pb-24">
 
             {/* ── KPI Grid: 2x2, cells separated by borders ── */}
-            <div className="grid grid-cols-2 border-b border-stone-200">
+            <div className="grid grid-cols-2 border-b border-border">
               {/* On shift now */}
-              <div className="px-4 py-3 border-r border-b border-stone-200">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.onShiftNow")}</p>
-                <p className="text-2xl font-semibold text-stone-900 mt-0.5">
+              <div className="px-4 py-3 border-r border-b border-border">
+                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.onShiftNow")}</p>
+                <p className="text-2xl font-semibold text-foreground mt-0.5">
                   {nowOnShift.length}
-                  <span className="text-[15px] text-stone-400 font-normal"> / {activeMembers.length}</span>
+                  <span className="text-[15px] text-muted-foreground font-normal"> / {activeMembers.length}</span>
                 </p>
               </div>
               {/* Today hours */}
-              <div className="px-4 py-3 border-b border-stone-200">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.todayHours")}</p>
-                <p className="text-2xl font-semibold text-stone-900 font-mono tabular-nums mt-0.5">{todayScheduledHours}h</p>
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.todayHours")}</p>
+                <p className="text-2xl font-semibold text-foreground font-mono tabular-nums mt-0.5">{todayScheduledHours}h</p>
               </div>
               {/* Open requests */}
-              <div className="px-4 py-3 border-r border-stone-200">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.openRequests")}</p>
-                <p className={`text-2xl font-semibold mt-0.5 ${pendingCount > 0 ? "text-amber-600" : "text-stone-900"}`}>
+              <div className="px-4 py-3 border-r border-border">
+                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.openRequests")}</p>
+                <p className={`text-2xl font-semibold mt-0.5 ${pendingCount > 0 ? "text-amber-600" : "text-foreground"}`}>
                   {pendingCount}
                 </p>
               </div>
               {/* This week */}
               <div className="px-4 py-3">
-                <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.thisWeek")}</p>
-                <p className="text-2xl font-semibold text-stone-900 font-mono tabular-nums mt-0.5">{weekTotalHours}h</p>
+                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.thisWeek")}</p>
+                <p className="text-2xl font-semibold text-foreground font-mono tabular-nums mt-0.5">{weekTotalHours}h</p>
               </div>
             </div>
 
             {/* ── Section: Currently on shift ── */}
-            <div className="border-b border-stone-200">
+            <div className="border-b border-border">
               <div className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.currentlyOnShift")}</p>
-                  <span className="text-[10.5px] font-semibold text-stone-400 bg-stone-100 rounded px-1.5 py-0.5">{nowOnShift.length}</span>
+                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.currentlyOnShift")}</p>
+                  <span className="text-[10.5px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5">{nowOnShift.length}</span>
                 </div>
               </div>
               {nowOnShift.length === 0 ? (
                 <div className="px-4 pb-3">
-                  <p className="text-[12px] text-stone-400">{t("staffing.overview.nobodyOnShift")}</p>
+                  <p className="text-[12px] text-muted-foreground">{t("staffing.overview.nobodyOnShift")}</p>
                 </div>
               ) : (
-                <div className="divide-y divide-stone-200">
+                <div className="divide-y divide-border">
                   {nowOnShift.map((shift) => {
                     const member = team.find((m) => m.id === shift.memberId);
                     const name = member?.displayName ?? shift.staffName ?? t("staffing.staff");
@@ -2746,18 +2746,18 @@ export default function StaffingPage() {
                             setShiftDetailShift(shift);
                           }
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-stone-50 transition-colors"
+                        className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-muted transition-colors"
                       >
                         <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
                           {initials(name)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-stone-900 truncate leading-tight">{name}</p>
-                          <p className="text-[11px] text-stone-500 leading-tight">
+                          <p className="text-[13px] font-medium text-foreground truncate leading-tight">{name}</p>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
                             {matchedRoles.map((r) => r.name).join(", ") || t("staffing.staff")}
                           </p>
                         </div>
-                        <span className="text-[11px] font-mono tabular-nums text-stone-700 shrink-0">
+                        <span className="text-[11px] font-mono tabular-nums text-foreground shrink-0">
                           {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                         </span>
                         <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
@@ -2770,12 +2770,12 @@ export default function StaffingPage() {
 
             {/* ── Section: Up next today ── */}
             {upNextToday.length > 0 && (
-              <div className="border-b border-stone-200">
+              <div className="border-b border-border">
                 <div className="flex items-center gap-2 px-4 py-2.5">
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.upNextToday")}</p>
-                  <span className="text-[10.5px] font-semibold text-stone-400 bg-stone-100 rounded px-1.5 py-0.5">{upNextToday.length}</span>
+                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.upNextToday")}</p>
+                  <span className="text-[10.5px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5">{upNextToday.length}</span>
                 </div>
-                <div className="divide-y divide-stone-200">
+                <div className="divide-y divide-border">
                   {upNextToday.map((shift) => {
                     const member = team.find((m) => m.id === shift.memberId);
                     const name = member?.displayName ?? shift.staffName ?? t("staffing.staff");
@@ -2803,20 +2803,20 @@ export default function StaffingPage() {
                             setShiftDetailShift(shift);
                           }
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-stone-50 transition-colors"
+                        className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-muted transition-colors"
                       >
                         <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
                           {initials(name)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-stone-900 truncate leading-tight">{name}</p>
-                          <p className="text-[11px] text-stone-500 leading-tight">
+                          <p className="text-[13px] font-medium text-foreground truncate leading-tight">{name}</p>
+                          <p className="text-[11px] text-muted-foreground leading-tight">
                             {matchedRoles.map((r) => r.name).join(", ") || t("staffing.staff")}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[11px] font-medium text-stone-700">{inLabel}</p>
-                          <p className="text-[10.5px] font-mono tabular-nums text-stone-400">
+                          <p className="text-[11px] font-medium text-foreground">{inLabel}</p>
+                          <p className="text-[10.5px] font-mono tabular-nums text-muted-foreground">
                             {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                           </p>
                         </div>
@@ -2829,22 +2829,22 @@ export default function StaffingPage() {
 
             {/* ── Section: Needs attention — managers see all, staff see trades targeted at them ── */}
             {((canEdit && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
-              <div className="border-b border-stone-200">
+              <div className="border-b border-border">
                 <div className="flex items-center gap-2 px-4 py-2.5">
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.needsAttention")}</p>
+                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.needsAttention")}</p>
                 </div>
-                <div className="divide-y divide-stone-200">
+                <div className="divide-y divide-border">
                   {canEdit && pendingTimeOff.length > 0 && (
                     <button
                       onClick={() => { hapticLight(); setTimeOffDialog(true); }}
-                      className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-muted transition-colors"
                     >
-                      <div className="h-9 w-9 shrink-0 rounded border border-stone-200 bg-stone-100 flex items-center justify-center">
-                        <CalendarX className="h-4 w-4 text-stone-700" />
+                      <div className="h-9 w-9 shrink-0 rounded border border-border bg-muted flex items-center justify-center">
+                        <CalendarX className="h-4 w-4 text-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium text-stone-900 leading-tight">{(pendingTimeOff.length === 1 ? t("staffing.overview.timeOffRequestSingular") : t("staffing.overview.timeOffRequestPlural")).replace("{count}", String(pendingTimeOff.length))}</p>
-                        <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.awaitingApproval")}</p>
+                        <p className="text-[13px] font-medium text-foreground leading-tight">{(pendingTimeOff.length === 1 ? t("staffing.overview.timeOffRequestSingular") : t("staffing.overview.timeOffRequestPlural")).replace("{count}", String(pendingTimeOff.length))}</p>
+                        <p className="text-[11px] text-muted-foreground leading-tight">{t("staffing.overview.awaitingApproval")}</p>
                       </div>
                       <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">{t("staffing.pending")}</span>
                     </button>
@@ -2855,21 +2855,21 @@ export default function StaffingPage() {
                         hapticLight(); setShowRequests(true); setMobileSection("schedule");
                         setTimeout(() => document.getElementById("mobile-requests-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
                       }}
-                      className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-muted transition-colors"
                     >
-                      <div className="h-9 w-9 shrink-0 rounded border border-stone-200 bg-stone-100 flex items-center justify-center">
-                        <ArrowLeftRight className="h-4 w-4 text-stone-700" />
+                      <div className="h-9 w-9 shrink-0 rounded border border-border bg-muted flex items-center justify-center">
+                        <ArrowLeftRight className="h-4 w-4 text-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
                         {!canEdit ? (
                           <>
-                            <p className="text-[13px] font-medium text-stone-900 leading-tight">{(myPendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(myPendingTrades.length))}</p>
-                            <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.tradeTargetHint")}</p>
+                            <p className="text-[13px] font-medium text-foreground leading-tight">{(myPendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(myPendingTrades.length))}</p>
+                            <p className="text-[11px] text-muted-foreground leading-tight">{t("staffing.overview.tradeTargetHint")}</p>
                           </>
                         ) : (
                           <>
-                            <p className="text-[13px] font-medium text-stone-900 leading-tight">{(pendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(pendingTrades.length))}</p>
-                            <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.awaitingApproval")}</p>
+                            <p className="text-[13px] font-medium text-foreground leading-tight">{(pendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(pendingTrades.length))}</p>
+                            <p className="text-[11px] text-muted-foreground leading-tight">{t("staffing.overview.awaitingApproval")}</p>
                           </>
                         )}
                       </div>
@@ -2889,16 +2889,16 @@ export default function StaffingPage() {
           <div className="flex-1 overflow-y-auto pb-24">
 
             {/* ── Week strip ── */}
-            <div className="bg-white border-b border-stone-200">
+            <div className="bg-background border-b border-border">
               {/* Week nav header */}
               <div className="flex items-center justify-between px-4 py-2">
-                <p className="text-[12px] font-semibold text-stone-700">{t("staffing.schedule.weekOf").replace("{date}", weekOfLabel)}</p>
+                <p className="text-[12px] font-semibold text-foreground">{t("staffing.schedule.weekOf").replace("{date}", weekOfLabel)}</p>
                 <div className="flex items-center gap-1">
-                  <button onClick={prevWeek} className="h-7 w-7 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors">
-                    <ChevronLeft className="h-3.5 w-3.5 text-stone-600" />
+                  <button onClick={prevWeek} className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-muted transition-colors">
+                    <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
-                  <button onClick={nextWeek} className="h-7 w-7 flex items-center justify-center rounded border border-stone-200 hover:bg-stone-100 transition-colors">
-                    <ChevronRight className="h-3.5 w-3.5 text-stone-600" />
+                  <button onClick={nextWeek} className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-muted transition-colors">
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                 </div>
               </div>
@@ -2950,10 +2950,10 @@ export default function StaffingPage() {
             </div>
 
             {/* ── Day header ── */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-200">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
               <div>
-                <p className="text-[15px] font-semibold text-stone-900">{selectedDayLabel}</p>
-                <p className="text-[11px] font-mono tabular-nums text-stone-500">
+                <p className="text-[15px] font-semibold text-foreground">{selectedDayLabel}</p>
+                <p className="text-[11px] font-mono tabular-nums text-muted-foreground">
                   {(selectedDayShifts.length === 1 ? t("staffing.schedule.shiftsCountSingular") : t("staffing.schedule.shiftsCountPlural")).replace("{count}", String(selectedDayShifts.length))} &middot; {selectedDayHours}h
                 </p>
               </div>
@@ -2972,7 +2972,7 @@ export default function StaffingPage() {
                     });
                     setAddDialog(true);
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold border border-stone-200 rounded hover:bg-stone-100 text-stone-700 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold border border-border rounded hover:bg-muted text-foreground transition-colors"
                 >
                   <Plus className="h-3 w-3" /> {t("staffing.header.addShiftShort")}
                 </button>
@@ -2983,8 +2983,8 @@ export default function StaffingPage() {
             <div className="px-0">
               {selectedDayShifts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <Clock className="h-6 w-6 text-stone-300 mb-2" />
-                  <p className="text-[13px] text-stone-400">{t("staffing.schedule.noShiftsScheduled")}</p>
+                  <Clock className="h-6 w-6 text-muted-foreground mb-2" />
+                  <p className="text-[13px] text-muted-foreground">{t("staffing.schedule.noShiftsScheduled")}</p>
                 </div>
               ) : (
                 <div className="relative" style={{ height: `${TIMELINE_HOURS_COUNT * 48}px` }}>
@@ -2998,10 +2998,10 @@ export default function StaffingPage() {
                         className="absolute left-0 right-0 flex items-start"
                         style={{ top: `${top}%` }}
                       >
-                        <span className="text-[10.5px] text-stone-400 font-mono tabular-nums w-12 text-right pr-2.5 -mt-2 shrink-0">
+                        <span className="text-[10.5px] text-muted-foreground font-mono tabular-nums w-12 text-right pr-2.5 -mt-2 shrink-0">
                           {hour === 0 ? "12a" : hour < 12 ? `${hour}a` : hour === 12 ? "12p" : `${hour - 12}p`}
                         </span>
-                        <div className="flex-1 border-t border-stone-200" />
+                        <div className="flex-1 border-t border-border" />
                       </div>
                     );
                   })}
@@ -3053,7 +3053,7 @@ export default function StaffingPage() {
                             setShiftDetailShift(shift);
                           }
                         }}
-                        className="absolute bg-white border border-stone-200 flex overflow-hidden text-left rounded"
+                        className="absolute bg-background border border-border flex overflow-hidden text-left rounded"
                         style={{
                           top: `${top}%`,
                           height: `${height}%`,
@@ -3069,12 +3069,12 @@ export default function StaffingPage() {
                             {initials(name)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[12.5px] font-semibold text-stone-900 truncate leading-tight">{firstName}</p>
-                            <p className="text-[10.5px] font-mono tabular-nums text-stone-500 leading-tight">
+                            <p className="text-[12.5px] font-semibold text-foreground truncate leading-tight">{firstName}</p>
+                            <p className="text-[10.5px] font-mono tabular-nums text-muted-foreground leading-tight">
                               {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                             </p>
                             {matchedRoles.length > 0 && (
-                              <p className="text-[10px] text-stone-400 truncate leading-tight">
+                              <p className="text-[10px] text-muted-foreground truncate leading-tight">
                                 {matchedRoles.map((r) => r.name).join(", ")}
                               </p>
                             )}
@@ -3089,38 +3089,38 @@ export default function StaffingPage() {
 
             {/* ── Requests Section (in Schedule tab) — managers see all, staff see trades targeted at them ── */}
             {((canEdit && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
-              <div id="mobile-requests-panel" className="border-t border-stone-200">
+              <div id="mobile-requests-panel" className="border-t border-border">
                 <button
                   onClick={() => setShowRequests(!showRequests)}
-                  className="flex items-center gap-2 w-full px-4 py-2.5 border-b border-stone-200"
+                  className="flex items-center gap-2 w-full px-4 py-2.5 border-b border-border"
                 >
-                  <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.requests.title")}</p>
-                  <span className="text-[10.5px] font-semibold text-white bg-stone-900 rounded px-1.5 py-0.5">
+                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.requests.title")}</p>
+                  <span className="text-[10.5px] font-semibold text-background bg-foreground rounded px-1.5 py-0.5">
                     {pendingCount}
                   </span>
                   {showRequests
-                    ? <ChevronUp className="h-3.5 w-3.5 ml-auto text-stone-400" />
-                    : <ChevronDown className="h-3.5 w-3.5 ml-auto text-stone-400" />
+                    ? <ChevronUp className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
+                    : <ChevronDown className="h-3.5 w-3.5 ml-auto text-muted-foreground" />
                   }
                 </button>
                 {showRequests && (
-                  <div className="divide-y divide-stone-200">
+                  <div className="divide-y divide-border">
                     {pendingTimeOff.map((req) => (
                       <div key={req.id} className="px-4 py-3">
-                        <p className="text-[13px] font-medium text-stone-900">{getMemberName(req.userId)}</p>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
+                        <p className="text-[13px] font-medium text-foreground">{getMemberName(req.userId)}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
                           {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
                         </p>
                         <div className="flex gap-2 mt-2">
                           <button
                             onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
-                            className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                            className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
                           >
                             <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
                           </button>
                           <button
                             onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
-                            className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                            className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
                           >
                             <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                           </button>
@@ -3132,24 +3132,24 @@ export default function StaffingPage() {
                       const isTarget = trade.targetId === myMemberId;
                       return (
                         <div key={trade.id} className="px-4 py-3">
-                          <p className="text-[13px] font-medium text-stone-900">
+                          <p className="text-[13px] font-medium text-foreground">
                             {getMemberName(trade.requesterId)} &rarr; {trade.targetId ? getMemberName(trade.targetId) : t("staffing.unknown")}
                           </p>
                           {shift && (
-                            <p className="text-[11px] text-stone-500 mt-0.5">
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
                               {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                             </p>
                           )}
                           <div className="flex gap-2 mt-2">
                             <button
                               onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
-                              className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                              className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
                             >
                               <Check className="h-3 w-3" /> {isTarget ? t("staffing.requests.accept") : t("staffing.requests.approve")}
                             </button>
                             <button
                               onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
-                              className="flex-1 h-7 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                              className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
                             >
                               <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                             </button>
@@ -3159,7 +3159,7 @@ export default function StaffingPage() {
                                   hapticLight();
                                   setTradeDialog({ open: true, shift: shift ?? null });
                                 }}
-                                className="h-7 px-2 rounded border border-stone-200 text-stone-700 font-semibold text-[11px] hover:bg-stone-50 flex items-center justify-center gap-1 transition-colors"
+                                className="h-7 px-2 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
                               >
                                 <UserPlus className="h-3 w-3" /> {t("staffing.requests.reassign")}
                               </button>
@@ -3196,11 +3196,11 @@ export default function StaffingPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-sm text-stone-900">{selectedRole.name}</span>
+                        <span className="font-bold text-sm text-foreground">{selectedRole.name}</span>
                         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selectedRole.color }} />
                       </div>
                       {selectedRole.description && (
-                        <p className="text-xs text-stone-500 truncate">{selectedRole.description}</p>
+                        <p className="text-xs text-muted-foreground truncate">{selectedRole.description}</p>
                       )}
                     </div>
                   </div>
@@ -3218,13 +3218,13 @@ export default function StaffingPage() {
                           });
                           setRoleDialog(true);
                         }}
-                        className="p-1.5 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-900 transition-colors"
+                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={async () => { await handleDeleteRole(selectedRole.id); setSelectedRole(null); setRoleDetailOpen(false); }}
-                        className="p-1.5 rounded hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
+                        className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -3233,14 +3233,14 @@ export default function StaffingPage() {
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.roles.taskTimeline")}</p>
+                    <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.roles.taskTimeline")}</p>
                     {canEdit && (
                       <button
                         onClick={() => {
                           setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
                           setTaskDialog({ open: true, task: null });
                         }}
-                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-stone-200 hover:bg-stone-50 transition-colors rounded"
+                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border hover:bg-muted transition-colors rounded"
                       >
                         <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
                       </button>
@@ -3248,31 +3248,31 @@ export default function StaffingPage() {
                   </div>
                   {loadingTasks ? (
                     <div className="flex justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
                     <div className="text-center py-10">
-                      <ClipboardList className="h-7 w-7 mx-auto text-stone-300 mb-2" />
-                      <p className="text-[13px] text-stone-400">{t("staffing.roles.noTasksYetDot")}</p>
+                      <ClipboardList className="h-7 w-7 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-[13px] text-muted-foreground">{t("staffing.roles.noTasksYetDot")}</p>
                     </div>
                   ) : (
                     <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
                       {(roleTasksCache[selectedRole.id] ?? []).map((task) => (
                         <div key={task.id} className="relative pl-4 pb-4 group">
                           <div
-                            className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-white"
+                            className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-background"
                             style={{ borderColor: selectedRole.color }}
                           />
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               {task.startTime && task.endTime && (
-                                <p className="font-mono text-[11px] text-stone-400 leading-none mb-0.5 tabular-nums">
+                                <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5 tabular-nums">
                                   {formatTime(task.startTime)} &ndash; {formatTime(task.endTime)}
                                 </p>
                               )}
-                              <p className="text-[13px] font-semibold text-stone-900 leading-snug">{task.title}</p>
+                              <p className="text-[13px] font-semibold text-foreground leading-snug">{task.title}</p>
                               {task.description && (
-                                <p className="text-[12px] text-stone-500 mt-0.5 leading-relaxed">{task.description}</p>
+                                <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
                               )}
                             </div>
                             {canEdit && (
@@ -3282,13 +3282,13 @@ export default function StaffingPage() {
                                     setTaskForm({ title: task.title, description: task.description, hasTime: !!(task.startTime && task.endTime), startTime: task.startTime ?? "08:00", endTime: task.endTime ?? "10:00", requiresEvidence: task.requiresEvidence ?? false, notifyChats: task.notifyChats ?? [] });
                                     setTaskDialog({ open: true, task });
                                   }}
-                                  className="p-1 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+                                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTask(task.id)}
-                                  className="p-1 rounded hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
+                                  className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>
@@ -3383,7 +3383,7 @@ export default function StaffingPage() {
                             <button
                               onClick={() => setShiftForm((f) => ({ ...f, startTime: p.startTime, endTime: p.endTime }))}
                               className={`px-2.5 py-1.5 text-[11px] font-semibold rounded transition-all text-center ${
-                                active ? "text-white shadow-sm" : "text-muted-foreground bg-muted hover:bg-stone-200"
+                                active ? "text-white shadow-sm" : "text-muted-foreground bg-muted hover:bg-muted/80"
                               }`}
                               style={active ? { backgroundColor: p.color } : undefined}
                             >
@@ -3447,8 +3447,8 @@ export default function StaffingPage() {
                             }))}
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border rounded transition-colors ${
                               selected
-                                ? "border-stone-900 bg-stone-900 text-white"
-                                : "border-border text-stone-500 hover:bg-stone-50"
+                                ? "border-foreground bg-foreground text-background"
+                                : "border-border text-muted-foreground hover:bg-muted"
                             }`}
                           >
                             <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selected ? "white" : r.color }} />
@@ -3458,7 +3458,7 @@ export default function StaffingPage() {
                       })}
                       {canEdit && (
                         <button onClick={() => { setEditingRole(null); setRoleForm({ name: "", color: "#44403c", description: "", icon: "briefcase", permissions: {} as StaffRolePermissions }); setRoleDialog(true); }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-border text-muted-foreground rounded hover:bg-stone-50 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-border text-muted-foreground rounded hover:bg-muted transition-colors">
                           <Plus className="h-3 w-3" /> {t("staffing.roles.addRole")}
                         </button>
                       )}
@@ -3511,12 +3511,12 @@ export default function StaffingPage() {
                     onClick={() => setRoleForm((f) => ({ ...f, icon: iconName }))}
                     className={`h-8 w-8 flex items-center justify-center transition-colors ${
                       roleForm.icon === iconName
-                        ? "border-2 border-stone-900 bg-stone-100"
-                        : "border border-transparent bg-stone-100 hover:bg-stone-200"
+                        ? "border-2 border-foreground bg-muted"
+                        : "border border-transparent bg-muted hover:bg-muted/80"
                     }`}
                     title={iconName}
                   >
-                    <RoleIconComp name={iconName} className="h-4 w-4 text-stone-700" />
+                    <RoleIconComp name={iconName} className="h-4 w-4 text-foreground" />
                   </button>
                 ))}
               </div>
@@ -3542,7 +3542,7 @@ export default function StaffingPage() {
                     type="button"
                     onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
                     className={`h-6 w-6 rounded-full transition-all ${
-                      roleForm.color === c ? "ring-2 ring-offset-1 ring-stone-900 scale-110" : ""
+                      roleForm.color === c ? "ring-2 ring-offset-1 ring-foreground scale-110" : ""
                     }`}
                     style={{ backgroundColor: c }}
                   />
@@ -3579,7 +3579,7 @@ export default function StaffingPage() {
                           permissions: { ...f.permissions, [key]: !f.permissions[key] },
                         }))
                       }
-                      className="h-4 w-4 accent-stone-900 cursor-pointer"
+                      className="h-4 w-4 accent-foreground cursor-pointer"
                     />
                     <span className="text-sm">{t(tKey)}</span>
                   </label>
@@ -3629,7 +3629,7 @@ export default function StaffingPage() {
               <button
                 onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                  taskForm.hasTime ? "bg-stone-900 border-stone-900" : "bg-white border-border"
+                  taskForm.hasTime ? "bg-foreground border-foreground" : "bg-background border-border"
                 }`}
               >
                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
@@ -3665,7 +3665,7 @@ export default function StaffingPage() {
               <button
                 onClick={() => setTaskForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                  taskForm.requiresEvidence ? "bg-stone-900 border-stone-900" : "bg-white border-border"
+                  taskForm.requiresEvidence ? "bg-foreground border-foreground" : "bg-background border-border"
                 }`}
               >
                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
@@ -3690,8 +3690,8 @@ export default function StaffingPage() {
                       }))}
                       className={`px-2.5 py-1 text-xs font-medium border rounded transition-colors ${
                         selected
-                          ? "border-stone-900 bg-stone-900 text-white"
-                          : "border-border text-stone-500 hover:bg-stone-50"
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border text-muted-foreground hover:bg-muted"
                       }`}
                     >
                       {c.name ?? t("staffing.unnamed")}
@@ -3738,7 +3738,7 @@ export default function StaffingPage() {
                   {(roleTasksCache[viewTasksDialog.role.id] ?? []).map((task) => (
                     <div key={task.id} className="relative pl-4 pb-4">
                       <div
-                        className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-white"
+                        className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-background"
                         style={{ borderColor: viewTasksDialog.role!.color }}
                       />
                       {task.startTime && task.endTime && (
@@ -3746,7 +3746,7 @@ export default function StaffingPage() {
                           {formatTime(task.startTime)} – {formatTime(task.endTime)}
                         </p>
                       )}
-                      <p className="text-sm font-semibold text-stone-900 leading-snug">{task.title}</p>
+                      <p className="text-sm font-semibold text-foreground leading-snug">{task.title}</p>
                       {task.description && (
                         <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
                       )}
@@ -3772,9 +3772,9 @@ export default function StaffingPage() {
           {tradeDialog.shift && (
             <div className="space-y-4 py-1">
               {/* Your shift */}
-              <div className="bg-stone-50 border border-border p-3">
-                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">{t("staffing.tradeDialog.yourShift")}</p>
-                <p className="text-sm font-semibold text-stone-900">
+              <div className="bg-muted border border-border p-3">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t("staffing.tradeDialog.yourShift")}</p>
+                <p className="text-sm font-semibold text-foreground">
                   {new Date(tradeDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
                     weekday: "short", month: "short", day: "numeric",
                   })}
@@ -3826,7 +3826,7 @@ export default function StaffingPage() {
                 <div className="space-y-1">
                   <Label className="text-xs">{t("staffing.tradeDialog.searchCoworkers")}</Label>
                   <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
                       value={tradeSearch}
                       onChange={(e) => setTradeSearch(e.target.value)}
@@ -3853,7 +3853,7 @@ export default function StaffingPage() {
                         <label
                           key={key}
                           className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
-                            selected ? "bg-stone-50" : "hover:bg-stone-50"
+                            selected ? "bg-muted" : "hover:bg-muted"
                           }`}
                         >
                           <input
@@ -3861,7 +3861,7 @@ export default function StaffingPage() {
                             name="tradeTarget"
                             checked={selected}
                             onChange={() => setSelectedTradeTarget({ memberId: c.memberId, shiftId: s.id })}
-                            className="accent-stone-900 shrink-0"
+                            className="accent-foreground shrink-0"
                           />
                           <div
                             className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(c.name)}`}
@@ -3869,7 +3869,7 @@ export default function StaffingPage() {
                             {initials(c.name)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-stone-900 leading-tight">{c.name}</p>
+                            <p className="text-sm font-medium text-foreground leading-tight">{c.name}</p>
                             <p className="text-xs text-muted-foreground">
                               {formatDateShort(s.date)} &middot; {formatTime(s.startTime)}–{formatTime(s.endTime)}
                             </p>
@@ -3906,9 +3906,9 @@ export default function StaffingPage() {
           {coverDialog.shift && (
             <div className="space-y-4 py-1">
               {/* Your shift */}
-              <div className="bg-stone-50 border border-border p-3">
-                <p className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">{t("staffing.coverDialog.yourShift")}</p>
-                <p className="text-sm font-semibold text-stone-900">
+              <div className="bg-muted border border-border p-3">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t("staffing.coverDialog.yourShift")}</p>
+                <p className="text-sm font-semibold text-foreground">
                   {new Date(coverDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
                     weekday: "short", month: "short", day: "numeric",
                   })}
@@ -3930,7 +3930,7 @@ export default function StaffingPage() {
                       <label
                         key={m.id}
                         className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
-                          selectedCover === m.id ? "bg-stone-50" : "hover:bg-stone-50"
+                          selectedCover === m.id ? "bg-muted" : "hover:bg-muted"
                         }`}
                       >
                         <input
@@ -3938,14 +3938,14 @@ export default function StaffingPage() {
                           name="coverTarget"
                           checked={selectedCover === m.id}
                           onChange={() => setSelectedCover(m.id)}
-                          className="accent-stone-900 shrink-0"
+                          className="accent-foreground shrink-0"
                         />
                         <div
                           className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(m.displayName)}`}
                         >
                           {initials(m.displayName)}
                         </div>
-                        <p className="text-sm font-medium text-stone-900">{m.displayName}</p>
+                        <p className="text-sm font-medium text-foreground">{m.displayName}</p>
                       </label>
                     ))
                 )}
@@ -3981,8 +3981,8 @@ export default function StaffingPage() {
                       i > 0 ? "border-l border-border" : ""
                     } ${
                       availForm.type === tp
-                        ? "bg-stone-900 text-white"
-                        : "bg-white text-stone-600 hover:bg-stone-50"
+                        ? "bg-foreground text-background"
+                        : "bg-background text-muted-foreground hover:bg-muted"
                     }`}
                   >
                     {t(`staffing.availDialog.${tp}`)}
@@ -4031,8 +4031,8 @@ export default function StaffingPage() {
                       }
                       className={`flex-1 py-1.5 text-xs font-semibold border transition-colors ${
                         enabled
-                          ? "bg-stone-900 text-white border-stone-900"
-                          : "bg-white text-stone-500 border-border hover:bg-stone-50"
+                          ? "bg-foreground text-background border-foreground"
+                          : "bg-background text-muted-foreground border-border hover:bg-muted"
                       }`}
                     >
                       {t(dKey)}
@@ -4065,14 +4065,14 @@ export default function StaffingPage() {
                 return (
                   <div key={DAY_NAME_KEYS[i]} className="space-y-1.5 rounded border border-border p-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-stone-700">{t(DAY_NAME_KEYS[i])}</span>
+                      <span className="text-xs font-semibold text-foreground">{t(DAY_NAME_KEYS[i])}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-muted-foreground">{t("staffing.availDialog.fullDay")}</span>
                         <button onClick={() => setAvailForm((f) => {
                           const dayTimes = f.dayTimes.map((d, j) => j === i ? { ...d, fullDay: !d.fullDay } : d);
                           return { ...f, dayTimes };
                         })}
-                          className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-stone-900 border-stone-900" : "bg-white border-border"}`}>
+                          className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
                           <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`}
                             style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }} />
                         </button>
@@ -4130,7 +4130,7 @@ export default function StaffingPage() {
               <button
                 onClick={() => setTimeOffForm((f) => ({ ...f, fullDays: !f.fullDays }))}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                  timeOffForm.fullDays ? "bg-stone-900 border-stone-900" : "bg-white border-border"
+                  timeOffForm.fullDays ? "bg-foreground border-foreground" : "bg-background border-border"
                 }`}
               >
                 <span
@@ -4199,7 +4199,7 @@ export default function StaffingPage() {
           <Button
             onClick={handleTimeOffRequest}
             disabled={savingTimeOff || !timeOffForm.startDate || !timeOffForm.endDate}
-            className="w-full mt-1 bg-stone-900 hover:bg-stone-800 text-white"
+            className="w-full mt-1 bg-foreground hover:bg-foreground/90 text-background"
           >
             {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.timeOffDialog.submitCta")}
           </Button>
@@ -4303,7 +4303,7 @@ export default function StaffingPage() {
               <div className="flex border border-border overflow-hidden w-fit rounded">
                 {(["pdf", "png", "csv"] as const).map((fmt, i) => (
                   <button key={fmt} onClick={() => setDownloadFormat(fmt)}
-                    className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${i > 0 ? "border-l border-border" : ""} ${downloadFormat === fmt ? "bg-stone-900 text-white" : "bg-white text-stone-600 hover:bg-stone-50"}`}
+                    className={`px-3.5 py-1.5 text-sm font-medium transition-colors ${i > 0 ? "border-l border-border" : ""} ${downloadFormat === fmt ? "bg-foreground text-background" : "bg-background text-muted-foreground hover:bg-muted"}`}
                   >{fmt === "csv" ? "CSV" : fmt.toUpperCase()}</button>
                 ))}
               </div>
@@ -4350,9 +4350,9 @@ export default function StaffingPage() {
 
               {/* Top section */}
               <div className="px-5 pt-5 pb-4 space-y-3">
-                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{dateLabel}</p>
-                <p className="text-3xl font-bold font-mono tracking-tight text-stone-900">
-                  {formatTime(s.startTime)}<span className="text-stone-400 mx-2">→</span>{formatTime(s.endTime)}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{dateLabel}</p>
+                <p className="text-3xl font-bold font-mono tracking-tight text-foreground">
+                  {formatTime(s.startTime)}<span className="text-muted-foreground mx-2">→</span>{formatTime(s.endTime)}
                 </p>
 
                 {/* Shift type + roles */}
@@ -4361,12 +4361,12 @@ export default function StaffingPage() {
                     className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: SHIFT_COLORS[s.shiftType] }}
                   />
-                  <span className="text-sm text-stone-700">{currentOrg?.name ?? t("staffing.store")} · {t(SHIFT_LABEL_KEYS[s.shiftType])}</span>
+                  <span className="text-sm text-foreground">{currentOrg?.name ?? t("staffing.store")} · {t(SHIFT_LABEL_KEYS[s.shiftType])}</span>
                   {matchedRoles.map((r) => (
                     <span key={r.id} className="inline-flex items-center gap-1.5">
-                      <span className="text-stone-300">·</span>
+                      <span className="text-muted-foreground">·</span>
                       <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
-                      <span className="text-xs font-medium text-stone-600">{r.name}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{r.name}</span>
                     </span>
                   ))}
                 </div>
@@ -4374,7 +4374,7 @@ export default function StaffingPage() {
 
               {/* Working with */}
               <div className="border-t border-border px-5 py-3">
-                <p className="text-xs font-semibold text-stone-500 mb-2.5">{t("staffing.shiftDetails.workingWith")}</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-2.5">{t("staffing.shiftDetails.workingWith")}</p>
                 {coworkerShifts.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t("staffing.shiftDetails.noOtherStaff")}</p>
                 ) : (
@@ -4391,13 +4391,13 @@ export default function StaffingPage() {
                             {initials(name)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-stone-800 truncate">{name}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{name}</p>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-xs text-muted-foreground">{formatTime(cs.startTime)}–{formatTime(cs.endTime)}</span>
                               {cwRoles.slice(0, 2).map((r) => (
                                 <span key={r.id} className="inline-flex items-center gap-1">
                                   <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: r.color }} />
-                                  <span className="text-[11px] text-stone-500">{r.name}</span>
+                                  <span className="text-[11px] text-muted-foreground">{r.name}</span>
                                 </span>
                               ))}
                             </div>
@@ -4413,8 +4413,8 @@ export default function StaffingPage() {
               {s.date === todayStr && todayTasks.length > 0 && (
                 <div className="border-t border-border px-5 py-3">
                   <div className="flex items-center justify-between mb-2.5">
-                    <p className="text-xs font-semibold text-stone-500">{t("staffing.shiftDetails.tasks")}</p>
-                    <span className="text-xs font-medium bg-stone-100 text-stone-600 px-2 py-0.5 border border-stone-200">
+                    <p className="text-xs font-semibold text-muted-foreground">{t("staffing.shiftDetails.tasks")}</p>
+                    <span className="text-xs font-medium bg-muted text-muted-foreground px-2 py-0.5 border border-border">
                       {t("staffing.shiftDetails.tasksDone")
                         .replace("{done}", String(todayTasks.filter((tk) => taskCompletions[tk.id]).length))
                         .replace("{total}", String(todayTasks.length))}
@@ -4427,18 +4427,18 @@ export default function StaffingPage() {
                         <button
                           key={task.id}
                           onClick={() => toggleTaskDone(task.id)}
-                          className="flex items-start gap-2.5 w-full text-left py-1 hover:bg-stone-50 -mx-1 px-1 transition-colors"
+                          className="flex items-start gap-2.5 w-full text-left py-1 hover:bg-muted -mx-1 px-1 transition-colors"
                         >
-                          <div className={`mt-0.5 h-4 w-4 shrink-0 border flex items-center justify-center transition-colors ${done ? "bg-stone-900 border-stone-900" : "border-stone-400"}`}>
-                            {done && <Check className="h-2.5 w-2.5 text-white" />}
+                          <div className={`mt-0.5 h-4 w-4 shrink-0 border flex items-center justify-center transition-colors ${done ? "bg-foreground border-foreground" : "border-muted-foreground"}`}>
+                            {done && <Check className="h-2.5 w-2.5 text-background" />}
                           </div>
                           <div className="flex items-center gap-2 min-w-0">
                             {task.startTime && task.endTime && (
-                              <span className="font-mono text-[11px] text-stone-400 shrink-0 tabular-nums">
+                              <span className="font-mono text-[11px] text-muted-foreground shrink-0 tabular-nums">
                                 {task.startTime.slice(0, 5)}–{task.endTime.slice(0, 5)}
                               </span>
                             )}
-                            <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-stone-800"}`}>
+                            <span className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
                               {task.title}
                             </span>
                           </div>

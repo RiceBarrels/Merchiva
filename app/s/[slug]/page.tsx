@@ -339,7 +339,7 @@ export default function PublicSitePage({
       </div>
 
       {/* Page content */}
-      <SiteRenderer elements={page.elements} theme={site.theme} products={products} siteSlug={slug} />
+      <SiteRenderer elements={page.elements} theme={site.theme} products={products} siteSlug={slug} basePath={`/s/${slug}`} />
 
       {/* Modals */}
       {showAuth && site && (

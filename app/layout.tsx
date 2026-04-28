@@ -35,10 +35,11 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="theme-color" content="#ffffff" id="theme-color-meta" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Merchiva" />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var d=document.documentElement,s=localStorage.getItem("merchiva_dark");if(s==="true"||(s===null&&window.matchMedia("(prefers-color-scheme:dark)").matches)){d.classList.add("dark");var m=document.getElementById("theme-color-meta");if(m)m.content="#1a1a1a"}}catch(e){}}())` }} />
       </head>
       <body className="h-full bg-background text-foreground">
         <div id="vaul-wrapper" data-vaul-drawer-wrapper="" className="h-full">

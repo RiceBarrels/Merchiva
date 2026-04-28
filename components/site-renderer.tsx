@@ -23,6 +23,15 @@ export function themeVars(theme: SiteTheme): React.CSSProperties {
   } as React.CSSProperties;
 }
 
+// ─── Link rewriting ──────────────────────────────────────────────────────────
+
+function resolveHref(href: string, basePath?: string): string {
+  if (!basePath || !href) return href;
+  if (href === "#" || href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:")) return href;
+  if (href.startsWith("/")) return `${basePath}${href}`;
+  return href;
+}
+
 // ─── Individual element renderers ─────────────────────────────────────────────
 
 function RenderText({ props }: { props: Record<string, unknown> }) {
@@ -68,9 +77,9 @@ function RenderImage({ props }: { props: Record<string, unknown> }) {
   return <img src={src} alt={alt} style={style} />;
 }
 
-function RenderButton({ props }: { props: Record<string, unknown> }) {
+function RenderButton({ props, basePath }: { props: Record<string, unknown>; basePath?: string }) {
   const label = (props.label as string) || "Button";
-  const href = (props.href as string) || "#";
+  const href = resolveHref((props.href as string) || "#", basePath);
   const variant = (props.variant as string) || "primary";
   const size = (props.size as string) || "md";
   const fullWidth = props.fullWidth === true;
@@ -104,13 +113,13 @@ function RenderButton({ props }: { props: Record<string, unknown> }) {
   return <a href={href} style={{ ...baseStyle, ...variantStyle }}>{label}</a>;
 }
 
-function RenderHero({ props }: { props: Record<string, unknown> }) {
+function RenderHero({ props, basePath }: { props: Record<string, unknown>; basePath?: string }) {
   const title = (props.title as string) || "Welcome";
   const subtitle = (props.subtitle as string) || "";
   const bgImage = (props.backgroundImage as string) || "";
   const bgColor = (props.backgroundColor as string) || "var(--sr-bg)";
   const ctaLabel = (props.ctaLabel as string) || "";
-  const ctaHref = (props.ctaHref as string) || "#";
+  const ctaHref = resolveHref((props.ctaHref as string) || "#", basePath);
   const align = (props.align as string) || "center";
   const height = (props.height as string) || "480px";
   const textColor = (props.textColor as string) || undefined;
@@ -135,7 +144,7 @@ function RenderHero({ props }: { props: Record<string, unknown> }) {
   );
 }
 
-function RenderNav({ props }: { props: Record<string, unknown> }) {
+function RenderNav({ props, basePath }: { props: Record<string, unknown>; basePath?: string }) {
   const logo = (props.logo as string) || "My Site";
   const links = (props.links as { label: string; href: string }[]) || [];
   const bgColor = (props.backgroundColor as string) || "#ffffff";
@@ -147,14 +156,14 @@ function RenderNav({ props }: { props: Record<string, unknown> }) {
       <span style={{ fontFamily: "var(--sr-font-heading)", fontWeight: 800, fontSize: "1.125rem", color: textColor }}>{logo}</span>
       <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
         {links.map((l, i) => (
-          <a key={i} href={l.href} style={{ color: textColor, textDecoration: "none", fontSize: "0.9rem", fontWeight: 500, opacity: 0.85 }}>{l.label}</a>
+          <a key={i} href={resolveHref(l.href, basePath)} style={{ color: textColor, textDecoration: "none", fontSize: "0.9rem", fontWeight: 500, opacity: 0.85 }}>{l.label}</a>
         ))}
       </div>
     </nav>
   );
 }
 
-function RenderFooter({ props }: { props: Record<string, unknown> }) {
+function RenderFooter({ props, basePath }: { props: Record<string, unknown>; basePath?: string }) {
   const text = (props.text as string) || "© 2024 My Site";
   const links = (props.links as { label: string; href: string }[]) || [];
   const bgColor = (props.backgroundColor as string) || "#18181b";
@@ -164,7 +173,7 @@ function RenderFooter({ props }: { props: Record<string, unknown> }) {
     <footer style={{ background: bgColor, color: textColor, padding: "2.5rem 2rem", textAlign: "center" }}>
       {links.length > 0 && (
         <div style={{ display: "flex", gap: "1.5rem", justifyContent: "center", marginBottom: "1rem", flexWrap: "wrap" }}>
-          {links.map((l, i) => <a key={i} href={l.href} style={{ color: textColor, textDecoration: "none", fontSize: "0.875rem" }}>{l.label}</a>)}
+          {links.map((l, i) => <a key={i} href={resolveHref(l.href, basePath)} style={{ color: textColor, textDecoration: "none", fontSize: "0.875rem" }}>{l.label}</a>)}
         </div>
       )}
       <p style={{ fontSize: "0.875rem", margin: 0 }}>{text}</p>
@@ -186,7 +195,7 @@ function RenderSpacer({ props }: { props: Record<string, unknown> }) {
   return <div style={{ height: (props.height as string) || "48px" }} />;
 }
 
-function RenderLayout({ props, children }: { props: Record<string, unknown>; children?: SiteElement[] }) {
+function RenderLayout({ props, children, basePath }: { props: Record<string, unknown>; children?: SiteElement[]; basePath?: string }) {
   const direction = (props.direction as string) || "stack";
   const spacing = (props.spacing as string) || "medium";
   const GAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
@@ -245,15 +254,15 @@ function RenderLayout({ props, children }: { props: Record<string, unknown>; chi
   const Tag = tag as any;
 
   return (
-    <Tag style={style} href={isLink ? (href || "#") : undefined}>
+    <Tag style={style} href={isLink ? resolveHref(href || "#", basePath) : undefined}>
       {children?.map((child) => (
-        <SiteElementRenderer key={child.id} element={child} />
+        <SiteElementRenderer key={child.id} element={child} basePath={basePath} />
       ))}
     </Tag>
   );
 }
 
-function RenderFixed({ props, children }: { props: Record<string, unknown>; children?: SiteElement[] }) {
+function RenderFixed({ props, children, basePath }: { props: Record<string, unknown>; children?: SiteElement[]; basePath?: string }) {
   const direction = (props.direction as string) || "stack";
   const spacing = (props.spacing as string) || "medium";
   const GAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
@@ -303,7 +312,7 @@ function RenderFixed({ props, children }: { props: Record<string, unknown>; chil
   return (
     <div style={style}>
       {children?.map((child) => (
-        <SiteElementRenderer key={child.id} element={child} />
+        <SiteElementRenderer key={child.id} element={child} basePath={basePath} />
       ))}
     </div>
   );
@@ -325,7 +334,7 @@ function RenderColumns({ props }: { props: Record<string, unknown> }) {
   );
 }
 
-function RenderProductCard({ props, products, siteSlug }: { props: Record<string, unknown>; products?: Product[]; siteSlug?: string }) {
+function RenderProductCard({ props, products, siteSlug, basePath }: { props: Record<string, unknown>; products?: Product[]; siteSlug?: string; basePath?: string }) {
   const productId = props.productId as string;
   const showPrice = props.showPrice !== false;
   const showDescription = props.showDescription === true;
@@ -334,7 +343,8 @@ function RenderProductCard({ props, products, siteSlug }: { props: Record<string
   const name = product?.name || "Product Name";
   const price = product?.price ?? 0;
   const category = product?.category || "Category";
-  const productPageHref = siteSlug && productId ? `/s/${siteSlug}/product/${productId}` : "#";
+  const rawHref = siteSlug && productId ? `/s/${siteSlug}/product/${productId}` : basePath && productId ? `/product/${productId}` : "#";
+  const productPageHref = resolveHref(rawHref, basePath);
 
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: "var(--sr-radius)", overflow: "hidden", maxWidth: "320px" }}>
@@ -398,7 +408,7 @@ function RenderCouponBanner({ props }: { props: Record<string, unknown> }) {
   );
 }
 
-function RenderPricingTable({ props }: { props: Record<string, unknown> }) {
+function RenderPricingTable({ props, basePath }: { props: Record<string, unknown>; basePath?: string }) {
   const plans = (props.plans as { name: string; price: string; features: string[]; ctaLabel: string; ctaHref: string; highlighted: boolean }[]) || [];
 
   if (!plans.length) {
@@ -419,7 +429,7 @@ function RenderPricingTable({ props }: { props: Record<string, unknown> }) {
               </li>
             ))}
           </ul>
-          <a href={plan.ctaHref || "#"} style={{ display: "block", textAlign: "center", padding: "0.625rem", background: plan.highlighted ? "var(--sr-accent)" : "var(--sr-primary)", color: "#fff", borderRadius: "var(--sr-radius)", fontWeight: 700, textDecoration: "none", fontSize: "0.875rem" }}>{plan.ctaLabel || "Get Started"}</a>
+          <a href={resolveHref(plan.ctaHref || "#", basePath)} style={{ display: "block", textAlign: "center", padding: "0.625rem", background: plan.highlighted ? "var(--sr-accent)" : "var(--sr-primary)", color: "#fff", borderRadius: "var(--sr-radius)", fontWeight: 700, textDecoration: "none", fontSize: "0.875rem" }}>{plan.ctaLabel || "Get Started"}</a>
         </div>
       ))}
     </div>
@@ -682,10 +692,12 @@ export function SiteElementRenderer({
   element,
   products,
   siteSlug,
+  basePath,
 }: {
   element: SiteElement;
   products?: Product[];
   siteSlug?: string;
+  basePath?: string;
 }) {
   const { type, props, children } = element;
   const customStyle = (props.style as React.CSSProperties | undefined) || {};
@@ -708,21 +720,21 @@ export function SiteElementRenderer({
     switch (type as ElementType) {
       case "text":      return <RenderText props={props} />;
       case "image":     return <RenderImage props={props} />;
-      case "button":    return <RenderButton props={props} />;
-      case "hero":      return <RenderHero props={props} />;
-      case "nav":       return <RenderNav props={props} />;
-      case "footer":    return <RenderFooter props={props} />;
+      case "button":    return <RenderButton props={props} basePath={basePath} />;
+      case "hero":      return <RenderHero props={props} basePath={basePath} />;
+      case "nav":       return <RenderNav props={props} basePath={basePath} />;
+      case "footer":    return <RenderFooter props={props} basePath={basePath} />;
       case "divider":   return <RenderDivider props={props} />;
       case "spacer":    return <RenderSpacer props={props} />;
-      case "fixed":     return <RenderFixed props={props} children={children} />;
+      case "fixed":     return <RenderFixed props={props} children={children} basePath={basePath} />;
       case "layout":
       case "container":
-      case "viewport":  return <RenderLayout props={props} children={children} />;
+      case "viewport":  return <RenderLayout props={props} children={children} basePath={basePath} />;
       case "columns":   return <RenderColumns props={props} />;
-      case "product-card":   return <RenderProductCard props={props} products={products} siteSlug={siteSlug} />;
+      case "product-card":   return <RenderProductCard props={props} products={products} siteSlug={siteSlug} basePath={basePath} />;
       case "booking-form":   return <RenderBookingForm props={props} />;
       case "coupon-banner":  return <RenderCouponBanner props={props} />;
-      case "pricing-table":  return <RenderPricingTable props={props} />;
+      case "pricing-table":  return <RenderPricingTable props={props} basePath={basePath} />;
       case "testimonial":    return <RenderTestimonial props={props} />;
       case "faq":            return <RenderFaq props={props} />;
       case "gallery":        return <RenderGallery props={props} />;
@@ -769,11 +781,13 @@ export function SiteRenderer({
   theme,
   products,
   siteSlug,
+  basePath,
 }: {
   elements: SiteElement[];
   theme: SiteTheme;
   products?: Product[];
   siteSlug?: string;
+  basePath?: string;
 }) {
   const googleFontsUrl = useMemo(
     () => buildGoogleFontsUrl([theme.headingFont, theme.bodyFont]),
@@ -786,7 +800,7 @@ export function SiteRenderer({
         <link rel="stylesheet" href={googleFontsUrl} />
       )}
       {elements.map((el) => (
-        <SiteElementRenderer key={el.id} element={el} products={products} siteSlug={siteSlug} />
+        <SiteElementRenderer key={el.id} element={el} products={products} siteSlug={siteSlug} basePath={basePath} />
       ))}
     </div>
   );

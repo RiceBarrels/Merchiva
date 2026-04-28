@@ -166,19 +166,19 @@ export default function SalesPage() {
             {/* Factor cards */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <FactorCard
-                icon={<CloudSun className="h-4 w-4 text-stone-600" />}
+                icon={<CloudSun className="h-4 w-4 text-muted-foreground" />}
                 title={t("sales.factors.weatherTitle")}
                 description={t("sales.factors.weatherDesc")}
                 badge={t("sales.factors.weatherBadge")}
               />
               <FactorCard
-                icon={<Users className="h-4 w-4 text-stone-600" />}
+                icon={<Users className="h-4 w-4 text-muted-foreground" />}
                 title={t("sales.factors.trafficTitle")}
                 description={t("sales.factors.trafficDesc")}
                 badge={t("sales.factors.trafficBadge")}
               />
               <FactorCard
-                icon={<CalendarDays className="h-4 w-4 text-stone-600" />}
+                icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
                 title={t("sales.factors.holidayTitle")}
                 description={t("sales.factors.holidayDesc")}
                 badge={t("sales.factors.holidayBadge")}
@@ -244,7 +244,7 @@ function StatCard({
       <CardContent className="p-3">
         <p className="text-lg font-bold font-mono">{value}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
-        <p className="text-[10px] text-stone-400 mt-1.5 font-medium uppercase tracking-wide">{label}</p>
+        <p className="text-[10px] text-muted-foreground mt-1.5 font-medium uppercase tracking-wide">{label}</p>
       </CardContent>
     </Card>
   );

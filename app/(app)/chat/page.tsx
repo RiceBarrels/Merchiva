@@ -332,7 +332,7 @@ export default function ChatPage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        conv.type === "group" ? "bg-primary/10 text-primary" : "bg-stone-100 text-stone-600"
+                        conv.type === "group" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                       }`}>
                         {conv.type === "group" ? <Users className="h-4 w-4" /> : displayName[0]?.toUpperCase()}
                       </div>
@@ -455,7 +455,7 @@ export default function ChatPage() {
                   onClick={() => handleCreateDm(m.userId)}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-left"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
                     {m.displayName[0]?.toUpperCase()}
                   </div>
                   <div>
@@ -527,7 +527,7 @@ export default function ChatPage() {
                           selected ? "bg-primary/10" : "hover:bg-muted"
                         }`}
                       >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[10px] font-bold text-stone-600">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
                           {m.displayName[0]?.toUpperCase()}
                         </div>
                         <span className="text-sm flex-1">{m.displayName}</span>
@@ -585,7 +585,7 @@ export default function ChatPage() {
                         selected ? "bg-primary/10" : "hover:bg-muted"
                       }`}
                     >
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[10px] font-bold text-stone-600">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
                         {m.displayName[0]?.toUpperCase()}
                       </div>
                       <span className="text-sm flex-1">{m.displayName}</span>
@@ -725,7 +725,7 @@ function ChatView({
                     av ? (
                       <img src={av} alt={name} className="h-7 w-7 rounded-full object-cover shrink-0" />
                     ) : (
-                      <div className="h-7 w-7 rounded-full bg-stone-200 flex items-center justify-center text-[10px] font-bold text-stone-500 shrink-0">
+                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
                         {name[0]?.toUpperCase()}
                       </div>
                     )
@@ -827,7 +827,7 @@ function ChatView({
                         <button
                           key={emoji}
                           onClick={() => onReact(msg.id, emoji)}
-                          className="flex items-center gap-0.5 rounded-full bg-muted border border-border px-1.5 py-0.5 text-xs hover:bg-stone-200 transition-colors"
+                          className="flex items-center gap-0.5 rounded-full bg-muted border border-border px-1.5 py-0.5 text-xs hover:bg-muted transition-colors"
                         >
                           <span>{emoji}</span>
                           {count > 1 && <span className="text-[10px] text-muted-foreground">{count}</span>}
@@ -1078,7 +1078,7 @@ function ChatView({
                     {av ? (
                       <img src={av} alt={m.displayName} className="h-10 w-10 rounded-full object-cover" />
                     ) : (
-                      <div className="h-10 w-10 rounded-full bg-stone-200 flex items-center justify-center text-sm font-bold text-stone-500">
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
                         {m.displayName[0]?.toUpperCase()}
                       </div>
                     )}

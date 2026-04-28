@@ -267,7 +267,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
   return (
     <TooltipProvider delay={0}>
-    <aside className="flex h-full w-full flex-col bg-card">
+    <aside className="flex h-full w-full flex-col bg-background">
       {/* Logo */}
       <div className={cn("flex h-14 items-center gap-2.5 border-b border-border", collapsed ? "justify-center px-2" : "px-4")}>
         <MerchivaLogo size={28} fg="var(--background)" bg="var(--foreground)" rounded />
@@ -305,8 +305,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
                   "flex items-center rounded text-[13px] font-medium transition-colors",
                   collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
                   isActive
-                    ? "bg-stone-900 text-white"
-                    : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
               >
                 <item.icon className="h-[15px] w-[15px] shrink-0" />
@@ -329,8 +329,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
               "flex items-center rounded text-[13px] font-medium transition-colors",
               collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
               pathname === "/settings"
-                ? "bg-stone-900 text-white"
-                : "text-stone-600 hover:text-stone-900 hover:bg-stone-100"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
             <Settings className="h-[15px] w-[15px] shrink-0" />
@@ -341,7 +341,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
           <button
             onClick={handleLogout}
             className={cn(
-              "flex w-full items-center rounded text-[13px] text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors",
+              "flex w-full items-center rounded text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors",
               collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
             )}
           >
@@ -354,7 +354,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             <button
               onClick={onToggleCollapse}
               className={cn(
-                "flex w-full items-center rounded text-[12px] text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors mt-1",
+                "flex w-full items-center rounded text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors mt-1",
                 collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
               )}
             >
@@ -364,7 +364,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
           </SidebarTooltip>
         )}
         {!collapsed && (
-          <p className="px-2.5 pt-2 pb-1 text-[10px] text-stone-400 font-mono">{t("components.sidebar.version")}</p>
+          <p className="px-2.5 pt-2 pb-1 text-[10px] text-muted-foreground font-mono">{t("components.sidebar.version")}</p>
         )}
       </div>
     </aside>
@@ -375,14 +375,14 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 function StoreTopBar({ deviceName }: { deviceName: string }) {
   const t = useT();
   return (
-    <header className="h-11 shrink-0 border-b border-stone-800 bg-stone-900 text-white flex items-center px-4 gap-3 z-30">
+    <header className="h-11 shrink-0 border-b border-background/20 bg-foreground text-background flex items-center px-4 gap-3 z-30">
       <span className="font-mono text-xs font-bold tracking-[0.18em]">{t("components.store.appName")}</span>
-      <span className="w-px h-4 bg-stone-700" />
+      <span className="w-px h-4 bg-background/30" />
       <span className="text-[13px] font-semibold">{t("components.store.timeClock")}</span>
-      <span className="inline-flex items-center gap-1.5 ml-1.5 px-2 py-0.5 rounded-full border border-stone-700 text-[10px] font-mono tracking-wider text-stone-400">
+      <span className="inline-flex items-center gap-1.5 ml-1.5 px-2 py-0.5 rounded-full border border-background/30 text-[10px] font-mono tracking-wider text-muted-foreground">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{t("components.store.online")}
       </span>
-      <span className="ml-auto text-[11px] font-mono text-stone-400 truncate">
+      <span className="ml-auto text-[11px] font-mono text-muted-foreground truncate">
         {deviceName ? deviceName.toUpperCase() : t("components.store.terminal")}
       </span>
     </header>
@@ -393,7 +393,7 @@ function StoreFooter() {
   const t = useT();
   const now = new Date();
   return (
-    <footer className="h-9 shrink-0 border-t border-stone-200 bg-stone-50 flex items-center px-4 text-[11px] text-stone-400 font-mono gap-4 z-30">
+    <footer className="h-9 shrink-0 border-t border-border bg-muted flex items-center px-4 text-[11px] text-muted-foreground font-mono gap-4 z-30">
       <span>{t("components.store.footerVersion")}</span>
       <span className="hidden sm:inline">·</span>
       <span className="hidden sm:inline">{t("components.store.allTimesLocal")}</span>
@@ -702,7 +702,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       {/* ── Desktop layout (non-touch): permanent sidebar — not shown on builder pages ── */}
       {!isBuilderPage && (
         <div className={cn("h-screen overflow-hidden bg-background", isMobile === false ? "flex" : "hidden")}>
-          <div className="h-full shrink-0 transition-[width] duration-200 border-r border-border bg-white" style={{ width: sidebarCollapsed ? 64 : 220 }}>
+          <div className="h-full shrink-0 transition-[width] duration-200 border-r border-border bg-background" style={{ width: sidebarCollapsed ? 64 : 220 }}>
             <SidebarContent collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
           </div>
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">

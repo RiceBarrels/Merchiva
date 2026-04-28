@@ -191,7 +191,7 @@ export default function BuilderPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium truncate">{site.name}</span>
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${site.published ? "bg-green-50 text-green-700 border border-green-200" : "bg-stone-100 text-stone-500 border border-stone-200"}`}>
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${site.published ? "bg-green-50 text-green-700 border border-green-200" : "bg-muted text-muted-foreground border border-border"}`}>
                     {site.published ? t("builder.list.published") : t("builder.list.draft")}
                   </span>
                 </div>

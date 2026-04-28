@@ -124,7 +124,7 @@ function ProductCard({ product, onTap }: { product: Product; onTap: () => void }
     <button
       type="button"
       onClick={onTap}
-      className="group bg-card border border-border rounded text-left hover:border-stone-400 hover:shadow-sm transition-all flex flex-col relative p-2.5"
+      className="group bg-card border border-border rounded text-left hover:border-muted-foreground hover:shadow-sm transition-all flex flex-col relative p-2.5"
     >
       <div className="h-9 w-9 rounded flex items-center justify-center mb-2 bg-muted">
         <CatIcon className="h-4 w-4 text-muted-foreground" />
@@ -139,7 +139,7 @@ function ProductCard({ product, onTap }: { product: Product; onTap: () => void }
         <span className="font-mono text-[12.5px] font-semibold tabular-nums">
           {money(product.price)}
         </span>
-        <span className="h-6 w-6 rounded border border-border bg-card group-hover:bg-stone-900 group-hover:text-white group-hover:border-stone-900 flex items-center justify-center transition-colors">
+        <span className="h-6 w-6 rounded border border-border bg-card group-hover:bg-foreground group-hover:text-background group-hover:border-foreground flex items-center justify-center transition-colors">
           <Plus className="h-3 w-3" />
         </span>
       </div>
@@ -302,7 +302,7 @@ function CartSidebar({
           type="button"
           onClick={() => { hapticLight(); onCharge(); }}
           disabled={cart.length === 0}
-          className="h-12 bg-stone-900 hover:bg-stone-800 disabled:bg-muted disabled:text-muted-foreground text-white text-[13px] font-semibold inline-flex items-center justify-between px-4 transition-colors"
+          className="h-12 bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[13px] font-semibold inline-flex items-center justify-between px-4 transition-colors"
         >
           <span>Charge</span>
           <span className="font-mono tabular-nums text-[15px]">{money(total)}</span>
@@ -436,8 +436,8 @@ function LineEditorModal({
                     className={cn(
                       "px-3 py-2 rounded border text-[12.5px] leading-tight transition-colors min-w-[66px]",
                       discKind === k
-                        ? "bg-stone-900 text-white border-stone-900"
-                        : "bg-card border-border hover:border-stone-400 text-foreground"
+                        ? "bg-foreground text-background border-foreground"
+                        : "bg-card border-border hover:border-muted-foreground text-foreground"
                     )}
                   >
                     {k === "none" ? "None" : k === "pct" ? "% off" : "$ off"}
@@ -469,7 +469,7 @@ function LineEditorModal({
                             onClick={() => setDiscValue(p)}
                             className={cn(
                               "h-8 px-2 text-[11.5px] font-mono tabular-nums",
-                              discValue === p ? "bg-stone-900 text-white" : "bg-card hover:bg-muted",
+                              discValue === p ? "bg-foreground text-background" : "bg-card hover:bg-muted",
                               i < DISCOUNT_PRESETS.length - 1 && "border-r border-border"
                             )}
                           >
@@ -515,7 +515,7 @@ function LineEditorModal({
           <button
             type="button"
             onClick={handleSave}
-            className="h-8 px-3 rounded bg-stone-900 hover:bg-stone-800 text-white text-[12px] font-semibold inline-flex items-center gap-1.5"
+            className="h-8 px-3 rounded bg-foreground hover:bg-foreground/90 text-background text-[12px] font-semibold inline-flex items-center gap-1.5"
           >
             <Check className="h-[13px] w-[13px]" /> Save
           </button>
@@ -642,10 +642,10 @@ function PayOverlay({
                       className={cn(
                         "p-5 rounded-lg border-2 text-left transition-colors",
                         payMethod === m.id
-                          ? "border-stone-900 bg-stone-900 text-white"
+                          ? "border-foreground bg-foreground text-background"
                           : disabled
                             ? "border-border bg-card opacity-50 cursor-not-allowed"
-                            : "border-border bg-card hover:border-stone-400"
+                            : "border-border bg-card hover:border-muted-foreground"
                       )}
                     >
                       <m.icon className="h-[22px] w-[22px]" />
@@ -675,8 +675,8 @@ function PayOverlay({
                     className={cn(
                       "py-4 rounded-lg border text-center transition-colors",
                       tipPct === p
-                        ? "bg-stone-900 border-stone-900 text-white"
-                        : "bg-card border-border hover:border-stone-400"
+                        ? "bg-foreground border-foreground text-background"
+                        : "bg-card border-border hover:border-muted-foreground"
                     )}
                   >
                     <p className="text-[16px] font-semibold">{p === 0 ? "None" : `${p}%`}</p>
@@ -702,8 +702,8 @@ function PayOverlay({
                       className={cn(
                         "py-4 rounded-lg border text-center transition-colors",
                         cashTaken === v
-                          ? "bg-stone-900 border-stone-900 text-white"
-                          : "bg-card border-border hover:border-stone-400"
+                          ? "bg-foreground border-foreground text-background"
+                          : "bg-card border-border hover:border-muted-foreground"
                       )}
                     >
                       <p className="text-[16px] font-semibold tabular-nums">{money(v)}</p>
@@ -733,8 +733,8 @@ function PayOverlay({
                     className={cn(
                       "flex-1 py-3 rounded-lg border text-center",
                       splits === n
-                        ? "bg-stone-900 border-stone-900 text-white"
-                        : "bg-card border-border hover:border-stone-400"
+                        ? "bg-foreground border-foreground text-background"
+                        : "bg-card border-border hover:border-muted-foreground"
                     )}
                   >
                     <p className="text-[14px] font-semibold">{n === 1 ? "Single" : `${n} ways`}</p>
@@ -776,7 +776,7 @@ function PayOverlay({
             type="button"
             onClick={handleCharge}
             disabled={!canCharge || processing}
-            className="h-16 bg-stone-900 hover:bg-stone-800 disabled:bg-muted disabled:text-muted-foreground text-white text-[16px] font-semibold inline-flex items-center justify-center gap-2 transition-colors"
+            className="h-16 bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[16px] font-semibold inline-flex items-center justify-center gap-2 transition-colors"
           >
             {processing ? (
               <Loader2 className="h-[18px] w-[18px] animate-spin" />
@@ -890,7 +890,7 @@ function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: (
         <button
           type="button"
           onClick={() => { hapticSuccess(); onNewOrder(); }}
-          className="mt-3 w-full h-14 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-[15px] font-semibold inline-flex items-center justify-center gap-2"
+          className="mt-3 w-full h-14 rounded-lg bg-foreground hover:bg-foreground/90 text-background text-[15px] font-semibold inline-flex items-center justify-center gap-2"
         >
           <Plus className="h-4 w-4" /> New order
         </button>
@@ -1176,7 +1176,7 @@ function RefundDialog({
                   className={cn(
                     "flex-1 py-1.5 text-xs font-medium capitalize transition-colors",
                     i > 0 ? "border-l border-border" : "",
-                    mode === m ? "bg-stone-900 text-white" : "hover:bg-muted"
+                    mode === m ? "bg-foreground text-background" : "hover:bg-muted"
                   )}
                 >
                   {m === "full" ? `${t("pos.refund.full")} — ${money(payment.amount)}` : t("pos.refund.partial")}

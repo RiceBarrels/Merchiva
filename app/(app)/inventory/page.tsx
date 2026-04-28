@@ -616,8 +616,8 @@ function SummaryCard({
   return (
     <Card className={urgent ? "border-red-300" : ""}>
       <CardContent className="p-3 flex items-center gap-3">
-        <div className="rounded-sm p-1.5 bg-stone-100">
-          <Icon className="h-4 w-4 text-stone-600" />
+        <div className="rounded-sm p-1.5 bg-muted">
+          <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
         <div>
           <p className="text-lg font-bold font-mono">{value}</p>

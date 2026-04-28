@@ -91,7 +91,7 @@ export default function PreviewPage({
         elements={elements}
         theme={site.theme}
         products={products}
-        siteSlug={site.slug}
+        basePath={`/preview/${siteId}`}
       />
     </div>
   );

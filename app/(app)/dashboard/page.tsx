@@ -475,7 +475,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${
-                  a.severity === "high" ? "bg-destructive" : "bg-stone-400"
+                  a.severity === "high" ? "bg-destructive" : "bg-muted-foreground"
                 }`} />
                 <span className="text-foreground/80 text-sm">{a.message}</span>
               </div>
@@ -501,7 +501,7 @@ export default function DashboardPage() {
           <div className="space-y-1.5">
             {todayShifts.map((s) => (
               <div key={s.id} className="flex items-center gap-3 rounded border border-border px-3 py-2.5">
-                <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-stone-500 shrink-0">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
                   {s.staffName[0]?.toUpperCase() ?? "?"}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -563,7 +563,7 @@ export default function DashboardPage() {
                 href="/chat"
                 className="flex items-center gap-3 rounded border border-border px-3 py-2.5 hover:bg-muted/50 transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-stone-500 shrink-0">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
                   {(c.name ?? c.lastMessage?.senderName ?? "?")[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">

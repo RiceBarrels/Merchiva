@@ -52,7 +52,7 @@ export default function PublishedSiteSubPage({ params }: Props) {
 
   return (
     <main style={{ minHeight: "100vh" }}>
-      <SiteRenderer elements={page.elements} theme={site.theme} />
+      <SiteRenderer elements={page.elements} theme={site.theme} basePath={`/s/${slug}`} />
     </main>
   );
 }

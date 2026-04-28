@@ -169,12 +169,12 @@ function ColorRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="text-xs font-medium text-stone-600">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-xs text-stone-400">{value}</span>
+        <span className="font-mono text-xs text-muted-foreground">{value}</span>
         <div className="relative">
           <div
-            className="h-7 w-7 rounded border border-stone-300 cursor-pointer"
+            className="h-7 w-7 rounded border border-border cursor-pointer"
             style={{ background: value }}
           />
           <input
@@ -218,18 +218,18 @@ function FontSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full border border-border rounded px-2.5 py-1.5 text-sm text-stone-800 bg-white flex items-center justify-between gap-2 hover:border-stone-400 transition-colors"
+        className="w-full border border-border rounded px-2.5 py-1.5 text-sm text-foreground bg-background flex items-center justify-between gap-2 hover:border-muted-foreground transition-colors"
         style={{ fontFamily: value }}
       >
         <span className="truncate">{selected.label}</span>
-        <ChevronDown className={cn("h-3.5 w-3.5 text-stone-400 shrink-0 transition-transform", open && "rotate-180")} />
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform", open && "rotate-180")} />
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-white border border-border rounded shadow-xl max-h-56 overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 right-0 mt-0.5 bg-background border border-border rounded shadow-xl max-h-56 overflow-y-auto">
           {/* Google fonts section */}
-          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 bg-stone-50 border-b border-border sticky top-0">
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted border-b border-border sticky top-0">
             {t("builder.theme.googleFonts")}
           </div>
           {GOOGLE_FONT_LIST.map((f) => (
@@ -238,17 +238,17 @@ function FontSelect({
               type="button"
               onClick={() => { onChange(f.value); setOpen(false); }}
               className={cn(
-                "w-full text-left px-2.5 py-1.5 text-sm hover:bg-stone-50 transition-colors flex items-center justify-between",
-                value === f.value && "bg-stone-100"
+                "w-full text-left px-2.5 py-1.5 text-sm hover:bg-muted transition-colors flex items-center justify-between",
+                value === f.value && "bg-muted"
               )}
               style={{ fontFamily: f.value }}
             >
               {f.label}
-              {value === f.value && <Check className="h-3 w-3 text-stone-600 shrink-0" />}
+              {value === f.value && <Check className="h-3 w-3 text-muted-foreground shrink-0" />}
             </button>
           ))}
           {/* System fonts section */}
-          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 bg-stone-50 border-t border-b border-border sticky top-0">
+          <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-muted border-t border-b border-border sticky top-0">
             {t("builder.theme.systemFonts")}
           </div>
           {SYSTEM_FONT_LIST.map((f) => (
@@ -257,13 +257,13 @@ function FontSelect({
               type="button"
               onClick={() => { onChange(f.value); setOpen(false); }}
               className={cn(
-                "w-full text-left px-2.5 py-1.5 text-sm hover:bg-stone-50 transition-colors flex items-center justify-between",
-                value === f.value && "bg-stone-100"
+                "w-full text-left px-2.5 py-1.5 text-sm hover:bg-muted transition-colors flex items-center justify-between",
+                value === f.value && "bg-muted"
               )}
               style={{ fontFamily: f.value }}
             >
               {f.label}
-              {value === f.value && <Check className="h-3 w-3 text-stone-600 shrink-0" />}
+              {value === f.value && <Check className="h-3 w-3 text-muted-foreground shrink-0" />}
             </button>
           ))}
         </div>
@@ -413,7 +413,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
 
       <div className="flex h-[calc(100vh-56px)] overflow-hidden">
         {/* ─── Left panel: controls ─────────────────────────────── */}
-        <div className="w-72 shrink-0 border-r border-border bg-white flex flex-col overflow-hidden">
+        <div className="w-72 shrink-0 border-r border-border bg-background flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <h2 className="text-sm font-bold tracking-tight">{t("builder.theme.title")}</h2>
             <button
@@ -421,7 +421,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
               className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
                 saved
                   ? "bg-green-600 text-white"
-                  : "bg-stone-900 text-white hover:bg-stone-700"
+                  : "bg-foreground text-background hover:bg-foreground/90"
               }`}
             >
               {saved ? t("builder.theme.saved") : t("builder.theme.save")}
@@ -431,7 +431,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5">
             {/* Presets */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">{t("builder.theme.presets")}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("builder.theme.presets")}</p>
               <div className="grid grid-cols-2 gap-1.5">
                 {Object.entries(PRESETS).map(([name, p]) => (
                   <button
@@ -439,8 +439,8 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                     onClick={() => applyPreset(name)}
                     className={`text-left px-2.5 py-2 border rounded text-xs font-medium transition-all ${
                       theme.presetName === name
-                        ? "border-stone-900 bg-stone-900 text-white"
-                        : "border-stone-200 hover:border-stone-400 text-stone-700"
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border hover:border-muted-foreground text-foreground"
                     }`}
                     style={{ borderRadius: 4 }}
                   >
@@ -456,7 +456,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
 
             {/* Colors */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">{t("builder.theme.colors")}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{t("builder.theme.colors")}</p>
               <div className="border border-border rounded divide-y divide-border px-3">
                 <ColorRow label={t("builder.theme.background")} value={theme.background} onChange={(v) => update({ background: v })} />
                 <ColorRow label={t("builder.theme.text")} value={theme.text} onChange={(v) => update({ text: v })} />
@@ -468,17 +468,17 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
 
             {/* Fonts */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">{t("builder.theme.fonts")}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("builder.theme.fonts")}</p>
               <div className="space-y-2">
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">{t("builder.theme.headingFont")}</label>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">{t("builder.theme.headingFont")}</label>
                   <FontSelect
                     value={theme.headingFont}
                     onChange={(v) => { hapticLight(); update({ headingFont: v }); }}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-stone-600 block mb-1">{t("builder.theme.bodyFont")}</label>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">{t("builder.theme.bodyFont")}</label>
                   <FontSelect
                     value={theme.bodyFont}
                     onChange={(v) => { hapticLight(); update({ bodyFont: v }); }}
@@ -489,7 +489,7 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
 
             {/* Border radius */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
                 {t("builder.theme.borderRadius")}
               </p>
               <div className="flex items-center gap-3">
@@ -499,11 +499,11 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                   max={20}
                   value={theme.borderRadius}
                   onChange={(e) => update({ borderRadius: Number(e.target.value) })}
-                  className="flex-1 accent-stone-900"
+                  className="flex-1 accent-foreground"
                 />
-                <span className="font-mono text-xs text-stone-500 w-8 text-right">{theme.borderRadius}px</span>
+                <span className="font-mono text-xs text-muted-foreground w-8 text-right">{theme.borderRadius}px</span>
               </div>
-              <div className="flex justify-between text-[10px] text-stone-400 mt-0.5">
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
                 <span>{t("builder.theme.sharp")}</span>
                 <span>{t("builder.theme.rounded")}</span>
               </div>
@@ -511,12 +511,12 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
 
             {/* Preview tokens */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-stone-400 mb-2">{t("builder.theme.previewTokens")}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{t("builder.theme.previewTokens")}</p>
               <div className="flex gap-2 flex-wrap">
                 {[theme.background, theme.text, theme.accent, theme.secondary, theme.primary].map((c, i) => (
                   <div
                     key={i}
-                    className="h-7 w-7 border border-stone-200"
+                    className="h-7 w-7 border border-border"
                     style={{ background: c, borderRadius: theme.borderRadius }}
                     title={c}
                   />
@@ -557,9 +557,9 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
         </div>
 
         {/* ─── Right panel: live preview ────────────────────────── */}
-        <div className="flex-1 flex flex-col bg-stone-100 overflow-hidden">
+        <div className="flex-1 flex flex-col bg-muted overflow-hidden">
           {/* Preview toolbar */}
-          <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-white">
+          <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-background">
             <div className="flex border border-border overflow-hidden rounded">
               {(["desktop", "mobile"] as const).map((tab) => (
                 <button
@@ -567,16 +567,16 @@ export default function ThemePage({ params }: { params: Promise<{ siteId: string
                   onClick={() => setPreviewTab(tab)}
                   className={`px-3 py-1 text-xs font-medium capitalize transition-colors ${
                     previewTab === tab
-                      ? "bg-stone-900 text-white"
-                      : "bg-white text-stone-600 hover:bg-stone-50"
+                      ? "bg-foreground text-background"
+                      : "bg-background text-muted-foreground hover:bg-muted"
                   }`}
                 >
                   {t(`builder.theme.${tab}`)}
                 </button>
               ))}
             </div>
-            <span className="text-xs text-stone-400">{t("builder.theme.siteId")} {siteId}</span>
-            <span className="ml-auto text-xs text-stone-400 font-mono">
+            <span className="text-xs text-muted-foreground">{t("builder.theme.siteId")} {siteId}</span>
+            <span className="ml-auto text-xs text-muted-foreground font-mono">
               {t("builder.theme.previewLive")}
             </span>
           </div>
