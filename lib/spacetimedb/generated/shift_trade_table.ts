@@ -23,4 +23,6 @@ export default __t.row({
   managerId: __t.option(__t.string()).name("manager_id"),
   comments: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
+  broadcastToAll: __t.bool().name("broadcast_to_all"),
+  acceptedById: __t.option(__t.string()).name("accepted_by_id"),
 });

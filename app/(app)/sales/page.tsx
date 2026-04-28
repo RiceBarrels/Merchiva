@@ -37,6 +37,7 @@ import {
 } from "recharts";
 import type { SalesRecord } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { PageHeader } from "@/components/page-header";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useT } from "@/lib/i18n/context";
 
@@ -91,23 +92,21 @@ export default function SalesPage() {
   return (
     <PermissionGuard section="sales">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t("sales.title")}</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">
-              {t("sales.subtitle")}
-            </p>
+      <PageHeader
+        title={t("sales.title")}
+        subtitle={t("sales.subtitle")}
+        right={
+          <div className="flex items-center gap-2">
+            {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
+            {accuracy > 0 && (
+              <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
+                <Zap className="h-3.5 w-3.5 text-violet-500" />
+                {t("sales.accuracyBadge").replace("{n}", String(accuracy))}
+              </Badge>
+            )}
           </div>
-          {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />}
-        </div>
-        {accuracy > 0 && (
-          <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
-            <Zap className="h-3.5 w-3.5 text-violet-500" />
-            {t("sales.accuracyBadge").replace("{n}", String(accuracy))}
-          </Badge>
-        )}
-      </div>
+        }
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

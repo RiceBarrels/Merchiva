@@ -18,6 +18,7 @@ import {
   Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/page-header";
 import { createTier, updateTier, deleteTier, createPerk, updatePerk, deletePerk, updateOrderStatus, updateBookingStatus } from "@/lib/spacetimedb/actions";
 import {
   getMembershipTiers,
@@ -737,13 +738,15 @@ export default function MembershipPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0 bg-background">
-        <span className="text-sm font-semibold">{t("membership.header.title")}</span>
-        <Link href={`/builder/${siteId}`} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-          <Globe className="h-3.5 w-3.5" />
-          {siteName}
-        </Link>
-      </header>
+      <PageHeader
+        title={t("membership.header.title")}
+        right={
+          <Link href={`/builder/${siteId}`} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <Globe className="h-3.5 w-3.5" />
+            {siteName}
+          </Link>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex items-center gap-1 px-4 py-2 border-b border-border bg-muted/20">

@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
+import { px } from "motion/react";
+import { getSafeAreaInsets } from "@/lib/safe-area";
 
 interface PageHeaderAction {
   icon: React.ReactNode;
@@ -27,6 +29,7 @@ export function PageHeader({
 }) {
   const { currentOrg } = usePermissions();
   const crumbs = breadcrumbs ?? (currentOrg ? [currentOrg.name, title] : [title]);
+  const SafeArea = getSafeAreaInsets();
 
   return (
     <>
@@ -57,8 +60,9 @@ export function PageHeader({
           "flex lg:hidden items-center justify-between bg-background border-b border-border px-4 py-3 gap-3",
           sticky && "sticky top-0 z-20"
         )}
+        style={{ paddingTop: `calc(${SafeArea.top}px + 0.75rem)` }}
       >
-        <div className="min-w-0 flex-1">
+        <div className="pl-14 min-w-0 flex-1">
           <h1 className="text-xl font-semibold text-foreground leading-tight">{title}</h1>
           {subtitle && (
             <p className="text-xs text-muted-foreground leading-tight mt-0.5">{subtitle}</p>

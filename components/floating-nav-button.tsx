@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { ArrowRight, ArrowLeft, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useT } from "@/lib/i18n/context";
@@ -97,14 +98,16 @@ export function FloatingNavButton({
 
   const showTitle = mode === "back" ? !!title : hasDialog && !!title;
 
+  if (typeof document === "undefined") return null;
+
   if (tabBarMode) {
-    return (
+    return createPortal(
       <AnimatePresence>
         {hasDialog && (
           <>
             <motion.button
               onClick={handleClick}
-              className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4"
+              className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999"
               style={{ left: 0, top: safeAreaTop, zIndex, boxShadow: "0 4px 14px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)" }}
               initial={{ opacity: 0, scale: 0, rotate: -180 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -134,16 +137,17 @@ export function FloatingNavButton({
             )}
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
     );
   }
 
-  return (
+  return createPortal(
     <>
       {/* Circular button */}
       <button
         onClick={handleClick}
-        className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4"
+        className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999"
         style={buttonStyle}
         aria-label={
           mode === "back"
@@ -219,6 +223,7 @@ export function FloatingNavButton({
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </>,
+    document.body
   );
 }

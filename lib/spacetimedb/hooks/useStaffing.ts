@@ -166,7 +166,7 @@ export function useStaffing(
       }));
   }, [rawTimeOff, organizationId]);
 
-  const orgTimeOffRequests = isStaff ? [] : myTimeOffRequests;
+  const orgTimeOffRequests = myTimeOffRequests;
 
   const orgShiftTrades = useMemo<ShiftTrade[]>(() => {
     if (!organizationId) return [];
@@ -177,16 +177,14 @@ export function useStaffing(
         organizationId:  r.organizationId,
         shiftId:         r.shiftId,
         requesterId:     r.requesterId,
-        broadcastToAll:  (r as Record<string, unknown>).broadcastToAll as boolean ?? false,
-        targetIds:       (() => { try { const v = (r as Record<string, unknown>).targetIds; return Array.isArray(v) ? v as string[] : typeof v === "string" ? JSON.parse(v) : []; } catch { return []; } })(),
-        targetId:        r.targetId ?? null,
-        acceptedById:    (r as Record<string, unknown>).acceptedById as string ?? null,
+        broadcastToAll:  r.broadcastToAll ?? false,
+        targetId:        r.targetId || null,
+        acceptedById:    r.acceptedById ?? null,
         targetShiftId:   r.targetShiftId ?? null,
         type:            r.type as ShiftTrade["type"],
         status:          r.status as ShiftTrade["status"],
         managerApproved: r.managerApproved,
         managerId:       r.managerId ?? null,
-        managerReviewedAt: (r as Record<string, unknown>).managerReviewedAt as string ?? null,
         comments:        r.comments,
         createdAt:       (r as Record<string, unknown>).createdAt ? String((r as Record<string, unknown>).createdAt) : new Date().toISOString(),
       }));

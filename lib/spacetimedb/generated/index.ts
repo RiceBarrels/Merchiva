@@ -92,6 +92,7 @@ import SetMemberStatusReducer from "./set_member_status_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
 import ToggleTodoReducer from "./toggle_todo_reducer";
 import UpdateBookingStatusReducer from "./update_booking_status_reducer";
+import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateInventoryItemReducer from "./update_inventory_item_reducer";
 import UpdateMemberPermissionsReducer from "./update_member_permissions_reducer";
 import UpdateOrderStatusReducer from "./update_order_status_reducer";
@@ -786,6 +787,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
   __reducerSchema("toggle_todo", ToggleTodoReducer),
   __reducerSchema("update_booking_status", UpdateBookingStatusReducer),
+  __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_inventory_item", UpdateInventoryItemReducer),
   __reducerSchema("update_member_permissions", UpdateMemberPermissionsReducer),
   __reducerSchema("update_order_status", UpdateOrderStatusReducer),

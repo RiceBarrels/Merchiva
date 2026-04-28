@@ -14,6 +14,7 @@ export default {
   organizationId: __t.string(),
   shiftId: __t.string(),
   requesterId: __t.string(),
+  broadcastToAll: __t.bool(),
   targetId: __t.string(),
   targetShiftId: __t.option(__t.string()),
   type: __t.string(),

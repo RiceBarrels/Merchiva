@@ -65,6 +65,7 @@ import { useRouter } from "next/navigation";
 import { addProduct, deleteProduct } from "@/lib/spacetimedb/actions";
 import type { Product } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { PageHeader } from "@/components/page-header";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
@@ -176,26 +177,24 @@ export default function ProductsPage() {
   return (
     <PermissionGuard section="products">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("products.title")}</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {t("products.subtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          {atRisk > 0 && (
-            <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
-              <Zap className="h-3.5 w-3.5 text-violet-500" />
-              {t("products.flagged").replace("{count}", String(atRisk))}
-            </Badge>
-          )}
-          <Button onClick={() => { setForm(BLANK); setDialogOpen(true); }} className="gap-2">
-            <Plus className="h-4 w-4" /> {t("products.addProduct")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={t("products.title")}
+        subtitle={t("products.subtitle")}
+        right={
+          <div className="flex items-center gap-2">
+            {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            {atRisk > 0 && (
+              <Badge variant="outline" className="gap-1.5 text-sm px-3 py-1.5">
+                <Zap className="h-3.5 w-3.5 text-violet-500" />
+                {t("products.flagged").replace("{count}", String(atRisk))}
+              </Badge>
+            )}
+            <Button onClick={() => { setForm(BLANK); setDialogOpen(true); }} className="gap-2">
+              <Plus className="h-4 w-4" /> {t("products.addProduct")}
+            </Button>
+          </div>
+        }
+      />
 
       <><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard label={t("products.summary.products")}     value={String(products.length)} icon={ShoppingBag} />

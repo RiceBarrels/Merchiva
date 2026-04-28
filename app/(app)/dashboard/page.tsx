@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import {
   Clock,
   MessageSquare,
@@ -310,22 +311,11 @@ export default function DashboardPage() {
 
   return (
     <div className="p-3 sm:p-6 space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-            {greeting}{userName ? `, ${userName}` : ""}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
-          </p>
-        </div>
-        {refreshing && <RefreshCw className="h-3.5 w-3.5 mt-1 animate-spin text-muted-foreground shrink-0" />}
-      </div>
+      <PageHeader
+        title={`${greeting}${userName ? `, ${userName}` : ""}`}
+        subtitle={new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        right={refreshing ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : undefined}
+      />
 
       {/* Todos — rendered immediately, before other data loads */}
       <section>

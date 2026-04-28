@@ -59,6 +59,7 @@ import {
 } from "@/lib/spacetimedb/actions";
 import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
+import { PageHeader } from "@/components/page-header";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
@@ -189,22 +190,19 @@ export default function InventoryPage() {
   return (
     <PermissionGuard section="inventory">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t("inventory.title")}</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {t("inventory.subtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-          <Button onClick={openAdd} className="gap-2">
-            <Plus className="h-4 w-4" />
-            {t("inventory.addItem")}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title={t("inventory.title")}
+        subtitle={t("inventory.subtitle")}
+        right={
+          <div className="flex items-center gap-2">
+            {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            <Button onClick={openAdd} className="gap-2">
+              <Plus className="h-4 w-4" />
+              {t("inventory.addItem")}
+            </Button>
+          </div>
+        }
+      />
 
       <>
 

@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   // for testing
   server: {
-    url: 'https://project-management-phi-red.vercel.app',
+    url: 'http://192.168.1.108:3000',
     cleartext: true,
   },
   // // for production

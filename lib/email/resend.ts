@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM = "Merchiva <onboarding@resend.dev>";
+const FROM = "Merchiva <onboarding@depxtech.com>";
 
 export async function sendTeamInviteEmail({
   to,

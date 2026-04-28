@@ -763,6 +763,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                           description: selectedRole.description,
                           permissions: selectedRole.permissions,
                         });
+                        loadRoleTasksFor(selectedRole.id);
                         setRoleDialog(true);
                       }}
                       className="p-1.5 rounded-[0.3rem] hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
@@ -1650,8 +1651,7 @@ export default function StaffingPage() {
         shiftId:       tradeDialog.shift.id,
         requesterId:   myMemberId,
         broadcastToAll: tradeMode === "broadcast",
-        targetIds:     tradeMode === "specific" && selectedTradeTarget ? [selectedTradeTarget.memberId] : [],
-        targetId:      tradeMode === "specific" ? selectedTradeTarget?.memberId ?? null : null,
+        targetId:      tradeMode === "specific" ? selectedTradeTarget?.memberId ?? "" : "",
         targetShiftId: tradeMode === "specific" ? selectedTradeTarget?.shiftId ?? null : null,
         type:          "trade",
         comments:      "",
@@ -1677,8 +1677,7 @@ export default function StaffingPage() {
         shiftId:       coverDialog.shift.id,
         requesterId:   myMemberId,
         broadcastToAll: isBroadcast,
-        targetIds:     selectedCover ? [selectedCover] : [],
-        targetId:      selectedCover || null,
+        targetId:      selectedCover || "",
         targetShiftId: null,
         type:          "cover",
         comments:      "",
@@ -2375,6 +2374,12 @@ export default function StaffingPage() {
                           </button>
                         );
                       })}
+                      {canEdit && (
+                        <button onClick={() => { setEditingRole(null); setRoleForm({ name: "", color: "#44403c", description: "", icon: "briefcase", permissions: {} as StaffRolePermissions }); setRoleDialog(true); }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-border text-muted-foreground rounded hover:bg-stone-50 transition-colors">
+                          <Plus className="h-3 w-3" /> {t("staffing.roles.addRole")}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2424,6 +2429,35 @@ export default function StaffingPage() {
               <Label>{t("staffing.roleDialog.description")}</Label>
               <Textarea value={roleForm.description} onChange={(e) => setRoleForm((f) => ({ ...f, description: e.target.value }))} placeholder={t("staffing.roleDialog.descriptionPlaceholder")} className="resize-none text-sm" rows={2} />
             </div>
+
+            {/* Tasks section — only when editing an existing role */}
+            {editingRole && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label>{t("staffing.roles.tasksLabel") || "Tasks"}</Label>
+                  <Button variant="ghost" size="xs" onClick={() => { setTaskForm({ title: "", description: "", hasTime: false, startTime: "09:00", endTime: "17:00", requiresEvidence: false, notifyChats: [] as string[] }); setTaskDialog({ open: true, task: null }); }}>
+                    <Plus className="h-3 w-3 mr-1" /> {t("staffing.roles.addTask") || "Add"}
+                  </Button>
+                </div>
+                {(roleTasksCache[editingRole.id] ?? []).length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{t("staffing.roles.noTasks") || "No tasks yet"}</p>
+                ) : (
+                  <div className="space-y-1">
+                    {(roleTasksCache[editingRole.id] ?? []).map((task) => (
+                      <button key={task.id} type="button" onClick={() => {
+                        setTaskForm({ title: task.title, description: task.description ?? "", hasTime: !!(task.startTime && task.endTime), startTime: task.startTime ?? "09:00", endTime: task.endTime ?? "17:00", requiresEvidence: task.requiresEvidence ?? false, notifyChats: task.notifyChats ?? [] });
+                        setTaskDialog({ open: true, task });
+                      }}
+                        className="flex items-center gap-2 w-full px-2 py-1.5 text-left text-xs rounded hover:bg-stone-50 transition-colors border border-border">
+                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: editingRole.color }} />
+                        <span className="flex-1 truncate font-medium">{task.title}</span>
+                        {task.startTime && <span className="text-muted-foreground font-mono tabular-nums text-[10px]">{task.startTime}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setRoleDialog(false)}>{t("common.cancel")}</Button>
@@ -2697,10 +2731,21 @@ export default function StaffingPage() {
                     const matchedRoles = (shift.staffRoles ?? [])
                       .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
                       .filter(Boolean) as StaffRole[];
+                    const isMine = shift.memberId === myMemberId;
                     return (
                       <button
                         key={shift.id}
-                        onClick={() => setShiftDetailShift(shift)}
+                        onClick={() => {
+                          if (canEdit) {
+                            setEditingShift(shift);
+                            setShiftForm({ memberId: shift.memberId ?? "", date: shift.date, shiftType: shift.shiftType, startTime: shift.startTime, endTime: shift.endTime, roleNames: shift.staffRoles ?? [] });
+                            setAddDialog(true);
+                          } else if (isMine) {
+                            openTradeDialog(shift);
+                          } else {
+                            setShiftDetailShift(shift);
+                          }
+                        }}
                         className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-stone-50 transition-colors"
                       >
                         <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
@@ -2743,10 +2788,21 @@ export default function StaffingPage() {
                           ? t("staffing.overview.inHoursMinutes").replace("{h}", String(Math.floor(mins / 60))).replace("{min}", String(mins % 60))
                           : t("staffing.overview.inHours").replace("{h}", String(Math.floor(mins / 60))))
                       : t("staffing.overview.inMinutes").replace("{min}", String(mins));
+                    const isMine = shift.memberId === myMemberId;
                     return (
                       <button
                         key={shift.id}
-                        onClick={() => setShiftDetailShift(shift)}
+                        onClick={() => {
+                          if (canEdit) {
+                            setEditingShift(shift);
+                            setShiftForm({ memberId: shift.memberId ?? "", date: shift.date, shiftType: shift.shiftType, startTime: shift.startTime, endTime: shift.endTime, roleNames: shift.staffRoles ?? [] });
+                            setAddDialog(true);
+                          } else if (isMine) {
+                            openTradeDialog(shift);
+                          } else {
+                            setShiftDetailShift(shift);
+                          }
+                        }}
                         className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-stone-50 transition-colors"
                       >
                         <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
@@ -2772,14 +2828,13 @@ export default function StaffingPage() {
             )}
 
             {/* ── Section: Needs attention — managers see all, staff see trades targeted at them ── */}
-            {((!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
+            {((canEdit && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
               <div className="border-b border-stone-200">
                 <div className="flex items-center gap-2 px-4 py-2.5">
                   <p className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">{t("staffing.overview.needsAttention")}</p>
                 </div>
                 <div className="divide-y divide-stone-200">
-                  {/* Time off row — managers only */}
-                  {!isStaff && pendingTimeOff.length > 0 && (
+                  {canEdit && pendingTimeOff.length > 0 && (
                     <button
                       onClick={() => { hapticLight(); setTimeOffDialog(true); }}
                       className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-stone-50 transition-colors"
@@ -2794,8 +2849,7 @@ export default function StaffingPage() {
                       <span className="text-[10.5px] font-semibold text-amber-700 bg-amber-100 rounded px-2 py-0.5 shrink-0">{t("staffing.pending")}</span>
                     </button>
                   )}
-                  {/* Trades row — managers see all, staff see only trades targeted at them */}
-                  {((!isStaff && pendingTrades.length > 0) || hasTradesForMe) && (
+                  {((canEdit && pendingTrades.length > 0) || hasTradesForMe) && (
                     <button
                       onClick={() => {
                         hapticLight(); setShowRequests(true); setMobileSection("schedule");
@@ -2807,7 +2861,7 @@ export default function StaffingPage() {
                         <ArrowLeftRight className="h-4 w-4 text-stone-700" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        {isStaff ? (
+                        {!canEdit ? (
                           <>
                             <p className="text-[13px] font-medium text-stone-900 leading-tight">{(myPendingTrades.length === 1 ? t("staffing.overview.shiftTradeSingular") : t("staffing.overview.shiftTradePlural")).replace("{count}", String(myPendingTrades.length))}</p>
                             <p className="text-[11px] text-stone-500 leading-tight">{t("staffing.overview.tradeTargetHint")}</p>
@@ -2993,6 +3047,8 @@ export default function StaffingPage() {
                               roleNames: shift.staffRoles ?? [],
                             });
                             setAddDialog(true);
+                          } else if (shift.memberId === myMemberId) {
+                            openTradeDialog(shift);
                           } else {
                             setShiftDetailShift(shift);
                           }
@@ -3032,7 +3088,7 @@ export default function StaffingPage() {
             </div>
 
             {/* ── Requests Section (in Schedule tab) — managers see all, staff see trades targeted at them ── */}
-            {((!isStaff && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
+            {((canEdit && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
               <div id="mobile-requests-panel" className="border-t border-stone-200">
                 <button
                   onClick={() => setShowRequests(!showRequests)}
@@ -3071,7 +3127,7 @@ export default function StaffingPage() {
                         </div>
                       </div>
                     ))}
-                    {(isStaff ? myPendingTrades : pendingTrades).map((trade) => {
+                    {(canEdit ? pendingTrades : myPendingTrades).map((trade) => {
                       const shift = shifts.find((s) => s.id === trade.shiftId);
                       const isTarget = trade.targetId === myMemberId;
                       return (
@@ -3097,7 +3153,7 @@ export default function StaffingPage() {
                             >
                               <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
                             </button>
-                            {!isStaff && (
+                            {canEdit && (
                               <button
                                 onClick={() => {
                                   hapticLight();
@@ -3400,6 +3456,12 @@ export default function StaffingPage() {
                           </button>
                         );
                       })}
+                      {canEdit && (
+                        <button onClick={() => { setEditingRole(null); setRoleForm({ name: "", color: "#44403c", description: "", icon: "briefcase", permissions: {} as StaffRolePermissions }); setRoleDialog(true); }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-border text-muted-foreground rounded hover:bg-stone-50 transition-colors">
+                          <Plus className="h-3 w-3" /> {t("staffing.roles.addRole")}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4412,11 +4474,11 @@ export default function StaffingPage() {
         <DynamicUIElementContent side="right">
           <DynamicUIElementTitle mobileTitle="Notifications">Notifications</DynamicUIElementTitle>
           <NotificationPanel
-            trades={isStaff ? myPendingTrades : orgShiftTrades.filter(t => t.status === "pending" || (t.status === "accepted" && !t.managerApproved))}
-            timeOff={isStaff ? [] : pendingTimeOff}
+            trades={canEdit ? orgShiftTrades.filter(t => t.status === "pending" || (t.status === "accepted" && !t.managerApproved)) : myPendingTrades}
+            timeOff={canEdit ? pendingTimeOff : []}
             shifts={shifts}
             myMemberId={myMemberId}
-            isStaff={isStaff}
+            canEdit={canEdit}
             getMemberName={getMemberName}
             formatTime={formatTime}
             formatDateShort={formatDateShort}

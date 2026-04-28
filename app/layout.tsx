@@ -41,10 +41,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Merchiva" />
       </head>
       <body className="h-full bg-background text-foreground">
-        <MobileDetector />
-        <ServiceWorkerRegistrar />
-        <Providers>{children}</Providers>
-        <Toaster position="top-center" richColors />
+        <div id="vaul-wrapper" data-vaul-drawer-wrapper="" className="h-full">
+          <MobileDetector />
+          <ServiceWorkerRegistrar />
+          <Providers>{children}</Providers>
+          <Toaster position="top-center" richColors />
+        </div>
       </body>
     </html>
   );

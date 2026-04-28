@@ -109,9 +109,7 @@ function NamePrompt({ memberId, onComplete }: { memberId: string; onComplete: ()
       const conn = getConnection();
       if (!conn) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (conn as any).reducers.updateMemberPermissions({
-        organizationId: "",
-        memberId,
+      await (conn as any).reducers.updateDisplayName({
         displayName: name.trim(),
       });
       toast.success(t("layout.namePrompt.saved"));

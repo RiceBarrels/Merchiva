@@ -21,7 +21,7 @@ interface NotificationPanelProps {
   timeOff: TimeOffRequest[];
   shifts: Shift[];
   myMemberId: string | null;
-  isStaff: boolean;
+  canEdit: boolean;
   getMemberName: (id: string) => string;
   formatTime: (t: string) => string;
   formatDateShort: (d: string) => string;
@@ -33,7 +33,7 @@ interface NotificationPanelProps {
 }
 
 export function NotificationPanel({
-  trades, timeOff, shifts, myMemberId, isStaff,
+  trades, timeOff, shifts, myMemberId, canEdit,
   getMemberName, formatTime, formatDateShort,
   onAcceptTrade, onDenyTrade, onManagerApproveTrade,
   onApproveTimeOff, onDenyTimeOff,
@@ -89,7 +89,7 @@ export function NotificationPanel({
                 </p>
               </div>
             </div>
-            {isStaff && isPending && isMyTrade && (
+            {!canEdit && isPending && isMyTrade && (
               <div className="flex gap-2 ml-9">
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAcceptTrade(trade.id)}>
                   <Check className="h-3.5 w-3.5 mr-1" />Accept
@@ -99,7 +99,7 @@ export function NotificationPanel({
                 </Button>
               </div>
             )}
-            {!isStaff && isAcceptedAwaitingManager && (
+            {canEdit && isAcceptedAwaitingManager && (
               <div className="flex gap-2 ml-9">
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onManagerApproveTrade(trade.id, true)}>
                   <Check className="h-3.5 w-3.5 mr-1" />Approve
@@ -109,7 +109,7 @@ export function NotificationPanel({
                 </Button>
               </div>
             )}
-            {!isStaff && isPending && (
+            {canEdit && isPending && (
               <p className="text-xs text-muted-foreground ml-9">
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Waiting for staff</Badge>
               </p>

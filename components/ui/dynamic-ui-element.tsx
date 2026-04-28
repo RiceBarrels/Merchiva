@@ -378,24 +378,28 @@ function MobileDynamicUIElementPage({
     ? "translateX(0)"
     : "translateX(100%)";
 
-  const bgShift = entered && !exiting
-    ? -screenW * 0.3 * (1 - progress)
-    : 0;
+  const bgActive = entered && !exiting;
+  const bgScale = bgActive ? 0.94 + 0.06 * progress : 1;
+  const bgShift = bgActive ? -screenW * 0.3 * (1 - progress) : 0;
+  const bgRadius = bgActive ? Math.round(12 * (1 - progress)) : 0;
 
-  const transition = dragging ? "none" : "transform 500ms cubic-bezier(0.32, 0.72, 0, 1)";
+  const transition = dragging ? "none" : "transform 500ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 500ms cubic-bezier(0.32, 0.72, 0, 1)";
 
-  // Move the layer directly behind this dialog
   React.useEffect(() => {
     const targetId = depth === 0 ? "mobile-content" : `mobile-dialog-${depth - 1}`;
     const el = document.getElementById(targetId);
     if (!el) return;
     el.style.transition = transition;
-    el.style.transform = `translateX(${bgShift}px)`;
+    el.style.transform = `translateX(${bgShift}px) scale(${bgScale})`;
+    el.style.borderRadius = `${bgRadius}px`;
+    el.style.overflow = bgActive ? "hidden" : "";
     return () => {
       el.style.transition = transition;
       el.style.transform = "";
+      el.style.borderRadius = "";
+      el.style.overflow = "";
     };
-  }, [entered, exiting, bgShift, transition, depth]);
+  }, [entered, exiting, bgShift, bgScale, bgRadius, bgActive, transition, depth]);
 
   return (
     <MobileDynamicUIElementDepthContext.Provider value={depth + 1}>
@@ -412,7 +416,7 @@ function MobileDynamicUIElementPage({
       >
       <DialogPrimitive.Popup
         data-slot="dialog-content"
-        className="absolute inset-0 flex flex-col bg-background text-sm text-foreground outline-none w-full max-w-none"
+        className="absolute inset-0 flex flex-col bg-background text-sm text-foreground outline-none w-full max-w-none p-0!"
         style={{
           borderRadius: (entered && !dragging && !exiting) ? "0" : "48px 0 0 48px",
           boxShadow: "-8px 0 30px rgba(0, 0, 0, 0.15)",

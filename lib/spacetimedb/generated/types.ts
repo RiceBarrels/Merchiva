@@ -309,6 +309,8 @@ export const ShiftTrade = __t.object("ShiftTrade", {
   managerId: __t.option(__t.string()),
   comments: __t.string(),
   createdAt: __t.timestamp(),
+  broadcastToAll: __t.bool(),
+  acceptedById: __t.option(__t.string()),
 });
 export type ShiftTrade = __Infer<typeof ShiftTrade>;
 

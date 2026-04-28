@@ -417,7 +417,7 @@ const shiftTradeTable = table(
     organizationId: t.string(),
     shiftId: t.string(),
     requesterId: t.string(),   // org_member ID
-    targetId: t.string(),      // org_member ID
+    targetId: t.string(),      // org_member ID, "" for broadcasts
     targetShiftId: t.option(t.string()),
     type: t.string(),           // "trade" | "cover"
     status: t.string(),         // "pending" | "accepted" | "denied" | "cancelled"
@@ -425,6 +425,8 @@ const shiftTradeTable = table(
     managerId: t.option(t.string()),
     comments: t.string(),
     createdAt: t.timestamp(),
+    broadcastToAll: t.bool().default(false),
+    acceptedById: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1195,6 +1197,20 @@ export const acceptInvitation = spacetimedb.reducer(
     // Mark invitation as accepted (delete + reinsert)
     ctx.db.orgInvitation.delete(invite);
     ctx.db.orgInvitation.insert({ ...invite, acceptedAt: ctx.timestamp });
+  }
+);
+
+/** Update own display name across user profile and all org memberships. */
+export const updateDisplayName = spacetimedb.reducer(
+  { displayName: t.string() },
+  (ctx, { displayName }) => {
+    const user = ctx.db.user.identity.find(ctx.sender);
+    if (!user) unauthorized('User not found');
+    ctx.db.user.identity.update({ ...user, displayName });
+    for (const m of [...ctx.db.orgMember.byUserId.filter(ctx.sender)]) {
+      ctx.db.orgMember.delete(m);
+      ctx.db.orgMember.insert({ ...m, displayName });
+    }
   }
 );
 
@@ -2066,6 +2082,7 @@ export const createShiftTrade = spacetimedb.reducer(
     organizationId: t.string(),
     shiftId: t.string(),
     requesterId: t.string(),
+    broadcastToAll: t.bool(),
     targetId: t.string(),
     targetShiftId: t.option(t.string()),
     type: t.string(),
@@ -2087,6 +2104,8 @@ export const createShiftTrade = spacetimedb.reducer(
       managerId: undefined,
       comments: args.comments,
       createdAt: ctx.timestamp,
+      broadcastToAll: args.broadcastToAll,
+      acceptedById: undefined,
     });
   }
 );
@@ -2104,19 +2123,25 @@ export const updateShiftTradeStatus = spacetimedb.reducer(
       .find(t => t.id.toString() === tradeId);
     if (!trade) throw new Error('Trade not found');
 
-    const isManager = member.role === 'owner' || member.role === 'manager';
+    const canEditStaffing = member.role === 'owner' ||
+      (() => { try { const p = JSON.parse(member.permissions); return p?.staffing?.edit === true; } catch { return false; } })();
     const isParticipant =
       trade.requesterId === member.id.toString() ||
-      trade.targetId === member.id.toString();
+      (trade.targetId !== '' && trade.targetId === member.id.toString());
+    const canAcceptBroadcast = trade.broadcastToAll && trade.requesterId !== member.id.toString();
 
-    if (!isManager && !isParticipant) unauthorized('Not a participant');
+    if (!canEditStaffing && !isParticipant && !canAcceptBroadcast) unauthorized('Not a participant');
+
+    const isApprover = canEditStaffing && status === 'accepted' && trade.status === 'accepted';
+    const isStaffAccepting = !canEditStaffing && status === 'accepted';
 
     ctx.db.shiftTrade.delete(trade);
     ctx.db.shiftTrade.insert({
       ...trade,
       status,
-      managerApproved: isManager && status === 'accepted',
-      managerId: isManager ? member.id.toString() : trade.managerId,
+      acceptedById: isStaffAccepting ? member.id.toString() : trade.acceptedById,
+      managerApproved: isApprover,
+      managerId: isApprover ? member.id.toString() : trade.managerId,
     });
   }
 );
