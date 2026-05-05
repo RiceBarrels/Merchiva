@@ -49,7 +49,9 @@
     "bookings": "Bookings",
     "training": "Training",
     "pricing": "Pricing",
-    "display": "Display"
+    "display": "Display",
+    "api": "API",
+    "reviews": "Reviews"
   },
   "login": {
     "title": "Sign in to Merchiva",
@@ -574,7 +576,10 @@
       "ratingLabel": "Rating (1–5)",
       "statusLabel": "Status",
       "cancel": "Cancel",
-      "submit": "Add Product"
+      "submit": "Add Product",
+      "translationsLabel": "Translations",
+      "translationsExpand": "Add Translations",
+      "translationsCollapse": "Hide Translations"
     },
     "toasts": {
       "nameRequired": "Name is required",

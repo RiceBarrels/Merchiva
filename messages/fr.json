@@ -49,7 +49,9 @@
     "bookings": "Réservations",
     "training": "Formation",
     "pricing": "Tarification",
-    "display": "Affichage"
+    "display": "Affichage",
+    "api": "API",
+    "reviews": "Avis"
   },
   "login": {
     "title": "Connexion à Merchiva",
@@ -574,7 +576,10 @@
       "ratingLabel": "Note (1–5)",
       "statusLabel": "Statut",
       "cancel": "Annuler",
-      "submit": "Ajouter le produit"
+      "submit": "Ajouter le produit",
+      "translationsLabel": "Traductions",
+      "translationsExpand": "Ajouter des traductions",
+      "translationsCollapse": "Masquer les traductions"
     },
     "toasts": {
       "nameRequired": "Le nom est requis",

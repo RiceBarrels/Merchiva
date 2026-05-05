@@ -73,6 +73,8 @@ import {
   Megaphone,
   GraduationCap,
   BadgeDollarSign,
+  Webhook,
+  MessageSquareHeart,
 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -143,6 +145,8 @@ const navItems: NavItemExt[] = [
   { labelKey: "nav.website",   href: "/builder",     icon: Globe,           permissionKey: "website"   },
   { labelKey: "nav.membership", href: "/membership", icon: Crown },
   { labelKey: "nav.bookings", href: "/bookings", icon: CalendarCheck, permissionKey: "settings" },
+  { labelKey: "nav.reviews",  href: "/reviews",  icon: MessageSquareHeart, permissionKey: "settings" },
+  { labelKey: "nav.api",      href: "/api-settings", icon: Webhook, permissionKey: "settings" },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {

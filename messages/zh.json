@@ -49,7 +49,9 @@
     "bookings": "预约",
     "training": "培训",
     "pricing": "定价",
-    "display": "显示屏"
+    "display": "显示屏",
+    "api": "API",
+    "reviews": "评价"
   },
   "login": {
     "title": "登录 Merchiva",
@@ -574,7 +576,10 @@
       "ratingLabel": "评分（1–5）",
       "statusLabel": "状态",
       "cancel": "取消",
-      "submit": "添加商品"
+      "submit": "添加商品",
+      "translationsLabel": "翻译",
+      "translationsExpand": "添加翻译",
+      "translationsCollapse": "隐藏翻译"
     },
     "toasts": {
       "nameRequired": "请填写名称",

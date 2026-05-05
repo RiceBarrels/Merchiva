@@ -17,7 +17,7 @@ import { getPaymentConfig, getRecentPayments } from "@/lib/db/payments";
 import { getCached, setCache } from "@/lib/cache";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
-import { useT } from "@/lib/i18n/context";
+import { useT, useI18n } from "@/lib/i18n/context";
 import {
   Drawer,
   DrawerContent,
@@ -131,6 +131,18 @@ function linesToCartItems(lines: POSLine[]): CartItem[] {
   }));
 }
 
+function getLocalizedName(product: Product, locale: string): string {
+  if (product.nameI18n) {
+    try {
+      const translations = typeof product.nameI18n === "string"
+        ? JSON.parse(product.nameI18n)
+        : product.nameI18n;
+      if (translations[locale]) return translations[locale];
+    } catch { /* fallback to default name */ }
+  }
+  return product.name;
+}
+
 // ─── Payment SDK loader ──────────────────────────────────────────────────────
 
 function loadPaymentScript(errorMsg: string): Promise<void> {
@@ -149,9 +161,10 @@ function loadPaymentScript(errorMsg: string): Promise<void> {
 
 // ─── Product Card ────────────────────────────────────────────────────────────
 
-function ProductCard({ product, onTap }: { product: Product; onTap: () => void }) {
+function ProductCard({ product, onTap, locale }: { product: Product; onTap: () => void; locale: string }) {
+  const displayName = getLocalizedName(product, locale);
   const CatIcon = catIcon(product.category);
-  const initial = product.name.charAt(0).toUpperCase();
+  const initial = displayName.charAt(0).toUpperCase();
   return (
     <button
       type="button"
@@ -162,7 +175,7 @@ function ProductCard({ product, onTap }: { product: Product; onTap: () => void }
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
-            alt={product.name}
+            alt={displayName}
             className="h-12 w-12 rounded-[0.3rem] object-cover shrink-0 bg-muted"
           />
         ) : (
@@ -174,7 +187,7 @@ function ProductCard({ product, onTap }: { product: Product; onTap: () => void }
           <CatIcon className="h-3 w-3 text-muted-foreground" />
         </div>
       </div>
-      <div className="text-[13px] font-semibold leading-tight">{product.name}</div>
+      <div className="text-[13px] font-semibold leading-tight">{displayName}</div>
       {product.description && (
         <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug line-clamp-2">
           {product.description}
@@ -1629,6 +1642,7 @@ function RefundPanel({
 type ActiveTab = "register" | "orders";
 
 export default function POSPage() {
+  const { locale } = useI18n();
   const t = useT();
   const { organizationId } = usePermissions();
 
@@ -1790,7 +1804,7 @@ export default function POSPage() {
       return [...prev, {
         uid: uid(),
         productId: product.id,
-        name: product.name,
+        name: getLocalizedName(product, locale),
         basePrice: product.price,
         price: product.price,
         qty: 1,
@@ -1799,7 +1813,7 @@ export default function POSPage() {
         discount: null,
       }];
     });
-  }, []);
+  }, [locale]);
 
   const setQty = useCallback((lineUid: string, q: number) => {
     setCart(prev => q <= 0 ? prev.filter(l => l.uid !== lineUid) : prev.map(l => l.uid === lineUid ? { ...l, qty: q } : l));
@@ -2142,7 +2156,7 @@ export default function POSPage() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                   {filteredProducts.map(p => (
-                    <ProductCard key={p.id} product={p} onTap={() => addToCart(p)} />
+                    <ProductCard key={p.id} product={p} onTap={() => addToCart(p)} locale={locale} />
                   ))}
                 </div>
               )}

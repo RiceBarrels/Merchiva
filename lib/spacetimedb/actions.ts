@@ -67,7 +67,11 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateProduct(productId: string, data: any): Promise<void> {
-  return conn().reducers.updateProduct({ organizationId: orgId(), productId, ...data });
+  const payload = { ...data };
+  if (payload.nameI18n && typeof payload.nameI18n !== "string") {
+    payload.nameI18n = JSON.stringify(payload.nameI18n);
+  }
+  return conn().reducers.updateProduct({ organizationId: orgId(), productId, ...payload });
 }
 
 export async function deleteProduct(productId: string): Promise<void> {

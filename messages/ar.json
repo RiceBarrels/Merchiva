@@ -49,7 +49,9 @@
     "bookings": "الحجوزات",
     "training": "التدريب",
     "pricing": "التسعير",
-    "display": "العرض"
+    "display": "العرض",
+    "api": "API",
+    "reviews": "المراجعات"
   },
   "login": {
     "title": "تسجيل الدخول إلى Merchiva",
@@ -574,7 +576,10 @@
       "ratingLabel": "التقييم (1–5)",
       "statusLabel": "الحالة",
       "cancel": "إلغاء",
-      "submit": "إضافة منتج"
+      "submit": "إضافة منتج",
+      "translationsLabel": "الترجمات",
+      "translationsExpand": "إضافة ترجمات",
+      "translationsCollapse": "إخفاء الترجمات"
     },
     "toasts": {
       "nameRequired": "الاسم مطلوب",

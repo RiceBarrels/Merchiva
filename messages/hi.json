@@ -49,7 +49,9 @@
     "bookings": "बुकिंग",
     "training": "प्रशिक्षण",
     "pricing": "मूल्य निर्धारण",
-    "display": "डिस्प्ले"
+    "display": "डिस्प्ले",
+    "api": "API",
+    "reviews": "समीक्षाएँ"
   },
   "login": {
     "title": "Merchiva में साइन इन करें",
@@ -574,7 +576,10 @@
       "ratingLabel": "रेटिंग (1–5)",
       "statusLabel": "स्थिति",
       "cancel": "रद्द करें",
-      "submit": "उत्पाद जोड़ें"
+      "submit": "उत्पाद जोड़ें",
+      "translationsLabel": "अनुवाद",
+      "translationsExpand": "अनुवाद जोड़ें",
+      "translationsCollapse": "अनुवाद छुपाएं"
     },
     "toasts": {
       "nameRequired": "नाम आवश्यक है",

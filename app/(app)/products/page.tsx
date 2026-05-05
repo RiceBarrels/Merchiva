@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   ShoppingBag,
   TrendingUp,
@@ -16,6 +16,7 @@ import {
   Plus,
   Loader2,
   RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 import {
   Card,
@@ -112,6 +113,7 @@ export default function ProductsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<Partial<Product>>(BLANK);
   const [saving, setSaving] = useState(false);
+  const [showTranslations, setShowTranslations] = useState(false);
 
   const CATEGORIES = ["All", ...Array.from(new Set(products.map((p) => p.category)))];
 
@@ -440,6 +442,37 @@ export default function ProductsPage() {
                 <Label>{t("products.dialog.categoryLabel")}</Label>
                 <Input value={form.category ?? ""} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} placeholder={t("products.dialog.categoryPlaceholder")} />
               </div>
+            </div>
+            {/* Translations */}
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setShowTranslations((v) => !v)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDown className={`h-3 w-3 transition-transform ${showTranslations ? "" : "-rotate-90"}`} />
+                {showTranslations ? t("products.dialog.translationsCollapse") : t("products.dialog.translationsExpand")}
+              </button>
+              {showTranslations && (
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                  {([["zh", "中文"], ["es", "Español"], ["fr", "Français"]] as const).map(([code, label]) => (
+                    <div key={code} className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+                      <Input
+                        value={(form.nameI18n as Record<string, string> | undefined)?.[code] ?? ""}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            nameI18n: { ...(f.nameI18n as Record<string, string> ?? {}), [code]: e.target.value },
+                          }))
+                        }
+                        placeholder={`${label}…`}
+                        className="text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

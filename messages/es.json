@@ -49,7 +49,9 @@
     "bookings": "Reservas",
     "training": "Capacitación",
     "pricing": "Precios",
-    "display": "Pantalla"
+    "display": "Pantalla",
+    "api": "API",
+    "reviews": "Reseñas"
   },
   "login": {
     "title": "Inicia sesión en Merchiva",
@@ -574,7 +576,10 @@
       "ratingLabel": "Valoración (1–5)",
       "statusLabel": "Estado",
       "cancel": "Cancelar",
-      "submit": "Añadir producto"
+      "submit": "Añadir producto",
+      "translationsLabel": "Traducciones",
+      "translationsExpand": "Agregar traducciones",
+      "translationsCollapse": "Ocultar traducciones"
     },
     "toasts": {
       "nameRequired": "El nombre es obligatorio",
