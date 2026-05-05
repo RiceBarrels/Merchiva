@@ -1,0 +1,232 @@
+"use client";
+
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Bug, Send, X, Camera } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { usePermissions } from "@/lib/context/permissions";
+import { hapticHeavy } from "@/lib/haptics";
+
+// ─── Shake Detection ────────────────────────────────────────────────────────
+
+const SHAKE_THRESHOLD = 25;
+const SHAKE_TIMEOUT = 1000;
+const SHAKE_COUNT_NEEDED = 2;
+
+function useShakeDetection(onShake: () => void) {
+  const lastX = useRef(0);
+  const lastY = useRef(0);
+  const lastZ = useRef(0);
+  const lastTime = useRef(0);
+  const shakeCount = useRef(0);
+  const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onShakeRef = useRef(onShake);
+  onShakeRef.current = onShake;
+
+  useEffect(() => {
+    function handleMotion(e: DeviceMotionEvent) {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+
+      const now = Date.now();
+      if (now - lastTime.current < 100) return;
+
+      const dx = Math.abs(acc.x - lastX.current);
+      const dy = Math.abs(acc.y - lastY.current);
+      const dz = Math.abs(acc.z - lastZ.current);
+      const force = dx + dy + dz;
+
+      lastX.current = acc.x;
+      lastY.current = acc.y;
+      lastZ.current = acc.z;
+      lastTime.current = now;
+
+      if (force > SHAKE_THRESHOLD) {
+        shakeCount.current++;
+        if (shakeTimer.current) clearTimeout(shakeTimer.current);
+        shakeTimer.current = setTimeout(() => { shakeCount.current = 0; }, SHAKE_TIMEOUT);
+
+        if (shakeCount.current >= SHAKE_COUNT_NEEDED) {
+          shakeCount.current = 0;
+          onShakeRef.current();
+        }
+      }
+    }
+
+    if (typeof window !== "undefined" && "DeviceMotionEvent" in window) {
+      window.addEventListener("devicemotion", handleMotion);
+    }
+    return () => {
+      window.removeEventListener("devicemotion", handleMotion);
+      if (shakeTimer.current) clearTimeout(shakeTimer.current);
+    };
+  }, []);
+}
+
+// ─── Bug Report Drawer ──────────────────────────────────────────────────────
+
+interface BugReport {
+  title: string;
+  description: string;
+  screenshot: string | null;
+  page: string;
+  userAgent: string;
+  timestamp: string;
+  orgId: string | null;
+}
+
+export function ShakeBugReport() {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const { organizationId } = usePermissions();
+
+  const handleShake = useCallback(() => {
+    hapticHeavy();
+    setOpen(true);
+  }, []);
+
+  useShakeDetection(handleShake);
+
+  const captureScreenshot = useCallback(async () => {
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(document.body, {
+        scale: 0.5,
+        useCORS: true,
+        logging: false,
+      });
+      setScreenshot(canvas.toDataURL("image/jpeg", 0.6));
+      toast.success("Screenshot captured");
+    } catch {
+      toast.error("Failed to capture screenshot");
+    }
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    if (!title.trim()) {
+      toast.error("Please add a title");
+      return;
+    }
+
+    const report: BugReport = {
+      title: title.trim(),
+      description: description.trim(),
+      screenshot,
+      page: window.location.pathname,
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+      orgId: organizationId,
+    };
+
+    // Store locally (could be sent to API later)
+    try {
+      const existing = JSON.parse(localStorage.getItem("bug_reports") || "[]");
+      existing.push(report);
+      localStorage.setItem("bug_reports", JSON.stringify(existing));
+    } catch {}
+
+    toast.success("Bug report saved");
+    setOpen(false);
+    setTitle("");
+    setDescription("");
+    setScreenshot(null);
+  }, [title, description, screenshot, organizationId]);
+
+  if (!open) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[200] bg-black/30"
+        onClick={() => setOpen(false)}
+      />
+      {/* Drawer from bottom */}
+      <div className="fixed inset-x-0 bottom-0 z-[201] bg-background border-t border-border rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-200">
+        {/* Handle */}
+        <div className="flex justify-center pt-2 pb-1">
+          <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pb-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Bug className="h-4 w-4 text-red-500" />
+            <span className="text-[14px] font-semibold">Report a Bug</span>
+          </div>
+          <button onClick={() => setOpen(false)} className="p-1 rounded-[0.3rem] hover:bg-muted">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">What went wrong?</label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Brief description of the issue"
+              className="text-[14px]"
+              autoFocus
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Details (optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Steps to reproduce, expected behavior..."
+              rows={3}
+              className="w-full rounded-[0.3rem] border border-border bg-background px-3 py-2 text-[13px] placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-border resize-none"
+            />
+          </div>
+
+          {/* Screenshot */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Screenshot</label>
+            {screenshot ? (
+              <div className="relative">
+                <img src={screenshot} alt="Bug screenshot" className="w-full rounded-[0.3rem] border border-border" />
+                <button
+                  onClick={() => setScreenshot(null)}
+                  className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-white"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={captureScreenshot}
+                className="w-full py-3 border border-dashed border-border rounded-[0.3rem] flex items-center justify-center gap-2 text-xs text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <Camera className="h-3.5 w-3.5" />
+                Capture Screenshot
+              </button>
+            )}
+          </div>
+
+          {/* Context */}
+          <div className="flex gap-2 text-[10px] text-muted-foreground font-mono">
+            <span className="px-1.5 py-0.5 bg-muted rounded">{window.location.pathname}</span>
+            <span className="px-1.5 py-0.5 bg-muted rounded">{new Date().toLocaleTimeString()}</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-border">
+          <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2">
+            <Send className="h-3.5 w-3.5" />
+            Submit Report
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
