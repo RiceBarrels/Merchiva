@@ -30,6 +30,8 @@ export function useProducts(_organizationId: string | null) {
         trend:              r.trend as Product["trend"],
         alert:              r.alert as Product["alert"],
         alertReason:        r.alertReason ?? undefined,
+        imageUrl:           r.imageUrl ?? undefined,
+        description:        r.description ?? undefined,
         squareItemId:       r.squareItemId ?? null,
       }));
   }, [rawProducts, organizationId]);

@@ -117,34 +117,36 @@ export function useStaffing(
       }));
   }, [rawConvos, organizationId]);
 
-  const myAvailability = useMemo<StaffAvailability | null>(() => {
-    if (!organizationId) return null;
-    const row = rawAvail.find(
-      (r) => r.organizationId === organizationId
-    );
-    if (!row) return null;
-    return {
-      id:             row.id.toString(),
-      userId:         row.userId.toHexString(),
-      organizationId: row.organizationId,
-      type:           row.type as StaffAvailability["type"],
-      startDate:      row.startDate ?? null,
-      endDate:        row.endDate ?? null,
-      days:           (() => {
-        try { return JSON.parse(row.days) as boolean[]; }
-        catch { return [false, false, false, false, false, false, false]; }
-      })(),
-      dayTimes:       (() => {
-        try { return JSON.parse(row.dayTimes); }
-        catch { return []; }
-      })(),
-      status:         row.status,
-      fullDay:        row.fullDay,
-      startTime:      row.startTime ?? null,
-      endTime:        row.endTime ?? null,
-      comments:       row.comments,
-    };
+  const allAvailability = useMemo<StaffAvailability[]>(() => {
+    if (!organizationId) return [];
+    return rawAvail
+      .filter((r) => r.organizationId === organizationId)
+      .map((row) => ({
+        id:             row.id.toString(),
+        userId:         row.userId.toHexString(),
+        organizationId: row.organizationId,
+        type:           row.type as StaffAvailability["type"],
+        startDate:      row.startDate ?? null,
+        endDate:        row.endDate ?? null,
+        days:           (() => {
+          try { return JSON.parse(row.days) as boolean[]; }
+          catch { return [false, false, false, false, false, false, false]; }
+        })(),
+        dayTimes:       (() => {
+          try { return JSON.parse(row.dayTimes); }
+          catch { return []; }
+        })(),
+        status:         row.status,
+        fullDay:        row.fullDay,
+        startTime:      row.startTime ?? null,
+        endTime:        row.endTime ?? null,
+        comments:       row.comments,
+      }));
   }, [rawAvail, organizationId]);
+
+  const myAvailability = useMemo<StaffAvailability | null>(() => {
+    return allAvailability[0] ?? null;
+  }, [allAvailability]);
 
   const myTimeOffRequests = useMemo<TimeOffRequest[]>(() => {
     if (!organizationId) return [];
@@ -196,6 +198,7 @@ export function useStaffing(
     roles,
     presets,
     chatOptions,
+    allAvailability,
     myAvailability,
     myTimeOffRequests,
     orgTimeOffRequests,

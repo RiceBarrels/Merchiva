@@ -26,6 +26,7 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
     tRef.current = t;
   }, [t]);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -40,13 +41,14 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   const builder = useMemo(() => {
     if (!authToken) return null;
 
-    console.log("ℹ️ INFO Connecting to SpacetimeDB WS...");
+    console.log(`ℹ️ INFO Connecting to SpacetimeDB WS...${retryCount > 0 ? ` (retry ${retryCount})` : ""}`);
     return DbConnection.builder()
       .withUri(SPACETIMEDB_URI)
       .withDatabaseName(SPACETIMEDB_MODULE)
       .withToken(authToken)
       .onConnect((conn, _identity, newToken) => {
         console.log("ℹ️ INFO Connected to SpacetimeDB WS");
+        if (retryCount > 0) setRetryCount(0);
         storeToken(newToken);
         setConnection(conn);
         conn.subscriptionBuilder().subscribe([
@@ -85,20 +87,37 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           "SELECT * FROM todo",
           "SELECT * FROM punch_event",
         ]);
+        // Subscribe to newer tables separately — these may not exist on older server versions
+        try {
+          conn.subscriptionBuilder().subscribe([
+            "SELECT * FROM notification",
+            "SELECT * FROM waste_log",
+            "SELECT * FROM location",
+          ]);
+        } catch {
+          console.warn("[SpacetimeDB] Some newer tables not available on server");
+        }
       })
       .onDisconnect(() => {
         clearConnection();
       })
       .onConnectError((_ctx, error) => {
         console.error("[SpacetimeDB] Connection error:", error);
-        import("sonner").then(({ toast }) => {
-          toast.error(tRef.current("toast.dbConnectionFailed"), {
-            description: String(error),
-            duration: 10000,
+        const MAX_RETRIES = 5;
+        const delay = Math.min(2000 * 2 ** retryCount, 30000);
+        if (retryCount < MAX_RETRIES) {
+          console.log(`ℹ️ INFO Retrying in ${delay / 1000}s... (${retryCount + 1}/${MAX_RETRIES})`);
+          setTimeout(() => setRetryCount((c) => c + 1), delay);
+        } else {
+          import("sonner").then(({ toast }) => {
+            toast.error(tRef.current("toast.dbConnectionFailed"), {
+              description: String(error),
+              duration: 10000,
+            });
           });
-        });
+        }
       });
-  }, [authToken]);
+  }, [authToken, retryCount]);
 
   if (!builder) {
     return (

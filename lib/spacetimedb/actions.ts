@@ -59,6 +59,8 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
     category: data.category,
     price: data.price ?? 0,
     cost: data.cost ?? 0,
+    imageUrl: data.imageUrl ?? null,
+    description: data.description ?? null,
   });
 }
 
@@ -329,6 +331,22 @@ export async function deleteComponent(id: string): Promise<void> {
   return conn().reducers.deleteComponent({ organizationId: orgId(), componentId: id });
 }
 
+// ─── Site Functions (FlowFn) ─────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function saveFunction(_data: any): Promise<void> {
+  console.warn("saveFunction: siteFunction table removed from server");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateFunction(_functionId: string, _data: any): Promise<void> {
+  console.warn("updateFunction: siteFunction table removed from server");
+}
+
+export async function deleteFunction(_functionId: string): Promise<void> {
+  console.warn("deleteFunction: siteFunction table removed from server");
+}
+
 // ─── Payments ─────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -581,6 +599,47 @@ export async function removeStoreDevice(deviceId: string): Promise<void> {
   const c = conn();
   if (!c.reducers.removeStoreDevice) return;
   return c.reducers.removeStoreDevice({ organizationId: orgId(), deviceId });
+}
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  return conn().reducers.markNotificationRead({ notificationId });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  return conn().reducers.markAllNotificationsRead({ organizationId: orgId() });
+}
+
+export async function dismissNotification(notificationId: string): Promise<void> {
+  return conn().reducers.dismissNotification({ notificationId });
+}
+
+// ─── Waste Log ──────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function addWasteLog(data: any): Promise<void> {
+  return conn().reducers.addWasteLog({ organizationId: orgId(), ...data });
+}
+
+export async function deleteWasteLog(wasteLogId: string): Promise<void> {
+  return conn().reducers.deleteWasteLog({ organizationId: orgId(), wasteLogId });
+}
+
+// ─── Locations ──────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function addLocation(data: any): Promise<void> {
+  return conn().reducers.addLocation({ organizationId: orgId(), ...data });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateLocation(locationId: string, data: any): Promise<void> {
+  return conn().reducers.updateLocation({ organizationId: orgId(), locationId, ...data });
+}
+
+export async function deleteLocation(locationId: string): Promise<void> {
+  return conn().reducers.deleteLocation({ organizationId: orgId(), locationId });
 }
 
 // ─── Sales records ────────────────────────────────────────────────────────────

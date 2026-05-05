@@ -138,6 +138,9 @@ const settingsTable = table(
     squareLastSyncedAt: t.option(t.timestamp()),
     paymentTaxRate: t.number(),
     paymentCurrency: t.string(),
+    locationLatitude: t.option(t.string()),
+    locationLongitude: t.option(t.string()),
+    googlePlacesId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
   }
@@ -455,6 +458,8 @@ const productTable = table(
     trend: t.string(),          // "up" | "down" | "stable"
     alert: t.string(),          // "none" | "underperforming" | "remove"
     alertReason: t.option(t.string()),
+    imageUrl: t.option(t.string()),
+    description: t.option(t.string()),
     squareItemId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
@@ -881,6 +886,80 @@ const siteBookingTable = table(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+const notificationTable = table(
+  {
+    name: 'notification',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byTargetId', algorithm: 'btree', columns: ['targetId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    targetId: t.identity(),
+    type: t.string(),             // "inventory_low" | "shift_trade" | "time_off" | "team" | "order" | "general"
+    title: t.string(),
+    body: t.string(),
+    link: t.option(t.string()),   // optional deep link e.g. "/staffing"
+    read: t.bool(),
+    createdAt: t.timestamp(),
+  }
+);
+
+// ─── Locations ───────────────────────────────────────────────────────────────
+
+const locationTable = table(
+  {
+    name: 'location',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    name: t.string(),
+    address: t.option(t.string()),
+    phone: t.option(t.string()),
+    isDefault: t.bool(),
+    sortOrder: t.number(),
+    createdAt: t.timestamp(),
+  }
+);
+
+// ─── Waste Log ───────────────────────────────────────────────────────────────
+
+const wasteLogTable = table(
+  {
+    name: 'waste_log',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byDate', algorithm: 'btree', columns: ['date'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    itemId: t.option(t.string()),
+    itemName: t.string(),
+    quantity: t.number(),
+    unit: t.string(),
+    reason: t.string(),           // "expired" | "damaged" | "overproduction" | "other"
+    costPerUnit: t.number(),
+    totalCost: t.number(),
+    date: t.string(),             // YYYY-MM-DD
+    notes: t.option(t.string()),
+    createdBy: t.option(t.string()), // member display name
+    createdAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -920,6 +999,9 @@ const spacetimedb = schema({
   siteMembership: siteMembershipTable,
   siteOrder: siteOrderTable,
   siteBooking: siteBookingTable,
+  notification: notificationTable,
+  wasteLog: wasteLogTable,
+  location: locationTable,
 });
 
 export default spacetimedb;
@@ -1111,6 +1193,9 @@ export const createOrg = spacetimedb.reducer(
       squareLastSyncedAt: undefined,
       paymentTaxRate: 0,
       paymentCurrency: 'USD',
+      locationLatitude: undefined,
+      locationLongitude: undefined,
+      googlePlacesId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
     });
@@ -1197,6 +1282,12 @@ export const acceptInvitation = spacetimedb.reducer(
     // Mark invitation as accepted (delete + reinsert)
     ctx.db.orgInvitation.delete(invite);
     ctx.db.orgInvitation.insert({ ...invite, acceptedAt: ctx.timestamp });
+
+    const joinName = user.displayName ?? user.email;
+    notifyOrgMembers(ctx, invite.organizationId, 'team',
+      'New team member',
+      `${joinName} has joined the team`,
+      '/team', ctx.sender);
   }
 );
 
@@ -1473,8 +1564,11 @@ export const updateSettings = spacetimedb.reducer(
     timezone: t.string(),
     paymentTaxRate: t.number(),
     paymentCurrency: t.string(),
+    locationLatitude: t.option(t.string()),
+    locationLongitude: t.option(t.string()),
+    googlePlacesId: t.option(t.string()),
   },
-  (ctx, { organizationId, businessName, businessType, timezone, paymentTaxRate, paymentCurrency }) => {
+  (ctx, { organizationId, businessName, businessType, timezone, paymentTaxRate, paymentCurrency, locationLatitude, locationLongitude, googlePlacesId }) => {
     const member = findActiveMember(ctx, organizationId);
     const perms = JSON.parse(member.permissions);
     if (!perms.settings?.view) unauthorized('No settings permission');
@@ -1490,6 +1584,9 @@ export const updateSettings = spacetimedb.reducer(
       timezone,
       paymentTaxRate,
       paymentCurrency,
+      locationLatitude,
+      locationLongitude,
+      googlePlacesId,
       updatedAt: ctx.timestamp,
     });
   }
@@ -1558,6 +1655,7 @@ export const updateInventoryItem = spacetimedb.reducer(
     if (!perms.inventory?.edit) unauthorized('No inventory edit permission');
 
     const item = findItemInOrg(ctx.db.inventoryItem, args.organizationId, args.itemId);
+    const wasAboveMin = item.currentStock > item.minStock;
     ctx.db.inventoryItem.delete(item);
     ctx.db.inventoryItem.insert({
       ...item,
@@ -1573,6 +1671,13 @@ export const updateInventoryItem = spacetimedb.reducer(
       lossRate: args.lossRate,
       updatedAt: ctx.timestamp,
     });
+
+    if (wasAboveMin && args.currentStock <= args.minStock) {
+      notifyOrgMembers(ctx, args.organizationId, 'inventory_low',
+        `Low stock: ${args.name}`,
+        `${args.name} is at ${args.currentStock} ${item.unit} (min: ${args.minStock})`,
+        '/inventory');
+    }
   }
 );
 
@@ -1628,6 +1733,8 @@ export const addProduct = spacetimedb.reducer(
     category: t.string(),
     price: t.number(),
     cost: t.number(),
+    imageUrl: t.option(t.string()),
+    description: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -1649,6 +1756,8 @@ export const addProduct = spacetimedb.reducer(
       trend: 'stable',
       alert: 'none',
       alertReason: undefined,
+      imageUrl: args.imageUrl,
+      description: args.description,
       squareItemId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
@@ -1667,6 +1776,8 @@ export const updateProduct = spacetimedb.reducer(
     trend: t.string(),
     alert: t.string(),
     alertReason: t.option(t.string()),
+    imageUrl: t.option(t.string()),
+    description: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -1685,6 +1796,8 @@ export const updateProduct = spacetimedb.reducer(
       trend: args.trend,
       alert: args.alert,
       alertReason: args.alertReason,
+      imageUrl: args.imageUrl,
+      description: args.description,
       updatedAt: ctx.timestamp,
     });
   }
@@ -2033,6 +2146,7 @@ export const createTimeOffRequest = spacetimedb.reducer(
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
 
+    const member = findActiveMember(ctx, args.organizationId);
     ctx.db.timeOffRequest.insert({
       id: ctx.newUuidV4(),
       userId: ctx.sender,
@@ -2048,6 +2162,24 @@ export const createTimeOffRequest = spacetimedb.reducer(
       reviewedAt: undefined,
       createdAt: ctx.timestamp,
     });
+
+    const memberName = (member as { displayName?: string }).displayName || 'A team member';
+    const managers = [...ctx.db.orgMember.byOrganizationId.filter(args.organizationId)]
+      .filter((m: { role: string; status: string }) => (m.role === 'owner' || m.role === 'manager') && m.status === 'active');
+    for (const mgr of managers) {
+      if ((mgr as { userId: { toString(): string } }).userId.toString() === ctx.sender.toString()) continue;
+      ctx.db.notification.insert({
+        id: ctx.newUuidV4(),
+        organizationId: args.organizationId,
+        targetId: (mgr as { userId: typeof ctx.sender }).userId,
+        type: 'time_off',
+        title: 'Time off request',
+        body: `${memberName} requested time off ${args.startDate} – ${args.endDate}`,
+        link: '/staffing',
+        read: false,
+        createdAt: ctx.timestamp,
+      });
+    }
   }
 );
 
@@ -2071,6 +2203,18 @@ export const updateTimeOffStatus = spacetimedb.reducer(
       status,
       reviewedBy: member.id.toString(),
       reviewedAt: ctx.timestamp,
+    });
+
+    ctx.db.notification.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      targetId: req.userId,
+      type: 'time_off',
+      title: `Time off ${status}`,
+      body: `Your time off request (${req.startDate} – ${req.endDate}) has been ${status}`,
+      link: '/staffing',
+      read: false,
+      createdAt: ctx.timestamp,
     });
   }
 );
@@ -2107,6 +2251,33 @@ export const createShiftTrade = spacetimedb.reducer(
       broadcastToAll: args.broadcastToAll,
       acceptedById: undefined,
     });
+
+    const requester = [...ctx.db.orgMember.byOrganizationId.filter(args.organizationId)]
+      .find((m: { id: { toString(): string } }) => m.id.toString() === args.requesterId);
+    const requesterName = requester ? (requester as { displayName: string }).displayName : 'A team member';
+
+    if (args.broadcastToAll) {
+      notifyOrgMembers(ctx, args.organizationId, 'shift_trade',
+        `Shift ${args.type} request`,
+        `${requesterName} is looking for someone to ${args.type === 'cover' ? 'cover' : 'trade'} their shift`,
+        '/staffing', ctx.sender);
+    } else if (args.targetId) {
+      const target = [...ctx.db.orgMember.byOrganizationId.filter(args.organizationId)]
+        .find((m: { id: { toString(): string } }) => m.id.toString() === args.targetId);
+      if (target) {
+        ctx.db.notification.insert({
+          id: ctx.newUuidV4(),
+          organizationId: args.organizationId,
+          targetId: (target as { userId: { toString(): string } }).userId as unknown as typeof ctx.sender,
+          type: 'shift_trade',
+          title: `Shift ${args.type} request`,
+          body: `${requesterName} wants to ${args.type === 'cover' ? 'have you cover' : 'trade'} a shift with you`,
+          link: '/staffing',
+          read: false,
+          createdAt: ctx.timestamp,
+        });
+      }
+    }
   }
 );
 
@@ -3121,6 +3292,244 @@ export const deleteTodo = spacetimedb.reducer(
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATION REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const createNotification = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    targetIdentity: t.identity(),
+    type: t.string(),
+    title: t.string(),
+    body: t.string(),
+    link: t.option(t.string()),
+  },
+  (ctx, { organizationId, targetIdentity, type, title, body, link }) => {
+    findActiveMember(ctx, organizationId);
+    ctx.db.notification.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      targetId: targetIdentity,
+      type,
+      title,
+      body,
+      link: link ?? undefined,
+      read: false,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const markNotificationRead = spacetimedb.reducer(
+  { notificationId: t.string() },
+  (ctx, { notificationId }) => {
+    const notif = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
+      .find(n => n.id.toString() === notificationId);
+    if (!notif) throw new Error('Notification not found');
+    ctx.db.notification.id.update({ ...notif, read: true });
+  }
+);
+
+export const markAllNotificationsRead = spacetimedb.reducer(
+  { organizationId: t.string() },
+  (ctx, { organizationId }) => {
+    const unread = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
+      .filter(n => n.organizationId === organizationId && !n.read);
+    for (const notif of unread) {
+      ctx.db.notification.id.update({ ...notif, read: true });
+    }
+  }
+);
+
+export const dismissNotification = spacetimedb.reducer(
+  { notificationId: t.string() },
+  (ctx, { notificationId }) => {
+    const notif = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
+      .find(n => n.id.toString() === notificationId);
+    if (!notif) throw new Error('Notification not found');
+    ctx.db.notification.delete(notif);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WASTE LOG REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addWasteLog = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    itemId: t.option(t.string()),
+    itemName: t.string(),
+    quantity: t.number(),
+    unit: t.string(),
+    reason: t.string(),
+    costPerUnit: t.number(),
+    date: t.string(),
+    notes: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    const perms = JSON.parse(member.permissions);
+    if (!perms.inventory?.edit) unauthorized('No inventory edit permission');
+
+    const totalCost = args.quantity * args.costPerUnit;
+
+    ctx.db.wasteLog.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      itemId: args.itemId,
+      itemName: args.itemName,
+      quantity: args.quantity,
+      unit: args.unit,
+      reason: args.reason,
+      costPerUnit: args.costPerUnit,
+      totalCost,
+      date: args.date,
+      notes: args.notes,
+      createdBy: (member as { displayName?: string }).displayName ?? undefined,
+      createdAt: ctx.timestamp,
+    });
+
+    // Auto-deduct from inventory if linked to an item
+    if (args.itemId) {
+      const item = [...ctx.db.inventoryItem.byOrganizationId.filter(args.organizationId)]
+        .find(i => i.id.toString() === args.itemId);
+      if (item) {
+        const newStock = Math.max(0, item.currentStock - args.quantity);
+        const wasAboveMin = item.currentStock > item.minStock;
+        ctx.db.inventoryItem.delete(item);
+        ctx.db.inventoryItem.insert({ ...item, currentStock: newStock, updatedAt: ctx.timestamp });
+
+        // Also record as a loss transaction
+        ctx.db.inventoryTransaction.insert({
+          id: ctx.newUuidV4(),
+          organizationId: args.organizationId,
+          itemId: args.itemId,
+          itemName: args.itemName,
+          type: 'loss',
+          quantity: args.quantity,
+          note: `Waste: ${args.reason}${args.notes ? ' — ' + args.notes : ''}`,
+          date: args.date,
+          createdAt: ctx.timestamp,
+        });
+
+        if (wasAboveMin && newStock <= item.minStock) {
+          notifyOrgMembers(ctx, args.organizationId, 'inventory_low',
+            `Low stock: ${item.name}`,
+            `${item.name} dropped to ${newStock} ${item.unit} after waste disposal`,
+            '/inventory');
+        }
+      }
+    }
+  }
+);
+
+export const deleteWasteLog = spacetimedb.reducer(
+  { organizationId: t.string(), wasteLogId: t.string() },
+  (ctx, { organizationId, wasteLogId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    const perms = JSON.parse(member.permissions);
+    if (!perms.inventory?.edit) unauthorized('No inventory edit permission');
+
+    const log = [...ctx.db.wasteLog.byOrganizationId.filter(organizationId)]
+      .find(w => w.id.toString() === wasteLogId);
+    if (!log) throw new Error('Waste log not found');
+    ctx.db.wasteLog.delete(log);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOCATION REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addLocation = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    name: t.string(),
+    address: t.option(t.string()),
+    phone: t.option(t.string()),
+    isDefault: t.bool(),
+    sortOrder: t.number(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    if (args.isDefault) {
+      const existing = [...ctx.db.location.byOrganizationId.filter(args.organizationId)]
+        .filter(l => l.isDefault);
+      for (const loc of existing) {
+        ctx.db.location.delete(loc);
+        ctx.db.location.insert({ ...loc, isDefault: false });
+      }
+    }
+
+    ctx.db.location.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      name: args.name,
+      address: args.address,
+      phone: args.phone,
+      isDefault: args.isDefault,
+      sortOrder: args.sortOrder,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateLocation = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    locationId: t.string(),
+    name: t.string(),
+    address: t.option(t.string()),
+    phone: t.option(t.string()),
+    isDefault: t.bool(),
+    sortOrder: t.number(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const loc = [...ctx.db.location.byOrganizationId.filter(args.organizationId)]
+      .find(l => l.id.toString() === args.locationId);
+    if (!loc) throw new Error('Location not found');
+
+    if (args.isDefault && !loc.isDefault) {
+      const others = [...ctx.db.location.byOrganizationId.filter(args.organizationId)]
+        .filter(l => l.isDefault && l.id.toString() !== args.locationId);
+      for (const o of others) {
+        ctx.db.location.delete(o);
+        ctx.db.location.insert({ ...o, isDefault: false });
+      }
+    }
+
+    ctx.db.location.delete(loc);
+    ctx.db.location.insert({
+      ...loc,
+      name: args.name,
+      address: args.address,
+      phone: args.phone,
+      isDefault: args.isDefault,
+      sortOrder: args.sortOrder,
+    });
+  }
+);
+
+export const deleteLocation = spacetimedb.reducer(
+  { organizationId: t.string(), locationId: t.string() },
+  (ctx, { organizationId, locationId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const loc = [...ctx.db.location.byOrganizationId.filter(organizationId)]
+      .find(l => l.id.toString() === locationId);
+    if (!loc) throw new Error('Location not found');
+    ctx.db.location.delete(loc);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // SETTINGS — CLOVER DISCONNECT
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -3152,6 +3561,26 @@ function findItemInOrg<T extends { id: { toString(): string } }>(
     .find(r => r.id.toString() === itemId);
   if (!item) throw new Error('Record not found');
   return item;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function notifyOrgMembers(ctx: any, organizationId: string, type: string, title: string, body: string, link?: string, excludeIdentity?: { toString(): string }) {
+  const members = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+    .filter((m: { status: string }) => m.status === 'active');
+  for (const m of members) {
+    if (excludeIdentity && m.userId.toString() === excludeIdentity.toString()) continue;
+    ctx.db.notification.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      targetId: m.userId,
+      type,
+      title,
+      body,
+      link: link ?? undefined,
+      read: false,
+      createdAt: ctx.timestamp,
+    });
+  }
 }
 
 /** Look up the calling user's active org membership, throwing if not found. */

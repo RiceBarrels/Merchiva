@@ -14,6 +14,9 @@ export interface UserSettings {
   cloverConnected: boolean;
   cloverMerchantId: string | null;
   cloverLastSyncedAt: string | null;
+  locationLatitude: string | null;
+  locationLongitude: string | null;
+  googlePlacesId: string | null;
 }
 
 export async function getSettings(): Promise<UserSettings | null> {
@@ -33,9 +36,15 @@ export async function getSettings(): Promise<UserSettings | null> {
         squareMerchantId: r.squareMerchantId ?? null,
         squareLocationId: r.squareLocationId ?? null,
         squareLastSyncedAt: r.squareLastSyncedAt ? String(r.squareLastSyncedAt) : null,
-        cloverConnected: false,
+        // Clover credentials stored in httpOnly cookies — detect via client-readable cookie
+        cloverConnected: typeof document !== "undefined"
+          ? document.cookie.split("; ").some((c) => c.startsWith("clover_connected=true"))
+          : false,
         cloverMerchantId: null,
         cloverLastSyncedAt: null,
+        locationLatitude: r.locationLatitude ?? null,
+        locationLongitude: r.locationLongitude ?? null,
+        googlePlacesId: r.googlePlacesId ?? null,
       };
     }
   }

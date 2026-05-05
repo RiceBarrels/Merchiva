@@ -25,6 +25,8 @@ export default __t.row({
   trend: __t.string(),
   alert: __t.string(),
   alertReason: __t.option(__t.string()).name("alert_reason"),
+  imageUrl: __t.option(__t.string()).name("image_url"),
+  description: __t.option(__t.string()),
   squareItemId: __t.option(__t.string()).name("square_item_id"),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),

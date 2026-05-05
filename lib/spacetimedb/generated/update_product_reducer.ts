@@ -20,4 +20,6 @@ export default {
   trend: __t.string(),
   alert: __t.string(),
   alertReason: __t.option(__t.string()),
+  imageUrl: __t.option(__t.string()),
+  description: __t.option(__t.string()),
 };

@@ -80,6 +80,18 @@ export const InventoryTransaction = __t.object("InventoryTransaction", {
 });
 export type InventoryTransaction = __Infer<typeof InventoryTransaction>;
 
+export const Location = __t.object("Location", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  name: __t.string(),
+  address: __t.option(__t.string()),
+  phone: __t.option(__t.string()),
+  isDefault: __t.bool(),
+  sortOrder: __t.f64(),
+  createdAt: __t.timestamp(),
+});
+export type Location = __Infer<typeof Location>;
+
 export const MembershipPerk = __t.object("MembershipPerk", {
   id: __t.uuid(),
   tierId: __t.string(),
@@ -114,6 +126,19 @@ export const MembershipTier = __t.object("MembershipTier", {
   createdAt: __t.timestamp(),
 });
 export type MembershipTier = __Infer<typeof MembershipTier>;
+
+export const Notification = __t.object("Notification", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  targetId: __t.identity(),
+  type: __t.string(),
+  title: __t.string(),
+  body: __t.string(),
+  link: __t.option(__t.string()),
+  read: __t.bool(),
+  createdAt: __t.timestamp(),
+});
+export type Notification = __Infer<typeof Notification>;
 
 export const OrgInvitation = __t.object("OrgInvitation", {
   id: __t.uuid(),
@@ -199,6 +224,8 @@ export const Product = __t.object("Product", {
   trend: __t.string(),
   alert: __t.string(),
   alertReason: __t.option(__t.string()),
+  imageUrl: __t.option(__t.string()),
+  description: __t.option(__t.string()),
   squareItemId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
@@ -263,6 +290,9 @@ export const Settings = __t.object("Settings", {
   squareLastSyncedAt: __t.option(__t.timestamp()),
   paymentTaxRate: __t.f64(),
   paymentCurrency: __t.string(),
+  locationLatitude: __t.option(__t.string()),
+  locationLongitude: __t.option(__t.string()),
+  googlePlacesId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
 });
@@ -497,4 +527,21 @@ export const User = __t.object("User", {
   createdAt: __t.timestamp(),
 });
 export type User = __Infer<typeof User>;
+
+export const WasteLog = __t.object("WasteLog", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  itemId: __t.option(__t.string()),
+  itemName: __t.string(),
+  quantity: __t.f64(),
+  unit: __t.string(),
+  reason: __t.string(),
+  costPerUnit: __t.f64(),
+  totalCost: __t.f64(),
+  date: __t.string(),
+  notes: __t.option(__t.string()),
+  createdBy: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+});
+export type WasteLog = __Infer<typeof WasteLog>;
 

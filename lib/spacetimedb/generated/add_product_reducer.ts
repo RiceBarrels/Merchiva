@@ -16,4 +16,6 @@ export default {
   category: __t.string(),
   price: __t.f64(),
   cost: __t.f64(),
+  imageUrl: __t.option(__t.string()),
+  description: __t.option(__t.string()),
 };

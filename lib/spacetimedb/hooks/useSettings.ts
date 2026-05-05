@@ -16,6 +16,8 @@ export function useSettings() {
     if (!organizationId) return null;
     const row = rawSettings.find((r) => r.organizationId === organizationId);
     if (!row) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = row as any;
     return {
       id:                  row.id.toString(),
       userId:              organizationId, // settings are org-scoped in SpacetimeDB
@@ -28,10 +30,15 @@ export function useSettings() {
       squareLastSyncedAt:  row.squareLastSyncedAt
         ? row.squareLastSyncedAt.toDate().toISOString()
         : null,
-      // Clover integration not in SpacetimeDB schema
-      cloverConnected:     false,
-      cloverMerchantId:    null,
+      // Clover credentials stored in httpOnly cookies — detect via client-readable cookie
+      cloverConnected:     typeof document !== "undefined"
+        ? document.cookie.split("; ").some((c) => c.startsWith("clover_connected=true"))
+        : false,
+      cloverMerchantId:    null, // httpOnly — not readable from JS
       cloverLastSyncedAt:  null,
+      locationLatitude:    r.locationLatitude ?? null,
+      locationLongitude:   r.locationLongitude ?? null,
+      googlePlacesId:      r.googlePlacesId ?? null,
     };
   }, [rawSettings, organizationId]);
 

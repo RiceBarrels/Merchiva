@@ -25,6 +25,9 @@ export default __t.row({
   squareLastSyncedAt: __t.option(__t.timestamp()).name("square_last_synced_at"),
   paymentTaxRate: __t.f64().name("payment_tax_rate"),
   paymentCurrency: __t.string().name("payment_currency"),
+  locationLatitude: __t.option(__t.string()).name("location_latitude"),
+  locationLongitude: __t.option(__t.string()).name("location_longitude"),
+  googlePlacesId: __t.option(__t.string()).name("google_places_id"),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),
 });

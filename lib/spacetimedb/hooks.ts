@@ -63,3 +63,12 @@ export function useCustomerPoints()   { return useTable(tables.customerPoints); 
 
 // ── Todos ────────────────────────────────────────────────────────────────────
 export function useTodos() { return useTable(tables.todo); }
+
+// ── Notifications ───────────────────────────────────────────────────────────
+export function useNotifications() { return useTable(tables.notification); }
+
+// ── Waste Log ───────────────────────────────────────────────────────────────
+export function useWasteLogs() { return useTable(tables.wasteLog); }
+
+// ── Locations ───────────────────────────────────────────────────────────────
+export function useLocations() { return useTable(tables.location); }

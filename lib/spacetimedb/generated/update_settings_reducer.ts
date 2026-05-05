@@ -17,4 +17,7 @@ export default {
   timezone: __t.string(),
   paymentTaxRate: __t.f64(),
   paymentCurrency: __t.string(),
+  locationLatitude: __t.option(__t.string()),
+  locationLongitude: __t.option(__t.string()),
+  googlePlacesId: __t.option(__t.string()),
 };

@@ -232,6 +232,55 @@ export interface ShiftTrade {
   createdAt: string;
 }
 
+// ─── Notifications ─────────────────────────────────────────────────────────
+
+export type NotificationType = "inventory_low" | "shift_trade" | "time_off" | "team" | "order" | "general";
+
+export interface AppNotification {
+  id: string;
+  organizationId: string;
+  targetId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+// ─── Locations ─────────────────────────────────────────────────────────────
+
+export interface Location {
+  id: string;
+  organizationId: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  isDefault: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+// ─── Waste Log ─────────────────────────────────────────────────────────────
+
+export type WasteReason = "expired" | "damaged" | "overproduction" | "other";
+
+export interface WasteLog {
+  id: string;
+  organizationId: string;
+  itemId: string | null;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  reason: WasteReason;
+  costPerUnit: number;
+  totalCost: number;
+  date: string;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
 // ─── Todos ──────────────────────────────────────────────────────────────────
 
 export interface Todo {
@@ -299,6 +348,7 @@ export interface Product {
   trend: "up" | "down" | "stable";
   alert: ProductAlert;
   alertReason?: string;
+  imageUrl?: string;
   description?: string;
   images?: string[];
   pageTemplate?: SiteElement[] | null;
@@ -358,7 +408,7 @@ export type ElementType =
   | "product-card" | "booking-form" | "coupon-banner"
   | "pricing-table" | "testimonial" | "faq" | "gallery"
   | "custom-html" | "login-form" | "code-block" | "membership-widget"
-  | "cart" | "checkout" | "reward" | "icon"
+  | "cart" | "checkout" | "reward" | "icon" | "menu-grid"
   | "viewport"
   | "container"; // legacy alias — do not use in new code
 
@@ -423,6 +473,7 @@ export interface Site {
   features: SiteFeatures;
   published: boolean;
   customDomain: string | null;
+  values?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
