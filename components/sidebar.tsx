@@ -59,6 +59,7 @@ import {
   Check,
   Loader2,
   MessageSquare,
+  Monitor,
   MonitorSmartphone,
   KeyRound,
   Bell,
@@ -70,6 +71,8 @@ import {
   Truck,
   CalendarCheck,
   Megaphone,
+  GraduationCap,
+  BadgeDollarSign,
 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -126,12 +129,15 @@ const navItems: NavItemExt[] = [
   { labelKey: "nav.wasteLog",  href: "/inventory/waste", icon: Trash2,      permissionKey: "inventory" },
   { labelKey: "nav.sales",     href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
   { labelKey: "nav.staffing",  href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
+  { labelKey: "nav.training",  href: "/training",    icon: GraduationCap,   permissionKey: "staffing"  },
   { labelKey: "nav.products",  href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
+  { labelKey: "nav.pricing",   href: "/pricing",     icon: BadgeDollarSign, permissionKey: "products"  },
   { labelKey: "nav.reports",   href: "/reports",     icon: FileBarChart,    permissionKey: "sales"     },
   { labelKey: "nav.finances",  href: "/finances",    icon: Wallet,          permissionKey: "sales"     },
   { labelKey: "nav.customers", href: "/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
   { labelKey: "nav.marketing", href: "/marketing",   icon: Megaphone,       permissionKey: "sales"     },
   { labelKey: "nav.pos",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
+  { labelKey: "nav.display",   href: "/display",     icon: Monitor,           permissionKey: "pos"     },
   { labelKey: "nav.punchIn",   href: "/punch-in",    icon: KeyRound },
   { labelKey: "nav.chat",      href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { labelKey: "nav.website",   href: "/builder",     icon: Globe,           permissionKey: "website"   },
