@@ -130,6 +130,13 @@ import UpdatePurchaseOrderStatusReducer from "./update_purchase_order_status_red
 import AddExpenseReducer from "./add_expense_reducer";
 import UpdateExpenseReducer from "./update_expense_reducer";
 import DeleteExpenseReducer from "./delete_expense_reducer";
+import AddCouponReducer from "./add_coupon_reducer";
+import UpdateCouponReducer from "./update_coupon_reducer";
+import DeleteCouponReducer from "./delete_coupon_reducer";
+import RedeemCouponReducer from "./redeem_coupon_reducer";
+import AddQueueEntryReducer from "./add_queue_entry_reducer";
+import UpdateQueueStatusReducer from "./update_queue_status_reducer";
+import DeleteQueueEntryReducer from "./delete_queue_entry_reducer";
 
 // Import all procedure arg schemas
 
@@ -175,6 +182,8 @@ import WasteLogRow from "./waste_log_table";
 import SupplierRow from "./supplier_table";
 import PurchaseOrderRow from "./purchase_order_table";
 import ExpenseRow from "./expense_table";
+import CouponRow from "./coupon_table";
+import QueueEntryRow from "./queue_entry_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -841,6 +850,34 @@ const tablesSchema = __schema({
       { name: 'expense_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ExpenseRow),
+  coupon: __table({
+    name: 'coupon',
+    indexes: [
+      { accessor: 'id', name: 'coupon_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'coupon_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'coupon_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, CouponRow),
+  queueEntry: __table({
+    name: 'queue_entry',
+    indexes: [
+      { accessor: 'id', name: 'queue_entry_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'queue_entry_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'queue_entry_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, QueueEntryRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -941,6 +978,13 @@ const reducersSchema = __reducers(
   __reducerSchema("add_expense", AddExpenseReducer),
   __reducerSchema("update_expense", UpdateExpenseReducer),
   __reducerSchema("delete_expense", DeleteExpenseReducer),
+  __reducerSchema("add_coupon", AddCouponReducer),
+  __reducerSchema("update_coupon", UpdateCouponReducer),
+  __reducerSchema("delete_coupon", DeleteCouponReducer),
+  __reducerSchema("redeem_coupon", RedeemCouponReducer),
+  __reducerSchema("add_queue_entry", AddQueueEntryReducer),
+  __reducerSchema("update_queue_status", UpdateQueueStatusReducer),
+  __reducerSchema("delete_queue_entry", DeleteQueueEntryReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

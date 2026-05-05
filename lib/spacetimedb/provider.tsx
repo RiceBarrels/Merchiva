@@ -100,6 +100,14 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         } catch {
           console.warn("[SpacetimeDB] Some newer tables not available on server");
         }
+        try {
+          conn.subscriptionBuilder().subscribe([
+            "SELECT * FROM coupon",
+            "SELECT * FROM queue_entry",
+          ]);
+        } catch {
+          console.warn("[SpacetimeDB] Coupon/queue tables not available on server");
+        }
       })
       .onDisconnect(() => {
         clearConnection();

@@ -675,6 +675,39 @@ export interface Payment {
   createdAt: string;
 }
 
+// ─── Coupons ───────────────────────────────────────────────────────────────
+
+export interface Coupon {
+  id: string;
+  organizationId: string;
+  code: string;
+  discountType: "percent" | "fixed";
+  discountValue: number;
+  minPurchase: number;
+  maxUses: number;
+  usedCount: number;
+  validFrom: string;
+  validUntil: string;
+  active: boolean;
+  description: string | null;
+  createdAt: string;
+}
+
+// ─── Queue ─────────────────────────────────────────────────────────────────
+
+export interface QueueEntry {
+  id: string;
+  organizationId: string;
+  customerName: string;
+  partySize: number;
+  phone: string | null;
+  status: "waiting" | "seated" | "cancelled" | "no_show";
+  estimatedWait: number;
+  notes: string | null;
+  queuedAt: string;
+  seatedAt: string | null;
+}
+
 // ─── SiteElementType alias for backward compatibility
 export type SiteElementType = ElementType;
 

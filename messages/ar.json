@@ -31,6 +31,7 @@
     "products": "المنتجات",
     "reports": "التقارير",
     "customers": "العملاء",
+    "marketing": "التسويق",
     "pos": "نقطة البيع",
     "punchIn": "تسجيل الحضور",
     "chat": "المحادثة",
@@ -44,7 +45,8 @@
     "createNewStore": "إنشاء متجر جديد",
     "storeName": "اسم المتجر",
     "create": "إنشاء",
-    "account": "الحساب"
+    "account": "الحساب",
+    "bookings": "الحجوزات"
   },
   "login": {
     "title": "تسجيل الدخول إلى Merchiva",
@@ -1639,6 +1641,79 @@
       "grossPay": "الأجر الإجمالي",
       "total": "المجموع",
       "rateNote": "* باستخدام السعر الافتراضي 15$/ساعة. سيتم تكوين الأسعار الفعلية في إعدادات الموظفين."
+    }
+  },
+  "bookings": {
+    "title": "الحجوزات",
+    "subtitle": "إدارة الحجوزات وقائمة الانتظار",
+    "reservations": "الحجوزات",
+    "walkInQueue": "قائمة الانتظار",
+    "totalToday": "إجمالي اليوم",
+    "confirmed": "مؤكدة",
+    "upcoming": "قادمة",
+    "totalAll": "جميع الحجوزات",
+    "allStatuses": "جميع الحالات",
+    "statusPending": "قيد الانتظار",
+    "statusConfirmed": "مؤكد",
+    "statusCancelled": "ملغى",
+    "statusCompleted": "مكتمل",
+    "today": "اليوم",
+    "noReservations": "لا توجد حجوزات",
+    "time": "الوقت",
+    "name": "الاسم",
+    "partySize": "عدد الأشخاص",
+    "phone": "الهاتف",
+    "status": "الحالة",
+    "actions": "الإجراءات",
+    "confirm": "تأكيد",
+    "currentlyWaiting": "في الانتظار",
+    "avgWait": "متوسط الانتظار",
+    "seatedToday": "جلسوا اليوم",
+    "addToQueue": "إضافة للقائمة",
+    "addToQueueDesc": "إضافة عميل للقائمة الانتظار",
+    "noQueueEntries": "لا أحد في القائمة",
+    "resolved": "تمت المعالجة",
+    "seat": "إجلاس",
+    "namePlaceholder": "اسم العميل",
+    "estWait": "الانتظار المتوقع",
+    "phonePlaceholder": "رقم الهاتف",
+    "notes": "ملاحظات",
+    "notesPlaceholder": "طلبات خاصة، إلخ",
+    "add": "إضافة",
+    "queueSeated": "جالس",
+    "queueCancelled": "ملغى",
+    "queueNo_show": "لم يحضر",
+    "queueNoshow": "لم يحضر"
+  },
+  "marketing": {
+    "title": "التسويق والكوبونات",
+    "subtitle": "إدارة الكوبونات والحملات وتحليلات التسويق",
+    "tabs": { "coupons": "كوبونات", "campaigns": "حملات", "analytics": "تحليلات" },
+    "coupons": {
+      "create": "إنشاء كوبون", "edit": "تعديل كوبون", "code": "الرمز", "discount": "الخصم",
+      "discountType": "نوع الخصم", "discountValue": "قيمة الخصم",
+      "percentage": "نسبة مئوية", "fixedAmount": "مبلغ ثابت",
+      "minPurchase": "الحد الأدنى للشراء", "maxUses": "الحد الأقصى للاستخدام", "maxUsesHint": "0 = غير محدود",
+      "usage": "الاستخدام", "validFrom": "صالح من", "validUntil": "صالح حتى",
+      "description": "الوصف", "descriptionPlaceholder": "وصف اختياري للكوبون...",
+      "status": "الحالة", "active": "نشط", "expired": "منتهي", "maxedOut": "مستنفد", "inactive": "غير نشط",
+      "actions": "إجراءات", "generateCode": "توليد",
+      "filterAll": "الكل", "filterActive": "النشطة فقط", "filterExpired": "المنتهية",
+      "empty": "لا توجد كوبونات بعد.", "emptyFiltered": "لا توجد كوبونات تطابق الفلتر.",
+      "deleteConfirm": "هل أنت متأكد من حذف هذا الكوبون؟",
+      "totalActive": "كوبونات نشطة", "redeemedThisMonth": "مستردة هذا الشهر",
+      "totalDiscountGiven": "الخصم الممنوح", "percentOff": "خصم", "unlimited": "غير محدود"
+    },
+    "campaigns": {
+      "title": "حملات البريد الإلكتروني", "comingSoon": "قريباً",
+      "description": "أرسل عروض ترويجية مستهدفة لعملائك عبر البريد الإلكتروني.",
+      "customerCount": "عملاء في قاعدة البيانات", "composeEmail": "كتابة بريد"
+    },
+    "analytics": {
+      "title": "تحليلات التسويق", "couponUsage": "استخدام الكوبونات (أعلى 10)",
+      "revenueImpact": "تأثير الإيرادات", "totalDiscountMonth": "إجمالي الخصم هذا الشهر",
+      "newCustomers": "عملاء جدد هذا الشهر", "couponOrders": "طلبات بكوبونات",
+      "noData": "لا توجد بيانات كوبونات بعد."
     }
   }
 }

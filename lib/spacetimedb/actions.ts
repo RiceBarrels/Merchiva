@@ -692,3 +692,38 @@ export async function updateExpense(expenseId: string, data: any): Promise<void>
 export async function deleteExpense(expenseId: string): Promise<void> {
   return conn().reducers.deleteExpense({ organizationId: orgId(), expenseId });
 }
+
+// ─── Coupons ────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function addCoupon(data: any): Promise<void> {
+  return conn().reducers.addCoupon({ organizationId: orgId(), ...data });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateCoupon(couponId: string, data: any): Promise<void> {
+  return conn().reducers.updateCoupon({ organizationId: orgId(), couponId, ...data });
+}
+
+export async function deleteCoupon(couponId: string): Promise<void> {
+  return conn().reducers.deleteCoupon({ organizationId: orgId(), couponId });
+}
+
+export async function redeemCoupon(couponId: string): Promise<void> {
+  return conn().reducers.redeemCoupon({ organizationId: orgId(), couponId });
+}
+
+// ─── Queue ──────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function addQueueEntry(data: any): Promise<void> {
+  return conn().reducers.addQueueEntry({ organizationId: orgId(), ...data });
+}
+
+export async function updateQueueStatus(entryId: string, status: string): Promise<void> {
+  return conn().reducers.updateQueueStatus({ organizationId: orgId(), entryId, status });
+}
+
+export async function deleteQueueEntry(entryId: string): Promise<void> {
+  return conn().reducers.deleteQueueEntry({ organizationId: orgId(), entryId });
+}

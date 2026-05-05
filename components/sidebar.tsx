@@ -68,6 +68,8 @@ import {
   UserRoundSearch,
   UserPlus,
   Truck,
+  CalendarCheck,
+  Megaphone,
 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -128,11 +130,13 @@ const navItems: NavItemExt[] = [
   { labelKey: "nav.reports",   href: "/reports",     icon: FileBarChart,    permissionKey: "sales"     },
   { labelKey: "nav.finances",  href: "/finances",    icon: Wallet,          permissionKey: "sales"     },
   { labelKey: "nav.customers", href: "/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
+  { labelKey: "nav.marketing", href: "/marketing",   icon: Megaphone,       permissionKey: "sales"     },
   { labelKey: "nav.pos",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
   { labelKey: "nav.punchIn",   href: "/punch-in",    icon: KeyRound },
   { labelKey: "nav.chat",      href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { labelKey: "nav.website",   href: "/builder",     icon: Globe,           permissionKey: "website"   },
   { labelKey: "nav.membership", href: "/membership", icon: Crown },
+  { labelKey: "nav.bookings", href: "/bookings", icon: CalendarCheck, permissionKey: "settings" },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {

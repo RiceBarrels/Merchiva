@@ -31,6 +31,7 @@
     "products": "Productos",
     "reports": "Informes",
     "customers": "Clientes",
+    "marketing": "Marketing",
     "pos": "TPV",
     "punchIn": "Fichar",
     "chat": "Chat",
@@ -44,7 +45,8 @@
     "createNewStore": "Crear nueva tienda",
     "storeName": "Nombre de la tienda",
     "create": "Crear",
-    "account": "Cuenta"
+    "account": "Cuenta",
+    "bookings": "Reservas"
   },
   "login": {
     "title": "Inicia sesión en Merchiva",
@@ -1639,6 +1641,79 @@
       "grossPay": "Pago Bruto",
       "total": "TOTAL",
       "rateNote": "* Usando tarifa predeterminada de $15/hora. Las tarifas reales se configurarán en ajustes de personal."
+    }
+  },
+  "bookings": {
+    "title": "Reservas",
+    "subtitle": "Gestionar reservas y cola de espera",
+    "reservations": "Reservaciones",
+    "walkInQueue": "Cola sin reserva",
+    "totalToday": "Total hoy",
+    "confirmed": "Confirmadas",
+    "upcoming": "Proximas",
+    "totalAll": "Todas las reservas",
+    "allStatuses": "Todos los estados",
+    "statusPending": "Pendiente",
+    "statusConfirmed": "Confirmada",
+    "statusCancelled": "Cancelada",
+    "statusCompleted": "Completada",
+    "today": "Hoy",
+    "noReservations": "Sin reservas",
+    "time": "Hora",
+    "name": "Nombre",
+    "partySize": "Personas",
+    "phone": "Telefono",
+    "status": "Estado",
+    "actions": "Acciones",
+    "confirm": "Confirmar",
+    "currentlyWaiting": "Esperando",
+    "avgWait": "Espera prom.",
+    "seatedToday": "Sentados hoy",
+    "addToQueue": "Agregar a cola",
+    "addToQueueDesc": "Agregar un cliente sin reserva a la cola",
+    "noQueueEntries": "Nadie en la cola",
+    "resolved": "Resueltos",
+    "seat": "Sentar",
+    "namePlaceholder": "Nombre del cliente",
+    "estWait": "Espera est.",
+    "phonePlaceholder": "Numero de telefono",
+    "notes": "Notas",
+    "notesPlaceholder": "Solicitudes especiales, etc.",
+    "add": "Agregar",
+    "queueSeated": "Sentado",
+    "queueCancelled": "Cancelado",
+    "queueNo_show": "No se presento",
+    "queueNoshow": "No se presento"
+  },
+  "marketing": {
+    "title": "Marketing y Cupones",
+    "subtitle": "Gestiona cupones, campanas y analisis de marketing",
+    "tabs": { "coupons": "Cupones", "campaigns": "Campanas", "analytics": "Analisis" },
+    "coupons": {
+      "create": "Crear cupon", "edit": "Editar cupon", "code": "Codigo", "discount": "Descuento",
+      "discountType": "Tipo de descuento", "discountValue": "Valor del descuento",
+      "percentage": "Porcentaje", "fixedAmount": "Monto fijo",
+      "minPurchase": "Compra minima", "maxUses": "Usos maximos", "maxUsesHint": "0 = ilimitado",
+      "usage": "Uso", "validFrom": "Valido desde", "validUntil": "Valido hasta",
+      "description": "Descripcion", "descriptionPlaceholder": "Descripcion opcional del cupon...",
+      "status": "Estado", "active": "Activo", "expired": "Expirado", "maxedOut": "Agotado", "inactive": "Inactivo",
+      "actions": "Acciones", "generateCode": "Generar",
+      "filterAll": "Todos", "filterActive": "Solo activos", "filterExpired": "Expirados",
+      "empty": "Sin cupones aun. Crea tu primer cupon.", "emptyFiltered": "Ningun cupon coincide con el filtro.",
+      "deleteConfirm": "Seguro que quieres eliminar este cupon?",
+      "totalActive": "Cupones activos", "redeemedThisMonth": "Canjeados este mes",
+      "totalDiscountGiven": "Descuento otorgado", "percentOff": "DESC", "unlimited": "Ilimitado"
+    },
+    "campaigns": {
+      "title": "Campanas de email", "comingSoon": "Proximamente",
+      "description": "Envia promociones dirigidas a tus clientes por email.",
+      "customerCount": "clientes en tu base de datos", "composeEmail": "Redactar email"
+    },
+    "analytics": {
+      "title": "Analisis de marketing", "couponUsage": "Uso de cupones (Top 10)",
+      "revenueImpact": "Impacto en ingresos", "totalDiscountMonth": "Descuento total este mes",
+      "newCustomers": "Nuevos clientes este mes", "couponOrders": "Pedidos con cupones",
+      "noData": "Sin datos de cupones aun."
     }
   }
 }

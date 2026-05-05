@@ -31,6 +31,7 @@
     "products": "उत्पाद",
     "reports": "रिपोर्ट",
     "customers": "ग्राहक",
+    "marketing": "विपणन",
     "pos": "पीओएस",
     "punchIn": "पंच इन",
     "chat": "चैट",
@@ -44,7 +45,8 @@
     "createNewStore": "नया स्टोर बनाएं",
     "storeName": "स्टोर का नाम",
     "create": "बनाएं",
-    "account": "खाता"
+    "account": "खाता",
+    "bookings": "बुकिंग"
   },
   "login": {
     "title": "Merchiva में साइन इन करें",
@@ -1639,6 +1641,79 @@
       "grossPay": "सकल वेतन",
       "total": "कुल",
       "rateNote": "* डिफ़ॉल्ट दर $15/घंटा का उपयोग। वास्तविक दरें कर्मचारी सेटिंग्स में कॉन्फ़िगर की जाएंगी।"
+    }
+  },
+  "bookings": {
+    "title": "बुकिंग",
+    "subtitle": "आरक्षण और वॉक-इन कतार प्रबंधन",
+    "reservations": "आरक्षण",
+    "walkInQueue": "वॉक-इन कतार",
+    "totalToday": "आज कुल",
+    "confirmed": "पुष्टि",
+    "upcoming": "आगामी",
+    "totalAll": "सभी बुकिंग",
+    "allStatuses": "सभी स्थितियां",
+    "statusPending": "लंबित",
+    "statusConfirmed": "पुष्टि",
+    "statusCancelled": "रद्द",
+    "statusCompleted": "पूर्ण",
+    "today": "आज",
+    "noReservations": "कोई आरक्षण नहीं",
+    "time": "समय",
+    "name": "नाम",
+    "partySize": "पार्टी आकार",
+    "phone": "फ़ोन",
+    "status": "स्थिति",
+    "actions": "कार्रवाई",
+    "confirm": "पुष्टि करें",
+    "currentlyWaiting": "प्रतीक्षा में",
+    "avgWait": "औसत प्रतीक्षा",
+    "seatedToday": "आज बैठे",
+    "addToQueue": "कतार में जोड़ें",
+    "addToQueueDesc": "वॉक-इन ग्राहक को प्रतीक्षा कतार में जोड़ें",
+    "noQueueEntries": "कतार में कोई नहीं",
+    "resolved": "हल किया",
+    "seat": "बैठाएं",
+    "namePlaceholder": "ग्राहक का नाम",
+    "estWait": "अनु. प्रतीक्षा",
+    "phonePlaceholder": "फ़ोन नंबर",
+    "notes": "नोट्स",
+    "notesPlaceholder": "विशेष अनुरोध, आदि",
+    "add": "जोड़ें",
+    "queueSeated": "बैठाया",
+    "queueCancelled": "रद्द",
+    "queueNo_show": "नहीं आया",
+    "queueNoshow": "नहीं आया"
+  },
+  "marketing": {
+    "title": "विपणन और कूपन",
+    "subtitle": "कूपन, अभियान और विपणन विश्लेषण प्रबंधित करें",
+    "tabs": { "coupons": "कूपन", "campaigns": "अभियान", "analytics": "विश्लेषण" },
+    "coupons": {
+      "create": "कूपन बनाएं", "edit": "कूपन संपादित करें", "code": "कोड", "discount": "छूट",
+      "discountType": "छूट प्रकार", "discountValue": "छूट मूल्य",
+      "percentage": "प्रतिशत", "fixedAmount": "निश्चित राशि",
+      "minPurchase": "न्यूनतम खरीद", "maxUses": "अधिकतम उपयोग", "maxUsesHint": "0 = असीमित",
+      "usage": "उपयोग", "validFrom": "से मान्य", "validUntil": "तक मान्य",
+      "description": "विवरण", "descriptionPlaceholder": "वैकल्पिक कूपन विवरण...",
+      "status": "स्थिति", "active": "सक्रिय", "expired": "समाप्त", "maxedOut": "समाप्त", "inactive": "निष्क्रिय",
+      "actions": "कार्रवाई", "generateCode": "उत्पन्न करें",
+      "filterAll": "सभी", "filterActive": "केवल सक्रिय", "filterExpired": "समाप्त",
+      "empty": "अभी कोई कूपन नहीं।", "emptyFiltered": "कोई कूपन फ़िल्टर से मेल नहीं खाता।",
+      "deleteConfirm": "क्या आप इस कूपन को हटाना चाहते हैं?",
+      "totalActive": "सक्रिय कूपन", "redeemedThisMonth": "इस महीने भुनाए गए",
+      "totalDiscountGiven": "दी गई छूट", "percentOff": "छूट", "unlimited": "असीमित"
+    },
+    "campaigns": {
+      "title": "ईमेल अभियान", "comingSoon": "जल्द आ रहा है",
+      "description": "अपने ग्राहकों को ईमेल द्वारा लक्षित प्रचार भेजें।",
+      "customerCount": "ग्राहक आपके डेटाबेस में", "composeEmail": "ईमेल लिखें"
+    },
+    "analytics": {
+      "title": "विपणन विश्लेषण", "couponUsage": "कूपन उपयोग (शीर्ष 10)",
+      "revenueImpact": "राजस्व प्रभाव", "totalDiscountMonth": "इस महीने कुल छूट",
+      "newCustomers": "इस महीने नए ग्राहक", "couponOrders": "कूपन वाले ऑर्डर",
+      "noData": "अभी कोई कूपन डेटा नहीं।"
     }
   }
 }

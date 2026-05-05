@@ -31,6 +31,7 @@
     "products": "Produits",
     "reports": "Rapports",
     "customers": "Clients",
+    "marketing": "Marketing",
     "pos": "Caisse",
     "punchIn": "Pointer",
     "chat": "Chat",
@@ -44,7 +45,8 @@
     "createNewStore": "Créer un magasin",
     "storeName": "Nom du magasin",
     "create": "Créer",
-    "account": "Compte"
+    "account": "Compte",
+    "bookings": "Réservations"
   },
   "login": {
     "title": "Connexion à Merchiva",
@@ -1639,6 +1641,79 @@
       "grossPay": "Salaire brut",
       "total": "TOTAL",
       "rateNote": "* Utilisant le taux par défaut de 15$/heure. Les taux réels seront configurables dans les paramètres du personnel."
+    }
+  },
+  "bookings": {
+    "title": "Réservations",
+    "subtitle": "Gérer les réservations et la file d'attente",
+    "reservations": "Réservations",
+    "walkInQueue": "File d'attente",
+    "totalToday": "Total aujourd'hui",
+    "confirmed": "Confirmées",
+    "upcoming": "À venir",
+    "totalAll": "Toutes les réservations",
+    "allStatuses": "Tous les statuts",
+    "statusPending": "En attente",
+    "statusConfirmed": "Confirmée",
+    "statusCancelled": "Annulée",
+    "statusCompleted": "Terminée",
+    "today": "Aujourd'hui",
+    "noReservations": "Aucune réservation",
+    "time": "Heure",
+    "name": "Nom",
+    "partySize": "Couverts",
+    "phone": "Téléphone",
+    "status": "Statut",
+    "actions": "Actions",
+    "confirm": "Confirmer",
+    "currentlyWaiting": "En attente",
+    "avgWait": "Attente moy.",
+    "seatedToday": "Placés aujourd'hui",
+    "addToQueue": "Ajouter à la file",
+    "addToQueueDesc": "Ajouter un client sans réservation à la file d'attente",
+    "noQueueEntries": "Personne dans la file",
+    "resolved": "Résolus",
+    "seat": "Placer",
+    "namePlaceholder": "Nom du client",
+    "estWait": "Attente est.",
+    "phonePlaceholder": "Numéro de téléphone",
+    "notes": "Notes",
+    "notesPlaceholder": "Demandes spéciales, etc.",
+    "add": "Ajouter",
+    "queueSeated": "Placé",
+    "queueCancelled": "Annulé",
+    "queueNo_show": "Absent",
+    "queueNoshow": "Absent"
+  },
+  "marketing": {
+    "title": "Marketing et Coupons",
+    "subtitle": "Gerez les coupons, campagnes et analyses marketing",
+    "tabs": { "coupons": "Coupons", "campaigns": "Campagnes", "analytics": "Analytique" },
+    "coupons": {
+      "create": "Creer un coupon", "edit": "Modifier le coupon", "code": "Code", "discount": "Remise",
+      "discountType": "Type de remise", "discountValue": "Valeur de la remise",
+      "percentage": "Pourcentage", "fixedAmount": "Montant fixe",
+      "minPurchase": "Achat minimum", "maxUses": "Utilisations max", "maxUsesHint": "0 = illimite",
+      "usage": "Utilisation", "validFrom": "Valide du", "validUntil": "Valide jusqu'au",
+      "description": "Description", "descriptionPlaceholder": "Description optionnelle du coupon...",
+      "status": "Statut", "active": "Actif", "expired": "Expire", "maxedOut": "Epuise", "inactive": "Inactif",
+      "actions": "Actions", "generateCode": "Generer",
+      "filterAll": "Tous", "filterActive": "Actifs uniquement", "filterExpired": "Expires",
+      "empty": "Aucun coupon pour le moment.", "emptyFiltered": "Aucun coupon ne correspond au filtre.",
+      "deleteConfirm": "Etes-vous sur de vouloir supprimer ce coupon ?",
+      "totalActive": "Coupons actifs", "redeemedThisMonth": "Echanges ce mois",
+      "totalDiscountGiven": "Remise accordee", "percentOff": "DE REDUCTION", "unlimited": "Illimite"
+    },
+    "campaigns": {
+      "title": "Campagnes email", "comingSoon": "Bientot disponible",
+      "description": "Envoyez des promotions ciblees a vos clients par email.",
+      "customerCount": "clients dans votre base", "composeEmail": "Rediger un email"
+    },
+    "analytics": {
+      "title": "Analytique marketing", "couponUsage": "Utilisation des coupons (Top 10)",
+      "revenueImpact": "Impact sur le chiffre d'affaires", "totalDiscountMonth": "Remise totale ce mois",
+      "newCustomers": "Nouveaux clients ce mois", "couponOrders": "Commandes avec coupons",
+      "noData": "Aucune donnee de coupon disponible."
     }
   }
 }

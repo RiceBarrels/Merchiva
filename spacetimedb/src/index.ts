@@ -1011,6 +1011,58 @@ const expenseTable = table(
   }
 );
 
+// ─── Coupons ─────────────────────────────────────────────────────────────────
+
+const couponTable = table(
+  {
+    name: 'coupon',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byCode', algorithm: 'btree', columns: ['code'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    code: t.string(),
+    discountType: t.string(),      // "percent" | "fixed"
+    discountValue: t.number(),     // percentage or dollar amount
+    minPurchase: t.number(),
+    maxUses: t.i32(),
+    usedCount: t.i32(),
+    validFrom: t.string(),         // YYYY-MM-DD
+    validUntil: t.string(),        // YYYY-MM-DD
+    active: t.bool(),
+    description: t.option(t.string()),
+    createdAt: t.timestamp(),
+  }
+);
+
+// ─── Queue (Walk-in) ─────────────────────────────────────────────────────────
+
+const queueEntryTable = table(
+  {
+    name: 'queue_entry',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    customerName: t.string(),
+    partySize: t.i32(),
+    phone: t.option(t.string()),
+    status: t.string(),            // "waiting" | "seated" | "cancelled" | "no_show"
+    estimatedWait: t.i32(),        // minutes
+    notes: t.option(t.string()),
+    queuedAt: t.timestamp(),
+    seatedAt: t.option(t.timestamp()),
+  }
+);
+
 // ─── Waste Log ───────────────────────────────────────────────────────────────
 
 const wasteLogTable = table(
@@ -1084,6 +1136,8 @@ const spacetimedb = schema({
   supplier: supplierTable,
   purchaseOrder: purchaseOrderTable,
   expense: expenseTable,
+  coupon: couponTable,
+  queueEntry: queueEntryTable,
 });
 
 export default spacetimedb;
@@ -3821,6 +3875,122 @@ export const deleteExpense = spacetimedb.reducer(
       .find(e => e.id.toString() === expenseId);
     if (!exp) throw new Error('Expense not found');
     ctx.db.expense.delete(exp);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COUPON REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addCoupon = spacetimedb.reducer(
+  {
+    organizationId: t.string(), code: t.string(), discountType: t.string(),
+    discountValue: t.number(), minPurchase: t.number(), maxUses: t.i32(),
+    validFrom: t.string(), validUntil: t.string(), description: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    ctx.db.coupon.insert({
+      id: ctx.newUuidV4(), organizationId: args.organizationId, code: args.code.toUpperCase(),
+      discountType: args.discountType, discountValue: args.discountValue,
+      minPurchase: args.minPurchase, maxUses: args.maxUses, usedCount: 0,
+      validFrom: args.validFrom, validUntil: args.validUntil, active: true,
+      description: args.description, createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateCoupon = spacetimedb.reducer(
+  {
+    organizationId: t.string(), couponId: t.string(), code: t.string(),
+    discountType: t.string(), discountValue: t.number(), minPurchase: t.number(),
+    maxUses: t.i32(), validFrom: t.string(), validUntil: t.string(),
+    active: t.bool(), description: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    const c = [...ctx.db.coupon.byOrganizationId.filter(args.organizationId)]
+      .find(c => c.id.toString() === args.couponId);
+    if (!c) throw new Error('Coupon not found');
+    ctx.db.coupon.delete(c);
+    ctx.db.coupon.insert({ ...c, code: args.code.toUpperCase(), discountType: args.discountType,
+      discountValue: args.discountValue, minPurchase: args.minPurchase, maxUses: args.maxUses,
+      validFrom: args.validFrom, validUntil: args.validUntil, active: args.active, description: args.description });
+  }
+);
+
+export const deleteCoupon = spacetimedb.reducer(
+  { organizationId: t.string(), couponId: t.string() },
+  (ctx, { organizationId, couponId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    const c = [...ctx.db.coupon.byOrganizationId.filter(organizationId)]
+      .find(c => c.id.toString() === couponId);
+    if (!c) throw new Error('Coupon not found');
+    ctx.db.coupon.delete(c);
+  }
+);
+
+export const redeemCoupon = spacetimedb.reducer(
+  { organizationId: t.string(), code: t.string() },
+  (ctx, { organizationId, code }) => {
+    findActiveMember(ctx, organizationId);
+    const c = [...ctx.db.coupon.byCode.filter(code.toUpperCase())]
+      .find(c => c.organizationId === organizationId);
+    if (!c) throw new Error('Coupon not found');
+    if (!c.active) throw new Error('Coupon is inactive');
+    if (c.usedCount >= c.maxUses && c.maxUses > 0) throw new Error('Coupon usage limit reached');
+    const today = new Date().toISOString().slice(0, 10);
+    if (today < c.validFrom || today > c.validUntil) throw new Error('Coupon expired');
+    ctx.db.coupon.delete(c);
+    ctx.db.coupon.insert({ ...c, usedCount: c.usedCount + 1 });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QUEUE REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addQueueEntry = spacetimedb.reducer(
+  {
+    organizationId: t.string(), customerName: t.string(), partySize: t.i32(),
+    phone: t.option(t.string()), estimatedWait: t.i32(), notes: t.option(t.string()),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    ctx.db.queueEntry.insert({
+      id: ctx.newUuidV4(), organizationId: args.organizationId, customerName: args.customerName,
+      partySize: args.partySize, phone: args.phone, status: 'waiting',
+      estimatedWait: args.estimatedWait, notes: args.notes,
+      queuedAt: ctx.timestamp, seatedAt: undefined,
+    });
+  }
+);
+
+export const updateQueueStatus = spacetimedb.reducer(
+  { organizationId: t.string(), entryId: t.string(), status: t.string() },
+  (ctx, { organizationId, entryId, status }) => {
+    findActiveMember(ctx, organizationId);
+    const e = [...ctx.db.queueEntry.byOrganizationId.filter(organizationId)]
+      .find(e => e.id.toString() === entryId);
+    if (!e) throw new Error('Queue entry not found');
+    ctx.db.queueEntry.delete(e);
+    ctx.db.queueEntry.insert({ ...e, status,
+      ...(status === 'seated' ? { seatedAt: ctx.timestamp } : {}),
+    });
+  }
+);
+
+export const deleteQueueEntry = spacetimedb.reducer(
+  { organizationId: t.string(), entryId: t.string() },
+  (ctx, { organizationId, entryId }) => {
+    findActiveMember(ctx, organizationId);
+    const e = [...ctx.db.queueEntry.byOrganizationId.filter(organizationId)]
+      .find(e => e.id.toString() === entryId);
+    if (!e) throw new Error('Queue entry not found');
+    ctx.db.queueEntry.delete(e);
   }
 );
 

@@ -81,3 +81,9 @@ export function usePurchaseOrders() { return useTable(tables.purchaseOrder); }
 
 // ── Expenses ────────────────────────────────────────────────────────────────
 export function useExpenses() { return useTable(tables.expense); }
+
+// ── Coupons ─────────────────────────────────────────────────────────────────
+export function useCoupons() { return useTable(tables.coupon); }
+
+// ── Queue ───────────────────────────────────────────────────────────────────
+export function useQueueEntries() { return useTable(tables.queueEntry); }
