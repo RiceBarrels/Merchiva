@@ -416,6 +416,7 @@ function MobileDynamicUIElementPage({
       >
       <DialogPrimitive.Popup
         data-slot="dialog-content"
+        initialFocus={false}
         className="absolute inset-0 flex flex-col bg-background text-sm text-foreground outline-none w-full max-w-none p-0!"
         style={{
           borderRadius: (entered && !dragging && !exiting) ? "0" : "48px 0 0 48px",
@@ -487,6 +488,7 @@ function DynamicUIElementContent({
         <DynamicUIElementOverlay />
         <DialogPrimitive.Popup
           data-slot="dialog-content"
+          initialFocus={false}
           className={cn(
             "fixed right-0 top-0 bottom-0 z-50 h-full w-full max-w-md bg-background outline-none shadow-2xl duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right overflow-y-auto",
             className
@@ -519,6 +521,7 @@ function DynamicUIElementContent({
       <DynamicUIElementOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
+        initialFocus={false}
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { storeAuthTokens } from "@/lib/auth/context";
+import { addAccountToStorage } from "@/lib/auth/context";
 import { Loader2 } from "lucide-react";
 import { Suspense } from "react";
 
@@ -27,7 +27,7 @@ function AuthCallbackInner() {
 
     try {
       const user = JSON.parse(userStr);
-      storeAuthTokens(accessToken, refreshToken, user);
+      addAccountToStorage(accessToken, refreshToken, user);
       window.location.href = redirectTo;
     } catch {
       router.replace("/login?error=invalid_response");

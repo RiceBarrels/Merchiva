@@ -236,17 +236,19 @@ export function KeyboardShortcuts() {
         return;
       }
 
-      // Delete
+      // Delete (supports multi-select)
       if (e.key === "Delete" || e.key === "Backspace") {
-        const id = getSelectedId();
-        if (!id) return;
+        const selected = Array.from(query.getEvent("selected").raw());
+        if (!selected.length) return;
         e.preventDefault();
-        if (isLocked(id)) return;
-        try {
-          if (query.node(id).isDeletable()) {
-            actions.delete(id);
-          }
-        } catch {}
+        for (const nodeId of selected) {
+          if (isLocked(nodeId)) continue;
+          try {
+            if (query.node(nodeId).isDeletable()) {
+              actions.delete(nodeId);
+            }
+          } catch {}
+        }
         return;
       }
 

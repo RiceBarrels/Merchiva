@@ -103,6 +103,28 @@ export const CraftText: UserComponent<CraftTextProps> = ({
 
   const Tag = tag;
 
+  const renderContent = () => {
+    if (editing || !content.includes("{")) return content;
+    return content.split(/(\{\w+\})/).map((part, i) =>
+      /^\{\w+\}$/.test(part) ? (
+        <span
+          key={i}
+          style={{
+            backgroundColor: "rgba(59, 130, 246, 0.12)",
+            borderRadius: "2px",
+            padding: "0 2px",
+            fontFamily: "monospace",
+            fontSize: "0.85em",
+          }}
+        >
+          {part}
+        </span>
+      ) : (
+        part
+      ),
+    );
+  };
+
   return (
     <Tag
       ref={(ref: HTMLElement | null) => {
@@ -129,7 +151,7 @@ export const CraftText: UserComponent<CraftTextProps> = ({
         minHeight: editing ? "1em" : undefined,
       }}
     >
-      {content}
+      {renderContent()}
     </Tag>
   );
 };

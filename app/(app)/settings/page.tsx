@@ -42,6 +42,7 @@ import {
   Activity,
   Info,
   SettingsIcon,
+  UserCog,
 } from "lucide-react";
 import {
   Card,
@@ -77,7 +78,7 @@ import { getTeamMembers, getInvitations } from "@/lib/db/team";
 import type { OrgMember, OrgInvitation, OrgRole, Permissions } from "@/lib/types";
 import { defaultPermissions } from "@/lib/db/team";
 import { usePermissions } from "@/lib/context/permissions";
-import { hapticSuccess } from "@/lib/haptics";
+import { hapticSuccess, hapticMedium } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth/context";
 import { useStoreMachineMode, useDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
 import { registerStoreDevice, removeStoreDevice, updateStoreDevice } from "@/lib/spacetimedb/actions";
@@ -86,6 +87,8 @@ import { uploadFiles } from "@/lib/uploadthing";
 import { toast } from "sonner";
 import { useT, useI18n } from "@/lib/i18n/context";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
+import { LocationManager } from "@/components/location-manager";
+import { useLocations } from "@/lib/spacetimedb/hooks";
 
 interface SquareLocation {
   id: string;
@@ -97,8 +100,8 @@ export default function SettingsPage() {
   const t = useT();
   const { locale, setLocale } = useI18n();
   const searchParams = useSearchParams();
-  const { role, organizationId, can } = usePermissions();
-  const { signOut } = useAuth();
+  const { role, organizationId, can, organizations, currentOrg, switchOrg } = usePermissions();
+  const { signOut, user: authUser, accounts, switchAccount } = useAuth();
   const isAdmin = role === "owner" || role === "manager";
   const canEditTeam = can("team", "edit");
   // Settings data via SpacetimeDB migration hook
@@ -112,6 +115,10 @@ export default function SettingsPage() {
   // Profile form
   const [businessName, setBusinessName] = useState("");
   const [timezone, setTimezone]         = useState("America/Los_Angeles");
+  const [locationLatitude, setLocationLatitude] = useState("");
+  const [locationLongitude, setLocationLongitude] = useState("");
+  const [googlePlacesId, setGooglePlacesId] = useState("");
+  const [gettingLocation, setGettingLocation] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved]   = useState(false);
 
@@ -209,6 +216,8 @@ export default function SettingsPage() {
   const [resettingCode, setResettingCode] = useState(false);
 
   const [langDialogOpen, setLangDialogOpen] = useState(false);
+  const [locationsDialog, setLocationsDialog] = useState(false);
+  const [locationRows] = useLocations();
 
   // My own punch-in code dialog
   const [myCodeDialog, setMyCodeDialog] = useState(false);
@@ -267,6 +276,9 @@ export default function SettingsPage() {
     if (settings) {
       setBusinessName(settings.businessName ?? orgName ?? "");
       setTimezone(settings.timezone);
+      setLocationLatitude(settings.locationLatitude ?? "");
+      setLocationLongitude(settings.locationLongitude ?? "");
+      setGooglePlacesId(settings.googlePlacesId ?? "");
     }
   }, [settings, orgName]);
 
@@ -323,18 +335,24 @@ export default function SettingsPage() {
     // Clover
     if (searchParams.get("clover_connected") === "true") {
       toast.success(t("settings.toastCloverConnected"));
-      // Reload settings to reflect new connection
-      getSettings()
-        .then(setSettings)
-        .catch((err) => console.error("Failed to reload settings:", err));
+      // Cookie was set by the callback — update local state immediately
+      setSettings((prev) =>
+        prev ? { ...prev, cloverConnected: true } : prev
+      );
     }
     if (searchParams.get("clover_error")) {
       const err = searchParams.get("clover_error");
       const messages: Record<string, string> = {
-        no_code: t("settings.clErrNoCode"),
+        missing_params: t("settings.clErrNoCode"),
+        state_mismatch: t("settings.clErrDefault"),
+        missing_credentials: t("settings.clErrDefault"),
         token_exchange_failed: t("settings.clErrTokenExchange"),
+        no_access_token: t("settings.clErrMissingToken"),
+        unexpected_error: t("settings.clErrDefault"),
+        integration_unavailable: t("settings.clErrDefault"),
+        no_code: t("settings.clErrNoCode"),
         missing_token: t("settings.clErrMissingToken"),
-        exchange_failed: t("settings.clErrExchange"),
+        exchange_failed: t("settings.clErrTokenExchange"),
       };
       toast.error(messages[err!] ?? t("settings.clErrDefault"));
     }
@@ -381,9 +399,15 @@ export default function SettingsPage() {
     if (!userId) return;
     setSavingProfile(true);
     try {
-      await upsertSettings(userId, { businessName, timezone });
+      await upsertSettings(userId, {
+        businessName,
+        timezone,
+        locationLatitude: locationLatitude || undefined,
+        locationLongitude: locationLongitude || undefined,
+        googlePlacesId: googlePlacesId || undefined,
+      });
       setSettings((prev) => {
-        const next = prev ? { ...prev, businessName, timezone } : null;
+        const next = prev ? { ...prev, businessName, timezone, locationLatitude, locationLongitude, googlePlacesId } : null;
         if (next) setCache("settings", next);
         return next;
       });
@@ -394,6 +418,28 @@ export default function SettingsPage() {
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    setGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationLatitude(String(position.coords.latitude));
+        setLocationLongitude(String(position.coords.longitude));
+        setGettingLocation(false);
+        toast.success("Location detected");
+      },
+      (err) => {
+        console.error("[settings] Geolocation error:", err);
+        toast.error("Could not get your location. Please enter coordinates manually.");
+        setGettingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   };
 
   const handleSavePaymentSettings = async () => {
@@ -468,6 +514,9 @@ export default function SettingsPage() {
 
   const handleDisconnectClover = async () => {
     if (!userId) return;
+    // Clear server-side cookies via API route
+    await fetch("/api/clover/disconnect", { method: "POST" }).catch(() => {});
+    // Also call SpacetimeDB reducer (no-op currently but future-proofs)
     await disconnectClover(userId);
     setSettings((prev) =>
       prev
@@ -655,6 +704,7 @@ export default function SettingsPage() {
   if (isDesktop) return (
     <>
       <SettingsDesktop
+        organizationId={organizationId}
         settings={settings}
         businessName={businessName}
         setBusinessName={setBusinessName}
@@ -717,6 +767,14 @@ export default function SettingsPage() {
         setTeamMembers={setTeamMembers}
         cancelInvitation={cancelInvitation}
         setTeamInvitations={setTeamInvitations}
+        locationLatitude={locationLatitude}
+        setLocationLatitude={setLocationLatitude}
+        locationLongitude={locationLongitude}
+        setLocationLongitude={setLocationLongitude}
+        googlePlacesId={googlePlacesId}
+        setGooglePlacesId={setGooglePlacesId}
+        handleGetLocation={handleGetLocation}
+        gettingLocation={gettingLocation}
       />
       {renderDialogs()}
     </>
@@ -1371,6 +1429,19 @@ export default function SettingsPage() {
             </div>
           </DynamicUIElementContent>
         </DynamicUIElement>
+
+        {/* ─── Locations DynamicUIElement ───────────────────────── */}
+        <DynamicUIElement open={locationsDialog} onOpenChange={setLocationsDialog}>
+          <DynamicUIElementContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("locations.title")}>{t("locations.title")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("settings.manageLocations")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            {organizationId && (
+              <LocationManager organizationId={organizationId} />
+            )}
+          </DynamicUIElementContent>
+        </DynamicUIElement>
       </>
     );
   }
@@ -1389,6 +1460,8 @@ export default function SettingsPage() {
   }>).filter((m) => m.organizationId === organizationId && m.status === "active");
   const activeStaffCount = orgMembers.length;
   const rolesCount = new Set(orgMembers.map((m) => m.role)).size;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orgLocationCount = (locationRows as unknown as any[] | undefined)?.filter((l: any) => l.organizationId === organizationId).length ?? 0;
   const integrationsCount = (settings?.squareConnected ? 1 : 0) + (settings?.cloverConnected ? 1 : 0);
 
   // ─── Helper: icon tile (32px, rounded-lg, stone-100 bg, 1px border) ──
@@ -1529,6 +1602,43 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* ─── Store & Account (mobile only) ─────────────────── */}
+      <SGroupHeader label={t("settings.groupStoreAccount") || "Store & Account"} />
+      <div className="bg-background">
+        {/* Current store + switch */}
+        {organizations.map((org) => (
+          <SRow
+            key={org.id}
+            icon={<Building2 className="h-4 w-4 text-foreground" />}
+            title={org.name}
+            meta={org.id === currentOrg?.id ? t("settings.currentStore") || "Current" : ""}
+            right={org.id === currentOrg?.id
+              ? <Check className="h-4 w-4 text-emerald-600" />
+              : <span className="text-[11px] text-muted-foreground">{t("common.switch") || "Switch"}</span>}
+            onClick={org.id !== currentOrg?.id ? () => { hapticMedium(); switchOrg(org.id); } : undefined}
+          />
+        ))}
+        {/* Accounts */}
+        {accounts && accounts.length > 1 && accounts.map((acct) => (
+          <SRow
+            key={acct.id}
+            icon={<UserCog className="h-4 w-4 text-foreground" />}
+            title={acct.email}
+            meta={acct.id === authUser?.id ? t("settings.currentAccount") || "Signed in" : ""}
+            right={acct.id === authUser?.id
+              ? <Check className="h-4 w-4 text-emerald-600" />
+              : <span className="text-[11px] text-muted-foreground">{t("common.switch") || "Switch"}</span>}
+            onClick={acct.id !== authUser?.id ? () => { hapticMedium(); switchAccount(acct.id); } : undefined}
+          />
+        ))}
+        <SRow
+          icon={<LogOut className="h-4 w-4 text-red-500" />}
+          title={t("common.signOut")}
+          meta=""
+          onClick={() => { clearCache(); localStorage.removeItem("active_org_id"); signOut(); }}
+        />
+      </div>
+
       {/* ─── Workspace Group ────────────────────────────────── */}
       <SGroupHeader label={t("settings.groupWorkspace")} />
       <div className="bg-background">
@@ -1543,7 +1653,14 @@ export default function SettingsPage() {
           icon={<MapPin className="h-4 w-4 text-foreground" />}
           title={t("settings.locations")}
           meta={t("settings.manageLocations")}
-          right={<SBadge>1</SBadge>}
+          onClick={() => setLocationsDialog(true)}
+          right={<SBadge>{String(orgLocationCount)}</SBadge>}
+        />
+        <SRow
+          icon={<Activity className="h-4 w-4 text-foreground" />}
+          title="Forecast Location"
+          meta={locationLatitude && locationLongitude ? `${locationLatitude}, ${locationLongitude}` : "Not set"}
+          right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{googlePlacesId ? googlePlacesId.slice(0, 12) + "..." : "No Place ID"}</span>}
         />
         <SRow
           icon={<CreditCard className="h-4 w-4 text-foreground" />}
@@ -1586,21 +1703,29 @@ export default function SettingsPage() {
             />
             <SRow
               icon={<Zap className="h-4 w-4 text-foreground" />}
-              title={t("settings.apiIntegrations")}
-              meta={
-                settings?.squareConnected
-                  ? t("settings.squareConnectedShort")
-                  : settings?.cloverConnected
-                    ? t("settings.cloverConnectedShort")
-                    : t("settings.connectPOS")
-              }
+              title={t("settings.square")}
+              meta={settings?.squareConnected ? t("settings.squareConnectedShort") : t("settings.connectPOS")}
               onClick={() => {
                 if (settings?.squareConnected) { handleSquareSync(); }
                 else { window.location.href = "/api/square/oauth/authorize"; }
               }}
               right={
-                (settings?.squareConnected || settings?.cloverConnected)
-                  ? <SBadge tone="ok">{settings?.squareConnected ? t("settings.square") : t("settings.clover")}</SBadge>
+                settings?.squareConnected
+                  ? <SBadge tone="ok">{t("settings.connected")}</SBadge>
+                  : undefined
+              }
+            />
+            <SRow
+              icon={<Zap className="h-4 w-4 text-foreground" />}
+              title={t("settings.clover")}
+              meta={settings?.cloverConnected ? t("settings.cloverConnectedShort") : t("settings.connectPOS")}
+              onClick={() => {
+                if (settings?.cloverConnected) { handleCloverSync(); }
+                else { window.location.href = "/api/clover/connect"; }
+              }}
+              right={
+                settings?.cloverConnected
+                  ? <SBadge tone="ok">{t("settings.connected")}</SBadge>
                   : undefined
               }
             />
@@ -1901,6 +2026,8 @@ function DesktopCard({
 type DesktopSection =
   | "business"
   | "timezone"
+  | "locations"
+  | "forecastlocation"
   | "availability"
   | "timeoff"
   | "square"
@@ -1915,6 +2042,7 @@ type DesktopSection =
   | "language";
 
 interface SettingsDesktopProps {
+  organizationId: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   settings: any;
   businessName: string;
@@ -1980,6 +2108,14 @@ interface SettingsDesktopProps {
   setTeamMembers: React.Dispatch<React.SetStateAction<OrgMember[]>>;
   cancelInvitation: (id: string) => Promise<void>;
   setTeamInvitations: React.Dispatch<React.SetStateAction<OrgInvitation[]>>;
+  locationLatitude: string;
+  setLocationLatitude: (v: string) => void;
+  locationLongitude: string;
+  setLocationLongitude: (v: string) => void;
+  googlePlacesId: string;
+  setGooglePlacesId: (v: string) => void;
+  handleGetLocation: () => void;
+  gettingLocation: boolean;
 }
 
 const TIMEZONES = [
@@ -2019,6 +2155,8 @@ function SettingsDesktop(props: SettingsDesktopProps) {
       cards: [
         { id: "business", icon: Building2, label: t("settings.businessNameLabel"), desc: props.businessName || t("settings.notSet") },
         { id: "timezone", icon: Globe, label: t("settings.timezoneLabel"), desc: props.timezone.replace(/_/g, " ") },
+        { id: "locations", icon: MapPin, label: t("locations.title"), desc: t("settings.manageLocations") },
+        { id: "forecastlocation", icon: Activity, label: "Forecast Location", desc: props.locationLatitude && props.locationLongitude ? `${props.locationLatitude}, ${props.locationLongitude}` : "Not set" },
       ],
     },
     {
@@ -2069,6 +2207,8 @@ function SettingsDesktop(props: SettingsDesktopProps) {
   const sectionMeta: Record<DesktopSection, { icon: React.ElementType; title: string; desc: string }> = {
     business: { icon: Building2, title: t("settings.businessNameLabel"), desc: t("settings.businessIdentity") },
     timezone: { icon: Globe, title: t("settings.timezoneLabel"), desc: t("settings.timezoneDesc") },
+    locations: { icon: MapPin, title: t("locations.title"), desc: t("settings.manageLocations") },
+    forecastlocation: { icon: Activity, title: "Forecast Location", desc: "Set coordinates and Google Places ID for sales forecasting" },
     availability: { icon: Star, title: t("settings.availabilityCardLabel"), desc: t("settings.availabilityCardDesc") },
     timeoff: { icon: Calendar, title: t("settings.timeOffCardLabel"), desc: t("settings.timeOffCardDesc") },
     square: { icon: Zap, title: t("settings.square"), desc: t("settings.squareIntegrationDesc") },
@@ -2165,6 +2305,57 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                       ))}
                     </SelectContent>
                   </Select>
+                </DesktopField>
+                <div className="py-3 flex justify-end">
+                  <Button onClick={props.handleSaveProfile} disabled={props.savingProfile} size="sm" className="gap-2">
+                    {props.savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    {props.profileSaved ? t("settings.saved") : t("settings.save")}
+                  </Button>
+                </div>
+              </DesktopCard>
+            )}
+
+            {activeSection === "locations" && props.organizationId && (
+              <div className="py-2">
+                <LocationManager organizationId={props.organizationId} />
+              </div>
+            )}
+
+            {activeSection === "forecastlocation" && (
+              <DesktopCard title="Forecast Location" desc="Coordinates and Google Places ID used by the sales forecast engine">
+                <DesktopField label="Store Coordinates" hint="Latitude and longitude of your store for weather-based forecasting">
+                  <div className="flex items-center gap-2 max-w-sm">
+                    <Input
+                      value={props.locationLatitude}
+                      onChange={(e) => props.setLocationLatitude(e.target.value)}
+                      placeholder="Latitude (e.g. 37.7749)"
+                      className="flex-1"
+                    />
+                    <Input
+                      value={props.locationLongitude}
+                      onChange={(e) => props.setLocationLongitude(e.target.value)}
+                      placeholder="Longitude (e.g. -122.4194)"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={props.handleGetLocation}
+                      disabled={props.gettingLocation}
+                      className="gap-1.5 shrink-0"
+                    >
+                      {props.gettingLocation ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}
+                      Detect
+                    </Button>
+                  </div>
+                </DesktopField>
+                <DesktopField label="Google Places ID" hint="Used to fetch foot traffic patterns. Find yours at Google Maps > Share > Place ID.">
+                  <Input
+                    value={props.googlePlacesId}
+                    onChange={(e) => props.setGooglePlacesId(e.target.value)}
+                    placeholder="ChIJ..."
+                    className="max-w-sm font-mono text-[13px]"
+                  />
                 </DesktopField>
                 <div className="py-3 flex justify-end">
                   <Button onClick={props.handleSaveProfile} disabled={props.savingProfile} size="sm" className="gap-2">

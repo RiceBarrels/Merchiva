@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Package,
   Plus,
@@ -15,6 +15,13 @@ import {
   History,
   Loader2,
   RefreshCw,
+  Sparkles,
+  ShoppingCart,
+  AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  Minus as MinusIcon,
+  Download,
 } from "lucide-react";
 import {
   Card,
@@ -65,6 +72,9 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
+import { generateRestockSuggestions, formatPurchaseOrder, type RestockSuggestion, type RestockPriority } from "@/lib/restock";
+import { downloadCSV, downloadPDF } from "@/lib/export";
+import { cn } from "@/lib/utils";
 
 type StatusCfg = { label: string; icon: React.ElementType; color: string };
 
@@ -187,6 +197,15 @@ export default function InventoryPage() {
   const outCount      = items.filter((i) => i.status === "out_of_stock").length;
   const totalValue    = items.reduce((s, i) => s + i.currentStock * i.costPerUnit, 0);
 
+  // Restock suggestions
+  const restockSuggestions = useMemo(
+    () => generateRestockSuggestions(items, transactions),
+    [items, transactions]
+  );
+  const criticalCount = restockSuggestions.filter((s) => s.priority === "critical").length;
+  const highCount = restockSuggestions.filter((s) => s.priority === "high").length;
+  const totalOrderValue = restockSuggestions.reduce((s, r) => s + r.estimatedCost, 0);
+
   return (
     <PermissionGuard section="inventory">
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
@@ -224,6 +243,9 @@ export default function InventoryPage() {
           </TabsTrigger>
           <TabsTrigger value="losses" className="gap-2">
             <TrendingDown className="h-3.5 w-3.5" /> {t("inventory.tabs.losses")}
+          </TabsTrigger>
+          <TabsTrigger value="restock" className="gap-2">
+            <Sparkles className="h-3.5 w-3.5" /> Restock
           </TabsTrigger>
         </TabsList>
 
@@ -481,6 +503,109 @@ export default function InventoryPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Restock suggestions */}
+        <TabsContent value="restock" className="mt-4 space-y-4">
+          {restockSuggestions.length === 0 ? (
+            <Card>
+              <CardContent className="py-16 text-center text-muted-foreground">
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">All stocked up — no restocking needed</p>
+                <p className="text-sm mt-1">Your inventory levels look healthy.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Card className={criticalCount > 0 ? "border-red-300" : ""}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="rounded-[0.3rem] p-1.5 bg-red-50 border border-red-200">
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold font-mono">{criticalCount}</p>
+                      <p className="text-xs text-muted-foreground">Critical Items</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className={highCount > 0 ? "border-orange-300" : ""}>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="rounded-[0.3rem] p-1.5 bg-orange-50 border border-orange-200">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold font-mono">{highCount}</p>
+                      <p className="text-xs text-muted-foreground">High Priority</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="rounded-[0.3rem] p-1.5 bg-muted">
+                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold font-mono">${totalOrderValue.toFixed(0)}</p>
+                      <p className="text-xs text-muted-foreground">Total Order Value</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="rounded-[0.3rem] p-1.5 bg-muted">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold font-mono">{restockSuggestions.length}</p>
+                      <p className="text-xs text-muted-foreground">Items to Restock</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Action bar */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    const { headers, rows } = formatPurchaseOrder(restockSuggestions);
+                    downloadCSV("purchase-order", headers, rows);
+                    toast.success("Purchase order CSV downloaded");
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Export Purchase Order (CSV)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    const { headers, rows } = formatPurchaseOrder(restockSuggestions);
+                    downloadPDF("Purchase Order", headers, rows, {
+                      subtitle: `${restockSuggestions.length} items — Est. $${totalOrderValue.toFixed(2)}`,
+                      landscape: true,
+                    });
+                    toast.success("Purchase order PDF downloaded");
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                  Export Purchase Order (PDF)
+                </Button>
+              </div>
+
+              {/* Suggestion cards grid */}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {restockSuggestions.map((s) => (
+                  <RestockCard key={s.itemId} suggestion={s} />
+                ))}
+              </div>
+            </>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Add/Edit DynamicUIElement */}
@@ -649,5 +774,143 @@ function SortButton({
       {label}
       <ArrowUpDown className={`h-3 w-3 ${current === k ? "opacity-80" : "opacity-40"}`} />
     </button>
+  );
+}
+
+const PRIORITY_STYLES: Record<RestockPriority, string> = {
+  critical: "bg-red-50 text-red-700 border-red-200",
+  high: "bg-orange-50 text-orange-700 border-orange-200",
+  medium: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  low: "bg-stone-50 text-stone-600 border-stone-200",
+};
+
+const PRIORITY_BAR_COLORS: Record<RestockPriority, string> = {
+  critical: "[&>div]:bg-red-500",
+  high: "[&>div]:bg-orange-500",
+  medium: "[&>div]:bg-yellow-500",
+  low: "[&>div]:bg-stone-400",
+};
+
+function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
+  const stockPct = Math.min(100, Math.round((s.currentStock / s.maxStock) * 100));
+  const daysSinceRestock = Math.round(
+    (Date.now() - new Date(s.lastRestocked).getTime()) / 86_400_000
+  );
+
+  const TrendIcon =
+    s.consumptionTrend === "increasing"
+      ? ArrowUp
+      : s.consumptionTrend === "decreasing"
+      ? ArrowDown
+      : MinusIcon;
+
+  const trendLabel =
+    s.consumptionTrend === "increasing"
+      ? "increasing"
+      : s.consumptionTrend === "decreasing"
+      ? "decreasing"
+      : "stable";
+
+  return (
+    <Card className="rounded-[0.3rem]">
+      <CardContent className="p-4 space-y-3">
+        {/* Header: name + priority */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-medium text-sm truncate">{s.itemName}</p>
+            <Badge variant="outline" className="text-[10px] font-normal mt-1">
+              {s.category}
+            </Badge>
+          </div>
+          <Badge
+            className={cn(
+              "text-[10px] font-semibold border capitalize shrink-0",
+              PRIORITY_STYLES[s.priority]
+            )}
+          >
+            {s.priority}
+          </Badge>
+        </div>
+
+        {/* Stock level */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Stock level</span>
+            <span className="font-mono font-medium">
+              {s.currentStock} <span className="text-muted-foreground">/ {s.maxStock} {s.unit}</span>
+            </span>
+          </div>
+          <Progress
+            value={stockPct}
+            className={cn("h-1.5", PRIORITY_BAR_COLORS[s.priority])}
+          />
+        </div>
+
+        {/* Consumption + trend */}
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Daily consumption</span>
+          <span className="inline-flex items-center gap-1 font-mono font-medium">
+            {s.dailyConsumptionRate} {s.unit}/day
+            <TrendIcon className={cn(
+              "h-3 w-3",
+              s.consumptionTrend === "increasing" ? "text-red-500" :
+              s.consumptionTrend === "decreasing" ? "text-emerald-500" :
+              "text-stone-400"
+            )} />
+            <span className={cn(
+              "text-[10px]",
+              s.consumptionTrend === "increasing" ? "text-red-500" :
+              s.consumptionTrend === "decreasing" ? "text-emerald-500" :
+              "text-stone-400"
+            )}>
+              {trendLabel}
+            </span>
+          </span>
+        </div>
+
+        {/* Days until stockout */}
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Days until stockout</span>
+          <span
+            className={cn(
+              "font-mono font-semibold",
+              s.daysUntilStockout <= 3
+                ? "text-red-600"
+                : s.daysUntilStockout <= 7
+                ? "text-orange-600"
+                : "text-stone-700"
+            )}
+          >
+            {s.daysUntilStockout >= 999 ? "N/A" : `${s.daysUntilStockout} days`}
+          </span>
+        </div>
+
+        <Separator />
+
+        {/* Order recommendation */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Recommended order</span>
+            <span className="font-mono font-semibold">
+              {s.recommendedOrderQty} {s.unit}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Estimated cost</span>
+            <span className="font-mono font-semibold">${s.estimatedCost.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Supplier</span>
+            <span className="text-sm truncate max-w-[140px]">{s.supplier || "—"}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Last restocked</span>
+            <span className="text-muted-foreground font-mono">
+              {daysSinceRestock} days ago
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

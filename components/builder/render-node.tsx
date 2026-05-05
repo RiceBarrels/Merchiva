@@ -163,8 +163,9 @@ function ResizeHandles({
 
 export function RenderNode({ render }: { render: React.ReactElement }) {
   const { id } = useNode();
-  const { actions, query, isActive } = useEditor((_, query) => ({
+  const { actions, query, isActive, selectedCount } = useEditor((state, query) => ({
     isActive: query.getEvent("selected").contains(id),
+    selectedCount: state.events.selected.size,
   }));
 
   const {
@@ -261,6 +262,28 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
       dom.style.outlineOffset = "";
     }
   }, [dom, isActive, isHover]);
+
+  // ─── Multi-select: Cmd/Ctrl+Click toggles individual selection ──
+  useEffect(() => {
+    if (!dom || id === ROOT_NODE) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        e.stopPropagation();
+        e.preventDefault();
+        const selected = query.getEvent("selected");
+        const arr = Array.from(selected.raw());
+        if (selected.contains(id)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (actions as any).setNodeEvent("selected", arr.filter((s) => s !== id).join(" "));
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (actions as any).setNodeEvent("selected", [...arr, id].join(" "));
+        }
+      }
+    };
+    dom.addEventListener("click", onClick, true);
+    return () => dom.removeEventListener("click", onClick, true);
+  }, [dom, id, actions, query]);
 
   // ─── Direct drag for style-positioned elements (position: fixed/absolute) ──
   const styleDragging = useRef<{ startX: number; startY: number; startLeft: number; startTop: number } | null>(null);

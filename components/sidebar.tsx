@@ -41,6 +41,7 @@ function useSidebarCollapseState(): [boolean, () => void] {
   };
   return [collapsed, toggle];
 }
+import type { StoredAccount } from "@/lib/auth/context";
 import {
   LayoutDashboard,
   Package,
@@ -49,17 +50,22 @@ import {
   ShoppingBag,
   Globe,
   Crown,
-  // Zap removed — using MerchivaLogo
   Settings,
   LogOut,
   UserCog,
   ChevronDown,
+  ChevronsUpDown,
   Plus,
   Check,
   Loader2,
   MessageSquare,
   MonitorSmartphone,
   KeyRound,
+  Bell,
+  FileBarChart,
+  Trash2,
+  UserRoundSearch,
+  UserPlus,
 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -67,6 +73,14 @@ import { FloatingNavButton } from "@/components/floating-nav-button";
 import { BottomBar } from "@/components/bottom-bar";
 import { MerchivaLogo } from "@/components/logo";
 import { useNavMode } from "@/lib/nav-mode";
+import { useUnreadCount, NotificationCenter } from "@/components/notification-center";
+import {
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+  DynamicUIElementDescription,
+} from "@/components/ui/dynamic-ui-element";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
 import { Separator } from "@/components/ui/separator";
@@ -83,6 +97,7 @@ import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { RightPanel, MobileRightPanel, RightPanelMobileProvider, useRightPanelMobile } from "@/components/right-panel";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 40;
@@ -97,12 +112,18 @@ type NavItem = {
 };
 
 // Punch-in is only shown in store-machine mode; see `visibleNavItems` below.
-const navItems: NavItem[] = [
+// Account is only shown on mobile (sidebar hides store/account switchers on mobile).
+type NavItemExt = NavItem & { mobileOnly?: boolean };
+
+const navItems: NavItemExt[] = [
   { labelKey: "nav.home",      href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
   { labelKey: "nav.inventory", href: "/inventory",   icon: Package,         permissionKey: "inventory" },
+  { labelKey: "nav.wasteLog",  href: "/inventory/waste", icon: Trash2,      permissionKey: "inventory" },
   { labelKey: "nav.sales",     href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
   { labelKey: "nav.staffing",  href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
   { labelKey: "nav.products",  href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
+  { labelKey: "nav.reports",   href: "/reports",     icon: FileBarChart,    permissionKey: "sales"     },
+  { labelKey: "nav.customers", href: "/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
   { labelKey: "nav.pos",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
   { labelKey: "nav.punchIn",   href: "/punch-in",    icon: KeyRound },
   { labelKey: "nav.chat",      href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
@@ -233,6 +254,115 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
   );
 }
 
+function AccountSwitcher({ onClose, collapsed }: { onClose?: () => void; collapsed?: boolean }) {
+  const t = useT();
+  const router = useRouter();
+  const { user, accounts, switchAccount, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const handleSwitch = (userId: string) => {
+    if (userId === user?.id) { setOpen(false); return; }
+    hapticMedium();
+    setOpen(false);
+    onClose?.();
+    switchAccount(userId);
+  };
+
+  const handleLogout = () => {
+    clearCache();
+    localStorage.removeItem("active_org_id");
+    onClose?.();
+    signOut();
+  };
+
+  const handleAddAccount = () => {
+    setOpen(false);
+    onClose?.();
+    router.push("/login?addAccount=1");
+  };
+
+  const initial = user?.email?.[0]?.toUpperCase() ?? "?";
+
+  if (collapsed) {
+    return (
+      <SidebarTooltip label={user?.email ?? ""} show>
+        <button
+          onClick={() => { hapticLight(); setOpen((v) => !v); }}
+          className="flex w-full items-center justify-center rounded px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <div className="h-6 w-6 rounded-[0.3rem] bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground shrink-0">
+            {initial}
+          </div>
+        </button>
+      </SidebarTooltip>
+    );
+  }
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        onClick={() => { hapticLight(); setOpen((v) => !v); }}
+        className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      >
+        <div className="h-6 w-6 rounded-[0.3rem] bg-muted flex items-center justify-center text-[11px] font-semibold text-muted-foreground shrink-0">
+          {initial}
+        </div>
+        <span className="flex-1 truncate text-left text-[12px]">{user?.email ?? ""}</span>
+        <ChevronsUpDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 bottom-full mb-1 z-50 rounded-[0.3rem] border border-border bg-card shadow-md">
+          <div className="py-1">
+            {accounts.map((acct) => (
+              <button
+                key={acct.id}
+                onClick={() => handleSwitch(acct.id)}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
+              >
+                <div className="h-5 w-5 rounded-[0.3rem] bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+                  {acct.email[0]?.toUpperCase() ?? "?"}
+                </div>
+                <span className="flex-1 truncate text-[12px]">{acct.email}</span>
+                {acct.id === user?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-border py-1">
+            <button
+              onClick={handleAddAccount}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <UserPlus className="h-3.5 w-3.5 shrink-0" />
+              {t("accounts.addAccount")}
+            </button>
+          </div>
+          <div className="border-t border-border py-1">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5 shrink-0" />
+              {t("common.signOut")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const t = useT();
   const pathname = usePathname();
@@ -241,6 +371,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const { signOut } = useAuth();
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const unreadCount = useUnreadCount();
 
   // Paths allowed when the device is in store-machine mode.
   const STORE_MACHINE_HREFS = new Set(["/pos", "/inventory", "/punch-in"]);
@@ -257,7 +389,11 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
     onClose?.();
   };
 
+  const isDesktop = !!onToggleCollapse;
+
   const visibleNavItems = navItems.filter((item) => {
+    // Mobile-only items are hidden on desktop (desktop has inline switchers instead).
+    if (item.mobileOnly && isDesktop) return false;
     // Punch In is a store-machine-only entry point.
     if (item.href === "/punch-in" && !storeMachine) return false;
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
@@ -281,8 +417,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
         )}
       </div>
 
-      {/* Store switcher */}
-      {!collapsed && <StoreSwitcher onClose={onClose} />}
+      {/* Store switcher (desktop only — on mobile, use /account page) */}
+      {!collapsed && onToggleCollapse && <StoreSwitcher onClose={onClose} />}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
@@ -321,6 +457,36 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
       {/* Bottom links */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
+        <SidebarTooltip label={t("notifications.title")} show={!!collapsed}>
+          <button
+            onClick={() => { hapticLight(); setNotifOpen(true); }}
+            className={cn(
+              "flex w-full items-center rounded text-[13px] font-medium transition-colors relative",
+              collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
+              "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <Bell className="h-[15px] w-[15px] shrink-0" />
+            {!collapsed && t("notifications.title")}
+            {unreadCount > 0 && (
+              <span className={cn(
+                "flex items-center justify-center rounded-full bg-foreground text-background text-[10px] font-bold leading-none",
+                collapsed ? "absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1" : "ml-auto h-4 min-w-[16px] px-1"
+              )}>
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+        </SidebarTooltip>
+        <DynamicUIElement open={notifOpen} onOpenChange={setNotifOpen}>
+          <DynamicUIElementContent className="max-w-md" noPadding>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("notifications.title")}>{t("notifications.title")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription className="hidden">{t("notifications.title")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            <NotificationCenter />
+          </DynamicUIElementContent>
+        </DynamicUIElement>
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
             href="/settings"
@@ -337,18 +503,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             {!collapsed && t("nav.settings")}
           </Link>
         </SidebarTooltip>
-        <SidebarTooltip label={t("common.signOut")} show={!!collapsed}>
-          <button
-            onClick={handleLogout}
-            className={cn(
-              "flex w-full items-center rounded text-[13px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors",
-              collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
-            )}
-          >
-            <LogOut className="h-[15px] w-[15px] shrink-0" />
-            {!collapsed && t("common.signOut")}
-          </button>
-        </SidebarTooltip>
+        {/* Account switcher (desktop only — on mobile, use /account page) */}
+        {onToggleCollapse && <AccountSwitcher onClose={onClose} collapsed={collapsed} />}
         {onToggleCollapse && (
           <SidebarTooltip label={collapsed ? t("components.sidebar.expand") : t("components.sidebar.collapse")} show={!!collapsed}>
             <button
@@ -474,13 +630,24 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
     function onTouchStart(e: TouchEvent) {
       if (useBottomBarRef.current || hasDialogRef.current) return;
+
+      // If right panel is open (content shifted left), don't handle sidebar swipe
+      const mc = document.getElementById("mobile-content");
+      if (mc) {
+        const t = mc.style.transform;
+        if (t && t.includes("-")) {
+          // Content is shifted left (right panel open) — skip sidebar
+          isEdge.current = false;
+          return;
+        }
+      }
+
       const t = e.touches[0];
       startX.current = t.clientX;
       startY.current = t.clientY;
       startTime.current = Date.now();
       lastX.current = t.clientX;
       isHoriz.current = null;
-      // Always allow horizontal swipe — open from anywhere, close when open
       isEdge.current = true;
       lastHapticOffset.current = isOpenRef.current ? SIDEBAR_WIDTH : 0;
     }
@@ -592,9 +759,12 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarCollapsedContext.Provider value={{ collapsed: sidebarCollapsed, toggle: toggleSidebarCollapse }}>
     <SidebarOpenContext.Provider value={() => { hapticLight(); setIsOpen(true); }}>
+    <RightPanelMobileProvider>
     <>
       {/* ── Mobile / tablet layout (touch devices) + builder full-viewport ── */}
       <div className={cn("relative h-screen overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex" : "hidden")}>
+        {/* Right panel (swipe from right, appears behind content like sidebar) */}
+        {isMobile && !isBuilderPage && <MobileRightPanel />}
         {/* Floating hamburger / back button — in bottom-bar mode, only show when a dialog is open */}
         {!isBuilderPage && (!useBottomBar || hasDialog) && (
           <FloatingNavButton
@@ -710,9 +880,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             <main className="flex flex-col flex-1 overflow-y-auto">{(isMobile === null || !isMobile) && children}</main>
             {storeMachineMode && <StoreFooter />}
           </div>
+          <RightPanel />
         </div>
       )}
     </>
+    </RightPanelMobileProvider>
     </SidebarOpenContext.Provider>
     </SidebarCollapsedContext.Provider>
   );

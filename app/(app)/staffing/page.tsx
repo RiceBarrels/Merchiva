@@ -49,6 +49,7 @@ import type {
 import { PermissionGuard } from "@/components/permission-guard";
 import { NotificationPanel } from "@/components/notification-panel";
 import { PageHeader } from "@/components/page-header";
+import { AutoScheduler } from "@/components/auto-scheduler";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
@@ -269,6 +270,7 @@ interface StaffingDesktopProps {
     notifyChats: string[];
   }>>;
   refreshing: boolean;
+  autoSchedulerSlot?: React.ReactNode;
 }
 
 function StaffingDesktop(props: StaffingDesktopProps) {
@@ -1049,7 +1051,10 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           title={t("staffing.title")}
           subtitle={t("staffing.subtitle")}
           right={
-            refreshing ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : undefined
+            <div className="flex items-center gap-2">
+              {canEdit && props.autoSchedulerSlot}
+              {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            </div>
           }
         />
 
@@ -1229,6 +1234,7 @@ export default function StaffingPage() {
     roles, setRoles,
     presets, setPresets,
     chatOptions, setChatOptions,
+    allAvailability,
     myAvailability, setMyAvailability,
     myTimeOffRequests, setMyTimeOffRequests,
     orgTimeOffRequests, setOrgTimeOffRequests,
@@ -2268,6 +2274,23 @@ export default function StaffingPage() {
   const [batchDialog, setBatchDialog] = useState(false);
   const [batchForm, setBatchForm] = useState({ startTime: "09:00", endTime: "17:00", roleNames: [] as string[] });
 
+  // ─── Auto Schedule Apply Handler ─────────────────────���────────────────────
+  const handleAutoScheduleApply = useCallback(async (scheduledShifts: { memberId: string; memberName: string; date: string; shiftType: string; startTime: string; endTime: string; roles: string[] }[]) => {
+    for (const shift of scheduledShifts) {
+      await addShift({
+        memberId: shift.memberId,
+        staffName: shift.memberName,
+        staffRole: null,
+        staffRoles: JSON.stringify(shift.roles),
+        date: shift.date,
+        shiftType: shift.shiftType,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        predictedDemand: "medium",
+      });
+    }
+  }, []);
+
   // ─── Desktop early return ────────────────────────────────────────────────
   if (isDesktop) return (
     <>
@@ -2319,6 +2342,21 @@ export default function StaffingPage() {
         setTaskDialog={setTaskDialog}
         setTaskForm={setTaskForm}
         refreshing={refreshing}
+        autoSchedulerSlot={
+          organizationId ? (
+            <AutoScheduler
+              members={team}
+              shifts={shifts}
+              availability={allAvailability}
+              timeOff={orgTimeOffRequests}
+              presets={presets}
+              roles={roles}
+              salesHistory={[]}
+              organizationId={organizationId}
+              onApply={handleAutoScheduleApply}
+            />
+          ) : null
+        }
       />
       {/* ─── Dialogs still need to render (they are portals) ─── */}
       {/* Add / Edit Shift DynamicUIElement */}
@@ -2658,6 +2696,23 @@ export default function StaffingPage() {
         >
           {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </PageHeader>
+
+        {/* ─── Auto Schedule (mobile) ─── */}
+        {canEdit && organizationId && (
+          <div className="flex items-center justify-end px-4 py-1.5 border-b border-border bg-background">
+            <AutoScheduler
+              members={team}
+              shifts={shifts}
+              availability={allAvailability}
+              timeOff={orgTimeOffRequests}
+              presets={presets}
+              roles={roles}
+              salesHistory={[]}
+              organizationId={organizationId}
+              onApply={handleAutoScheduleApply}
+            />
+          </div>
+        )}
 
         {/* ─── Tabs: Overview | Schedule ────────────────────────── */}
         <div className="flex border-b border-border bg-background">

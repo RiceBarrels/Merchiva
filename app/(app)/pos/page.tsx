@@ -8,7 +8,7 @@ import {
   ShoppingCart, CornerDownLeft, Smartphone, Gift, ScanLine,
   Percent, Pencil, Trash2, MessageSquare, ArrowLeft,
   CheckCircle, ChevronRight, Mail, ShoppingBag, Coffee, Leaf,
-  Snowflake, Sandwich, Package as PackageIcon, Star,
+  Snowflake, Sandwich, Package as PackageIcon, Star, WifiOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProducts } from "@/lib/db/products";
@@ -18,6 +18,19 @@ import { getCached, setCache } from "@/lib/cache";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT } from "@/lib/i18n/context";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+  DynamicUIElementDescription,
+} from "@/components/ui/dynamic-ui-element";
 import type { Product, CartItem, Payment } from "@/lib/types";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
@@ -36,6 +49,24 @@ interface POSLine {
 
 type Stage = "order" | "pay" | "receipt";
 type PmtMethod = "card" | "cash" | "mobile" | "gift";
+
+/**
+ * WARNING: Storing card numbers locally is NOT PCI-compliant.
+ * This is for demo/MVP purposes only. In production, use a
+ * PCI-compliant tokenization service (e.g. Stripe, Square, Helcim).
+ */
+interface PendingCardPayment {
+  id: string;
+  cardNumberLast4: string;
+  cardNumberFull: string; // PCI non-compliant — demo only
+  amount: number;
+  items: { name: string; price: number; quantity: number; category?: string }[];
+  customerName: string | null;
+  tipPct: number;
+  tipAmount: number;
+  taxAmount: number;
+  createdAt: string;
+}
 
 interface ReceiptData {
   payment: Payment;
@@ -120,14 +151,28 @@ function loadPaymentScript(errorMsg: string): Promise<void> {
 
 function ProductCard({ product, onTap }: { product: Product; onTap: () => void }) {
   const CatIcon = catIcon(product.category);
+  const initial = product.name.charAt(0).toUpperCase();
   return (
     <button
       type="button"
       onClick={onTap}
-      className="group bg-card border border-border rounded text-left hover:border-muted-foreground hover:shadow-sm transition-all flex flex-col relative p-2.5"
+      className="group bg-card border border-border rounded-[0.3rem] text-left hover:border-muted-foreground hover:shadow-sm transition-all flex flex-col relative p-2.5"
     >
-      <div className="h-9 w-9 rounded flex items-center justify-center mb-2 bg-muted">
-        <CatIcon className="h-4 w-4 text-muted-foreground" />
+      <div className="flex items-start gap-2 mb-2">
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="h-12 w-12 rounded-[0.3rem] object-cover shrink-0 bg-muted"
+          />
+        ) : (
+          <div className="h-12 w-12 rounded-[0.3rem] flex items-center justify-center shrink-0 bg-muted">
+            <span className="text-[16px] font-semibold text-muted-foreground">{initial}</span>
+          </div>
+        )}
+        <div className="h-6 w-6 rounded-[0.3rem] flex items-center justify-center bg-muted/60 ml-auto shrink-0">
+          <CatIcon className="h-3 w-3 text-muted-foreground" />
+        </div>
       </div>
       <div className="text-[13px] font-semibold leading-tight">{product.name}</div>
       {product.description && (
@@ -139,7 +184,7 @@ function ProductCard({ product, onTap }: { product: Product; onTap: () => void }
         <span className="font-mono text-[12.5px] font-semibold tabular-nums">
           {money(product.price)}
         </span>
-        <span className="h-6 w-6 rounded border border-border bg-card group-hover:bg-foreground group-hover:text-background group-hover:border-foreground flex items-center justify-center transition-colors">
+        <span className="h-6 w-6 rounded-[0.3rem] border border-border bg-card group-hover:bg-foreground group-hover:text-background group-hover:border-foreground flex items-center justify-center transition-colors">
           <Plus className="h-3 w-3" />
         </span>
       </div>
@@ -177,7 +222,7 @@ function CartSidebar({
   onCharge: () => void;
 }) {
   return (
-    <aside className="w-72 lg:w-80 flex flex-col shrink-0 border-l border-border bg-card overflow-hidden">
+    <aside className="hidden md:flex w-72 lg:w-80 flex-col shrink-0 border-l border-border bg-card overflow-hidden">
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-border flex items-center gap-2 shrink-0">
         <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -323,7 +368,7 @@ function TotalsRow({ label, value, bold, big }: { label: string; value: string; 
 
 // ─── Line Editor Modal ───────────────────────────────────────────────────────
 
-function LineEditorModal({
+function LineEditorPanel({
   line,
   onClose,
   onSave,
@@ -360,146 +405,132 @@ function LineEditorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-8" onClick={onClose}>
-      <div
-        className="bg-card rounded-lg shadow-2xl border border-border w-[560px] max-w-full max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-start gap-3 p-4 border-b border-border">
-          <div className="h-11 w-11 rounded flex items-center justify-center text-[20px] shrink-0 border border-border bg-muted">
-            {(() => { const I = catIcon(line.category ?? ""); return <I className="h-5 w-5 text-muted-foreground" />; })()}
+    <>
+      <DynamicUIElementHeader>
+        <DynamicUIElementTitle mobileTitle={`Edit · ${line.name}`}>
+          Edit line
+        </DynamicUIElementTitle>
+        <DynamicUIElementDescription>
+          {line.name} · {money(line.price)}/ea
+        </DynamicUIElementDescription>
+      </DynamicUIElementHeader>
+
+      <div className="space-y-4 mt-2">
+        {/* Quantity */}
+        <FieldGroup label="Quantity">
+          <div className="inline-flex items-center border border-border rounded">
+            <button type="button" onClick={() => setQty(q => Math.max(1, q - 1))} className="h-10 w-10 sm:h-8 sm:w-8 hover:bg-muted flex items-center justify-center">
+              <Minus className="h-[13px] w-[13px]" />
+            </button>
+            <span className="w-12 sm:w-10 text-center text-[14px] sm:text-[13px] font-mono font-semibold tabular-nums">{qty}</span>
+            <button type="button" onClick={() => setQty(q => q + 1)} className="h-10 w-10 sm:h-8 sm:w-8 hover:bg-muted flex items-center justify-center">
+              <Plus className="h-[13px] w-[13px]" />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Edit line</p>
-            <p className="text-[15px] font-semibold leading-tight">{line.name}</p>
-            <p className="text-[11.5px] text-muted-foreground mt-0.5 font-mono tabular-nums">
-              {money(line.price)}/ea
-            </p>
+        </FieldGroup>
+
+        {/* Notes */}
+        <div>
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+            <MessageSquare className="h-[11px] w-[11px]" /> Notes for kitchen / bar
           </div>
-          <button type="button" onClick={onClose} className="h-7 w-7 rounded hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center">
-            <X className="h-[15px] w-[15px]" />
-          </button>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Allergies, prep instructions, name on cup..."
+            rows={2}
+            className="w-full text-[13px] py-2 px-2.5 resize-none rounded border border-border bg-background outline-none focus:ring-1 focus:ring-ring"
+          />
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-auto p-4 space-y-4">
-          {/* Quantity */}
-          <FieldGroup label="Quantity">
-            <div className="inline-flex items-center border border-border rounded">
-              <button type="button" onClick={() => setQty(q => Math.max(1, q - 1))} className="h-8 w-8 hover:bg-muted flex items-center justify-center">
-                <Minus className="h-[13px] w-[13px]" />
-              </button>
-              <span className="w-10 text-center text-[13px] font-mono font-semibold tabular-nums">{qty}</span>
-              <button type="button" onClick={() => setQty(q => q + 1)} className="h-8 w-8 hover:bg-muted flex items-center justify-center">
-                <Plus className="h-[13px] w-[13px]" />
-              </button>
-            </div>
-          </FieldGroup>
-
-          {/* Notes */}
-          <div>
-            <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
-              <MessageSquare className="h-[11px] w-[11px]" /> Notes for kitchen / bar
-            </div>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="Allergies, prep instructions, name on cup, for here vs to-go..."
-              rows={2}
-              className="w-full text-[13px] py-2 px-2.5 resize-none rounded border border-border bg-background outline-none focus:ring-1 focus:ring-ring"
-            />
+        {/* Discount */}
+        <div className="border border-border rounded-lg overflow-hidden">
+          <div className="px-3 py-2 bg-muted border-b border-border flex items-center gap-2">
+            <Percent className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Line discount</span>
+            {discKind !== "none" && (
+              <span className="ml-auto text-[11px] font-mono tabular-nums text-emerald-700 font-semibold">
+                &minus; {money(discountAmt)}
+              </span>
+            )}
           </div>
-
-          {/* Discount */}
-          <div className="border border-border rounded-lg overflow-hidden">
-            <div className="px-3 py-2 bg-muted border-b border-border flex items-center gap-2">
-              <Percent className="h-3 w-3 text-muted-foreground" />
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Line discount</span>
-              {discKind !== "none" && (
-                <span className="ml-auto text-[11px] font-mono tabular-nums text-emerald-700 font-semibold">
-                  &minus; {money(discountAmt)}
-                </span>
-              )}
+          <div className="p-3 space-y-2.5">
+            <div className="grid grid-cols-3 gap-1.5">
+              {(["none", "pct", "amount"] as const).map(k => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    setDiscKind(k);
+                    if (k === "pct" && discValue === 0) setDiscValue(10);
+                    if (k === "amount" && discValue === 0) setDiscValue(1);
+                  }}
+                  className={cn(
+                    "px-3 py-2.5 sm:py-2 rounded border text-[12.5px] leading-tight transition-colors min-w-[66px]",
+                    discKind === k
+                      ? "bg-foreground text-background border-foreground"
+                      : "bg-card border-border hover:border-muted-foreground text-foreground"
+                  )}
+                >
+                  {k === "none" ? "None" : k === "pct" ? "% off" : "$ off"}
+                </button>
+              ))}
             </div>
-            <div className="p-3 space-y-2.5">
-              <div className="grid grid-cols-3 gap-1.5">
-                {(["none", "pct", "amount"] as const).map(k => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => {
-                      setDiscKind(k);
-                      if (k === "pct" && discValue === 0) setDiscValue(10);
-                      if (k === "amount" && discValue === 0) setDiscValue(1);
-                    }}
-                    className={cn(
-                      "px-3 py-2 rounded border text-[12.5px] leading-tight transition-colors min-w-[66px]",
-                      discKind === k
-                        ? "bg-foreground text-background border-foreground"
-                        : "bg-card border-border hover:border-muted-foreground text-foreground"
-                    )}
-                  >
-                    {k === "none" ? "None" : k === "pct" ? "% off" : "$ off"}
-                  </button>
-                ))}
-              </div>
-              {discKind !== "none" && (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex-1 inline-flex items-center border border-border rounded h-8 overflow-hidden bg-card">
-                      <span className="px-2 text-muted-foreground text-[12px] font-mono">
-                        {discKind === "pct" ? "%" : "$"}
-                      </span>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        value={discValue}
-                        onChange={e => setDiscValue(parseFloat(e.target.value) || 0)}
-                        className="border-0 rounded-none py-0 px-1 flex-1 text-[13px] font-mono tabular-nums bg-transparent outline-none"
-                      />
-                    </div>
-                    {discKind === "pct" && (
-                      <div className="inline-flex border border-border rounded overflow-hidden">
-                        {DISCOUNT_PRESETS.map((p, i) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => setDiscValue(p)}
-                            className={cn(
-                              "h-8 px-2 text-[11.5px] font-mono tabular-nums",
-                              discValue === p ? "bg-foreground text-background" : "bg-card hover:bg-muted",
-                              i < DISCOUNT_PRESETS.length - 1 && "border-r border-border"
-                            )}
-                          >
-                            {p}%
-                          </button>
-                        ))}
-                      </div>
-                    )}
+            {discKind !== "none" && (
+              <>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex-1 min-w-[100px] inline-flex items-center border border-border rounded h-10 sm:h-8 overflow-hidden bg-card">
+                    <span className="px-2 text-muted-foreground text-[12px] font-mono">
+                      {discKind === "pct" ? "%" : "$"}
+                    </span>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={discValue}
+                      onChange={e => setDiscValue(parseFloat(e.target.value) || 0)}
+                      className="border-0 rounded-none py-0 px-1 flex-1 text-[13px] font-mono tabular-nums bg-transparent outline-none"
+                    />
                   </div>
-                  <select
-                    value={discReason}
-                    onChange={e => setDiscReason(e.target.value)}
-                    className="w-full text-[12.5px] py-1.5 px-2 rounded border border-border bg-background outline-none"
-                  >
-                    {DISCOUNT_REASONS.map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
-                </>
-              )}
-            </div>
+                  {discKind === "pct" && (
+                    <div className="inline-flex border border-border rounded overflow-hidden">
+                      {DISCOUNT_PRESETS.map((p, i) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setDiscValue(p)}
+                          className={cn(
+                            "h-10 sm:h-8 px-2.5 sm:px-2 text-[11.5px] font-mono tabular-nums",
+                            discValue === p ? "bg-foreground text-background" : "bg-card hover:bg-muted",
+                            i < DISCOUNT_PRESETS.length - 1 && "border-r border-border"
+                          )}
+                        >
+                          {p}%
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <select
+                  value={discReason}
+                  onChange={e => setDiscReason(e.target.value)}
+                  className="w-full text-[12.5px] py-2 sm:py-1.5 px-2 rounded border border-border bg-background outline-none"
+                >
+                  {DISCOUNT_REASONS.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-border bg-muted flex items-center gap-2">
+        {/* Footer actions */}
+        <div className="flex items-center gap-2 pt-2">
           <button
             type="button"
             onClick={() => { onRemove(); onClose(); }}
-            className="h-8 px-2.5 rounded border border-border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 text-[12px] font-medium inline-flex items-center gap-1.5"
+            className="h-10 sm:h-8 px-3 rounded border border-border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 text-[12px] font-medium inline-flex items-center gap-1.5"
           >
             <Trash2 className="h-3 w-3" /> Remove
           </button>
@@ -515,13 +546,13 @@ function LineEditorModal({
           <button
             type="button"
             onClick={handleSave}
-            className="h-8 px-3 rounded bg-foreground hover:bg-foreground/90 text-background text-[12px] font-semibold inline-flex items-center gap-1.5"
+            className="h-10 sm:h-8 px-4 sm:px-3 rounded bg-foreground hover:bg-foreground/90 text-background text-[13px] sm:text-[12px] font-semibold inline-flex items-center gap-1.5"
           >
             <Check className="h-[13px] w-[13px]" /> Save
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -553,6 +584,8 @@ function PayOverlay({
   processing,
   paymentError,
   onCardPayment,
+  isOnline,
+  onOfflineCard,
 }: {
   cart: POSLine[];
   subtotal: number;
@@ -570,21 +603,36 @@ function PayOverlay({
   processing: boolean;
   paymentError: string | null;
   onCardPayment: () => void;
+  isOnline: boolean;
+  onOfflineCard: (cardNumber: string) => void;
 }) {
   const [cashTaken, setCashTaken] = useState<number | null>(null);
+  const [customCash, setCustomCash] = useState("");
+  const [showCustomCash, setShowCustomCash] = useState(false);
   const [splits, setSplits] = useState(1);
+  const [offlineCardNumber, setOfflineCardNumber] = useState("");
+
+  const formatCardNumber = (val: string) => {
+    const digits = val.replace(/\D/g, "").slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+  };
+
+  const handleCardInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOfflineCardNumber(formatCardNumber(e.target.value));
+  };
+
+  const offlineCardValid = offlineCardNumber.replace(/\s/g, "").length >= 13;
 
   const cashOptions = useMemo(() => {
-    return [
-      Math.ceil(total),
-      Math.ceil(total / 5) * 5,
-      Math.ceil(total / 10) * 10,
-      Math.ceil(total / 20) * 20,
-    ].filter((v, i, a) => a.indexOf(v) === i && v >= total);
+    const exact = parseFloat(total.toFixed(2));
+    const bills = [1, 5, 10, 20].map(b => Math.ceil(total / b) * b);
+    return [exact, ...bills].filter((v, i, a) => a.indexOf(v) === i && v >= total).slice(0, 5);
   }, [total]);
 
+  const showOfflineCardInput = payMethod === "card" && !isOnline;
+
   const methods: { id: PmtMethod; label: string; icon: typeof CreditCard; sub: string }[] = [
-    { id: "card", label: "Card", icon: CreditCard, sub: cardAvailable ? "Tap, insert, or swipe" : "Not configured" },
+    { id: "card", label: "Card", icon: CreditCard, sub: !isOnline ? "Enter card — queued offline" : cardAvailable ? "Tap, insert, or swipe" : "Not configured" },
     { id: "cash", label: "Cash", icon: Banknote, sub: "Open drawer" },
     { id: "mobile", label: "Mobile Pay", icon: Smartphone, sub: "Apple / Google Pay" },
     { id: "gift", label: "Gift Card", icon: Gift, sub: "Scan or enter code" },
@@ -592,12 +640,16 @@ function PayOverlay({
 
   const canCharge =
     payMethod === "cash" ? (cashTaken != null && cashTaken >= total) :
-    payMethod === "card" ? cardAvailable :
+    payMethod === "card" ? (isOnline ? cardAvailable : offlineCardValid) :
     true;
 
   const handleCharge = () => {
     if (payMethod === "card") {
-      onCardPayment();
+      if (!isOnline && offlineCardValid) {
+        onOfflineCard(offlineCardNumber);
+      } else {
+        onCardPayment();
+      }
     } else {
       onComplete();
     }
@@ -606,33 +658,35 @@ function PayOverlay({
   return (
     <div className="absolute inset-0 z-30 bg-muted flex flex-col">
       {/* Header */}
-      <div className="h-16 border-b border-border bg-card flex items-center px-6 gap-4 shrink-0">
+      <div className="h-14 sm:h-16 border-b border-border bg-card flex items-center px-3 sm:px-6 gap-2 sm:gap-4 shrink-0">
         <button
           type="button"
           onClick={onBack}
-          className="h-10 px-3 rounded border border-border hover:bg-muted inline-flex items-center gap-2 text-[13px] font-medium"
+          className="h-9 sm:h-10 px-2 sm:px-3 rounded border border-border hover:bg-muted inline-flex items-center gap-1.5 text-[13px] font-medium shrink-0"
         >
-          <ArrowLeft className="h-[15px] w-[15px]" /> Back to order
+          <ArrowLeft className="h-[15px] w-[15px]" />
+          <span className="hidden sm:inline">Back to order</span>
         </button>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Checkout</p>
-          <p className="text-[15px] font-semibold">{cart.length} items{customerName ? ` · ${customerName}` : ""}</p>
+          <p className="text-[14px] sm:text-[15px] font-semibold truncate">{cart.length} items{customerName ? ` · ${customerName}` : ""}</p>
         </div>
-        <div className="text-right">
+        <div className="text-right shrink-0">
           <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Total</p>
-          <p className="text-[22px] font-semibold tabular-nums">{money(total)}</p>
+          <p className="text-[18px] sm:text-[22px] font-semibold tabular-nums">{money(total)}</p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto grid grid-cols-[1fr_380px] min-h-0">
+      <div className="flex-1 overflow-auto grid grid-cols-1 md:grid-cols-[1fr_380px] min-h-0">
         {/* Left: method + tip + split */}
-        <div className="p-8 overflow-auto">
+        <div className="p-4 sm:p-8 overflow-auto">
           <div className="max-w-[640px] mx-auto space-y-8">
             <section>
               <SectionLabel>Tender</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 {methods.map(m => {
-                  const disabled = m.id === "card" && !cardAvailable;
+                  // Card is always selectable when offline (for queueing), only disabled when online and not configured
+                  const disabled = m.id === "card" && isOnline && !cardAvailable;
                   return (
                     <button
                       key={m.id}
@@ -640,7 +694,7 @@ function PayOverlay({
                       onClick={() => !disabled && setPayMethod(m.id)}
                       disabled={disabled}
                       className={cn(
-                        "p-5 rounded-lg border-2 text-left transition-colors",
+                        "p-5 rounded-[0.3rem] border-2 text-left transition-colors",
                         payMethod === m.id
                           ? "border-foreground bg-foreground text-background"
                           : disabled
@@ -663,6 +717,32 @@ function PayOverlay({
                 </div>
               )}
             </section>
+
+            {/* Offline card number input */}
+            {showOfflineCardInput && (
+              <section>
+                <SectionLabel>Card number (queued for later)</SectionLabel>
+                <div className="rounded-[0.3rem] border border-border bg-card p-4">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={offlineCardNumber}
+                    onChange={handleCardInput}
+                    placeholder="0000 0000 0000 0000"
+                    maxLength={19}
+                    className="w-full text-[22px] font-mono tracking-wider tabular-nums bg-transparent outline-none placeholder:text-muted-foreground/40 border-0 p-0"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-wide">
+                    Payment will be queued and processed when back online
+                  </p>
+                </div>
+                {/* PCI compliance warning */}
+                <div className="flex items-start gap-2 rounded-[0.3rem] border border-amber-300 bg-amber-50 p-2.5 text-[10.5px] text-amber-800 mt-2">
+                  <AlertCircle className="h-3 w-3 shrink-0 mt-0.5 text-amber-600" />
+                  <span>Demo/MVP only — card numbers stored locally are not PCI-compliant.</span>
+                </div>
+              </section>
+            )}
 
             <section>
               <SectionLabel>Tip</SectionLabel>
@@ -693,15 +773,15 @@ function PayOverlay({
             {payMethod === "cash" && (
               <section>
                 <SectionLabel>Cash tendered</SectionLabel>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {cashOptions.map(v => (
                     <button
                       key={v}
                       type="button"
-                      onClick={() => setCashTaken(v)}
+                      onClick={() => { setCashTaken(v); setShowCustomCash(false); }}
                       className={cn(
                         "py-4 rounded-lg border text-center transition-colors",
-                        cashTaken === v
+                        cashTaken === v && !showCustomCash
                           ? "bg-foreground border-foreground text-background"
                           : "bg-card border-border hover:border-muted-foreground"
                       )}
@@ -709,7 +789,37 @@ function PayOverlay({
                       <p className="text-[16px] font-semibold tabular-nums">{money(v)}</p>
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => { setShowCustomCash(true); setCashTaken(null); }}
+                    className={cn(
+                      "py-4 rounded-lg border text-center transition-colors",
+                      showCustomCash
+                        ? "bg-foreground border-foreground text-background"
+                        : "bg-card border-border hover:border-muted-foreground"
+                    )}
+                  >
+                    <p className="text-[16px] font-semibold">Other</p>
+                  </button>
                 </div>
+                {showCustomCash && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground font-mono">$</span>
+                    <input
+                      type="number"
+                      value={customCash}
+                      onChange={e => {
+                        setCustomCash(e.target.value);
+                        const v = parseFloat(e.target.value);
+                        setCashTaken(v > 0 ? v : null);
+                      }}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="flex-1 rounded-lg border border-border bg-background px-3 py-3 text-[16px] font-mono tabular-nums outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                )}
                 {cashTaken != null && cashTaken >= total && (
                   <div className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
                     <Banknote className="h-5 w-5 text-emerald-700" />
@@ -745,11 +855,35 @@ function PayOverlay({
                 ))}
               </div>
             </section>
+
+            {/* Mobile totals + charge */}
+            <div className="md:hidden space-y-3 mt-4">
+              <div className="rounded-lg border border-border bg-card p-4 space-y-1.5 text-[13px]">
+                <TotalsRow label="Subtotal" value={money(subtotal)} />
+                <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
+                <TotalsRow label="Tax" value={money(tax)} />
+                <div className="h-px bg-border my-2" />
+                <TotalsRow label="Total" value={money(total)} bold big />
+              </div>
+              <button
+                type="button"
+                onClick={handleCharge}
+                disabled={!canCharge || processing}
+                className="w-full h-14 rounded-lg bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[15px] font-semibold inline-flex items-center justify-center gap-2 transition-colors"
+              >
+                {processing ? (
+                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                ) : (
+                  <CheckCircle className="h-[18px] w-[18px]" />
+                )}
+                {processing ? "Processing…" : showOfflineCardInput ? `Queue Card ${money(total)}` : `Charge ${money(total)}`}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Right: summary */}
-        <aside className="border-l border-border bg-card flex flex-col overflow-hidden">
+        {/* Right: summary — hidden on mobile */}
+        <aside className="hidden md:flex border-l border-border bg-card flex-col overflow-hidden">
           <div className="p-5 border-b border-border">
             <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Order summary</p>
           </div>
@@ -783,7 +917,7 @@ function PayOverlay({
             ) : (
               <CheckCircle className="h-[18px] w-[18px]" />
             )}
-            {processing ? "Processing…" : `Charge ${money(total)}`}
+            {processing ? "Processing…" : showOfflineCardInput ? `Queue Card ${money(total)}` : `Charge ${money(total)}`}
           </button>
         </aside>
       </div>
@@ -793,6 +927,271 @@ function PayOverlay({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-[11px] uppercase tracking-[0.12em] font-semibold text-muted-foreground mb-3">{children}</p>;
+}
+
+// ─── Mobile Checkout Panel ──────────────────────────────────────────────────
+
+function MobileCheckoutPanel({
+  cart,
+  subtotal,
+  tax,
+  tip,
+  tipPct,
+  setTipPct,
+  total,
+  payMethod,
+  setPayMethod,
+  cardAvailable,
+  processing,
+  paymentError,
+  onCharge,
+  onCardPayment,
+  isOnline,
+  onOfflineCard,
+}: {
+  cart: POSLine[];
+  subtotal: number;
+  tax: number;
+  tip: number;
+  tipPct: number;
+  setTipPct: (v: number) => void;
+  total: number;
+  payMethod: PmtMethod;
+  setPayMethod: (v: PmtMethod) => void;
+  cardAvailable: boolean;
+  processing: boolean;
+  paymentError: string | null;
+  onCharge: () => void;
+  onCardPayment: () => void;
+  isOnline: boolean;
+  onOfflineCard: (cardNumber: string) => void;
+}) {
+  const [cashTaken, setCashTaken] = useState<number | null>(null);
+  const [customCash, setCustomCash] = useState("");
+  const [showCustomCash, setShowCustomCash] = useState(false);
+  const [offlineCardNumber, setOfflineCardNumber] = useState("");
+
+  const formatCardNumber = (val: string) => {
+    const digits = val.replace(/\D/g, "").slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+  };
+
+  const handleCardInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOfflineCardNumber(formatCardNumber(e.target.value));
+  };
+
+  const offlineCardValid = offlineCardNumber.replace(/\s/g, "").length >= 13;
+  const showOfflineCardInput = payMethod === "card" && !isOnline;
+
+  const cashOptions = useMemo(() => {
+    const exact = parseFloat(total.toFixed(2));
+    const bills = [1, 5, 10, 20].map(b => Math.ceil(total / b) * b);
+    return [exact, ...bills].filter((v, i, a) => a.indexOf(v) === i && v >= total).slice(0, 5);
+  }, [total]);
+
+  const methods: { id: PmtMethod; label: string; icon: typeof CreditCard }[] = [
+    { id: "card", label: "Card", icon: CreditCard },
+    { id: "cash", label: "Cash", icon: Banknote },
+    { id: "mobile", label: "Mobile", icon: Smartphone },
+    { id: "gift", label: "Gift", icon: Gift },
+  ];
+
+  const canCharge =
+    payMethod === "cash" ? (cashTaken != null && cashTaken >= total) :
+    payMethod === "card" ? (isOnline ? cardAvailable : offlineCardValid) :
+    true;
+
+  const handleCharge = () => {
+    if (payMethod === "card") {
+      if (!isOnline && offlineCardValid) {
+        onOfflineCard(offlineCardNumber);
+      } else {
+        onCardPayment();
+      }
+    } else {
+      onCharge();
+    }
+  };
+
+  return (
+    <div className="px-4 space-y-6 pb-8">
+      <DynamicUIElementHeader>
+        <DynamicUIElementTitle mobileTitle="Checkout">Checkout</DynamicUIElementTitle>
+        <DynamicUIElementDescription>
+          {cart.length} item{cart.length !== 1 ? "s" : ""} · {money(total)}
+        </DynamicUIElementDescription>
+      </DynamicUIElementHeader>
+
+      {/* Payment method */}
+      <section>
+        <SectionLabel>Tender</SectionLabel>
+        <div className="grid grid-cols-4 gap-2">
+          {methods.map(m => {
+            const disabled = m.id === "card" && isOnline && !cardAvailable;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => !disabled && setPayMethod(m.id)}
+                disabled={disabled}
+                className={cn(
+                  "py-3 rounded-[0.3rem] border-2 text-center transition-colors",
+                  payMethod === m.id
+                    ? "border-foreground bg-foreground text-background"
+                    : disabled
+                      ? "border-border bg-card opacity-40"
+                      : "border-border bg-card active:bg-muted"
+                )}
+              >
+                <m.icon className="h-5 w-5 mx-auto" />
+                <p className="text-[11px] font-semibold mt-1.5">{m.label}</p>
+              </button>
+            );
+          })}
+        </div>
+        {paymentError && (
+          <div className="flex items-start gap-2 rounded border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive mt-3">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />{paymentError}
+          </div>
+        )}
+      </section>
+
+      {/* Offline card number input */}
+      {showOfflineCardInput && (
+        <section>
+          <SectionLabel>Card number (queued for later)</SectionLabel>
+          <div className="rounded-[0.3rem] border border-border bg-card p-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={offlineCardNumber}
+              onChange={handleCardInput}
+              placeholder="0000 0000 0000 0000"
+              maxLength={19}
+              className="w-full text-[20px] font-mono tracking-wider tabular-nums bg-transparent outline-none placeholder:text-muted-foreground/40 border-0 p-0"
+            />
+            <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-wide">
+              Queued and processed when back online
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Tip */}
+      <section>
+        <SectionLabel>Tip</SectionLabel>
+        <div className="grid grid-cols-5 gap-1.5">
+          {[0, 10, 15, 20, 25].map(p => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setTipPct(p)}
+              className={cn(
+                "py-3 rounded-lg border text-center transition-colors",
+                tipPct === p
+                  ? "bg-foreground border-foreground text-background"
+                  : "bg-card border-border active:bg-muted"
+              )}
+            >
+              <p className="text-[14px] font-semibold">{p === 0 ? "—" : `${p}%`}</p>
+              {p > 0 && (
+                <p className={cn("text-[10px] mt-0.5 tabular-nums font-mono", tipPct === p ? "text-white/70" : "text-muted-foreground")}>
+                  {money(subtotal * p / 100)}
+                </p>
+              )}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Cash options */}
+      {payMethod === "cash" && (
+        <section>
+          <SectionLabel>Cash tendered</SectionLabel>
+          <div className="grid grid-cols-3 gap-2">
+            {cashOptions.map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => { setCashTaken(v); setShowCustomCash(false); }}
+                className={cn(
+                  "py-3 rounded-lg border text-center transition-colors",
+                  cashTaken === v && !showCustomCash
+                    ? "bg-foreground border-foreground text-background"
+                    : "bg-card border-border active:bg-muted"
+                )}
+              >
+                <p className="text-[15px] font-semibold tabular-nums">{money(v)}</p>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => { setShowCustomCash(true); setCashTaken(null); }}
+              className={cn(
+                "py-3 rounded-lg border text-center transition-colors",
+                showCustomCash
+                  ? "bg-foreground border-foreground text-background"
+                  : "bg-card border-border active:bg-muted"
+              )}
+            >
+              <p className="text-[15px] font-semibold">Other</p>
+            </button>
+          </div>
+          {showCustomCash && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-sm text-muted-foreground font-mono">$</span>
+              <input
+                type="number"
+                value={customCash}
+                onChange={e => {
+                  setCustomCash(e.target.value);
+                  const v = parseFloat(e.target.value);
+                  setCashTaken(v > 0 ? v : null);
+                }}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-3 text-[16px] font-mono tabular-nums outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          )}
+          {cashTaken != null && cashTaken >= total && (
+            <div className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 flex items-center gap-3">
+              <Banknote className="h-5 w-5 text-emerald-700" />
+              <div>
+                <p className="text-[11px] text-emerald-700 font-semibold uppercase tracking-wide">Change</p>
+                <p className="text-[20px] font-bold text-emerald-900 tabular-nums">{money(cashTaken - total)}</p>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Totals */}
+      <div className="rounded-lg border border-border bg-card p-4 space-y-1.5 text-[13px]">
+        <TotalsRow label="Subtotal" value={money(subtotal)} />
+        <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
+        <TotalsRow label="Tax" value={money(tax)} />
+        <div className="h-px bg-border my-2" />
+        <TotalsRow label="Total" value={money(total)} bold big />
+      </div>
+
+      {/* Charge */}
+      <button
+        type="button"
+        onClick={handleCharge}
+        disabled={!canCharge || processing}
+        className="w-full h-14 rounded-[0.3rem] bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[15px] font-semibold inline-flex items-center justify-center gap-2 transition-colors"
+      >
+        {processing ? (
+          <Loader2 className="h-[18px] w-[18px] animate-spin" />
+        ) : (
+          <CheckCircle className="h-[18px] w-[18px]" />
+        )}
+        {processing ? "Processing…" : showOfflineCardInput ? `Queue Card ${money(total)}` : `Charge ${money(total)}`}
+      </button>
+    </div>
+  );
 }
 
 // ─── Receipt Overlay ─────────────────────────────────────────────────────────
@@ -1032,13 +1431,17 @@ function OrdersTab({
           </>
         )}
       </div>
-      {refundTarget && (
-        <RefundDialog
-          payment={refundTarget}
-          onClose={() => setRefundTarget(null)}
-          onSuccess={handleRefundSuccess}
-        />
-      )}
+      <DynamicUIElement open={!!refundTarget} onOpenChange={v => { if (!v) setRefundTarget(null); }}>
+        <DynamicUIElementContent className="sm:max-w-sm">
+          {refundTarget && (
+            <RefundPanel
+              payment={refundTarget}
+              onClose={() => setRefundTarget(null)}
+              onSuccess={handleRefundSuccess}
+            />
+          )}
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </>
   );
 }
@@ -1101,7 +1504,7 @@ function OrderRow({ payment, onRefund }: { payment: Payment; onRefund: (p: Payme
 
 // ─── Refund Dialog (preserved) ───────────────────────────────────────────────
 
-function RefundDialog({
+function RefundPanel({
   payment,
   onClose,
   onSuccess,
@@ -1146,82 +1549,78 @@ function RefundDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="w-full sm:max-w-sm rounded-t-xl sm:rounded-xl border border-border bg-background shadow-lg">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <p className="text-sm font-semibold">{t("pos.refund.title")}</p>
-          <button type="button" onClick={onClose} disabled={processing}>
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
+    <>
+      <DynamicUIElementHeader>
+        <DynamicUIElementTitle mobileTitle={t("pos.refund.title")}>
+          {t("pos.refund.title")}
+        </DynamicUIElementTitle>
+      </DynamicUIElementHeader>
+      <div className="space-y-4 mt-2">
+        <div className="rounded border border-border bg-muted/30 px-3 py-2.5 text-xs space-y-1">
+          <div className="flex justify-between font-semibold">
+            <span>{t("pos.refund.originalTotal")}</span>
+            <span>{money(payment.amount)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span className="capitalize">{payment.method} &middot; {fmtDate(payment.createdAt)}</span>
+            {payment.customerName && <span>{payment.customerName}</span>}
+          </div>
         </div>
-        <div className="p-4 space-y-4">
-          <div className="rounded border border-border bg-muted/30 px-3 py-2.5 text-xs space-y-1">
-            <div className="flex justify-between font-semibold">
-              <span>{t("pos.refund.originalTotal")}</span>
-              <span>{money(payment.amount)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span className="capitalize">{payment.method} &middot; {fmtDate(payment.createdAt)}</span>
-              {payment.customerName && <span>{payment.customerName}</span>}
-            </div>
+        <div>
+          <p className="text-xs font-medium mb-1.5">{t("pos.refund.refundAmount")}</p>
+          <div className="flex rounded border border-border overflow-hidden">
+            {(["full", "partial"] as const).map((m, i) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={cn(
+                  "flex-1 py-2.5 sm:py-1.5 text-xs font-medium capitalize transition-colors",
+                  i > 0 ? "border-l border-border" : "",
+                  mode === m ? "bg-foreground text-background" : "hover:bg-muted"
+                )}
+              >
+                {m === "full" ? `${t("pos.refund.full")} — ${money(payment.amount)}` : t("pos.refund.partial")}
+              </button>
+            ))}
           </div>
-          <div>
-            <p className="text-xs font-medium mb-1.5">{t("pos.refund.refundAmount")}</p>
-            <div className="flex rounded border border-border overflow-hidden">
-              {(["full", "partial"] as const).map((m, i) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  className={cn(
-                    "flex-1 py-1.5 text-xs font-medium capitalize transition-colors",
-                    i > 0 ? "border-l border-border" : "",
-                    mode === m ? "bg-foreground text-background" : "hover:bg-muted"
-                  )}
-                >
-                  {m === "full" ? `${t("pos.refund.full")} — ${money(payment.amount)}` : t("pos.refund.partial")}
-                </button>
-              ))}
+          {mode === "partial" && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">$</span>
+              <input
+                type="number"
+                value={partialAmount}
+                onChange={e => setPartialAmount(e.target.value)}
+                placeholder="0.00"
+                min="0.01"
+                max={payment.amount}
+                step="0.01"
+                className="flex-1 rounded border border-border bg-background px-3 py-2 sm:py-1.5 text-sm font-mono outline-none focus:ring-1 focus:ring-ring"
+              />
             </div>
-            {mode === "partial" && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">$</span>
-                <input
-                  autoFocus
-                  type="number"
-                  value={partialAmount}
-                  onChange={e => setPartialAmount(e.target.value)}
-                  placeholder="0.00"
-                  min="0.01"
-                  max={payment.amount}
-                  step="0.01"
-                  className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-sm font-mono outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="text-xs font-medium">{t("pos.refund.reason")}</label>
-            <input
-              type="text"
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder={t("pos.refund.reasonPlaceholder")}
-              className="mt-1 w-full rounded border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleRefund}
-            disabled={processing || !canSubmit}
-            className="w-full flex items-center justify-center gap-2 rounded bg-destructive py-3 text-sm font-bold text-white hover:bg-destructive/90 disabled:opacity-50 transition-colors"
-          >
-            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
-            {processing ? t("pos.refund.processing") : `${t("pos.refund.refundButton")} ${money(refundAmt)}`}
-          </button>
+          )}
         </div>
+        <div>
+          <label className="text-xs font-medium">{t("pos.refund.reason")}</label>
+          <input
+            type="text"
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder={t("pos.refund.reasonPlaceholder")}
+            className="mt-1 w-full rounded border border-border bg-background px-3 py-2 sm:py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={handleRefund}
+          disabled={processing || !canSubmit}
+          className="w-full flex items-center justify-center gap-2 rounded bg-destructive py-3.5 sm:py-3 text-sm font-bold text-white hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+        >
+          {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
+          {processing ? t("pos.refund.processing") : `${t("pos.refund.refundButton")} ${money(refundAmt)}`}
+        </button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1242,6 +1641,12 @@ export default function POSPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [cardAvailable, setCardAvailable] = useState(true);
 
+  // Offline state
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+  const [pendingCards, setPendingCards] = useState<PendingCardPayment[]>([]);
+
   // UI state
   const [activeTab, setActiveTab] = useState<ActiveTab>("register");
   const [search, setSearch] = useState("");
@@ -1252,6 +1657,9 @@ export default function POSPage() {
   // Cart
   const [cart, setCart] = useState<POSLine[]>([]);
   const [editLineUid, setEditLineUid] = useState<string | null>(null);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [mobilePayOpen, setMobilePayOpen] = useState(false);
+  const lastEditLineRef = useRef<POSLine | null>(null);
 
   // Payment flow
   const [stage, setStage] = useState<Stage>("order");
@@ -1299,20 +1707,71 @@ export default function POSPage() {
     };
   }, []);
 
+  // ── Offline detection ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  // ── Product localStorage cache ──────────────────────────────────────────────
+
+  useEffect(() => {
+    if (products.length > 0 && organizationId) {
+      try {
+        localStorage.setItem(`pos_products_${organizationId}`, JSON.stringify(products));
+      } catch { /* localStorage full — skip silently */ }
+    }
+  }, [products, organizationId]);
+
+  const cachedProducts = useMemo(() => {
+    if (products.length > 0) return products;
+    if (!organizationId) return [];
+    try {
+      const cached = localStorage.getItem(`pos_products_${organizationId}`);
+      return cached ? (JSON.parse(cached) as Product[]) : [];
+    } catch { return []; }
+  }, [products, organizationId]);
+
+  // ── Pending card payments (offline queue) ───────────────────────────────────
+
+  useEffect(() => {
+    if (!organizationId) return;
+    try {
+      const stored = localStorage.getItem(`pos_pending_cards_${organizationId}`);
+      if (stored) setPendingCards(JSON.parse(stored));
+    } catch { /* ignore parse errors */ }
+  }, [organizationId]);
+
+  const savePendingCards = useCallback((updated: PendingCardPayment[]) => {
+    setPendingCards(updated);
+    if (organizationId) {
+      try {
+        localStorage.setItem(`pos_pending_cards_${organizationId}`, JSON.stringify(updated));
+      } catch { /* localStorage full */ }
+    }
+  }, [organizationId]);
+
   // ── Derived ─────────────────────────────────────────────────────────────────
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+    const cats = Array.from(new Set(cachedProducts.map(p => p.category).filter(Boolean)));
     return ["All", ...cats];
-  }, [products]);
+  }, [cachedProducts]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    return cachedProducts.filter(p => {
       const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
       const matchCat = activeCategory === "All" || p.category === activeCategory;
       return matchSearch && matchCat;
     });
-  }, [products, search, activeCategory]);
+  }, [cachedProducts, search, activeCategory]);
 
   const subtotal = cart.reduce((s, l) => s + lineTotal(l), 0);
   const tax = subtotal * (taxRate / 100 || 0.0875);
@@ -1360,6 +1819,34 @@ export default function POSPage() {
     setTipPct(15);
     setStage("order");
   }, []);
+
+  // ── Pending card payment actions ────────────────────────────────────────────
+
+  const addPendingCardPayment = useCallback((cardNumber: string) => {
+    const entry: PendingCardPayment = {
+      id: crypto.randomUUID(),
+      cardNumberLast4: cardNumber.replace(/\s/g, "").slice(-4),
+      cardNumberFull: cardNumber.replace(/\s/g, ""),
+      amount: parseFloat(total.toFixed(2)),
+      items: linesToCartItems(cart),
+      customerName: customerName.trim() || null,
+      tipPct,
+      tipAmount: tip,
+      taxAmount: parseFloat(tax.toFixed(2)),
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [...pendingCards, entry];
+    savePendingCards(updated);
+    hapticSuccess();
+    toast.success("Payment queued", { description: `Card ending ${entry.cardNumberLast4} — will process when online` });
+    clearCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCards, savePendingCards, cart, customerName, tipPct, tip, tax, total, clearCart]);
+
+  const clearPendingCards = useCallback(() => {
+    savePendingCards([]);
+    toast.success("Pending cards cleared");
+  }, [savePendingCards]);
 
   // ── Payment ─────────────────────────────────────────────────────────────────
 
@@ -1511,6 +1998,8 @@ export default function POSPage() {
   // ── Editing line ────────────────────────────────────────────────────────────
 
   const editingLine = editLineUid ? cart.find(l => l.uid === editLineUid) ?? null : null;
+  if (editingLine) lastEditLineRef.current = editingLine;
+  const displayEditLine = editingLine ?? lastEditLineRef.current;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -1546,6 +2035,33 @@ export default function POSPage() {
         </button>
       </div>
 
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="shrink-0 bg-amber-100 border-b border-amber-300 px-4 py-1.5 flex items-center gap-2">
+          <WifiOff className="h-3.5 w-3.5 text-amber-700" />
+          <span className="text-[11.5px] font-semibold text-amber-800 uppercase tracking-wide">
+            Offline mode — Cash &amp; Card Queue only
+          </span>
+        </div>
+      )}
+
+      {/* Pending cards badge */}
+      {isOnline && pendingCards.length > 0 && (
+        <div className="shrink-0 bg-blue-50 border-b border-blue-200 px-4 py-1.5 flex items-center gap-2">
+          <CreditCard className="h-3.5 w-3.5 text-blue-700" />
+          <span className="text-[11.5px] font-medium text-blue-800">
+            {pendingCards.length} pending card payment{pendingCards.length !== 1 ? "s" : ""} queued
+          </span>
+          <button
+            type="button"
+            onClick={clearPendingCards}
+            className="ml-auto text-[11px] font-semibold text-blue-700 hover:text-blue-900 px-2 py-0.5 rounded border border-blue-300 hover:bg-blue-100 transition-colors"
+          >
+            Process {pendingCards.length} pending card{pendingCards.length !== 1 ? "s" : ""}
+          </button>
+        </div>
+      )}
+
       {/* Orders tab */}
       {activeTab === "orders" && organizationId && (
         <OrdersTab key={ordersKey} organizationId={organizationId} onPaymentUpdated={() => {}} />
@@ -1557,17 +2073,17 @@ export default function POSPage() {
           {/* Main content area */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             {/* Top bar */}
-            <div className="h-14 bg-card border-b border-border px-5 flex items-center gap-3 shrink-0">
-              <div className="min-w-0">
+            <div className="h-12 sm:h-14 bg-card border-b border-border px-3 sm:px-5 flex items-center gap-2 sm:gap-3 shrink-0">
+              <div className="min-w-0 hidden sm:block">
                 <p className="text-[15px] font-semibold leading-tight">New order</p>
                 <p className="text-[11.5px] text-muted-foreground leading-tight">Register</p>
               </div>
-              <div className="relative flex-1 max-w-[360px] ml-6">
+              <div className="relative flex-1 max-w-[360px] sm:ml-6">
                 <Search className="h-[14px] w-[14px] absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Search menu or scan..."
+                  placeholder="Search menu..."
                   className="w-full pl-8 pr-3 py-1.5 text-[13px] rounded border border-border bg-background outline-none focus:ring-1 focus:ring-ring"
                 />
                 {search && (
@@ -1580,7 +2096,7 @@ export default function POSPage() {
                 <button type="button" className="h-8 w-8 rounded border border-border bg-card hover:bg-muted inline-flex items-center justify-center text-muted-foreground" title="Scan">
                   <ScanLine className="h-[15px] w-[15px]" />
                 </button>
-                <button type="button" className="h-8 w-8 rounded border border-border bg-card hover:bg-muted inline-flex items-center justify-center text-muted-foreground" title="More">
+                <button type="button" className="hidden sm:inline-flex h-8 w-8 rounded border border-border bg-card hover:bg-muted items-center justify-center text-muted-foreground" title="More">
                   <MoreHorizontal className="h-[15px] w-[15px]" />
                 </button>
               </div>
@@ -1611,7 +2127,7 @@ export default function POSPage() {
             </div>
 
             {/* Product grid */}
-            <div className="flex-1 overflow-auto bg-muted/50 p-5">
+            <div className="flex-1 overflow-auto bg-muted/50 p-3 sm:p-5 pb-20 md:pb-5">
               <div className="flex items-baseline gap-2 mb-3">
                 <h2 className="text-[13px] font-semibold">
                   {search ? `Matches for "${search}"` : activeCategory}
@@ -1633,7 +2149,7 @@ export default function POSPage() {
             </div>
           </div>
 
-          {/* Cart sidebar */}
+          {/* Cart sidebar — desktop only */}
           <CartSidebar
             cart={cart}
             subtotal={subtotal}
@@ -1648,6 +2164,119 @@ export default function POSPage() {
             onEditLine={setEditLineUid}
             onCharge={() => { if (cart.length) setStage("pay"); }}
           />
+
+          {/* Mobile cart floating button */}
+          {cart.length > 0 && stage === "order" && (
+            <div className="md:hidden fixed bottom-0 inset-x-0 z-20 p-3">
+              <button
+                type="button"
+                onClick={() => { hapticLight(); setCartDrawerOpen(true); }}
+                className="w-full h-14 bg-foreground text-background rounded-[0.3rem] flex items-center justify-between px-4 shadow-lg"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="relative">
+                    <ShoppingCart className="h-4.5 w-4.5" />
+                    <span className="absolute -top-1.5 -right-2 h-4 min-w-4 rounded-full bg-background text-foreground text-[10px] font-bold flex items-center justify-center px-1">
+                      {cart.reduce((s, l) => s + l.qty, 0)}
+                    </span>
+                  </div>
+                  <span className="text-[13px] font-semibold">View Cart</span>
+                </div>
+                <span className="font-mono tabular-nums text-[16px] font-semibold">{money(total)}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Mobile cart drawer */}
+          <Drawer open={cartDrawerOpen} onOpenChange={setCartDrawerOpen}>
+            <DrawerContent>
+              <DrawerHeader className="border-b border-border">
+                <DrawerTitle className="text-sm">
+                  Cart · {cart.length} item{cart.length !== 1 ? "s" : ""}
+                </DrawerTitle>
+              </DrawerHeader>
+              <div className="flex-1 overflow-y-auto max-h-[50vh] divide-y divide-border">
+                {cart.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <ShoppingBag className="h-8 w-8 opacity-30 mb-2" />
+                    <p className="text-[12px]">Cart is empty</p>
+                  </div>
+                ) : (
+                  cart.map(l => {
+                    const lt = lineTotal(l);
+                    return (
+                      <div
+                        key={l.uid}
+                        onClick={() => { setCartDrawerOpen(false); setTimeout(() => setEditLineUid(l.uid), 300); }}
+                        className="px-4 py-3 active:bg-muted/50"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold">{l.name}</p>
+                            {l.notes && (
+                              <p className="text-[11px] text-amber-700 mt-0.5 flex items-center gap-1">
+                                <MessageSquare className="h-[10px] w-[10px] shrink-0" />
+                                {l.notes}
+                              </p>
+                            )}
+                            {l.discount && (
+                              <p className="text-[11px] text-emerald-700 mt-0.5 font-mono">
+                                {l.discount.pct ? `${l.discount.pct}% off` : `${money(l.discount.amount ?? 0)} off`}
+                              </p>
+                            )}
+                          </div>
+                          <span className="font-mono text-[13px] font-semibold tabular-nums shrink-0">{money(lt)}</span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => { hapticLight(); setQty(l.uid, l.qty - 1); }}
+                            className="h-8 w-8 rounded border border-border hover:bg-muted flex items-center justify-center"
+                          >
+                            <Minus className="h-[11px] w-[11px]" />
+                          </button>
+                          <span className="text-[12px] font-semibold tabular-nums w-7 text-center">{l.qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => { hapticLight(); setQty(l.uid, l.qty + 1); }}
+                            className="h-8 w-8 rounded border border-border hover:bg-muted flex items-center justify-center"
+                          >
+                            <Plus className="h-[11px] w-[11px]" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { hapticLight(); removeLine(l.uid); }}
+                            className="ml-auto h-8 w-8 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center"
+                          >
+                            <Trash2 className="h-[12px] w-[12px]" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              {cart.length > 0 && (
+                <>
+                  <div className="px-4 py-3 space-y-1 text-[12px] font-mono border-t border-border">
+                    <TotalsRow label="Subtotal" value={money(subtotal)} />
+                    <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
+                    <TotalsRow label="Tax" value={money(tax)} />
+                  </div>
+                  <div className="p-3 pt-0">
+                    <button
+                      type="button"
+                      onClick={() => { hapticLight(); setCartDrawerOpen(false); setTimeout(() => setMobilePayOpen(true), 300); }}
+                      className="w-full h-12 bg-foreground hover:bg-foreground/90 text-background rounded-[0.3rem] text-[14px] font-semibold flex items-center justify-between px-4"
+                    >
+                      <span>Charge</span>
+                      <span className="font-mono tabular-nums text-[16px]">{money(total)}</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </DrawerContent>
+          </Drawer>
 
           {/* Pay overlay */}
           {stage === "pay" && (
@@ -1668,6 +2297,8 @@ export default function POSPage() {
               processing={processing}
               paymentError={paymentError}
               onCardPayment={handleCardPayment}
+              isOnline={isOnline}
+              onOfflineCard={addPendingCardPayment}
             />
           )}
 
@@ -1679,15 +2310,52 @@ export default function POSPage() {
             />
           )}
 
-          {/* Line editor modal */}
-          {editingLine && (
-            <LineEditorModal
-              line={editingLine}
-              onClose={() => setEditLineUid(null)}
-              onSave={patch => updateLine(editingLine.uid, patch)}
-              onRemove={() => removeLine(editingLine.uid)}
-            />
-          )}
+          {/* Line editor — DynamicUIElement */}
+          <DynamicUIElement open={!!editLineUid} onOpenChange={v => { if (!v) setEditLineUid(null); }}>
+            <DynamicUIElementContent className="sm:max-w-[560px]">
+              {displayEditLine && (
+                <LineEditorPanel
+                  line={displayEditLine}
+                  onClose={() => setEditLineUid(null)}
+                  onSave={patch => { if (editingLine) updateLine(editingLine.uid, patch); }}
+                  onRemove={() => { if (editingLine) removeLine(editingLine.uid); }}
+                />
+              )}
+            </DynamicUIElementContent>
+          </DynamicUIElement>
+
+          {/* Mobile checkout — DynamicUIElement */}
+          <DynamicUIElement open={mobilePayOpen} onOpenChange={v => { if (!v) setMobilePayOpen(false); }}>
+            <DynamicUIElementContent noPadding>
+              <MobileCheckoutPanel
+                cart={cart}
+                subtotal={subtotal}
+                tax={tax}
+                tip={tip}
+                tipPct={tipPct}
+                setTipPct={setTipPct}
+                total={total}
+                payMethod={payMethod}
+                setPayMethod={setPayMethod}
+                cardAvailable={cardAvailable}
+                processing={processing}
+                paymentError={paymentError}
+                onCharge={() => {
+                  setMobilePayOpen(false);
+                  handlePayComplete();
+                }}
+                onCardPayment={() => {
+                  setMobilePayOpen(false);
+                  handleCardPayment();
+                }}
+                isOnline={isOnline}
+                onOfflineCard={(cardNum) => {
+                  setMobilePayOpen(false);
+                  addPendingCardPayment(cardNum);
+                }}
+              />
+            </DynamicUIElementContent>
+          </DynamicUIElement>
         </div>
       )}
     </div>

@@ -27,7 +27,8 @@ export type PageTemplateId =
   | "membership"
   | "my-account"
   | "settings"
-  | "checkout";
+  | "checkout"
+  | "menu";
 
 export interface PageTemplateMeta {
   id: PageTemplateId;
@@ -48,6 +49,7 @@ export const PAGE_TEMPLATES: PageTemplateMeta[] = [
   { id: "my-account",      label: "My Account",       description: "Profile, orders, addresses, favorites.",                  defaultName: "My Account",      defaultSlug: "account" },
   { id: "settings",        label: "Settings",         description: "Notifications, language, privacy, account security.",     defaultName: "Settings",        defaultSlug: "settings" },
   { id: "checkout",        label: "Checkout",         description: "Address, payment, order summary, confirm.",               defaultName: "Checkout",        defaultSlug: "checkout" },
+  { id: "menu",            label: "Online Menu",      description: "Product menu with categories, search, and ordering.",    defaultName: "Menu",            defaultSlug: "menu" },
 ];
 
 // ─── Element factories ──────────────────────────────────────────────────────
@@ -620,6 +622,96 @@ function tplCheckout(): SiteElement[] {
   ];
 }
 
+function tplMenu(): SiteElement[] {
+  return [
+    // Nav
+    {
+      id: uid(),
+      type: "nav",
+      props: {
+        logo: "My Site",
+        links: [
+          { label: "Home", href: "/" },
+          { label: "Menu", href: "/menu" },
+        ],
+        sticky: true,
+        backgroundColor: "#ffffff",
+        textColor: "",
+      },
+    },
+    // Hero section
+    layout(
+      [
+        text("Our Menu", "h2", { locked: true, lockLabel: "Menu title" }),
+        {
+          id: uid(),
+          type: "text",
+          props: {
+            content: "Browse our selection and order online",
+            tag: "p",
+            align: "center",
+            fontSize: "1rem",
+            fontWeight: "normal",
+            color: "#6b7280",
+            padding: "0",
+          },
+        },
+      ],
+      { direction: "stack", spacing: "small", padding: "48px 24px", align: "center" },
+    ),
+    // Menu grid
+    {
+      id: uid(),
+      type: "menu-grid",
+      props: {
+        columns: 3,
+        showCategories: true,
+        showSearch: true,
+        showPrice: true,
+        showDescription: false,
+        buttonText: "Add to Cart",
+        cardStyle: "bordered",
+      },
+      locked: true,
+      lockLabel: "Menu grid",
+    },
+    // Spacer
+    {
+      id: uid(),
+      type: "spacer",
+      props: { height: "48px" },
+    },
+    // Cart section
+    layout(
+      [
+        {
+          id: uid(),
+          type: "cart",
+          props: {
+            title: "Your Cart",
+            emptyText: "Your cart is empty.",
+            checkoutLabel: "Checkout",
+          },
+          locked: true,
+          lockLabel: "Cart",
+        },
+      ],
+      { direction: "stack", spacing: "medium", padding: "24px", align: "center", style: { maxWidth: "600px", margin: "0 auto" } },
+    ),
+    // Footer
+    {
+      id: uid(),
+      type: "footer",
+      props: {
+        text: "© 2024 My Site",
+        links: [],
+        backgroundColor: "#18181b",
+        textColor: "#9ca3af",
+      },
+    },
+  ];
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function lockAll(elements: SiteElement[]): SiteElement[] {
@@ -644,5 +736,6 @@ export function buildPageTemplate(id: PageTemplateId): SiteElement[] {
     case "my-account":      return lockAll(tplMyAccount());
     case "settings":        return lockAll(tplSettings());
     case "checkout":        return lockAll(tplCheckout());
+    case "menu":            return lockAll(tplMenu());
   }
 }

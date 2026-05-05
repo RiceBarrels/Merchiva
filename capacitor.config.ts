@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   // for testing
   server: {
-    url: 'http://192.168.1.108:3000',
+    url: 'http://192.168.1.147:3001',
     cleartext: true,
   },
   // // for production
@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
-      showSpinner: false,
+      showSpinner: true,
       backgroundColor: '#ffffff',
     },
     StatusBar: {
@@ -26,7 +26,7 @@ const config: CapacitorConfig = {
     },
     Keyboard: {
       resize: 'body',
-      resizeOnFullScreen: true,
+      resizeOnFullScreen: false,
     },
   },
 };

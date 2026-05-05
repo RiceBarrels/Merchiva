@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
-import { storeAuthTokens } from "@/lib/auth/context";
+import { useAuth } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
 
 /* ── Password strength ─────────────────────────────── */
@@ -48,6 +48,7 @@ function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
+  const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -87,7 +88,7 @@ function SignupForm() {
       }
 
       // No verification needed — directly authenticated
-      storeAuthTokens(data.accessToken, data.refreshToken, data.user);
+      signIn(data.accessToken, data.refreshToken, data.user);
       router.push(next);
     } catch {
       setError(t("login.genericError"));
@@ -116,7 +117,7 @@ function SignupForm() {
         return;
       }
 
-      storeAuthTokens(data.accessToken, data.refreshToken, data.user);
+      signIn(data.accessToken, data.refreshToken, data.user);
       router.push(next);
     } catch {
       setError(t("login.genericError"));

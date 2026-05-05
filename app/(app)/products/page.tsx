@@ -71,6 +71,8 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/image-upload";
 
 const alertConfig = {
   none:           { labelKey: "products.alerts.healthy",          icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -334,10 +336,22 @@ export default function ProductsPage() {
                         onClick={() => router.push(`/products/${p.id}`)}
                       >
                         <TableCell>
-                          <p className="font-medium">{p.name}</p>
-                          {p.alertReason && (
-                            <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[200px] truncate">{p.alertReason}</p>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {p.imageUrl && (
+                              /* eslint-disable-next-line @next/next/no-img-element */
+                              <img
+                                src={p.imageUrl}
+                                alt={p.name}
+                                className="h-8 w-8 rounded-[0.3rem] object-cover border shrink-0"
+                              />
+                            )}
+                            <div>
+                              <p className="font-medium">{p.name}</p>
+                              {p.alertReason && (
+                                <p className="text-[11px] text-muted-foreground mt-0.5 max-w-[200px] truncate">{p.alertReason}</p>
+                              )}
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell><Badge variant="outline" className="text-xs font-normal">{p.category}</Badge></TableCell>
                         <TableCell className="font-medium">${p.price.toFixed(2)}</TableCell>
@@ -407,6 +421,16 @@ export default function ProductsPage() {
             <DynamicUIElementDescription>{t("products.dialog.description")}</DynamicUIElementDescription>
           </DynamicUIElementHeader>
           <div className="grid gap-4 py-2">
+            {/* Image Upload */}
+            <div className="space-y-1.5">
+              <Label>Image</Label>
+              <ImageUpload
+                value={form.imageUrl ?? ""}
+                orgId={organizationId ?? ""}
+                onChange={(url) => setForm((f) => ({ ...f, imageUrl: url || undefined }))}
+                className="max-w-[200px]"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>{t("products.dialog.nameLabel")}</Label>
@@ -426,6 +450,18 @@ export default function ProductsPage() {
                 <Label>{t("products.dialog.costLabel")}</Label>
                 <Input type="number" step="0.01" value={form.cost ?? 0} onChange={(e) => setForm((f) => ({ ...f, cost: Number(e.target.value) }))} />
               </div>
+            </div>
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Textarea
+                rows={3}
+                value={form.description ?? ""}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Brief product description..."
+                className="resize-none"
+              />
+              <p className="text-[11px] text-muted-foreground text-right">{(form.description ?? "").length}/500</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">

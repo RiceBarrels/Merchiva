@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import type { SiteElement, SiteTheme, ElementType } from "@/lib/types";
 import type { Product } from "@/lib/types";
 import { DynamicIcon } from "@/components/icon-picker";
+import { resolveValues, getSystemValues, type ValueContext } from "@/lib/builder/site-values";
+import { buildTriggerHandlers } from "@/lib/builder/flowfn-runtime";
 
 // ─── Theme CSS vars ───────────────────────────────────────────────────────────
 
@@ -34,9 +36,9 @@ function resolveHref(href: string, basePath?: string): string {
 
 // ─── Individual element renderers ─────────────────────────────────────────────
 
-function RenderText({ props }: { props: Record<string, unknown> }) {
+function RenderText({ props, v }: { props: Record<string, unknown>; v?: (s: string) => string }) {
   const tag = (props.tag as string) || "p";
-  const content = (props.content as string) || "Text";
+  const content = v ? v((props.content as string) || "Text") : (props.content as string) || "Text";
   const customStyle = (props.style as Record<string, string>) || {};
   const style: React.CSSProperties = {
     textAlign: ((customStyle.textAlign || props.align) as React.CSSProperties["textAlign"]) || "left",
@@ -77,8 +79,9 @@ function RenderImage({ props }: { props: Record<string, unknown> }) {
   return <img src={src} alt={alt} style={style} />;
 }
 
-function RenderButton({ props, basePath }: { props: Record<string, unknown>; basePath?: string }) {
-  const label = (props.label as string) || "Button";
+function RenderButton({ props, basePath, v }: { props: Record<string, unknown>; basePath?: string; v?: (s: string) => string }) {
+  const rawLabel = (props.label as string) || "Button";
+  const label = v ? v(rawLabel) : rawLabel;
   const href = resolveHref((props.href as string) || "#", basePath);
   const variant = (props.variant as string) || "primary";
   const size = (props.size as string) || "md";
@@ -113,9 +116,9 @@ function RenderButton({ props, basePath }: { props: Record<string, unknown>; bas
   return <a href={href} style={{ ...baseStyle, ...variantStyle }}>{label}</a>;
 }
 
-function RenderHero({ props, basePath }: { props: Record<string, unknown>; basePath?: string }) {
-  const title = (props.title as string) || "Welcome";
-  const subtitle = (props.subtitle as string) || "";
+function RenderHero({ props, basePath, v }: { props: Record<string, unknown>; basePath?: string; v?: (s: string) => string }) {
+  const title = v ? v((props.title as string) || "Welcome") : (props.title as string) || "Welcome";
+  const subtitle = v ? v((props.subtitle as string) || "") : (props.subtitle as string) || "";
   const bgImage = (props.backgroundImage as string) || "";
   const bgColor = (props.backgroundColor as string) || "var(--sr-bg)";
   const ctaLabel = (props.ctaLabel as string) || "";
@@ -195,7 +198,7 @@ function RenderSpacer({ props }: { props: Record<string, unknown> }) {
   return <div style={{ height: (props.height as string) || "48px" }} />;
 }
 
-function RenderLayout({ props, children, basePath }: { props: Record<string, unknown>; children?: SiteElement[]; basePath?: string }) {
+function RenderLayout({ props, children, basePath, v }: { props: Record<string, unknown>; children?: SiteElement[]; basePath?: string; v?: (s: string) => string }) {
   const direction = (props.direction as string) || "stack";
   const spacing = (props.spacing as string) || "medium";
   const GAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
@@ -256,13 +259,13 @@ function RenderLayout({ props, children, basePath }: { props: Record<string, unk
   return (
     <Tag style={style} href={isLink ? resolveHref(href || "#", basePath) : undefined}>
       {children?.map((child) => (
-        <SiteElementRenderer key={child.id} element={child} basePath={basePath} />
+        <SiteElementRenderer key={child.id} element={child} basePath={basePath} v={v} />
       ))}
     </Tag>
   );
 }
 
-function RenderFixed({ props, children, basePath }: { props: Record<string, unknown>; children?: SiteElement[]; basePath?: string }) {
+function RenderFixed({ props, children, basePath, v }: { props: Record<string, unknown>; children?: SiteElement[]; basePath?: string; v?: (s: string) => string }) {
   const direction = (props.direction as string) || "stack";
   const spacing = (props.spacing as string) || "medium";
   const GAP: Record<string, string> = { small: "8px", medium: "16px", large: "24px" };
@@ -312,7 +315,7 @@ function RenderFixed({ props, children, basePath }: { props: Record<string, unkn
   return (
     <div style={style}>
       {children?.map((child) => (
-        <SiteElementRenderer key={child.id} element={child} basePath={basePath} />
+        <SiteElementRenderer key={child.id} element={child} basePath={basePath} v={v} />
       ))}
     </div>
   );
@@ -686,6 +689,203 @@ function RenderReward({ props }: { props: Record<string, unknown> }) {
   );
 }
 
+function RenderMenuGrid({ props, products, siteSlug }: { props: Record<string, unknown>; products?: Product[]; siteSlug?: string }) {
+  const columns = Number(props.columns) || 3;
+  const showCategories = props.showCategories !== false;
+  const showSearch = props.showSearch !== false;
+  const showPrice = props.showPrice !== false;
+  const showDescription = props.showDescription === true;
+  const buttonText = (props.buttonText as string) || "Add to Cart";
+  const cardStyle = (props.cardStyle as string) || "bordered";
+
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [search, setSearch] = useState("");
+
+  const items = products ?? [];
+
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    items.forEach((p) => { if (p.category) cats.add(p.category); });
+    return ["All", ...Array.from(cats).sort()];
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    let list = items;
+    if (activeCategory !== "All") list = list.filter((p) => p.category === activeCategory);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter((p) => p.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [items, activeCategory, search]);
+
+  const handleAdd = (product: Product) => {
+    if (!siteSlug) return;
+    const key = `site_cart_${siteSlug}`;
+    try {
+      const raw = localStorage.getItem(key);
+      const cart: { id: string; name: string; price: number; quantity: number }[] = raw ? JSON.parse(raw) : [];
+      const existing = cart.find((i) => i.id === product.id);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({ id: product.id, name: product.name, price: product.price, quantity: 1 });
+      }
+      localStorage.setItem(key, JSON.stringify(cart));
+      // Dispatch storage event so other components (CartDrawer) can react
+      window.dispatchEvent(new StorageEvent("storage", { key }));
+    } catch { /* ignore */ }
+  };
+
+  const cardBorder = cardStyle === "shadow" ? "none" : "1px solid #e5e7eb";
+  const cardShadow = cardStyle === "shadow" ? "0 1px 3px rgba(0,0,0,0.1)" : "none";
+
+  return (
+    <div style={{ padding: "1.5rem", width: "100%" }}>
+      {/* Filters */}
+      {(showCategories || showSearch) && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", marginBottom: "1.5rem" }}>
+          {showSearch && (
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search menu..."
+              style={{
+                padding: "0.5rem 0.75rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "var(--sr-radius)",
+                fontSize: "0.875rem",
+                outline: "none",
+                minWidth: "200px",
+                flexShrink: 0,
+                color: "var(--sr-text)",
+                background: "var(--sr-bg)",
+              }}
+            />
+          )}
+          {showCategories && (
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  style={{
+                    padding: "0.375rem 0.875rem",
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    borderRadius: "var(--sr-radius)",
+                    border: activeCategory === cat ? "2px solid var(--sr-primary)" : "1px solid #d1d5db",
+                    background: activeCategory === cat ? "var(--sr-primary)" : "transparent",
+                    color: activeCategory === cat ? "#fff" : "var(--sr-text)",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Grid */}
+      {filtered.length === 0 ? (
+        <div style={{ padding: "3rem", textAlign: "center", color: "#9ca3af", fontSize: "0.9rem" }}>
+          {items.length === 0 ? "No products available." : "No items match your search."}
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${columns}, 1fr)`,
+            gap: "1.25rem",
+          }}
+          className="menu-grid-responsive"
+        >
+          <style>{`
+            @media (max-width: 640px) {
+              .menu-grid-responsive { grid-template-columns: 1fr !important; }
+            }
+            @media (min-width: 641px) and (max-width: 1024px) {
+              .menu-grid-responsive { grid-template-columns: repeat(2, 1fr) !important; }
+            }
+          `}</style>
+          {filtered.map((product) => (
+            <div
+              key={product.id}
+              style={{
+                border: cardBorder,
+                boxShadow: cardShadow,
+                borderRadius: "var(--sr-radius)",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                background: "var(--sr-bg)",
+              }}
+            >
+              <div style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                  <h3 style={{ fontFamily: "var(--sr-font-heading)", fontWeight: 700, fontSize: "1rem", margin: 0, color: "var(--sr-text)" }}>
+                    {product.name}
+                  </h3>
+                  {showPrice && (
+                    <span style={{ fontWeight: 700, color: "var(--sr-accent)", fontSize: "1.0625rem", flexShrink: 0 }}>
+                      ${product.price.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+                <span
+                  style={{
+                    display: "inline-block",
+                    alignSelf: "flex-start",
+                    fontSize: "0.6875rem",
+                    fontWeight: 600,
+                    padding: "0.125rem 0.5rem",
+                    borderRadius: "99px",
+                    background: "var(--sr-primary)",
+                    color: "#fff",
+                    opacity: 0.85,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {product.category || "Uncategorized"}
+                </span>
+                {showDescription && product.description && (
+                  <p style={{ fontSize: "0.8125rem", color: "var(--sr-secondary)", margin: 0, lineHeight: 1.5 }}>
+                    {product.description}
+                  </p>
+                )}
+                <div style={{ flex: 1 }} />
+                <button
+                  onClick={() => handleAdd(product)}
+                  style={{
+                    marginTop: "0.5rem",
+                    width: "100%",
+                    padding: "0.5rem",
+                    background: "var(--sr-primary)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "var(--sr-radius)",
+                    fontWeight: 600,
+                    fontSize: "0.875rem",
+                    cursor: "pointer",
+                    transition: "opacity 0.15s",
+                  }}
+                >
+                  {buttonText}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Element dispatcher ───────────────────────────────────────────────────────
 
 export function SiteElementRenderer({
@@ -693,11 +893,13 @@ export function SiteElementRenderer({
   products,
   siteSlug,
   basePath,
+  v,
 }: {
   element: SiteElement;
   products?: Product[];
   siteSlug?: string;
   basePath?: string;
+  v?: (s: string) => string;
 }) {
   const { type, props, children } = element;
   const customStyle = (props.style as React.CSSProperties | undefined) || {};
@@ -718,18 +920,18 @@ export function SiteElementRenderer({
 
   const rendered = (() => {
     switch (type as ElementType) {
-      case "text":      return <RenderText props={props} />;
+      case "text":      return <RenderText props={props} v={v} />;
       case "image":     return <RenderImage props={props} />;
-      case "button":    return <RenderButton props={props} basePath={basePath} />;
-      case "hero":      return <RenderHero props={props} basePath={basePath} />;
+      case "button":    return <RenderButton props={props} basePath={basePath} v={v} />;
+      case "hero":      return <RenderHero props={props} basePath={basePath} v={v} />;
       case "nav":       return <RenderNav props={props} basePath={basePath} />;
       case "footer":    return <RenderFooter props={props} basePath={basePath} />;
       case "divider":   return <RenderDivider props={props} />;
       case "spacer":    return <RenderSpacer props={props} />;
-      case "fixed":     return <RenderFixed props={props} children={children} basePath={basePath} />;
+      case "fixed":     return <RenderFixed props={props} children={children} basePath={basePath} v={v} />;
       case "layout":
       case "container":
-      case "viewport":  return <RenderLayout props={props} children={children} basePath={basePath} />;
+      case "viewport":  return <RenderLayout props={props} children={children} basePath={basePath} v={v} />;
       case "columns":   return <RenderColumns props={props} />;
       case "product-card":   return <RenderProductCard props={props} products={products} siteSlug={siteSlug} basePath={basePath} />;
       case "booking-form":   return <RenderBookingForm props={props} />;
@@ -746,12 +948,18 @@ export function SiteElementRenderer({
       case "checkout":   return <RenderCheckout props={props} />;
       case "reward":     return <RenderReward props={props} />;
       case "icon":       return <RenderIcon props={props} />;
+      case "menu-grid":  return <RenderMenuGrid props={props} products={products} siteSlug={siteSlug} />;
       default:           return null;
     }
   })();
 
-  if (!hasWrapperStyle) return rendered;
-  return <div style={wrapperStyle}>{rendered}</div>;
+  const triggers = props.triggers as Record<string, string> | undefined;
+  const triggerHandlers = buildTriggerHandlers(triggers);
+  const hasTriggers = Object.keys(triggerHandlers).length > 0;
+  const elementId = (props.elementId as string) || undefined;
+
+  if (!hasWrapperStyle && !hasTriggers && !elementId) return rendered;
+  return <div id={elementId} style={hasWrapperStyle ? wrapperStyle : undefined} {...triggerHandlers}>{rendered}</div>;
 }
 
 // ─── Google Fonts loader ──────────────────────────────────────────────────────
@@ -782,17 +990,27 @@ export function SiteRenderer({
   products,
   siteSlug,
   basePath,
+  valueContext,
+  customValues,
 }: {
   elements: SiteElement[];
   theme: SiteTheme;
   products?: Product[];
   siteSlug?: string;
   basePath?: string;
+  valueContext?: ValueContext;
+  customValues?: Record<string, string>;
 }) {
   const googleFontsUrl = useMemo(
     () => buildGoogleFontsUrl([theme.headingFont, theme.bodyFont]),
     [theme.headingFont, theme.bodyFont]
   );
+
+  const v = useMemo(() => {
+    const sys = getSystemValues(valueContext ?? {});
+    return (text: string) => resolveValues(text, customValues, sys);
+  }, [valueContext, customValues]);
+
   return (
     <div style={themeVars(theme)}>
       {googleFontsUrl && (
@@ -800,7 +1018,7 @@ export function SiteRenderer({
         <link rel="stylesheet" href={googleFontsUrl} />
       )}
       {elements.map((el) => (
-        <SiteElementRenderer key={el.id} element={el} products={products} siteSlug={siteSlug} basePath={basePath} />
+        <SiteElementRenderer key={el.id} element={el} products={products} siteSlug={siteSlug} basePath={basePath} v={v} />
       ))}
     </div>
   );

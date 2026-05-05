@@ -38,6 +38,7 @@ const TYPE_TO_CRAFT: Record<string, string> = {
   checkout: "CraftCheckout",
   reward: "CraftReward",
   icon: "CraftIcon",
+  "menu-grid": "CraftMenuGrid",
 };
 
 const CRAFT_TO_TYPE: Record<string, ElementType> = {};

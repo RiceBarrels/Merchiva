@@ -339,7 +339,15 @@ export default function PublicSitePage({
       </div>
 
       {/* Page content */}
-      <SiteRenderer elements={page.elements} theme={site.theme} products={products} siteSlug={slug} basePath={`/s/${slug}`} />
+      <SiteRenderer
+        elements={page.elements}
+        theme={site.theme}
+        products={products}
+        siteSlug={slug}
+        basePath={`/s/${slug}`}
+        valueContext={{ customer, siteName: site.name }}
+        customValues={site.values}
+      />
 
       {/* Modals */}
       {showAuth && site && (

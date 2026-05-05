@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const isStatic = process.env.NEXT_OUTPUT === "static";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.1.108"],
+  allowedDevOrigins: ["192.168.1.108", "192.168.1.147"],
   ...(isStatic
     ? {
         output: "export",

@@ -5,14 +5,17 @@ import { Editor, Frame, Element } from "@craftjs/core";
 import { resolver } from "./craft-components/resolver";
 import { siteElementsToCraftState } from "@/lib/builder/craft-bridge";
 import { RenderNode } from "./render-node";
-import { BuilderToolbar } from "./toolbar";
+import { BuilderToolbar, type BuilderTab } from "./toolbar";
 import { LeftPanel } from "./left-panel";
 import { DesignPanel } from "./design-panel";
+import { AiPanel } from "./ai-panel";
 import { ToolBar } from "./tool-bar";
 import { CanvasContextMenu } from "./canvas-context-menu";
 import { AutoSaver } from "./auto-saver";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { CraftCanvas } from "./craft-components/craft-canvas";
+import { FlowFnEditor } from "./flowfn-editor";
+import { AiElementInserter } from "./ai-element-inserter";
 import { themeVars } from "@/components/site-renderer";
 import { createPage, updateSite } from "@/lib/spacetimedb/actions";
 import { buildPageTemplate, type PageTemplateId } from "@/lib/builder/page-templates";
@@ -34,6 +37,14 @@ export function BuilderEditor({
   const [activePageId, setActivePageId] = useState(pages[0]?.id || "");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [rightPanel, setRightPanel] = useState<"design" | "ai">("design");
+
+  // Tab system
+  const [tabs, setTabs] = useState<BuilderTab[]>(() => {
+    const initial: BuilderTab[] = pages.slice(0, 1).map((p) => ({ kind: "page" as const, pageId: p.id }));
+    return initial.length ? initial : [{ kind: "page" as const, pageId: pages[0]?.id || "" }];
+  });
+  const [activeTab, setActiveTab] = useState<BuilderTab>(tabs[0]);
 
   const activePage = pages.find((p) => p.id === activePageId);
   const initialState = activePage
@@ -75,7 +86,58 @@ export function BuilderEditor({
 
   const handlePageSwitch = useCallback((pageId: string) => {
     setActivePageId(pageId);
+    const existing = tabs.find((t) => t.kind === "page" && t.pageId === pageId);
+    if (existing) {
+      setActiveTab(existing);
+    } else {
+      const newTab: BuilderTab = { kind: "page", pageId };
+      setTabs((t) => [...t, newTab]);
+      setActiveTab(newTab);
+    }
+  }, [tabs]);
+
+  const handleTabSwitch = useCallback((tab: BuilderTab) => {
+    setActiveTab(tab);
+    if (tab.kind === "page") setActivePageId(tab.pageId);
   }, []);
+
+  const handleTabClose = useCallback((tab: BuilderTab) => {
+    setTabs((prev) => {
+      const next = prev.filter((t) => {
+        if (tab.kind === "functions" && t.kind === "functions") return false;
+        if (tab.kind === "page" && t.kind === "page" && t.pageId === tab.pageId) return false;
+        return true;
+      });
+      if (next.length === 0) {
+        const fallback: BuilderTab = { kind: "page", pageId: pages[0]?.id || "" };
+        next.push(fallback);
+      }
+      // Switch active tab if we closed the active one
+      const wasActive = (tab.kind === "functions" && activeTab.kind === "functions") ||
+        (tab.kind === "page" && activeTab.kind === "page" && tab.pageId === activeTab.pageId);
+      if (wasActive) {
+        const newActive = next[next.length - 1];
+        setActiveTab(newActive);
+        if (newActive.kind === "page") setActivePageId(newActive.pageId);
+      }
+      return next;
+    });
+  }, [activeTab, pages]);
+
+  const handleTabOpen = useCallback((tab: BuilderTab) => {
+    if (tab.kind === "functions" && tabs.some((t) => t.kind === "functions")) {
+      setActiveTab(tabs.find((t) => t.kind === "functions")!);
+      return;
+    }
+    if (tab.kind === "page" && tabs.some((t) => t.kind === "page" && t.pageId === tab.pageId)) {
+      setActiveTab(tab);
+      setActivePageId(tab.pageId);
+      return;
+    }
+    setTabs((t) => [...t, tab]);
+    setActiveTab(tab);
+    if (tab.kind === "page") setActivePageId(tab.pageId);
+  }, [tabs]);
 
   const handlePublish = useCallback(async () => {
     try {
@@ -103,6 +165,8 @@ export function BuilderEditor({
     [site.id, pages.length]
   );
 
+  const showDesignEditor = activeTab.kind === "page";
+
   return (
     <Editor
       key={activePageId}
@@ -118,40 +182,69 @@ export function BuilderEditor({
           onPageSwitch={handlePageSwitch}
           saving={saving}
           savedAt={savedAt}
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabSwitch={handleTabSwitch}
+          onTabClose={handleTabClose}
+          onTabOpen={handleTabOpen}
         />
-        <div className="flex flex-1 overflow-hidden">
-          <LeftPanel
-            site={site}
-            pages={pages}
-            activePageId={activePageId}
-            onPageSwitch={handlePageSwitch}
-            onPublish={handlePublish}
-            onAddPage={handleAddPage}
-          />
-          {/* Canvas area */}
-          <CanvasContextMenu siteId={site.id}>
-            <div
-              className="relative flex-1 overflow-auto bg-muted"
-              data-craft-canvas
-              style={site.theme ? themeVars(site.theme) : {}}
-            >
-              <div className="mx-auto p-8" style={{ maxWidth: 1400 }}>
-                {hasState ? (
-                  <Frame data={initialState}>
-                    <Element canvas is={CraftCanvas} />
-                  </Frame>
-                ) : (
-                  <Frame>
-                    <Element canvas is={CraftCanvas} />
-                  </Frame>
-                )}
+        {showDesignEditor ? (
+          <div className="flex flex-1 overflow-hidden">
+            <LeftPanel
+              site={site}
+              pages={pages}
+              activePageId={activePageId}
+              onPageSwitch={handlePageSwitch}
+              onPublish={handlePublish}
+              onAddPage={handleAddPage}
+            />
+            <CanvasContextMenu siteId={site.id}>
+              <div
+                className="relative flex-1 overflow-auto bg-muted"
+                data-craft-canvas
+                style={site.theme ? themeVars(site.theme) : {}}
+              >
+                <div className="mx-auto p-8" style={{ maxWidth: 1400 }}>
+                  {hasState ? (
+                    <Frame data={initialState}>
+                      <Element canvas is={CraftCanvas} />
+                    </Frame>
+                  ) : (
+                    <Frame>
+                      <Element canvas is={CraftCanvas} />
+                    </Frame>
+                  )}
+                </div>
+                <ToolBar />
               </div>
-              <ToolBar />
+            </CanvasContextMenu>
+            <div className="flex w-64 shrink-0 flex-col border-l border-border bg-background">
+              <div className="flex border-b border-border">
+                <button
+                  className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "design" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={() => setRightPanel("design")}
+                >
+                  Design
+                </button>
+                <button
+                  className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "ai" ? "text-violet-500 border-b-2 border-violet-500" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={() => setRightPanel("ai")}
+                >
+                  AI
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {rightPanel === "design" ? <DesignPanel pages={pages} /> : <AiPanel siteId={site.id} siteName={site.name} siteTheme={site.theme} />}
+              </div>
             </div>
-          </CanvasContextMenu>
-          <DesignPanel pages={pages} />
-        </div>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-hidden">
+            <FlowFnEditor siteId={site.id} />
+          </div>
+        )}
       </div>
+      <AiElementInserter />
       <KeyboardShortcuts />
       <AutoSaver
         activePageId={activePageId}

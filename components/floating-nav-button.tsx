@@ -100,8 +100,11 @@ export function FloatingNavButton({
 
   if (typeof document === "undefined") return null;
 
+  const mobileContent = typeof document !== "undefined" ? document.getElementById("mobile-content") : null;
+
   if (tabBarMode) {
     return createPortal(
+
       <AnimatePresence>
         {hasDialog && (
           <>
@@ -147,7 +150,7 @@ export function FloatingNavButton({
       {/* Circular button */}
       <button
         onClick={handleClick}
-        className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999"
+        className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999 lg:hidden"
         style={buttonStyle}
         aria-label={
           mode === "back"
@@ -224,6 +227,6 @@ export function FloatingNavButton({
         )}
       </AnimatePresence>
     </>,
-    document.body
+    hasDialog ? document.body : (mobileContent ?? document.body)
   );
 }

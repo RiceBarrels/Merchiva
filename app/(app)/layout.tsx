@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { MobileShell } from "@/components/sidebar";
-import { InlineSignIn } from "@/components/inline-sign-in";
+import { OfflineIndicator } from "@/components/offline-indicator";
+import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { useAuth } from "@/lib/auth/context";
+import { useOfflineSync } from "@/lib/offline-sync";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -224,6 +227,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
   const { signOut } = useAuth();
 
+  useOfflineSync();
+
   const handleSignOut = () => {
     signOut();
   };
@@ -283,8 +288,15 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const router = useRouter();
 
-  if (!isLoaded) {
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace("/login");
+    }
+  }, [isLoaded, isSignedIn, router]);
+
+  if (!isLoaded || !isSignedIn) {
     return (
       <div className="flex h-screen items-center justify-center bg-muted">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
@@ -292,16 +304,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isSignedIn) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-        <InlineSignIn redirectTo="/dashboard" />
-      </div>
-    );
-  }
-
   return (
     <SpacetimeProvider>
+      <OfflineIndicator />
+      <ShakeBugReport />
       <AuthLoader>{children}</AuthLoader>
     </SpacetimeProvider>
   );

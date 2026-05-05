@@ -105,6 +105,7 @@ interface LayerNodeProps {
 function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [dropPosition, setDropPosition] = useState<"above" | "inside" | "below" | null>(null);
+  const [renaming, setRenaming] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
 
   const { node, selected, hovered, actions, query, childIds, isFixedNode, isComponentNode, componentName, isLocked, lockLabel } = useEditor(
@@ -135,9 +136,45 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
   const handleSelect = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      actions.selectNode(nodeId);
+      if (e.metaKey || e.ctrlKey) {
+        // Toggle this node in selection
+        const selected = query.getEvent("selected");
+        const arr = Array.from(selected.raw());
+        if (selected.contains(nodeId)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (actions as any).setNodeEvent("selected", arr.filter((s) => s !== nodeId).join(" "));
+        } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (actions as any).setNodeEvent("selected", [...arr, nodeId].join(" "));
+        }
+      } else if (e.shiftKey) {
+        // Range select: from last selected to this node (within siblings)
+        const selected = query.getEvent("selected");
+        const arr = Array.from(selected.raw());
+        const lastId = arr[arr.length - 1];
+        if (lastId && node) {
+          const parentNode = query.node(node.data.parent || "ROOT").get();
+          const siblings = parentNode.data.nodes || [];
+          const lastIdx = siblings.indexOf(lastId);
+          const curIdx = siblings.indexOf(nodeId);
+          if (lastIdx >= 0 && curIdx >= 0) {
+            const from = Math.min(lastIdx, curIdx);
+            const to = Math.max(lastIdx, curIdx);
+            const range = siblings.slice(from, to + 1);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (actions as any).setNodeEvent("selected", [...new Set([...arr, ...range])].join(" "));
+          } else {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (actions as any).setNodeEvent("selected", [...arr, nodeId].join(" "));
+          }
+        } else {
+          actions.selectNode(nodeId);
+        }
+      } else {
+        actions.selectNode(nodeId);
+      }
     },
-    [actions, nodeId]
+    [actions, query, nodeId, node]
   );
 
   const handleToggle = useCallback(
@@ -380,7 +417,37 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
         />
 
         {/* Node name */}
-        <span className="flex-1 truncate">{displayName}</span>
+        {renaming ? (
+          <input
+            autoFocus
+            className="flex-1 truncate bg-transparent border border-border rounded px-1 text-xs outline-none focus:border-ring"
+            defaultValue={displayName}
+            onBlur={(e) => {
+              const val = e.target.value.trim();
+              if (val && val !== displayName) {
+                actions.setCustom(nodeId, (custom: Record<string, unknown>) => {
+                  custom.displayName = val;
+                });
+                actions.setProp(nodeId, (p: Record<string, unknown>) => {
+                  p.elementId = val.replace(/[^A-Za-z0-9_-]/g, "-").toLowerCase();
+                });
+              }
+              setRenaming(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") setRenaming(false);
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className="flex-1 truncate"
+            onDoubleClick={(e) => { e.stopPropagation(); setRenaming(true); }}
+          >
+            {displayName}
+          </span>
+        )}
 
         {/* Lock indicator */}
         {isLocked && (

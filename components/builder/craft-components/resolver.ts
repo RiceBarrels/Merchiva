@@ -28,6 +28,7 @@ import { CraftMembershipWidget } from "./craft-membership-widget";
 import { CraftCart } from "./craft-cart";
 import { CraftCheckout } from "./craft-checkout";
 import { CraftReward } from "./craft-reward";
+import { CraftMenuGrid } from "./craft-menu-grid";
 
 export const resolver = {
   CraftCanvas,
@@ -58,4 +59,5 @@ export const resolver = {
   CraftCart,
   CraftCheckout,
   CraftReward,
+  CraftMenuGrid,
 };

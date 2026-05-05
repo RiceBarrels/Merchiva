@@ -40,6 +40,7 @@ import {
   AlignEndHorizontal,
   CaseSensitive,
   ArrowUpNarrowWide,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
@@ -562,6 +563,103 @@ function ToggleGroup<T extends string>({
   );
 }
 
+// ─── Interactions section ───────────────────────────────────────────────────
+
+const EVENT_TRIGGERS = [
+  { id: "onClick", label: "Click" },
+  { id: "onDoubleClick", label: "Double Click" },
+  { id: "onMouseEnter", label: "Mouse In" },
+  { id: "onMouseLeave", label: "Mouse Out" },
+  { id: "onMouseDown", label: "Press" },
+  { id: "onMouseUp", label: "Release" },
+  { id: "onFocus", label: "Focus" },
+  { id: "onBlur", label: "Blur" },
+] as const;
+
+function useFlowFnNames(): string[] {
+  const [names, setNames] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("flowfn:fns");
+      if (raw) {
+        const fns = JSON.parse(raw) as { name: string }[];
+        setNames(fns.map((f) => f.name));
+      }
+    } catch { /* ignore */ }
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "flowfn:fns" && e.newValue) {
+        try {
+          const fns = JSON.parse(e.newValue) as { name: string }[];
+          setNames(fns.map((f) => f.name));
+        } catch { /* ignore */ }
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  return names;
+}
+
+function InteractionsSection({
+  triggers,
+  onUpdate,
+}: {
+  triggers: Record<string, string>;
+  onUpdate: (triggers: Record<string, string>) => void;
+}) {
+  const fnNames = useFlowFnNames();
+
+  return (
+    <Section title="Interactions">
+      <div className="space-y-1.5">
+        {EVENT_TRIGGERS.map((evt) => {
+          const assigned = triggers[evt.id] || "";
+          return (
+            <div key={evt.id} className="flex items-center gap-1.5">
+              <span className="w-[72px] shrink-0 text-[10px] text-muted-foreground truncate">
+                {evt.label}
+              </span>
+              <select
+                className="flex-1 h-6 rounded border border-border bg-background px-1.5 text-[11px] text-foreground outline-none focus:border-ring"
+                value={assigned}
+                onChange={(e) => {
+                  const next = { ...triggers };
+                  if (e.target.value) next[evt.id] = e.target.value;
+                  else delete next[evt.id];
+                  onUpdate(next);
+                }}
+              >
+                <option value="">— none —</option>
+                {fnNames.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              {assigned && (
+                <button
+                  className="h-4 w-4 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => {
+                    const next = { ...triggers };
+                    delete next[evt.id];
+                    onUpdate(next);
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {fnNames.length === 0 && (
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
+          No functions yet. Create some in the Functions tab.
+        </p>
+      )}
+    </Section>
+  );
+}
+
 // ─── Empty state ────────────────────────────────────────────────────────────
 
 function EmptyState() {
@@ -602,6 +700,10 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
   const dom = (node?.dom as HTMLElement | null) ?? null;
 
   const [lockAspect, setLockAspect] = useState(false);
+  const [renamingHeader, setRenamingHeader] = useState(false);
+
+  // Reset rename state when selection changes
+  useEffect(() => { setRenamingHeader(false); }, [selected]);
 
   const style: Record<string, string> = ((node?.data?.props as Record<string, unknown>)?.style as Record<string, string>) || {};
 
@@ -640,10 +742,40 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
   const hasEffect = hasShadow || hasBlur || hasBackdrop;
 
   return (
-    <div className="w-64 shrink-0 overflow-y-auto border-l border-border bg-background">
+    <div className="h-full overflow-y-auto bg-background">
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
-        <p className="text-sm font-semibold">{displayName}</p>
+        {renamingHeader ? (
+          <input
+            autoFocus
+            className="flex-1 text-sm font-semibold bg-transparent border border-border rounded px-1.5 py-0.5 outline-none focus:border-ring"
+            defaultValue={displayName}
+            onBlur={(e) => {
+              const val = e.target.value.trim();
+              if (val && val !== displayName) {
+                actions.setCustom(selected, (custom: Record<string, unknown>) => {
+                  custom.displayName = val;
+                });
+                actions.setProp(selected, (p: Record<string, unknown>) => {
+                  p.elementId = val.replace(/[^A-Za-z0-9_-]/g, "-").toLowerCase();
+                });
+              }
+              setRenamingHeader(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") setRenamingHeader(false);
+            }}
+          />
+        ) : (
+          <p
+            className="text-sm font-semibold cursor-text"
+            onDoubleClick={() => setRenamingHeader(true)}
+            title="Double-click to rename"
+          >
+            {displayName}
+          </p>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -1238,6 +1370,12 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
           )}
         </div>
       </Section>
+
+      {/* ── Interactions ──────────────────────────────────────────────── */}
+      <InteractionsSection
+        triggers={((props.triggers as Record<string, string>) || {})}
+        onUpdate={(next) => setProp("triggers", Object.keys(next).length ? next : undefined)}
+      />
     </div>
   );
 }

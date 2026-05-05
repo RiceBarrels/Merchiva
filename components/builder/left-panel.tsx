@@ -19,6 +19,7 @@ import React from "react";
 import type { Site, SitePage, SiteElement } from "@/lib/types";
 import type { PageTemplateId } from "@/lib/builder/page-templates";
 import { componentDragState } from "./component-drag-state";
+import { ValuePanel } from "./value-panel";
 
 interface LeftPanelProps {
   site: Site;
@@ -306,6 +307,11 @@ export function LeftPanel({
           </div>
         )}
       </div>
+
+      <Separator />
+
+      {/* Values section */}
+      <ValuePanel site={site} />
 
       <Separator />
 

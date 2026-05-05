@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
-import { storeAuthTokens } from "@/lib/auth/context";
+import { useAuth } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
 
 function LoginForm() {
@@ -29,6 +29,14 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
+  const isAddAccount = searchParams.get("addAccount") === "1";
+  const { isLoaded, isSignedIn, signIn } = useAuth();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !isAddAccount) {
+      router.replace(next);
+    }
+  }, [isLoaded, isSignedIn, isAddAccount, router, next]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,7 +90,7 @@ function LoginForm() {
         return;
       }
 
-      storeAuthTokens(data.accessToken, data.refreshToken, data.user);
+      signIn(data.accessToken, data.refreshToken, data.user);
       router.push(next);
     } catch {
       setError(t("login.genericError"));
@@ -112,7 +120,7 @@ function LoginForm() {
         return;
       }
 
-      storeAuthTokens(data.accessToken, data.refreshToken, data.user);
+      signIn(data.accessToken, data.refreshToken, data.user);
       router.push(next);
     } catch {
       setError(t("login.invalidCode"));
@@ -141,7 +149,7 @@ function LoginForm() {
         return;
       }
 
-      storeAuthTokens(data.accessToken, data.refreshToken, data.user);
+      signIn(data.accessToken, data.refreshToken, data.user);
       router.push(next);
     } catch {
       setError(t("login.verificationFailed") + ". " + t("login.genericError"));
@@ -333,10 +341,10 @@ function LoginForm() {
 
         <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
           <h1 className="text-[22px] font-semibold tracking-tight text-stone-900 mb-1">
-            {t("login.title")}
+            {isAddAccount ? t("login.addAccountTitle") : t("login.title")}
           </h1>
           <p className="text-[13px] text-stone-500 mb-7">
-            {t("login.subtitle")}
+            {isAddAccount ? t("login.addAccountSubtitle") : t("login.subtitle")}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -40,6 +40,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useT } from "@/lib/i18n/context";
+import { SalesForecast } from "@/components/sales-forecast";
 
 const weatherIcon = (w: string) => {
   if (w === "sunny") return <CloudSun className="h-4 w-4 text-amber-500" />;
@@ -133,6 +134,7 @@ export default function SalesPage() {
           <TabsList>
             <TabsTrigger value="history">{t("sales.tabs.history")}</TabsTrigger>
             <TabsTrigger value="hourly">{t("sales.tabs.hourly")}</TabsTrigger>
+            <TabsTrigger value="forecast">Forecast</TabsTrigger>
           </TabsList>
 
           {/* History */}
@@ -219,6 +221,11 @@ export default function SalesPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Forecast */}
+          <TabsContent value="forecast" className="mt-4">
+            <SalesForecast />
           </TabsContent>
         </Tabs>
       )}
