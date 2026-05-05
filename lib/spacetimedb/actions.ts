@@ -61,6 +61,7 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
     cost: data.cost ?? 0,
     imageUrl: data.imageUrl ?? null,
     description: data.description ?? null,
+    nameI18n: data.nameI18n ? JSON.stringify(data.nameI18n) : null,
   });
 }
 
@@ -647,4 +648,47 @@ export async function deleteLocation(locationId: string): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addSalesRecord(data: any): Promise<void> {
   return conn().reducers.addSalesRecord({ organizationId: orgId(), ...data });
+}
+
+// ─── Suppliers ───────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function addSupplier(data: any): Promise<void> {
+  return conn().reducers.addSupplier({ organizationId: orgId(), ...data });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateSupplier(supplierId: string, data: any): Promise<void> {
+  return conn().reducers.updateSupplier({ organizationId: orgId(), supplierId, ...data });
+}
+
+export async function deleteSupplier(supplierId: string): Promise<void> {
+  return conn().reducers.deleteSupplier({ organizationId: orgId(), supplierId });
+}
+
+// ─── Purchase Orders ─────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function createPurchaseOrder(data: any): Promise<void> {
+  return conn().reducers.createPurchaseOrder({ organizationId: orgId(), ...data });
+}
+
+export async function updatePurchaseOrderStatus(orderId: string, status: string): Promise<void> {
+  return conn().reducers.updatePurchaseOrderStatus({ organizationId: orgId(), orderId, status });
+}
+
+// ─── Expenses ────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function addExpense(data: any): Promise<void> {
+  return conn().reducers.addExpense({ organizationId: orgId(), ...data });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateExpense(expenseId: string, data: any): Promise<void> {
+  return conn().reducers.updateExpense({ organizationId: orgId(), expenseId, ...data });
+}
+
+export async function deleteExpense(expenseId: string): Promise<void> {
+  return conn().reducers.deleteExpense({ organizationId: orgId(), expenseId });
 }

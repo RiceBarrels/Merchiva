@@ -18,4 +18,5 @@ export default {
   cost: __t.f64(),
   imageUrl: __t.option(__t.string()),
   description: __t.option(__t.string()),
+  nameI18n: __t.option(__t.string()),
 };

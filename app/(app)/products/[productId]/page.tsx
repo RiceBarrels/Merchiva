@@ -30,6 +30,7 @@ import { getProductById } from "@/lib/db/products";
 import type { Product, SiteElement, SiteTheme } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { useT } from "@/lib/i18n/context";
+import { LOCALES } from "@/lib/i18n/config";
 import { toast } from "sonner";
 
 // ─── Default theme for preview ────────────────────────────────────────────────
@@ -139,6 +140,10 @@ function ProductAutoSaver({ productId, onSave }: { productId: string; onSave: (e
 
 // ─── Details form ─────────────────────────────────────────────────────────────
 
+const LOCALE_LABELS: Record<string, string> = {
+  en: "English", zh: "中文", es: "Español", fr: "Français", ar: "العربية", hi: "हिन्दी",
+};
+
 function DetailsTab({
   product,
   onSave,
@@ -153,13 +158,28 @@ function DetailsTab({
   const [cost, setCost] = useState(product.cost);
   const [description, setDescription] = useState(product.description ?? "");
   const [imageUrl, setImageUrl] = useState((product.images ?? [])[0] ?? "");
+  const [nameI18n, setNameI18n] = useState<Record<string, string>>(product.nameI18n ?? {});
+  const [showI18n, setShowI18n] = useState(Object.keys(product.nameI18n ?? {}).length > 0);
   const [saving, setSaving] = useState(false);
+
+  const handleI18nChange = (locale: string, value: string) => {
+    setNameI18n((prev) => {
+      const next = { ...prev };
+      if (value.trim()) {
+        next[locale] = value;
+      } else {
+        delete next[locale];
+      }
+      return next;
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const images = imageUrl.trim() ? [imageUrl.trim()] : [];
-      await onSave({ name, category, price, cost, description: description || undefined, images: images.length ? images : undefined });
+      const i18n = Object.keys(nameI18n).length > 0 ? nameI18n : undefined;
+      await onSave({ name, category, price, cost, description: description || undefined, nameI18n: i18n, images: images.length ? images : undefined });
     } finally {
       setSaving(false);
     }
@@ -169,14 +189,42 @@ function DetailsTab({
     <div className="max-w-xl space-y-4 py-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label>{t("products.detail.details.nameLabel")}</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <div className="flex items-center gap-2">
+            <Label>{t("products.detail.details.nameLabel")}</Label>
+            <button
+              type="button"
+              onClick={() => setShowI18n((v) => !v)}
+              className="text-[10px] px-1.5 py-0.5 rounded-[0.3rem] border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              {showI18n ? t("products.detail.details.hideTranslations") : t("products.detail.details.addTranslations")}
+            </button>
+          </div>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("products.detail.details.defaultName")} />
         </div>
         <div className="space-y-1.5">
           <Label>{t("products.detail.details.categoryLabel")}</Label>
           <Input value={category} onChange={(e) => setCategory(e.target.value)} />
         </div>
       </div>
+
+      {showI18n && (
+        <div className="space-y-2 rounded-[0.3rem] border border-border p-3 bg-muted/30">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("products.detail.details.translations")}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {LOCALES.map((loc) => (
+              <div key={loc} className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-muted-foreground w-6 shrink-0 uppercase">{loc}</span>
+                <Input
+                  value={nameI18n[loc] ?? ""}
+                  onChange={(e) => handleI18nChange(loc, e.target.value)}
+                  placeholder={LOCALE_LABELS[loc]}
+                  className="h-8 text-[13px]"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>{t("products.detail.details.priceLabel")}</Label>

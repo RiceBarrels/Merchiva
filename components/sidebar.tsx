@@ -63,9 +63,11 @@ import {
   KeyRound,
   Bell,
   FileBarChart,
+  Wallet,
   Trash2,
   UserRoundSearch,
   UserPlus,
+  Truck,
 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -118,11 +120,13 @@ type NavItemExt = NavItem & { mobileOnly?: boolean };
 const navItems: NavItemExt[] = [
   { labelKey: "nav.home",      href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
   { labelKey: "nav.inventory", href: "/inventory",   icon: Package,         permissionKey: "inventory" },
+  { labelKey: "nav.suppliers", href: "/suppliers",   icon: Truck,           permissionKey: "inventory" },
   { labelKey: "nav.wasteLog",  href: "/inventory/waste", icon: Trash2,      permissionKey: "inventory" },
   { labelKey: "nav.sales",     href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
   { labelKey: "nav.staffing",  href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
   { labelKey: "nav.products",  href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
   { labelKey: "nav.reports",   href: "/reports",     icon: FileBarChart,    permissionKey: "sales"     },
+  { labelKey: "nav.finances",  href: "/finances",    icon: Wallet,          permissionKey: "sales"     },
   { labelKey: "nav.customers", href: "/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
   { labelKey: "nav.pos",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
   { labelKey: "nav.punchIn",   href: "/punch-in",    icon: KeyRound },
@@ -322,43 +326,51 @@ function AccountSwitcher({ onClose, collapsed }: { onClose?: () => void; collaps
         <ChevronsUpDown className="h-3 w-3 shrink-0 text-muted-foreground" />
       </button>
 
-      {open && (
-        <div className="absolute left-0 right-0 bottom-full mb-1 z-50 rounded-[0.3rem] border border-border bg-card shadow-md">
-          <div className="py-1">
-            {accounts.map((acct) => (
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute left-0 right-0 bottom-full mb-1 z-50 rounded-[0.3rem] border border-border bg-card shadow-md origin-bottom"
+          >
+            <div className="py-1">
+              {accounts.map((acct) => (
+                <button
+                  key={acct.id}
+                  onClick={() => handleSwitch(acct.id)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
+                >
+                  <div className="h-5 w-5 rounded-[0.3rem] bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+                    {acct.email[0]?.toUpperCase() ?? "?"}
+                  </div>
+                  <span className="flex-1 truncate text-[12px]">{acct.email}</span>
+                  {acct.id === user?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-border py-1">
               <button
-                key={acct.id}
-                onClick={() => handleSwitch(acct.id)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
+                onClick={handleAddAccount}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
-                <div className="h-5 w-5 rounded-[0.3rem] bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
-                  {acct.email[0]?.toUpperCase() ?? "?"}
-                </div>
-                <span className="flex-1 truncate text-[12px]">{acct.email}</span>
-                {acct.id === user?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+                <UserPlus className="h-3.5 w-3.5 shrink-0" />
+                {t("accounts.addAccount")}
               </button>
-            ))}
-          </div>
-          <div className="border-t border-border py-1">
-            <button
-              onClick={handleAddAccount}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <UserPlus className="h-3.5 w-3.5 shrink-0" />
-              {t("accounts.addAccount")}
-            </button>
-          </div>
-          <div className="border-t border-border py-1">
-            <button
-              onClick={handleLogout}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <LogOut className="h-3.5 w-3.5 shrink-0" />
-              {t("common.signOut")}
-            </button>
-          </div>
-        </div>
-      )}
+            </div>
+            <div className="border-t border-border py-1">
+              <button
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5 shrink-0" />
+                {t("common.signOut")}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -828,6 +840,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             <AnimatePresence>
               {isOpen && (
                 <motion.div
+                  id="sidebar-overlay"
                   className="absolute inset-0 z-30 backdrop-blur-sm bg-foreground/20"
                   onClick={() => setIsOpen(false)}
                   initial={{ opacity: 0 }}

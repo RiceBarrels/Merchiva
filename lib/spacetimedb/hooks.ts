@@ -72,3 +72,12 @@ export function useWasteLogs() { return useTable(tables.wasteLog); }
 
 // ── Locations ───────────────────────────────────────────────────────────────
 export function useLocations() { return useTable(tables.location); }
+
+// ── Suppliers ───────────────────────────────────────────────────────────────
+export function useSuppliers() { return useTable(tables.supplier); }
+
+// ── Purchase Orders ─────────────────────────────────────────────────────────
+export function usePurchaseOrders() { return useTable(tables.purchaseOrder); }
+
+// ── Expenses ────────────────────────────────────────────────────────────────
+export function useExpenses() { return useTable(tables.expense); }

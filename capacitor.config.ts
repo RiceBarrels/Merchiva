@@ -4,16 +4,16 @@ const config: CapacitorConfig = {
   appId: 'com.merchiva.app',
   appName: 'Merchiva',
   webDir: 'out',
-  // for testing
-  server: {
-    url: 'http://192.168.1.147:3001',
-    cleartext: true,
-  },
-  // // for production
+  // // for testing
   // server: {
-  //   iosScheme: 'merchiva',
-  //   androidScheme: 'merchiva',
+  //   url: 'http://192.168.1.147:3001',
+  //   cleartext: true,
   // },
+  // for production
+  server: {
+    iosScheme: 'merchiva',
+    androidScheme: 'merchiva',
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,

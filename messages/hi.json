@@ -18,7 +18,8 @@
     "close": "बंद करें",
     "name": "नाम",
     "description": "विवरण",
-    "type": "प्रकार"
+    "type": "प्रकार",
+    "saving": "सहेज रहे हैं..."
   },
   "nav": {
     "dailyManagement": "दैनिक प्रबंधन",
@@ -35,6 +36,8 @@
     "chat": "चैट",
     "website": "वेबसाइट",
     "membership": "सदस्यता",
+    "finances": "वित्त",
+    "suppliers": "आपूर्तिकर्ता",
     "team": "टीम",
     "settings": "सेटिंग्स",
     "selectStore": "स्टोर चुनें",
@@ -585,6 +588,10 @@
       },
       "details": {
         "nameLabel": "उत्पाद का नाम",
+        "defaultName": "डिफ़ॉल्ट नाम",
+        "addTranslations": "अनुवाद",
+        "hideTranslations": "छिपाएँ",
+        "translations": "अनुवाद",
         "categoryLabel": "श्रेणी",
         "priceLabel": "कीमत ($)",
         "costLabel": "लागत ($)",
@@ -1567,5 +1574,71 @@
     "save": "सहेजें",
     "add": "जोड़ें",
     "cancel": "रद्द करें"
+  },
+  "finances": {
+    "title": "वित्त",
+    "subtitle": "राजस्व, व्यय, नकदी प्रवाह और वेतन",
+    "tabs": {
+      "overview": "अवलोकन",
+      "expenses": "व्यय",
+      "cashFlow": "नकदी प्रवाह",
+      "payroll": "वेतन"
+    },
+    "dateRange": {
+      "thisMonth": "इस महीने",
+      "lastMonth": "पिछला महीना",
+      "thisQuarter": "इस तिमाही",
+      "thisYear": "इस साल"
+    },
+    "overview": {
+      "revenue": "राजस्व",
+      "expenses": "व्यय",
+      "netProfit": "शुद्ध लाभ",
+      "profitMargin": "लाभ मार्जिन",
+      "revenueVsExpenses": "राजस्व बनाम व्यय (6 महीने)",
+      "noData": "इस अवधि के लिए कोई वित्तीय डेटा नहीं"
+    },
+    "expenses": {
+      "addExpense": "व्यय जोड़ें",
+      "editExpense": "व्यय संपादित करें",
+      "addDescription": "नया व्यावसायिक व्यय दर्ज करें",
+      "editDescription": "व्यय विवरण अपडेट करें",
+      "allCategories": "सभी श्रेणियाँ",
+      "noExpenses": "इस अवधि के लिए कोई व्यय दर्ज नहीं",
+      "date": "तारीख",
+      "category": "श्रेणी",
+      "description": "विवरण",
+      "descriptionPlaceholder": "यह व्यय किसलिए था?",
+      "amount": "राशि",
+      "recurring": "आवर्ती",
+      "recurringExpense": "आवर्ती व्यय",
+      "receiptUrl": "रसीद URL",
+      "notes": "नोट्स",
+      "notesPlaceholder": "अतिरिक्त नोट्स...",
+      "actions": "कार्रवाई"
+    },
+    "cashFlow": {
+      "currentBalance": "वर्तमान शेष",
+      "avgDailyRevenue": "औसत दैनिक राजस्व",
+      "projected30Days": "अनुमानित नकदी प्रवाह (30 दिन)",
+      "projectedBalance": "अनुमानित शेष",
+      "upcomingExpenses": "आगामी व्यय (7 दिन)",
+      "noUpcoming": "अगले 7 दिनों में कोई आवर्ती व्यय नहीं",
+      "noProjectionData": "नकदी प्रवाह का अनुमान लगाने के लिए पर्याप्त डेटा नहीं"
+    },
+    "payroll": {
+      "thisWeek": "इस सप्ताह",
+      "lastWeek": "पिछला सप्ताह",
+      "totalPayroll": "कुल वेतन",
+      "totalHours": "कुल घंटे",
+      "staffMembers": "कर्मचारी",
+      "noShifts": "इस अवधि के लिए कोई शिफ्ट निर्धारित नहीं",
+      "staffName": "कर्मचारी का नाम",
+      "hours": "घंटे",
+      "hourlyRate": "प्रति घंटा दर",
+      "grossPay": "सकल वेतन",
+      "total": "कुल",
+      "rateNote": "* डिफ़ॉल्ट दर $15/घंटा का उपयोग। वास्तविक दरें कर्मचारी सेटिंग्स में कॉन्फ़िगर की जाएंगी।"
+    }
   }
 }

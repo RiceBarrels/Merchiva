@@ -18,7 +18,8 @@
     "close": "Close",
     "name": "Name",
     "description": "Description",
-    "type": "Type"
+    "type": "Type",
+    "saving": "Saving..."
   },
   "nav": {
     "dailyManagement": "Daily Management",
@@ -35,6 +36,8 @@
     "chat": "Chat",
     "website": "Website",
     "membership": "Membership",
+    "finances": "Finances",
+    "suppliers": "Suppliers",
     "team": "Team",
     "settings": "Settings",
     "selectStore": "Select store",
@@ -585,6 +588,10 @@
       },
       "details": {
         "nameLabel": "Product Name",
+        "defaultName": "Default name",
+        "addTranslations": "Translate",
+        "hideTranslations": "Hide",
+        "translations": "Translations",
         "categoryLabel": "Category",
         "priceLabel": "Price ($)",
         "costLabel": "Cost ($)",
@@ -1567,5 +1574,71 @@
     "save": "Save",
     "add": "Add",
     "cancel": "Cancel"
+  },
+  "finances": {
+    "title": "Finances",
+    "subtitle": "Revenue, expenses, cash flow & payroll",
+    "tabs": {
+      "overview": "Overview",
+      "expenses": "Expenses",
+      "cashFlow": "Cash Flow",
+      "payroll": "Payroll"
+    },
+    "dateRange": {
+      "thisMonth": "This Month",
+      "lastMonth": "Last Month",
+      "thisQuarter": "This Quarter",
+      "thisYear": "This Year"
+    },
+    "overview": {
+      "revenue": "Revenue",
+      "expenses": "Expenses",
+      "netProfit": "Net Profit",
+      "profitMargin": "Profit Margin",
+      "revenueVsExpenses": "Revenue vs Expenses (6 months)",
+      "noData": "No financial data for this period"
+    },
+    "expenses": {
+      "addExpense": "Add Expense",
+      "editExpense": "Edit Expense",
+      "addDescription": "Record a new business expense",
+      "editDescription": "Update expense details",
+      "allCategories": "All Categories",
+      "noExpenses": "No expenses recorded for this period",
+      "date": "Date",
+      "category": "Category",
+      "description": "Description",
+      "descriptionPlaceholder": "What was this expense for?",
+      "amount": "Amount",
+      "recurring": "Recurring",
+      "recurringExpense": "Recurring expense",
+      "receiptUrl": "Receipt URL",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional notes...",
+      "actions": "Actions"
+    },
+    "cashFlow": {
+      "currentBalance": "Current Balance",
+      "avgDailyRevenue": "Avg. daily revenue",
+      "projected30Days": "Projected Cash Flow (30 days)",
+      "projectedBalance": "Projected Balance",
+      "upcomingExpenses": "Upcoming Expenses (7 days)",
+      "noUpcoming": "No recurring expenses due in the next 7 days",
+      "noProjectionData": "Not enough data to project cash flow"
+    },
+    "payroll": {
+      "thisWeek": "This Week",
+      "lastWeek": "Last Week",
+      "totalPayroll": "Total Payroll",
+      "totalHours": "Total Hours",
+      "staffMembers": "staff",
+      "noShifts": "No shifts scheduled for this period",
+      "staffName": "Staff Name",
+      "hours": "Hours",
+      "hourlyRate": "Hourly Rate",
+      "grossPay": "Gross Pay",
+      "total": "TOTAL",
+      "rateNote": "* Using default rate of $15/hr. Actual rates will be configurable in staff settings."
+    }
   }
 }

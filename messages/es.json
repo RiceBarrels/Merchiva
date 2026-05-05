@@ -18,7 +18,8 @@
     "close": "Cerrar",
     "name": "Nombre",
     "description": "Descripción",
-    "type": "Tipo"
+    "type": "Tipo",
+    "saving": "Guardando..."
   },
   "nav": {
     "dailyManagement": "Gestión diaria",
@@ -35,6 +36,8 @@
     "chat": "Chat",
     "website": "Sitio web",
     "membership": "Membresía",
+    "finances": "Finanzas",
+    "suppliers": "Proveedores",
     "team": "Equipo",
     "settings": "Ajustes",
     "selectStore": "Seleccionar tienda",
@@ -585,6 +588,10 @@
       },
       "details": {
         "nameLabel": "Nombre del producto",
+        "defaultName": "Nombre predeterminado",
+        "addTranslations": "Traducir",
+        "hideTranslations": "Ocultar",
+        "translations": "Traducciones",
         "categoryLabel": "Categoría",
         "priceLabel": "Precio ($)",
         "costLabel": "Costo ($)",
@@ -1567,5 +1574,71 @@
     "save": "Guardar",
     "add": "Agregar",
     "cancel": "Cancelar"
+  },
+  "finances": {
+    "title": "Finanzas",
+    "subtitle": "Ingresos, gastos, flujo de caja y nómina",
+    "tabs": {
+      "overview": "Resumen",
+      "expenses": "Gastos",
+      "cashFlow": "Flujo de Caja",
+      "payroll": "Nómina"
+    },
+    "dateRange": {
+      "thisMonth": "Este Mes",
+      "lastMonth": "Mes Pasado",
+      "thisQuarter": "Este Trimestre",
+      "thisYear": "Este Año"
+    },
+    "overview": {
+      "revenue": "Ingresos",
+      "expenses": "Gastos",
+      "netProfit": "Beneficio Neto",
+      "profitMargin": "Margen de Beneficio",
+      "revenueVsExpenses": "Ingresos vs Gastos (6 meses)",
+      "noData": "Sin datos financieros para este período"
+    },
+    "expenses": {
+      "addExpense": "Agregar Gasto",
+      "editExpense": "Editar Gasto",
+      "addDescription": "Registrar un nuevo gasto de negocio",
+      "editDescription": "Actualizar detalles del gasto",
+      "allCategories": "Todas las Categorías",
+      "noExpenses": "Sin gastos registrados para este período",
+      "date": "Fecha",
+      "category": "Categoría",
+      "description": "Descripción",
+      "descriptionPlaceholder": "¿Para qué fue este gasto?",
+      "amount": "Monto",
+      "recurring": "Recurrente",
+      "recurringExpense": "Gasto recurrente",
+      "receiptUrl": "URL del recibo",
+      "notes": "Notas",
+      "notesPlaceholder": "Notas adicionales...",
+      "actions": "Acciones"
+    },
+    "cashFlow": {
+      "currentBalance": "Saldo Actual",
+      "avgDailyRevenue": "Ingreso diario promedio",
+      "projected30Days": "Flujo de Caja Proyectado (30 días)",
+      "projectedBalance": "Saldo Proyectado",
+      "upcomingExpenses": "Gastos Próximos (7 días)",
+      "noUpcoming": "Sin gastos recurrentes en los próximos 7 días",
+      "noProjectionData": "Datos insuficientes para proyectar flujo de caja"
+    },
+    "payroll": {
+      "thisWeek": "Esta Semana",
+      "lastWeek": "Semana Pasada",
+      "totalPayroll": "Nómina Total",
+      "totalHours": "Horas Totales",
+      "staffMembers": "empleados",
+      "noShifts": "Sin turnos programados para este período",
+      "staffName": "Nombre del Empleado",
+      "hours": "Horas",
+      "hourlyRate": "Tarifa por Hora",
+      "grossPay": "Pago Bruto",
+      "total": "TOTAL",
+      "rateNote": "* Usando tarifa predeterminada de $15/hora. Las tarifas reales se configurarán en ajustes de personal."
+    }
   }
 }

@@ -18,7 +18,8 @@
     "close": "إغلاق",
     "name": "الاسم",
     "description": "الوصف",
-    "type": "النوع"
+    "type": "النوع",
+    "saving": "جارٍ الحفظ..."
   },
   "nav": {
     "dailyManagement": "الإدارة اليومية",
@@ -35,6 +36,8 @@
     "chat": "المحادثة",
     "website": "الموقع",
     "membership": "العضوية",
+    "finances": "المالية",
+    "suppliers": "الموردون",
     "team": "الفريق",
     "settings": "الإعدادات",
     "selectStore": "اختر المتجر",
@@ -585,6 +588,10 @@
       },
       "details": {
         "nameLabel": "اسم المنتج",
+        "defaultName": "الاسم الافتراضي",
+        "addTranslations": "ترجمة",
+        "hideTranslations": "إخفاء",
+        "translations": "الترجمات",
         "categoryLabel": "الفئة",
         "priceLabel": "السعر ($)",
         "costLabel": "التكلفة ($)",
@@ -1567,5 +1574,71 @@
     "save": "حفظ",
     "add": "إضافة",
     "cancel": "إلغاء"
+  },
+  "finances": {
+    "title": "المالية",
+    "subtitle": "الإيرادات والمصروفات والتدفق النقدي والرواتب",
+    "tabs": {
+      "overview": "نظرة عامة",
+      "expenses": "المصروفات",
+      "cashFlow": "التدفق النقدي",
+      "payroll": "الرواتب"
+    },
+    "dateRange": {
+      "thisMonth": "هذا الشهر",
+      "lastMonth": "الشهر الماضي",
+      "thisQuarter": "هذا الربع",
+      "thisYear": "هذا العام"
+    },
+    "overview": {
+      "revenue": "الإيرادات",
+      "expenses": "المصروفات",
+      "netProfit": "صافي الربح",
+      "profitMargin": "هامش الربح",
+      "revenueVsExpenses": "الإيرادات مقابل المصروفات (6 أشهر)",
+      "noData": "لا توجد بيانات مالية لهذه الفترة"
+    },
+    "expenses": {
+      "addExpense": "إضافة مصروف",
+      "editExpense": "تعديل مصروف",
+      "addDescription": "تسجيل مصروف تجاري جديد",
+      "editDescription": "تحديث تفاصيل المصروف",
+      "allCategories": "جميع الفئات",
+      "noExpenses": "لا توجد مصروفات مسجلة لهذه الفترة",
+      "date": "التاريخ",
+      "category": "الفئة",
+      "description": "الوصف",
+      "descriptionPlaceholder": "ما الغرض من هذا المصروف؟",
+      "amount": "المبلغ",
+      "recurring": "متكرر",
+      "recurringExpense": "مصروف متكرر",
+      "receiptUrl": "رابط الإيصال",
+      "notes": "ملاحظات",
+      "notesPlaceholder": "ملاحظات إضافية...",
+      "actions": "إجراءات"
+    },
+    "cashFlow": {
+      "currentBalance": "الرصيد الحالي",
+      "avgDailyRevenue": "متوسط الإيراد اليومي",
+      "projected30Days": "التدفق النقدي المتوقع (30 يومًا)",
+      "projectedBalance": "الرصيد المتوقع",
+      "upcomingExpenses": "المصروفات القادمة (7 أيام)",
+      "noUpcoming": "لا توجد مصروفات متكررة مستحقة في الأيام السبعة القادمة",
+      "noProjectionData": "بيانات غير كافية لتوقع التدفق النقدي"
+    },
+    "payroll": {
+      "thisWeek": "هذا الأسبوع",
+      "lastWeek": "الأسبوع الماضي",
+      "totalPayroll": "إجمالي الرواتب",
+      "totalHours": "إجمالي الساعات",
+      "staffMembers": "موظفين",
+      "noShifts": "لا توجد ورديات مجدولة لهذه الفترة",
+      "staffName": "اسم الموظف",
+      "hours": "الساعات",
+      "hourlyRate": "الأجر بالساعة",
+      "grossPay": "الأجر الإجمالي",
+      "total": "المجموع",
+      "rateNote": "* باستخدام السعر الافتراضي 15$/ساعة. سيتم تكوين الأسعار الفعلية في إعدادات الموظفين."
+    }
   }
 }

@@ -215,7 +215,7 @@ export default function DashboardPage() {
   const userName = currentOrg?.name ?? "";
 
   return (
-    <div className="p-3 sm:p-6 space-y-4">
+    <div className="space-y-4 sm:space-y-6">
       <style>{`
         @keyframes jiggle {
           0% { transform: rotate(-0.7deg); }

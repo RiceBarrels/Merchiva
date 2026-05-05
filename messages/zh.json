@@ -18,7 +18,8 @@
     "close": "关闭",
     "name": "名称",
     "description": "描述",
-    "type": "类型"
+    "type": "类型",
+    "saving": "保存中..."
   },
   "nav": {
     "dailyManagement": "日常管理",
@@ -35,6 +36,8 @@
     "chat": "聊天",
     "website": "网站",
     "membership": "会员",
+    "finances": "财务",
+    "suppliers": "供应商",
     "team": "团队",
     "settings": "设置",
     "selectStore": "选择门店",
@@ -585,6 +588,10 @@
       },
       "details": {
         "nameLabel": "商品名称",
+        "defaultName": "默认名称",
+        "addTranslations": "翻译",
+        "hideTranslations": "收起",
+        "translations": "多语言名称",
         "categoryLabel": "分类",
         "priceLabel": "价格（$）",
         "costLabel": "成本（$）",
@@ -1567,5 +1574,71 @@
     "save": "保存",
     "add": "添加",
     "cancel": "取消"
+  },
+  "finances": {
+    "title": "财务",
+    "subtitle": "收入、支出、现金流与工资",
+    "tabs": {
+      "overview": "概览",
+      "expenses": "支出",
+      "cashFlow": "现金流",
+      "payroll": "工资"
+    },
+    "dateRange": {
+      "thisMonth": "本月",
+      "lastMonth": "上月",
+      "thisQuarter": "本季度",
+      "thisYear": "今年"
+    },
+    "overview": {
+      "revenue": "收入",
+      "expenses": "支出",
+      "netProfit": "净利润",
+      "profitMargin": "利润率",
+      "revenueVsExpenses": "收入��支出（6个月）",
+      "noData": "该时段无财务数据"
+    },
+    "expenses": {
+      "addExpense": "添加支出",
+      "editExpense": "编辑支出",
+      "addDescription": "记录新的业务支出",
+      "editDescription": "更新支出详情",
+      "allCategories": "全部类别",
+      "noExpenses": "该时段无支出记录",
+      "date": "日期",
+      "category": "���别",
+      "description": "描述",
+      "descriptionPlaceholder": "此笔支出用途是什么？",
+      "amount": "金额",
+      "recurring": "定期",
+      "recurringExpense": "定期支出",
+      "receiptUrl": "收据链接",
+      "notes": "备注",
+      "notesPlaceholder": "补充说明...",
+      "actions": "操作"
+    },
+    "cashFlow": {
+      "currentBalance": "���前余额",
+      "avgDailyRevenue": "日均收入",
+      "projected30Days": "未来30天现金流预测",
+      "projectedBalance": "预计余额",
+      "upcomingExpenses": "即��到期的支出（7天）",
+      "noUpcoming": "未来7天无定期支出到期",
+      "noProjectionData": "数据不足，无法预测现金流"
+    },
+    "payroll": {
+      "thisWeek": "本周",
+      "lastWeek": "上周",
+      "totalPayroll": "工资总额",
+      "totalHours": "总工时",
+      "staffMembers": "名员工",
+      "noShifts": "该时段无排班",
+      "staffName": "员工姓名",
+      "hours": "工时",
+      "hourlyRate": "时薪",
+      "grossPay": "总薪资",
+      "total": "合计",
+      "rateNote": "* 使用默认时薪 $15/小时。实际费率将在员工设置中配置。"
+    }
   }
 }

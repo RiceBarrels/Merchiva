@@ -122,6 +122,14 @@ import UpdateStoreDeviceReducer from "./update_store_device_reducer";
 import UpdateTierReducer from "./update_tier_reducer";
 import UpdateTimeOffStatusReducer from "./update_time_off_status_reducer";
 import UpsertAvailabilityReducer from "./upsert_availability_reducer";
+import AddSupplierReducer from "./add_supplier_reducer";
+import UpdateSupplierReducer from "./update_supplier_reducer";
+import DeleteSupplierReducer from "./delete_supplier_reducer";
+import CreatePurchaseOrderReducer from "./create_purchase_order_reducer";
+import UpdatePurchaseOrderStatusReducer from "./update_purchase_order_status_reducer";
+import AddExpenseReducer from "./add_expense_reducer";
+import UpdateExpenseReducer from "./update_expense_reducer";
+import DeleteExpenseReducer from "./delete_expense_reducer";
 
 // Import all procedure arg schemas
 
@@ -164,6 +172,9 @@ import TimeOffRequestRow from "./time_off_request_table";
 import TodoRow from "./todo_table";
 import UserRow from "./user_table";
 import WasteLogRow from "./waste_log_table";
+import SupplierRow from "./supplier_table";
+import PurchaseOrderRow from "./purchase_order_table";
+import ExpenseRow from "./expense_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -785,6 +796,51 @@ const tablesSchema = __schema({
       { name: 'waste_log_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, WasteLogRow),
+  supplier: __table({
+    name: 'supplier',
+    indexes: [
+      { accessor: 'id', name: 'supplier_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'supplier_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'supplier_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SupplierRow),
+  purchaseOrder: __table({
+    name: 'purchase_order',
+    indexes: [
+      { accessor: 'id', name: 'purchase_order_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'purchase_order_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'bySupplierId', name: 'purchase_order_supplier_id_idx_btree', algorithm: 'btree', columns: [
+        'supplierId',
+      ] },
+    ],
+    constraints: [
+      { name: 'purchase_order_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PurchaseOrderRow),
+  expense: __table({
+    name: 'expense',
+    indexes: [
+      { accessor: 'id', name: 'expense_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'expense_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'expense_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ExpenseRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -877,6 +933,14 @@ const reducersSchema = __reducers(
   __reducerSchema("update_tier", UpdateTierReducer),
   __reducerSchema("update_time_off_status", UpdateTimeOffStatusReducer),
   __reducerSchema("upsert_availability", UpsertAvailabilityReducer),
+  __reducerSchema("add_supplier", AddSupplierReducer),
+  __reducerSchema("update_supplier", UpdateSupplierReducer),
+  __reducerSchema("delete_supplier", DeleteSupplierReducer),
+  __reducerSchema("create_purchase_order", CreatePurchaseOrderReducer),
+  __reducerSchema("update_purchase_order_status", UpdatePurchaseOrderStatusReducer),
+  __reducerSchema("add_expense", AddExpenseReducer),
+  __reducerSchema("update_expense", UpdateExpenseReducer),
+  __reducerSchema("delete_expense", DeleteExpenseReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

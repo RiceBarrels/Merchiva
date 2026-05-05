@@ -32,6 +32,7 @@ export function useProducts(_organizationId: string | null) {
         alertReason:        r.alertReason ?? undefined,
         imageUrl:           r.imageUrl ?? undefined,
         description:        r.description ?? undefined,
+        nameI18n:           r.nameI18n ? (() => { try { return JSON.parse(r.nameI18n!); } catch { return undefined; } })() : undefined,
         squareItemId:       r.squareItemId ?? null,
       }));
   }, [rawProducts, organizationId]);

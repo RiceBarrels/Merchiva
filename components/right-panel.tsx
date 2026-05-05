@@ -35,6 +35,7 @@ import {
   managerApproveShiftTrade,
   updateTimeOffStatus,
 } from "@/lib/spacetimedb/actions";
+import { getSafeAreaInsets } from "@/lib/safe-area";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -77,10 +78,11 @@ interface ChatMessage {
 
 // ─── RightPanel Component ───────────────────────────────────────────────────
 
-export function RightPanel() {
+export function RightPanel({ collapsible = true }: { collapsible?: boolean } = {}) {
   const [open, setOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"inbox" | "ai">("inbox");
-
+  const safeAreaInsets = getSafeAreaInsets();
+  
   // Load persisted state
   useEffect(() => {
     try {
@@ -99,8 +101,8 @@ export function RightPanel() {
     });
   };
 
-  // Collapsed strip
-  if (!open) {
+  // Collapsed strip (skip on mobile / non-collapsible)
+  if (!open && collapsible) {
     return (
       <div className="h-full shrink-0 w-11 lg:border-l lg:border-border bg-background flex flex-col items-center pt-3 gap-2">
         <button
@@ -132,7 +134,10 @@ export function RightPanel() {
   }
 
   return (
-    <div className="h-full shrink-0 w-[340px] lg:border-l lg:border-border bg-background flex flex-col overflow-hidden">
+    <div
+      className="h-full shrink-0 lg:w-[340px] lg:border-l lg:border-border bg-background flex flex-col overflow-hidden"
+      style={collapsible ? { paddingTop: safeAreaInsets.top } : undefined}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-1.5">
@@ -157,14 +162,16 @@ export function RightPanel() {
             AI
           </button>
         </div>
-        <button
-          type="button"
-          onClick={toggleOpen}
-          className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
-          title="Collapse panel"
-        >
-          <PanelRightClose className="h-4 w-4 text-muted-foreground" />
-        </button>
+        {collapsible && (
+          <button
+            type="button"
+            onClick={toggleOpen}
+            className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors lg:block hidden"
+            title="Collapse panel"
+          >
+            <PanelRightClose className="h-4 w-4 text-muted-foreground" />
+          </button>
+        )}
       </div>
 
       {/* Content */}
@@ -706,8 +713,11 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
         overlay.style.position = "absolute";
         overlay.style.inset = "0";
         overlay.style.zIndex = "30";
+        overlay.style.backdropFilter = "blur(4px)";
+        (overlay.style as unknown as Record<string, string>).webkitBackdropFilter = "blur(4px)";
+        overlay.style.opacity = "0";
         overlay.style.pointerEvents = "none";
-        overlay.style.background = "rgba(0,0,0,0)";
+        overlay.style.background = "color-mix(in oklab, var(--foreground) 20%, transparent)";
         const el = document.getElementById("mobile-content");
         if (el) el.appendChild(overlay);
       }
@@ -727,13 +737,14 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
         el.style.transform = `translateX(${shift}px)`;
         el.style.boxShadow = "4px 0 16px rgba(0, 0, 0, 0.15)";
         el.style.borderRadius = "0 38px 38px 0";
-        overlay.style.background = `rgba(0, 0, 0, ${progress * 0.2})`;
-        overlay.style.pointerEvents = "auto";
+        overlay.style.opacity = String(progress);
+        // During drag, disable pointer events on overlay so it doesn't steal touches
+        overlay.style.pointerEvents = "none";
       } else {
         el.style.transform = "";
         el.style.boxShadow = "";
         el.style.borderRadius = "";
-        overlay.style.background = "rgba(0,0,0,0)";
+        overlay.style.opacity = "0";
         overlay.style.pointerEvents = "none";
       }
     }
@@ -874,6 +885,9 @@ export function MobileRightPanel() {
       overlay.style.position = "absolute";
       overlay.style.inset = "0";
       overlay.style.zIndex = "30";
+      overlay.style.backdropFilter = "blur(4px)";
+      (overlay.style as unknown as Record<string, string>).webkitBackdropFilter = "blur(4px)";
+      overlay.style.background = "color-mix(in oklab, var(--foreground) 20%, transparent)";
       el.appendChild(overlay);
     }
     overlay.style.transition = trans;
@@ -883,16 +897,15 @@ export function MobileRightPanel() {
       el.style.transform = `translateX(${-RPANEL_WIDTH}px)`;
       el.style.boxShadow = "4px 0 16px rgba(0, 0, 0, 0.15)";
       el.style.borderRadius = "0 38px 38px 0";
-      overlay.style.background = "rgba(0, 0, 0, 0.2)";
+      overlay.style.opacity = "1";
       overlay.style.pointerEvents = "auto";
       overlay.onclick = () => close();
     } else {
-      // Only reset if WE were the ones controlling the transform
       wasActiveRef.current = false;
       el.style.transform = "";
       el.style.boxShadow = "";
       el.style.borderRadius = "";
-      overlay.style.background = "rgba(0,0,0,0)";
+      overlay.style.opacity = "0";
       overlay.style.pointerEvents = "none";
       overlay.onclick = null;
     }
@@ -913,7 +926,7 @@ export function MobileRightPanel() {
           transition: transitionStyle,
         }}
       >
-        <RightPanel />
+        <RightPanel collapsible={false} />
       </div>
     </>
   );

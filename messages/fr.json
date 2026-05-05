@@ -18,7 +18,8 @@
     "close": "Fermer",
     "name": "Nom",
     "description": "Description",
-    "type": "Type"
+    "type": "Type",
+    "saving": "Enregistrement..."
   },
   "nav": {
     "dailyManagement": "Gestion quotidienne",
@@ -35,6 +36,8 @@
     "chat": "Chat",
     "website": "Site web",
     "membership": "Abonnement",
+    "finances": "Finances",
+    "suppliers": "Fournisseurs",
     "team": "Équipe",
     "settings": "Paramètres",
     "selectStore": "Choisir un magasin",
@@ -585,6 +588,10 @@
       },
       "details": {
         "nameLabel": "Nom du produit",
+        "defaultName": "Nom par défaut",
+        "addTranslations": "Traduire",
+        "hideTranslations": "Masquer",
+        "translations": "Traductions",
         "categoryLabel": "Catégorie",
         "priceLabel": "Prix ($)",
         "costLabel": "Coût ($)",
@@ -1567,5 +1574,71 @@
     "save": "Enregistrer",
     "add": "Ajouter",
     "cancel": "Annuler"
+  },
+  "finances": {
+    "title": "Finances",
+    "subtitle": "Revenus, dépenses, trésorerie et paie",
+    "tabs": {
+      "overview": "Aperçu",
+      "expenses": "Dépenses",
+      "cashFlow": "Trésorerie",
+      "payroll": "Paie"
+    },
+    "dateRange": {
+      "thisMonth": "Ce mois",
+      "lastMonth": "Mois dernier",
+      "thisQuarter": "Ce trimestre",
+      "thisYear": "Cette année"
+    },
+    "overview": {
+      "revenue": "Revenus",
+      "expenses": "Dépenses",
+      "netProfit": "Bénéfice net",
+      "profitMargin": "Marge bénéficiaire",
+      "revenueVsExpenses": "Revenus vs Dépenses (6 mois)",
+      "noData": "Aucune donnée financière pour cette période"
+    },
+    "expenses": {
+      "addExpense": "Ajouter une dépense",
+      "editExpense": "Modifier la dépense",
+      "addDescription": "Enregistrer une nouvelle dépense professionnelle",
+      "editDescription": "Mettre à jour les détails de la dépense",
+      "allCategories": "Toutes les catégories",
+      "noExpenses": "Aucune dépense enregistrée pour cette période",
+      "date": "Date",
+      "category": "Catégorie",
+      "description": "Description",
+      "descriptionPlaceholder": "À quoi correspond cette dépense ?",
+      "amount": "Montant",
+      "recurring": "Récurrent",
+      "recurringExpense": "Dépense récurrente",
+      "receiptUrl": "URL du reçu",
+      "notes": "Notes",
+      "notesPlaceholder": "Notes supplémentaires...",
+      "actions": "Actions"
+    },
+    "cashFlow": {
+      "currentBalance": "Solde actuel",
+      "avgDailyRevenue": "Revenu quotidien moyen",
+      "projected30Days": "Trésorerie projetée (30 jours)",
+      "projectedBalance": "Solde projeté",
+      "upcomingExpenses": "Dépenses à venir (7 jours)",
+      "noUpcoming": "Aucune dépense récurrente due dans les 7 prochains jours",
+      "noProjectionData": "Données insuffisantes pour projeter la trésorerie"
+    },
+    "payroll": {
+      "thisWeek": "Cette semaine",
+      "lastWeek": "Semaine dernière",
+      "totalPayroll": "Paie totale",
+      "totalHours": "Heures totales",
+      "staffMembers": "employés",
+      "noShifts": "Aucun quart planifié pour cette période",
+      "staffName": "Nom de l'employé",
+      "hours": "Heures",
+      "hourlyRate": "Taux horaire",
+      "grossPay": "Salaire brut",
+      "total": "TOTAL",
+      "rateNote": "* Utilisant le taux par défaut de 15$/heure. Les taux réels seront configurables dans les paramètres du personnel."
+    }
   }
 }

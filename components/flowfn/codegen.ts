@@ -135,8 +135,8 @@ ${allCode}
 return (async () => { return await ${main.fnName}(${argsExpr}); })();
 `;
   try {
-    const factory = new Function("__log", wrap);
-    const result = await factory(__log);
+    const factory = new Function("__log", "__triggerEl", wrap);
+    const result = await factory(__log, null);
     return { ok: true, result, logs };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

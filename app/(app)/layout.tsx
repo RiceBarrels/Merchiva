@@ -53,7 +53,10 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
       await r.createOrg({ name: storeName.trim() });
       console.log("[Setup] createOrg done, reloading in 1.5s...");
       toast.success(t("layout.accountCreated"));
-      setTimeout(onComplete, 1500);
+      setTimeout(() => {
+        try { localStorage.removeItem("merchiva_setup_done"); } catch {}
+        onComplete();
+      }, 1500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Setup failed:", msg, err);

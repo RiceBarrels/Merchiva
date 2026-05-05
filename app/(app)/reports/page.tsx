@@ -482,7 +482,7 @@ export default function ReportsPage() {
 
   return (
     <PermissionGuard section="sales">
-      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Reports"
           subtitle="Export and review business data"

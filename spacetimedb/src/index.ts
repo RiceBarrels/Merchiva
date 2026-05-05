@@ -460,6 +460,7 @@ const productTable = table(
     alertReason: t.option(t.string()),
     imageUrl: t.option(t.string()),
     description: t.option(t.string()),
+    nameI18n: t.option(t.string()),
     squareItemId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
@@ -932,6 +933,84 @@ const locationTable = table(
   }
 );
 
+// ─── Suppliers ───────────────────────────────────────────────────────────────
+
+const supplierTable = table(
+  {
+    name: 'supplier',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    name: t.string(),
+    contactName: t.option(t.string()),
+    email: t.option(t.string()),
+    phone: t.option(t.string()),
+    address: t.option(t.string()),
+    paymentTerms: t.option(t.string()),  // "net30" | "net60" | "cod" | "prepaid"
+    notes: t.option(t.string()),
+    rating: t.number(),                   // 1-5 performance rating
+    createdAt: t.timestamp(),
+  }
+);
+
+// ─── Purchase Orders ─────────────────────────────────────────────────────────
+
+const purchaseOrderTable = table(
+  {
+    name: 'purchase_order',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'bySupplierId', algorithm: 'btree', columns: ['supplierId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    supplierId: t.string(),
+    status: t.string(),            // "draft" | "sent" | "received" | "cancelled"
+    items: t.string(),             // JSON: { itemId, itemName, quantity, unit, unitCost, total }[]
+    subtotal: t.number(),
+    tax: t.number(),
+    total: t.number(),
+    notes: t.option(t.string()),
+    sentAt: t.option(t.timestamp()),
+    receivedAt: t.option(t.timestamp()),
+    createdAt: t.timestamp(),
+  }
+);
+
+// ─── Expenses ────────────────────────────────────────────────────────────────
+
+const expenseTable = table(
+  {
+    name: 'expense',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byDate', algorithm: 'btree', columns: ['date'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    category: t.string(),          // "rent" | "utilities" | "supplies" | "payroll" | "marketing" | "other"
+    description: t.string(),
+    amount: t.number(),
+    date: t.string(),              // YYYY-MM-DD
+    recurring: t.bool(),
+    recurringPeriod: t.option(t.string()), // "weekly" | "monthly" | "yearly"
+    receiptUrl: t.option(t.string()),
+    notes: t.option(t.string()),
+    createdAt: t.timestamp(),
+  }
+);
+
 // ─── Waste Log ───────────────────────────────────────────────────────────────
 
 const wasteLogTable = table(
@@ -1002,6 +1081,9 @@ const spacetimedb = schema({
   notification: notificationTable,
   wasteLog: wasteLogTable,
   location: locationTable,
+  supplier: supplierTable,
+  purchaseOrder: purchaseOrderTable,
+  expense: expenseTable,
 });
 
 export default spacetimedb;
@@ -1735,6 +1817,7 @@ export const addProduct = spacetimedb.reducer(
     cost: t.number(),
     imageUrl: t.option(t.string()),
     description: t.option(t.string()),
+    nameI18n: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -1758,6 +1841,7 @@ export const addProduct = spacetimedb.reducer(
       alertReason: undefined,
       imageUrl: args.imageUrl,
       description: args.description,
+      nameI18n: args.nameI18n,
       squareItemId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
@@ -1778,6 +1862,7 @@ export const updateProduct = spacetimedb.reducer(
     alertReason: t.option(t.string()),
     imageUrl: t.option(t.string()),
     description: t.option(t.string()),
+    nameI18n: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -1798,6 +1883,7 @@ export const updateProduct = spacetimedb.reducer(
       alertReason: args.alertReason,
       imageUrl: args.imageUrl,
       description: args.description,
+      nameI18n: args.nameI18n,
       updatedAt: ctx.timestamp,
     });
   }
@@ -3526,6 +3612,215 @@ export const deleteLocation = spacetimedb.reducer(
       .find(l => l.id.toString() === locationId);
     if (!loc) throw new Error('Location not found');
     ctx.db.location.delete(loc);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUPPLIER & PURCHASE ORDER REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addSupplier = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    name: t.string(),
+    contactName: t.option(t.string()),
+    email: t.option(t.string()),
+    phone: t.option(t.string()),
+    address: t.option(t.string()),
+    paymentTerms: t.option(t.string()),
+    notes: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    ctx.db.supplier.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      name: args.name,
+      contactName: args.contactName,
+      email: args.email,
+      phone: args.phone,
+      address: args.address,
+      paymentTerms: args.paymentTerms,
+      notes: args.notes,
+      rating: 5,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateSupplier = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    supplierId: t.string(),
+    name: t.string(),
+    contactName: t.option(t.string()),
+    email: t.option(t.string()),
+    phone: t.option(t.string()),
+    address: t.option(t.string()),
+    paymentTerms: t.option(t.string()),
+    notes: t.option(t.string()),
+    rating: t.number(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    const sup = [...ctx.db.supplier.byOrganizationId.filter(args.organizationId)]
+      .find(s => s.id.toString() === args.supplierId);
+    if (!sup) throw new Error('Supplier not found');
+    ctx.db.supplier.delete(sup);
+    ctx.db.supplier.insert({
+      ...sup,
+      name: args.name,
+      contactName: args.contactName,
+      email: args.email,
+      phone: args.phone,
+      address: args.address,
+      paymentTerms: args.paymentTerms,
+      notes: args.notes,
+      rating: args.rating,
+    });
+  }
+);
+
+export const deleteSupplier = spacetimedb.reducer(
+  { organizationId: t.string(), supplierId: t.string() },
+  (ctx, { organizationId, supplierId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    const sup = [...ctx.db.supplier.byOrganizationId.filter(organizationId)]
+      .find(s => s.id.toString() === supplierId);
+    if (!sup) throw new Error('Supplier not found');
+    ctx.db.supplier.delete(sup);
+  }
+);
+
+export const createPurchaseOrder = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    supplierId: t.string(),
+    items: t.string(),
+    subtotal: t.number(),
+    tax: t.number(),
+    total: t.number(),
+    notes: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    ctx.db.purchaseOrder.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      supplierId: args.supplierId,
+      status: 'draft',
+      items: args.items,
+      subtotal: args.subtotal,
+      tax: args.tax,
+      total: args.total,
+      notes: args.notes,
+      sentAt: undefined,
+      receivedAt: undefined,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updatePurchaseOrderStatus = spacetimedb.reducer(
+  { organizationId: t.string(), orderId: t.string(), status: t.string() },
+  (ctx, { organizationId, orderId, status }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    const po = [...ctx.db.purchaseOrder.byOrganizationId.filter(organizationId)]
+      .find(p => p.id.toString() === orderId);
+    if (!po) throw new Error('Purchase order not found');
+    ctx.db.purchaseOrder.delete(po);
+    ctx.db.purchaseOrder.insert({
+      ...po,
+      status,
+      ...(status === 'sent' ? { sentAt: ctx.timestamp } : {}),
+      ...(status === 'received' ? { receivedAt: ctx.timestamp } : {}),
+    });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXPENSE REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const addExpense = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    category: t.string(),
+    description: t.string(),
+    amount: t.number(),
+    date: t.string(),
+    recurring: t.bool(),
+    recurringPeriod: t.option(t.string()),
+    receiptUrl: t.option(t.string()),
+    notes: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    ctx.db.expense.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      category: args.category,
+      description: args.description,
+      amount: args.amount,
+      date: args.date,
+      recurring: args.recurring,
+      recurringPeriod: args.recurringPeriod,
+      receiptUrl: args.receiptUrl,
+      notes: args.notes,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateExpense = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    expenseId: t.string(),
+    category: t.string(),
+    description: t.string(),
+    amount: t.number(),
+    date: t.string(),
+    recurring: t.bool(),
+    recurringPeriod: t.option(t.string()),
+    receiptUrl: t.option(t.string()),
+    notes: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    const exp = [...ctx.db.expense.byOrganizationId.filter(args.organizationId)]
+      .find(e => e.id.toString() === args.expenseId);
+    if (!exp) throw new Error('Expense not found');
+    ctx.db.expense.delete(exp);
+    ctx.db.expense.insert({
+      ...exp,
+      category: args.category,
+      description: args.description,
+      amount: args.amount,
+      date: args.date,
+      recurring: args.recurring,
+      recurringPeriod: args.recurringPeriod,
+      receiptUrl: args.receiptUrl,
+      notes: args.notes,
+    });
+  }
+);
+
+export const deleteExpense = spacetimedb.reducer(
+  { organizationId: t.string(), expenseId: t.string() },
+  (ctx, { organizationId, expenseId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    const exp = [...ctx.db.expense.byOrganizationId.filter(organizationId)]
+      .find(e => e.id.toString() === expenseId);
+    if (!exp) throw new Error('Expense not found');
+    ctx.db.expense.delete(exp);
   }
 );
 

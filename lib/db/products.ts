@@ -19,6 +19,7 @@ function fromRow(row: any): Product {
     alert: row.alert,
     alertReason: row.alertReason ?? undefined,
     description: row.description ?? undefined,
+    nameI18n: row.nameI18n ? (() => { try { return JSON.parse(row.nameI18n); } catch { return undefined; } })() : undefined,
     images: row.images ?? undefined,
     pageTemplate: row.pageTemplate ?? null,
   };

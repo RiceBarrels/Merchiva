@@ -10,7 +10,7 @@ function loadFns(): FlowFunction[] {
   return [];
 }
 
-export function runTrigger(fnName: string) {
+export function runTrigger(fnName: string, triggerEl?: HTMLElement | null) {
   const fns = loadFns();
   const fn = fns.find((f) => f.name === fnName);
   if (!fn) {
@@ -27,11 +27,11 @@ return (async () => { return await ${callName}(); })();
 `;
 
   try {
-    const factory = new Function("__log", wrap);
+    const factory = new Function("__log", "__triggerEl", wrap);
     const logCollector = (label: string, value: unknown) => {
       console.log(`[FlowFn:${fnName}]`, label || "", value);
     };
-    Promise.resolve(factory(logCollector)).catch((err) => {
+    Promise.resolve(factory(logCollector, triggerEl ?? null)).catch((err) => {
       console.error(`[FlowFn] Error in "${fnName}":`, err);
     });
   } catch (err) {
@@ -41,12 +41,13 @@ return (async () => { return await ${callName}(); })();
 
 export function buildTriggerHandlers(
   triggers: Record<string, string> | undefined,
-): Record<string, () => void> {
+): Record<string, (e: React.SyntheticEvent) => void> {
   if (!triggers || !Object.keys(triggers).length) return {};
-  const handlers: Record<string, () => void> = {};
+  const handlers: Record<string, (e: React.SyntheticEvent) => void> = {};
   for (const [event, fnName] of Object.entries(triggers)) {
     if (fnName) {
-      handlers[event] = () => runTrigger(fnName);
+      handlers[event] = (e: React.SyntheticEvent) =>
+        runTrigger(fnName, e.currentTarget as HTMLElement);
     }
   }
   return handlers;

@@ -2,8 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
-import { px } from "motion/react";
 import { getSafeAreaInsets } from "@/lib/safe-area";
+import { useNavMode } from "@/lib/nav-mode";
 
 interface PageHeaderAction {
   icon: React.ReactNode;
@@ -30,7 +30,8 @@ export function PageHeader({
   const { currentOrg } = usePermissions();
   const crumbs = breadcrumbs ?? (currentOrg ? [currentOrg.name, title] : [title]);
   const SafeArea = getSafeAreaInsets();
-
+  const [navMode] = useNavMode();
+  const isSideBarMode = navMode === "sidebar";
   return (
     <>
       {/* Desktop */}
@@ -62,7 +63,7 @@ export function PageHeader({
         )}
         style={{ paddingTop: `calc(${SafeArea.top}px + 0.75rem)` }}
       >
-        <div className="pl-14 min-w-0 flex-1">
+        <div className={cn("pl-14 min-w-0 flex-1", !isSideBarMode && "pl-0")}>
           <h1 className="text-xl font-semibold text-foreground leading-tight">{title}</h1>
           {subtitle && (
             <p className="text-xs text-muted-foreground leading-tight mt-0.5">{subtitle}</p>

@@ -281,6 +281,57 @@ export interface WasteLog {
   createdAt: string;
 }
 
+// ─── Suppliers ──────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id: string;
+  organizationId: string;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  paymentTerms: string | null;
+  notes: string | null;
+  rating: number;
+  createdAt: string;
+}
+
+// ─── Purchase Orders ────────────────────────────────────────────────────────
+
+export interface PurchaseOrder {
+  id: string;
+  organizationId: string;
+  supplierId: string;
+  status: string;
+  items: string;
+  subtotal: number;
+  tax: number;
+  total: number;
+  notes: string | null;
+  sentAt: string | null;
+  receivedAt: string | null;
+  createdAt: string;
+}
+
+// ─── Expenses ───────────────────────────────────────────────────────────────
+
+export type ExpenseCategory = "rent" | "utilities" | "supplies" | "payroll" | "marketing" | "other";
+
+export interface Expense {
+  id: string;
+  organizationId: string;
+  category: string;
+  description: string;
+  amount: number;
+  date: string;
+  recurring: boolean;
+  recurringPeriod: string | null;
+  receiptUrl: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
 // ─── Todos ──────────────────────────────────────────────────────────────────
 
 export interface Todo {
@@ -350,6 +401,7 @@ export interface Product {
   alertReason?: string;
   imageUrl?: string;
   description?: string;
+  nameI18n?: Record<string, string>;
   images?: string[];
   pageTemplate?: SiteElement[] | null;
 }

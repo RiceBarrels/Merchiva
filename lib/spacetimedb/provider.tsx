@@ -93,6 +93,9 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
             "SELECT * FROM notification",
             "SELECT * FROM waste_log",
             "SELECT * FROM location",
+            "SELECT * FROM supplier",
+            "SELECT * FROM purchase_order",
+            "SELECT * FROM expense",
           ]);
         } catch {
           console.warn("[SpacetimeDB] Some newer tables not available on server");

@@ -178,7 +178,7 @@ export default function ProductsPage() {
 
   return (
     <PermissionGuard section="products">
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title={t("products.title")}
         subtitle={t("products.subtitle")}
