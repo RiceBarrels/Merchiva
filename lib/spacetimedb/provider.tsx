@@ -19,7 +19,7 @@ interface SpacetimeProviderProps {
 }
 
 export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, signOut } = useAuth();
   const t = useT();
   const tRef = useRef(t);
   useEffect(() => {
@@ -27,16 +27,45 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   }, [t]);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [connected, setConnected] = useState(false);
+  const [tokenMissing, setTokenMissing] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!isSignedIn) return;
-    getToken().then((token) => {
-      if (token) {
-        setAuthToken(token);
-        localStorage.setItem("stdb_token", token);
-      }
-    });
+    if (!isSignedIn) {
+      setTokenMissing(true);
+      return;
+    }
+    setTokenMissing(false);
+    let cancelled = false;
+    getToken()
+      .then((token) => {
+        if (cancelled) return;
+        if (token) {
+          setAuthToken(token);
+          localStorage.setItem("stdb_token", token);
+        } else {
+          setTokenMissing(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTokenMissing(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isSignedIn, getToken]);
+
+  // Surface a "connection timed out" UI if we never get past the loading state.
+  // Mirrors the pattern used in (app)/layout.tsx AuthLoader.
+  useEffect(() => {
+    if (connected) {
+      setTimedOut(false);
+      return;
+    }
+    const timer = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(timer);
+  }, [connected, retryCount]);
 
   const builder = useMemo(() => {
     if (!authToken) return null;
@@ -49,6 +78,7 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       .onConnect((conn, _identity, newToken) => {
         console.log("ℹ️ INFO Connected to SpacetimeDB WS");
         if (retryCount > 0) setRetryCount(0);
+        setConnected(true);
         storeToken(newToken);
         setConnection(conn);
         conn.subscriptionBuilder().subscribe([
@@ -110,6 +140,7 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         }
       })
       .onDisconnect(() => {
+        setConnected(false);
         clearConnection();
       })
       .onConnectError((_ctx, error) => {
@@ -131,9 +162,24 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   }, [authToken, retryCount]);
 
   if (!builder) {
+    const showError = tokenMissing || timedOut;
     return (
-      <div className="flex h-screen items-center justify-center bg-stone-50">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-stone-50">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
+        <p className="text-xs text-muted-foreground">{t("layout.connecting")}</p>
+        {showError && (
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <p className="text-xs text-red-500">
+              {tokenMissing ? t("layout.notConnected") : t("layout.connectionTimedOut")}
+            </p>
+            <button
+              onClick={signOut}
+              className="rounded border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+            >
+              {t("layout.signOutAndRetry")}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
