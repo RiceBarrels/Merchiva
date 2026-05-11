@@ -26,10 +26,13 @@ export function useIsCapacitor(): boolean {
 
 // Routes hidden from the in-app navigation when running inside the native
 // Capacitor shell — these are public-facing/SEO surfaces (storefront builder,
-// promotional campaigns) that don't belong inside the operator app.
+// promotional campaigns, pricing/changelog marketing pages) that don't belong
+// inside the operator app.
 export const CAPACITOR_HIDDEN_HREFS: ReadonlySet<string> = new Set([
   "/marketing",
   "/builder",
+  "/pricing",
+  "/changelog",
 ]);
 
 export function isCapacitorHiddenPath(pathname: string): boolean {

@@ -16,6 +16,7 @@ import {
   Camera,
   Check,
   ChevronRight,
+  ChevronDown,
   Clock,
   Users,
   Star,
@@ -66,6 +67,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   DynamicUIElement, DynamicUIElementContent, DynamicUIElementHeader, DynamicUIElementTitle, DynamicUIElementDescription,
 } from "@/components/ui/dynamic-ui-element";
+import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerClose,
+} from "@/components/ui/drawer";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -125,6 +129,9 @@ export default function SettingsPage() {
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
+  // Mobile drawer for switching store / account
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   // Square OAuth feedback (replaced with toast)
 
@@ -696,10 +703,35 @@ export default function SettingsPage() {
   const [shiftReminders, setShiftReminders] = useState(true);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof document === "undefined") return false;
-    return document.documentElement.classList.contains("dark");
+  type ThemeMode = "system" | "light" | "dark";
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") return "system";
+    try {
+      const t = localStorage.getItem("merchiva_theme");
+      if (t === "system" || t === "light" || t === "dark") return t;
+      // Migrate from legacy binary flag
+      const old = localStorage.getItem("merchiva_dark");
+      if (old === "true") return "dark";
+      if (old === "false") return "light";
+    } catch {}
+    return "system";
   });
+
+  const applyThemeMode = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    try {
+      localStorage.setItem("merchiva_theme", mode);
+      localStorage.removeItem("merchiva_dark");
+    } catch {}
+    const prefersDark = typeof window !== "undefined"
+      && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const next = mode === "dark" || (mode === "system" && prefersDark);
+    document.documentElement.classList.toggle("dark", next);
+    const meta = document.getElementById("theme-color-meta") as HTMLMetaElement | null;
+    if (meta) meta.content = next ? "#1a1a1a" : "#ffffff";
+    document.cookie = `merchiva_theme=${mode};path=/;max-age=31536000;SameSite=Lax`;
+    document.cookie = `merchiva_dark=${next ? "true" : "false"};path=/;max-age=31536000;SameSite=Lax`;
+  };
 
   if (isDesktop) return (
     <>
@@ -1575,69 +1607,170 @@ export default function SettingsPage() {
         actions={[{ icon: <Search className="h-4 w-4" /> }]}
       />
 
-      {/* ─── User Card ──────────────────────────────────────── */}
-      <div
-        className="flex items-center gap-3.5 w-full px-[18px] py-4 border-b border-border text-left"
+      {/* ─── Store Header — taps open switch drawer ────────── */}
+      <button
+        type="button"
+        onClick={() => { hapticMedium(); setSwitcherOpen(true); }}
+        className="flex items-center gap-3.5 w-full px-[18px] py-4 border-b border-border text-left active:bg-muted/40 transition-colors"
       >
         <div className="relative shrink-0">
           {avatarUrl ? (
             <img src={avatarUrl} alt="Avatar" className="h-11 w-11 rounded-lg object-cover bg-muted border border-border" />
           ) : (
             <div className="h-11 w-11 rounded-lg bg-muted border border-border flex items-center justify-center text-base font-semibold text-muted-foreground">
-              {(businessName || userEmail)?.[0]?.toUpperCase() ?? "?"}
+              {(currentOrg?.name || businessName || userEmail)?.[0]?.toUpperCase() ?? "?"}
             </div>
           )}
-          <label className="absolute -bottom-1 -right-1 p-0.5 rounded bg-muted border border-border cursor-pointer">
+          <label
+            className="absolute -bottom-1 -right-1 p-0.5 rounded bg-muted border border-border cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          >
             {uploadingAvatar ? <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" /> : <Camera className="h-2.5 w-2.5 text-muted-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
           </label>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-foreground truncate">{businessName || userEmail || t("settings.yourName")}</p>
+          <div className="flex items-center gap-1">
+            <p className="text-base font-semibold text-foreground truncate">{currentOrg?.name || businessName || t("settings.yourBusiness")}</p>
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          </div>
           <p className="text-xs font-mono text-muted-foreground truncate tabular-nums">{userEmail || t("settings.emailFallback")}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <SBadge tone="outline">{role ?? t("settings.memberFallback")}</SBadge>
-          {userId && <SBadge>{userId.slice(0, 6)}</SBadge>}
         </div>
-      </div>
+      </button>
 
-      {/* ─── Store & Account (mobile only) ─────────────────── */}
-      <SGroupHeader label={t("settings.groupStoreAccount") || "Store & Account"} />
-      <div className="bg-background">
-        {/* Current store + switch */}
-        {organizations.map((org) => (
-          <SRow
-            key={org.id}
-            icon={<Building2 className="h-4 w-4 text-foreground" />}
-            title={org.name}
-            meta={org.id === currentOrg?.id ? t("settings.currentStore") || "Current" : ""}
-            right={org.id === currentOrg?.id
-              ? <Check className="h-4 w-4 text-emerald-600" />
-              : <span className="text-[11px] text-muted-foreground">{t("common.switch") || "Switch"}</span>}
-            onClick={org.id !== currentOrg?.id ? () => { hapticMedium(); switchOrg(org.id); } : undefined}
-          />
-        ))}
-        {/* Accounts */}
-        {accounts && accounts.length > 1 && accounts.map((acct) => (
-          <SRow
-            key={acct.id}
-            icon={<UserCog className="h-4 w-4 text-foreground" />}
-            title={acct.email}
-            meta={acct.id === authUser?.id ? t("settings.currentAccount") || "Signed in" : ""}
-            right={acct.id === authUser?.id
-              ? <Check className="h-4 w-4 text-emerald-600" />
-              : <span className="text-[11px] text-muted-foreground">{t("common.switch") || "Switch"}</span>}
-            onClick={acct.id !== authUser?.id ? () => { hapticMedium(); switchAccount(acct.id); } : undefined}
-          />
-        ))}
-        <SRow
-          icon={<LogOut className="h-4 w-4 text-red-500" />}
-          title={t("common.signOut")}
-          meta=""
-          onClick={() => { clearCache(); localStorage.removeItem("active_org_id"); signOut(); }}
-        />
-      </div>
+      {/* ─── Store / Account switcher drawer (mobile) ──────── */}
+      <Drawer open={switcherOpen} onOpenChange={setSwitcherOpen}>
+        <DrawerContent className="px-0 pb-[max(env(safe-area-inset-bottom),1rem)]">
+          <DrawerHeader className="px-[18px] pt-2 pb-3">
+            <DrawerTitle className="text-base">{t("settings.groupStoreAccount") || "Store & Account"}</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              {t("settings.groupStoreAccount") || "Switch store or account"}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {/* Stores */}
+            <div className="px-[18px] pt-2 pb-1.5">
+              <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("nav.selectStore") || "Stores"}
+              </p>
+            </div>
+            <div className="bg-background border-y border-border">
+              {organizations.map((org, i) => {
+                const isCurrent = org.id === currentOrg?.id;
+                return (
+                  <button
+                    key={org.id}
+                    type="button"
+                    onClick={() => {
+                      if (isCurrent) { setSwitcherOpen(false); return; }
+                      hapticMedium();
+                      setSwitcherOpen(false);
+                      switchOrg(org.id);
+                    }}
+                    className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${i === 0 ? "" : "border-t border-border"}`}
+                  >
+                    <IconTile>
+                      <Building2 className="h-4 w-4 text-foreground" />
+                    </IconTile>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{org.name}</p>
+                      {isCurrent && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentStore") || "Current"}</p>
+                      )}
+                    </div>
+                    {isCurrent
+                      ? <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                      : <span className="text-[11px] text-muted-foreground shrink-0">{t("common.switch") || "Switch"}</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Accounts */}
+            {accounts && accounts.length > 0 && (
+              <>
+                <div className="px-[18px] pt-4 pb-1.5">
+                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t("accounts.title") || "Accounts"}
+                  </p>
+                </div>
+                <div className="bg-background border-y border-border">
+                  {accounts.map((acct, i) => {
+                    const isCurrent = acct.id === authUser?.id;
+                    return (
+                      <button
+                        key={acct.id}
+                        type="button"
+                        onClick={() => {
+                          if (isCurrent) { setSwitcherOpen(false); return; }
+                          hapticMedium();
+                          setSwitcherOpen(false);
+                          switchAccount(acct.id);
+                        }}
+                        className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${i === 0 ? "" : "border-t border-border"}`}
+                      >
+                        <IconTile>
+                          <UserCog className="h-4 w-4 text-foreground" />
+                        </IconTile>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{acct.email}</p>
+                          {isCurrent && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentAccount") || "Signed in"}</p>
+                          )}
+                        </div>
+                        {isCurrent
+                          ? <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                          : <span className="text-[11px] text-muted-foreground shrink-0">{t("common.switch") || "Switch"}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Actions */}
+            <div className="mt-4 bg-background border-y border-border">
+              <button
+                type="button"
+                onClick={() => {
+                  hapticMedium();
+                  setSwitcherOpen(false);
+                  window.location.href = "/login?addAccount=1";
+                }}
+                className="flex items-center gap-3 px-[18px] py-3.5 w-full text-left"
+              >
+                <IconTile>
+                  <UserPlus className="h-4 w-4 text-foreground" />
+                </IconTile>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{t("accounts.addAccount") || "Add account"}</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearCache();
+                  localStorage.removeItem("active_org_id");
+                  setSwitcherOpen(false);
+                  signOut();
+                }}
+                className="flex items-center gap-3 px-[18px] py-3.5 w-full text-left border-t border-border"
+              >
+                <IconTile>
+                  <LogOut className="h-4 w-4 text-red-500" />
+                </IconTile>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-red-500">{t("common.signOut")}</p>
+                </div>
+              </button>
+            </div>
+          </div>
+          <DrawerClose className="sr-only">{t("common.cancel") || "Close"}</DrawerClose>
+        </DrawerContent>
+      </Drawer>
 
       {/* ─── Workspace Group ────────────────────────────────── */}
       <SGroupHeader label={t("settings.groupWorkspace")} />
@@ -1789,19 +1922,35 @@ export default function SettingsPage() {
           }
           isFirst
         />
-        <SToggleRow
+        <SRow
           icon={<Moon className="h-4 w-4 text-foreground" />}
           title={t("settings.darkMode")}
-          meta={t("settings.switchDarkTheme")}
-          checked={darkMode}
-          onChange={() => {
-            const next = !darkMode;
-            setDarkMode(next);
-            document.documentElement.classList.toggle("dark", next);
-            localStorage.setItem("merchiva_dark", String(next));
-            const meta = document.getElementById("theme-color-meta") as HTMLMetaElement | null;
-            if (meta) meta.content = next ? "#1a1a1a" : "#ffffff";
-          }}
+          meta={
+            themeMode === "system" ? (t("settings.themeSystem") || "Follow system")
+            : themeMode === "light" ? (t("settings.themeLight") || "Light")
+            : (t("settings.themeDark") || "Dark")
+          }
+          right={
+            <div className="flex gap-1 shrink-0">
+              {([
+                { mode: "system" as ThemeMode, label: t("settings.themeSystem") || "System" },
+                { mode: "light" as ThemeMode,  label: t("settings.themeLight")  || "Light"  },
+                { mode: "dark" as ThemeMode,   label: t("settings.themeDark")   || "Dark"   },
+              ]).map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => { hapticSuccess(); applyThemeMode(mode); }}
+                  className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                    themeMode === mode
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          }
         />
         <button
           type="button"
