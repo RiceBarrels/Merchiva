@@ -98,34 +98,41 @@ function SortableWidget({
 
   const Component = widget.component;
 
+  // When customizing, the whole card is the drag handle. We also opt the card
+  // out of the global sidebar-swipe gesture (see MobileShell touch handler in
+  // components/sidebar.tsx) so horizontal drags don't accidentally open the
+  // sidebar.
+  const dragProps = customizing ? { ...attributes, ...listeners } : {};
+
   return (
     <div
       ref={setNodeRef}
       style={style}
+      data-no-sidebar-swipe={customizing ? "true" : undefined}
+      {...dragProps}
       className={cn(
         "relative h-full",
-        customizing && "widget-jiggle select-none",
+        customizing && "widget-jiggle select-none touch-none cursor-grab active:cursor-grabbing",
         isSortableDragging && "opacity-30 scale-[0.97] transition-all duration-200"
       )}
     >
       {customizing && (
         <>
           <button
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => onRemove(widget.id)}
             className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600 transition-colors"
           >
             <X className="h-3 w-3" />
           </button>
-          <div
-            {...attributes}
-            {...listeners}
-            className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing p-0.5 rounded-[0.3rem] hover:bg-muted/80 text-muted-foreground"
-          >
+          <div className="absolute top-2 left-2 z-10 p-0.5 rounded-[0.3rem] bg-background/70 text-muted-foreground pointer-events-none">
             <GripVertical className="h-3.5 w-3.5" />
           </div>
         </>
       )}
-      <Component />
+      <div className={cn(customizing && "pointer-events-none")}>
+        <Component />
+      </div>
     </div>
   );
 }

@@ -673,6 +673,15 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     function onTouchStart(e: TouchEvent) {
       if (useBottomBarRef.current || hasDialogRef.current) return;
 
+      // Pages can opt out of the sidebar swipe (e.g. dashboard customize mode,
+      // drag-and-drop surfaces, horizontal scrollers) by tagging the touched
+      // element or an ancestor with `data-no-sidebar-swipe`.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("[data-no-sidebar-swipe]")) {
+        isEdge.current = false;
+        return;
+      }
+
       // If right panel is open (content shifted left), don't handle sidebar swipe
       const mc = document.getElementById("mobile-content");
       if (mc) {
@@ -903,7 +912,19 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
                   }}
                 />
               )}
-              {(isMobile === null || isMobile) && children}
+              {(isMobile === null || isMobile) && (
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={pathname}
+                    initial={{ opacity: 0, filter: "blur(10px)" }}
+                    animate={{ opacity: 1, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, filter: "blur(10px)" }}
+                    transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
+                  >
+                    {children}
+                  </motion.div>
+                </AnimatePresence>
+              )}
             </main>
           )}
 
