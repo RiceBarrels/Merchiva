@@ -92,6 +92,7 @@ import {
 } from "@/components/ui/dynamic-ui-element";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
+import { useIsCapacitor, isCapacitorHiddenPath, CAPACITOR_HIDDEN_HREFS } from "@/lib/capacitor";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/context/permissions";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -395,6 +396,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const router   = useRouter();
   const { can, isOwner } = usePermissions();
   const { signOut } = useAuth();
+  const isCapacitor = useIsCapacitor();
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -423,6 +425,9 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
     // Punch In is a store-machine-only entry point.
     if (item.href === "/punch-in" && !storeMachine) return false;
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
+    // Hide public-facing/SEO surfaces (storefront builder, marketing) inside
+    // the native Capacitor shell.
+    if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(item.href)) return false;
     if (!item.permissionKey) return true;
     return can(item.permissionKey, "view");
   });
@@ -586,7 +591,18 @@ function StoreFooter() {
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const isCapacitor = useIsCapacitor();
   const [storeMachineMode] = useStoreMachineMode();
+
+  // In the native Capacitor shell, SEO/marketing routes are hidden — bounce
+  // any deep links straight to the dashboard.
+  useEffect(() => {
+    if (isCapacitor && isCapacitorHiddenPath(pathname)) {
+      router.replace("/dashboard");
+    }
+  }, [isCapacitor, pathname, router]);
+
   const [smDeviceName] = useDeviceName();
   const [sidebarCollapsed, toggleSidebarCollapse] = useSidebarCollapseState();
   const [navMode] = useNavMode();
