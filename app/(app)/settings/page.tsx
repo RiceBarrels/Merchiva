@@ -703,10 +703,35 @@ export default function SettingsPage() {
   const [shiftReminders, setShiftReminders] = useState(true);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof document === "undefined") return false;
-    return document.documentElement.classList.contains("dark");
+  type ThemeMode = "system" | "light" | "dark";
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") return "system";
+    try {
+      const t = localStorage.getItem("merchiva_theme");
+      if (t === "system" || t === "light" || t === "dark") return t;
+      // Migrate from legacy binary flag
+      const old = localStorage.getItem("merchiva_dark");
+      if (old === "true") return "dark";
+      if (old === "false") return "light";
+    } catch {}
+    return "system";
   });
+
+  const applyThemeMode = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    try {
+      localStorage.setItem("merchiva_theme", mode);
+      localStorage.removeItem("merchiva_dark");
+    } catch {}
+    const prefersDark = typeof window !== "undefined"
+      && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const next = mode === "dark" || (mode === "system" && prefersDark);
+    document.documentElement.classList.toggle("dark", next);
+    const meta = document.getElementById("theme-color-meta") as HTMLMetaElement | null;
+    if (meta) meta.content = next ? "#1a1a1a" : "#ffffff";
+    document.cookie = `merchiva_theme=${mode};path=/;max-age=31536000;SameSite=Lax`;
+    document.cookie = `merchiva_dark=${next ? "true" : "false"};path=/;max-age=31536000;SameSite=Lax`;
+  };
 
   if (isDesktop) return (
     <>
@@ -1897,19 +1922,35 @@ export default function SettingsPage() {
           }
           isFirst
         />
-        <SToggleRow
+        <SRow
           icon={<Moon className="h-4 w-4 text-foreground" />}
           title={t("settings.darkMode")}
-          meta={t("settings.switchDarkTheme")}
-          checked={darkMode}
-          onChange={() => {
-            const next = !darkMode;
-            setDarkMode(next);
-            document.documentElement.classList.toggle("dark", next);
-            localStorage.setItem("merchiva_dark", String(next));
-            const meta = document.getElementById("theme-color-meta") as HTMLMetaElement | null;
-            if (meta) meta.content = next ? "#1a1a1a" : "#ffffff";
-          }}
+          meta={
+            themeMode === "system" ? (t("settings.themeSystem") || "Follow system")
+            : themeMode === "light" ? (t("settings.themeLight") || "Light")
+            : (t("settings.themeDark") || "Dark")
+          }
+          right={
+            <div className="flex gap-1 shrink-0">
+              {([
+                { mode: "system" as ThemeMode, label: t("settings.themeSystem") || "System" },
+                { mode: "light" as ThemeMode,  label: t("settings.themeLight")  || "Light"  },
+                { mode: "dark" as ThemeMode,   label: t("settings.themeDark")   || "Dark"   },
+              ]).map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => { hapticSuccess(); applyThemeMode(mode); }}
+                  className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                    themeMode === mode
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          }
         />
         <button
           type="button"
