@@ -1,3 +1,4 @@
+import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection } from "@/lib/spacetimedb/client";
 import type {
@@ -148,7 +149,7 @@ export async function createTier(
 ): Promise<MembershipTier> {
   console.warn("[SpacetimeDB] createTier: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     name: data.name,
     description: data.description ?? null,
@@ -191,7 +192,7 @@ export async function createPerk(
 ): Promise<MembershipPerk> {
   console.warn("[SpacetimeDB] createPerk: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     tierId,
     type: data.type,
     name: data.name,
@@ -230,7 +231,7 @@ export async function registerCustomer(
 ): Promise<SiteCustomer> {
   console.warn("[SpacetimeDB] registerCustomer: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     email: email.toLowerCase(),
     name,
@@ -353,7 +354,7 @@ export async function canClaimPerk(
 export async function claimPerk(customerId: string, perkId: string): Promise<PerkClaim> {
   console.warn("[SpacetimeDB] claimPerk: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     perkId,
     customerId,
     claimedAt: new Date().toISOString(),
@@ -413,7 +414,7 @@ export async function createOrder(
 ): Promise<SiteOrder> {
   console.warn("[SpacetimeDB] createOrder: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     customerId,
     items,
@@ -461,7 +462,7 @@ export async function createBooking(
 ): Promise<SiteBooking> {
   console.warn("[SpacetimeDB] createBooking: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     customerId: data.customerId,
     date: data.date,

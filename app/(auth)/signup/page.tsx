@@ -47,7 +47,7 @@ function SignupForm() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  const next = searchParams.get("next") || "/~/dashboard";
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -143,7 +143,7 @@ function SignupForm() {
     }
   };
 
-  const loginHref = `/login${next !== "/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`;
+  const loginHref = `/login${next !== "/~/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   /* ── Verify screen ──────────────────────────────── */
 

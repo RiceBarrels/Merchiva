@@ -19,6 +19,7 @@
     "name": "Name",
     "description": "Description",
     "type": "Type",
+    "more": "More",
     "saving": "Saving..."
   },
   "nav": {
@@ -51,7 +52,13 @@
     "pricing": "Pricing",
     "display": "Display",
     "api": "API",
-    "reviews": "Reviews"
+    "reviews": "Reviews",
+    "group": {
+      "operations": "Operations",
+      "sales": "Sales & Finance",
+      "growth": "Growth",
+      "advanced": "Advanced"
+    }
   },
   "login": {
     "title": "Sign in to Merchiva",
@@ -715,7 +722,9 @@
       "noTasksDefined": "No tasks defined for this role yet.",
       "rolePlaceholder": "Role",
       "roleTasksTitle": "{role} Tasks",
-      "roleTasksDefaultDesc": "Tasks for your shift role today."
+      "roleTasksDefaultDesc": "Tasks for your shift role today.",
+      "addRole": "Add Role",
+      "tasksLabel": "Tasks"
     },
     "requests": {
       "title": "Requests",

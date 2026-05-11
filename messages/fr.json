@@ -19,6 +19,7 @@
     "name": "Nom",
     "description": "Description",
     "type": "Type",
+    "more": "Plus",
     "saving": "Enregistrement..."
   },
   "nav": {
@@ -51,7 +52,13 @@
     "pricing": "Tarification",
     "display": "Affichage",
     "api": "API",
-    "reviews": "Avis"
+    "reviews": "Avis",
+    "group": {
+      "operations": "Operations",
+      "sales": "Sales & Finance",
+      "growth": "Growth",
+      "advanced": "Advanced"
+    }
   },
   "login": {
     "title": "Connexion à Merchiva",
@@ -715,7 +722,9 @@
       "noTasksDefined": "Aucune tâche définie pour ce rôle.",
       "rolePlaceholder": "Rôle",
       "roleTasksTitle": "Tâches — {role}",
-      "roleTasksDefaultDesc": "Tâches pour votre rôle du jour."
+      "roleTasksDefaultDesc": "Tâches pour votre rôle du jour.",
+      "addRole": "Ajouter un rôle",
+      "tasksLabel": "Tâches"
     },
     "requests": {
       "title": "Demandes",

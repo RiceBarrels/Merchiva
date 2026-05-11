@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { uuid } from "@/lib/utils";
 
 const KEY = "store_machine_mode";
 const NAME_KEY = "store_machine_device_name";
@@ -12,7 +13,7 @@ export function getOrCreateDeviceId(): string {
   try {
     let id = localStorage.getItem(DEVICE_ID_KEY);
     if (!id) {
-      id = crypto.randomUUID();
+      id = uuid();
       localStorage.setItem(DEVICE_ID_KEY, id);
     }
     return id;

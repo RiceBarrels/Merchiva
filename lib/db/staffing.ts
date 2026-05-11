@@ -1,3 +1,4 @@
+import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Shift, ShiftType, StaffRole, OrgMember, RoleTask } from "@/lib/types";
@@ -107,7 +108,7 @@ export async function addShift(
   console.warn("[staffing] addShift: writes go through SpacetimeDB actions.ts");
   // Return a stub so callers don't crash
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     ...shift,
   };
 }
@@ -152,7 +153,7 @@ export async function addStaffRole(
   organizationId?: string | null
 ): Promise<StaffRole> {
   console.warn("[staffing] addStaffRole: writes go through SpacetimeDB actions.ts");
-  return { id: crypto.randomUUID(), ...role };
+  return { id: uuid(), ...role };
 }
 
 export async function updateStaffRole(
@@ -185,7 +186,7 @@ export async function addRoleTask(
   task: Omit<RoleTask, "id">,
 ): Promise<RoleTask> {
   console.warn("[staffing] addRoleTask: writes go through SpacetimeDB actions.ts");
-  return { id: crypto.randomUUID(), ...task };
+  return { id: uuid(), ...task };
 }
 
 export async function updateRoleTask(

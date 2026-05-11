@@ -19,6 +19,7 @@
     "name": "名称",
     "description": "描述",
     "type": "类型",
+    "more": "更多",
     "saving": "保存中..."
   },
   "nav": {
@@ -51,7 +52,13 @@
     "pricing": "定价",
     "display": "显示屏",
     "api": "API",
-    "reviews": "评价"
+    "reviews": "评价",
+    "group": {
+      "operations": "运营",
+      "sales": "销售与财务",
+      "growth": "增长",
+      "advanced": "高级"
+    }
   },
   "login": {
     "title": "登录 Merchiva",
@@ -715,7 +722,9 @@
       "noTasksDefined": "此岗位尚未定义任务。",
       "rolePlaceholder": "岗位",
       "roleTasksTitle": "{role} 任务",
-      "roleTasksDefaultDesc": "今日班次岗位任务。"
+      "roleTasksDefaultDesc": "今日班次岗位任务。",
+      "addRole": "添加岗位",
+      "tasksLabel": "任务"
     },
     "requests": {
       "title": "申请",

@@ -71,20 +71,11 @@ export function FloatingNavButton({
     }
   };
 
-  const buttonStyle: React.CSSProperties = {
+  const buttonBaseStyle: React.CSSProperties = {
     left: 0,
     top: safeAreaTop,
     zIndex,
     boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)",
-    ...(mode === "menu" && !hasDialog
-      ? {
-          transform: `translateX(${translateX}px)`,
-          transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
-        }
-      : {
-          transform: "none",
-          transition: "none",
-        }),
   };
 
   // Pill swipe animation values
@@ -100,11 +91,18 @@ export function FloatingNavButton({
 
   if (typeof document === "undefined") return null;
 
-  const mobileContent = typeof document !== "undefined" ? document.getElementById("mobile-content") : null;
+  const buttonStyle: React.CSSProperties = {
+    ...buttonBaseStyle,
+    ...(mode === "menu" && !hasDialog
+      ? {
+          transform: `translateX(${translateX}px)`,
+          transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }
+      : {}),
+  };
 
   if (tabBarMode) {
     return createPortal(
-
       <AnimatePresence>
         {hasDialog && (
           <>
@@ -113,9 +111,13 @@ export function FloatingNavButton({
               className="fixed p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999"
               style={{ left: 0, top: safeAreaTop, zIndex, boxShadow: "0 4px 14px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)" }}
               initial={{ opacity: 0, scale: 0, rotate: -180 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              animate={{
+                opacity: 1 - dialogSwipe,
+                scale: 1 - dialogSwipe * 0.3,
+                rotate: dialogSwipe * 90,
+              }}
               exit={{ opacity: 0, scale: 0, rotate: 180 }}
-              transition={{ type: "spring", damping: 18, stiffness: 350 }}
+              transition={dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 18, stiffness: 350 }}
               aria-label={t("components.mobile.goBack")}
             >
               <ArrowLeft className="h-5 w-5" />
@@ -126,9 +128,13 @@ export function FloatingNavButton({
                 className="fixed"
                 style={{ top: 26 + safeAreaTop, left: 72, zIndex: zIndex + 1 }}
                 initial={{ opacity: 0, scale: 0.3, x: -30 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
+                animate={{
+                  opacity: 1 - dialogSwipe,
+                  scale: 1 - dialogSwipe * 0.7,
+                  x: -dialogSwipe * 30,
+                }}
                 exit={{ opacity: 0, scale: 0.3, x: -30 }}
-                transition={{ type: "spring", damping: 20, stiffness: 400, delay: 0.05 }}
+                transition={dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 400, delay: 0.05 }}
               >
                 <div
                   className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-lg"
@@ -227,6 +233,6 @@ export function FloatingNavButton({
         )}
       </AnimatePresence>
     </>,
-    hasDialog ? document.body : (mobileContent ?? document.body)
+    document.body
   );
 }

@@ -1,3 +1,4 @@
+import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection } from "@/lib/spacetimedb/client";
 import type { SiteCustomer, SiteMembership, SiteOrder, SiteBooking, CartItem } from "@/lib/types";
@@ -80,7 +81,7 @@ export async function registerCustomer(
 ): Promise<SiteCustomer> {
   console.warn("[SpacetimeDB] registerCustomer: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     email: email.toLowerCase().trim(),
     name: name.trim(),
@@ -146,7 +147,7 @@ export async function upsertMembership(
 ): Promise<SiteMembership> {
   console.warn("[SpacetimeDB] upsertMembership: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     customerId,
     plan,
@@ -165,7 +166,7 @@ export async function createOrder(
 ): Promise<SiteOrder> {
   console.warn("[SpacetimeDB] createOrder: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     customerId,
     items,
@@ -193,7 +194,7 @@ export async function createBooking(
 ): Promise<SiteBooking> {
   console.warn("[SpacetimeDB] createBooking: writes not yet implemented via reducers");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     customerId: fields.customerId,
     date: fields.date,

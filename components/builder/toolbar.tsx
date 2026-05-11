@@ -68,7 +68,7 @@ export function BuilderToolbar({
     <div className="flex h-10 items-center border-b border-border bg-background text-foreground">
       {/* Back */}
       <Link
-        href="/builder"
+        href="/~/builder"
         className="flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground border-r border-border"
       >
         <ArrowLeft className="h-4 w-4" />

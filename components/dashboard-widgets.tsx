@@ -258,7 +258,7 @@ export function InventoryAlertsWidget() {
       title="Inventory Alerts"
       action={
         <Link
-          href="/inventory"
+          href="/~/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           View all <ChevronRight className="h-3 w-3" />
@@ -347,7 +347,7 @@ export function ScheduleOverviewWidget() {
       title="Schedule Overview"
       action={
         <Link
-          href="/staffing"
+          href="/~/staffing"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           View all <ChevronRight className="h-3 w-3" />
@@ -627,7 +627,7 @@ export function WasteCostWidget() {
       title="Waste Cost"
       action={
         <Link
-          href="/inventory"
+          href="/~/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           Details <ChevronRight className="h-3 w-3" />
@@ -794,7 +794,7 @@ export function ProductPerformanceWidget() {
       title="Top Products"
       action={
         <Link
-          href="/products"
+          href="/~/products"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           View all <ChevronRight className="h-3 w-3" />

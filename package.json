@@ -9,7 +9,7 @@
     "lint": "eslint",
     "build:static": "bun scripts/build-static.ts",
     "cap:sync": "npx cap sync",
-    "cap:open:ios": "npx cap open ios",
+    "cap:ios": "npx cap open ios",
     "cap:open:android": "npx cap open android",
     "cap:build": "bun run build && npx cap sync",
     "migrate": "tsx scripts/migrate-supabase-to-stdb.ts"

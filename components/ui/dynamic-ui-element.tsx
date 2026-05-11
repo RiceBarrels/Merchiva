@@ -264,7 +264,8 @@ function unregisterTitle(id: string) {
 const MobileDynamicUIElementTitleContext = React.createContext<{
   title: string;
   setTitle: (t: string) => void;
-}>({ title: "", setTitle: () => {} });
+  exiting: boolean;
+}>({ title: "", setTitle: () => {}, exiting: false });
 
 function MobileDynamicUIElementPage({
   children,
@@ -296,7 +297,9 @@ function MobileDynamicUIElementPage({
   const [offsetX, setOffsetX] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [entered, setEntered] = React.useState(false);
+  const enteredRef = React.useRef(false);
   const [exiting, setExiting] = React.useState(false);
+  const outerRef = React.useRef<HTMLDivElement>(null);
   const startX = React.useRef(0);
   const startY = React.useRef(0);
   const axis = React.useRef<"h" | "v" | null>(null);
@@ -308,17 +311,16 @@ function MobileDynamicUIElementPage({
     };
   }, []);
 
-  // Slide in on mount
-  React.useEffect(() => {
-    requestAnimationFrame(() => setEntered(true));
-  }, []);
-
   // Swipe to close
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
     function onStart(e: TouchEvent) {
+      if (!enteredRef.current) {
+        enteredRef.current = true;
+        setEntered(true);
+      }
       startX.current = e.touches[0].clientX;
       startY.current = e.touches[0].clientY;
       axis.current = null;
@@ -378,7 +380,7 @@ function MobileDynamicUIElementPage({
     ? "translateX(0)"
     : "translateX(100%)";
 
-  const bgActive = entered && !exiting;
+  const bgActive = !exiting;
   const bgScale = bgActive ? 0.94 + 0.06 * progress : 1;
   const bgShift = bgActive ? -screenW * 0.3 * (1 - progress) : 0;
   const bgRadius = bgActive ? Math.round(12 * (1 - progress)) : 0;
@@ -403,15 +405,24 @@ function MobileDynamicUIElementPage({
 
   return (
     <MobileDynamicUIElementDepthContext.Provider value={depth + 1}>
-      <MobileDynamicUIElementTitleContext.Provider value={{ title: mobileTitle, setTitle: setMobileTitle }}>
+      <MobileDynamicUIElementTitleContext.Provider value={{ title: mobileTitle, setTitle: setMobileTitle, exiting }}>
       {/* Foreground dialog page */}
       <div
+        ref={outerRef}
         id={`mobile-dialog-${depth}`}
         className="fixed inset-0"
         style={{
           transform: fgTransform,
-          transition,
+          transition: entered ? transition : "none",
+          animation: (!entered && !exiting && !dragging) ? "slideInRight 500ms cubic-bezier(0.32, 0.72, 0, 1) both" : undefined,
+          willChange: "transform",
           zIndex: 50 + depth,
+        }}
+        onAnimationEnd={(e) => {
+          if (e.animationName === "slideInRight") {
+            enteredRef.current = true;
+            setEntered(true);
+          }
         }}
       >
       <DialogPrimitive.Popup
@@ -587,7 +598,7 @@ function DynamicUIElementFooter({
 }
 
 function DynamicUIElementTitle({ className, children, mobileTitle, ...props }: DialogPrimitive.Title.Props & { mobileTitle?: string }) {
-  const { setTitle } = React.useContext(MobileDynamicUIElementTitleContext);
+  const { setTitle, exiting } = React.useContext(MobileDynamicUIElementTitleContext);
   const text = mobileTitle || (typeof children === "string" ? children : "");
 
   // Set mobile header title via context
@@ -609,6 +620,14 @@ function DynamicUIElementTitle({ className, children, mobileTitle, ...props }: D
       }
     };
   }, [text]);
+
+  // Unregister title immediately when dialog starts exiting
+  React.useEffect(() => {
+    if (exiting && titleIdRef.current) {
+      unregisterTitle(titleIdRef.current);
+      titleIdRef.current = null;
+    }
+  }, [exiting]);
 
   return (
     <DialogPrimitive.Title

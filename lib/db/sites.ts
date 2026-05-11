@@ -1,3 +1,4 @@
+import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Site, SitePage, SiteElement, SiteTheme, SiteComponent, SiteFeatures } from "@/lib/types";
@@ -115,7 +116,7 @@ export async function createSite(
   console.warn("[sites] createSite: writes should go through @/lib/spacetimedb/actions.ts");
   // Return an optimistic placeholder
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     organizationId,
     name,
     slug,
@@ -167,7 +168,7 @@ export async function createPage(
 ): Promise<SitePage> {
   console.warn("[sites] createPage: writes should go through @/lib/spacetimedb/actions.ts");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     siteId,
     name,
     slug,
@@ -210,7 +211,7 @@ export async function saveComponent(
 ): Promise<SiteComponent> {
   console.warn("[sites] saveComponent: writes should go through @/lib/spacetimedb/actions.ts");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     organizationId: orgId,
     siteId,
     name,

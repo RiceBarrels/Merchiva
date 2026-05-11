@@ -19,6 +19,7 @@
     "name": "Nombre",
     "description": "Descripción",
     "type": "Tipo",
+    "more": "Más",
     "saving": "Guardando..."
   },
   "nav": {
@@ -51,7 +52,13 @@
     "pricing": "Precios",
     "display": "Pantalla",
     "api": "API",
-    "reviews": "Reseñas"
+    "reviews": "Reseñas",
+    "group": {
+      "operations": "Operations",
+      "sales": "Sales & Finance",
+      "growth": "Growth",
+      "advanced": "Advanced"
+    }
   },
   "login": {
     "title": "Inicia sesión en Merchiva",
@@ -715,7 +722,9 @@
       "noTasksDefined": "Aún no se han definido tareas para este rol.",
       "rolePlaceholder": "Rol",
       "roleTasksTitle": "Tareas de {role}",
-      "roleTasksDefaultDesc": "Tareas para el rol de tu turno hoy."
+      "roleTasksDefaultDesc": "Tareas para el rol de tu turno hoy.",
+      "addRole": "Agregar rol",
+      "tasksLabel": "Tareas"
     },
     "requests": {
       "title": "Solicitudes",

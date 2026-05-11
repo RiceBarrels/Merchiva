@@ -19,6 +19,7 @@
     "name": "الاسم",
     "description": "الوصف",
     "type": "النوع",
+    "more": "المزيد",
     "saving": "جارٍ الحفظ..."
   },
   "nav": {
@@ -51,7 +52,13 @@
     "pricing": "التسعير",
     "display": "العرض",
     "api": "API",
-    "reviews": "المراجعات"
+    "reviews": "المراجعات",
+    "group": {
+      "operations": "Operations",
+      "sales": "Sales & Finance",
+      "growth": "Growth",
+      "advanced": "Advanced"
+    }
   },
   "login": {
     "title": "تسجيل الدخول إلى Merchiva",
@@ -715,7 +722,9 @@
       "noTasksDefined": "لم يتم تعريف مهام لهذا الدور بعد.",
       "rolePlaceholder": "الدور",
       "roleTasksTitle": "مهام {role}",
-      "roleTasksDefaultDesc": "مهام دور ورديتك اليوم."
+      "roleTasksDefaultDesc": "مهام دور ورديتك اليوم.",
+      "addRole": "إضافة دور",
+      "tasksLabel": "المهام"
     },
     "requests": {
       "title": "الطلبات",

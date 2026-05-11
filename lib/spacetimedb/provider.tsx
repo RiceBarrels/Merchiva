@@ -71,10 +71,23 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
     if (!authToken) return null;
 
     console.log(`ℹ️ INFO Connecting to SpacetimeDB WS...${retryCount > 0 ? ` (retry ${retryCount})` : ""}`);
+    let canBrotli = false;
+    try {
+      if (
+        typeof DecompressionStream !== "undefined" &&
+        typeof ReadableStream !== "undefined" &&
+        Symbol.asyncIterator in ReadableStream.prototype
+      ) {
+        new DecompressionStream("brotli" as CompressionFormat);
+        canBrotli = true;
+      }
+    } catch {}
+
     return DbConnection.builder()
       .withUri(SPACETIMEDB_URI)
       .withDatabaseName(SPACETIMEDB_MODULE)
       .withToken(authToken)
+      .withCompression(canBrotli ? "brotli" : "none")
       .onConnect((conn, _identity, newToken) => {
         console.log("ℹ️ INFO Connected to SpacetimeDB WS");
         if (retryCount > 0) setRetryCount(0);

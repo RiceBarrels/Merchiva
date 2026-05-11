@@ -28,7 +28,7 @@ function LoginForm() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  const next = searchParams.get("next") || "/~/dashboard";
   const isAddAccount = searchParams.get("addAccount") === "1";
   const { isLoaded, isSignedIn, signIn } = useAuth();
 
@@ -488,7 +488,7 @@ function LoginForm() {
             <p className="text-[12.5px] text-stone-500">
               {t("login.noAccount")}{" "}
               <Link
-                href={`/signup${next !== "/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`}
+                href={`/signup${next !== "/~/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`}
                 className="font-medium text-stone-900 hover:underline underline-offset-4"
               >
                 {t("login.register")}

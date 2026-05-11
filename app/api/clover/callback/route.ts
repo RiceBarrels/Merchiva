@@ -12,7 +12,7 @@ import { getCloverOAuthUrl, getCloverEnvironment } from "@/lib/clover";
  * 5. Redirects to /settings with a success query parameter.
  */
 export async function GET(request: NextRequest) {
-  const settingsUrl = new URL("/settings", request.url);
+  const settingsUrl = new URL("/~/settings", request.url);
 
   try {
     const { searchParams } = new URL(request.url);

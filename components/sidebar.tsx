@@ -49,7 +49,6 @@ import {
   Users,
   ShoppingBag,
   Globe,
-  Crown,
   Settings,
   LogOut,
   UserCog,
@@ -59,22 +58,11 @@ import {
   Check,
   Loader2,
   MessageSquare,
-  Monitor,
   MonitorSmartphone,
   KeyRound,
   Bell,
-  FileBarChart,
-  Wallet,
-  Trash2,
   UserRoundSearch,
   UserPlus,
-  Truck,
-  CalendarCheck,
-  Megaphone,
-  GraduationCap,
-  BadgeDollarSign,
-  Webhook,
-  MessageSquareHeart,
 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -108,6 +96,7 @@ import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { RightPanel, MobileRightPanel, RightPanelMobileProvider, useRightPanelMobile } from "@/components/right-panel";
+import { PageTransition } from "@/components/page-transition";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 40;
@@ -126,28 +115,16 @@ type NavItem = {
 type NavItemExt = NavItem & { mobileOnly?: boolean };
 
 const navItems: NavItemExt[] = [
-  { labelKey: "nav.home",      href: "/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
-  { labelKey: "nav.inventory", href: "/inventory",   icon: Package,         permissionKey: "inventory" },
-  { labelKey: "nav.suppliers", href: "/suppliers",   icon: Truck,           permissionKey: "inventory" },
-  { labelKey: "nav.wasteLog",  href: "/inventory/waste", icon: Trash2,      permissionKey: "inventory" },
-  { labelKey: "nav.sales",     href: "/sales",       icon: TrendingUp,      permissionKey: "sales"     },
-  { labelKey: "nav.staffing",  href: "/staffing",    icon: Users,           permissionKey: "staffing"  },
-  { labelKey: "nav.training",  href: "/training",    icon: GraduationCap,   permissionKey: "staffing"  },
-  { labelKey: "nav.products",  href: "/products",    icon: ShoppingBag,     permissionKey: "products"  },
-  { labelKey: "nav.pricing",   href: "/pricing",     icon: BadgeDollarSign, permissionKey: "products"  },
-  { labelKey: "nav.reports",   href: "/reports",     icon: FileBarChart,    permissionKey: "sales"     },
-  { labelKey: "nav.finances",  href: "/finances",    icon: Wallet,          permissionKey: "sales"     },
-  { labelKey: "nav.customers", href: "/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
-  { labelKey: "nav.marketing", href: "/marketing",   icon: Megaphone,       permissionKey: "sales"     },
-  { labelKey: "nav.pos",       href: "/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
-  { labelKey: "nav.display",   href: "/display",     icon: Monitor,           permissionKey: "pos"     },
-  { labelKey: "nav.punchIn",   href: "/punch-in",    icon: KeyRound },
-  { labelKey: "nav.chat",      href: "/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
-  { labelKey: "nav.website",   href: "/builder",     icon: Globe,           permissionKey: "website"   },
-  { labelKey: "nav.membership", href: "/membership", icon: Crown },
-  { labelKey: "nav.bookings", href: "/bookings", icon: CalendarCheck, permissionKey: "settings" },
-  { labelKey: "nav.reviews",  href: "/reviews",  icon: MessageSquareHeart, permissionKey: "settings" },
-  { labelKey: "nav.api",      href: "/api-settings", icon: Webhook, permissionKey: "settings" },
+  { labelKey: "nav.home",      href: "/~/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { labelKey: "nav.pos",       href: "/~/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
+  { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory" },
+  { labelKey: "nav.products",  href: "/~/products",    icon: ShoppingBag,     permissionKey: "products"  },
+  { labelKey: "nav.sales",     href: "/~/sales",       icon: TrendingUp,      permissionKey: "sales"     },
+  { labelKey: "nav.staffing",  href: "/~/staffing",    icon: Users,           permissionKey: "staffing"  },
+  { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
+  { labelKey: "nav.chat",      href: "/~/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
+  { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website"   },
+  { labelKey: "nav.punchIn",   href: "/~/punch-in",    icon: KeyRound },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {
@@ -403,7 +380,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const unreadCount = useUnreadCount();
 
   // Paths allowed when the device is in store-machine mode.
-  const STORE_MACHINE_HREFS = new Set(["/pos", "/inventory", "/punch-in"]);
+  const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in"]);
 
   const handleLogout = () => {
     clearCache();
@@ -420,10 +397,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const isDesktop = !!onToggleCollapse;
 
   const visibleNavItems = navItems.filter((item) => {
-    // Mobile-only items are hidden on desktop (desktop has inline switchers instead).
     if (item.mobileOnly && isDesktop) return false;
-    // Punch In is a store-machine-only entry point.
-    if (item.href === "/punch-in" && !storeMachine) return false;
+    if (item.href === "/~/punch-in" && !storeMachine) return false;
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
     // Hide public-facing/SEO surfaces (storefront builder, marketing) inside
     // the native Capacitor shell.
@@ -453,11 +428,6 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        {!collapsed && (
-          <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("nav.dailyManagement")}
-          </p>
-        )}
         {visibleNavItems.map((item) => {
           const hasQuery = item.href.includes("?");
           const isActive = !hasQuery &&
@@ -520,12 +490,12 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
         </DynamicUIElement>
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
-            href="/settings"
+            href="/~/settings"
             onClick={handleNavClick}
             className={cn(
               "flex items-center rounded text-[13px] font-medium transition-colors",
               collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
-              pathname === "/settings"
+              pathname === "/~/settings"
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
@@ -608,7 +578,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [navMode] = useNavMode();
   const useBottomBar = navMode === "bottombar" && !storeMachineMode;
   // Builder subpages (/builder/[siteId]/...) need full viewport — force drawer mode
-  const isBuilderPage = pathname.startsWith("/builder/");
+  const isBuilderPage = pathname.startsWith("/~/builder/");
   const openDialogs = useOpenDynamicUIElementCount();
   const hasDialog = openDialogs > 0;
   const dialogTitle = useDynamicUIElementTitle();
@@ -816,8 +786,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       <div className={cn("relative h-screen overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex" : "hidden")}>
         {/* Right panel (swipe from right, appears behind content like sidebar) */}
         {isMobile && !isBuilderPage && <MobileRightPanel />}
-        {/* Floating hamburger / back button — in bottom-bar mode, only show when a dialog is open */}
-        {!isBuilderPage && (!useBottomBar || hasDialog) && (
+        {/* Floating hamburger / back button — always mount so AnimatePresence exit animations play */}
+        {!isBuilderPage && (
           <FloatingNavButton
             mode="menu"
             title={dialogTitle}
@@ -862,7 +832,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         <div
           id="mobile-content"
           ref={contentRef}
-          className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden border"
+          className="absolute inset-0 z-20 flex flex-col bg-background overflow-hidden"
           style={{
             ...(!useBottomBar && !hasDialog && {
               transform: `translateX(${translateX}px)`,
@@ -899,11 +869,11 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           ) : storeMachineMode ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               <StoreTopBar deviceName={smDeviceName} />
-              <main className="flex-1 overflow-y-auto">{(isMobile === null || isMobile) && children}</main>
+              <main className="flex-1 overflow-y-auto overflow-x-hidden"><PageTransition>{(isMobile === null || isMobile) && children}</PageTransition></main>
               <StoreFooter />
             </div>
           ) : (
-            <main className="flex-1 overflow-y-auto" style={useBottomBar ? { paddingBottom: 56 + safeAreaInsets.bottom } : undefined}>
+            <main className="flex-1 overflow-y-auto overflow-x-hidden" style={useBottomBar ? { paddingBottom: 56 + safeAreaInsets.bottom } : undefined}>
               {!useBottomBar && (
                 <div
                   className="sticky top-0 left-0 right-0 pointer-events-none"
@@ -912,19 +882,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
                   }}
                 />
               )}
-              {(isMobile === null || isMobile) && (
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={pathname}
-                    initial={{ opacity: 0, filter: "blur(10px)" }}
-                    animate={{ opacity: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, filter: "blur(10px)" }}
-                    transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-              )}
+              <PageTransition>{(isMobile === null || isMobile) && children}</PageTransition>
             </main>
           )}
 
@@ -941,7 +899,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">
             {storeMachineMode && <StoreTopBar deviceName={smDeviceName} />}
-            <main className="flex flex-col flex-1 overflow-y-auto">{(isMobile === null || !isMobile) && children}</main>
+            <main className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden"><PageTransition>{(isMobile === null || !isMobile) && children}</PageTransition></main>
             {storeMachineMode && <StoreFooter />}
           </div>
           <RightPanel />

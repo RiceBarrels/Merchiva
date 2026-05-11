@@ -19,8 +19,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Merchiva — AI-Powered Business Management",
-  description: "Intelligent inventory prediction and daily management for small businesses",
+  title: {
+    default: "Merchiva — AI-Powered Inventory Forecasting",
+    template: "%s | Merchiva",
+  },
+  description:
+    "AI-powered inventory forecasting and daily management for small businesses. Per-SKU demand models, auto-reorder POs, stockout alerts. 7.2% median forecast error.",
+  metadataBase: new URL("https://project-management-phi-red.vercel.app"),
+  openGraph: {
+    type: "website",
+    siteName: "Merchiva",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default async function RootLayout({

@@ -19,6 +19,7 @@
     "name": "नाम",
     "description": "विवरण",
     "type": "प्रकार",
+    "more": "और",
     "saving": "सहेज रहे हैं..."
   },
   "nav": {
@@ -51,7 +52,13 @@
     "pricing": "मूल्य निर्धारण",
     "display": "डिस्प्ले",
     "api": "API",
-    "reviews": "समीक्षाएँ"
+    "reviews": "समीक्षाएँ",
+    "group": {
+      "operations": "Operations",
+      "sales": "Sales & Finance",
+      "growth": "Growth",
+      "advanced": "Advanced"
+    }
   },
   "login": {
     "title": "Merchiva में साइन इन करें",
@@ -715,7 +722,9 @@
       "noTasksDefined": "इस भूमिका के लिए अभी कोई कार्य नहीं।",
       "rolePlaceholder": "भूमिका",
       "roleTasksTitle": "{role} कार्य",
-      "roleTasksDefaultDesc": "आज की शिफ्ट भूमिका के कार्य।"
+      "roleTasksDefaultDesc": "आज की शिफ्ट भूमिका के कार्य।",
+      "addRole": "भूमिका जोड़ें",
+      "tasksLabel": "कार्य"
     },
     "requests": {
       "title": "अनुरोध",

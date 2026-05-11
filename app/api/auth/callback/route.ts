@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=missing_code", req.url));
   }
 
-  let redirectTo = "/dashboard";
+  let redirectTo = "/~/dashboard";
   if (state) {
     try {
       const parsed = JSON.parse(

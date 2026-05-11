@@ -1,3 +1,4 @@
+import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { StaffAvailability, DayTime, TimeOffRequest, ShiftTrade } from "@/lib/types";
@@ -78,6 +79,9 @@ function tradeFromRow(row: any): ShiftTrade {
     managerApproved: row.managerApproved ?? false,
     managerId: row.managerId ?? null,
     comments: row.comments ?? "",
+    broadcastToAll: row.broadcastToAll ?? false,
+    acceptedById: row.acceptedById ?? null,
+    createdAt: row.createdAt ?? new Date().toISOString(),
   };
 }
 
@@ -104,7 +108,7 @@ export async function upsertAvailability(
   avail: Omit<StaffAvailability, "id"> & { id?: string }
 ): Promise<StaffAvailability> {
   console.warn("[availability] upsertAvailability: writes go through SpacetimeDB actions.ts");
-  return { id: avail.id ?? crypto.randomUUID(), ...avail } as StaffAvailability;
+  return { id: avail.id ?? uuid(), ...avail } as StaffAvailability;
 }
 
 export async function deleteAvailability(id: string): Promise<void> {
@@ -153,7 +157,7 @@ export async function createTimeOffRequest(params: {
 }): Promise<TimeOffRequest> {
   console.warn("[availability] createTimeOffRequest: writes go through SpacetimeDB actions.ts");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     userId: params.userId,
     organizationId: params.organizationId,
     startDate: params.startDate,
@@ -217,7 +221,7 @@ export async function createShiftTrade(params: {
 }): Promise<ShiftTrade> {
   console.warn("[availability] createShiftTrade: writes go through SpacetimeDB actions.ts");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     organizationId: params.organizationId,
     shiftId: params.shiftId,
     requesterId: params.requesterId,
@@ -228,6 +232,9 @@ export async function createShiftTrade(params: {
     managerApproved: false,
     managerId: null,
     comments: params.comments,
+    broadcastToAll: false,
+    acceptedById: null,
+    createdAt: new Date().toISOString(),
   };
 }
 

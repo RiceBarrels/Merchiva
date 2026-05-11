@@ -41,6 +41,7 @@ interface AutoSchedulerProps {
   salesHistory: SalesRecord[];
   organizationId: string;
   onApply: (shifts: ScheduledShift[]) => Promise<void>;
+  compact?: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -93,6 +94,7 @@ function scoreBg(score: number): string {
 export function AutoScheduler({
   members, shifts, availability, timeOff,
   presets, roles, salesHistory, organizationId, onApply,
+  compact,
 }: AutoSchedulerProps) {
   const [open, setOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -212,15 +214,24 @@ export function AutoScheduler({
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleOpen}
-        className="gap-1.5 text-xs font-medium"
-      >
-        <Sparkles className="h-3.5 w-3.5" />
-        Auto Schedule
-      </Button>
+      {compact ? (
+        <button
+          onClick={handleOpen}
+          className="h-8 w-8 flex items-center justify-center rounded-[0.3rem] border border-border text-foreground hover:bg-muted transition-colors"
+        >
+          <Sparkles className="h-4 w-4" />
+        </button>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleOpen}
+          className="gap-1.5 text-xs font-medium"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Auto Schedule
+        </Button>
+      )}
 
       <DynamicUIElement open={open} onOpenChange={setOpen}>
         <DynamicUIElementContent className="max-w-2xl max-h-[90vh]" noPadding>

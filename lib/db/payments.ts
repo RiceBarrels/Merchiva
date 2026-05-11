@@ -1,3 +1,4 @@
+import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Payment, PaymentMethod, PaymentStatus, CartItem } from "@/lib/types";
@@ -47,7 +48,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
   console.warn("[SpacetimeDB] createPayment: writes not yet implemented via reducers");
   // Return a stub payment so callers don't crash
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     organizationId: input.organizationId,
     userId: input.userId,
     orderId: null,

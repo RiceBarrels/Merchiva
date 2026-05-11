@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       clientId,
       provider: strategy as "GoogleOAuth" | "AppleOAuth",
       redirectUri: `${appUrl}/api/auth/callback`,
-      state: Buffer.from(JSON.stringify({ redirectTo: redirectTo || "/dashboard" })).toString("base64url"),
+      state: Buffer.from(JSON.stringify({ redirectTo: redirectTo || "/~/dashboard" })).toString("base64url"),
     });
 
     return jsonWithCors(req, { url: authorizationUrl });

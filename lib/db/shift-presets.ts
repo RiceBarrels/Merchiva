@@ -1,3 +1,4 @@
+import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { ShiftPreset } from "@/lib/types";
@@ -31,7 +32,7 @@ export async function addShiftPreset(
 ): Promise<ShiftPreset> {
   console.warn("[shift-presets] addShiftPreset: writes go through SpacetimeDB actions.ts");
   return {
-    id: crypto.randomUUID(),
+    id: uuid(),
     organizationId,
     name: preset.name,
     startTime: preset.startTime,
