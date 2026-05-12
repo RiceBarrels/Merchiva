@@ -398,8 +398,8 @@ function CustomersContent() {
       <div className="flex flex-col">
         <PageHeader title={t("nav.customers")} />
         <PageTabs tabs={[
-          { label: t("nav.customers"), href: "/customers" },
-          { label: t("nav.marketing"), href: "/marketing" },
+          { label: t("nav.customers"), href: "/~/customers" },
+          { label: t("nav.marketing"), href: "/~/marketing" },
         ]} />
         <div className="flex h-[60vh] items-center justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -419,8 +419,8 @@ function CustomersContent() {
         }
       />
       <PageTabs tabs={[
-        { label: t("nav.customers"), href: "/customers" },
-        { label: t("nav.marketing"), href: "/marketing" },
+        { label: t("nav.customers"), href: "/~/customers" },
+        { label: t("nav.marketing"), href: "/~/marketing" },
       ]} />
 
       <div className="p-4 lg:p-6 space-y-5">

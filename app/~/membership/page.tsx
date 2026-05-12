@@ -711,10 +711,10 @@ export default function MembershipPage() {
   }, [currentOrg?.id]);
 
   const websiteTabs = [
-    { label: t("nav.website"), href: "/builder" },
-    { label: t("nav.membership"), href: "/membership" },
-    { label: t("nav.bookings"), href: "/bookings" },
-    { label: t("nav.reviews"), href: "/reviews" },
+    { label: t("nav.website"), href: "/~/builder" },
+    { label: t("nav.membership"), href: "/~/membership" },
+    { label: t("nav.bookings"), href: "/~/bookings" },
+    { label: t("nav.reviews"), href: "/~/reviews" },
   ];
 
   if (loading) {
@@ -741,7 +741,7 @@ export default function MembershipPage() {
             <p className="text-muted-foreground text-sm mt-1">{t("membership.noSite.desc")}</p>
           </div>
           <Link
-            href="/builder"
+            href="/~/builder"
             className="px-4 py-2 rounded-[0.3rem] bg-foreground text-background text-sm font-medium hover:bg-foreground/90"
           >
             {t("membership.noSite.button")}
@@ -757,17 +757,17 @@ export default function MembershipPage() {
       <PageHeader
         title={t("membership.header.title")}
         right={
-          <Link href={`/builder/${siteId}`} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+          <Link href={`/~/builder/${siteId}`} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
             <Globe className="h-3.5 w-3.5" />
             {siteName}
           </Link>
         }
       />
       <PageTabs tabs={[
-        { label: t("nav.website"), href: "/builder" },
-        { label: t("nav.membership"), href: "/membership" },
-        { label: t("nav.bookings"), href: "/bookings" },
-        { label: t("nav.reviews"), href: "/reviews" },
+        { label: t("nav.website"), href: "/~/builder" },
+        { label: t("nav.membership"), href: "/~/membership" },
+        { label: t("nav.bookings"), href: "/~/bookings" },
+        { label: t("nav.reviews"), href: "/~/reviews" },
       ]} />
 
       {/* Tabs */}

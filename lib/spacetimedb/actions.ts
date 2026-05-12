@@ -8,6 +8,7 @@
 import { getConnection, getActiveOrgId } from "./client";
 import { getDictionary, lookup } from "@/lib/i18n/dictionaries";
 import { LOCALE_COOKIE, isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
+import { isOnline, mutationQueue } from "@/lib/offline";
 import type { RoleTask, ShiftPreset } from "@/lib/types";
 
 function currentLocale() {
@@ -28,32 +29,46 @@ function orgId(): string {
   return getActiveOrgId();
 }
 
+async function offlineAware(
+  reducerName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  args: Record<string, any>,
+): Promise<void> {
+  if (isOnline()) {
+    const c = getConnection();
+    if (c) {
+      return c.reducers[reducerName](args);
+    }
+  }
+  await mutationQueue.enqueue(reducerName, args);
+}
+
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addInventoryItem(data: any, _userId?: string): Promise<void> {
-  return conn().reducers.addInventoryItem({ organizationId: orgId(), ...data });
+  return offlineAware("addInventoryItem", { organizationId: orgId(), ...data });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateInventoryItem(itemId: string, data: any): Promise<void> {
-  return conn().reducers.updateInventoryItem({ organizationId: orgId(), itemId, ...data });
+  return offlineAware("updateInventoryItem", { organizationId: orgId(), itemId, ...data });
 }
 
 export async function deleteInventoryItem(itemId: string): Promise<void> {
-  return conn().reducers.deleteInventoryItem({ organizationId: orgId(), itemId });
+  return offlineAware("deleteInventoryItem", { organizationId: orgId(), itemId });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addInventoryTransaction(data: any): Promise<void> {
-  return conn().reducers.addInventoryTransaction({ organizationId: orgId(), ...data });
+  return offlineAware("addInventoryTransaction", { organizationId: orgId(), ...data });
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addProduct(data: any, _userId?: string): Promise<void> {
-  return conn().reducers.addProduct({
+  return offlineAware("addProduct", {
     organizationId: orgId(),
     name: data.name,
     category: data.category,
@@ -71,59 +86,59 @@ export async function updateProduct(productId: string, data: any): Promise<void>
   if (payload.nameI18n && typeof payload.nameI18n !== "string") {
     payload.nameI18n = JSON.stringify(payload.nameI18n);
   }
-  return conn().reducers.updateProduct({ organizationId: orgId(), productId, ...payload });
+  return offlineAware("updateProduct", { organizationId: orgId(), productId, ...payload });
 }
 
 export async function deleteProduct(productId: string): Promise<void> {
-  return conn().reducers.deleteProduct({ organizationId: orgId(), productId });
+  return offlineAware("deleteProduct", { organizationId: orgId(), productId });
 }
 
 // ─── Staffing: Shifts ─────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addShift(data: any, _userId?: string, _orgIdParam?: string): Promise<void> {
-  return conn().reducers.addShift({ organizationId: orgId(), ...data });
+  return offlineAware("addShift", { organizationId: orgId(), ...data });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateShift(shiftId: string, data: any): Promise<void> {
-  return conn().reducers.updateShift({ organizationId: orgId(), shiftId, ...data });
+  return offlineAware("updateShift", { organizationId: orgId(), shiftId, ...data });
 }
 
 export async function deleteShift(shiftId: string): Promise<void> {
-  return conn().reducers.deleteShift({ organizationId: orgId(), shiftId });
+  return offlineAware("deleteShift", { organizationId: orgId(), shiftId });
 }
 
 // ─── Staffing: Staff Roles ────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addStaffRole(data: any, _userId?: string, _orgIdParam?: string): Promise<void> {
-  return conn().reducers.addStaffRole({ organizationId: orgId(), ...data });
+  return offlineAware("addStaffRole", { organizationId: orgId(), ...data });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateStaffRole(roleId: string, data: any): Promise<void> {
-  return conn().reducers.updateStaffRole({ organizationId: orgId(), roleId, ...data });
+  return offlineAware("updateStaffRole", { organizationId: orgId(), roleId, ...data });
 }
 
 export async function deleteStaffRole(roleId: string): Promise<void> {
-  return conn().reducers.deleteStaffRole({ organizationId: orgId(), roleId });
+  return offlineAware("deleteStaffRole", { organizationId: orgId(), roleId });
 }
 
 // ─── Staffing: Staff Members ──────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addStaffMember(data: any): Promise<void> {
-  return conn().reducers.addStaffMember({ organizationId: orgId(), ...data });
+  return offlineAware("addStaffMember", { organizationId: orgId(), ...data });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateStaffMember(staffMemberId: string, data: any): Promise<void> {
-  return conn().reducers.updateStaffMember({ organizationId: orgId(), staffMemberId, ...data });
+  return offlineAware("updateStaffMember", { organizationId: orgId(), staffMemberId, ...data });
 }
 
 export async function deleteStaffMember(staffMemberId: string): Promise<void> {
-  return conn().reducers.deleteStaffMember({ organizationId: orgId(), staffMemberId });
+  return offlineAware("deleteStaffMember", { organizationId: orgId(), staffMemberId });
 }
 
 // ─── Staffing: Role Tasks (read from SpacetimeDB table, no write reducers yet)
@@ -376,7 +391,7 @@ export async function createConversation(organizationId: string, type: string, m
 }
 
 export async function sendMessage(conversationId: string, content: string, _replyToId?: string, _attachment?: unknown): Promise<void> {
-  return conn().reducers.sendMessage({ conversationId, content });
+  return offlineAware("sendMessage", { conversationId, content });
 }
 
 export async function addMembersToConversation(convId: string, userIds: string[]): Promise<void> {
@@ -624,11 +639,11 @@ export async function dismissNotification(notificationId: string): Promise<void>
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addWasteLog(data: any): Promise<void> {
-  return conn().reducers.addWasteLog({ organizationId: orgId(), ...data });
+  return offlineAware("addWasteLog", { organizationId: orgId(), ...data });
 }
 
 export async function deleteWasteLog(wasteLogId: string): Promise<void> {
-  return conn().reducers.deleteWasteLog({ organizationId: orgId(), wasteLogId });
+  return offlineAware("deleteWasteLog", { organizationId: orgId(), wasteLogId });
 }
 
 // ─── Locations ──────────────────────────────────────────────────────────────
@@ -651,50 +666,50 @@ export async function deleteLocation(locationId: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addSalesRecord(data: any): Promise<void> {
-  return conn().reducers.addSalesRecord({ organizationId: orgId(), ...data });
+  return offlineAware("addSalesRecord", { organizationId: orgId(), ...data });
 }
 
 // ─── Suppliers ───────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addSupplier(data: any): Promise<void> {
-  return conn().reducers.addSupplier({ organizationId: orgId(), ...data });
+  return offlineAware("addSupplier", { organizationId: orgId(), ...data });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateSupplier(supplierId: string, data: any): Promise<void> {
-  return conn().reducers.updateSupplier({ organizationId: orgId(), supplierId, ...data });
+  return offlineAware("updateSupplier", { organizationId: orgId(), supplierId, ...data });
 }
 
 export async function deleteSupplier(supplierId: string): Promise<void> {
-  return conn().reducers.deleteSupplier({ organizationId: orgId(), supplierId });
+  return offlineAware("deleteSupplier", { organizationId: orgId(), supplierId });
 }
 
 // ─── Purchase Orders ─────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createPurchaseOrder(data: any): Promise<void> {
-  return conn().reducers.createPurchaseOrder({ organizationId: orgId(), ...data });
+  return offlineAware("createPurchaseOrder", { organizationId: orgId(), ...data });
 }
 
 export async function updatePurchaseOrderStatus(orderId: string, status: string): Promise<void> {
-  return conn().reducers.updatePurchaseOrderStatus({ organizationId: orgId(), orderId, status });
+  return offlineAware("updatePurchaseOrderStatus", { organizationId: orgId(), orderId, status });
 }
 
 // ─── Expenses ────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addExpense(data: any): Promise<void> {
-  return conn().reducers.addExpense({ organizationId: orgId(), ...data });
+  return offlineAware("addExpense", { organizationId: orgId(), ...data });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateExpense(expenseId: string, data: any): Promise<void> {
-  return conn().reducers.updateExpense({ organizationId: orgId(), expenseId, ...data });
+  return offlineAware("updateExpense", { organizationId: orgId(), expenseId, ...data });
 }
 
 export async function deleteExpense(expenseId: string): Promise<void> {
-  return conn().reducers.deleteExpense({ organizationId: orgId(), expenseId });
+  return offlineAware("deleteExpense", { organizationId: orgId(), expenseId });
 }
 
 // ─── Coupons ────────────────────────────────────────────────────────────────

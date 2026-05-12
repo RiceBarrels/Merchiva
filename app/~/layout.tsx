@@ -7,6 +7,7 @@ import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
+import { OfflineModeProvider, useOfflineMode } from "@/lib/offline-mode";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { useAuth } from "@/lib/auth/context";
@@ -227,6 +228,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   }, [isReady, authState]);
 
   const { signOut } = useAuth();
+  const { cachedSnapshot, snapshotLoaded } = useOfflineMode();
 
   useOfflineSync();
 
@@ -234,8 +236,31 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     signOut();
   };
 
-  // Still waiting for SpacetimeDB tables to sync
-  if (!isReady) {
+  // Try to restore a cached auth state from the offline snapshot for instant startup.
+  const cachedAuthState = useMemo(() => {
+    if (authState) return null; // live data available, no need for cache
+    if (!snapshotLoaded || !cachedSnapshot) return null;
+    // Restore minimal auth state from localStorage (we cached role/permissions there)
+    try {
+      const cached = localStorage.getItem("merchiva_auth_cache");
+      if (!cached) return null;
+      return JSON.parse(cached) as typeof authState;
+    } catch {
+      return null;
+    }
+  }, [authState, snapshotLoaded, cachedSnapshot]);
+
+  // Cache auth state whenever it changes so we can restore it offline.
+  useEffect(() => {
+    if (authState) {
+      try { localStorage.setItem("merchiva_auth_cache", JSON.stringify(authState)); } catch {}
+    }
+  }, [authState]);
+
+  const effectiveAuth = authState ?? cachedAuthState;
+
+  // Still waiting for SpacetimeDB tables to sync and no cached data available
+  if (!isReady && !effectiveAuth) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-muted">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
@@ -256,7 +281,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   }
 
   // Tables loaded but no org membership — new user needs onboarding
-  if (!authState) {
+  if (isReady && !authState) {
     return (
       <NewUserSetup
         onComplete={() => window.location.reload()}
@@ -265,21 +290,23 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Make organizationId available to non-React write helpers.
-  setActiveOrgId(authState.organizationId);
+  if (!effectiveAuth) return null;
 
-  const needsName = !authState.memberDisplayName || !authState.memberDisplayName.trim();
+  // Make organizationId available to non-React write helpers.
+  setActiveOrgId(effectiveAuth.organizationId);
+
+  const needsName = !effectiveAuth.memberDisplayName || !effectiveAuth.memberDisplayName.trim();
 
   return (
     <PermissionsProvider
-      role={authState.role}
-      permissions={authState.permissions}
-      organizationId={authState.organizationId}
-      organizations={authState.organizations}
-      currentOrg={authState.currentOrg}
+      role={effectiveAuth.role}
+      permissions={effectiveAuth.permissions}
+      organizationId={effectiveAuth.organizationId}
+      organizations={effectiveAuth.organizations}
+      currentOrg={effectiveAuth.currentOrg}
     >
       {needsName ? (
-        <NamePrompt memberId={authState.memberId} onComplete={() => window.location.reload()} />
+        <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
       ) : (
         <MobileShell>{children}</MobileShell>
       )}
@@ -306,10 +333,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SpacetimeProvider>
-      <OfflineIndicator />
-      <ShakeBugReport />
-      <AuthLoader>{children}</AuthLoader>
-    </SpacetimeProvider>
+    <OfflineModeProvider>
+      <SpacetimeProvider>
+        <OfflineIndicator />
+        <ShakeBugReport />
+        <AuthLoader>{children}</AuthLoader>
+      </SpacetimeProvider>
+    </OfflineModeProvider>
   );
 }

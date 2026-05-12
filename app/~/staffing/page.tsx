@@ -1061,8 +1061,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           }
         />
         <PageTabs tabs={[
-          { label: t("nav.staffing"), href: "/staffing" },
-          { label: t("nav.training"), href: "/training" },
+          { label: t("nav.staffing"), href: "/~/staffing" },
+          { label: t("nav.training"), href: "/~/training" },
         ]} />
 
         <div className="flex-1 flex min-h-0 overflow-hidden">

@@ -209,7 +209,7 @@ export default function InventoryPage() {
 
   return (
     <PermissionGuard section="inventory">
-    <div className="">
+    <>
       <PageHeader
         title={t("inventory.title")}
         subtitle={t("inventory.subtitle")}
@@ -223,510 +223,509 @@ export default function InventoryPage() {
           </div>
         }
       />
-      <PageTabs tabs={[
-        { label: t("nav.inventory"), href: "/inventory" },
-        { label: t("nav.suppliers"), href: "/suppliers" },
-        { label: t("nav.wasteLog"), href: "/inventory/waste" },
-      ]} />
 
-      <>
+      <div className="flex flex-col gap-3 m-3">
+        <PageTabs tabs={[
+          { label: t("nav.inventory"), href: "/~/inventory" },
+          { label: t("nav.suppliers"), href: "/~/suppliers" },
+          { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
+        ]} />
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SummaryCard icon={Package}      label={t("inventory.summary.totalItems")}  value={String(items.length)} />
+          <SummaryCard icon={CheckCircle2} label={t("inventory.summary.totalValue")}  value={`$${totalValue.toFixed(0)}`} />
+          <SummaryCard icon={AlertTriangle} label={t("inventory.summary.lowStock")}    value={String(lowStockCount)} urgent={lowStockCount > 0} />
+          <SummaryCard icon={XCircle}       label={t("inventory.summary.outOfStock")} value={String(outCount)}      urgent={outCount > 0} />
+        </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SummaryCard icon={Package}      label={t("inventory.summary.totalItems")}  value={String(items.length)} />
-        <SummaryCard icon={CheckCircle2} label={t("inventory.summary.totalValue")}  value={`$${totalValue.toFixed(0)}`} />
-        <SummaryCard icon={AlertTriangle} label={t("inventory.summary.lowStock")}    value={String(lowStockCount)} urgent={lowStockCount > 0} />
-        <SummaryCard icon={XCircle}       label={t("inventory.summary.outOfStock")} value={String(outCount)}      urgent={outCount > 0} />
-      </div>
+        <Tabs defaultValue="items">
+          <TabsList>
+            <TabsTrigger value="items" className="gap-2">
+              <Package className="h-3.5 w-3.5" /> {t("inventory.tabs.items")}
+            </TabsTrigger>
+            <TabsTrigger value="transactions" className="gap-2">
+              <History className="h-3.5 w-3.5" /> {t("inventory.tabs.transactions")}
+            </TabsTrigger>
+            <TabsTrigger value="losses" className="gap-2">
+              <TrendingDown className="h-3.5 w-3.5" /> {t("inventory.tabs.losses")}
+            </TabsTrigger>
+            <TabsTrigger value="restock" className="gap-2">
+              <Sparkles className="h-3.5 w-3.5" /> Restock
+            </TabsTrigger>
+          </TabsList>
 
-      <Tabs defaultValue="items">
-        <TabsList>
-          <TabsTrigger value="items" className="gap-2">
-            <Package className="h-3.5 w-3.5" /> {t("inventory.tabs.items")}
-          </TabsTrigger>
-          <TabsTrigger value="transactions" className="gap-2">
-            <History className="h-3.5 w-3.5" /> {t("inventory.tabs.transactions")}
-          </TabsTrigger>
-          <TabsTrigger value="losses" className="gap-2">
-            <TrendingDown className="h-3.5 w-3.5" /> {t("inventory.tabs.losses")}
-          </TabsTrigger>
-          <TabsTrigger value="restock" className="gap-2">
-            <Sparkles className="h-3.5 w-3.5" /> Restock
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Items */}
-        <TabsContent value="items" className="mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={t("inventory.filters.searchPlaceholder")}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
+          {/* Items */}
+          <TabsContent value="items" className="mt-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={t("inventory.filters.searchPlaceholder")}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select
+                    value={category}
+                    onValueChange={(v) => setCategory(v ?? "All")}
+                  >
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder={t("inventory.filters.categoryPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c === "All" ? t("inventory.filters.all") : c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select
-                  value={category}
-                  onValueChange={(v) => setCategory(v ?? "All")}
-                >
-                  <SelectTrigger className="w-44">
-                    <SelectValue placeholder={t("inventory.filters.categoryPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c === "All" ? t("inventory.filters.all") : c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {items.length === 0 ? (
-                <div className="py-16 text-center text-muted-foreground">
-                  <Package className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">{t("inventory.emptyItems.title")}</p>
-                  <p className="text-sm mt-1">{t("inventory.emptyItems.hint")}</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>
-                        <SortButton label={t("inventory.tableHeaders.item")} k="name" current={sortKey} dir={sortDir} onClick={toggleSort} />
-                      </TableHead>
-                      <TableHead>{t("inventory.tableHeaders.category")}</TableHead>
-                      <TableHead>
-                        <SortButton label={t("inventory.tableHeaders.stock")} k="currentStock" current={sortKey} dir={sortDir} onClick={toggleSort} />
-                      </TableHead>
-                      <TableHead>{t("inventory.tableHeaders.level")}</TableHead>
-                      <TableHead>
-                        <SortButton label={t("inventory.tableHeaders.costPerUnit")} k="costPerUnit" current={sortKey} dir={sortDir} onClick={toggleSort} />
-                      </TableHead>
-                      <TableHead>{t("inventory.tableHeaders.lossRate")}</TableHead>
-                      <TableHead>{t("inventory.tableHeaders.status")}</TableHead>
-                      <TableHead>{t("inventory.tableHeaders.supplier")}</TableHead>
-                      <TableHead className="w-20" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((item) => {
-                      const pct = Math.min(
-                        100,
-                        Math.round((item.currentStock / item.maxStock) * 100)
-                      );
-                      const cfg = statusConfig[item.status];
-                      const StatusIcon = cfg.icon;
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
+              </CardHeader>
+              <CardContent className="p-0">
+                {items.length === 0 ? (
+                  <div className="py-16 text-center text-muted-foreground">
+                    <Package className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">{t("inventory.emptyItems.title")}</p>
+                    <p className="text-sm mt-1">{t("inventory.emptyItems.hint")}</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>
+                          <SortButton label={t("inventory.tableHeaders.item")} k="name" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                        </TableHead>
+                        <TableHead>{t("inventory.tableHeaders.category")}</TableHead>
+                        <TableHead>
+                          <SortButton label={t("inventory.tableHeaders.stock")} k="currentStock" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                        </TableHead>
+                        <TableHead>{t("inventory.tableHeaders.level")}</TableHead>
+                        <TableHead>
+                          <SortButton label={t("inventory.tableHeaders.costPerUnit")} k="costPerUnit" current={sortKey} dir={sortDir} onClick={toggleSort} />
+                        </TableHead>
+                        <TableHead>{t("inventory.tableHeaders.lossRate")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.status")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.supplier")}</TableHead>
+                        <TableHead className="w-20" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map((item) => {
+                        const pct = Math.min(
+                          100,
+                          Math.round((item.currentStock / item.maxStock) * 100)
+                        );
+                        const cfg = statusConfig[item.status];
+                        const StatusIcon = cfg.icon;
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs font-normal">
+                                {item.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <span className={`font-medium ${cfg.color}`}>
+                                {item.currentStock} {item.unit}
+                              </span>
+                              <span className="text-xs text-muted-foreground"> / {item.maxStock}</span>
+                            </TableCell>
+                            <TableCell className="w-28">
+                              <Progress
+                                value={pct}
+                                className={`h-2 ${
+                                  item.status === "out_of_stock"
+                                    ? "[&>div]:bg-destructive"
+                                    : item.status === "low_stock"
+                                    ? "[&>div]:bg-amber-500"
+                                    : "[&>div]:bg-emerald-500"
+                                }`}
+                              />
+                              <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                            </TableCell>
+                            <TableCell>${item.costPerUnit.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <span
+                                className={item.lossRate > 8 ? "text-rose-600 font-medium" : "text-muted-foreground"}
+                              >
+                                {item.lossRate}%
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg.color}`}>
+                                <StatusIcon className="h-3.5 w-3.5" />
+                                {cfg.label}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {item.supplier}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => openEdit(item)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => handleDelete(item.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {filtered.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
+                            {t("inventory.noItems")}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Transactions */}
+          <TabsContent value="transactions" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">{t("inventory.transactions.title")}</CardTitle>
+                <CardDescription>{t("inventory.transactions.description")}</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {transactions.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground text-sm">
+                    {t("inventory.transactions.empty")}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("inventory.tableHeaders.date")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.item")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.type")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.quantity")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.note")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.map((t) => (
+                        <TableRow key={t.id}>
+                          <TableCell className="text-muted-foreground text-sm">{t.date}</TableCell>
+                          <TableCell className="font-medium">{t.itemName}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="text-xs font-normal">
-                              {item.category}
+                            <Badge
+                              variant={t.type === "in" ? "outline" : t.type === "loss" ? "destructive" : "secondary"}
+                              className="capitalize text-xs"
+                            >
+                              {t.type}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span className={`font-medium ${cfg.color}`}>
-                              {item.currentStock} {item.unit}
-                            </span>
-                            <span className="text-xs text-muted-foreground"> / {item.maxStock}</span>
-                          </TableCell>
-                          <TableCell className="w-28">
-                            <Progress
-                              value={pct}
-                              className={`h-2 ${
-                                item.status === "out_of_stock"
-                                  ? "[&>div]:bg-destructive"
-                                  : item.status === "low_stock"
-                                  ? "[&>div]:bg-amber-500"
-                                  : "[&>div]:bg-emerald-500"
-                              }`}
-                            />
-                            <span className="text-[10px] text-muted-foreground">{pct}%</span>
-                          </TableCell>
-                          <TableCell>${item.costPerUnit.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <span
-                              className={item.lossRate > 8 ? "text-rose-600 font-medium" : "text-muted-foreground"}
-                            >
-                              {item.lossRate}%
+                            <span className={t.type === "in" ? "text-emerald-600 font-medium" : t.type === "loss" ? "text-destructive font-medium" : ""}>
+                              {t.type === "in" ? "+" : "-"}{t.quantity}
                             </span>
                           </TableCell>
-                          <TableCell>
-                            <div className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg.color}`}>
-                              <StatusIcon className="h-3.5 w-3.5" />
-                              {cfg.label}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {item.supplier}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => openEdit(item)}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-destructive hover:text-destructive"
-                                onClick={() => handleDelete(item.id)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{t.note}</TableCell>
                         </TableRow>
-                      );
-                    })}
-                    {filtered.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
-                          {t("inventory.noItems")}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Transactions */}
-        <TabsContent value="transactions" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t("inventory.transactions.title")}</CardTitle>
-              <CardDescription>{t("inventory.transactions.description")}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {transactions.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground text-sm">
-                  {t("inventory.transactions.empty")}
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("inventory.tableHeaders.date")}</TableHead>
-                      <TableHead>{t("inventory.tableHeaders.item")}</TableHead>
-                      <TableHead>{t("inventory.tableHeaders.type")}</TableHead>
-                      <TableHead>{t("inventory.tableHeaders.quantity")}</TableHead>
-                      <TableHead>{t("inventory.tableHeaders.note")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="text-muted-foreground text-sm">{t.date}</TableCell>
-                        <TableCell className="font-medium">{t.itemName}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={t.type === "in" ? "outline" : t.type === "loss" ? "destructive" : "secondary"}
-                            className="capitalize text-xs"
-                          >
-                            {t.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <span className={t.type === "in" ? "text-emerald-600 font-medium" : t.type === "loss" ? "text-destructive font-medium" : ""}>
-                            {t.type === "in" ? "+" : "-"}{t.quantity}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{t.note}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Loss tracking */}
-        <TabsContent value="losses" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t("inventory.losses.title")}</CardTitle>
-              <CardDescription>
-                {t("inventory.losses.description")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-2">
-              {items.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">{t("inventory.losses.empty")}</p>
-              ) : (
-                [...items]
-                  .sort((a, b) => b.lossRate - a.lossRate)
-                  .map((item) => (
-                    <div key={item.id} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{item.name}</span>
-                        <span
-                          className={`font-semibold ${
-                            item.lossRate > 8
-                              ? "text-destructive"
-                              : item.lossRate > 4
-                              ? "text-amber-600"
-                              : "text-emerald-600"
-                          }`}
-                        >
-                          {item.lossRate}{t("inventory.losses.lossSuffix")}
-                        </span>
-                      </div>
-                      <Progress
-                        value={Math.min(100, item.lossRate * 5)}
-                        className={`h-2 ${
-                          item.lossRate > 8
-                            ? "[&>div]:bg-destructive"
-                            : item.lossRate > 4
-                            ? "[&>div]:bg-amber-500"
-                            : "[&>div]:bg-emerald-500"
-                        }`}
-                      />
-                    </div>
-                  ))
-              )}
-              <Separator className="my-2" />
-              <p className="text-xs text-muted-foreground">
-                {t("inventory.losses.footnote")}
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Restock suggestions */}
-        <TabsContent value="restock" className="mt-4 space-y-4">
-          {restockSuggestions.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center text-muted-foreground">
-                <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">All stocked up — no restocking needed</p>
-                <p className="text-sm mt-1">Your inventory levels look healthy.</p>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ) : (
-            <>
-              {/* Summary cards */}
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <Card className={criticalCount > 0 ? "border-red-300" : ""}>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="rounded-[0.3rem] p-1.5 bg-red-50 border border-red-200">
-                      <AlertCircle className="h-4 w-4 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold font-mono">{criticalCount}</p>
-                      <p className="text-xs text-muted-foreground">Critical Items</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className={highCount > 0 ? "border-orange-300" : ""}>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="rounded-[0.3rem] p-1.5 bg-orange-50 border border-orange-200">
-                      <AlertTriangle className="h-4 w-4 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold font-mono">{highCount}</p>
-                      <p className="text-xs text-muted-foreground">High Priority</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="rounded-[0.3rem] p-1.5 bg-muted">
-                      <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold font-mono">${totalOrderValue.toFixed(0)}</p>
-                      <p className="text-xs text-muted-foreground">Total Order Value</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-3 flex items-center gap-3">
-                    <div className="rounded-[0.3rem] p-1.5 bg-muted">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold font-mono">{restockSuggestions.length}</p>
-                      <p className="text-xs text-muted-foreground">Items to Restock</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+          </TabsContent>
 
-              {/* Action bar */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => {
-                    const { headers, rows } = formatPurchaseOrder(restockSuggestions);
-                    downloadCSV("purchase-order", headers, rows);
-                    toast.success("Purchase order CSV downloaded");
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                  Export Purchase Order (CSV)
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => {
-                    const { headers, rows } = formatPurchaseOrder(restockSuggestions);
-                    downloadPDF("Purchase Order", headers, rows, {
-                      subtitle: `${restockSuggestions.length} items — Est. $${totalOrderValue.toFixed(2)}`,
-                      landscape: true,
-                    });
-                    toast.success("Purchase order PDF downloaded");
-                  }}
-                >
-                  <Download className="h-4 w-4" />
-                  Export Purchase Order (PDF)
-                </Button>
-              </div>
+          {/* Loss tracking */}
+          <TabsContent value="losses" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">{t("inventory.losses.title")}</CardTitle>
+                <CardDescription>
+                  {t("inventory.losses.description")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-2">
+                {items.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">{t("inventory.losses.empty")}</p>
+                ) : (
+                  [...items]
+                    .sort((a, b) => b.lossRate - a.lossRate)
+                    .map((item) => (
+                      <div key={item.id} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{item.name}</span>
+                          <span
+                            className={`font-semibold ${
+                              item.lossRate > 8
+                                ? "text-destructive"
+                                : item.lossRate > 4
+                                ? "text-amber-600"
+                                : "text-emerald-600"
+                            }`}
+                          >
+                            {item.lossRate}{t("inventory.losses.lossSuffix")}
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(100, item.lossRate * 5)}
+                          className={`h-2 ${
+                            item.lossRate > 8
+                              ? "[&>div]:bg-destructive"
+                              : item.lossRate > 4
+                              ? "[&>div]:bg-amber-500"
+                              : "[&>div]:bg-emerald-500"
+                          }`}
+                        />
+                      </div>
+                    ))
+                )}
+                <Separator className="my-2" />
+                <p className="text-xs text-muted-foreground">
+                  {t("inventory.losses.footnote")}
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              {/* Suggestion cards grid */}
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {restockSuggestions.map((s) => (
-                  <RestockCard key={s.itemId} suggestion={s} />
-                ))}
-              </div>
-            </>
-          )}
-        </TabsContent>
-      </Tabs>
+          {/* Restock suggestions */}
+          <TabsContent value="restock" className="mt-4 space-y-4">
+            {restockSuggestions.length === 0 ? (
+              <Card>
+                <CardContent className="py-16 text-center text-muted-foreground">
+                  <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">All stocked up — no restocking needed</p>
+                  <p className="text-sm mt-1">Your inventory levels look healthy.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <Card className={criticalCount > 0 ? "border-red-300" : ""}>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="rounded-[0.3rem] p-1.5 bg-red-50 border border-red-200">
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-bold font-mono">{criticalCount}</p>
+                        <p className="text-xs text-muted-foreground">Critical Items</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className={highCount > 0 ? "border-orange-300" : ""}>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="rounded-[0.3rem] p-1.5 bg-orange-50 border border-orange-200">
+                        <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-bold font-mono">{highCount}</p>
+                        <p className="text-xs text-muted-foreground">High Priority</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="rounded-[0.3rem] p-1.5 bg-muted">
+                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-bold font-mono">${totalOrderValue.toFixed(0)}</p>
+                        <p className="text-xs text-muted-foreground">Total Order Value</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="rounded-[0.3rem] p-1.5 bg-muted">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-bold font-mono">{restockSuggestions.length}</p>
+                        <p className="text-xs text-muted-foreground">Items to Restock</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-      {/* Add/Edit DynamicUIElement */}
-      <DynamicUIElement open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DynamicUIElementContent className="max-w-lg">
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle>{editItem ? t("inventory.dialog.editTitle") : t("inventory.dialog.addTitle")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription>
-              {editItem
-                ? t("inventory.dialog.editDescription")
-                : t("inventory.dialog.addDescription")}
-            </DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.name")}</Label>
-                <Input
-                  value={form.name ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder={t("inventory.dialog.namePlaceholder")}
-                />
+                {/* Action bar */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const { headers, rows } = formatPurchaseOrder(restockSuggestions);
+                      downloadCSV("purchase-order", headers, rows);
+                      toast.success("Purchase order CSV downloaded");
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    Export Purchase Order (CSV)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const { headers, rows } = formatPurchaseOrder(restockSuggestions);
+                      downloadPDF("Purchase Order", headers, rows, {
+                        subtitle: `${restockSuggestions.length} items — Est. $${totalOrderValue.toFixed(2)}`,
+                        landscape: true,
+                      });
+                      toast.success("Purchase order PDF downloaded");
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    Export Purchase Order (PDF)
+                  </Button>
+                </div>
+
+                {/* Suggestion cards grid */}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {restockSuggestions.map((s) => (
+                    <RestockCard key={s.itemId} suggestion={s} />
+                  ))}
+                </div>
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Add/Edit DynamicUIElement */}
+        <DynamicUIElement open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DynamicUIElementContent className="max-w-lg">
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle>{editItem ? t("inventory.dialog.editTitle") : t("inventory.dialog.addTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>
+                {editItem
+                  ? t("inventory.dialog.editDescription")
+                  : t("inventory.dialog.addDescription")}
+              </DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            <div className="grid gap-4 py-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.name")}</Label>
+                  <Input
+                    value={form.name ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder={t("inventory.dialog.namePlaceholder")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.category")}</Label>
+                  <Input
+                    value={form.category ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                    placeholder={t("inventory.dialog.categoryPlaceholder")}
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.category")}</Label>
-                <Input
-                  value={form.category ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                  placeholder={t("inventory.dialog.categoryPlaceholder")}
-                />
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.currentStock")}</Label>
+                  <Input
+                    type="number"
+                    value={form.currentStock ?? 0}
+                    onChange={(e) => setForm((f) => ({ ...f, currentStock: Number(e.target.value) }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.minStock")}</Label>
+                  <Input
+                    type="number"
+                    value={form.minStock ?? 0}
+                    onChange={(e) => setForm((f) => ({ ...f, minStock: Number(e.target.value) }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.maxStock")}</Label>
+                  <Input
+                    type="number"
+                    value={form.maxStock ?? 0}
+                    onChange={(e) => setForm((f) => ({ ...f, maxStock: Number(e.target.value) }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.unit")}</Label>
+                  <Input
+                    value={form.unit ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                    placeholder={t("inventory.dialog.unitPlaceholder")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.costPerUnit")}</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={form.costPerUnit ?? 0}
+                    onChange={(e) => setForm((f) => ({ ...f, costPerUnit: Number(e.target.value) }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.supplier")}</Label>
+                  <Input
+                    value={form.supplier ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
+                    placeholder={t("inventory.dialog.supplierPlaceholder")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.lossRate")}</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={form.lossRate ?? 0}
+                    onChange={(e) => setForm((f) => ({ ...f, lossRate: Number(e.target.value) }))}
+                  />
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.currentStock")}</Label>
-                <Input
-                  type="number"
-                  value={form.currentStock ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, currentStock: Number(e.target.value) }))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.minStock")}</Label>
-                <Input
-                  type="number"
-                  value={form.minStock ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, minStock: Number(e.target.value) }))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.maxStock")}</Label>
-                <Input
-                  type="number"
-                  value={form.maxStock ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, maxStock: Number(e.target.value) }))}
-                />
-              </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                {t("inventory.dialog.cancel")}
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("inventory.dialog.saving")}</>
+                ) : editItem ? (
+                  t("inventory.dialog.save")
+                ) : (
+                  t("inventory.dialog.add")
+                )}
+              </Button>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.unit")}</Label>
-                <Input
-                  value={form.unit ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                  placeholder={t("inventory.dialog.unitPlaceholder")}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.costPerUnit")}</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={form.costPerUnit ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, costPerUnit: Number(e.target.value) }))}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.supplier")}</Label>
-                <Input
-                  value={form.supplier ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
-                  placeholder={t("inventory.dialog.supplierPlaceholder")}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("inventory.dialog.lossRate")}</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={form.lossRate ?? 0}
-                  onChange={(e) => setForm((f) => ({ ...f, lossRate: Number(e.target.value) }))}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              {t("inventory.dialog.cancel")}
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("inventory.dialog.saving")}</>
-              ) : editItem ? (
-                t("inventory.dialog.save")
-              ) : (
-                t("inventory.dialog.add")
-              )}
-            </Button>
-          </div>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
-      </>
-    </div>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
+      </div>
+    </>
     </PermissionGuard>
   );
 }

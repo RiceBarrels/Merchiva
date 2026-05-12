@@ -8,10 +8,22 @@ const nextConfig: NextConfig = {
     ? {
         output: "export",
         images: { unoptimized: true },
-        // Trailing slash ensures /dashboard → /dashboard/index.html (works with local file servers)
         trailingSlash: true,
       }
     : {}),
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-src 'self' https://*.notion.so https://notion.so;",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

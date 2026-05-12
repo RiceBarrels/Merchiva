@@ -82,10 +82,10 @@ export default function ReviewsPage() {
           subtitle="Monitor and manage your online reviews"
         />
         <PageTabs tabs={[
-          { label: t("nav.website"), href: "/builder" },
-          { label: t("nav.membership"), href: "/membership" },
-          { label: t("nav.bookings"), href: "/bookings" },
-          { label: t("nav.reviews"), href: "/reviews" },
+          { label: t("nav.website"), href: "/~/builder" },
+          { label: t("nav.membership"), href: "/~/membership" },
+          { label: t("nav.bookings"), href: "/~/bookings" },
+          { label: t("nav.reviews"), href: "/~/reviews" },
         ]} />
 
         <div className="px-4 sm:px-6 pb-6 space-y-4">

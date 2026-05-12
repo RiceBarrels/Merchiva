@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 
+export const dynamic = "force-static";
+
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {

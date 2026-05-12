@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { PageHeader } from "@/components/page-header";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT } from "@/lib/i18n/context";
-import { Settings2, X, Plus, Check, GripVertical } from "lucide-react";
+import { Settings2, X, Plus, Check, GripVertical, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   WIDGET_REGISTRY,
@@ -35,9 +35,12 @@ import { CSS } from "@dnd-kit/utilities";
 
 // ── Layout persistence ───────────────────────────────────────────────────────
 
+type WidgetSize = "1x1" | "2x1";
+
 interface DashboardLayout {
   visible: WidgetId[];
   order: WidgetId[];
+  sizes: Partial<Record<WidgetId, WidgetSize>>;
 }
 
 function getStorageKey(orgId: string | null): string {
@@ -56,12 +59,14 @@ function loadLayout(orgId: string | null): DashboardLayout {
       return {
         order: [...validOrder, ...missing],
         visible: [...validVisible, ...missing],
+        sizes: parsed.sizes ?? {},
       };
     }
   } catch {}
   return {
     order: [...DEFAULT_WIDGET_ORDER],
     visible: [...DEFAULT_WIDGET_ORDER],
+    sizes: {},
   };
 }
 
@@ -76,11 +81,15 @@ function saveLayout(orgId: string | null, layout: DashboardLayout): void {
 function SortableWidget({
   widget,
   customizing,
+  size,
   onRemove,
+  onToggleSize,
 }: {
   widget: { id: WidgetId; component: React.ComponentType };
   customizing: boolean;
+  size: WidgetSize;
   onRemove: (id: WidgetId) => void;
+  onToggleSize: (id: WidgetId) => void;
 }) {
   const {
     attributes,
@@ -98,10 +107,6 @@ function SortableWidget({
 
   const Component = widget.component;
 
-  // When customizing, the whole card is the drag handle. We also opt the card
-  // out of the global sidebar-swipe gesture (see MobileShell touch handler in
-  // components/sidebar.tsx) so horizontal drags don't accidentally open the
-  // sidebar.
   const dragProps = customizing ? { ...attributes, ...listeners } : {};
 
   return (
@@ -112,6 +117,7 @@ function SortableWidget({
       {...dragProps}
       className={cn(
         "relative h-full",
+        size === "2x1" && "md:col-span-2",
         customizing && "widget-jiggle select-none touch-none cursor-grab active:cursor-grabbing",
         isSortableDragging && "opacity-30 scale-[0.97] transition-all duration-200"
       )}
@@ -124,6 +130,18 @@ function SortableWidget({
             className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600 transition-colors"
           >
             <X className="h-3 w-3" />
+          </button>
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => onToggleSize(widget.id)}
+            className="absolute -bottom-1.5 -right-1.5 z-10 h-5 w-5 flex items-center justify-center rounded-full bg-foreground text-background shadow-sm hover:bg-foreground/80 transition-colors"
+            title={size === "1x1" ? "Expand" : "Shrink"}
+          >
+            {size === "1x1" ? (
+              <Maximize2 className="h-3 w-3" />
+            ) : (
+              <Minimize2 className="h-3 w-3" />
+            )}
           </button>
           <div className="absolute top-2 left-2 z-10 p-0.5 rounded-[0.3rem] bg-background/70 text-muted-foreground pointer-events-none">
             <GripVertical className="h-3.5 w-3.5" />
@@ -175,6 +193,14 @@ export default function DashboardPage() {
       visible: [...prev.visible, id],
     }));
     setAddMenuOpen(false);
+  }, []);
+
+  const handleToggleSize = useCallback((id: WidgetId) => {
+    setLayout((prev) => {
+      const current = prev.sizes[id] ?? "1x1";
+      const next: WidgetSize = current === "1x1" ? "2x1" : "1x1";
+      return { ...prev, sizes: { ...prev.sizes, [id]: next } };
+    });
   }, []);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -314,15 +340,18 @@ export default function DashboardPage() {
           strategy={rectSortingStrategy}
           disabled={!customizing}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 grid-rows-[repeat(auto-fill,minmax(0,1fr))]" style={{ gridAutoRows: "260px" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" style={{ gridAutoRows: "260px" }}>
             {visibleWidgets.map((widget) => {
               if (!widget) return null;
+              const size = layout.sizes[widget.id] ?? "1x1";
               return (
                 <SortableWidget
                   key={widget.id}
                   widget={widget}
                   customizing={customizing}
+                  size={size}
                   onRemove={handleRemove}
+                  onToggleSize={handleToggleSize}
                 />
               );
             })}
@@ -335,7 +364,7 @@ export default function DashboardPage() {
           {activeId && widgetMap.get(activeId) ? (() => {
             const OverlayComponent = widgetMap.get(activeId)!.component;
             return (
-              <div className="opacity-90 shadow-lg ring-1 ring-border rounded-[0.3rem] scale-[1.02] h-[260px] overflow-hidden">
+              <div className="opacity-90 shadow-lg ring-1 ring-border rounded-[0.3rem] scale-[1.02] h-[260px] overflow-hidden pointer-events-none">
                 <OverlayComponent />
               </div>
             );

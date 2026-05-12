@@ -477,9 +477,9 @@ export default function ReportsPage() {
         <div className="">
           <PageHeader title="Reports" subtitle="Export and review business data" />
           <PageTabs tabs={[
-            { label: t("nav.sales"), href: "/sales" },
-            { label: t("nav.reports"), href: "/reports" },
-            { label: t("nav.finances"), href: "/finances" },
+            { label: t("nav.sales"), href: "/~/sales" },
+            { label: t("nav.reports"), href: "/~/reports" },
+            { label: t("nav.finances"), href: "/~/finances" },
           ]} />
           <div className="flex h-[50vh] items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -505,9 +505,9 @@ export default function ReportsPage() {
           }
         />
         <PageTabs tabs={[
-          { label: t("nav.sales"), href: "/sales" },
-          { label: t("nav.reports"), href: "/reports" },
-          { label: t("nav.finances"), href: "/finances" },
+          { label: t("nav.sales"), href: "/~/sales" },
+          { label: t("nav.reports"), href: "/~/reports" },
+          { label: t("nav.finances"), href: "/~/finances" },
         ]} />
 
         <Tabs defaultValue="sales">

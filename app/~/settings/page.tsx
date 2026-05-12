@@ -91,6 +91,7 @@ import { uploadFiles } from "@/lib/uploadthing";
 import { toast } from "sonner";
 import { useT, useI18n } from "@/lib/i18n/context";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
+import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { LocationManager } from "@/components/location-manager";
 import { useLocations } from "@/lib/spacetimedb/hooks";
 
@@ -703,35 +704,9 @@ export default function SettingsPage() {
   const [shiftReminders, setShiftReminders] = useState(true);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(false);
-  type ThemeMode = "system" | "light" | "dark";
-  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "system";
-    try {
-      const t = localStorage.getItem("merchiva_theme");
-      if (t === "system" || t === "light" || t === "dark") return t;
-      // Migrate from legacy binary flag
-      const old = localStorage.getItem("merchiva_dark");
-      if (old === "true") return "dark";
-      if (old === "false") return "light";
-    } catch {}
-    return "system";
-  });
-
-  const applyThemeMode = (mode: ThemeMode) => {
-    setThemeMode(mode);
-    try {
-      localStorage.setItem("merchiva_theme", mode);
-      localStorage.removeItem("merchiva_dark");
-    } catch {}
-    const prefersDark = typeof window !== "undefined"
-      && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const next = mode === "dark" || (mode === "system" && prefersDark);
-    document.documentElement.classList.toggle("dark", next);
-    const meta = document.getElementById("theme-color-meta") as HTMLMetaElement | null;
-    if (meta) meta.content = next ? "#1a1a1a" : "#ffffff";
-    document.cookie = `merchiva_theme=${mode};path=/;max-age=31536000;SameSite=Lax`;
-    document.cookie = `merchiva_dark=${next ? "true" : "false"};path=/;max-age=31536000;SameSite=Lax`;
-  };
+  const [themeMode, applyThemeMode] = useThemeMode();
+  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | null;
+  const [subPanel, setSubPanel] = useState<SubPanel>(null);
 
   if (isDesktop) return (
     <>
@@ -1773,48 +1748,108 @@ export default function SettingsPage() {
         </DrawerContent>
       </Drawer>
 
-      {/* ─── Workspace Group ────────────────────────────────── */}
-      <SGroupHeader label={t("settings.groupWorkspace")} />
+      {/* ─── Category entries ────────────────────────────────── */}
       <div className="bg-background">
         <SRow
           icon={<Building2 className="h-4 w-4 text-foreground" />}
-          title={t("settings.businessProfile")}
+          title={t("settings.groupWorkspace")}
           meta={businessName || t("settings.notSet")}
-          right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{timezone}</span>}
+          onClick={() => setSubPanel("workspace")}
           isFirst
         />
+        {isAdmin && (
+          <SRow
+            icon={<Users className="h-4 w-4 text-foreground" />}
+            title={t("settings.groupTeamAccess")}
+            meta={`${activeStaffCount} ${t("settings.membersSuffix")}`}
+            onClick={() => setSubPanel("team")}
+            right={<SBadge>{String(activeStaffCount)}</SBadge>}
+          />
+        )}
         <SRow
-          icon={<MapPin className="h-4 w-4 text-foreground" />}
-          title={t("settings.locations")}
-          meta={t("settings.manageLocations")}
-          onClick={() => setLocationsDialog(true)}
-          right={<SBadge>{String(orgLocationCount)}</SBadge>}
+          icon={<Bell className="h-4 w-4 text-foreground" />}
+          title={t("settings.groupNotifications")}
+          meta={t("settings.shiftReminders")}
+          onClick={() => setSubPanel("notifications")}
         />
         <SRow
-          icon={<Activity className="h-4 w-4 text-foreground" />}
-          title="Forecast Location"
-          meta={locationLatitude && locationLongitude ? `${locationLatitude}, ${locationLongitude}` : "Not set"}
-          right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{googlePlacesId ? googlePlacesId.slice(0, 12) + "..." : "No Place ID"}</span>}
+          icon={<SettingsIcon className="h-4 w-4 text-foreground" />}
+          title={t("settings.groupPreferences")}
+          meta={`${themeMode === "system" ? (t("settings.themeSystem") || "System") : themeMode === "light" ? (t("settings.themeLight") || "Light") : (t("settings.themeDark") || "Dark")} · ${LOCALE_LABELS[locale]}`}
+          onClick={() => setSubPanel("preferences")}
         />
         <SRow
-          icon={<CreditCard className="h-4 w-4 text-foreground" />}
-          title={t("settings.billing")}
-          meta={t("settings.currentSubscription")}
-          right={<SBadge tone="ok">{t("settings.active")}</SBadge>}
+          icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+          title={t("settings.groupDevice")}
+          meta={storeMachine ? t("settings.storeMachineMode") : (deviceName || t("settings.notSet"))}
+          onClick={() => setSubPanel("device")}
         />
         <SRow
-          icon={<FileText className="h-4 w-4 text-foreground" />}
-          title={t("settings.taxCompliance")}
-          meta={`${t("settings.taxPrefix")} ${paymentTaxRate}% · ${paymentCurrency}`}
-          right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{paymentTaxRate}%</span>}
+          icon={<Download className="h-4 w-4 text-foreground" />}
+          title={t("settings.groupData")}
+          meta={t("settings.exportData")}
+          onClick={() => setSubPanel("data")}
+        />
+        <SRow
+          icon={<Info className="h-4 w-4 text-foreground" />}
+          title={t("settings.groupAbout")}
+          meta="beta-0.1.0"
+          onClick={() => setSubPanel("about")}
         />
       </div>
 
-      {/* ─── Team & Access Group ────────────────────────────── */}
-      {isAdmin && (
-        <>
-          <SGroupHeader label={t("settings.groupTeamAccess")} />
-          <div className="bg-background">
+      {/* ─── Workspace Sub-Panel ─────────────────────────────── */}
+      <DynamicUIElement open={subPanel === "workspace"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupWorkspace")}>{t("settings.groupWorkspace")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupWorkspace")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SRow
+              icon={<Building2 className="h-4 w-4 text-foreground" />}
+              title={t("settings.businessProfile")}
+              meta={businessName || t("settings.notSet")}
+              right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{timezone}</span>}
+              isFirst
+            />
+            <SRow
+              icon={<MapPin className="h-4 w-4 text-foreground" />}
+              title={t("settings.locations")}
+              meta={t("settings.manageLocations")}
+              onClick={() => setLocationsDialog(true)}
+              right={<SBadge>{String(orgLocationCount)}</SBadge>}
+            />
+            <SRow
+              icon={<Activity className="h-4 w-4 text-foreground" />}
+              title="Forecast Location"
+              meta={locationLatitude && locationLongitude ? `${locationLatitude}, ${locationLongitude}` : "Not set"}
+              right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{googlePlacesId ? googlePlacesId.slice(0, 12) + "..." : "No Place ID"}</span>}
+            />
+            <SRow
+              icon={<CreditCard className="h-4 w-4 text-foreground" />}
+              title={t("settings.billing")}
+              meta={t("settings.currentSubscription")}
+              right={<SBadge tone="ok">{t("settings.active")}</SBadge>}
+            />
+            <SRow
+              icon={<FileText className="h-4 w-4 text-foreground" />}
+              title={t("settings.taxCompliance")}
+              meta={`${t("settings.taxPrefix")} ${paymentTaxRate}% · ${paymentCurrency}`}
+              right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{paymentTaxRate}%</span>}
+            />
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
+      {/* ─── Team & Access Sub-Panel ─────────────────────────── */}
+      <DynamicUIElement open={subPanel === "team"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupTeamAccess")}>{t("settings.groupTeamAccess")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupTeamAccess")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
             <SRow
               icon={<Users className="h-4 w-4 text-foreground" />}
               title={t("settings.members")}
@@ -1864,246 +1899,271 @@ export default function SettingsPage() {
               }
             />
           </div>
-        </>
-      )}
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Notifications Group ────────────────────────────── */}
-      <SGroupHeader label={t("settings.groupNotifications")} />
-      <div className="bg-background">
-        <SToggleRow
-          icon={<Clock className="h-4 w-4 text-foreground" />}
-          title={t("settings.shiftReminders")}
-          meta={t("settings.beforeShift")}
-          checked={shiftReminders}
-          onChange={() => setShiftReminders(!shiftReminders)}
-          isFirst
-        />
-        <SToggleRow
-          icon={<Package className="h-4 w-4 text-foreground" />}
-          title={t("settings.lowStockAlerts")}
-          meta={t("settings.belowThreshold")}
-          checked={lowStockAlerts}
-          onChange={() => setLowStockAlerts(!lowStockAlerts)}
-        />
-        <SToggleRow
-          icon={<Bell className="h-4 w-4 text-foreground" />}
-          title={t("settings.weeklySummary")}
-          meta={t("settings.performanceDigest")}
-          checked={weeklySummary}
-          onChange={() => setWeeklySummary(!weeklySummary)}
-        />
-      </div>
-
-      {/* ─── Preferences Group ──────────────────────────────── */}
-      <SGroupHeader label={t("settings.groupPreferences")} />
-      <div className="bg-background">
-        <SRow
-          icon={<PanelLeft className="h-4 w-4 text-foreground" />}
-          title={t("settings.navigationMode")}
-          meta={navMode === "sidebar" ? t("settings.sidebar") : t("settings.bottomBar")}
-          right={
-            <div className="flex gap-1 shrink-0">
-              {([
-                { mode: "sidebar" as NavMode, label: t("settings.side") },
-                { mode: "bottombar" as NavMode, label: t("settings.tab") },
-              ]).map(({ mode, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => { hapticSuccess(); setNavMode(mode); }}
-                  className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
-                    navMode === mode
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground border border-border"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          }
-          isFirst
-        />
-        <SRow
-          icon={<Moon className="h-4 w-4 text-foreground" />}
-          title={t("settings.darkMode")}
-          meta={
-            themeMode === "system" ? (t("settings.themeSystem") || "Follow system")
-            : themeMode === "light" ? (t("settings.themeLight") || "Light")
-            : (t("settings.themeDark") || "Dark")
-          }
-          right={
-            <div className="flex gap-1 shrink-0">
-              {([
-                { mode: "system" as ThemeMode, label: t("settings.themeSystem") || "System" },
-                { mode: "light" as ThemeMode,  label: t("settings.themeLight")  || "Light"  },
-                { mode: "dark" as ThemeMode,   label: t("settings.themeDark")   || "Dark"   },
-              ]).map(({ mode, label }) => (
-                <button
-                  key={mode}
-                  onClick={() => { hapticSuccess(); applyThemeMode(mode); }}
-                  className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
-                    themeMode === mode
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground border border-border"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          }
-        />
-        <button
-          type="button"
-          onClick={() => setLangDialogOpen(true)}
-          className="flex items-center gap-3 px-[18px] py-3.5 w-full border-t border-border text-left"
-        >
-          <IconTile><Languages className="h-4 w-4 text-foreground" /></IconTile>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">{t("settings.language")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{LOCALE_LABELS[locale]}</p>
+      {/* ─── Notifications Sub-Panel ─────────────────────────── */}
+      <DynamicUIElement open={subPanel === "notifications"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupNotifications")}>{t("settings.groupNotifications")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupNotifications")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SToggleRow
+              icon={<Clock className="h-4 w-4 text-foreground" />}
+              title={t("settings.shiftReminders")}
+              meta={t("settings.beforeShift")}
+              checked={shiftReminders}
+              onChange={() => setShiftReminders(!shiftReminders)}
+              isFirst
+            />
+            <SToggleRow
+              icon={<Package className="h-4 w-4 text-foreground" />}
+              title={t("settings.lowStockAlerts")}
+              meta={t("settings.belowThreshold")}
+              checked={lowStockAlerts}
+              onChange={() => setLowStockAlerts(!lowStockAlerts)}
+            />
+            <SToggleRow
+              icon={<Bell className="h-4 w-4 text-foreground" />}
+              title={t("settings.weeklySummary")}
+              meta={t("settings.performanceDigest")}
+              checked={weeklySummary}
+              onChange={() => setWeeklySummary(!weeklySummary)}
+            />
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-        </button>
-        <DynamicUIElement open={langDialogOpen} onOpenChange={setLangDialogOpen}>
-          <DynamicUIElementContent className="max-w-sm">
-            <DynamicUIElementHeader>
-              <DynamicUIElementTitle>{t("settings.language")}</DynamicUIElementTitle>
-            </DynamicUIElementHeader>
-            <div className="space-y-1 py-2">
-              {LOCALES.map((loc) => (
-                <button
-                  key={loc}
-                  onClick={() => { setLocale(loc); setLangDialogOpen(false); }}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-[0.3rem] px-3 py-2.5 text-left transition-colors",
-                    locale === loc ? "bg-primary text-primary-foreground" : "hover:bg-muted"
-                  )}
-                >
-                  <span className="text-sm font-medium">{LOCALE_LABELS[loc]}</span>
-                  <span className={cn("text-xs font-mono", locale === loc ? "text-primary-foreground/70" : "text-muted-foreground")}>{loc}</span>
-                  <div className="flex-1" />
-                  {locale === loc && <Check className="h-4 w-4" />}
-                </button>
-              ))}
-            </div>
-          </DynamicUIElementContent>
-        </DynamicUIElement>
-        <SRow
-          icon={<Calendar className="h-4 w-4 text-foreground" />}
-          title={t("settings.weekStartsOn")}
-          meta={t("settings.monday")}
-        />
-      </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Device Group ───────────────────────────────────── */}
-      <SGroupHeader label={t("settings.groupDevice")} />
-      <div className="bg-background">
-        <SToggleRow
-          icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
-          title={t("settings.storeMachineMode")}
-          meta={t("settings.restrictToStoreApps")}
-          checked={storeMachine}
-          onChange={() => {
-            if (storeMachine) {
-              setExitPinInput(""); setExitPinError("");
-              setExitPinDialog(true);
-              return;
-            }
-            if (!deviceName) {
-              setDeviceNameInput("");
-              setDeviceNameDialog(true);
-              return;
-            }
-            setStoreMachine(true);
-            registerStoreDevice(getOrCreateDeviceId(), deviceName).catch(console.error);
-          }}
-          isFirst
-        />
-        <SRow
-          icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
-          title={t("settings.deviceName")}
-          meta={deviceName || t("settings.notSet")}
-          onClick={() => { setDeviceNameInput(deviceName); setDeviceNameDialog(true); }}
-          right={deviceName ? <span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{deviceName}</span> : undefined}
-        />
-        <SRow
-          icon={<KeyRound className="h-4 w-4 text-foreground" />}
-          title={t("settings.punchInCode")}
-          meta={myCode ? t("settings.codeSet") : t("settings.setFourDigit")}
-          onClick={() => { setMyCodeInput(""); setMyCodeDialog(true); }}
-          right={myCode ? <SBadge tone="ok">{t("settings.setBadge")}</SBadge> : undefined}
-        />
-      </div>
-
-      {/* ─── Store Devices Group (admin only) ─────────────── */}
-      {isAdmin && (
-        <>
-          <SGroupHeader label="Store Devices" />
-          <div className="bg-background">
-            {orgDevices.length === 0 ? (
-              <div className="px-[18px] py-4">
-                <p className="text-xs text-muted-foreground">No devices registered. Enable store machine mode on a device to register it.</p>
+      {/* ─── Preferences Sub-Panel ───────────────────────────── */}
+      <DynamicUIElement open={subPanel === "preferences"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupPreferences")}>{t("settings.groupPreferences")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupPreferences")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SRow
+              icon={<PanelLeft className="h-4 w-4 text-foreground" />}
+              title={t("settings.navigationMode")}
+              meta={navMode === "sidebar" ? t("settings.sidebar") : t("settings.bottomBar")}
+              right={
+                <div className="flex gap-1 shrink-0">
+                  {([
+                    { mode: "sidebar" as NavMode, label: t("settings.side") },
+                    { mode: "bottombar" as NavMode, label: t("settings.tab") },
+                  ]).map(({ mode, label }) => (
+                    <button
+                      key={mode}
+                      onClick={() => { hapticSuccess(); setNavMode(mode); }}
+                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                        navMode === mode
+                          ? "bg-foreground text-background"
+                          : "bg-muted text-muted-foreground border border-border"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              }
+              isFirst
+            />
+            <SRow
+              icon={<Moon className="h-4 w-4 text-foreground" />}
+              title={t("settings.darkMode")}
+              meta={
+                themeMode === "system" ? (t("settings.themeSystem") || "Follow system")
+                : themeMode === "light" ? (t("settings.themeLight") || "Light")
+                : (t("settings.themeDark") || "Dark")
+              }
+              right={
+                <div className="flex gap-1 shrink-0">
+                  {([
+                    { mode: "system" as ThemeMode, label: t("settings.themeSystem") || "System" },
+                    { mode: "light" as ThemeMode,  label: t("settings.themeLight")  || "Light"  },
+                    { mode: "dark" as ThemeMode,   label: t("settings.themeDark")   || "Dark"   },
+                  ]).map(({ mode, label }) => (
+                    <button
+                      key={mode}
+                      onClick={() => { hapticSuccess(); applyThemeMode(mode); }}
+                      className={`px-2 py-0.5 text-[11px] font-medium rounded transition-colors ${
+                        themeMode === mode
+                          ? "bg-foreground text-background"
+                          : "bg-muted text-muted-foreground border border-border"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
+            <button
+              type="button"
+              onClick={() => setLangDialogOpen(true)}
+              className="flex items-center gap-3 px-[18px] py-3.5 w-full border-t border-border text-left"
+            >
+              <IconTile><Languages className="h-4 w-4 text-foreground" /></IconTile>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">{t("settings.language")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{LOCALE_LABELS[locale]}</p>
               </div>
-            ) : (
-              orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean; lastSeenAt: { toDate?: () => Date } }, i: number) => (
-                <SRow
-                  key={device.id.toString()}
-                  icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
-                  title={device.name || "Unnamed device"}
-                  meta={device.deviceId.slice(0, 8)}
-                  isFirst={i === 0}
-                  right={device.enabled ? <SBadge tone="ok">Active</SBadge> : <SBadge>Off</SBadge>}
-                  onClick={() => {
-                    setManageDeviceTarget(device);
-                    setManageDeviceNameInput(device.name);
-                    setManageDeviceDialog(true);
-                  }}
-                />
-              ))
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+            </button>
+            <DynamicUIElement open={langDialogOpen} onOpenChange={setLangDialogOpen}>
+              <DynamicUIElementContent className="max-w-sm">
+                <DynamicUIElementHeader>
+                  <DynamicUIElementTitle>{t("settings.language")}</DynamicUIElementTitle>
+                </DynamicUIElementHeader>
+                <div className="space-y-1 py-2">
+                  {LOCALES.map((loc) => (
+                    <button
+                      key={loc}
+                      onClick={() => { setLocale(loc); setLangDialogOpen(false); }}
+                      className={cn(
+                        "flex w-full items-center gap-3 rounded-[0.3rem] px-3 py-2.5 text-left transition-colors",
+                        locale === loc ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                      )}
+                    >
+                      <span className="text-sm font-medium">{LOCALE_LABELS[loc]}</span>
+                      <span className={cn("text-xs font-mono", locale === loc ? "text-primary-foreground/70" : "text-muted-foreground")}>{loc}</span>
+                      <div className="flex-1" />
+                      {locale === loc && <Check className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              </DynamicUIElementContent>
+            </DynamicUIElement>
+            <SRow
+              icon={<Calendar className="h-4 w-4 text-foreground" />}
+              title={t("settings.weekStartsOn")}
+              meta={t("settings.monday")}
+            />
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
+      {/* ─── Device Sub-Panel ────────────────────────────────── */}
+      <DynamicUIElement open={subPanel === "device"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupDevice")}>{t("settings.groupDevice")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupDevice")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SToggleRow
+              icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+              title={t("settings.storeMachineMode")}
+              meta={t("settings.restrictToStoreApps")}
+              checked={storeMachine}
+              onChange={() => {
+                if (storeMachine) {
+                  setExitPinInput(""); setExitPinError("");
+                  setExitPinDialog(true);
+                  return;
+                }
+                if (!deviceName) {
+                  setDeviceNameInput("");
+                  setDeviceNameDialog(true);
+                  return;
+                }
+                setStoreMachine(true);
+                registerStoreDevice(getOrCreateDeviceId(), deviceName).catch(console.error);
+              }}
+              isFirst
+            />
+            <SRow
+              icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+              title={t("settings.deviceName")}
+              meta={deviceName || t("settings.notSet")}
+              onClick={() => { setDeviceNameInput(deviceName); setDeviceNameDialog(true); }}
+              right={deviceName ? <span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{deviceName}</span> : undefined}
+            />
+            <SRow
+              icon={<KeyRound className="h-4 w-4 text-foreground" />}
+              title={t("settings.punchInCode")}
+              meta={myCode ? t("settings.codeSet") : t("settings.setFourDigit")}
+              onClick={() => { setMyCodeInput(""); setMyCodeDialog(true); }}
+              right={myCode ? <SBadge tone="ok">{t("settings.setBadge")}</SBadge> : undefined}
+            />
+            {isAdmin && orgDevices.length > 0 && (
+              <>
+                <SGroupHeader label="Store Devices" />
+                {orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean; lastSeenAt: { toDate?: () => Date } }, i: number) => (
+                  <SRow
+                    key={device.id.toString()}
+                    icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+                    title={device.name || "Unnamed device"}
+                    meta={device.deviceId.slice(0, 8)}
+                    isFirst={i === 0}
+                    right={device.enabled ? <SBadge tone="ok">Active</SBadge> : <SBadge>Off</SBadge>}
+                    onClick={() => {
+                      setManageDeviceTarget(device);
+                      setManageDeviceNameInput(device.name);
+                      setManageDeviceDialog(true);
+                    }}
+                  />
+                ))}
+              </>
             )}
           </div>
-        </>
-      )}
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── Data Group ─────────────────────────────────────── */}
-      <SGroupHeader label={t("settings.groupData")} />
-      <div className="bg-background">
-        <SRow
-          icon={<Download className="h-4 w-4 text-foreground" />}
-          title={t("settings.exportData")}
-          meta={t("settings.downloadCSV")}
-          isFirst
-        />
-        <SRow
-          icon={<Activity className="h-4 w-4 text-foreground" />}
-          title={t("settings.activityLog")}
-          meta={t("settings.recentActivity")}
-        />
-      </div>
+      {/* ─── Data Sub-Panel ──────────────────────────────────── */}
+      <DynamicUIElement open={subPanel === "data"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupData")}>{t("settings.groupData")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupData")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SRow
+              icon={<Download className="h-4 w-4 text-foreground" />}
+              title={t("settings.exportData")}
+              meta={t("settings.downloadCSV")}
+              isFirst
+            />
+            <SRow
+              icon={<Activity className="h-4 w-4 text-foreground" />}
+              title={t("settings.activityLog")}
+              meta={t("settings.recentActivity")}
+            />
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
-      {/* ─── About Group ────────────────────────────────────── */}
-      <SGroupHeader label={t("settings.groupAbout")} />
-      <div className="bg-background">
-        <SRow
-          icon={<Info className="h-4 w-4 text-foreground" />}
-          title={t("settings.aboutAppName")}
-          right={<span className="text-xs text-muted-foreground font-mono tabular-nums">beta-0.1.0</span>}
-          isFirst
-        />
-        <SRow
-          icon={<FileText className="h-4 w-4 text-foreground" />}
-          title={t("settings.terms")}
-        />
-        <SRow
-          icon={<Shield className="h-4 w-4 text-foreground" />}
-          title={t("settings.privacy")}
-        />
-        <SRow
-          icon={<HelpCircle className="h-4 w-4 text-foreground" />}
-          title={t("settings.helpSupport")}
-        />
-      </div>
+      {/* ─── About Sub-Panel ─────────────────────────────────── */}
+      <DynamicUIElement open={subPanel === "about"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupAbout")}>{t("settings.groupAbout")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupAbout")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SRow
+              icon={<Info className="h-4 w-4 text-foreground" />}
+              title={t("settings.aboutAppName")}
+              right={<span className="text-xs text-muted-foreground font-mono tabular-nums">beta-0.1.0</span>}
+              isFirst
+            />
+            <SRow
+              icon={<FileText className="h-4 w-4 text-foreground" />}
+              title={t("settings.terms")}
+            />
+            <SRow
+              icon={<Shield className="h-4 w-4 text-foreground" />}
+              title={t("settings.privacy")}
+            />
+            <SRow
+              icon={<HelpCircle className="h-4 w-4 text-foreground" />}
+              title={t("settings.helpSupport")}
+            />
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
       {/* ─── Sign Out Button ────────────────────────────────── */}
       <div className="px-[18px] py-5">

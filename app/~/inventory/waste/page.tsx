@@ -417,9 +417,9 @@ function WasteLogPage() {
         }
       />
       <PageTabs tabs={[
-        { label: t("nav.inventory"), href: "/inventory" },
-        { label: t("nav.suppliers"), href: "/suppliers" },
-        { label: t("nav.wasteLog"), href: "/inventory/waste" },
+        { label: t("nav.inventory"), href: "/~/inventory" },
+        { label: t("nav.suppliers"), href: "/~/suppliers" },
+        { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
       ]} />
 
       <div className="p-4 lg:p-6 space-y-6">

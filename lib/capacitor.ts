@@ -29,8 +29,8 @@ export function useIsCapacitor(): boolean {
 // promotional campaigns, pricing/changelog marketing pages) that don't belong
 // inside the operator app.
 export const CAPACITOR_HIDDEN_HREFS: ReadonlySet<string> = new Set([
-  "/marketing",
-  "/builder",
+  "/~/marketing",
+  "/~/builder",
   "/pricing",
   "/changelog",
 ]);

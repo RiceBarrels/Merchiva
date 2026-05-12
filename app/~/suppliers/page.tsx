@@ -462,9 +462,9 @@ export default function SuppliersPage() {
       <PermissionGuard section="inventory">
         <PageHeader title={t("nav.suppliers")} />
         <PageTabs tabs={[
-          { label: t("nav.inventory"), href: "/inventory" },
-          { label: t("nav.suppliers"), href: "/suppliers" },
-          { label: t("nav.wasteLog"), href: "/inventory/waste" },
+          { label: t("nav.inventory"), href: "/~/inventory" },
+          { label: t("nav.suppliers"), href: "/~/suppliers" },
+          { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
         ]} />
         <div className="flex h-[60vh] items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -500,9 +500,9 @@ export default function SuppliersPage() {
           }
         />
         <PageTabs tabs={[
-          { label: t("nav.inventory"), href: "/inventory" },
-          { label: t("nav.suppliers"), href: "/suppliers" },
-          { label: t("nav.wasteLog"), href: "/inventory/waste" },
+          { label: t("nav.inventory"), href: "/~/inventory" },
+          { label: t("nav.suppliers"), href: "/~/suppliers" },
+          { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
         ]} />
 
         {/* Summary Cards */}

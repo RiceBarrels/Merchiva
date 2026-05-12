@@ -341,8 +341,8 @@ export default function MarketingPage() {
     <PermissionGuard section="sales">
       <PageHeader title={t("marketing.title")} subtitle={t("marketing.subtitle")} />
       <PageTabs tabs={[
-        { label: t("nav.customers"), href: "/customers" },
-        { label: t("nav.marketing"), href: "/marketing" },
+        { label: t("nav.customers"), href: "/~/customers" },
+        { label: t("nav.marketing"), href: "/~/marketing" },
       ]} />
 
       <div className="p-4 lg:p-6 space-y-4">

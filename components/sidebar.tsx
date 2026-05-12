@@ -87,7 +87,11 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { clearCache } from "@/lib/cache";
 import { createOrg } from "@/lib/spacetimedb/actions";
 import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
+import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import {
+  Moon,
+  Sun,
+  Monitor,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -377,6 +381,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [themeMode, setThemeMode] = useThemeMode();
   const unreadCount = useUnreadCount();
 
   // Paths allowed when the device is in store-machine mode.
@@ -488,6 +494,51 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             <NotificationCenter />
           </DynamicUIElementContent>
         </DynamicUIElement>
+        <SidebarTooltip label={t("settings.darkMode")} show={!!collapsed}>
+          <button
+            onClick={() => { hapticLight(); setThemeOpen(true); }}
+            className={cn(
+              "flex w-full items-center rounded text-[13px] font-medium transition-colors",
+              collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
+              "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            {themeMode === "dark" ? <Moon className="h-[15px] w-[15px] shrink-0" /> : themeMode === "light" ? <Sun className="h-[15px] w-[15px] shrink-0" /> : <Monitor className="h-[15px] w-[15px] shrink-0" />}
+            {!collapsed && (t("settings.darkMode"))}
+          </button>
+        </SidebarTooltip>
+        <DynamicUIElement open={themeOpen} onOpenChange={setThemeOpen}>
+          <DynamicUIElementContent className="max-w-xs">
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.darkMode")}>{t("settings.darkMode")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription className="hidden">{t("settings.darkMode")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            <div className="flex flex-col gap-1.5 p-1">
+              {([
+                { mode: "system" as ThemeMode, icon: Monitor, label: t("settings.themeSystem") || "System", desc: t("settings.themeSystemDesc") || "Match your device" },
+                { mode: "light" as ThemeMode, icon: Sun, label: t("settings.themeLight") || "Light", desc: t("settings.themeLightDesc") || "Always light" },
+                { mode: "dark" as ThemeMode, icon: Moon, label: t("settings.themeDark") || "Dark", desc: t("settings.themeDarkDesc") || "Always dark" },
+              ]).map(({ mode, icon: Icon, label, desc }) => (
+                <button
+                  key={mode}
+                  onClick={() => { hapticSuccess(); setThemeMode(mode); }}
+                  className={cn(
+                    "flex items-center gap-3 w-full px-3 py-3 rounded-[0.3rem] text-left transition-colors",
+                    themeMode === mode
+                      ? "bg-foreground text-background"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{label}</p>
+                    <p className={cn("text-xs mt-0.5", themeMode === mode ? "text-background/60" : "text-muted-foreground")}>{desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
             href="/~/settings"
@@ -569,7 +620,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // any deep links straight to the dashboard.
   useEffect(() => {
     if (isCapacitor && isCapacitorHiddenPath(pathname)) {
-      router.replace("/dashboard");
+      router.replace("/~/dashboard");
     }
   }, [isCapacitor, pathname, router]);
 

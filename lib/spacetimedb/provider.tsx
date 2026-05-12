@@ -9,9 +9,11 @@ import {
   storeToken,
   setConnection,
   clearConnection,
+  getConnection,
 } from "./client";
 import { useAuth } from "@/lib/auth/context";
 import { useT } from "@/lib/i18n/context";
+import { mutationQueue } from "@/lib/offline";
 import type { ReactNode } from "react";
 
 interface SpacetimeProviderProps {
@@ -94,6 +96,19 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         setConnected(true);
         storeToken(newToken);
         setConnection(conn);
+        // Flush offline mutation queue after subscriptions settle
+        setTimeout(async () => {
+          try {
+            const pending = await mutationQueue.getAll();
+            if (pending.length > 0) {
+              console.log(`[SpacetimeDB] Flushing ${pending.length} offline mutations...`);
+              const c = getConnection();
+              if (c) await mutationQueue.flush(c);
+            }
+          } catch (err) {
+            console.warn("[SpacetimeDB] Queue flush failed:", err);
+          }
+        }, 3000);
         conn.subscriptionBuilder().subscribe([
           "SELECT * FROM user",
           "SELECT * FROM organization",

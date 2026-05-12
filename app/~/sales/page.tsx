@@ -111,9 +111,9 @@ export default function SalesPage() {
         }
       />
       <PageTabs tabs={[
-        { label: t("nav.sales"), href: "/sales" },
-        { label: t("nav.reports"), href: "/reports" },
-        { label: t("nav.finances"), href: "/finances" },
+        { label: t("nav.sales"), href: "/~/sales" },
+        { label: t("nav.reports"), href: "/~/reports" },
+        { label: t("nav.finances"), href: "/~/finances" },
       ]} />
 
       {/* Summary cards */}

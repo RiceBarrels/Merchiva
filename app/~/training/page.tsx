@@ -693,8 +693,8 @@ export default function TrainingPage() {
         subtitle={t("training.subtitle")}
       />
       <PageTabs tabs={[
-        { label: t("nav.staffing"), href: "/staffing" },
-        { label: t("nav.training"), href: "/training" },
+        { label: t("nav.staffing"), href: "/~/staffing" },
+        { label: t("nav.training"), href: "/~/training" },
       ]} />
       <div className="px-4 lg:px-6 py-4 max-w-3xl">
         <Tabs defaultValue="checklists">

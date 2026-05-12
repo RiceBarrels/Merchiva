@@ -200,9 +200,9 @@ export default function FinancesPage() {
           subtitle={t("finances.subtitle")}
         />
         <PageTabs tabs={[
-          { label: t("nav.sales"), href: "/sales" },
-          { label: t("nav.reports"), href: "/reports" },
-          { label: t("nav.finances"), href: "/finances" },
+          { label: t("nav.sales"), href: "/~/sales" },
+          { label: t("nav.reports"), href: "/~/reports" },
+          { label: t("nav.finances"), href: "/~/finances" },
         ]} />
 
         <div className="px-4 sm:px-6 pb-6">

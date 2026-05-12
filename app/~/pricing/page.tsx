@@ -818,8 +818,8 @@ export default function PricingPage() {
       <PermissionGuard section="products">
         <PageHeader title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
         <PageTabs tabs={[
-          { label: t("nav.products"), href: "/products" },
-          { label: t("nav.pricing"), href: "/pricing" },
+          { label: t("nav.products"), href: "/~/products" },
+          { label: t("nav.pricing"), href: "/~/pricing" },
         ]} />
         <div className="flex items-center justify-center py-24">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -832,8 +832,8 @@ export default function PricingPage() {
     <PermissionGuard section="products">
       <PageHeader title={t("pricing.title")} subtitle={t("pricing.subtitle")} />
       <PageTabs tabs={[
-        { label: t("nav.products"), href: "/products" },
-        { label: t("nav.pricing"), href: "/pricing" },
+        { label: t("nav.products"), href: "/~/products" },
+        { label: t("nav.pricing"), href: "/~/pricing" },
       ]} />
 
       <div className="p-4 sm:p-6 space-y-4">

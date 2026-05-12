@@ -216,7 +216,7 @@ export default function BuilderPage() {
                     : site.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
                 <Link
-                  href={`/builder/${site.id}`}
+                  href={`/~/builder/${site.id}`}
                   title={t("builder.list.edit")}
                   className="p-1.5 rounded-[0.3rem] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >

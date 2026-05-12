@@ -29,18 +29,35 @@ export function useOfflineSync(): {
   const [todos] = useTable(tables.todo);
   const [notifications] = useTable(tables.notification);
   const [wasteLogs] = useTable(tables.wasteLog);
+  const [products] = useTable(tables.product);
+  const [staffMembers] = useTable(tables.staffMember);
+  const [salesRecords] = useTable(tables.salesRecord);
+  const [chatConversations] = useTable(tables.chatConversation);
+  const [chatMessages] = useTable(tables.chatMessage);
 
   const cacheData = useCallback(async () => {
     let orgId: string;
     try {
       orgId = getActiveOrgId();
     } catch {
-      // Org not loaded yet, skip caching
       return;
     }
 
     setIsCaching(true);
     try {
+      // Keep last 30 messages per conversation
+      const msgsByConv = new Map<string, Record<string, unknown>[]>();
+      for (const m of chatMessages) {
+        const convId = String((m as Record<string, unknown>).conversationId ?? "");
+        if (!msgsByConv.has(convId)) msgsByConv.set(convId, []);
+        msgsByConv.get(convId)!.push({ ...m });
+      }
+      const limitedMsgs: Record<string, unknown>[] = [];
+      for (const msgs of msgsByConv.values()) {
+        msgs.sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")));
+        limitedMsgs.push(...msgs.slice(-30));
+      }
+
       const snapshot: OrgSnapshot = {
         orgId,
         cachedAt: new Date().toISOString(),
@@ -49,6 +66,11 @@ export function useOfflineSync(): {
         todos: todos.map((t) => ({ ...t })),
         notifications: notifications.map((n) => ({ ...n })),
         wasteLogs: wasteLogs.map((w) => ({ ...w })),
+        products: products.map((p) => ({ ...p })),
+        staffMembers: staffMembers.map((s) => ({ ...s })),
+        salesRecords: salesRecords.map((s) => ({ ...s })),
+        chatConversations: chatConversations.map((c) => ({ ...c })),
+        chatMessages: limitedMsgs,
       };
 
       await offlineCache.cacheOrgData(orgId, snapshot);
@@ -58,11 +80,10 @@ export function useOfflineSync(): {
     } finally {
       setIsCaching(false);
     }
-  }, [shifts, inventoryItems, todos, notifications, wasteLogs]);
+  }, [shifts, inventoryItems, todos, notifications, wasteLogs, products, staffMembers, salesRecords, chatConversations, chatMessages]);
 
   // Debounced cache writes when data changes
   useEffect(() => {
-    // Don't cache until we have at least some data
     if (
       shifts.length === 0 &&
       inventoryItems.length === 0 &&

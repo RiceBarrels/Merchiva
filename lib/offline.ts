@@ -19,6 +19,11 @@ export interface OrgSnapshot {
   todos: Record<string, unknown>[];
   notifications: Record<string, unknown>[];
   wasteLogs: Record<string, unknown>[];
+  products: Record<string, unknown>[];
+  staffMembers: Record<string, unknown>[];
+  salesRecords: Record<string, unknown>[];
+  chatConversations: Record<string, unknown>[];
+  chatMessages: Record<string, unknown>[];
 }
 
 // ─── QueuedMutation ─────────────────────────────────────────────────────────

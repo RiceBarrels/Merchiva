@@ -26,16 +26,16 @@ export function PageTabs({ tabs }: { tabs: PageTab[] }) {
         const claimedByOther = otherHrefs.some(
           (h) => pathname === h || pathname.startsWith(h + "/")
         );
-        const isActive =
-          !claimedByOther &&
-          (pathname === tab.href || pathname.startsWith(tab.href + "/"));
+        const isActive = pathname === tab.href;
+        
+        console.log("pathname", pathname, "tab.href", tab.href, "isActive", isActive);
         return (
           <Link
             key={tab.href}
             href={tab.href}
             onClick={() => { hapticLight(); _skipTransition = true; }}
             className={cn(
-              "px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors shrink-0",
+              "px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors shrink-0 flex justify-center items-center",
               isActive
                 ? "border-foreground text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
