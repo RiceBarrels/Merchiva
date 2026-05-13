@@ -635,6 +635,23 @@ export async function dismissNotification(notificationId: string): Promise<void>
   return conn().reducers.dismissNotification({ notificationId });
 }
 
+export async function createNotification(data: {
+  type: string;
+  title: string;
+  body: string;
+  link?: string;
+}): Promise<void> {
+  const c = conn();
+  return c.reducers.createNotification({
+    organizationId: orgId(),
+    targetIdentity: c.identity,
+    type: data.type,
+    title: data.title,
+    body: data.body,
+    link: data.link ?? null,
+  });
+}
+
 // ─── Waste Log ──────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

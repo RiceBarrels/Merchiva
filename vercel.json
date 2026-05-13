@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/merchiva/scan",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

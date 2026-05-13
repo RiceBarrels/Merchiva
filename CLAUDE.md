@@ -1,60 +1,50 @@
-# CLAUDE.md — Merchiva Project Instructions
+# CLAUDE.md — Merchiva
 
 @AGENTS.md
 
 ## Quick Context
 
-This is **Merchiva**, a Next.js 16 + Supabase + Square app for small business daily management. The UI uses shadcn/ui v4 with Tailwind CSS v4.
+Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business management. No Supabase — SpacetimeDB is the sole data layer. The UI uses shadcn/ui v4 with Tailwind CSS v4. Native builds via Capacitor.
 
 ## Critical Rules
 
-1. **Read Next.js docs first.** This is Next.js 16 — APIs differ from your training data. Check `node_modules/next/dist/docs/` before writing any code.
-2. **Never use `any` freely.** Only in Supabase row mappers, marked with `eslint-disable`.
-3. **Never call Supabase from components directly.** Always go through `lib/db/*.ts`.
-4. **Always handle async errors.** Every `useEffect` data fetch must have `.catch()` and `.finally()`.
-5. **Never expose secrets.** `SUPABASE_SERVICE_ROLE_KEY` is server-only. Square tokens live in the DB, not env vars.
-6. **RLS is non-negotiable.** Every table has it. Every new table must have it.
+1. **Read Next.js docs first.** This is Next.js 16 — check `node_modules/next/dist/docs/` before writing any code.
+2. **No free `any`.** Only in SpacetimeDB row mappers, marked with `eslint-disable`.
+3. **No direct DB calls from components.** Use `lib/spacetimedb/hooks.ts` for reads, `lib/spacetimedb/actions.ts` for writes.
+4. **Handle async errors.** Every `useEffect` data fetch needs `.catch()` and `.finally()`.
+5. **No secrets in client code.** `WORKOS_API_KEY` is server-only.
+6. **All app links use `/~/` prefix.** Internal navigation: `/~/dashboard`, `/~/inventory`, etc.
 7. **Test builds before deploying.** `bun run build` must pass clean.
 
 ## Style Guide
 
-- Anti-AI aesthetics: sharp corners (`0.3rem`), solid borders, Stone/Slate palette, no glow effects.
-- Font: Inter for UI, Geist Mono for data/code.
-- Compact density: tight spacing, data-rich tables, minimal whitespace.
-- Icons: Lucide React only, `h-4 w-4` default size.
-
-## Current Architecture
-
-- **Auth:** Supabase Auth (email/password), session via cookies (@supabase/ssr)
-- **Multi-tenant:** Organizations → org_members (owner/manager/staff roles)
-- **Permissions:** JSONB on org_members, checked via `usePermissions()` hook
-- **Square:** Opt-in integration via Settings page, syncs to Supabase tables
-- **Pages:** Dashboard, Inventory, Sales, Staffing, Products, Team, Settings
-- **Deploy:** Vercel at `project-management-phi-red.vercel.app`
+- Sharp corners (`0.3rem`), solid borders, Stone/Slate palette, no glow effects.
+- Font: Inter for UI, Geist Mono for data.
+- Compact density, data-rich tables, minimal whitespace.
+- Icons: Lucide React, `h-4 w-4` default.
 
 ## Common Tasks
 
 ### Add a new page
-1. Create `app/(app)/newpage/page.tsx` (client component with loading state)
-2. Add nav item to `components/sidebar.tsx` (with permission check)
+1. Create `app/~/newpage/page.tsx` (client component with loading state)
+2. Add nav item to `components/sidebar.tsx` and `components/bottom-bar.tsx`
 3. Wrap content in `<PermissionGuard section="newpage">`
-4. Add permission key to `Permissions` type in `lib/types.ts`
-5. Update `ownerPermissions()` and `defaultPermissions()` in `lib/db/team.ts`
+4. Add to a `PageTabs` group if it belongs to a tab cluster
+5. Add i18n keys to all 6 locale files in `messages/`
 
-### Add a new DB table
-1. Write migration SQL with RLS policy (user_id + organization_id pattern)
-2. Run via Supabase SQL Editor or MCP
-3. Add TypeScript interface to `lib/types.ts`
-4. Create `lib/db/newtable.ts` with query functions
-5. Update `supabase/schema.sql` for reference
+### Add a SpacetimeDB table
+1. Define table + reducers in the SpacetimeDB module
+2. Run `spacetime generate` — output goes to `lib/spacetimedb/generated/`
+3. Add subscription hook in `lib/spacetimedb/hooks.ts` or domain hook in `hooks/`
+4. Add action wrappers in `lib/spacetimedb/actions.ts`
 
 ### Fix a loading bug
-- Check if `useEffect` has `.catch()` and `.finally(() => setLoading(false))`
-- Check RLS policies — user must match `user_id` or be an active org member
-- Check if the Supabase client is correct (server vs browser)
+- Check `useEffect` has `.catch()` and `.finally(() => setLoading(false))`
+- Check SpacetimeDB connection status in provider
+- Check permissions — user may not have access
+- Check if the SpacetimeDB subscription is set up correctly
 
-### Build Native App (Capacitor)
-1. `npx cap sync` — sync web assets to native projects
-2. `npx cap open ios` — open in Xcode
-3. `npx cap open android` — open in Android Studio
-4. The app loads from the Vercel deployment URL, not a local build
+### Build native app
+1. `npx cap sync` — sync web assets
+2. `npx cap open ios` / `npx cap open android`
+3. App loads from Vercel deployment URL

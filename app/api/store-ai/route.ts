@@ -1,63 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
+const MODEL = process.env.OPENROUTER_MODEL || "moonshotai/kimi-k2";
 
-function buildSystemPrompt(context: Record<string, unknown>): string {
-  return `You are Merchiva's store AI assistant. You have access to real-time store data.
+function buildSystemPrompt(context: Record<string, unknown>, lang: string): string {
+  return `You are Mr. Merchiva, an AI ops agent for a small business. You have full access to the store's real-time data. You are direct, data-driven, and concise.
 
-CURRENT STORE DATA:
+STORE DATA:
 ${JSON.stringify(context, null, 2)}
 
-You can answer questions like:
-- "What were today's sales?" → Look at sales data
-- "Who's working today?" → Look at shifts/staff
-- "Which products are low stock?" → Look at inventory
-- "What's our best selling product?" → Look at products
-- "How much waste this week?" → Look at waste data
-- "Any pending requests?" → Look at notifications
+CAPABILITIES:
+- Answer any question about inventory, sales, staffing, products, suppliers, finances
+- Analyze trends, spot anomalies, give recommendations
+- Suggest actions that the owner can approve
 
-ACTIONS you can suggest (wrap in \`\`\`action blocks):
-- {"action": "updatePrice", "productId": "xxx", "newPrice": 5.99}
-- {"action": "addShift", "memberId": "xxx", "date": "2026-05-05", "startTime": "07:00", "endTime": "14:00"}
-- {"action": "createNotification", "title": "...", "body": "..."}
-- {"action": "generateReport", "type": "sales|inventory|staff"}
+ACTIONS:
+When you want to perform an action, output a JSON block wrapped in \`\`\`action tags. The user will see an "Approve" button.
+Available actions:
 
-When suggesting actions, explain what will happen. The client will parse and execute these.
+\`\`\`action
+{"action": "addShift", "staffName": "Name", "date": "YYYY-MM-DD", "startTime": "HH:MM", "endTime": "HH:MM", "shiftType": "morning|afternoon|evening|closing", "staffRoles": ["Barista"]}
+\`\`\`
 
-ANOMALY DETECTION:
-If the data shows unusual patterns, proactively mention them:
-- Sales significantly below/above prediction
-- Multiple low-stock items
-- Shifts with no staff assigned
-- High waste cost days
+\`\`\`action
+{"action": "updateInventory", "itemName": "Name", "quantity": 10, "type": "in|out|adjustment"}
+\`\`\`
 
-Be concise, use numbers. Respond in the user's language.`;
-}
+\`\`\`action
+{"action": "createPurchaseOrder", "supplier": "Name", "items": [{"name": "Item", "quantity": 10, "unitCost": 5.00}]}
+\`\`\`
 
-function buildWeeklySummaryPrompt(context: Record<string, unknown>): string {
-  return `You are Merchiva's store AI assistant generating a structured weekly summary report.
+\`\`\`action
+{"action": "createNotification", "title": "...", "body": "...", "type": "general|inventory_low|shift_trade"}
+\`\`\`
 
-CURRENT STORE DATA:
-${JSON.stringify(context, null, 2)}
+\`\`\`action
+{"action": "updatePrice", "productName": "Name", "newPrice": 5.99}
+\`\`\`
 
-Generate a structured weekly report covering these sections. Use real numbers from the data. If a section has no data, say "No data available."
+\`\`\`action
+{"action": "addStaffMember", "name": "Name", "role": "Barista", "hourlyRate": 18.00}
+\`\`\`
 
-SECTIONS:
-1. **Revenue Overview** — Total revenue this week, comparison to last week if available, daily breakdown trend
-2. **Top Products** — Best sellers by revenue and by quantity, any underperformers
-3. **Staffing Coverage** — Shifts scheduled, any gaps or understaffed periods, overtime hours
-4. **Inventory Alerts** — Items below reorder point, items with recent stock changes, items trending toward stockout
-5. **Waste & Loss** — Total waste cost this week, most wasted items, waste as % of revenue
-6. **Key Recommendations** — 2-3 actionable suggestions based on the data patterns
+Q&A COMMAND:
+When you need the user to choose between options or answer a question, output a /ask command with a JSON array.
+Format: /ask '[{"q":"Your question here?","a":["Option A","Option B","Option C"]}]'
+You can ask multiple questions at once: /ask '[{"q":"Q1?","a":["A","B"]},{"q":"Q2?","a":["X","Y","Z"]}]'
+The user will see clickable buttons for each option. Their choice will be sent back as a message.
+Use this when:
+- You need clarification before taking action
+- Offering the user a choice (e.g. which supplier, which shift type, which product)
+- Confirming preferences
 
-Format as clean markdown. Be data-driven and concise. Use bullet points and numbers.
-Respond in the user's language if the context includes language preference, otherwise use English.`;
+FORMATTING:
+- You can use **Markdown** in your responses — bold, lists, tables, code blocks, headers, etc.
+- Use markdown formatting to make data clear: tables for comparisons, bullet lists for summaries, \`code\` for SKUs/IDs, **bold** for emphasis
+- Keep formatting clean and readable
+
+RULES:
+- Always explain what an action will do before suggesting it
+- Use actual data from the store context — never invent numbers
+- Be concise: use bullet points, mono numbers, short sentences
+- If data is missing, say so honestly
+- Respond in ${lang === "zh" ? "Chinese (简体中文)" : lang === "es" ? "Spanish" : lang === "fr" ? "French" : lang === "ar" ? "Arabic" : lang === "hi" ? "Hindi" : "English"}
+- When suggesting shifts, check existing shifts to avoid conflicts`;
 }
 
 async function callOpenRouter(
   messages: Array<{ role: string; content: string }>,
-  maxTokens: number = 1024
+  maxTokens: number = 1500
 ): Promise<string> {
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -65,62 +76,51 @@ async function callOpenRouter(
       "Content-Type": "application/json",
       Authorization: `Bearer ${OPENROUTER_API_KEY}`,
       "HTTP-Referer": "https://merchiva.com",
-      "X-Title": "Merchiva Store AI",
+      "X-Title": "Merchiva Mr. Merchiva",
     },
     body: JSON.stringify({
       model: MODEL,
       messages,
       max_tokens: maxTokens,
-      temperature: 0.7,
+      temperature: 0.5,
     }),
   });
 
   if (!response.ok) {
     const errBody = await response.text();
     console.error("[store-ai] OpenRouter error:", response.status, errBody);
-    throw new Error("AI service unavailable");
+    throw new Error(`AI service error: ${response.status}`);
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content ?? "Sorry, I could not generate a response.";
+  return data.choices?.[0]?.message?.content ?? "I couldn't generate a response. Please try again.";
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, history, context, type } = body;
+    const { message, history, context, type, lang } = body;
 
     if (!OPENROUTER_API_KEY) {
-      return NextResponse.json(
-        {
-          reply:
-            "AI assistant is not configured. Please set OPENROUTER_API_KEY in your environment variables.",
-        },
-        { status: 200 }
-      );
+      return NextResponse.json({
+        reply: "AI assistant is not configured. Set OPENROUTER_API_KEY in environment variables.",
+      });
     }
 
-    // ── Weekly summary mode ──────────────────────────────────────────────
     if (type === "weekly_summary") {
-      const systemPrompt = buildWeeklySummaryPrompt(context ?? {});
-      const messages = [
+      const systemPrompt = `You are Mr. Merchiva generating a weekly summary. Store data:\n${JSON.stringify(context ?? {}, null, 2)}\n\nGenerate a concise weekly report with: Revenue, Top Products, Staffing, Inventory Alerts, Recommendations. Use real numbers. Respond in ${lang === "zh" ? "Chinese" : "English"}.`;
+      const reply = await callOpenRouter([
         { role: "system", content: systemPrompt },
-        { role: "user", content: "Generate the weekly summary report for this store." },
-      ];
-
-      const reply = await callOpenRouter(messages, 2048);
+        { role: "user", content: "Generate the weekly summary." },
+      ], 2048);
       return NextResponse.json({ reply });
     }
 
-    // ── Standard chat mode ───────────────────────────────────────────────
     if (!message || typeof message !== "string") {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    const systemPrompt = buildSystemPrompt(context ?? {});
+    const systemPrompt = buildSystemPrompt(context ?? {}, lang ?? "en");
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -132,9 +132,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply });
   } catch (err) {
     console.error("[store-ai] Error:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "AI service temporarily unavailable" }, { status: 500 });
   }
 }

@@ -33,6 +33,15 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { useT } from "@/lib/i18n/context";
 import { useSpacetimeDB } from "spacetimedb/react";
+import { MerchivaChat } from "@/components/merchiva-chat-dashboard";
+
+function MerchivaChatEmbed() {
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      <MerchivaChat />
+    </div>
+  );
+}
 
 function formatTimeSeparator(date: Date, t: (k: string) => string): string {
   const now = new Date();
@@ -311,7 +320,28 @@ export default function ChatPage() {
           />
 
           <div className="flex-1 overflow-y-auto">
-            {conversations.length === 0 ? (
+            {/* Mr. Merchiva — AI assistant pinned at top */}
+            <button
+              onClick={() => setActiveConv({ id: "__merchiva__", organizationId: organizationId ?? "", type: "direct", name: "Mr. Merchiva", createdBy: null, createdAt: "", lastMessage: null, members: [] } as ChatConversation)}
+              className={`w-full text-left px-3 py-3 border-b border-border transition-colors ${
+                activeConv?.id === "__merchiva__" ? "bg-muted" : "hover:bg-muted/50"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.3rem] bg-stone-900 text-white">
+                  <svg width={18} height={18} viewBox="0 0 100 100"><path d="M14 14 L40 14 L50 42 L60 14 L86 14 L86 86 L14 86 Z" fill="currentColor" /></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Mr. Merchiva</p>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />online</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">Your AI ops agent</p>
+                </div>
+              </div>
+            </button>
+
+            {conversations.length === 0 && activeConv?.id !== "__merchiva__" ? (
               <div className="p-8 text-center space-y-2">
                 <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground opacity-40" />
                 <p className="text-sm text-muted-foreground">{t("chat.noConversations")}</p>
@@ -367,7 +397,9 @@ export default function ChatPage() {
         {/* ─── Chat View (Desktop: inline, Mobile: dialog) ─── */}
         {/* Desktop */}
         <div className="hidden sm:flex flex-1 flex-col">
-          {activeConv ? (
+          {activeConv?.id === "__merchiva__" ? (
+            <MerchivaChatEmbed />
+          ) : activeConv ? (
             <ChatView
               conv={activeConv}
               messages={messages}
@@ -408,7 +440,11 @@ export default function ChatPage() {
             <DynamicUIElementTitle mobileTitle={activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")} className="hidden">
               {activeConv ? getConvDisplayName(activeConv) : t("chat.chatFallback")}
             </DynamicUIElementTitle>
-            {activeConv && (
+            {activeConv?.id === "__merchiva__" ? (
+              <div className="flex flex-col h-full">
+                <MerchivaChatEmbed />
+              </div>
+            ) : activeConv ? (
               <div className="flex flex-col h-full">
                 <ChatView
                   conv={activeConv}
@@ -436,7 +472,7 @@ export default function ChatPage() {
                   hideHeader
                 />
               </div>
-            )}
+            ) : null}
           </DynamicUIElementContent>
         </DynamicUIElement>
       </div>

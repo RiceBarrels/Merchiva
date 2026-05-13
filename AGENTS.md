@@ -1,208 +1,173 @@
-# Agent Development Rules — Merchiva
+# Agent Rules — Merchiva
 
-## Project Overview
+## What Is This
 
-Merchiva is an AI-powered inventory prediction and daily management system for small businesses. It connects to Square POS for real data, uses Supabase for auth and storage, and provides sales forecasting, staffing management, and product performance tracking.
+Merchiva is a daily management platform for small businesses. It handles inventory, sales, staffing, products, pricing, customers, marketing, finances, reports, bookings, reviews, suppliers, training — plus a website builder and team chat. It connects to Square and Clover POS systems, uses SpacetimeDB as the sole data layer (no Supabase), and ships as a web app (Vercel) and native app (Capacitor).
 
----
-
-## 1. Tech Stack (Non-Negotiable)
+## Tech Stack
 
 | Layer | Tool | Notes |
 |:---|:---|:---|
-| **Runtime** | Bun | Use `bun install`, `bun run dev`. No npm/yarn. |
-| **Framework** | Next.js 16 (App Router) | **Read `node_modules/next/dist/docs/` before writing any code.** APIs may differ from training data. |
-| **Language** | TypeScript | Strict mode. No `any` except Supabase row mappers (mark with `eslint-disable`). |
-| **UI** | shadcn/ui v4 | Only import components you actually use. No UI bloat. |
-| **Styling** | Tailwind CSS v4 | Utility-first. No custom CSS files per component. |
-| **Icons** | Lucide React | `1.5px` stroke weight. Consistent sizing (`h-4 w-4` or `h-5 w-5`). |
-| **Charts** | Recharts | For all data visualization. |
-| **Auth + DB** | Supabase (@supabase/ssr) | Server client for layouts/API routes. Browser client for client components. |
-| **POS Integration** | Square SDK (v44+) | Uses `SquareClient` not legacy `Client`. Always check SDK docs. |
-| **Deployment** | Vercel | `npx vercel --prod --yes` to deploy. |
+| Runtime | Bun | `bun install`, `bun run dev`. No npm/yarn. |
+| Framework | Next.js 16 (App Router) | **Read `node_modules/next/dist/docs/` before writing code.** |
+| Language | TypeScript (strict) | No `any` except SpacetimeDB row mappers with `eslint-disable`. |
+| UI | shadcn/ui v4 | Only import what you use. |
+| Styling | Tailwind CSS v4 | Utility-first. No per-component CSS files. |
+| Icons | Lucide React | `h-4 w-4` default, `h-5 w-5` for nav. |
+| Charts | Recharts | All data visualization. |
+| Database | SpacetimeDB | Sole data layer. Real-time subscriptions. Generated types in `lib/spacetimedb/generated/`. |
+| POS | Square SDK (v44+), Clover | OAuth flow, sync to SpacetimeDB. |
+| Auth | WorkOS (`lib/auth/workos.ts`) | Email/password, OAuth. Session via cookies. |
+| Builder | Craft.js (`@craftjs/core`) | Visual page builder with drag-and-drop components. |
+| File Upload | UploadThing | Image uploads for products, sites, avatars. |
+| Email | Resend | Transactional emails (invites, etc.). |
+| i18n | Custom (`lib/i18n/`) | 6 locales: en, zh, es, fr, ar, hi. |
+| Native | Capacitor (iOS + Android) | Loads from Vercel URL. Haptics, safe area, status bar. |
+| Animation | Motion (Framer Motion) | Page transitions, micro-interactions. |
+| Deploy | Vercel | `npx vercel --prod --yes`. |
 
----
+## Route Structure
 
-## 2. Visual Philosophy: Anti-AI Aesthetics
+All authenticated pages live under `/~/`. Public pages are at root.
 
-We build **tools**, not **demos**. The UI must feel like professional software, not an AI template.
+```
+app/
+├── ~/                          # Authenticated app (sidebar + bottom bar)
+│   ├── layout.tsx              # Auth guard, SpacetimeDB provider, sidebar
+│   ├── dashboard/
+│   ├── inventory/              # + inventory/waste/ sub-route
+│   ├── sales/
+│   ├── staffing/
+│   ├── products/               # + products/[productId]/ sub-route
+│   ├── pricing/
+│   ├── customers/
+│   ├── marketing/
+│   ├── finances/
+│   ├── reports/
+│   ├── bookings/
+│   ├── reviews/
+│   ├── suppliers/
+│   ├── training/
+│   ├── membership/
+│   ├── builder/                # + builder/[siteId]/, [siteId]/theme/, [siteId]/membership/
+│   ├── chat/
+│   ├── settings/
+│   ├── pos/                    # POS terminal mode
+│   ├── punch-in/               # Staff punch clock
+│   ├── display/                # Store display mode
+│   └── api-settings/
+├── (auth)/login/, signup/      # Public auth
+├── api/                        # Route handlers
+│   ├── auth/                   # sign-in, sign-up, callback, oauth, refresh, verify-*
+│   ├── square/                 # catalog, inventory, orders, sync, validate, oauth/*
+│   ├── clover/                 # connect, callback, disconnect, sync
+│   ├── ai/                     # predict, train
+│   ├── forecast/               # forecast, weather, popular-times
+│   ├── payments/               # create-session, verify, refund
+│   ├── builder/                # chat, generate (AI site builder)
+│   ├── chat/                   # AI assistant
+│   ├── sites/publish/
+│   ├── store-ai/
+│   ├── team/                   # invite, accept, send-invite-email
+│   └── uploadthing/
+├── s/[slug]/                   # Published storefront (public)
+├── preview/[siteId]/           # Site preview
+├── pricing/, features/, about/, changelog/   # Landing pages
+├── setup/                      # First-time org setup
+└── invite/[token]/             # Accept team invite
+```
+
+## Key Directories
+
+```
+lib/
+├── spacetimedb/
+│   ├── client.ts               # SpacetimeDB connection
+│   ├── provider.tsx            # React context provider
+│   ├── auth.ts                 # SpacetimeDB auth bridge
+│   ├── actions.ts              # Reducer call wrappers
+│   ├── hooks.ts                # Data subscription hooks
+│   ├── hooks/                  # Domain-specific hooks (useInventory, useSales, etc.)
+│   └── generated/              # Auto-generated tables + reducers (DO NOT EDIT)
+├── db/                         # Legacy data access (being phased out)
+├── auth/                       # WorkOS auth (context + server helpers)
+├── builder/                    # Craft.js bridge, page templates, site values
+├── i18n/                       # Config, context, dictionary loader
+└── (other utilities)           # capacitor, haptics, theme, offline, forecast, etc.
+
+components/
+├── ui/                         # shadcn/ui primitives
+├── builder/                    # Website builder (editor, panels, craft-components/, craft-settings/)
+├── site-elements/              # Published site components (booking-form, login, gallery, etc.)
+├── flowfn/                     # Visual flow/function editor
+├── landing/                    # Public marketing pages
+├── sidebar.tsx                 # Desktop navigation
+├── bottom-bar.tsx              # Mobile navigation
+├── page-tabs.tsx               # Sub-page tab groups
+├── page-header.tsx             # Page title bar
+├── page-transition.tsx         # Route transition animation
+├── permission-guard.tsx        # Client-side permission gate
+├── notification-center.tsx     # In-app notifications
+└── mobile-shell.tsx            # Capacitor native shell
+```
+
+## Data Layer (SpacetimeDB)
+
+- Real-time subscriptions via `lib/spacetimedb/hooks.ts` and domain hooks in `hooks/`.
+- Mutations via reducer calls in `lib/spacetimedb/actions.ts`.
+- Generated types in `lib/spacetimedb/generated/` — **never edit these manually**.
+- Provider wraps the app in `app/~/layout.tsx`.
+- No Supabase. `lib/db/*.ts` files are legacy and being phased out.
+
+### Navigation Tabs
+Pages are grouped with `PageTabs`. All hrefs must use the `/~/` prefix:
+```tsx
+<PageTabs tabs={[
+  { label: "Inventory", href: "/~/inventory" },
+  { label: "Suppliers", href: "/~/suppliers" },
+  { label: "Waste Log", href: "/~/inventory/waste" },
+]} />
+```
+
+## Auth & Permissions
+
+- WorkOS handles auth (email/password + OAuth).
+- Multi-tenant: Organizations → org_members (owner/manager/staff roles).
+- Permissions stored as JSONB on org_members.
+- `usePermissions()` hook + `<PermissionGuard section="...">` for access control.
+- Sidebar and bottom bar auto-hide pages the user can't access.
+
+## Visual Style
+
+Build tools, not demos. Professional software, not AI templates.
 
 | Element | Do | Don't |
 |:---|:---|:---|
-| **Palette** | `Stone` / `Slate` tones, pure white, deep gray | Neon purple, blue gradients, high-saturation colors |
-| **Radius** | `--radius: 0.3rem` (sharp, compact) | `rounded-2xl`, `rounded-full` on cards |
-| **Shadows** | Solid `1px border` or ultra-thin inset shadow | Diffuse glow effects, colored shadows |
-| **Font** | `Geist Mono` / system monospace for data, Inter for UI | Overly rounded sans-serif |
-| **Motion** | Instant feedback, micro translations | Slow typewriter effects, particle animations |
-| **Density** | Compact tables, tight spacing | Excessive whitespace, hero sections |
+| Palette | Stone/Slate, pure white, deep gray | Neon, gradients, high-saturation |
+| Radius | `0.3rem` (sharp) | `rounded-2xl`, `rounded-full` on cards |
+| Shadows | Solid `1px border` | Glow effects, colored shadows |
+| Font | Inter for UI, Geist Mono for data | Rounded sans-serif |
+| Motion | Instant feedback, micro transitions | Typewriter effects, particles |
+| Density | Compact tables, tight spacing | Hero sections, excessive whitespace |
 
----
+## Code Conventions
 
-## 3. Project Structure
-
-```
-project-management/
-├── app/
-│   ├── (app)/                  # Authenticated routes (sidebar layout)
-│   │   ├── layout.tsx          # Auth guard + PermissionsProvider
-│   │   ├── dashboard/page.tsx
-│   │   ├── inventory/page.tsx
-│   │   ├── sales/page.tsx
-│   │   ├── staffing/page.tsx
-│   │   ├── products/page.tsx
-│   │   ├── team/page.tsx       # Owner/manager only
-│   │   └── settings/page.tsx
-│   ├── (auth)/                 # Public auth routes
-│   │   ├── login/page.tsx
-│   │   └── signup/page.tsx
-│   ├── api/
-│   │   ├── square/             # Square API proxy routes
-│   │   │   ├── catalog/route.ts
-│   │   │   ├── inventory/route.ts
-│   │   │   ├── orders/route.ts
-│   │   │   ├── sync/route.ts
-│   │   │   └── validate/route.ts
-│   │   └── team/
-│   │       └── invite/route.ts
-│   ├── invite/[token]/page.tsx # Accept invitation flow
-│   ├── globals.css
-│   ├── layout.tsx              # Root layout (font, metadata)
-│   └── page.tsx                # Redirect to /dashboard
-├── components/
-│   ├── ui/                     # shadcn/ui primitives
-│   ├── sidebar.tsx             # Navigation (permission-filtered)
-│   └── permission-guard.tsx    # Client-side permission gate
-├── lib/
-│   ├── supabase/
-│   │   ├── client.ts           # Browser client (createBrowserClient)
-│   │   └── server.ts           # Server client (createServerClient)
-│   ├── db/                     # Data access layer (one file per domain)
-│   │   ├── inventory.ts
-│   │   ├── sales.ts
-│   │   ├── staffing.ts
-│   │   ├── products.ts
-│   │   ├── settings.ts
-│   │   └── team.ts
-│   ├── context/
-│   │   └── permissions.tsx     # React context for role-based access
-│   ├── types.ts                # All TypeScript interfaces
-│   └── utils.ts                # cn() helper
-└── supabase/
-    └── schema.sql              # Full database schema (reference only)
-```
-
----
-
-## 4. Data Layer Rules
-
-### Supabase Client Usage
-- **Server Components / API Routes:** `import { createClient } from "@/lib/supabase/server"`
-- **Client Components:** `import { createClient } from "@/lib/supabase/client"`
-- Never mix them.
-
-### Database Access Pattern
-- All DB queries go through `lib/db/*.ts` — never call Supabase directly from components.
-- Every query function maps snake_case DB columns to camelCase TypeScript interfaces.
-- Always handle errors: use `.catch()` + `.finally(() => setLoading(false))` in useEffect.
-- Include `user_id` and `organization_id` when inserting new rows.
-
-### Row Level Security (RLS)
-- Every table has RLS enabled.
-- Policy pattern: `auth.uid() = user_id OR organization_id IN (active org_members)`.
-- Never disable RLS. Never use service role key in client code.
-
----
-
-## 5. Auth & Permissions
-
-### Roles
-| Role | Access |
-|:---|:---|
-| `owner` | Full access to everything. Can manage team. |
-| `manager` | Access determined by owner-assigned permissions. Can invite staff. |
-| `staff` | Access determined by owner-assigned permissions. Read-only by default. |
-
-### Permissions Structure (JSONB)
-```typescript
-interface Permissions {
-  dashboard:  { view: boolean };
-  inventory:  { view: boolean; edit: boolean };
-  sales:      { view: boolean };
-  staffing:   { view: boolean; edit: boolean };
-  products:   { view: boolean; edit: boolean };
-  settings:   { view: boolean };
-}
-```
-
-### Implementation
-- `PermissionsProvider` wraps the app layout (server-side fetch, client-side context).
-- `usePermissions()` hook for checking access in components.
-- `<PermissionGuard section="inventory">` wraps each page.
-- Sidebar auto-hides pages the user can't access.
-
----
-
-## 6. Square API Integration
-
-- All Square calls go through `/api/square/*` route handlers (never client-side).
-- Route handlers read Square credentials from Supabase `settings` table.
-- Use `SquareClient` (v44+), not the legacy `Client` constructor.
-- Square integration is opt-in: app works without it, showing empty states.
-- Sync flow: Square → Supabase tables (products, inventory_items, sales_records).
-
----
-
-## 7. Code Conventions
-
-### Components
-- One component per file. File name matches export name.
-- Client components: `"use client"` at top.
-- Server components: no directive (default).
+- Client components: `"use client"` at top. Server components: no directive.
+- Files: kebab-case. Components: PascalCase. DB columns: snake_case. TS props: camelCase.
 - Always add loading states (`Loader2` spinner) and empty states.
+- All internal links within the app use `/~/` prefix.
+- i18n: use `useT()` hook, keys in `messages/{locale}.json`.
 
-### Naming
-- Files: kebab-case (`permission-guard.tsx`)
-- Components: PascalCase (`PermissionGuard`)
-- DB columns: snake_case (`current_stock`)
-- TS interfaces: camelCase properties (`currentStock`)
+## Environment Variables
 
-### Error Handling
-```tsx
-// ALWAYS use this pattern for client-side data loading
-useEffect(() => {
-  loadData()
-    .then(setData)
-    .catch((err) => console.error("Failed:", err))
-    .finally(() => setLoading(false));
-}, []);
-```
+- `NEXT_PUBLIC_SPACETIMEDB_*` — SpacetimeDB connection (public)
+- `WORKOS_API_KEY` / `WORKOS_CLIENT_ID` — server-only
+- `UPLOADTHING_TOKEN` — file upload
+- `RESEND_API_KEY` — transactional email
+- Square / Clover credentials stored in DB, not env vars
 
-### Environment Variables
-- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase publishable key
-- `SUPABASE_SERVICE_ROLE_KEY` — Server-only, never expose to client
-- Square credentials stored in DB, not env vars
+## Deployment
 
----
-
-## 8. Deployment Checklist
-
-1. `bun run build` — must pass with 0 errors
-2. Verify `.env.local` has all required vars
-3. Verify `.gitignore` includes `.env*`
-4. `npx vercel --prod --yes` to deploy
-5. Check Vercel deployment logs for runtime errors
-
----
-
-## 9. Database Schema Reference
-
-7 core tables + 3 team tables, all with RLS:
-
-**Core:** `settings`, `inventory_items`, `inventory_transactions`, `sales_records`, `staff_members`, `shifts`, `products`
-
-**Team:** `organizations`, `org_members`, `org_invitations`
-
-All tables have `user_id` (FK to auth.users) and `organization_id` (FK to organizations, nullable for backward compat).
-
-See `supabase/schema.sql` for full DDL.
+1. `bun run build` — must pass clean
+2. `npx vercel --prod --yes`
+3. Native: `npx cap sync` then open in Xcode / Android Studio

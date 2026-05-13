@@ -44,3 +44,4 @@ next-env.d.ts
 ios/
 android/
 .claude/
+dist-electron/

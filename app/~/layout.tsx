@@ -259,6 +259,17 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
   const effectiveAuth = authState ?? cachedAuthState;
 
+  const setupRouter = useRouter();
+  const needsName = effectiveAuth ? (!effectiveAuth.memberDisplayName || !effectiveAuth.memberDisplayName.trim()) : false;
+
+  useEffect(() => {
+    if (!effectiveAuth || needsName) return;
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("isStoreSetUp") !== "1") {
+      setupRouter.replace("/~/setup");
+    }
+  }, [effectiveAuth, needsName, setupRouter]);
+
   // Still waiting for SpacetimeDB tables to sync and no cached data available
   if (!isReady && !effectiveAuth) {
     return (
@@ -294,8 +305,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
   // Make organizationId available to non-React write helpers.
   setActiveOrgId(effectiveAuth.organizationId);
-
-  const needsName = !effectiveAuth.memberDisplayName || !effectiveAuth.memberDisplayName.trim();
 
   return (
     <PermissionsProvider

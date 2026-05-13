@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 
     const authorizationUrl = workos.userManagement.getAuthorizationUrl({
       clientId,

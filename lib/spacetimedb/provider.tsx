@@ -23,6 +23,20 @@ interface SpacetimeProviderProps {
 export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   const { getToken, isSignedIn, signOut } = useAuth();
   const t = useT();
+
+  // Suppress SpacetimeDB deserialization errors from crashing the app.
+  // These occur when the server schema has drifted from the generated client bindings.
+  useEffect(() => {
+    const handler = (e: PromiseRejectionEvent) => {
+      const msg = String(e.reason);
+      if (msg.includes("deserialize") && msg.includes("option type")) {
+        e.preventDefault();
+        console.warn("[SpacetimeDB] Suppressed deserialization error:", msg);
+      }
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
   const tRef = useRef(t);
   useEffect(() => {
     tRef.current = t;
@@ -114,7 +128,6 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           "SELECT * FROM organization",
           "SELECT * FROM org_member",
           "SELECT * FROM org_invitation",
-          "SELECT * FROM settings",
           "SELECT * FROM inventory_item",
           "SELECT * FROM inventory_transaction",
           "SELECT * FROM sales_record",
@@ -145,6 +158,13 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           "SELECT * FROM todo",
           "SELECT * FROM punch_event",
         ]);
+        // Settings table subscribed separately — its option(timestamp) fields
+        // may cause deserialization errors if server schema drifts from client bindings
+        try {
+          conn.subscriptionBuilder().subscribe(["SELECT * FROM settings"]);
+        } catch {
+          console.warn("[SpacetimeDB] Settings table subscription failed — schema mismatch");
+        }
         // Subscribe to newer tables separately — these may not exist on older server versions
         try {
           conn.subscriptionBuilder().subscribe([
