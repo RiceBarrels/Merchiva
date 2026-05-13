@@ -158,13 +158,9 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           "SELECT * FROM todo",
           "SELECT * FROM punch_event",
         ]);
-        // Settings table subscribed separately — its option(timestamp) fields
-        // may cause deserialization errors if server schema drifts from client bindings
-        try {
-          conn.subscriptionBuilder().subscribe(["SELECT * FROM settings"]);
-        } catch {
-          console.warn("[SpacetimeDB] Settings table subscription failed — schema mismatch");
-        }
+        // NOTE: settings table is NOT subscribed — its option(timestamp) fields
+        // cause "Can't deserialize an option type" errors due to client/server schema mismatch.
+        // Settings are read via the settings page's own API calls instead.
         // Subscribe to newer tables separately — these may not exist on older server versions
         try {
           conn.subscriptionBuilder().subscribe([
