@@ -76,15 +76,16 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
     cost: data.cost ?? 0,
     imageUrl: data.imageUrl ?? null,
     description: data.description ?? null,
-    nameI18n: data.nameI18n ? JSON.stringify(data.nameI18n) : null,
+    nameI18N: data.nameI18N ? JSON.stringify(data.nameI18N) : null,
+    options: data.options ?? null,
   });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateProduct(productId: string, data: any): Promise<void> {
   const payload = { ...data };
-  if (payload.nameI18n && typeof payload.nameI18n !== "string") {
-    payload.nameI18n = JSON.stringify(payload.nameI18n);
+  if (payload.nameI18N && typeof payload.nameI18N !== "string") {
+    payload.nameI18N = JSON.stringify(payload.nameI18N);
   }
   return offlineAware("updateProduct", { organizationId: orgId(), productId, ...payload });
 }
@@ -169,9 +170,9 @@ export async function addRoleTask(data: any): Promise<void> {
     organizationId: orgId(),
     roleId: data.roleId,
     title: data.title,
-    description: data.description,
-    startTime: data.startTime ?? undefined,
-    endTime: data.endTime ?? undefined,
+    description: data.description ?? "",
+    startTime: data.startTime ?? null,
+    endTime: data.endTime ?? null,
     sortOrder: data.sortOrder ?? 0,
     requiresEvidence: data.requiresEvidence ?? false,
     notifyChats: JSON.stringify(data.notifyChats ?? []),
@@ -762,4 +763,226 @@ export async function updateQueueStatus(entryId: string, status: string): Promis
 
 export async function deleteQueueEntry(entryId: string): Promise<void> {
   return conn().reducers.deleteQueueEntry({ organizationId: orgId(), entryId });
+}
+
+// ─── AI Chat History ────────────────────────────────────────────────────────
+
+export async function saveAiChatHistory(messages: string, summary?: string): Promise<void> {
+  return conn().reducers.saveAiChatHistory({
+    organizationId: orgId(),
+    messages,
+    summary: summary ?? undefined,
+  });
+}
+
+export async function clearAiChatHistory(): Promise<void> {
+  return conn().reducers.clearAiChatHistory({ organizationId: orgId() });
+}
+
+// ─── AI Chat Sessions ───────────────────────────────────────────────────────
+
+export async function createAiChatSession(title: string): Promise<void> {
+  return conn().reducers.createAiChatSession({ organizationId: orgId(), title });
+}
+
+export async function saveAiChatSession(
+  sessionId: string,
+  messages: string,
+  title?: string,
+  summary?: string,
+  archived?: boolean,
+): Promise<void> {
+  return conn().reducers.saveAiChatSession({
+    organizationId: orgId(),
+    sessionId,
+    messages,
+    title: title ?? undefined,
+    summary: summary ?? undefined,
+    archived: archived ?? undefined,
+  });
+}
+
+export async function archiveAiChatSession(sessionId: string): Promise<void> {
+  return conn().reducers.archiveAiChatSession({ organizationId: orgId(), sessionId });
+}
+
+// ─── Training: Curriculum Days ──────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function trainingReducer(name: string): ((args: Record<string, any>) => Promise<void>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reducer = (conn().reducers as any)[name];
+  if (typeof reducer !== "function") {
+    throw new Error(
+      `Reducer "${name}" is not available. Run \`spacetime publish\` + \`spacetime generate\` to enable training features.`,
+    );
+  }
+  return reducer;
+}
+
+export async function addTrainingDay(data: {
+  dayNumber: number;
+  title: string;
+  description?: string | null;
+  sortOrder?: number;
+}): Promise<void> {
+  return trainingReducer("addTrainingDay")({
+    organizationId: orgId(),
+    dayNumber: data.dayNumber,
+    title: data.title,
+    description: data.description ?? undefined,
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
+
+export async function updateTrainingDay(
+  dayId: string,
+  data: { dayNumber: number; title: string; description?: string | null; sortOrder?: number },
+): Promise<void> {
+  return trainingReducer("updateTrainingDay")({
+    organizationId: orgId(),
+    dayId,
+    dayNumber: data.dayNumber,
+    title: data.title,
+    description: data.description ?? undefined,
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
+
+export async function deleteTrainingDay(dayId: string): Promise<void> {
+  return trainingReducer("deleteTrainingDay")({ organizationId: orgId(), dayId });
+}
+
+// ─── Training: Curriculum Objectives ───────────────────────────────────────
+
+export async function addTrainingObjective(data: {
+  dayId: string;
+  text: string;
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
+  sortOrder?: number;
+}): Promise<void> {
+  return trainingReducer("addTrainingObjective")({
+    organizationId: orgId(),
+    dayId: data.dayId,
+    text: data.text,
+    mediaUrl: data.mediaUrl ?? undefined,
+    mediaType: data.mediaType ?? undefined,
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
+
+export async function updateTrainingObjective(
+  objectiveId: string,
+  data: {
+    text: string;
+    mediaUrl?: string | null;
+    mediaType?: "image" | "video" | null;
+    sortOrder?: number;
+  },
+): Promise<void> {
+  return trainingReducer("updateTrainingObjective")({
+    organizationId: orgId(),
+    objectiveId,
+    text: data.text,
+    mediaUrl: data.mediaUrl ?? undefined,
+    mediaType: data.mediaType ?? undefined,
+    sortOrder: data.sortOrder ?? 0,
+  });
+}
+
+export async function deleteTrainingObjective(objectiveId: string): Promise<void> {
+  return trainingReducer("deleteTrainingObjective")({ organizationId: orgId(), objectiveId });
+}
+
+// ─── Training: Grading ──────────────────────────────────────────────────────
+
+export async function gradeTrainingObjective(data: {
+  traineeId: string;
+  objectiveId: string;
+  status: "pass" | "fail";
+  comment?: string | null;
+}): Promise<void> {
+  return trainingReducer("gradeTrainingObjective")({
+    organizationId: orgId(),
+    traineeId: data.traineeId,
+    objectiveId: data.objectiveId,
+    status: data.status,
+    comment: data.comment ?? undefined,
+  });
+}
+
+export async function clearTrainingObjectiveGrade(data: {
+  traineeId: string;
+  objectiveId: string;
+}): Promise<void> {
+  return trainingReducer("clearTrainingObjectiveGrade")({
+    organizationId: orgId(),
+    traineeId: data.traineeId,
+    objectiveId: data.objectiveId,
+  });
+}
+
+export async function gradeTrainingDay(data: {
+  traineeId: string;
+  dayId: string;
+  rating: number;
+  comment?: string | null;
+}): Promise<void> {
+  return trainingReducer("gradeTrainingDay")({
+    organizationId: orgId(),
+    traineeId: data.traineeId,
+    dayId: data.dayId,
+    rating: Math.max(1, Math.min(5, Math.round(data.rating))),
+    comment: data.comment ?? undefined,
+  });
+}
+
+export async function setTrainingFinalGrade(data: {
+  traineeId: string;
+  score: number;
+  comment?: string | null;
+}): Promise<void> {
+  return trainingReducer("setTrainingFinalGrade")({
+    organizationId: orgId(),
+    traineeId: data.traineeId,
+    score: Math.max(0, Math.min(100, Math.round(data.score))),
+    comment: data.comment ?? undefined,
+  });
+}
+
+// ─── Billing ────────────────────────────────────────────────────────────────
+
+export async function updateOrgSubscription(data: {
+  organizationId?: string;
+  stripeCustomerId?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionPriceId?: string | null;
+  subscriptionInterval?: "month" | "year" | null;
+  currentPeriodEndUnix?: number | null;
+}): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reducer = (conn().reducers as any).updateOrgSubscription;
+  if (typeof reducer !== "function") {
+    throw new Error(
+      'Reducer "updateOrgSubscription" is not available. Run `spacetime publish` + `spacetime generate` to enable billing.',
+    );
+  }
+  // SpacetimeDB Timestamp is microsecond-precise; the codebase uses Timestamp
+  // directly elsewhere. The generated client builder accepts either Date or
+  // Timestamp — pass a Date when we have a Unix seconds value, otherwise
+  // undefined.
+  const periodEnd =
+    data.currentPeriodEndUnix != null
+      ? new Date(data.currentPeriodEndUnix * 1000)
+      : undefined;
+
+  return reducer({
+    organizationId: data.organizationId ?? orgId(),
+    stripeCustomerId: data.stripeCustomerId ?? undefined,
+    subscriptionStatus: data.subscriptionStatus ?? undefined,
+    subscriptionPriceId: data.subscriptionPriceId ?? undefined,
+    subscriptionInterval: data.subscriptionInterval ?? undefined,
+    currentPeriodEnd: periodEnd,
+  });
 }

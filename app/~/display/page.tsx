@@ -53,7 +53,7 @@ function DisplayClock() {
     return () => clearInterval(iv);
   }, []);
   return (
-    <span className="font-mono text-sm text-stone-400 tabular-nums">
+    <span className="font-mono text-sm text-stone-400 dark:text-stone-500 tabular-nums">
       {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
     </span>
   );
@@ -124,11 +124,11 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <UtensilsCrossed className={cn("h-16 w-16 mx-auto mb-4", darkMode ? "text-stone-700" : "text-stone-300")} />
-          <p className={cn("text-2xl font-semibold", darkMode ? "text-stone-500" : "text-stone-400")}>
+          <UtensilsCrossed className={cn("h-16 w-16 mx-auto mb-4", darkMode ? "text-stone-700 dark:text-stone-300" : "text-stone-300 dark:text-stone-700")} />
+          <p className={cn("text-2xl font-semibold", darkMode ? "text-stone-500 dark:text-stone-400" : "text-stone-400 dark:text-stone-500")}>
             {t("display.noOrders")}
           </p>
-          <p className={cn("text-lg mt-2", darkMode ? "text-stone-600" : "text-stone-500")}>
+          <p className={cn("text-lg mt-2", darkMode ? "text-stone-600 dark:text-stone-300" : "text-stone-500 dark:text-stone-400")}>
             {t("display.waitingForOrders")}
           </p>
         </div>
@@ -157,10 +157,10 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
               {/* Header */}
               <div className={cn(
                 "flex items-center justify-between px-4 py-3 border-b",
-                darkMode ? "border-stone-700" : "border-stone-200",
+                darkMode ? "border-stone-700" : "border-stone-200 dark:border-stone-700",
               )}>
                 <div className="flex items-center gap-3">
-                  <span className={cn("text-xl font-bold font-mono", darkMode ? "text-stone-100" : "text-stone-900")}>
+                  <span className={cn("text-xl font-bold font-mono", darkMode ? "text-stone-100" : "text-stone-900 dark:text-stone-100")}>
                     #{orderId}
                   </span>
                   <span className={cn("px-2 py-0.5 rounded text-xs font-bold uppercase", getAgeBadgeColor(ageMin))}>
@@ -181,7 +181,7 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
               {o.customerName && (
                 <div className={cn(
                   "px-4 py-2 text-base font-medium border-b",
-                  darkMode ? "text-stone-300 border-stone-700" : "text-stone-700 border-stone-200",
+                  darkMode ? "text-stone-300 dark:text-stone-700 border-stone-700" : "text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700",
                 )}>
                   {o.customerName}
                 </div>
@@ -193,17 +193,17 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
                   <div key={idx} className="flex items-start gap-3">
                     <span className={cn(
                       "text-lg font-bold font-mono min-w-[2rem] text-center rounded px-1",
-                      darkMode ? "bg-stone-800 text-stone-200" : "bg-stone-200 text-stone-800",
+                      darkMode ? "bg-stone-800 text-stone-200" : "bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200",
                     )}>
                       {item.quantity}x
                     </span>
-                    <span className={cn("text-lg font-medium flex-1", darkMode ? "text-stone-200" : "text-stone-800")}>
+                    <span className={cn("text-lg font-medium flex-1", darkMode ? "text-stone-200" : "text-stone-800 dark:text-stone-200")}>
                       {item.name}
                     </span>
                   </div>
                 ))}
                 {items.length === 0 && (
-                  <p className={cn("text-sm italic", darkMode ? "text-stone-600" : "text-stone-400")}>
+                  <p className={cn("text-sm italic", darkMode ? "text-stone-600 dark:text-stone-300" : "text-stone-400 dark:text-stone-500")}>
                     {t("display.noItems")}
                   </p>
                 )}
@@ -213,7 +213,7 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
               {o.notes && (
                 <div className={cn(
                   "px-4 py-2 text-sm italic border-t",
-                  darkMode ? "text-amber-400 border-stone-700 bg-amber-500/5" : "text-amber-700 border-stone-200 bg-amber-50",
+                  darkMode ? "text-amber-400 border-stone-700 bg-amber-500/5" : "text-amber-700 border-stone-200 dark:border-stone-700 bg-amber-50",
                 )}>
                   {o.notes}
                 </div>
@@ -225,11 +225,11 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
                 disabled={completingId === String(o.id)}
                 className={cn(
                   "flex items-center justify-center gap-2 px-4 py-4 text-lg font-bold transition-colors border-t",
-                  darkMode ? "border-stone-700" : "border-stone-200",
+                  darkMode ? "border-stone-700" : "border-stone-200 dark:border-stone-700",
                   completingId === String(o.id)
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-emerald-500 hover:text-white active:bg-emerald-600",
-                  darkMode ? "bg-stone-800 text-emerald-400" : "bg-stone-100 text-emerald-700",
+                  darkMode ? "bg-stone-800 text-emerald-400" : "bg-stone-100 dark:bg-stone-800 text-emerald-700",
                 )}
               >
                 <Check className="h-6 w-6" />
@@ -303,8 +303,8 @@ function MenuBoard({ darkMode }: { darkMode: boolean }) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <ShoppingCart className={cn("h-16 w-16 mx-auto mb-4", darkMode ? "text-stone-700" : "text-stone-300")} />
-          <p className={cn("text-2xl font-semibold", darkMode ? "text-stone-500" : "text-stone-400")}>
+          <ShoppingCart className={cn("h-16 w-16 mx-auto mb-4", darkMode ? "text-stone-700 dark:text-stone-300" : "text-stone-300 dark:text-stone-700")} />
+          <p className={cn("text-2xl font-semibold", darkMode ? "text-stone-500 dark:text-stone-400" : "text-stone-400 dark:text-stone-500")}>
             {t("display.noProducts")}
           </p>
         </div>
@@ -323,7 +323,7 @@ function MenuBoard({ darkMode }: { darkMode: boolean }) {
         <div key={category} className="mb-8">
           <h2 className={cn(
             "text-2xl font-bold mb-4 pb-2 border-b",
-            darkMode ? "text-stone-200 border-stone-700" : "text-stone-800 border-stone-300",
+            darkMode ? "text-stone-200 border-stone-700" : "text-stone-800 dark:text-stone-200 border-stone-300 dark:border-stone-700",
           )}>
             {category}
           </h2>
@@ -336,7 +336,7 @@ function MenuBoard({ darkMode }: { darkMode: boolean }) {
                   key={String(prod.id)}
                   className={cn(
                     "rounded-[0.3rem] border overflow-hidden flex flex-col",
-                    darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 bg-white",
+                    darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900",
                   )}
                 >
                   {prod.imageUrl && (
@@ -352,14 +352,14 @@ function MenuBoard({ darkMode }: { darkMode: boolean }) {
                     <div>
                       <h3 className={cn(
                         "text-xl font-bold",
-                        darkMode ? "text-stone-100" : "text-stone-900",
+                        darkMode ? "text-stone-100" : "text-stone-900 dark:text-stone-100",
                       )}>
                         {prod.name}
                       </h3>
                       {prod.description && (
                         <p className={cn(
                           "text-sm mt-1 line-clamp-2",
-                          darkMode ? "text-stone-400" : "text-stone-500",
+                          darkMode ? "text-stone-400 dark:text-stone-500" : "text-stone-500 dark:text-stone-400",
                         )}>
                           {prod.description}
                         </p>
@@ -367,7 +367,7 @@ function MenuBoard({ darkMode }: { darkMode: boolean }) {
                     </div>
                     <p className={cn(
                       "text-3xl font-bold font-mono mt-3",
-                      darkMode ? "text-stone-100" : "text-stone-900",
+                      darkMode ? "text-stone-100" : "text-stone-900 dark:text-stone-100",
                     )}>
                       ${Number(prod.price).toFixed(2)}
                     </p>
@@ -402,17 +402,17 @@ function KpiMetricCard({
   return (
     <div className={cn(
       "rounded-[0.3rem] border p-6 flex flex-col items-center justify-center text-center",
-      darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 bg-white",
+      darkMode ? "border-stone-700 bg-stone-900" : "border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900",
     )}>
-      <Icon className={cn("h-8 w-8 mb-3", accent || (darkMode ? "text-stone-500" : "text-stone-400"))} />
-      <p className={cn("text-6xl font-bold font-mono leading-none", darkMode ? "text-stone-100" : "text-stone-900")}>
+      <Icon className={cn("h-8 w-8 mb-3", accent || (darkMode ? "text-stone-500 dark:text-stone-400" : "text-stone-400 dark:text-stone-500"))} />
+      <p className={cn("text-6xl font-bold font-mono leading-none", darkMode ? "text-stone-100" : "text-stone-900 dark:text-stone-100")}>
         {value}
       </p>
-      <p className={cn("text-lg font-medium mt-3", darkMode ? "text-stone-400" : "text-stone-500")}>
+      <p className={cn("text-lg font-medium mt-3", darkMode ? "text-stone-400 dark:text-stone-500" : "text-stone-500 dark:text-stone-400")}>
         {label}
       </p>
       {sub && (
-        <p className={cn("text-sm mt-1", darkMode ? "text-stone-600" : "text-stone-400")}>
+        <p className={cn("text-sm mt-1", darkMode ? "text-stone-600 dark:text-stone-300" : "text-stone-400 dark:text-stone-500")}>
           {sub}
         </p>
       )}
@@ -557,7 +557,7 @@ function KpiDashboard({ darkMode }: { darkMode: boolean }) {
           value={String(metrics.pendingOrders)}
           icon={Clock}
           darkMode={darkMode}
-          accent={metrics.pendingOrders > 0 ? "text-amber-500" : "text-stone-500"}
+          accent={metrics.pendingOrders > 0 ? "text-amber-500" : "text-stone-500 dark:text-stone-400"}
         />
         <KpiMetricCard
           label={t("display.queueLength")}
@@ -572,7 +572,7 @@ function KpiDashboard({ darkMode }: { darkMode: boolean }) {
           value={String(inventoryItems ? Array.from(inventoryItems).length : 0)}
           icon={Package}
           darkMode={darkMode}
-          accent="text-stone-500"
+          accent="text-stone-500 dark:text-stone-400"
         />
       </div>
     </div>
@@ -653,7 +653,7 @@ export default function DisplayPage() {
     <div
       className={cn(
         "fixed inset-0 z-[100] flex flex-col select-none",
-        darkMode ? "bg-stone-950 text-stone-100" : "bg-stone-50 text-stone-900",
+        darkMode ? "bg-stone-950 text-stone-100" : "bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100",
         hideCursor && "cursor-none",
       )}
       onMouseMove={resetHideTimer}
@@ -663,7 +663,7 @@ export default function DisplayPage() {
       <div
         className={cn(
           "flex items-center justify-between px-4 py-2 border-b transition-all duration-300",
-          darkMode ? "border-stone-800 bg-stone-900/80" : "border-stone-200 bg-white/80",
+          darkMode ? "border-stone-800 bg-stone-900/80" : "border-stone-200 dark:border-stone-700 bg-white/80",
           "backdrop-blur-sm",
           showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none",
         )}
@@ -673,16 +673,16 @@ export default function DisplayPage() {
             onClick={handleBack}
             className={cn(
               "p-2 rounded-[0.3rem] transition-colors",
-              darkMode ? "hover:bg-stone-800 text-stone-400" : "hover:bg-stone-200 text-stone-600",
+              darkMode ? "hover:bg-stone-800 text-stone-400 dark:text-stone-500" : "hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300",
             )}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className={cn("h-5 w-px", darkMode ? "bg-stone-700" : "bg-stone-300")} />
+          <div className={cn("h-5 w-px", darkMode ? "bg-stone-700" : "bg-stone-300 dark:bg-stone-700")} />
           {/* Mode tabs */}
           <div className={cn(
             "flex items-center gap-1 rounded-[0.3rem] p-1",
-            darkMode ? "bg-stone-800" : "bg-stone-200",
+            darkMode ? "bg-stone-800" : "bg-stone-200 dark:bg-stone-700",
           )}>
             {modes.map((m) => (
               <button
@@ -693,10 +693,10 @@ export default function DisplayPage() {
                   mode === m.key
                     ? darkMode
                       ? "bg-stone-700 text-stone-100"
-                      : "bg-white text-stone-900 border border-stone-200"
+                      : "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 border border-stone-200 dark:border-stone-700"
                     : darkMode
-                      ? "text-stone-500 hover:text-stone-300"
-                      : "text-stone-500 hover:text-stone-700",
+                      ? "text-stone-500 dark:text-stone-400 hover:text-stone-300 dark:text-stone-700"
+                      : "text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:text-stone-300",
                 )}
               >
                 <m.icon className="h-4 w-4" />
@@ -708,12 +708,12 @@ export default function DisplayPage() {
 
         <div className="flex items-center gap-3">
           <DisplayClock />
-          <div className={cn("h-5 w-px", darkMode ? "bg-stone-700" : "bg-stone-300")} />
+          <div className={cn("h-5 w-px", darkMode ? "bg-stone-700" : "bg-stone-300 dark:bg-stone-700")} />
           <button
             onClick={() => setDarkMode((v) => !v)}
             className={cn(
               "p-2 rounded-[0.3rem] transition-colors",
-              darkMode ? "hover:bg-stone-800 text-stone-400" : "hover:bg-stone-200 text-stone-600",
+              darkMode ? "hover:bg-stone-800 text-stone-400 dark:text-stone-500" : "hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300",
             )}
             title={darkMode ? t("display.lightMode") : t("display.darkMode")}
           >
@@ -723,7 +723,7 @@ export default function DisplayPage() {
             onClick={requestFullscreen}
             className={cn(
               "p-2 rounded-[0.3rem] transition-colors",
-              darkMode ? "hover:bg-stone-800 text-stone-400" : "hover:bg-stone-200 text-stone-600",
+              darkMode ? "hover:bg-stone-800 text-stone-400 dark:text-stone-500" : "hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300",
             )}
             title={t("display.fullscreen")}
           >
@@ -746,7 +746,7 @@ export default function DisplayPage() {
       >
         <div className={cn(
           "px-3 py-1.5 rounded-[0.3rem] font-mono text-sm",
-          darkMode ? "bg-stone-900/80 text-stone-400 border border-stone-800" : "bg-white/80 text-stone-500 border border-stone-200",
+          darkMode ? "bg-stone-900/80 text-stone-400 dark:text-stone-500 border border-stone-800" : "bg-white/80 text-stone-500 dark:text-stone-400 border border-stone-200 dark:border-stone-700",
           "backdrop-blur-sm",
         )}>
           <DisplayClock />

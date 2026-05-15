@@ -19,5 +19,4 @@ export default {
   address: __t.option(__t.string()),
   paymentTerms: __t.option(__t.string()),
   notes: __t.option(__t.string()),
-  rating: __t.f64(),
 };

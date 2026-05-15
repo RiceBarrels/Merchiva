@@ -149,7 +149,7 @@ const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
 };
 
 const PO_STATUS_COLORS: Record<POStatus, string> = {
-  draft: "bg-stone-100 text-stone-700 border-stone-300",
+  draft: "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700",
   sent: "bg-blue-50 text-blue-700 border-blue-300",
   received: "bg-emerald-50 text-emerald-700 border-emerald-300",
   cancelled: "bg-red-50 text-red-700 border-red-300",
@@ -196,7 +196,7 @@ function StarRating({
               "h-3.5 w-3.5",
               star <= value
                 ? "fill-amber-400 text-amber-400"
-                : "fill-none text-stone-300"
+                : "fill-none text-stone-300 dark:text-stone-700"
             )}
           />
         </button>

@@ -15,6 +15,7 @@ export function defaultPermissions(): Permissions {
     pos: { view: true, edit: false },
     team: { view: false, invite: false, edit: false },
     website: { view: false, edit: false },
+    training_grading: { view: false, edit: false },
   };
 }
 
@@ -29,6 +30,7 @@ export function ownerPermissions(): Permissions {
     pos: { view: true, edit: true },
     team: { view: true, invite: true, edit: true },
     website: { view: true, edit: true },
+    training_grading: { view: true, edit: true },
   };
 }
 

@@ -4,8 +4,10 @@ import React from "react";
 import { useEditor } from "@craftjs/core";
 import { Trash2 } from "lucide-react";
 import { hapticLight } from "@/lib/haptics";
+import { useT } from "@/lib/i18n/context";
 
 export function SettingsPanel() {
+  const t = useT();
   const { selected, selectedDisplayName, selectedSettings, actions } =
     useEditor((state) => {
       const [currentNodeId] = state.events.selected;
@@ -53,14 +55,14 @@ export function SettingsPanel() {
             React.createElement(selectedSettings)
           ) : (
             <p className="text-xs text-muted-foreground">
-              No settings available for this element.
+              {t("builder.settingsPanel.noSettings")}
             </p>
           )}
         </div>
       ) : (
         <div className="flex h-full items-center justify-center p-4">
           <p className="text-center text-xs text-muted-foreground">
-            Select an element to edit its properties.
+            {t("builder.settingsPanel.selectElement")}
           </p>
         </div>
       )}

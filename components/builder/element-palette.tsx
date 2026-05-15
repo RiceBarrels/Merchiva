@@ -55,18 +55,19 @@ import { CraftCart } from "./craft-components/craft-cart";
 import { CraftCheckout } from "./craft-components/craft-checkout";
 import { CraftReward } from "./craft-components/craft-reward";
 import React from "react";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Category definitions ────────────────────────────────────────────────────
 
 interface PaletteItem {
-  label: string;
+  labelKey: string;
   icon: React.ComponentType<{ className?: string }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   element: React.ReactElement<any>;
 }
 
 interface PaletteCategory {
-  label: string;
+  labelKey: string;
   items: PaletteItem[];
 }
 
@@ -79,17 +80,17 @@ const el = (Comp: React.ComponentType<any>, props?: Record<string, unknown>) =>
 
 const categories: PaletteCategory[] = [
   {
-    label: "Basic",
+    labelKey: "categoryBasic",
     items: [
-      { label: "Text", icon: Type, element: el(CraftText) },
-      { label: "Image", icon: Image, element: el(CraftImage) },
-      { label: "Button", icon: MousePointerClick, element: el(CraftButton) },
+      { labelKey: "itemText", icon: Type, element: el(CraftText) },
+      { labelKey: "itemImage", icon: Image, element: el(CraftImage) },
+      { labelKey: "itemButton", icon: MousePointerClick, element: el(CraftButton) },
     ],
   },
   {
-    label: "Layout",
+    labelKey: "categoryLayout",
     items: [
-      { label: "Layout", icon: LayoutDashboard, element: el(CraftLayout) },
+      { labelKey: "itemLayout", icon: LayoutDashboard, element: el(CraftLayout) },
     ],
   },
   // TODO: uncomment when ready to add more element types
@@ -149,25 +150,26 @@ const categories: PaletteCategory[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ElementPalette() {
+  const t = useT();
   const { connectors } = useEditor();
 
   return (
     <div className="w-56 shrink-0 overflow-y-auto border-r border-border bg-background">
       <div className="p-2">
         <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Elements
+          {t("builder.palette.elements")}
         </p>
         {categories.map((cat) => (
-          <div key={cat.label} className="mb-3">
+          <div key={cat.labelKey} className="mb-3">
             <p className="mb-1 px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-              {cat.label}
+              {t(`builder.palette.${cat.labelKey}`)}
             </p>
             <div className="grid grid-cols-2 gap-1">
               {cat.items.map((item) => {
                 const Icon = item.icon;
                 return (
                   <div
-                    key={item.label}
+                    key={item.labelKey}
                     ref={(ref: HTMLElement | null) => {
                       if (ref) connectors.create(ref, item.element);
                     }}
@@ -175,7 +177,7 @@ export function ElementPalette() {
                   >
                     <Icon className="h-4 w-4" />
                     <span className="text-[10px] font-medium leading-none">
-                      {item.label}
+                      {t(`builder.palette.${item.labelKey}`)}
                     </span>
                   </div>
                 );

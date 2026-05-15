@@ -5,11 +5,8 @@ import { uuid } from "@/lib/utils";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  MessageSquare, Plus, Send, Loader2, Users, ArrowLeft, Search, X, UserPlus, ChevronDown, AlertTriangle, CheckCircle2,
+  MessageSquare, Plus, Loader2, Users, ArrowLeft, Search, X, UserPlus, AlertTriangle, CheckCircle2, Paperclip, AtSign, ArrowUp,
 } from "lucide-react";
-import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,10 +32,10 @@ import { useT } from "@/lib/i18n/context";
 import { useSpacetimeDB } from "spacetimedb/react";
 import { MerchivaChat } from "@/components/merchiva-chat-dashboard";
 
-function MerchivaChatEmbed() {
+function MerchivaChatEmbed({ compact = false, header = true }: { compact?: boolean; header?: boolean } = {}) {
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <MerchivaChat />
+      <MerchivaChat compact={compact} header={header} />
     </div>
   );
 }
@@ -277,6 +274,7 @@ export default function ChatPage() {
   };
 
   const getConvDisplayName = (conv: ChatConversation) => {
+    if (conv.id === "__merchiva__") return "Mr. Merchiva";
     if (conv.type === "group") return conv.name ?? t("chat.groupFallback");
     const other = conv.members?.find((m) => m.userId !== userId);
     return other ? getMemberName(other.userId) : t("chat.chatFallback");
@@ -363,8 +361,8 @@ export default function ChatPage() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        conv.type === "group" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.3rem] text-xs font-bold ${
+                        conv.type === "group" ? "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700" : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
                       }`}>
                         {conv.type === "group" ? <Users className="h-4 w-4" /> : displayName[0]?.toUpperCase()}
                       </div>
@@ -442,7 +440,7 @@ export default function ChatPage() {
             </DynamicUIElementTitle>
             {activeConv?.id === "__merchiva__" ? (
               <div className="flex flex-col h-full">
-                <MerchivaChatEmbed />
+                <MerchivaChatEmbed compact header={false} />
               </div>
             ) : activeConv ? (
               <div className="flex flex-col h-full">
@@ -493,7 +491,7 @@ export default function ChatPage() {
                   onClick={() => handleCreateDm(m.userId)}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-[0.3rem] hover:bg-muted transition-colors text-left"
                 >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 text-xs font-bold text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
                     {m.displayName[0]?.toUpperCase()}
                   </div>
                   <div>
@@ -538,7 +536,7 @@ export default function ChatPage() {
                   {selectedMembers.map((uid) => (
                     <span
                       key={uid}
-                      className="inline-flex items-center gap-1 bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium"
+                      className="inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 rounded-[0.3rem] px-2 py-0.5 text-xs font-mono"
                     >
                       {getMemberName(uid)}
                       <button onClick={() => setSelectedMembers((prev) => prev.filter((id) => id !== uid))}>
@@ -561,15 +559,15 @@ export default function ChatPage() {
                             selected ? prev.filter((id) => id !== m.userId) : [...prev, m.userId]
                           )
                         }
-                        className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-md text-left transition-colors ${
-                          selected ? "bg-primary/10" : "hover:bg-muted"
+                        className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-[0.3rem] text-left transition-colors ${
+                          selected ? "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700" : "hover:bg-muted"
                         }`}
                       >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300">
                           {m.displayName[0]?.toUpperCase()}
                         </div>
                         <span className="text-sm flex-1">{m.displayName}</span>
-                        {selected && <span className="text-xs text-primary font-medium">{t("chat.added")}</span>}
+                        {selected && <span className="text-xs font-mono text-stone-600 dark:text-stone-300">{t("chat.added")}</span>}
                       </button>
                     );
                   })}
@@ -578,7 +576,7 @@ export default function ChatPage() {
             <Button
               onClick={handleCreateGroup}
               disabled={!groupName.trim() || selectedMembers.length === 0}
-              className="w-full"
+              className="w-full rounded-[0.3rem]"
             >
               {t("chat.createGroup")} ({selectedMembers.length} {t("chat.memberPlural").toLowerCase()})
             </Button>
@@ -619,15 +617,15 @@ export default function ChatPage() {
                           selected ? prev.filter((id) => id !== m.userId) : [...prev, m.userId]
                         )
                       }
-                      className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-md text-left transition-colors ${
-                        selected ? "bg-primary/10" : "hover:bg-muted"
+                      className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-[0.3rem] text-left transition-colors ${
+                        selected ? "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700" : "hover:bg-muted"
                       }`}
                     >
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[10px] font-bold text-stone-600 dark:text-stone-300">
                         {m.displayName[0]?.toUpperCase()}
                       </div>
                       <span className="text-sm flex-1">{m.displayName}</span>
-                      {selected && <span className="text-xs text-primary font-medium">{t("chat.added")}</span>}
+                      {selected && <span className="text-xs font-mono text-stone-600 dark:text-stone-300">{t("chat.added")}</span>}
                     </button>
                   );
                 })}
@@ -635,7 +633,7 @@ export default function ChatPage() {
             <Button
               onClick={handleAddMembers}
               disabled={selectedMembers.length === 0}
-              className="w-full"
+              className="w-full rounded-[0.3rem]"
             >
               {t("chat.add")} {selectedMembers.length} {selectedMembers.length !== 1 ? t("chat.memberPlural") : t("chat.memberSingular")}
             </Button>
@@ -684,7 +682,7 @@ function ChatView({
   const [menuMsg, setMenuMsg] = useState<ChatMessage | null>(null);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number; isMe: boolean }>({ x: 0, y: 0, isMe: false });
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchTarget = useRef<HTMLElement | null>(null);
@@ -753,17 +751,21 @@ function ChatView({
           return (
             <div key={msg.id}>
               {showTime && (
-                <p className="text-center text-[10px] text-muted-foreground py-3">
-                  {formatTimeSeparator(new Date(msg.createdAt), t)}
-                </p>
+                <div className="flex items-center gap-3 py-3">
+                  <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
+                  <span className="font-mono uppercase text-stone-500 dark:text-stone-400" style={{ fontSize: 10, letterSpacing: 0.6 }}>
+                    {formatTimeSeparator(new Date(msg.createdAt), t)}
+                  </span>
+                  <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
+                </div>
               )}
               <div className={`flex items-end gap-2 ${gap} ${isMe ? "justify-end" : "justify-start"}`}>
                 {!isMe ? (
                   isLast ? (
                     av ? (
-                      <img src={av} alt={name} className="h-7 w-7 rounded-full object-cover shrink-0" />
+                      <img src={av} alt={name} className="h-7 w-7 rounded-[0.3rem] object-cover shrink-0" />
                     ) : (
-                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
+                      <div className="h-7 w-7 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-[10px] font-bold text-stone-600 dark:text-stone-300 shrink-0">
                         {name[0]?.toUpperCase()}
                       </div>
                     )
@@ -777,13 +779,13 @@ function ChatView({
                     onTouchEnd={handleTouchEnd}
                     onTouchMove={handleTouchMove}
                     onContextMenu={(e) => handleContextMenu(msg, e)}
-                    className={`max-w-[70vw] rounded-2xl px-3 py-2 text-sm select-none ${
+                    className={`max-w-[70vw] rounded-[0.3rem] px-3 py-2 text-sm select-none ${
                       msg.content?.startsWith("[task:done] ")
                         ? (isMe
                           ? "bg-green-800 text-white border border-green-700"
                           : "bg-green-50 text-foreground border border-green-200")
-                        : (isMe ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")
-                    } ${isMe ? (isLast ? "rounded-br-sm" : "") : (isLast ? "rounded-bl-sm" : "")}`}
+                        : (isMe ? "bg-foreground text-background" : "bg-background text-foreground border border-border")
+                    }`}
                   >
                     {msg.replyToId && (() => {
                       const replied = messages.find((m) => m.id === msg.replyToId);
@@ -865,7 +867,7 @@ function ChatView({
                         <button
                           key={emoji}
                           onClick={() => onReact(msg.id, emoji)}
-                          className="flex items-center gap-0.5 rounded-full bg-muted border border-border px-1.5 py-0.5 text-xs hover:bg-muted transition-colors"
+                          className="flex items-center gap-0.5 rounded-[0.3rem] bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-700 px-1.5 py-0.5 text-xs hover:bg-stone-100 dark:bg-stone-800 transition-colors"
                         >
                           <span>{emoji}</span>
                           {count > 1 && <span className="text-[10px] text-muted-foreground">{count}</span>}
@@ -900,7 +902,7 @@ function ChatView({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+            <div className="absolute inset-0 bg-black/20" />
             <motion.div
               className="absolute w-[260px]"
               style={{
@@ -915,7 +917,7 @@ function ChatView({
             >
               {/* Emoji bar */}
               <motion.div
-                className="flex gap-0.5 bg-card/95 backdrop-blur-md rounded-full p-1.5 shadow-xl border border-border/50 mb-2"
+                className="flex gap-0.5 bg-background rounded-[0.3rem] p-1.5 border border-border mb-2"
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05, type: "spring", damping: 20, stiffness: 300 }}
@@ -924,7 +926,7 @@ function ChatView({
                   <motion.button
                     key={emoji}
                     onClick={() => { onReact(menuMsg.id, emoji); setMenuMsg(null); }}
-                    className="text-xl p-1.5 rounded-full hover:bg-muted active:scale-125 transition-colors"
+                    className="text-xl p-1.5 rounded-[0.3rem] hover:bg-muted active:scale-125 transition-colors"
                     initial={{ opacity: 0, scale: 0.3 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.04 * idx, type: "spring", damping: 15, stiffness: 400 }}
@@ -935,17 +937,17 @@ function ChatView({
               </motion.div>
               {/* Actions card */}
               <motion.div
-                className="bg-card/95 backdrop-blur-md rounded-xl shadow-xl border border-border/50 overflow-hidden"
+                className="bg-background rounded-[0.3rem] border border-border overflow-hidden"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08, type: "spring", damping: 22, stiffness: 350 }}
               >
-                <p className="px-3 pt-2 pb-1 text-[9px] text-muted-foreground uppercase tracking-wide">
+                <p className="px-3 pt-2 pb-1 font-mono uppercase text-stone-500 dark:text-stone-400" style={{ fontSize: 9, letterSpacing: 0.6 }}>
                   {formatTimeSeparator(new Date(menuMsg.createdAt), t)}
                 </p>
                 <button
                   onClick={() => { onReply(menuMsg); setMenuMsg(null); }}
-                  className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4 text-muted-foreground" /> {t("chat.reply")}
                 </button>
@@ -957,14 +959,14 @@ function ChatView({
                       setMenuMsg(null);
                       inputRef.current?.focus();
                     }}
-                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted/80 transition-colors"
+                    className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                   >
                     <span className="text-sm font-bold text-muted-foreground w-4 text-center">@</span> {t("chat.mention")}
                   </button>
                 )}
                 <button
                   onClick={() => { navigator.clipboard.writeText(menuMsg.content); setMenuMsg(null); }}
-                  className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted/80 transition-colors"
+                  className="flex items-center gap-2.5 w-full px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                 >
                   <MessageSquare className="h-4 w-4 text-muted-foreground" /> {t("chat.copy")}
                 </button>
@@ -1014,45 +1016,70 @@ function ChatView({
                   </p>
                   <p className="text-sm truncate text-foreground/80">{replyTo.content}</p>
                 </div>
-                <button onClick={() => onReply(null)} className="p-1.5 rounded-full hover:bg-muted text-muted-foreground shrink-0 mt-0.5">
+                <button onClick={() => onReply(null)} className="p-1.5 rounded-[0.3rem] hover:bg-muted text-muted-foreground shrink-0 mt-0.5">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="flex items-center gap-2 p-3 pt-2">
-          <label className="shrink-0 p-2 rounded-full hover:bg-muted text-muted-foreground cursor-pointer transition-colors">
-            <Plus className="h-5 w-5" />
-            <input type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" className="hidden" onChange={onFileUpload} />
-          </label>
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => {
-              const val = e.target.value;
-              setInput(val);
-              // Detect @ at end or after space
-              const lastAt = val.lastIndexOf("@");
-              if (lastAt >= 0 && (lastAt === 0 || val[lastAt - 1] === " ")) {
-                const query = val.slice(lastAt + 1);
-                if (!query.includes(" ")) {
-                  setMentionSearch(query);
-                  setShowMentionPicker(true);
-                  inputRef.current?.blur();
-                  return;
+        <div className="p-3 pt-2">
+          <div className="rounded-[0.3rem] border border-border bg-background focus-within:border-stone-400 transition-colors">
+            <textarea
+              ref={inputRef}
+              rows={2}
+              value={input}
+              onChange={(e) => {
+                const val = e.target.value;
+                setInput(val);
+                // Detect @ at end or after space
+                const lastAt = val.lastIndexOf("@");
+                if (lastAt >= 0 && (lastAt === 0 || val[lastAt - 1] === " ")) {
+                  const query = val.slice(lastAt + 1);
+                  if (!query.includes(" ")) {
+                    setMentionSearch(query);
+                    setShowMentionPicker(true);
+                    inputRef.current?.blur();
+                    return;
+                  }
                 }
-              }
-              setShowMentionPicker(false);
-            }}
-            onKeyDown={onKeyDown}
-            placeholder={t("chat.typePlaceholder")}
-            className="flex-1"
-            autoComplete="off"
-          />
-          <Button onClick={onSend} disabled={sending || !input.trim()} size="sm" className="px-3">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+                setShowMentionPicker(false);
+              }}
+              onKeyDown={onKeyDown}
+              placeholder={t("chat.typePlaceholder")}
+              className="w-full resize-none bg-transparent border-0 outline-none px-3 pt-2.5 pb-1 text-sm leading-[1.5] placeholder:text-muted-foreground/60"
+              autoComplete="off"
+            />
+            <div className="flex items-center gap-1.5 px-2 pb-2 pt-1">
+              <label className="h-7 w-7 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center cursor-pointer transition-colors" title={t("chat.attach") ?? "Attach"}>
+                <Paperclip className="h-[14px] w-[14px]" />
+                <input type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" className="hidden" onChange={onFileUpload} />
+              </label>
+              <button
+                className="h-7 px-2 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center gap-1.5 transition-colors"
+                title="Mention"
+                onClick={() => {
+                  const val = input + "@";
+                  setInput(val);
+                  setMentionSearch("");
+                  setShowMentionPicker(true);
+                }}
+              >
+                <AtSign className="h-[13px] w-[13px]" />
+                <span className="text-[11px]">mention</span>
+              </button>
+              <div className="flex-1" />
+              <kbd className="font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ send</kbd>
+              <button
+                onClick={onSend}
+                disabled={sending || !input.trim()}
+                className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5 disabled:opacity-30 transition-colors"
+              >
+                {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
+                {!sending && <ArrowUp className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1085,10 +1112,10 @@ function ChatView({
                   setMentionSearch("");
                   inputRef.current?.focus();
                 }}
-                className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted/50 transition-colors border-b border-border/50"
+                className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border"
               >
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-primary" />
+                <div className="h-9 w-9 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center">
+                  <Users className="h-4 w-4 text-stone-600 dark:text-stone-300" />
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-medium">{t("chat.everyone")}</p>
@@ -1111,12 +1138,12 @@ function ChatView({
                       setMentionSearch("");
                       inputRef.current?.focus();
                     }}
-                    className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted/50 transition-colors border-b border-border/50"
+                    className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border"
                   >
                     {av ? (
-                      <img src={av} alt={m.displayName} className="h-10 w-10 rounded-full object-cover" />
+                      <img src={av} alt={m.displayName} className="h-9 w-9 rounded-[0.3rem] object-cover" />
                     ) : (
-                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
+                      <div className="h-9 w-9 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-sm font-bold text-stone-600 dark:text-stone-300">
                         {m.displayName[0]?.toUpperCase()}
                       </div>
                     )}

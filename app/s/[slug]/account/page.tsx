@@ -38,7 +38,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
       onClick={onClick}
       className={cn(
         "px-3 py-2 text-xs font-medium rounded transition-colors",
-        active ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+        active ? "bg-gray-900 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:bg-gray-800"
       )}
     >
       {children}
@@ -60,25 +60,25 @@ function OrdersTab({ customerId }: { customerId: string }) {
       .finally(() => setLoading(false));
   }, [customerId]);
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>;
 
   if (!orders.length) {
-    return <p className="text-center py-10 text-sm text-gray-500">{t("storefront.account.noOrders")}</p>;
+    return <p className="text-center py-10 text-sm text-gray-500 dark:text-gray-400">{t("storefront.account.noOrders")}</p>;
   }
 
   return (
     <div className="space-y-3">
       {orders.map((order) => (
-        <div key={order.id} className="rounded border border-gray-200 p-4">
+        <div key={order.id} className="rounded border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <p className="font-semibold text-sm">${order.total.toFixed(2)}</p>
-              <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(order.createdAt).toLocaleDateString()}</p>
             </div>
             <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_PILL[order.status])}>{t(`status.${order.status}`)}</span>
           </div>
           {order.items.length > 0 && (
-            <p className="text-xs text-gray-500">{order.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{order.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
           )}
         </div>
       ))}
@@ -100,21 +100,21 @@ function BookingsTab({ customerId }: { customerId: string }) {
       .finally(() => setLoading(false));
   }, [customerId]);
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>;
 
   if (!bookings.length) {
-    return <p className="text-center py-10 text-sm text-gray-500">{t("storefront.account.noBookings")}</p>;
+    return <p className="text-center py-10 text-sm text-gray-500 dark:text-gray-400">{t("storefront.account.noBookings")}</p>;
   }
 
   return (
     <div className="space-y-3">
       {bookings.map((b) => (
-        <div key={b.id} className="rounded border border-gray-200 p-4">
+        <div key={b.id} className="rounded border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="font-semibold text-sm">{b.date} at {b.time}</p>
-              <p className="text-xs text-gray-500">{t("storefront.account.partyOf")} {b.partySize}</p>
-              {b.notes && <p className="text-xs text-gray-400 mt-0.5">{b.notes}</p>}
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t("storefront.account.partyOf")} {b.partySize}</p>
+              {b.notes && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{b.notes}</p>}
             </div>
             <span className={cn("px-2 py-0.5 rounded text-[11px] font-medium", STATUS_PILL[b.status])}>{t(`status.${b.status}`)}</span>
           </div>
@@ -165,14 +165,14 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
     }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>;
 
   if (!tier) {
     return (
       <div className="text-center py-10">
-        <Star className="h-8 w-8 mx-auto text-gray-300 mb-3" />
-        <p className="text-sm text-gray-500">{t("storefront.account.noMembership")}</p>
-        <p className="text-xs text-gray-400 mt-1">{t("storefront.account.askStaff")}</p>
+        <Star className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-700 mb-3" />
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t("storefront.account.noMembership")}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t("storefront.account.askStaff")}</p>
       </div>
     );
   }
@@ -185,7 +185,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
           <span className="text-3xl">{tier.icon}</span>
           <div>
             <p className="font-bold text-base" style={{ color: tier.color }}>{tier.name}</p>
-            {tier.description && <p className="text-xs text-gray-500">{tier.description}</p>}
+            {tier.description && <p className="text-xs text-gray-500 dark:text-gray-400">{tier.description}</p>}
           </div>
         </div>
         <div className="rounded px-3 py-2 flex justify-between items-center" style={{ background: `${tier.color}15`, border: `1px solid ${tier.color}30` }}>
@@ -197,22 +197,22 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
       {/* Perks */}
       {perks.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">{t("storefront.account.yourPerks")}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">{t("storefront.account.yourPerks")}</p>
           <div className="space-y-2">
             {perks.map((perk) => {
               const status = perkStatus[perk.id];
               const alreadyClaimed = claimed[perk.id];
               return (
-                <div key={perk.id} className="flex items-center gap-3 rounded border border-gray-200 p-3">
-                  <Gift className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <div key={perk.id} className="flex items-center gap-3 rounded border border-gray-200 dark:border-gray-700 p-3">
+                  <Gift className="h-4 w-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{perk.name}</p>
-                    {perk.description && <p className="text-xs text-gray-500">{perk.description}</p>}
+                    {perk.description && <p className="text-xs text-gray-500 dark:text-gray-400">{perk.description}</p>}
                     {alreadyClaimed && (
                       <p className="text-xs font-mono font-bold mt-0.5" style={{ color: tier.color }}>{t("storefront.account.codeLabel")} {alreadyClaimed}</p>
                     )}
                     {!alreadyClaimed && status?.nextClaimAt && (
-                      <p className="text-xs text-gray-400">{t("storefront.account.availableAt")} {new Date(status.nextClaimAt).toLocaleTimeString()}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{t("storefront.account.availableAt")} {new Date(status.nextClaimAt).toLocaleTimeString()}</p>
                     )}
                   </div>
                   {!alreadyClaimed && perk.active && (
@@ -263,13 +263,13 @@ export default function CustomerAccountPage({ params }: { params: Promise<{ slug
   };
 
   if (customer === "loading") {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>;
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" /></div>;
   }
 
   if (!customer) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 gap-4">
-        <p className="text-gray-600 text-sm">{t("storefront.account.notSignedIn")}</p>
+        <p className="text-gray-600 dark:text-gray-300 text-sm">{t("storefront.account.notSignedIn")}</p>
         <Link href={`/s/${slug}`} className="px-4 py-2 rounded bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800">
           {t("storefront.account.backToSite")}
         </Link>
@@ -278,28 +278,28 @@ export default function CustomerAccountPage({ params }: { params: Promise<{ slug
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between max-w-2xl mx-auto">
+      <header className="bg-white dark:bg-stone-900 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between max-w-2xl mx-auto">
         <div className="flex items-center gap-3">
-          <Link href={`/s/${slug}`} className="text-gray-400 hover:text-gray-700">
+          <Link href={`/s/${slug}`} className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
             <p className="font-semibold text-sm">{customer.name ?? customer.email}</p>
-            <p className="text-xs text-gray-500">{customer.email}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{customer.email}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 text-xs text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:bg-gray-950"
         >
           <LogOut className="h-3.5 w-3.5" /> {t("storefront.account.signOut")}
         </button>
       </header>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 px-4 py-2 bg-white border-b border-gray-200 max-w-2xl mx-auto">
+      <div className="flex items-center gap-1 px-4 py-2 bg-white dark:bg-stone-900 border-b border-gray-200 dark:border-gray-700 max-w-2xl mx-auto">
         <TabBtn active={tab === "membership"} onClick={() => setTab("membership")}>
           <Star className="h-3.5 w-3.5 inline mr-1" />{t("storefront.account.tabMembership")}
         </TabBtn>
@@ -314,7 +314,7 @@ export default function CustomerAccountPage({ params }: { params: Promise<{ slug
       {/* Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
         {tab === "membership" && siteId && <MembershipTab customerId={customer.id} siteId={siteId} />}
-        {tab === "membership" && !siteId && <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>}
+        {tab === "membership" && !siteId && <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>}
         {tab === "orders"     && <OrdersTab customerId={customer.id} />}
         {tab === "bookings"   && <BookingsTab customerId={customer.id} />}
       </main>

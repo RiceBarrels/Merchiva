@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { getSiteBySlug, getPages, getPageBySlug } from "@/lib/db/sites";
 import { SiteRenderer } from "@/components/site-renderer";
+import { SiteHtmlRenderer } from "@/components/site-html-renderer";
 import type { Site, SitePage } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
@@ -52,7 +53,17 @@ export default function PublishedSiteSubPage({ params }: Props) {
 
   return (
     <main style={{ minHeight: "100vh" }}>
-      <SiteRenderer elements={page.elements} theme={site.theme} basePath={`/s/${slug}`} />
+      {page.html && page.html.trim().length > 0 ? (
+        <SiteHtmlRenderer
+          html={page.html}
+          theme={site.theme}
+          basePath={`/s/${slug}`}
+          customValues={site.values}
+          valueContext={{ siteName: site.name }}
+        />
+      ) : (
+        <SiteRenderer elements={page.elements} theme={site.theme} basePath={`/s/${slug}`} />
+      )}
     </main>
   );
 }

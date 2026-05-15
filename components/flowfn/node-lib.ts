@@ -457,6 +457,32 @@ export const NODE_LIB: Record<string, NodeDef> = {
     },
   },
 
+  // ── Values (site-wide global values, also editable in the Values panel) ──
+  "value-get": {
+    cat: "Values",
+    label: "Get Value",
+    icon: "globe",
+    iconClass: "io",
+    desc: "read a site value by key",
+    inputs: [],
+    outputs: [{ id: "out", label: "value", type: T.string }],
+    controls: [{ id: "key", kind: "text", default: "", placeholder: "key (e.g. siteName, brandColor)" }],
+    expr: (n) => `(__getValue(${JSON.stringify(String(n.data.key || ""))}))`,
+  },
+  "value-set": {
+    cat: "Values",
+    label: "Set Value",
+    icon: "globe",
+    iconClass: "io",
+    desc: "write a custom site value (persists)",
+    inputs: [{ id: "value", label: "value", type: T.string }],
+    outputs: [{ id: "out", label: "ok", type: T.bool }],
+    controls: [{ id: "key", kind: "text", default: "", placeholder: "key (custom values only)" }],
+    side: true,
+    async: true,
+    expr: (n, get) => `(await __setValue(${JSON.stringify(String(n.data.key || ""))}, String(${get("value", '""')})))`,
+  },
+
   // ── OUTPUT ──
   return: {
     cat: "Output",

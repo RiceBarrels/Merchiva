@@ -38,6 +38,15 @@ Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business ma
 3. Add subscription hook in `lib/spacetimedb/hooks.ts` or domain hook in `hooks/`
 4. Add action wrappers in `lib/spacetimedb/actions.ts`
 
+### Add a column to an existing SpacetimeDB table
+1. Add the new column **at the very end** of the table definition (before the closing `}`), after all existing columns. **Never insert between existing columns** — reordering triggers a destructive migration that deletes all data in that table.
+2. Use `t.option(...)` for the new column so existing rows get `null` by default.
+3. Update any reducers (add/update) that need to read or write the new column.
+4. Publish with `spacetime publish merchiva --server maincloud --yes` first **without** `--delete-data`. If it succeeds, no data is lost.
+5. If publish fails with migration errors, **stop and ask the user** before using `--delete-data`. Never auto-approve data deletion.
+6. Run `spacetime generate` to regenerate TypeScript types.
+7. Update client-side `lib/spacetimedb/actions.ts` and any hooks that use the table.
+
 ### Fix a loading bug
 - Check `useEffect` has `.catch()` and `.finally(() => setLoading(false))`
 - Check SpacetimeDB connection status in provider

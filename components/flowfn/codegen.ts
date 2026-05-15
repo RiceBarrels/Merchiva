@@ -111,7 +111,21 @@ export function generateAllCode(fns: FlowFunction[]): string {
   return head + fns.map((f) => generateCode(f, fns).code).join("\n\n");
 }
 
-export async function executeFunction(fn: FlowFunction, args: string[], allFns: FlowFunction[]): Promise<ExecutionResult> {
+export interface ValueAPI {
+  // Read a value by key. Looks up custom values first, then system values
+  // (siteName, currentYear, etc.). Returns "" when not found.
+  getValue: (key: string) => string;
+  // Write a custom site value. Returns true on success, false on failure.
+  // System values are read-only; setValue on a system key is a no-op (false).
+  setValue: (key: string, value: string) => Promise<boolean>;
+}
+
+export async function executeFunction(
+  fn: FlowFunction,
+  args: string[],
+  allFns: FlowFunction[],
+  valueAPI?: ValueAPI,
+): Promise<ExecutionResult> {
   const logs: { label: string; value: unknown }[] = [];
   const __log = (label: string, value: unknown) => {
     logs.push({ label: String(label || ""), value });
@@ -134,9 +148,14 @@ if (!window.__lastMouseEvent) {
 ${allCode}
 return (async () => { return await ${main.fnName}(${argsExpr}); })();
 `;
+  // Default value API — used when running outside a site context (preview).
+  // getValue returns "" so functions don't crash; setValue is a no-op.
+  const __getValue = valueAPI ? valueAPI.getValue : (_k: string) => "";
+  const __setValue = valueAPI ? valueAPI.setValue : async (_k: string, _v: string) => false;
+
   try {
-    const factory = new Function("__log", "__triggerEl", wrap);
-    const result = await factory(__log, null);
+    const factory = new Function("__log", "__triggerEl", "__getValue", "__setValue", wrap);
+    const result = await factory(__log, null, __getValue, __setValue);
     return { ok: true, result, logs };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -19,6 +19,5 @@ export default {
   maxUses: __t.i32(),
   validFrom: __t.string(),
   validUntil: __t.string(),
-  active: __t.bool(),
   description: __t.option(__t.string()),
 };

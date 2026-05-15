@@ -12,7 +12,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 import { PAGE_TEMPLATES, type PageTemplateId } from "@/lib/builder/page-templates";
+
+// Maps the kebab-case template id to the camelCase i18n key
+const TEMPLATE_KEY: Record<PageTemplateId, string> = {
+  "blank": "blank",
+  "product-detail": "productDetail",
+  "login": "login",
+  "register": "register",
+  "forgot-password": "forgotPassword",
+  "cart": "cart",
+  "membership": "membershipTpl",
+  "my-account": "myAccount",
+  "settings": "settingsTpl",
+  "checkout": "checkout",
+  "menu": "menuTpl",
+};
 
 interface PageTemplateDialogProps {
   open: boolean;
@@ -36,6 +52,7 @@ export function PageTemplateDialog({
   existingNames,
   onCreate,
 }: PageTemplateDialogProps) {
+  const t = useT();
   const [templateId, setTemplateId] = useState<PageTemplateId>("blank");
   const [name, setName] = useState("New Page");
   const [touched, setTouched] = useState(false);
@@ -73,16 +90,16 @@ export function PageTemplateDialog({
     <DynamicUIElement open={open} onOpenChange={onOpenChange}>
       <DynamicUIElementContent className="sm:max-w-2xl">
         <DynamicUIElementHeader>
-          <DynamicUIElementTitle className="text-sm">Add a page</DynamicUIElementTitle>
+          <DynamicUIElementTitle className="text-sm">{t("builder.pageTemplate.title")}</DynamicUIElementTitle>
         </DynamicUIElementHeader>
 
         <div className="space-y-4">
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Page name</Label>
+            <Label className="text-xs text-muted-foreground">{t("builder.pageTemplate.pageName")}</Label>
             <Input
               value={name}
               onChange={(e) => { setName(e.target.value); setTouched(true); }}
-              placeholder="New Page"
+              placeholder={t("builder.pageTemplate.pageNamePlaceholder")}
               autoFocus
               className="h-8 text-sm"
               onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
@@ -93,10 +110,11 @@ export function PageTemplateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Template</Label>
+            <Label className="text-xs text-muted-foreground">{t("builder.pageTemplate.template")}</Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {PAGE_TEMPLATES.map((tpl) => {
                 const active = tpl.id === templateId;
+                const keyBase = `builder.pageTemplates.${TEMPLATE_KEY[tpl.id]}`;
                 return (
                   <button
                     type="button"
@@ -109,9 +127,9 @@ export function PageTemplateDialog({
                         : "border-border hover:border-foreground/60 hover:bg-accent/40"
                     )}
                   >
-                    <span className="text-xs font-medium text-foreground">{tpl.label}</span>
+                    <span className="text-xs font-medium text-foreground">{t(keyBase)}</span>
                     <span className="text-[10px] leading-snug text-muted-foreground">
-                      {tpl.description}
+                      {t(`${keyBase}Description`)}
                     </span>
                   </button>
                 );
@@ -127,7 +145,7 @@ export function PageTemplateDialog({
             onClick={() => onOpenChange(false)}
             className="text-xs"
           >
-            Cancel
+            {t("builder.pageTemplate.cancel")}
           </Button>
           <Button
             size="sm"
@@ -135,7 +153,7 @@ export function PageTemplateDialog({
             disabled={!name.trim()}
             className="text-xs"
           >
-            Create page
+            {t("builder.pageTemplate.createPage")}
           </Button>
         </DynamicUIElementFooter>
       </DynamicUIElementContent>

@@ -7,6 +7,7 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { getSiteById, getPages } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { SiteRenderer, buildGoogleFontsUrl } from "@/components/site-renderer";
+import { SiteHtmlRenderer } from "@/components/site-html-renderer";
 import type { Site, SitePage, Product } from "@/lib/types";
 
 export default function PreviewPage({
@@ -87,12 +88,23 @@ export default function PreviewPage({
         // eslint-disable-next-line @next/next/no-page-custom-font
         <link rel="stylesheet" href={customFontsUrl} />
       )}
-      <SiteRenderer
-        elements={elements}
-        theme={site.theme}
-        products={products}
-        basePath={`/preview/${siteId}`}
-      />
+      {activePage.html && activePage.html.trim().length > 0 ? (
+        <SiteHtmlRenderer
+          html={activePage.html}
+          theme={site.theme}
+          products={products}
+          basePath={`/preview/${siteId}`}
+          customValues={site.values}
+          valueContext={{ siteName: site.name }}
+        />
+      ) : (
+        <SiteRenderer
+          elements={elements}
+          theme={site.theme}
+          products={products}
+          basePath={`/preview/${siteId}`}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteShell } from "@/components/landing/site-shell";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
@@ -70,31 +71,7 @@ export default function AboutPage() {
   return (
     <>
       <OrgJsonLd />
-      <main style={{ background: C.bg, color: C.text, fontFamily: C.sans }}>
-        {/* Nav */}
-        <nav style={{ position: "sticky", top: 0, zIndex: 100, padding: "14px 32px", background: "rgba(240,238,233,0.92)", backdropFilter: "saturate(140%) blur(14px)", borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: 32 }}>
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: C.ink }}>
-              <NotchM size={22} />
-              <span style={{ fontWeight: 600, fontSize: 17, letterSpacing: -0.8, lineHeight: 1 }}>Merchiva</span>
-            </Link>
-            <div style={{ display: "flex", gap: 24, marginLeft: 24 }}>
-              {[
-                { l: "Features", h: "/features" },
-                { l: "Pricing", h: "/pricing" },
-                { l: "About", h: "/about" },
-                { l: "Changelog", h: "/changelog" },
-              ].map((x) => (
-                <Link key={x.l} href={x.h} style={{ fontSize: 13, color: x.l === "About" ? C.ink : C.text3, textDecoration: "none", fontWeight: x.l === "About" ? 600 : 500 }}>{x.l}</Link>
-              ))}
-            </div>
-            <div style={{ flex: 1 }} />
-            <Link href="/signup" style={{ fontSize: 13, fontWeight: 500, color: "#fff", background: C.ink, textDecoration: "none", padding: "8px 14px", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 6 }}>
-              Start free <span style={{ fontFamily: C.mono, fontSize: 11, opacity: 0.7 }}>→</span>
-            </Link>
-          </div>
-        </nav>
-
+      <SiteShell active="about" background={C.bg}>
         {/* Hero */}
         <section style={{ padding: "100px 32px 80px" }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -155,19 +132,7 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer style={{ borderTop: `1px solid ${C.border}`, padding: "28px 32px" }}>
-          <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", justifyContent: "space-between", fontFamily: C.mono, fontSize: 11, color: C.sec }}>
-            <span>&copy; 2026 Merchiva, Inc.</span>
-            <div style={{ display: "flex", gap: 24 }}>
-              <Link href="/features" style={{ color: C.sec, textDecoration: "none" }}>Features</Link>
-              <Link href="/pricing" style={{ color: C.sec, textDecoration: "none" }}>Pricing</Link>
-              <Link href="/about" style={{ color: C.sec, textDecoration: "none" }}>About</Link>
-              <Link href="/changelog" style={{ color: C.sec, textDecoration: "none" }}>Changelog</Link>
-            </div>
-          </div>
-        </footer>
-      </main>
+      </SiteShell>
     </>
   );
 }

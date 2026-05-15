@@ -10,6 +10,45 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AiChatHistory = __t.object("AiChatHistory", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  userId: __t.identity(),
+  messages: __t.string(),
+  summary: __t.option(__t.string()),
+  updatedAt: __t.timestamp(),
+});
+export type AiChatHistory = __Infer<typeof AiChatHistory>;
+
+export const AiChatSession = __t.object("AiChatSession", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  userId: __t.identity(),
+  title: __t.string(),
+  messages: __t.string(),
+  summary: __t.option(__t.string()),
+  archived: __t.bool(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type AiChatSession = __Infer<typeof AiChatSession>;
+
+export const AiJob = __t.object("AiJob", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  sessionId: __t.string(),
+  userId: __t.identity(),
+  prompt: __t.string(),
+  status: __t.string(),
+  partialText: __t.string(),
+  finalText: __t.option(__t.string()),
+  error: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+  consumed: __t.bool(),
+});
+export type AiJob = __Infer<typeof AiJob>;
+
 export const ChatConversation = __t.object("ChatConversation", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -38,6 +77,23 @@ export const ChatMessage = __t.object("ChatMessage", {
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
 
+export const Coupon = __t.object("Coupon", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  code: __t.string(),
+  discountType: __t.string(),
+  discountValue: __t.f64(),
+  minPurchase: __t.f64(),
+  maxUses: __t.i32(),
+  usedCount: __t.i32(),
+  validFrom: __t.string(),
+  validUntil: __t.string(),
+  active: __t.bool(),
+  description: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+});
+export type Coupon = __Infer<typeof Coupon>;
+
 export const CustomerPoints = __t.object("CustomerPoints", {
   id: __t.uuid(),
   customerId: __t.string(),
@@ -47,6 +103,21 @@ export const CustomerPoints = __t.object("CustomerPoints", {
   updatedAt: __t.timestamp(),
 });
 export type CustomerPoints = __Infer<typeof CustomerPoints>;
+
+export const Expense = __t.object("Expense", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  category: __t.string(),
+  description: __t.string(),
+  amount: __t.f64(),
+  date: __t.string(),
+  recurring: __t.bool(),
+  recurringPeriod: __t.option(__t.string()),
+  receiptUrl: __t.option(__t.string()),
+  notes: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+});
+export type Expense = __Infer<typeof Expense>;
 
 export const InventoryItem = __t.object("InventoryItem", {
   id: __t.uuid(),
@@ -172,6 +243,11 @@ export const Organization = __t.object("Organization", {
   ownerId: __t.identity(),
   name: __t.string(),
   createdAt: __t.timestamp(),
+  stripeCustomerId: __t.option(__t.string()),
+  subscriptionStatus: __t.option(__t.string()),
+  subscriptionPriceId: __t.option(__t.string()),
+  subscriptionInterval: __t.option(__t.string()),
+  currentPeriodEnd: __t.option(__t.timestamp()),
 });
 export type Organization = __Infer<typeof Organization>;
 
@@ -226,6 +302,8 @@ export const Product = __t.object("Product", {
   alertReason: __t.option(__t.string()),
   imageUrl: __t.option(__t.string()),
   description: __t.option(__t.string()),
+  nameI18N: __t.option(__t.string()),
+  options: __t.option(__t.string()),
   squareItemId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
@@ -244,6 +322,36 @@ export const PunchEvent = __t.object("PunchEvent", {
   createdAt: __t.timestamp(),
 });
 export type PunchEvent = __Infer<typeof PunchEvent>;
+
+export const PurchaseOrder = __t.object("PurchaseOrder", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  supplierId: __t.string(),
+  status: __t.string(),
+  items: __t.string(),
+  subtotal: __t.f64(),
+  tax: __t.f64(),
+  total: __t.f64(),
+  notes: __t.option(__t.string()),
+  sentAt: __t.option(__t.timestamp()),
+  receivedAt: __t.option(__t.timestamp()),
+  createdAt: __t.timestamp(),
+});
+export type PurchaseOrder = __Infer<typeof PurchaseOrder>;
+
+export const QueueEntry = __t.object("QueueEntry", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  customerName: __t.string(),
+  partySize: __t.i32(),
+  phone: __t.option(__t.string()),
+  status: __t.string(),
+  estimatedWait: __t.i32(),
+  notes: __t.option(__t.string()),
+  queuedAt: __t.timestamp(),
+  seatedAt: __t.option(__t.timestamp()),
+});
+export type QueueEntry = __Infer<typeof QueueEntry>;
 
 export const RoleTask = __t.object("RoleTask", {
   id: __t.uuid(),
@@ -489,6 +597,21 @@ export const StoreDevice = __t.object("StoreDevice", {
 });
 export type StoreDevice = __Infer<typeof StoreDevice>;
 
+export const Supplier = __t.object("Supplier", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  name: __t.string(),
+  contactName: __t.option(__t.string()),
+  email: __t.option(__t.string()),
+  phone: __t.option(__t.string()),
+  address: __t.option(__t.string()),
+  paymentTerms: __t.option(__t.string()),
+  notes: __t.option(__t.string()),
+  rating: __t.f64(),
+  createdAt: __t.timestamp(),
+});
+export type Supplier = __Infer<typeof Supplier>;
+
 export const TimeOffRequest = __t.object("TimeOffRequest", {
   id: __t.uuid(),
   userId: __t.identity(),
@@ -516,6 +639,66 @@ export const Todo = __t.object("Todo", {
   createdAt: __t.timestamp(),
 });
 export type Todo = __Infer<typeof Todo>;
+
+export const TrainingDay = __t.object("TrainingDay", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  dayNumber: __t.i32(),
+  title: __t.string(),
+  description: __t.option(__t.string()),
+  sortOrder: __t.i32(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type TrainingDay = __Infer<typeof TrainingDay>;
+
+export const TrainingDayGrade = __t.object("TrainingDayGrade", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  traineeId: __t.string(),
+  dayId: __t.string(),
+  rating: __t.i32(),
+  comment: __t.option(__t.string()),
+  gradedBy: __t.identity(),
+  gradedAt: __t.timestamp(),
+});
+export type TrainingDayGrade = __Infer<typeof TrainingDayGrade>;
+
+export const TrainingFinalGrade = __t.object("TrainingFinalGrade", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  traineeId: __t.string(),
+  score: __t.i32(),
+  comment: __t.option(__t.string()),
+  gradedBy: __t.identity(),
+  gradedAt: __t.timestamp(),
+});
+export type TrainingFinalGrade = __Infer<typeof TrainingFinalGrade>;
+
+export const TrainingObjective = __t.object("TrainingObjective", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  dayId: __t.string(),
+  text: __t.string(),
+  mediaUrl: __t.option(__t.string()),
+  mediaType: __t.option(__t.string()),
+  sortOrder: __t.i32(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type TrainingObjective = __Infer<typeof TrainingObjective>;
+
+export const TrainingObjectiveGrade = __t.object("TrainingObjectiveGrade", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  traineeId: __t.string(),
+  objectiveId: __t.string(),
+  status: __t.string(),
+  comment: __t.option(__t.string()),
+  gradedBy: __t.identity(),
+  gradedAt: __t.timestamp(),
+});
+export type TrainingObjectiveGrade = __Infer<typeof TrainingObjectiveGrade>;
 
 export const User = __t.object("User", {
   identity: __t.identity(),

@@ -30,6 +30,7 @@ export interface Permissions {
   pos: PermissionSection;
   team: PermissionSection;    // view=see team list, invite=send invites, edit=change roles/codes
   website: PermissionSection; // view=see builder, edit=modify sites
+  training_grading: PermissionSection; // view=see trainee grades, edit=grade trainees
 }
 
 export type OrgRole = "owner" | "manager" | "staff";

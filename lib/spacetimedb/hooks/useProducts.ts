@@ -14,8 +14,9 @@ export function useProducts(_organizationId: string | null) {
 
   const products = useMemo<Product[]>(() => {
     if (!organizationId) return [];
+    console.log("[useProducts] raw:", rawProducts.length, "orgId:", organizationId, "sample orgIds:", rawProducts.slice(0, 3).map((r) => `"${r.organizationId}" (${typeof r.organizationId})`));
     return rawProducts
-      .filter((r) => r.organizationId === organizationId)
+      .filter((r) => String(r.organizationId) === organizationId)
       .map((r) => ({
         id:                 r.id.toString(),
         name:               r.name,
@@ -32,7 +33,7 @@ export function useProducts(_organizationId: string | null) {
         alertReason:        r.alertReason ?? undefined,
         imageUrl:           r.imageUrl ?? undefined,
         description:        r.description ?? undefined,
-        nameI18n:           r.nameI18n ? (() => { try { return JSON.parse(r.nameI18n!); } catch { return undefined; } })() : undefined,
+        nameI18N:           r.nameI18N ? (() => { try { return JSON.parse(r.nameI18N!); } catch { return undefined; } })() : undefined,
         squareItemId:       r.squareItemId ?? null,
       }));
   }, [rawProducts, organizationId]);

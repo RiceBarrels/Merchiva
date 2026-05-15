@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { SiteShell } from "@/components/landing/site-shell";
 
 const P = {
   bg: "#f0eee9",
@@ -97,62 +98,6 @@ function MonoTag({ children, color = P.sec, border = true }: { children: React.R
 
 function DotLeader({ color = P.borderD }: { color?: string }) {
   return <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${color}`, transform: "translateY(-2px)" }} />;
-}
-
-// ═══════════════════════════════════════════════════════════
-// NAV
-// ═══════════════════════════════════════════════════════════
-
-function Nav() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  return (
-    <nav style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-      padding: "14px 32px",
-      transition: "background 240ms ease, border-color 240ms ease",
-      background: scrolled ? "rgba(240,238,233,0.78)" : "transparent",
-      backdropFilter: scrolled ? "saturate(140%) blur(14px)" : "none",
-      WebkitBackdropFilter: scrolled ? "saturate(140%) blur(14px)" : "none",
-      borderBottom: `1px solid ${scrolled ? P.border : "transparent"}`,
-    }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: 32 }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: P.ink }}>
-          <NotchM size={22} />
-          <Wordmark size={17} ls={-0.8} />
-        </Link>
-        <div style={{ display: "flex", gap: 24, marginLeft: 24 }}>
-          {[
-            { label: "Forecast", href: "/#product" },
-            { label: "Modules", href: "/#modules" },
-            { label: "Pricing", href: "/pricing" },
-            { label: "Customers", href: "/#customers" },
-          ].map((x) => (
-            <Link key={x.label} href={x.href} style={{
-              fontSize: 13, color: x.label === "Pricing" ? P.ink : P.text3,
-              textDecoration: "none", fontWeight: x.label === "Pricing" ? 600 : 500, letterSpacing: -0.1,
-            }}>{x.label}</Link>
-          ))}
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontFamily: P.mono, fontSize: 10.5, color: P.sec, letterSpacing: 0.3 }}>
-            v3.4 <span style={{ color: P.good }}>●</span> live
-          </span>
-          <Link href="/login" style={{ fontSize: 13, color: P.text2, textDecoration: "none", fontWeight: 500, padding: "6px 10px" }}>Sign in</Link>
-          <Link href="/signup" style={{
-            fontSize: 13, fontWeight: 500, color: "#fff", background: P.ink, textDecoration: "none",
-            padding: "8px 14px", borderRadius: 4, letterSpacing: -0.1,
-            display: "inline-flex", alignItems: "center", gap: 6,
-          }}>Start free <span style={{ fontFamily: P.mono, fontSize: 11, opacity: 0.7 }}>→</span></Link>
-        </div>
-      </div>
-    </nav>
-  );
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -395,14 +340,20 @@ function PlanCard({ plan, idx, yearly }: { plan: typeof PLAN_DATA[number]; idx: 
           </li>
         ))}
       </ul>
-      <Link href="/signup" style={{
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        marginTop: 28, padding: "14px 18px", borderRadius: 4, position: "relative",
-        background: hl ? "#fafaf9" : P.ink, color: hl ? P.ink : "#fff",
-        textDecoration: "none", fontSize: 14, fontWeight: 500, letterSpacing: -0.1,
-        transition: "transform 220ms cubic-bezier(.2,.8,.2,1)",
-        transform: hover ? "translateY(-1px)" : "none",
-      }}>
+      <Link
+        // Enterprise → contact; numbered tiers → in-app billing (AppLayout
+        // gates routes — unauthenticated visitors get bounced to /login first,
+        // then return to billing where they can pick monthly/yearly).
+        href={typeof price === "number" ? `/~/settings/billing?cycle=${yearly ? "yearly" : "monthly"}` : "/signup"}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          marginTop: 28, padding: "14px 18px", borderRadius: 4, position: "relative",
+          background: hl ? "#fafaf9" : P.ink, color: hl ? P.ink : "#fff",
+          textDecoration: "none", fontSize: 14, fontWeight: 500, letterSpacing: -0.1,
+          transition: "transform 220ms cubic-bezier(.2,.8,.2,1)",
+          transform: hover ? "translateY(-1px)" : "none",
+        }}
+      >
         {plan.cta}
         <span style={{ fontFamily: P.mono, fontSize: 12, opacity: 0.7 }}>→</span>
       </Link>
@@ -722,9 +673,9 @@ function Trust() {
 
 function CTAFooter() {
   return (
-    <section id="start" style={{ padding: "120px 32px 0", background: P.bg, position: "relative", overflow: "hidden" }}>
+    <section id="start" style={{ padding: "120px 32px 80px", background: P.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative" }}>
-        <div style={{ position: "relative", textAlign: "center", marginBottom: 64 }}>
+        <div style={{ position: "relative", textAlign: "center" }}>
           <div className="p-reveal" style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
             <NotchM size={48} fg={P.ink} />
           </div>
@@ -752,56 +703,6 @@ function CTAFooter() {
             }}>Book a 20-min walkthrough <span style={{ fontFamily: P.mono, fontSize: 12 }}>→</span></a>
           </div>
         </div>
-
-        <div style={{
-          marginTop: 80, paddingTop: 28, paddingBottom: 28,
-          borderTop: `1px solid ${P.border}`,
-          display: "grid", gridTemplateColumns: "1fr 2fr 1fr", gap: 32,
-          fontFamily: P.mono, fontSize: 11, color: P.sec, alignItems: "start",
-        }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <NotchM size={14} fg={P.ink} />
-              <Wordmark size={13} ls={-0.6} />
-            </div>
-            <span>&copy; 2026 Merchiva, Inc.</span>
-            <span>Oakland · Brooklyn · remote-first</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-            {([
-              ["Product", [
-                { label: "Features", href: "/features" },
-                { label: "Pricing", href: "/pricing" },
-                { label: "Changelog", href: "/changelog" },
-              ]],
-              ["Company", [
-                { label: "About", href: "/about" },
-                { label: "Customers", href: "/#customers" },
-                { label: "Careers · 4 open", href: "/about" },
-              ]],
-              ["Resources", [
-                { label: "Docs", href: "#" },
-                { label: "Changelog", href: "/changelog" },
-                { label: "Status", href: "#" },
-              ]],
-              ["Legal", [
-                { label: "Privacy", href: "#" },
-                { label: "Terms", href: "#" },
-                { label: "DPA", href: "#" },
-                { label: "Security", href: "#" },
-              ]],
-            ] as [string, { label: string; href: string }[]][]).map(([h, items]) => (
-              <div key={h} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ color: P.text, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</span>
-                {items.map((x) => <Link key={x.label} href={x.href} style={{ color: P.sec, textDecoration: "none" }}>{x.label}</Link>)}
-              </div>
-            ))}
-          </div>
-          <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: 10 }}>
-            <span><span style={{ color: P.good }}>●</span> all systems · 99.99% · 30d</span>
-            <span>v3.4.812 · build a8c14f</span>
-          </div>
-        </div>
       </div>
     </section>
   );
@@ -815,8 +716,7 @@ export function PricingPage() {
   useReveal();
   const [yearly, setYearly] = useState(false);
   return (
-    <main className="mv-landing" style={{ background: P.bg, color: P.text, fontFamily: P.sans }}>
-      <Nav />
+    <SiteShell active="pricing" background={P.bg}>
       <Hero />
       <PlansSection yearly={yearly} setYearly={setYearly} />
       <ROICalculator />
@@ -824,6 +724,6 @@ export function PricingPage() {
       <FAQ />
       <Trust />
       <CTAFooter />
-    </main>
+    </SiteShell>
   );
 }

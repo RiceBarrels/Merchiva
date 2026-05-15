@@ -12,5 +12,5 @@ import {
 
 export default {
   organizationId: __t.string(),
-  couponId: __t.string(),
+  code: __t.string(),
 };

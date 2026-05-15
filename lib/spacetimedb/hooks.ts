@@ -87,3 +87,40 @@ export function useCoupons() { return useTable(tables.coupon); }
 
 // ── Queue ───────────────────────────────────────────────────────────────────
 export function useQueueEntries() { return useTable(tables.queueEntry); }
+
+// ── AI Chat History ─────────────────────────────────────────────────────────
+export function useAiChatHistory() { return useTable(tables.aiChatHistory); }
+export function useAiChatSessions() { return useTable(tables.aiChatSession); }
+
+// ── Training ────────────────────────────────────────────────────────────────
+// Returns the same [rows, ready] tuple shape as the other hooks. Until the
+// SpacetimeDB bindings are regenerated (`spacetime generate`) the underlying
+// tables will be undefined on the `tables` object — in that case we return
+// a stable empty tuple so the UI renders gracefully instead of crashing.
+const EMPTY_TABLE_RESULT: readonly [unknown[], boolean] = Object.freeze([
+  Object.freeze([]) as unknown as unknown[],
+  false,
+]);
+
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/rules-of-hooks */
+export function useTrainingDays() {
+  const tbl = (tables as any).trainingDay;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+export function useTrainingObjectives() {
+  const tbl = (tables as any).trainingObjective;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+export function useTrainingObjectiveGrades() {
+  const tbl = (tables as any).trainingObjectiveGrade;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+export function useTrainingDayGrades() {
+  const tbl = (tables as any).trainingDayGrade;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+export function useTrainingFinalGrades() {
+  const tbl = (tables as any).trainingFinalGrade;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+/* eslint-enable */

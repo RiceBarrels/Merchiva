@@ -15,6 +15,7 @@ import { deleteComponent } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useT } from "@/lib/i18n/context";
 import React from "react";
 import type { Site, SitePage, SiteElement } from "@/lib/types";
 import type { PageTemplateId } from "@/lib/builder/page-templates";
@@ -98,6 +99,7 @@ export function LeftPanel({
   onAddPage,
   onPublish,
 }: LeftPanelProps) {
+  const t = useT();
   const [isAddingPage, setIsAddingPage] = useState(false);
   const [componentsOpen, setComponentsOpen] = useState(true);
   const [settingsPageId, setSettingsPageId] = useState<string | null>(null);
@@ -170,14 +172,14 @@ export function LeftPanel({
           </span>
           <ChevronDown className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" />
         </div>
-        <p className="text-xs text-muted-foreground">Team project</p>
+        <p className="text-xs text-muted-foreground">{t("builder.leftPanel.teamProject")}</p>
         <Button
           onClick={onPublish}
           size="sm"
           className="w-full text-xs font-medium"
           variant="secondary"
         >
-          Publish
+          {t("builder.leftPanel.publish")}
         </Button>
       </div>
 
@@ -187,7 +189,7 @@ export function LeftPanel({
       <div>
         <div className="flex items-center justify-between px-3 py-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Webpages
+            {t("builder.leftPanel.webpages")}
           </span>
           <Button
             variant="ghost"
@@ -230,7 +232,7 @@ export function LeftPanel({
                     e.stopPropagation();
                     setSettingsPageId(page.id);
                   }}
-                  title="Page settings"
+                  title={t("builder.leftPanel.pageSettings")}
                 >
                   <Settings className="h-3 w-3" />
                 </button>
@@ -250,7 +252,7 @@ export function LeftPanel({
           onClick={() => setComponentsOpen(!componentsOpen)}
         >
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Components
+            {t("builder.leftPanel.components")}
           </span>
           <span className="text-[10px] text-muted-foreground">{siteComponents.length}</span>
         </button>
@@ -259,7 +261,7 @@ export function LeftPanel({
           <div className="space-y-0.5 px-2 pb-2">
             {siteComponents.length === 0 ? (
               <p className="px-1 py-2 text-[11px] text-muted-foreground">
-                Right-click an element and select &quot;Save as Component&quot; to add here.
+                {t("builder.leftPanel.componentsHint")}
               </p>
             ) : (
               siteComponents.map((comp) => {
@@ -286,7 +288,7 @@ export function LeftPanel({
                     }}
                     className="group flex items-center gap-2 rounded-[0.3rem] border border-transparent px-2 py-1.5 hover:border-border hover:bg-accent/60 cursor-grab active:cursor-grabbing"
                     onClick={() => insertComponent(comp.elementData, { id: compIdStr, name: comp.name })}
-                    title="Click to insert or drag onto canvas"
+                    title={t("builder.leftPanel.insertHint")}
                   >
                     <Component className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <span className="flex-1 truncate text-xs text-foreground">{comp.name}</span>
@@ -318,7 +320,7 @@ export function LeftPanel({
       {/* Layers section */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DropSection
-          label="Scrolls"
+          label={t("builder.leftPanel.scrolls")}
           onAdd={() => addElement(false)}
           onDrop={(nodeId) => {
             // Block CraftFixed elements from being dropped into scroll section
@@ -345,7 +347,7 @@ export function LeftPanel({
         </DropSection>
         <Separator />
         <DropSection
-          label="Fixed"
+          label={t("builder.leftPanel.fixed")}
           onAdd={() => addElement(true)}
           onDrop={(nodeId) => {
             const node = query.node(nodeId).get();

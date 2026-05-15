@@ -62,7 +62,7 @@ function weatherIcon(condition: string) {
     case "stormy":
       return <CloudLightning className="h-4 w-4 text-violet-400" />;
     default:
-      return <Cloud className="h-4 w-4 text-stone-400" />;
+      return <Cloud className="h-4 w-4 text-stone-400 dark:text-stone-500" />;
   }
 }
 

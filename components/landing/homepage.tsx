@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { SiteShell } from "@/components/landing/site-shell";
 
 const C = {
   bg: "#f0eee9",
@@ -124,91 +125,6 @@ function MonoTag({ children, color = C.sec, border = true }: { children: React.R
 
 function DotLeader({ color = C.borderD }: { color?: string }) {
   return <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${color}`, transform: "translateY(-2px)" }} />;
-}
-
-// ═══════════════════════════════════════════════════════════
-// 01 · TOP NAV
-// ═══════════════════════════════════════════════════════════
-
-function Nav() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  return (
-    <nav
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100,
-        padding: "14px 32px",
-        transition: "background 240ms ease, border-color 240ms ease, backdrop-filter 240ms ease",
-        background: scrolled ? "rgba(240,238,233,0.78)" : "transparent",
-        backdropFilter: scrolled ? "saturate(140%) blur(14px)" : "none",
-        WebkitBackdropFilter: scrolled ? "saturate(140%) blur(14px)" : "none",
-        borderBottom: `1px solid ${scrolled ? C.border : "transparent"}`,
-      }}
-    >
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: 32 }}>
-        <a href="#top" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: C.ink }}>
-          <NotchM size={22} />
-          <Wordmark size={17} ls={-0.8} />
-        </a>
-        <div style={{ display: "flex", gap: 24, marginLeft: 24 }}>
-          {[
-            { label: "Product", href: "#product" },
-            { label: "Modules", href: "#modules" },
-            { label: "Pricing", href: "/pricing" },
-            { label: "Customers", href: "#customers" },
-          ].map((x) => (
-            <Link
-              key={x.label}
-              href={x.href}
-              style={{ fontSize: 13, color: C.text3, textDecoration: "none", fontWeight: 500, letterSpacing: -0.1 }}
-              className="hover:!text-stone-900 transition-colors"
-            >
-              {x.label}
-            </Link>
-          ))}
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec, letterSpacing: 0.3 }}>
-            v3.4 <span style={{ color: C.good }}>●</span> live
-          </span>
-          <Link
-            href="/login"
-            style={{ fontSize: 13, color: C.text2, textDecoration: "none", fontWeight: 500, padding: "6px 10px" }}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/signup"
-            style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: "#fff",
-              background: C.ink,
-              textDecoration: "none",
-              padding: "8px 14px",
-              borderRadius: 4,
-              letterSpacing: -0.1,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            Start free
-            <span style={{ fontFamily: C.mono, fontSize: 11, opacity: 0.7 }}>→</span>
-          </Link>
-        </div>
-      </div>
-    </nav>
-  );
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -544,6 +460,352 @@ function Hero() {
             <MonoTag border={false}>updated every 30s</MonoTag>
           </div>
           <HeroTicker />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 02b · TRUSTED BY — DATA SPONSORS
+// ═══════════════════════════════════════════════════════════
+
+const SPONSORS = [
+  {
+    name: "Bake Culture",
+    slug: "bake-culture",
+    desc: "Premium Asian-fusion bakery chain bringing Hong Kong–style baking to the Bay Area. Known for their signature pineapple buns, egg tarts, and matcha croissants across 8 locations.",
+    stat: "8 locations",
+    since: "2024",
+    tag: "bakery · retail",
+    accent: "#c2956b",
+  },
+  {
+    name: "Devine'r",
+    slug: "deviner",
+    desc: "A Brooklyn gem where coffee craftsmanship meets genuine hospitality. Expertly roasted beans paired with exceptional pastries — from rich, smooth lattes to unforgettable hot chocolate. 4.6 stars from nearly 100 reviews, a true community gathering place.",
+    stat: "4.6★ rating",
+    since: "2025",
+    tag: "coffee · bakery",
+    accent: "#6b4c3b",
+  },
+];
+
+function SponsorLogo({ name, accent, size = 48 }: { name: string; accent: string; size?: number }) {
+  const letter = name[0];
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 4,
+        background: accent,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: C.sans,
+        fontSize: size * 0.44,
+        fontWeight: 700,
+        color: "#fff",
+        letterSpacing: -1,
+        flexShrink: 0,
+      }}
+    >
+      {letter}
+    </div>
+  );
+}
+
+function SponsorCard({
+  s,
+  idx,
+  hovered,
+  onHover,
+}: {
+  s: (typeof SPONSORS)[0];
+  idx: number;
+  hovered: boolean;
+  onHover: (h: boolean) => void;
+}) {
+  return (
+    <div
+      className="mv-reveal"
+      data-d={String(idx + 2)}
+      onMouseEnter={() => onHover(true)}
+      onMouseLeave={() => onHover(false)}
+      style={{
+        position: "relative",
+        padding: 32,
+        background: hovered ? C.paper : C.surface,
+        border: `1px solid ${hovered ? C.borderD : C.border}`,
+        borderRadius: 6,
+        overflow: "hidden",
+        transform: hovered ? "translateY(-4px)" : "none",
+        boxShadow: hovered
+          ? "0 24px 60px -20px rgba(28,25,23,0.16), 0 8px 20px -10px rgba(28,25,23,0.06)"
+          : "none",
+        transition:
+          "transform 360ms cubic-bezier(.2,.8,.2,1), background 240ms, border-color 240ms, box-shadow 400ms",
+        animation: `mv-logo-in 800ms cubic-bezier(.2,.8,.2,1) ${300 + idx * 180}ms both`,
+      }}
+    >
+      {/* Shine sweep on hover */}
+      {hovered && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            width: "60%",
+            height: "100%",
+            background:
+              "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)",
+            animation: "mv-shine 800ms ease-out forwards",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 18, marginBottom: 20 }}>
+        <SponsorLogo name={s.name} accent={s.accent} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                fontSize: 20,
+                fontWeight: 600,
+                color: C.ink,
+                letterSpacing: -0.5,
+              }}
+            >
+              {s.name}
+            </span>
+            <span
+              style={{
+                fontFamily: C.mono,
+                fontSize: 9.5,
+                color: C.sec,
+                letterSpacing: 0.4,
+                textTransform: "uppercase",
+                padding: "3px 7px",
+                border: `1px solid ${C.border}`,
+                borderRadius: 3,
+                background: C.paper,
+              }}
+            >
+              {s.tag}
+            </span>
+          </div>
+          <div
+            style={{
+              fontFamily: C.mono,
+              fontSize: 10.5,
+              color: C.sec,
+              marginTop: 4,
+              display: "flex",
+              gap: 14,
+            }}
+          >
+            <span>since {s.since}</span>
+            <span style={{ color: C.borderD }}>·</span>
+            <span>{s.stat}</span>
+          </div>
+        </div>
+      </div>
+
+      <p
+        style={{
+          margin: 0,
+          fontSize: 14,
+          lineHeight: 1.6,
+          color: C.text2,
+          textWrap: "pretty" as never,
+        }}
+      >
+        {s.desc}
+      </p>
+
+      {/* Bottom accent line */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: `linear-gradient(90deg, ${s.accent}, transparent)`,
+          opacity: hovered ? 1 : 0,
+          transition: "opacity 400ms",
+        }}
+      />
+    </div>
+  );
+}
+
+function TrustedBy() {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  return (
+    <section
+      style={{
+        padding: "80px 32px 40px",
+        position: "relative",
+      }}
+    >
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        {/* Header */}
+        <div
+          className="mv-reveal"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 24,
+            marginBottom: 12,
+          }}
+        >
+          <MonoTag border={false}>data sponsors</MonoTag>
+          <DotLeader />
+          <MonoTag border={false}>powering our forecasts with real data</MonoTag>
+        </div>
+
+        <h3
+          className="mv-reveal"
+          data-d="1"
+          style={{
+            margin: "0 0 40px",
+            fontSize: "clamp(24px, 3.5vw, 38px)",
+            fontWeight: 600,
+            letterSpacing: -1.2,
+            lineHeight: 1.1,
+            color: C.ink,
+          }}
+        >
+          Built with businesses who{" "}
+          <span style={{ color: C.ter }}>share their signal</span>.
+        </h3>
+
+        {/* Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+          {SPONSORS.map((s, i) => (
+            <SponsorCard
+              key={s.slug}
+              s={s}
+              idx={i}
+              hovered={hoverIdx === i}
+              onHover={(h) => setHoverIdx(h ? i : null)}
+            />
+          ))}
+        </div>
+
+        {/* Logo scroll strip */}
+        <div
+          className="mv-reveal"
+          data-d="4"
+          style={{
+            marginTop: 36,
+            overflow: "hidden",
+            borderTop: `1px solid ${C.border}`,
+            borderBottom: `1px solid ${C.border}`,
+            padding: "20px 0",
+            position: "relative",
+          }}
+        >
+          {/* Fade edges */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 80,
+              background: `linear-gradient(to right, ${C.bg}, transparent)`,
+              zIndex: 1,
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 80,
+              background: `linear-gradient(to left, ${C.bg}, transparent)`,
+              zIndex: 1,
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              gap: 0,
+              animation: "mv-logo-scroll 20s linear infinite",
+              whiteSpace: "nowrap",
+              width: "max-content",
+            }}
+          >
+            {[...SPONSORS, ...SPONSORS, ...SPONSORS, ...SPONSORS].map((s, i) => (
+              <div
+                key={`${s.slug}-${i}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 14,
+                  padding: "0 40px",
+                }}
+              >
+                <SponsorLogo name={s.name} accent={s.accent} size={32} />
+                <span
+                  style={{
+                    fontFamily: C.sans,
+                    fontSize: 18,
+                    fontWeight: 600,
+                    color: C.text3,
+                    letterSpacing: -0.4,
+                  }}
+                >
+                  {s.name}
+                </span>
+                <span
+                  style={{
+                    fontFamily: C.mono,
+                    fontSize: 10,
+                    color: C.ter,
+                    letterSpacing: 0.3,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {s.tag}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Connector line decoration */}
+        <div
+          className="mv-reveal"
+          data-d="5"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 16,
+            marginTop: 24,
+          }}
+        >
+          <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${C.borderD}` }} />
+          <span
+            style={{
+              fontFamily: C.mono,
+              fontSize: 10.5,
+              color: C.ter,
+              letterSpacing: 0.4,
+              textTransform: "uppercase",
+            }}
+          >
+            their data trains our models · your forecasts get better
+          </span>
+          <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${C.borderD}` }} />
         </div>
       </div>
     </section>
@@ -1923,9 +2185,9 @@ function Pricing() {
 
 function CTAFooter() {
   return (
-    <section id="start" style={{ padding: "120px 32px 0", background: C.bg, position: "relative", overflow: "hidden" }}>
+    <section id="start" style={{ padding: "120px 32px 80px", background: C.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative" }}>
-        <div style={{ position: "relative", textAlign: "center", marginBottom: 64 }}>
+        <div style={{ position: "relative", textAlign: "center" }}>
           <div className="mv-reveal" style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
             <NotchM size={48} fg={C.ink} />
           </div>
@@ -1968,74 +2230,6 @@ function CTAFooter() {
             <MagneticButton href="#product">Book a 20-min walkthrough</MagneticButton>
           </div>
         </div>
-
-        {/* Footer */}
-        <div
-          style={{
-            marginTop: 80,
-            paddingTop: 28,
-            paddingBottom: 28,
-            borderTop: `1px solid ${C.border}`,
-            display: "grid",
-            gridTemplateColumns: "1fr 2fr 1fr",
-            gap: 32,
-            fontFamily: C.mono,
-            fontSize: 11,
-            color: C.sec,
-            alignItems: "start",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <NotchM size={14} fg={C.ink} />
-              <Wordmark size={13} ls={-0.6} />
-            </div>
-            <span>&copy; 2026 Merchiva, Inc.</span>
-            <span>Oakland · Brooklyn · remote-first</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-            {(
-              [
-                ["Product", [
-                  { label: "Features", href: "/features" },
-                  { label: "Pricing", href: "/pricing" },
-                  { label: "Changelog", href: "/changelog" },
-                ]],
-                ["Company", [
-                  { label: "About", href: "/about" },
-                  { label: "Customers", href: "#customers" },
-                  { label: "Careers · 4 open", href: "/about" },
-                ]],
-                ["Resources", [
-                  { label: "Docs", href: "#" },
-                  { label: "Changelog", href: "/changelog" },
-                  { label: "Status", href: "#" },
-                ]],
-                ["Legal", [
-                  { label: "Privacy", href: "#" },
-                  { label: "Terms", href: "#" },
-                  { label: "DPA", href: "#" },
-                  { label: "Security", href: "#" },
-                ]],
-              ] as [string, { label: string; href: string }[]][]
-            ).map(([h, items]) => (
-              <div key={h} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span style={{ color: C.text, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</span>
-                {items.map((x) => (
-                  <Link key={x.label} href={x.href} style={{ color: C.sec, textDecoration: "none" }}>
-                    {x.label}
-                  </Link>
-                ))}
-              </div>
-            ))}
-          </div>
-          <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: 10 }}>
-            <span>
-              <span style={{ color: C.good }}>●</span> all systems · 99.99% · 30d
-            </span>
-            <span>v3.4.812 · build a8c14f</span>
-          </div>
-        </div>
       </div>
     </section>
   );
@@ -2048,9 +2242,9 @@ function CTAFooter() {
 export function Homepage() {
   useReveal();
   return (
-    <main className="mv-landing" style={{ background: C.bg, color: C.text, fontFamily: C.sans }}>
-      <Nav />
+    <SiteShell active="product" background={C.bg}>
       <Hero />
+      <TrustedBy />
       <LiveDashboard />
       <Marquee />
       <FeatureGrid />
@@ -2058,6 +2252,6 @@ export function Homepage() {
       <Testimonials />
       <Pricing />
       <CTAFooter />
-    </main>
+    </SiteShell>
   );
 }

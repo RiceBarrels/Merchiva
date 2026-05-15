@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { updatePage } from "@/lib/spacetimedb/actions";
+import { useT } from "@/lib/i18n/context";
 import type { SitePage, PageMetadata } from "@/lib/types";
 
 interface PageSettingsDialogProps {
@@ -32,6 +33,7 @@ function slugify(raw: string): string {
 }
 
 export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDialogProps) {
+  const t = useT();
   const [name, setName] = useState(page.name);
   const [slug, setSlug] = useState(page.slug);
   const [metadata, setMetadata] = useState<PageMetadata>(page.metadata ?? {});
@@ -52,7 +54,7 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
 
   async function handleSave() {
     if (!name.trim() || !slug.trim()) {
-      setError("Name and URL slug are required.");
+      setError(t("builder.pageSettingsDialog.errorRequired"));
       return;
     }
     setSaving(true);
@@ -76,7 +78,7 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
       onOpenChange(false);
     } catch (err) {
       console.error("Update page failed:", err);
-      setError(err instanceof Error ? err.message : "Failed to save page settings.");
+      setError(err instanceof Error ? err.message : t("builder.pageSettingsDialog.errorSave"));
     } finally {
       setSaving(false);
     }
@@ -86,27 +88,27 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
     <DynamicUIElement open={open} onOpenChange={onOpenChange}>
       <DynamicUIElementContent className="sm:max-w-md">
         <DynamicUIElementHeader>
-          <DynamicUIElementTitle className="text-sm">Page Settings</DynamicUIElementTitle>
+          <DynamicUIElementTitle className="text-sm">{t("builder.pageSettingsDialog.title")}</DynamicUIElementTitle>
         </DynamicUIElementHeader>
 
         <div className="space-y-4">
           {/* Basics */}
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Name</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.name")}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Home"
+                placeholder={t("builder.pageSettingsDialog.namePlaceholder")}
                 className="h-8 text-sm"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">URL slug</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.urlSlug")}</Label>
               <Input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                placeholder="home"
+                placeholder={t("builder.pageSettingsDialog.slugPlaceholder")}
                 className="h-8 text-sm font-mono"
               />
               <p className="text-[10px] text-muted-foreground">
@@ -120,66 +122,66 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
           {/* Metadata */}
           <div className="space-y-2">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              SEO & Metadata
+              {t("builder.pageSettingsDialog.seoMetadata")}
             </p>
 
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Title</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.metaTitle")}</Label>
               <Input
                 value={metadata.title ?? ""}
                 onChange={(e) => updateMeta("title", e.target.value)}
-                placeholder="Page title shown in browser tab"
+                placeholder={t("builder.pageSettingsDialog.metaTitlePlaceholder")}
                 className="h-8 text-sm"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Description</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.metaDescription")}</Label>
               <Textarea
                 value={metadata.description ?? ""}
                 onChange={(e) => updateMeta("description", e.target.value)}
-                placeholder="Short summary for search engines"
+                placeholder={t("builder.pageSettingsDialog.metaDescriptionPlaceholder")}
                 rows={2}
                 className="text-sm resize-y"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Keywords</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.keywords")}</Label>
               <Input
                 value={metadata.keywords ?? ""}
                 onChange={(e) => updateMeta("keywords", e.target.value)}
-                placeholder="comma, separated, keywords"
+                placeholder={t("builder.pageSettingsDialog.keywordsPlaceholder")}
                 className="h-8 text-sm"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">OG Image URL</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.ogImage")}</Label>
               <Input
                 value={metadata.ogImage ?? ""}
                 onChange={(e) => updateMeta("ogImage", e.target.value)}
-                placeholder="https://..."
+                placeholder={t("builder.pageSettingsDialog.ogImagePlaceholder")}
                 className="h-8 text-sm font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Canonical URL</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.canonical")}</Label>
               <Input
                 value={metadata.canonicalUrl ?? ""}
                 onChange={(e) => updateMeta("canonicalUrl", e.target.value)}
-                placeholder="https://example.com/page"
+                placeholder={t("builder.pageSettingsDialog.canonicalPlaceholder")}
                 className="h-8 text-sm font-mono"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Robots</Label>
+              <Label className="text-xs text-muted-foreground">{t("builder.pageSettingsDialog.robots")}</Label>
               <Input
                 value={metadata.robots ?? ""}
                 onChange={(e) => updateMeta("robots", e.target.value)}
-                placeholder="index, follow"
+                placeholder={t("builder.pageSettingsDialog.robotsPlaceholder")}
                 className="h-8 text-sm font-mono"
               />
             </div>
@@ -197,7 +199,7 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
             onClick={() => onOpenChange(false)}
             className="text-xs"
           >
-            Cancel
+            {t("builder.pageSettingsDialog.cancel")}
           </Button>
           <Button
             size="sm"
@@ -205,7 +207,7 @@ export function PageSettingsDialog({ open, onOpenChange, page }: PageSettingsDia
             disabled={saving}
             className="text-xs"
           >
-            {saving ? "Saving..." : "Save"}
+            {saving ? t("builder.pageSettingsDialog.saving") : t("builder.pageSettingsDialog.save")}
           </Button>
         </DynamicUIElementFooter>
       </DynamicUIElementContent>

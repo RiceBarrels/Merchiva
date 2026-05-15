@@ -36,7 +36,7 @@ function AuthCallbackInner() {
 
   return (
     <div className="flex h-screen items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-stone-400" />
+      <Loader2 className="h-6 w-6 animate-spin text-stone-400 dark:text-stone-500" />
     </div>
   );
 }

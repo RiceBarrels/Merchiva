@@ -47,7 +47,7 @@ import { PageTabs } from "@/components/page-tabs";
 const weatherIcon = (w: string) => {
   if (w === "sunny") return <CloudSun className="h-4 w-4 text-amber-500" />;
   if (w === "rainy") return <CloudRain className="h-4 w-4 text-blue-400" />;
-  return <Cloud className="h-4 w-4 text-slate-400" />;
+  return <Cloud className="h-4 w-4 text-slate-400 dark:text-slate-500" />;
 };
 
 export default function SalesPage() {

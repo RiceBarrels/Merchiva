@@ -15,7 +15,6 @@ export default {
   customerName: __t.string(),
   partySize: __t.i32(),
   phone: __t.option(__t.string()),
-  status: __t.string(),
   estimatedWait: __t.i32(),
   notes: __t.option(__t.string()),
 };

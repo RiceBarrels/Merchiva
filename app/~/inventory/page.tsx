@@ -786,7 +786,7 @@ const PRIORITY_STYLES: Record<RestockPriority, string> = {
   critical: "bg-red-50 text-red-700 border-red-200",
   high: "bg-orange-50 text-orange-700 border-orange-200",
   medium: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  low: "bg-stone-50 text-stone-600 border-stone-200",
+  low: "bg-stone-50 dark:bg-stone-950 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700",
 };
 
 const PRIORITY_BAR_COLORS: Record<RestockPriority, string> = {
@@ -860,13 +860,13 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
               "h-3 w-3",
               s.consumptionTrend === "increasing" ? "text-red-500" :
               s.consumptionTrend === "decreasing" ? "text-emerald-500" :
-              "text-stone-400"
+              "text-stone-400 dark:text-stone-500"
             )} />
             <span className={cn(
               "text-[10px]",
               s.consumptionTrend === "increasing" ? "text-red-500" :
               s.consumptionTrend === "decreasing" ? "text-emerald-500" :
-              "text-stone-400"
+              "text-stone-400 dark:text-stone-500"
             )}>
               {trendLabel}
             </span>
@@ -883,7 +883,7 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
                 ? "text-red-600"
                 : s.daysUntilStockout <= 7
                 ? "text-orange-600"
-                : "text-stone-700"
+                : "text-stone-700 dark:text-stone-300"
             )}
           >
             {s.daysUntilStockout >= 999 ? "N/A" : `${s.daysUntilStockout} days`}

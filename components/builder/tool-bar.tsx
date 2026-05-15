@@ -7,8 +7,10 @@ import { CraftText } from "./craft-components/craft-text";
 import { CraftImage } from "./craft-components/craft-image";
 import { CraftLayout } from "./craft-components/craft-layout";
 import React from "react";
+import { useT } from "@/lib/i18n/context";
 
 export function ToolBar() {
+  const t = useT();
   const { connectors } = useEditor();
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -21,17 +23,17 @@ export function ToolBar() {
 
   const tools = [
     {
-      label: "Layout",
+      label: t("builder.floatingTools.layout"),
       icon: LayoutDashboard,
       element: React.createElement(CraftLayout),
     },
     {
-      label: "Image",
+      label: t("builder.floatingTools.image"),
       icon: Image,
       element: React.createElement(CraftImage),
     },
     {
-      label: "Text",
+      label: t("builder.floatingTools.text"),
       icon: Type,
       element: React.createElement(CraftText),
     },
@@ -90,7 +92,7 @@ export function ToolBar() {
           <input
             ref={inputRef}
             className="w-48 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
-            placeholder="Describe what to generate..."
+            placeholder={t("builder.floatingTools.aiPlaceholder")}
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             onKeyDown={(e) => {
@@ -125,7 +127,7 @@ export function ToolBar() {
           className="flex items-center gap-1.5 rounded-[0.3rem] px-3 py-1.5 text-violet-500 transition-colors hover:bg-violet-500/10"
         >
           <Sparkles className="h-5 w-5" />
-          <span className="text-xs font-medium">AI</span>
+          <span className="text-xs font-medium">{t("builder.floatingTools.ai")}</span>
         </button>
       )}
     </div>

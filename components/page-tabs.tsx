@@ -28,7 +28,7 @@ export function PageTabs({ tabs }: { tabs: PageTab[] }) {
         );
         const isActive = pathname === tab.href;
         
-        console.log("pathname", pathname, "tab.href", tab.href, "isActive", isActive);
+        // console.log("pathname", pathname, "tab.href", tab.href, "isActive", isActive);
         return (
           <Link
             key={tab.href}

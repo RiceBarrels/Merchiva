@@ -17,6 +17,9 @@ import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { PageTabs } from "@/components/page-tabs";
+import { CurriculumSettingsTab } from "@/components/training/curriculum-settings-tab";
+import { CurriculumView } from "@/components/training/curriculum-view";
+import { GradingTab } from "@/components/training/grading-tab";
 import type { RoleTask, StaffRole } from "@/lib/types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -271,31 +274,36 @@ function DailyChecklistsTab({
     setEvidence((prev) => ({ ...prev, [taskId]: url }));
   }, []);
 
-  // Group tasks by role
-  const tasksByRole = useMemo(() => {
-    const map = new Map<string, RoleTask[]>();
-    for (const task of tasks) {
-      const existing = map.get(task.roleId) ?? [];
-      existing.push(task);
-      map.set(task.roleId, existing);
-    }
-    // Sort tasks within each role by sortOrder
-    for (const [, arr] of map) {
-      arr.sort((a, b) => a.sortOrder - b.sortOrder);
-    }
-    return map;
-  }, [tasks]);
-
   const roleMap = useMemo(() => {
     const map = new Map<string, StaffRole>();
     for (const role of roles) map.set(role.id, role);
     return map;
   }, [roles]);
 
-  // Summary stats
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter((t) => checklist[t.id]).length;
-  const overdueTasks = tasks.filter(
+  // Group tasks by role — skip orphans whose role was deleted but tasks weren't
+  // cascaded (legacy data from before deleteStaffRole cascaded role_tasks).
+  const tasksByRole = useMemo(() => {
+    const map = new Map<string, RoleTask[]>();
+    for (const task of tasks) {
+      if (!roleMap.has(task.roleId)) continue;
+      const existing = map.get(task.roleId) ?? [];
+      existing.push(task);
+      map.set(task.roleId, existing);
+    }
+    for (const [, arr] of map) {
+      arr.sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+    return map;
+  }, [tasks, roleMap]);
+
+  // Summary stats — only count tasks whose role still exists.
+  const activeTasks = useMemo(
+    () => tasks.filter((task) => roleMap.has(task.roleId)),
+    [tasks, roleMap],
+  );
+  const totalTasks = activeTasks.length;
+  const completedTasks = activeTasks.filter((t) => checklist[t.id]).length;
+  const overdueTasks = activeTasks.filter(
     (t) =>
       !checklist[t.id] &&
       getTaskTimeStatus(t.startTime, t.endTime) === "overdue"
@@ -632,9 +640,12 @@ function TrainingModulesTab({ orgId }: { orgId: string }) {
 
 export default function TrainingPage() {
   const t = useT();
-  const { organizationId } = usePermissions();
+  const { organizationId, isOwner, role: orgRole, can } = usePermissions();
   const [rawTasks] = useRoleTasks();
   const [rawRoles] = useStaffRoles();
+
+  const canEditCurriculum = isOwner || orgRole === "manager";
+  const canGrade = canEditCurriculum || can("training_grading", "edit");
 
   // Map SpacetimeDB rows to typed objects
   const tasks = useMemo<RoleTask[]>(() => {
@@ -698,9 +709,16 @@ export default function TrainingPage() {
       ]} />
       <div className="px-4 lg:px-6 py-4 max-w-3xl">
         <Tabs defaultValue="checklists">
-          <TabsList variant="line" className="w-full justify-start mb-4">
+          <TabsList variant="line" className="w-full justify-start mb-4 flex-wrap">
             <TabsTrigger value="checklists">{t("training.dailyChecklists")}</TabsTrigger>
             <TabsTrigger value="modules">{t("training.trainingModules")}</TabsTrigger>
+            <TabsTrigger value="curriculum">{t("training.curriculumDays")}</TabsTrigger>
+            {canEditCurriculum && (
+              <TabsTrigger value="settings">{t("training.settings")}</TabsTrigger>
+            )}
+            {canGrade && (
+              <TabsTrigger value="grading">{t("training.gradingTab")}</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="checklists">
@@ -722,6 +740,40 @@ export default function TrainingPage() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="curriculum">
+            {organizationId ? (
+              <CurriculumView orgId={organizationId} />
+            ) : (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </TabsContent>
+
+          {canEditCurriculum && (
+            <TabsContent value="settings">
+              {organizationId ? (
+                <CurriculumSettingsTab orgId={organizationId} />
+              ) : (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </TabsContent>
+          )}
+
+          {canGrade && (
+            <TabsContent value="grading">
+              {organizationId ? (
+                <GradingTab orgId={organizationId} />
+              ) : (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </PermissionGuard>

@@ -3,6 +3,7 @@
 import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { SiteRenderer } from "@/components/site-renderer";
+import { SiteHtmlRenderer } from "@/components/site-html-renderer";
 import { getSiteBySlug, getPages } from "@/lib/db/sites";
 import { getProducts } from "@/lib/db/products";
 import { loginCustomer, registerCustomer } from "@/lib/spacetimedb/actions";
@@ -75,25 +76,25 @@ function CartDrawer({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm bg-white h-full flex flex-col shadow-xl">
+      <div className="relative z-10 w-full max-w-sm bg-white dark:bg-stone-900 h-full flex flex-col shadow-xl">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h2 className="font-semibold text-sm">{t("storefront.cart.title")} ({cart.reduce((s, i) => s + i.quantity, 0)})</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {cart.length === 0 && <p className="text-sm text-gray-500 text-center py-8">{t("storefront.cart.empty")}</p>}
+          {cart.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">{t("storefront.cart.empty")}</p>}
           {cart.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{item.name}</p>
-                <p className="text-xs text-gray-500">${item.price.toFixed(2)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">${item.price.toFixed(2)}</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <button onClick={() => onQty(item.id, -1)} className="h-6 w-6 rounded border text-sm leading-none hover:bg-gray-50">−</button>
+                <button onClick={() => onQty(item.id, -1)} className="h-6 w-6 rounded border text-sm leading-none hover:bg-gray-50 dark:bg-gray-950">−</button>
                 <span className="text-sm w-5 text-center">{item.quantity}</span>
-                <button onClick={() => onQty(item.id, 1)} className="h-6 w-6 rounded border text-sm leading-none hover:bg-gray-50">+</button>
+                <button onClick={() => onQty(item.id, 1)} className="h-6 w-6 rounded border text-sm leading-none hover:bg-gray-50 dark:bg-gray-950">+</button>
               </div>
-              <button onClick={() => onRemove(item.id)} className="text-gray-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
+              <button onClick={() => onRemove(item.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
             </div>
           ))}
         </div>
@@ -154,13 +155,13 @@ function AuthModal({
     }
   };
 
-  const inputCls = "w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gray-900";
+  const inputCls = "w-full border border-gray-300 dark:border-gray-700 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-gray-900";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 bg-white rounded-sm border border-gray-200 w-full max-w-sm shadow-xl p-6">
-        <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-700"><X className="h-4 w-4" /></button>
+      <div className="relative z-10 bg-white dark:bg-stone-900 rounded-sm border border-gray-200 dark:border-gray-700 w-full max-w-sm shadow-xl p-6">
+        <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"><X className="h-4 w-4" /></button>
         <h2 className="font-bold text-base mb-4">{mode === "login" ? t("storefront.auth.signInTitle") : t("storefront.auth.createAccountTitle")}</h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           {mode === "register" && (
@@ -173,9 +174,9 @@ function AuthModal({
             {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : (mode === "login" ? t("storefront.auth.signInButton") : t("storefront.auth.createAccountButton"))}
           </button>
         </form>
-        <p className="text-xs text-center text-gray-500 mt-3">
+        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
           {mode === "login" ? t("storefront.auth.noAccount") : t("storefront.auth.hasAccount")}{" "}
-          <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="underline font-medium text-gray-900">
+          <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="underline font-medium text-gray-900 dark:text-gray-100">
             {mode === "login" ? t("storefront.auth.register") : t("storefront.auth.signInButton")}
           </button>
         </p>
@@ -303,7 +304,7 @@ export default function PublicSitePage({
         {/* Cart button */}
         <button
           onClick={() => setCartOpen(true)}
-          className="relative flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-gray-200 shadow-sm text-xs font-medium hover:bg-gray-50"
+          className="relative flex items-center gap-1.5 px-3 py-1.5 rounded bg-white dark:bg-stone-900 border border-gray-200 dark:border-gray-700 shadow-sm text-xs font-medium hover:bg-gray-50 dark:bg-gray-950"
         >
           <ShoppingCart className="h-3.5 w-3.5" />
           {cartCount > 0 && (
@@ -315,14 +316,14 @@ export default function PublicSitePage({
           <>
             <Link
               href={`/s/${slug}/account`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-gray-200 shadow-sm text-xs font-medium hover:bg-gray-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white dark:bg-stone-900 border border-gray-200 dark:border-gray-700 shadow-sm text-xs font-medium hover:bg-gray-50 dark:bg-gray-950"
             >
               <User className="h-3.5 w-3.5" />
               {customer.name ?? customer.email.split("@")[0]}
             </Link>
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded bg-white border border-gray-200 shadow-sm text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+              className="p-1.5 rounded bg-white dark:bg-stone-900 border border-gray-200 dark:border-gray-700 shadow-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-950"
               title={t("storefront.topbar.signOut")}
             >
               <LogOut className="h-3.5 w-3.5" />
@@ -331,7 +332,7 @@ export default function PublicSitePage({
         ) : (
           <button
             onClick={() => setShowAuth(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-gray-200 shadow-sm text-xs font-medium hover:bg-gray-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white dark:bg-stone-900 border border-gray-200 dark:border-gray-700 shadow-sm text-xs font-medium hover:bg-gray-50 dark:bg-gray-950"
           >
             <User className="h-3.5 w-3.5" /> {t("storefront.topbar.signIn")}
           </button>
@@ -339,15 +340,27 @@ export default function PublicSitePage({
       </div>
 
       {/* Page content */}
-      <SiteRenderer
-        elements={page.elements}
-        theme={site.theme}
-        products={products}
-        siteSlug={slug}
-        basePath={`/s/${slug}`}
-        valueContext={{ customer, siteName: site.name }}
-        customValues={site.values}
-      />
+      {page.html && page.html.trim().length > 0 ? (
+        <SiteHtmlRenderer
+          html={page.html}
+          theme={site.theme}
+          products={products}
+          siteSlug={slug}
+          basePath={`/s/${slug}`}
+          customValues={site.values}
+          valueContext={{ customer, siteName: site.name }}
+        />
+      ) : (
+        <SiteRenderer
+          elements={page.elements}
+          theme={site.theme}
+          products={products}
+          siteSlug={slug}
+          basePath={`/s/${slug}`}
+          valueContext={{ customer, siteName: site.name }}
+          customValues={site.values}
+        />
+      )}
 
       {/* Modals */}
       {showAuth && site && (

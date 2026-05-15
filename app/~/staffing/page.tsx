@@ -891,154 +891,6 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     );
   }
 
-  // ─── Right Rail: Requests ─────────────────────────────────
-  function RequestsRail() {
-    if (!railOpen) {
-      return (
-        <div className="w-10 shrink-0 border-l border-border bg-background flex flex-col items-center py-4 gap-3 cursor-pointer hover:bg-muted transition-colors"
-          onClick={() => setRailOpen(true)}
-        >
-          <div className="relative">
-            <Inbox className="h-4 w-4 text-muted-foreground" />
-            {pendingCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 h-3.5 min-w-[14px] px-0.5 flex items-center justify-center bg-red-500 text-white text-[8px] font-bold rounded-full">
-                {pendingCount}
-              </span>
-            )}
-          </div>
-          <div className="flex-1 flex items-center">
-            <span className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-widest"
-              style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-            >
-              {t("staffing.requests.title")}
-            </span>
-          </div>
-          <PanelRightOpen className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-      );
-    }
-
-    return (
-      <div className="w-[340px] shrink-0 border-l border-border bg-background flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            <Inbox className="h-4 w-4 text-muted-foreground" />
-            <span className="text-[13px] font-semibold text-foreground">{t("staffing.requests.title")}</span>
-            {pendingCount > 0 && (
-              <span className="h-5 min-w-[20px] px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
-                {pendingCount}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={() => setRailOpen(false)}
-            className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
-          >
-            <PanelRightClose className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5">
-          {/* Time Off */}
-          {orgTimeOffRequests.length > 0 && (
-            <div>
-              <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("staffing.requests.timeOff")}</p>
-              <div className="space-y-2">
-                {orgTimeOffRequests.map((req) => (
-                  <div key={req.id} className="border border-border rounded-[0.3rem] p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold ${avatarBg(getMemberName(req.userId))}`}>
-                        {initials(getMemberName(req.userId))}
-                      </div>
-                      <span className="text-[13px] font-medium text-foreground">{getMemberName(req.userId)}</span>
-                    </div>
-                    <p className="text-[12px] text-muted-foreground mb-1">
-                      {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
-                      {!req.fullDays && req.startTime && req.endTime && (
-                        <> &middot; {formatTime(req.startTime)}&ndash;{formatTime(req.endTime)}</>
-                      )}
-                    </p>
-                    {req.comments && (
-                      <p className="text-[12px] text-muted-foreground italic mb-2">&ldquo;{req.comments}&rdquo;</p>
-                    )}
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
-                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
-                      >
-                        <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
-                      </button>
-                      <button
-                        onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
-                        className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
-                      >
-                        <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Trades */}
-          {orgShiftTrades.length > 0 && (
-            <div>
-              <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("staffing.requests.trades")}</p>
-              <div className="space-y-2">
-                {orgShiftTrades.map((trade) => {
-                  const shift = shifts.find((s) => s.id === trade.shiftId);
-                  return (
-                    <div key={trade.id} className="border border-border rounded-[0.3rem] p-3">
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 bg-muted text-muted-foreground rounded-[0.3rem]">
-                          {trade.type}
-                        </span>
-                      </div>
-                      <p className="text-[13px] font-medium text-foreground mb-0.5">
-                        {getMemberName(trade.requesterId)}
-                        <span className="text-muted-foreground font-normal mx-1">&rarr;</span>
-                        {trade.targetId ? getMemberName(trade.targetId) : t("staffing.unknown")}
-                      </p>
-                      {shift && (
-                        <p className="text-[12px] text-muted-foreground mb-2">
-                          {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
-                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
-                        >
-                          <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
-                        </button>
-                        <button
-                          onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
-                          className="flex-1 py-1.5 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-muted-foreground transition-colors flex items-center justify-center gap-1"
-                        >
-                          <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {orgTimeOffRequests.length === 0 && orgShiftTrades.length === 0 && (
-            <div className="text-center py-8">
-              <Inbox className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-              <p className="text-[13px] text-muted-foreground">{t("staffing.requests.noPending")}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // ─── Desktop Return ───────────────────────────────────────
   const tabLabels: Record<DesktopTab, string> = {
     schedule: t("staffing.tabs.schedule"),
@@ -1093,9 +945,6 @@ function StaffingDesktop(props: StaffingDesktopProps) {
             {dTab === "myShifts" && <MyShiftsTab />}
             {dTab === "roles" && <RolesTab />}
           </div>
-
-          {/* Right rail (only show for non-staff / managers) */}
-          {!isStaff && <RequestsRail />}
         </div>
       </div>
     </PermissionGuard>
@@ -1255,6 +1104,19 @@ export default function StaffingPage() {
     if (!userId || team.length === 0) return;
     setMyMemberId(team.find((m) => m.userId === userId)?.id ?? null);
   }, [team, userId]);
+
+  // Auto-fix shifts with missing memberId by matching staffName to team
+  useEffect(() => {
+    if (team.length === 0 || shifts.length === 0) return;
+    const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const orphaned = shifts.filter((s) => !s.memberId || !validUuid.test(s.memberId));
+    for (const s of orphaned) {
+      const match = team.find((m) => m.displayName === s.staffName);
+      if (match) {
+        updateShift(s.id, { memberId: match.id }).catch(() => {});
+      }
+    }
+  }, [team, shifts]);
 
   // Handle table drag-select via non-passive touchmove
   useEffect(() => {
@@ -2623,7 +2485,7 @@ export default function StaffingPage() {
               <Label>{t("staffing.taskDialog.timeWindow")}</Label>
               <button onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${taskForm.hasTime ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"}`} />
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"}`} />
               </button>
             </div>
             {taskForm.hasTime && (
@@ -3794,7 +3656,7 @@ export default function StaffingPage() {
                   taskForm.hasTime ? "bg-foreground border-foreground" : "bg-background border-border"
                 }`}
               >
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
                   taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"
                 }`} />
               </button>
@@ -3830,7 +3692,7 @@ export default function StaffingPage() {
                   taskForm.requiresEvidence ? "bg-foreground border-foreground" : "bg-background border-border"
                 }`}
               >
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
                   taskForm.requiresEvidence ? "translate-x-4" : "translate-x-0.5"
                 }`} />
               </button>
@@ -4235,7 +4097,7 @@ export default function StaffingPage() {
                           return { ...f, dayTimes };
                         })}
                           className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
-                          <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`}
+                          <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`}
                             style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }} />
                         </button>
                       </div>
@@ -4296,7 +4158,7 @@ export default function StaffingPage() {
                 }`}
               >
                 <span
-                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
                     timeOffForm.fullDays ? "translate-x-4" : "translate-x-0.5"
                   }`}
                   style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}

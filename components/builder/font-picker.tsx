@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Google Fonts API ───────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ interface FontPickerProps {
 }
 
 export function FontPicker({ value, onChange }: FontPickerProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [fonts, setFonts] = useState<GoogleFont[]>([]);
@@ -155,7 +157,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
         className="flex h-7 w-full items-center justify-between rounded-md border border-input bg-transparent px-2 text-xs transition-colors hover:bg-accent"
         style={currentFamily && !SYSTEM_FONTS.has(currentFamily) ? { fontFamily: `${currentFamily}, sans-serif` } : undefined}
       >
-        <span className="truncate">{currentFamily || "Select font..."}</span>
+        <span className="truncate">{currentFamily || t("builder.fonts.selectFont")}</span>
         <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
       </button>
 
@@ -166,7 +168,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
             <input
               ref={inputRef}
               className="h-5 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-              placeholder="Search 1500+ fonts..."
+              placeholder={t("builder.fonts.search")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -175,9 +177,9 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
 
           <div ref={listRef} className="max-h-[280px] overflow-y-auto py-1">
             {loading ? (
-              <p className="px-3 py-4 text-center text-xs text-muted-foreground">Loading fonts...</p>
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground">{t("builder.fonts.loading")}</p>
             ) : visible.length === 0 ? (
-              <p className="px-3 py-4 text-center text-xs text-muted-foreground">No fonts found.</p>
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground">{t("builder.fonts.notFound")}</p>
             ) : (
               visible.map((font) => (
                 <button

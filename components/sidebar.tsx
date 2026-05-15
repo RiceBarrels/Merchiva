@@ -81,6 +81,7 @@ import {
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
 import { useIsCapacitor, isCapacitorHiddenPath, CAPACITOR_HIDDEN_HREFS } from "@/lib/capacitor";
+import { useIsElectron } from "@/lib/electron";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/context/permissions";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -614,7 +615,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isCapacitor = useIsCapacitor();
+  const isElectron = useIsElectron();
   const [storeMachineMode] = useStoreMachineMode();
+  const electronOffset = isElectron ? 40 : 0;
 
   // In the native Capacitor shell, SEO/marketing routes are hidden — bounce
   // any deep links straight to the dashboard.
@@ -666,15 +669,17 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const useBottomBarRef = useRef(false);
   const lastHapticOffset = useRef(0);
   const hasDialogRef = useRef(false);
-  hasDialogRef.current = hasDialog;
-  useBottomBarRef.current = useBottomBar;
 
   const safeAreaInsets = getSafeAreaInsets();
   const screenRadius = getScreenCornerRadius();
 
   // Keep refs in sync with state
-  isOpenRef.current = isOpen;
-  draggingRef.current = dragging;
+  useEffect(() => {
+    hasDialogRef.current = hasDialog;
+    useBottomBarRef.current = useBottomBar;
+    isOpenRef.current = isOpen;
+    draggingRef.current = dragging;
+  }, [dragging, hasDialog, isOpen, useBottomBar]);
 
   // Close on navigation
   useEffect(() => {
@@ -834,7 +839,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <RightPanelMobileProvider>
     <>
       {/* ── Mobile / tablet layout (touch devices) + builder full-viewport ── */}
-      <div className={cn("relative h-screen overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex" : "hidden")}>
+      <div className={cn("relative h-[100dvh] min-h-0 w-full overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex flex-1" : "hidden")}>
         {/* Right panel (swipe from right, appears behind content like sidebar) */}
         {isMobile && !isBuilderPage && <MobileRightPanel />}
         {/* Floating hamburger / back button — always mount so AnimatePresence exit animations play */}
@@ -944,7 +949,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Desktop layout (non-touch): permanent sidebar — not shown on builder pages ── */}
       {!isBuilderPage && (
-        <div className={cn("h-screen overflow-hidden bg-background", isMobile === false ? "flex" : "hidden")}>
+        <div className={cn("overflow-hidden bg-background", isMobile === false ? "flex flex-1 h-[calc(100vh-40px)]" : "hidden")}>
           <div className="h-full shrink-0 transition-[width] duration-200 border-r border-border bg-background" style={{ width: sidebarCollapsed ? 64 : 220 }}>
             <SidebarContent collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
           </div>

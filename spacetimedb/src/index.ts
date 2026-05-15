@@ -60,6 +60,15 @@ const organizationTable = table(
     ownerId: t.identity(),
     name: t.string(),
     createdAt: t.timestamp(),
+    // Stripe SaaS subscription state (server-managed; webhook-updated). All
+    // optional so existing rows stay backwards-compatible. `.default(undefined)`
+    // is required by the SpacetimeDB migrator for new option columns added to
+    // an existing table — without it, the migrator refuses to publish.
+    stripeCustomerId: t.option(t.string()).default(undefined),
+    subscriptionStatus: t.option(t.string()).default(undefined),      // 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete'
+    subscriptionPriceId: t.option(t.string()).default(undefined),     // Stripe price id, identifies plan + interval
+    subscriptionInterval: t.option(t.string()).default(undefined),    // 'month' | 'year' (derived from price)
+    currentPeriodEnd: t.option(t.timestamp()).default(undefined),
   }
 );
 
@@ -461,6 +470,7 @@ const productTable = table(
     imageUrl: t.option(t.string()),
     description: t.option(t.string()),
     nameI18n: t.option(t.string()),
+    options: t.option(t.string()),      // JSON: [{"name","price","des","imgUrl","color"}]
     squareItemId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
@@ -1091,6 +1101,201 @@ const wasteLogTable = table(
   }
 );
 
+// ─── AI Chat History ─────────────────────────────────────────────────────────
+
+const aiChatHistoryTable = table(
+  {
+    name: 'ai_chat_history',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    userId: t.identity(),
+    messages: t.string(),
+    summary: t.option(t.string()),
+    updatedAt: t.timestamp(),
+  }
+);
+
+// ─── AI Chat Sessions ────────────────────────────────────────────────────────
+
+const aiChatSessionTable = table(
+  {
+    name: 'ai_chat_session',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    userId: t.identity(),
+    title: t.string(),
+    messages: t.string(),
+    summary: t.option(t.string()),
+    archived: t.bool(),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+  }
+);
+
+// ─── AI background jobs ─────────────────────────────────────────────────────
+// Each row tracks one AI generation that runs server-side via waitUntil. The
+// client enqueues the prompt + closes its socket; the server keeps streaming
+// chunks into `partialText`. When done, `status` flips to 'done' and the
+// client (next time it's open) parses `finalText` for action blocks and
+// executes them locally.
+const aiJobTable = table(
+  {
+    name: 'ai_job',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'bySessionId', algorithm: 'btree', columns: ['sessionId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    sessionId: t.string(),
+    userId: t.identity(),
+    prompt: t.string(),
+    status: t.string(), // 'pending' | 'running' | 'done' | 'failed'
+    partialText: t.string(),
+    finalText: t.option(t.string()),
+    error: t.option(t.string()),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+    // Marked true after the client has consumed finalText and executed any
+    // action blocks. Lets the client distinguish "new result, please apply"
+    // from "already-done, just display".
+    consumed: t.bool(),
+  }
+);
+
+// ─── Training: Curriculum Days ───────────────────────────────────────────────
+
+const trainingDayTable = table(
+  {
+    name: 'training_day',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    dayNumber: t.i32(),
+    title: t.string(),
+    description: t.option(t.string()),
+    sortOrder: t.i32(),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+  }
+);
+
+// ─── Training: Curriculum Objectives ─────────────────────────────────────────
+
+const trainingObjectiveTable = table(
+  {
+    name: 'training_objective',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byDayId', algorithm: 'btree', columns: ['dayId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    dayId: t.string(),
+    text: t.string(),
+    mediaUrl: t.option(t.string()),
+    mediaType: t.option(t.string()),   // 'image' | 'video'
+    sortOrder: t.i32(),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+  }
+);
+
+// ─── Training: Per-Objective Grades ──────────────────────────────────────────
+
+const trainingObjectiveGradeTable = table(
+  {
+    name: 'training_objective_grade',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byTraineeId', algorithm: 'btree', columns: ['traineeId'] },
+      { accessor: 'byObjectiveId', algorithm: 'btree', columns: ['objectiveId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    traineeId: t.string(),              // org_member id of the trainee
+    objectiveId: t.string(),
+    status: t.string(),                 // 'pass' | 'fail'
+    comment: t.option(t.string()),
+    gradedBy: t.identity(),
+    gradedAt: t.timestamp(),
+  }
+);
+
+// ─── Training: Per-Day Grades ────────────────────────────────────────────────
+
+const trainingDayGradeTable = table(
+  {
+    name: 'training_day_grade',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byTraineeId', algorithm: 'btree', columns: ['traineeId'] },
+      { accessor: 'byDayId', algorithm: 'btree', columns: ['dayId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    traineeId: t.string(),
+    dayId: t.string(),
+    rating: t.i32(),                    // 1..5
+    comment: t.option(t.string()),
+    gradedBy: t.identity(),
+    gradedAt: t.timestamp(),
+  }
+);
+
+// ─── Training: Final Grade ───────────────────────────────────────────────────
+
+const trainingFinalGradeTable = table(
+  {
+    name: 'training_final_grade',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byTraineeId', algorithm: 'btree', columns: ['traineeId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    traineeId: t.string(),
+    score: t.i32(),                     // 0..100
+    comment: t.option(t.string()),
+    gradedBy: t.identity(),
+    gradedAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1138,6 +1343,14 @@ const spacetimedb = schema({
   expense: expenseTable,
   coupon: couponTable,
   queueEntry: queueEntryTable,
+  aiChatHistory: aiChatHistoryTable,
+  aiChatSession: aiChatSessionTable,
+  aiJob: aiJobTable,
+  trainingDay: trainingDayTable,
+  trainingObjective: trainingObjectiveTable,
+  trainingObjectiveGrade: trainingObjectiveGradeTable,
+  trainingDayGrade: trainingDayGradeTable,
+  trainingFinalGrade: trainingFinalGradeTable,
 });
 
 export default spacetimedb;
@@ -1286,6 +1499,11 @@ export const createOrg = spacetimedb.reducer(
       ownerId: ctx.sender,
       name,
       createdAt: ctx.timestamp,
+      stripeCustomerId: undefined,
+      subscriptionStatus: undefined,
+      subscriptionPriceId: undefined,
+      subscriptionInterval: undefined,
+      currentPeriodEnd: undefined,
     });
 
     const defaultPermissions = JSON.stringify({
@@ -1351,6 +1569,47 @@ export const updateOrg = spacetimedb.reducer(
     // Note: update requires primaryKey index – rebuild with delete + insert
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({ ...org, name });
+  }
+);
+
+/**
+ * Sync the org's Stripe subscription state. Owner-only.
+ *
+ * The webhook flow: Stripe → /api/billing/webhook (server validates the
+ * signature) → server returns 200 → client (settings page) fetches sub state
+ * from /api/billing/sync → client calls this reducer with its user identity.
+ * Since only owners can pay, owner-only is the right gate.
+ *
+ * Any field passed as undefined is left unchanged. Pass empty string to
+ * explicitly clear. Use null for option fields by passing the literal "" (we
+ * map "" → undefined on the row).
+ */
+export const updateOrgSubscription = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    stripeCustomerId: t.option(t.string()),
+    subscriptionStatus: t.option(t.string()),
+    subscriptionPriceId: t.option(t.string()),
+    subscriptionInterval: t.option(t.string()),
+    currentPeriodEnd: t.option(t.timestamp()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role !== 'owner') unauthorized('Owner only');
+
+    const org = [...ctx.db.organization.iter()]
+      .find(o => o.id.toString() === args.organizationId);
+    if (!org) throw new Error('Organization not found');
+
+    ctx.db.organization.delete(org);
+    ctx.db.organization.insert({
+      ...org,
+      stripeCustomerId: args.stripeCustomerId ?? org.stripeCustomerId,
+      subscriptionStatus: args.subscriptionStatus ?? org.subscriptionStatus,
+      subscriptionPriceId: args.subscriptionPriceId ?? org.subscriptionPriceId,
+      subscriptionInterval: args.subscriptionInterval ?? org.subscriptionInterval,
+      currentPeriodEnd: args.currentPeriodEnd ?? org.currentPeriodEnd,
+    });
   }
 );
 
@@ -1872,6 +2131,7 @@ export const addProduct = spacetimedb.reducer(
     imageUrl: t.option(t.string()),
     description: t.option(t.string()),
     nameI18n: t.option(t.string()),
+    options: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -1896,6 +2156,7 @@ export const addProduct = spacetimedb.reducer(
       imageUrl: args.imageUrl,
       description: args.description,
       nameI18n: args.nameI18n,
+      options: args.options,
       squareItemId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
@@ -1917,6 +2178,7 @@ export const updateProduct = spacetimedb.reducer(
     imageUrl: t.option(t.string()),
     description: t.option(t.string()),
     nameI18n: t.option(t.string()),
+    options: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -1938,6 +2200,7 @@ export const updateProduct = spacetimedb.reducer(
       imageUrl: args.imageUrl,
       description: args.description,
       nameI18n: args.nameI18n,
+      options: args.options,
       updatedAt: ctx.timestamp,
     });
   }
@@ -2206,6 +2469,15 @@ export const deleteStaffRole = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     const role = findItemInOrg(ctx.db.staffRole, organizationId, roleId);
+
+    // Cascade: drop the role's tasks so they don't appear in the daily checklist
+    // as ghost entries under a missing role.
+    for (const task of [...ctx.db.roleTask.iter()]) {
+      if (task.organizationId === organizationId && task.roleId === roleId) {
+        ctx.db.roleTask.delete(task);
+      }
+    }
+
     ctx.db.staffRole.delete(role);
   }
 );
@@ -4064,3 +4336,545 @@ function findActiveMember(ctx: any, organizationId: string) {
     status: string;
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI CHAT HISTORY REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const saveAiChatHistory = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    messages: t.string(),
+    summary: t.option(t.string()),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiChatHistory.byUserId.filter(ctx.sender)]
+      .find((r: { organizationId: string }) => r.organizationId === args.organizationId);
+    if (existing) {
+      ctx.db.aiChatHistory.id.update({
+        ...existing,
+        messages: args.messages,
+        summary: args.summary ?? existing.summary,
+        updatedAt: ctx.timestamp,
+      });
+    } else {
+      ctx.db.aiChatHistory.insert({
+        id: ctx.newUuidV4(),
+        organizationId: args.organizationId,
+        userId: ctx.sender,
+        messages: args.messages,
+        summary: args.summary ?? undefined,
+        updatedAt: ctx.timestamp,
+      });
+    }
+  }
+);
+
+export const clearAiChatHistory = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiChatHistory.byUserId.filter(ctx.sender)]
+      .find((r: { organizationId: string }) => r.organizationId === args.organizationId);
+    if (existing) {
+      ctx.db.aiChatHistory.id.update({
+        ...existing,
+        messages: '[]',
+        updatedAt: ctx.timestamp,
+      });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI CHAT SESSION REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const createAiChatSession = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    title: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    ctx.db.aiChatSession.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      userId: ctx.sender,
+      title: args.title,
+      messages: '[]',
+      summary: undefined,
+      archived: false,
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const saveAiChatSession = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    sessionId: t.string(),
+    messages: t.string(),
+    title: t.option(t.string()),
+    summary: t.option(t.string()),
+    archived: t.option(t.bool()),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiChatSession.byUserId.filter(ctx.sender)]
+      .find((r: { id: { toString(): string }; organizationId: string }) =>
+        r.id.toString() === args.sessionId && r.organizationId === args.organizationId
+      );
+    if (!existing) throw new Error('Session not found');
+    ctx.db.aiChatSession.id.update({
+      ...existing,
+      messages: args.messages,
+      title: args.title ?? existing.title,
+      summary: args.summary ?? existing.summary,
+      archived: args.archived ?? existing.archived,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const archiveAiChatSession = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    sessionId: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiChatSession.byUserId.filter(ctx.sender)]
+      .find((r: { id: { toString(): string }; organizationId: string }) =>
+        r.id.toString() === args.sessionId && r.organizationId === args.organizationId
+      );
+    if (!existing) throw new Error('Session not found');
+    ctx.db.aiChatSession.id.update({
+      ...existing,
+      archived: true,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI JOB REDUCERS — background AI generation. The Next.js API enqueues a job,
+// runs the model in a waitUntil background task, and streams chunks back into
+// partialText. The owning client subscribes via useTable and renders updates.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const createAiJob = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    sessionId: t.string(),
+    prompt: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    ctx.db.aiJob.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      sessionId: args.sessionId,
+      userId: ctx.sender,
+      prompt: args.prompt,
+      status: 'pending',
+      partialText: '',
+      finalText: undefined,
+      error: undefined,
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+      consumed: false,
+    });
+  }
+);
+
+export const appendAiJobChunk = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    jobId: t.string(),
+    chunk: t.string(),
+    setRunning: t.bool(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiJob.iter()]
+      .find((r: { id: { toString(): string }; organizationId: string }) =>
+        r.id.toString() === args.jobId && r.organizationId === args.organizationId
+      );
+    if (!existing) throw new Error('Job not found');
+    ctx.db.aiJob.id.update({
+      ...existing,
+      status: args.setRunning ? 'running' : existing.status,
+      partialText: existing.partialText + args.chunk,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const finalizeAiJob = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    jobId: t.string(),
+    finalText: t.option(t.string()),
+    error: t.option(t.string()),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiJob.iter()]
+      .find((r: { id: { toString(): string }; organizationId: string }) =>
+        r.id.toString() === args.jobId && r.organizationId === args.organizationId
+      );
+    if (!existing) throw new Error('Job not found');
+    ctx.db.aiJob.id.update({
+      ...existing,
+      status: args.error ? 'failed' : 'done',
+      finalText: args.finalText,
+      error: args.error,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const consumeAiJob = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    jobId: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiJob.iter()]
+      .find((r: { id: { toString(): string }; organizationId: string }) =>
+        r.id.toString() === args.jobId && r.organizationId === args.organizationId
+      );
+    if (!existing) throw new Error('Job not found');
+    ctx.db.aiJob.id.update({
+      ...existing,
+      consumed: true,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const deleteAiJob = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    jobId: t.string(),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const existing = [...ctx.db.aiJob.iter()]
+      .find((r: { id: { toString(): string }; organizationId: string }) =>
+        r.id.toString() === args.jobId && r.organizationId === args.organizationId
+      );
+    if (existing) ctx.db.aiJob.delete(existing);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TRAINING REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function requireGradingPermission(member: { role: string; permissions: string }) {
+  if (member.role === 'owner' || member.role === 'manager') return;
+  let perms: { training_grading?: { edit?: boolean } } = {};
+  try {
+    perms = JSON.parse(member.permissions);
+  } catch {
+    /* noop */
+  }
+  if (!perms.training_grading?.edit) unauthorized('No training_grading permission');
+}
+
+// ── Curriculum: Days ─────────────────────────────────────────────────────────
+
+export const addTrainingDay = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    dayNumber: t.i32(),
+    title: t.string(),
+    description: t.option(t.string()),
+    sortOrder: t.i32(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    ctx.db.trainingDay.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      dayNumber: args.dayNumber,
+      title: args.title,
+      description: args.description,
+      sortOrder: args.sortOrder,
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateTrainingDay = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    dayId: t.string(),
+    dayNumber: t.i32(),
+    title: t.string(),
+    description: t.option(t.string()),
+    sortOrder: t.i32(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const day = findItemInOrg(ctx.db.trainingDay, args.organizationId, args.dayId);
+    ctx.db.trainingDay.delete(day);
+    ctx.db.trainingDay.insert({
+      ...day,
+      dayNumber: args.dayNumber,
+      title: args.title,
+      description: args.description,
+      sortOrder: args.sortOrder,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const deleteTrainingDay = spacetimedb.reducer(
+  { organizationId: t.string(), dayId: t.string() },
+  (ctx, { organizationId, dayId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const day = findItemInOrg(ctx.db.trainingDay, organizationId, dayId);
+
+    // Cascade: delete objectives, day-grades, and objective-grades attached to this day.
+    for (const obj of [...ctx.db.trainingObjective.iter()]) {
+      if (obj.organizationId !== organizationId || obj.dayId !== dayId) continue;
+      for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
+        if (g.organizationId === organizationId && g.objectiveId === obj.id.toString()) {
+          ctx.db.trainingObjectiveGrade.delete(g);
+        }
+      }
+      ctx.db.trainingObjective.delete(obj);
+    }
+    for (const g of [...ctx.db.trainingDayGrade.iter()]) {
+      if (g.organizationId === organizationId && g.dayId === dayId) {
+        ctx.db.trainingDayGrade.delete(g);
+      }
+    }
+
+    ctx.db.trainingDay.delete(day);
+  }
+);
+
+// ── Curriculum: Objectives ──────────────────────────────────────────────────
+
+export const addTrainingObjective = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    dayId: t.string(),
+    text: t.string(),
+    mediaUrl: t.option(t.string()),
+    mediaType: t.option(t.string()),
+    sortOrder: t.i32(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    // Verify the day exists in this org.
+    findItemInOrg(ctx.db.trainingDay, args.organizationId, args.dayId);
+
+    ctx.db.trainingObjective.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      dayId: args.dayId,
+      text: args.text,
+      mediaUrl: args.mediaUrl,
+      mediaType: args.mediaType,
+      sortOrder: args.sortOrder,
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateTrainingObjective = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    objectiveId: t.string(),
+    text: t.string(),
+    mediaUrl: t.option(t.string()),
+    mediaType: t.option(t.string()),
+    sortOrder: t.i32(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const obj = findItemInOrg(ctx.db.trainingObjective, args.organizationId, args.objectiveId);
+    ctx.db.trainingObjective.delete(obj);
+    ctx.db.trainingObjective.insert({
+      ...obj,
+      text: args.text,
+      mediaUrl: args.mediaUrl,
+      mediaType: args.mediaType,
+      sortOrder: args.sortOrder,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const deleteTrainingObjective = spacetimedb.reducer(
+  { organizationId: t.string(), objectiveId: t.string() },
+  (ctx, { organizationId, objectiveId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const obj = findItemInOrg(ctx.db.trainingObjective, organizationId, objectiveId);
+    for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
+      if (g.organizationId === organizationId && g.objectiveId === objectiveId) {
+        ctx.db.trainingObjectiveGrade.delete(g);
+      }
+    }
+    ctx.db.trainingObjective.delete(obj);
+  }
+);
+
+// ── Grading: per-objective (upsert) ─────────────────────────────────────────
+
+export const gradeTrainingObjective = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    traineeId: t.string(),
+    objectiveId: t.string(),
+    status: t.string(),              // 'pass' | 'fail'
+    comment: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    requireGradingPermission(member);
+
+    // Verify the objective belongs to this org.
+    findItemInOrg(ctx.db.trainingObjective, args.organizationId, args.objectiveId);
+
+    for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
+      if (
+        g.organizationId === args.organizationId &&
+        g.traineeId === args.traineeId &&
+        g.objectiveId === args.objectiveId
+      ) {
+        ctx.db.trainingObjectiveGrade.delete(g);
+      }
+    }
+
+    ctx.db.trainingObjectiveGrade.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      traineeId: args.traineeId,
+      objectiveId: args.objectiveId,
+      status: args.status,
+      comment: args.comment,
+      gradedBy: ctx.sender,
+      gradedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const clearTrainingObjectiveGrade = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    traineeId: t.string(),
+    objectiveId: t.string(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    requireGradingPermission(member);
+
+    for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
+      if (
+        g.organizationId === args.organizationId &&
+        g.traineeId === args.traineeId &&
+        g.objectiveId === args.objectiveId
+      ) {
+        ctx.db.trainingObjectiveGrade.delete(g);
+      }
+    }
+  }
+);
+
+// ── Grading: per-day (upsert) ───────────────────────────────────────────────
+
+export const gradeTrainingDay = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    traineeId: t.string(),
+    dayId: t.string(),
+    rating: t.i32(),                 // 1..5
+    comment: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    requireGradingPermission(member);
+
+    findItemInOrg(ctx.db.trainingDay, args.organizationId, args.dayId);
+
+    for (const g of [...ctx.db.trainingDayGrade.iter()]) {
+      if (
+        g.organizationId === args.organizationId &&
+        g.traineeId === args.traineeId &&
+        g.dayId === args.dayId
+      ) {
+        ctx.db.trainingDayGrade.delete(g);
+      }
+    }
+
+    ctx.db.trainingDayGrade.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      traineeId: args.traineeId,
+      dayId: args.dayId,
+      rating: args.rating,
+      comment: args.comment,
+      gradedBy: ctx.sender,
+      gradedAt: ctx.timestamp,
+    });
+  }
+);
+
+// ── Grading: final overall (upsert) ─────────────────────────────────────────
+
+export const setTrainingFinalGrade = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    traineeId: t.string(),
+    score: t.i32(),                  // 0..100
+    comment: t.option(t.string()),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    requireGradingPermission(member);
+
+    for (const g of [...ctx.db.trainingFinalGrade.iter()]) {
+      if (
+        g.organizationId === args.organizationId &&
+        g.traineeId === args.traineeId
+      ) {
+        ctx.db.trainingFinalGrade.delete(g);
+      }
+    }
+
+    ctx.db.trainingFinalGrade.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      traineeId: args.traineeId,
+      score: args.score,
+      comment: args.comment,
+      gradedBy: ctx.sender,
+      gradedAt: ctx.timestamp,
+    });
+  }
+);

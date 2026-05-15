@@ -5,16 +5,23 @@ import { FlowIcon } from "@/components/flowfn/icons";
 import { Canvas } from "@/components/flowfn/canvas";
 import { CodePanel, TestsPanel, ConsolePanel } from "@/components/flowfn/panels";
 import { makeNode, safeIdent, NODE_LIB } from "@/components/flowfn/node-lib";
-import { executeFunction, formatPreview } from "@/components/flowfn/codegen";
+import { executeFunction, formatPreview, type ValueAPI } from "@/components/flowfn/codegen";
 import { seedFunctions } from "@/components/flowfn/seed";
-import { saveFunction, updateFunction, deleteFunction } from "@/lib/spacetimedb/actions";
+import { saveFunction, updateFunction, deleteFunction, updateSite } from "@/lib/spacetimedb/actions";
+import { getSystemValues, SYSTEM_VALUE_KEYS } from "@/lib/builder/site-values";
+import { useT } from "@/lib/i18n/context";
 import type { FlowFunction, LogEntry, NodeResult } from "@/components/flowfn/types";
+import type { Site } from "@/lib/types";
 
 interface FlowFnEditorProps {
   siteId?: string;
+  // When provided, value-get / value-set nodes read/write the site's custom
+  // values; otherwise they're no-ops (handy when running standalone).
+  site?: Site;
 }
 
-export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
+export function FlowFnEditor({ siteId, site }: FlowFnEditorProps) {
+  const t = useT();
   const [fns, setFns] = useState<FlowFunction[]>(() => {
     if (typeof window === "undefined") return seedFunctions();
     try {
@@ -104,6 +111,37 @@ export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
     setActiveId(newId);
   }
 
+  // Build a value API bound to the current site. Reads pull from the live
+  // site.values + system values; writes go through updateSite which the
+  // SpacetimeDB subscription propagates back into the editor and storefront.
+  const buildValueAPI = useCallback((): ValueAPI | undefined => {
+    if (!site) return undefined;
+    const sys = getSystemValues({ siteName: site.name });
+    const customSnapshot = { ...(site.values ?? {}) };
+    return {
+      getValue: (key: string) => {
+        if (key in sys) return sys[key];
+        return customSnapshot[key] ?? "";
+      },
+      setValue: async (key: string, value: string) => {
+        if (!key) return false;
+        if (SYSTEM_VALUE_KEYS.has(key)) {
+          pushLog("warn", `Cannot setValue("${key}"): system value (read-only)`);
+          return false;
+        }
+        try {
+          customSnapshot[key] = value;
+          const featuresWithValues = { ...site.features, _values: customSnapshot };
+          await updateSite(site.id, { features: JSON.stringify(featuresWithValues) });
+          return true;
+        } catch (err) {
+          pushLog("err", `setValue("${key}") failed: ${err instanceof Error ? err.message : String(err)}`);
+          return false;
+        }
+      },
+    };
+  }, [site, pushLog]);
+
   async function runFn() {
     pushLog("info", `Running ${activeFn.name}...`);
     const params = activeFn.nodes.filter((n) => n.type === "param").sort((a, b) => a.y - b.y);
@@ -119,14 +157,15 @@ export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
       activeFn.tests[0].args.forEach((a, i) => { if (a) args[i] = a; });
     }
     setResults({});
-    const exec = await executeFunction(activeFn, args, fns);
+    const valueAPI = buildValueAPI();
+    const exec = await executeFunction(activeFn, args, fns, valueAPI);
     if (exec.ok) pushLog("ok", `-> ${formatPreview(exec.result)}`);
     else pushLog("err", exec.error || "unknown error");
     exec.logs.forEach((l) => pushLog("info", `${l.label ? l.label + ": " : ""}${formatPreview(l.value)}`));
-    await computeNodeResults(activeFn, fns, args);
+    await computeNodeResults(activeFn, fns, args, valueAPI);
   }
 
-  async function computeNodeResults(fn: FlowFunction, allFns: FlowFunction[], args: string[]) {
+  async function computeNodeResults(fn: FlowFunction, allFns: FlowFunction[], args: string[], valueAPI?: ValueAPI) {
     const out: Record<string, NodeResult> = {};
     for (const n of fn.nodes) {
       const def = NODE_LIB[n.type];
@@ -141,7 +180,13 @@ export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
           ],
           tests: [],
         };
-        const res = await executeFunction(testFn, args, allFns);
+        // Per-node previews use a read-only API: don't persist setValue side-effects
+        // when probing each node's output, otherwise the canvas would write to the
+        // DB on every render.
+        const previewAPI: ValueAPI | undefined = valueAPI
+          ? { getValue: valueAPI.getValue, setValue: async () => true }
+          : undefined;
+        const res = await executeFunction(testFn, args, allFns, previewAPI);
         if (res.ok) out[n.id] = { value: res.result };
         else out[n.id] = { err: res.error };
       } catch (err) {
@@ -161,11 +206,11 @@ export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
         <div className="ffn-sidebar">
           <div className="ffn-sb-search">
             <FlowIcon name="search" size={14} style={{ color: "var(--muted-foreground)" }} />
-            <input placeholder="Search functions" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <input placeholder={t("builder.flowfn.searchFunctions")} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <div className="ffn-sb-section">
-            <span>Functions</span>
-            <button className="ffn-btn icon sm ghost" title="New" onClick={newFunction}><FlowIcon name="plus" size={12} /></button>
+            <span>{t("builder.flowfn.functions")}</span>
+            <button className="ffn-btn icon sm ghost" title={t("builder.flowfn.newFunction")} onClick={newFunction}><FlowIcon name="plus" size={12} /></button>
           </div>
           <div className="ffn-sb-list" style={{ overflow: "auto", flex: 1 }}>
             {filteredFns.map((f) => {
@@ -195,9 +240,9 @@ export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
                   <span className="meta">{f.nodes.length}n</span>
                   {isActive && !isEditing && (
                     <>
-                      <button className="ffn-btn icon sm ghost" style={{ color: "inherit", height: 20, width: 20 }} title="Rename" onClick={(e) => { e.stopPropagation(); setEditingFnName(f.id); }}><FlowIcon name="refresh" size={12} /></button>
-                      <button className="ffn-btn icon sm ghost" style={{ color: "inherit", height: 20, width: 20 }} title="Duplicate" onClick={(e) => { e.stopPropagation(); duplicateFunction(f.id); }}><FlowIcon name="copy" size={12} /></button>
-                      <button className="ffn-btn icon sm ghost" style={{ color: "inherit", height: 20, width: 20 }} title="Delete" onClick={(e) => { e.stopPropagation(); deleteFunction(f.id); }}><FlowIcon name="trash" size={12} /></button>
+                      <button className="ffn-btn icon sm ghost" style={{ color: "inherit", height: 20, width: 20 }} title={t("builder.flowfn.renameFunction")} onClick={(e) => { e.stopPropagation(); setEditingFnName(f.id); }}><FlowIcon name="refresh" size={12} /></button>
+                      <button className="ffn-btn icon sm ghost" style={{ color: "inherit", height: 20, width: 20 }} title={t("builder.flowfn.duplicateFunction")} onClick={(e) => { e.stopPropagation(); duplicateFunction(f.id); }}><FlowIcon name="copy" size={12} /></button>
+                      <button className="ffn-btn icon sm ghost" style={{ color: "inherit", height: 20, width: 20 }} title={t("builder.flowfn.deleteFunction")} onClick={(e) => { e.stopPropagation(); deleteFunction(f.id); }}><FlowIcon name="trash" size={12} /></button>
                     </>
                   )}
                 </div>
@@ -206,14 +251,14 @@ export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
           </div>
           <div className="ffn-sb-divider" />
           <div style={{ padding: "4px 14px 14px", fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.7 }}>
-            <div><span className="ffn-kbd">/</span> Add node</div>
-            <div><span className="ffn-kbd">2x click</span> Add here</div>
-            <div><span className="ffn-kbd">drag port</span> Connect</div>
-            <div><span className="ffn-kbd">Del</span> Delete</div>
+            <div><span className="ffn-kbd">/</span> {t("builder.flowfn.hintAddNode")}</div>
+            <div><span className="ffn-kbd">2x click</span> {t("builder.flowfn.hintAddHere")}</div>
+            <div><span className="ffn-kbd">drag port</span> {t("builder.flowfn.hintConnect")}</div>
+            <div><span className="ffn-kbd">Del</span> {t("builder.flowfn.hintDeleteKey")}</div>
           </div>
           <div className="ffn-sb-divider" />
           <button className="ffn-btn run" style={{ margin: "8px" }} onClick={runFn}>
-            <FlowIcon name="play" size={14} /> Run
+            <FlowIcon name="play" size={14} /> {t("builder.flowfn.run")}
           </button>
         </div>
 
@@ -228,14 +273,14 @@ export function FlowFnEditor({ siteId }: FlowFnEditorProps) {
         <div className="ffn-right-pane">
           <div className="ffn-tabs">
             <button className={`ffn-tab ${tab === "code" ? "active" : ""}`} onClick={() => setTab("code")}>
-              <FlowIcon name="code" size={14} /> Code
+              <FlowIcon name="code" size={14} /> {t("builder.flowfn.tabCode")}
             </button>
             <button className={`ffn-tab ${tab === "tests" ? "active" : ""}`} onClick={() => setTab("tests")}>
-              <FlowIcon name="test" size={14} /> Tests
+              <FlowIcon name="test" size={14} /> {t("builder.flowfn.tabTests")}
               {activeFn?.tests?.length ? <span className="ffn-badge">{activeFn.tests.length}</span> : null}
             </button>
             <button className={`ffn-tab ${tab === "console" ? "active" : ""}`} onClick={() => setTab("console")}>
-              <FlowIcon name="log" size={14} /> Console
+              <FlowIcon name="log" size={14} /> {t("builder.flowfn.tabConsole")}
               {logs.length ? <span className="ffn-badge">{logs.length}</span> : null}
             </button>
           </div>

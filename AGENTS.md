@@ -118,6 +118,15 @@ components/
 - Generated types in `lib/spacetimedb/generated/` — **never edit these manually**.
 - Provider wraps the app in `app/~/layout.tsx`.
 - No Supabase. `lib/db/*.ts` files are legacy and being phased out.
+- Module source: `spacetimedb/src/index.ts`. Published to maincloud via `spacetime publish`.
+
+### Schema Migration Rules (CRITICAL)
+
+**Adding columns to existing tables:**
+- New columns MUST go at the **end** of the table definition, after all existing columns. Inserting between columns causes a "reorder" error that forces `--delete-data` (destroys all rows).
+- New columns should use `t.option(...)` so existing rows default to `null`.
+- Publish command: `spacetime publish merchiva --server maincloud --yes`. Do NOT use `--delete-data` unless the user explicitly approves. `--delete-data=on-conflict` **will delete data** if there's any schema conflict — always warn first.
+- After publish, run `spacetime generate` to regenerate TypeScript types.
 
 ### Navigation Tabs
 Pages are grouped with `PageTabs`. All hrefs must use the `/~/` prefix:
@@ -164,7 +173,22 @@ Build tools, not demos. Professional software, not AI templates.
 - `WORKOS_API_KEY` / `WORKOS_CLIENT_ID` — server-only
 - `UPLOADTHING_TOKEN` — file upload
 - `RESEND_API_KEY` — transactional email
+- `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — server-only, for SaaS billing
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` — client-side (optional for Checkout)
+- `STRIPE_PRO_MONTHLY_PRICE_ID` / `STRIPE_PRO_YEARLY_PRICE_ID` — Stripe Price ids for the Pro plan
+- `NEXT_PUBLIC_APP_URL` — fallback origin for Stripe success/cancel URLs (used when request `origin` header is empty)
 - Square / Clover credentials stored in DB, not env vars
+
+## Stripe Setup
+
+Source of truth for plans/prices is Stripe Dashboard (no local plan table).
+
+1. Stripe Dashboard → Products → create "Merchiva Pro" with two recurring prices: monthly + yearly.
+2. Copy each price id into env (`STRIPE_PRO_MONTHLY_PRICE_ID`, `STRIPE_PRO_YEARLY_PRICE_ID`).
+3. Stripe Dashboard → Webhooks → add endpoint `https://<host>/api/billing/webhook`, listen for: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `checkout.session.completed`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
+4. Local dev: `stripe listen --forward-to localhost:3000/api/billing/webhook` then paste the printed `whsec_…` into `.env.local`.
+
+Subscription state on org rows (`organization.stripeCustomerId`, `subscriptionStatus`, `subscriptionPriceId`, `subscriptionInterval`, `currentPeriodEnd`) is a CACHE — Stripe is canonical. The `/api/billing/sync` route refreshes from Stripe and the client persists via the `updateOrgSubscription` reducer. The webhook currently just verifies signatures and logs; once a server-side SpacetimeDB service identity is wired up it can write directly.
 
 ## Deployment
 

@@ -8,9 +8,11 @@ import { Separator } from "@/components/ui/separator";
 import { SYSTEM_VALUES, SYSTEM_VALUE_KEYS } from "@/lib/builder/site-values";
 import { updateSite } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 import type { Site } from "@/lib/types";
 
 function CopyTag({ text }: { text: string }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   return (
@@ -22,7 +24,7 @@ function CopyTag({ text }: { text: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       }}
-      title={`Copy {${text}}`}
+      title={`${t("builder.values.copyTag")} {${text}}`}
     >
       <span>{`{${text}}`}</span>
       {copied ? <Check className="h-2.5 w-2.5 text-emerald-600" /> : <Copy className="h-2.5 w-2.5" />}
@@ -35,6 +37,7 @@ interface ValuePanelProps {
 }
 
 export function ValuePanel({ site }: ValuePanelProps) {
+  const t = useT();
   const customValues = site.values ?? {};
   const [addingKey, setAddingKey] = useState("");
   const [addingValue, setAddingValue] = useState("");
@@ -78,14 +81,14 @@ export function ValuePanel({ site }: ValuePanelProps) {
       {/* Custom values */}
       <div className="px-3 py-2">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Custom Values
+          {t("builder.values.custom")}
         </span>
       </div>
 
       <div className="space-y-1 px-2">
         {entries.length === 0 && (
           <p className="px-1 py-2 text-[11px] text-muted-foreground">
-            No custom values yet. Add one below.
+            {t("builder.values.noCustom")}
           </p>
         )}
         {entries.map(([key, val]) => (
@@ -115,7 +118,7 @@ export function ValuePanel({ site }: ValuePanelProps) {
                 }}
                 title={val}
               >
-                {val || <span className="text-muted-foreground italic">empty</span>}
+                {val || <span className="text-muted-foreground italic">{t("builder.values.empty")}</span>}
               </span>
             )}
             <button
@@ -133,14 +136,14 @@ export function ValuePanel({ site }: ValuePanelProps) {
           <Input
             value={addingKey}
             onChange={(e) => setAddingKey(e.target.value.replace(/[^\w]/g, ""))}
-            placeholder="key"
+            placeholder={t("builder.values.keyPlaceholder")}
             className="h-6 w-20 shrink-0 font-mono text-[10px]"
             onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
           />
           <Input
             value={addingValue}
             onChange={(e) => setAddingValue(e.target.value)}
-            placeholder="value"
+            placeholder={t("builder.values.valuePlaceholder")}
             className="h-6 flex-1 text-[11px]"
             onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
           />
@@ -164,7 +167,7 @@ export function ValuePanel({ site }: ValuePanelProps) {
         onClick={() => setSystemOpen(!systemOpen)}
       >
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          System Values
+          {t("builder.values.system")}
         </span>
         <ChevronDown
           className={cn(

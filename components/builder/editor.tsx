@@ -1,14 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { Editor, Frame, Element } from "@craftjs/core";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { Editor, Frame, Element, useEditor } from "@craftjs/core";
 import { resolver } from "./craft-components/resolver";
 import { siteElementsToCraftState } from "@/lib/builder/craft-bridge";
 import { RenderNode } from "./render-node";
-import { BuilderToolbar, type BuilderTab } from "./toolbar";
+import { CraftBuilderToolbar as BuilderToolbar, type BuilderTab } from "./toolbar";
 import { LeftPanel } from "./left-panel";
 import { DesignPanel } from "./design-panel";
-import { AiPanel } from "./ai-panel";
 import { ToolBar } from "./tool-bar";
 import { CanvasContextMenu } from "./canvas-context-menu";
 import { AutoSaver } from "./auto-saver";
@@ -16,10 +15,61 @@ import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { CraftCanvas } from "./craft-components/craft-canvas";
 import { FlowFnEditor } from "./flowfn-editor";
 import { AiElementInserter } from "./ai-element-inserter";
+import { MerchivaChat, type BuilderModeContext } from "@/components/merchiva-chat-dashboard";
 import { themeVars } from "@/components/site-renderer";
 import { createPage, updateSite } from "@/lib/spacetimedb/actions";
 import { buildPageTemplate, type PageTemplateId } from "@/lib/builder/page-templates";
 import type { Site, SitePage, Product } from "@/lib/types";
+
+// Wraps MerchivaChat with builder-mode context derived from the live Craft.js state.
+// Must be rendered inside the <Editor> provider so useEditor() works.
+function BuilderMerchivaChat({
+  site,
+  activePage,
+}: {
+  site: Site;
+  activePage: SitePage | undefined;
+}) {
+  const { query } = useEditor();
+  // Re-serialize on every render — cheap, and ensures the AI sees current canvas state
+  // each time it sends a message. The MerchivaChat itself memoizes the context object.
+  const elements = useMemo(() => {
+    try {
+      const nodes = query.getSerializedNodes();
+      const out: Array<{ name: string; type: string; props: Record<string, unknown> }> = [];
+      for (const [id, node] of Object.entries(nodes)) {
+        if (id === "ROOT") continue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const n = node as any;
+        const name = String(
+          n.custom?.displayName ||
+            n.displayName ||
+            (n.type?.resolvedName ? n.type.resolvedName.replace("Craft", "") : "Element"),
+        );
+        const type = n.type?.resolvedName
+          ? n.type.resolvedName.replace("Craft", "").toLowerCase()
+          : "unknown";
+        out.push({ name, type, props: n.props || {} });
+      }
+      return out;
+    } catch {
+      return [];
+    }
+    // Re-run whenever the active page changes — for in-place edits the AI re-fetches
+    // when it next sends a message via the memoized storeContext in MerchivaChat.
+  }, [query, activePage]);
+
+  const builderContext: BuilderModeContext = {
+    siteId: site.id,
+    siteName: site.name,
+    pageId: activePage?.id ?? "",
+    pageName: activePage?.name ?? "(no page)",
+    elements,
+    theme: site.theme as unknown as Record<string, unknown> | undefined,
+  };
+
+  return <MerchivaChat compact header={false} builderContext={builderContext} />;
+}
 
 interface BuilderEditorProps {
   site: Site;
@@ -218,7 +268,9 @@ export function BuilderEditor({
                 <ToolBar />
               </div>
             </CanvasContextMenu>
-            <div className="flex w-64 shrink-0 flex-col border-l border-border bg-background">
+            <div
+              className={`flex shrink-0 flex-col border-l border-border bg-background transition-[width] duration-200 ${rightPanel === "ai" ? "w-[380px]" : "w-64"}`}
+            >
               <div className="flex border-b border-border">
                 <button
                   className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "design" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
@@ -227,14 +279,18 @@ export function BuilderEditor({
                   Design
                 </button>
                 <button
-                  className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "ai" ? "text-violet-500 border-b-2 border-violet-500" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "ai" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   onClick={() => setRightPanel("ai")}
                 >
-                  AI
+                  Mr. Merchiva
                 </button>
               </div>
               <div className="flex-1 overflow-hidden">
-                {rightPanel === "design" ? <DesignPanel pages={pages} /> : <AiPanel siteId={site.id} siteName={site.name} siteTheme={site.theme} />}
+                {rightPanel === "design" ? (
+                  <DesignPanel pages={pages} />
+                ) : (
+                  <BuilderMerchivaChat site={site} activePage={activePage} />
+                )}
               </div>
             </div>
           </div>

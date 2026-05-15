@@ -24,14 +24,12 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   const { getToken, isSignedIn, signOut } = useAuth();
   const t = useT();
 
-  // Suppress SpacetimeDB deserialization errors from crashing the app.
-  // These occur when the server schema has drifted from the generated client bindings.
   useEffect(() => {
     const handler = (e: PromiseRejectionEvent) => {
       const msg = String(e.reason);
-      if (msg.includes("deserialize") && msg.includes("option type")) {
+      if (msg.includes("deserialize")) {
+        console.error("[STDB DESER]", msg);
         e.preventDefault();
-        console.warn("[SpacetimeDB] Suppressed deserialization error:", msg);
       }
     };
     window.addEventListener("unhandledrejection", handler);
@@ -178,6 +176,8 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           conn.subscriptionBuilder().subscribe([
             "SELECT * FROM coupon",
             "SELECT * FROM queue_entry",
+            "SELECT * FROM ai_chat_history",
+            "SELECT * FROM ai_chat_session",
           ]);
         } catch {
           console.warn("[SpacetimeDB] Coupon/queue tables not available on server");

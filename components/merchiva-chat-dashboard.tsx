@@ -5,8 +5,15 @@ import {
   Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp,
   Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Loader2,
   Calendar, History, MoreHorizontal, Sparkles,
-  ArrowLeftRight, CalendarX, Truck,
+  ArrowLeftRight, CalendarX, Truck, Trash2, Plus, MessageSquare,
+  User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones,
+  Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog,
+  Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase,
+  Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter,
+  Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X,
+  CheckCircle2, XCircle, AlertTriangle, MousePointer2,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -17,16 +24,69 @@ import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
 import { generateInsights, generateGreeting, type MerchivaInsight } from "@/lib/merchiva-insights";
+import {
+  addStaffRole as execAddStaffRole,
+  addRoleTask as execAddRoleTask,
+  deleteStaffRole as execDeleteStaffRole,
+  deleteRoleTask as execDeleteRoleTask,
+  getRoleTasks,
+  createAiChatSession as execCreateSession,
+  saveAiChatSession as execSaveSession,
+  archiveAiChatSession as execArchiveSession,
+} from "@/lib/spacetimedb/actions";
+import { getConnection } from "@/lib/spacetimedb/client";
+import { useStaffRoles, useRoleTasks, useAiChatSessions } from "@/lib/spacetimedb/hooks";
+import { toast } from "sonner";
+import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/skills/registry";
+import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
+import type { ChatMessage, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
+import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
+import { useI18n, useT } from "@/lib/i18n/context";
+import { MerchivaCallModal } from "@/components/merchiva-call-modal";
 
 // ── Brand colors ────────────────────────────────────────────────────────────
 
-const M_ACC = "oklch(0.55 0.09 55)";
-const M_ACC_SOFT = "#faf5ec";
-const M_ACC_BD = "#ecd9b8";
+const M_ACC = "var(--m-acc)";
+const M_ACC_SOFT = "var(--m-acc-soft)";
+const M_ACC_BD = "var(--m-acc-bd)";
+
+// ── Role icon map (mirrors staffing page) ──────────────────────────────────
+
+const ROLE_ICON_MAP: Record<string, LucideIcon> = {
+  "user": User, "coffee": Coffee, "utensils": Utensils, "chef-hat": ChefHat,
+  "truck": Truck, "package": Package, "clipboard": Clipboard, "wrench": Wrench,
+  "headphones": Headphones, "store": Store, "banknote": Banknote,
+  "sparkles": Sparkles, "box": Box, "shopping-cart": ShoppingCart,
+  "receipt": Receipt, "heart-pulse": HeartPulse, "baby": Baby, "dog": Dog,
+  "leaf": Leaf, "music": Music, "camera": Camera, "palette": Palette,
+  "hammer": Hammer, "zap": Zap, "star": Star, "award": Award,
+  "briefcase": Briefcase, "phone": Phone, "mail": Mail, "clock": Clock,
+  "shield": Shield, "wine": Wine, "moon-star": MoonStar, "sun": Sun,
+  "receipt-text": ReceiptText, "hand-platter": HandPlatter,
+};
+
+const ROLE_COLORS = [
+  "#44403c", "#78716c", "#57534e", "#a8a29e",
+  "#292524", "#6b7280", "#374151", "#4b5563", "#9ca3af",
+];
+
+const ROLE_ICON_LIST = [
+  "coffee", "utensils", "chef-hat", "store", "receipt", "banknote",
+  "package", "box", "shopping-cart", "truck", "clipboard", "wrench",
+  "hammer", "sparkles", "headphones", "heart-pulse", "shield",
+  "briefcase", "award", "star", "clock", "phone", "mail",
+  "leaf", "music", "camera", "palette", "baby", "dog",
+  "zap", "user", "wine", "moon-star", "sun", "receipt-text", "hand-platter",
+];
+
+function RoleIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
+  const Comp = ROLE_ICON_MAP[name] ?? User;
+  return <Comp className={className} style={style} />;
+}
 
 // ── Notch M (agent mark) ────────────────────────────────────────────────────
 
-function NotchM({ size = 28, fg = "#fff", bg = "#1c1917" }: { size?: number; fg?: string; bg?: string }) {
+export function NotchM({ size = 28, fg = "#fff", bg = "#1c1917" }: { size?: number; fg?: string; bg?: string }) {
   return (
     <span
       className="inline-flex items-center justify-center shrink-0"
@@ -54,7 +114,7 @@ function Initials({ name, size = 28 }: { name: string; size?: number }) {
   const init = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div
-      className="rounded-full bg-stone-200 text-stone-700 flex items-center justify-center font-semibold shrink-0"
+      className="rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 flex items-center justify-center font-semibold shrink-0"
       style={{ width: size, height: size, fontSize: Math.max(10, size * 0.38) }}
     >
       {init}
@@ -229,20 +289,20 @@ function ForecastChart() {
         </pattern>
       </defs>
       {[0.5, 1].map((p) => (
-        <line key={p} x1={pad} x2={W - pad} y1={sy(max * p)} y2={sy(max * p)} stroke="#e7e5e4" strokeDasharray="2 4" />
+        <line key={p} x1={pad} x2={W - pad} y1={sy(max * p)} y2={sy(max * p)} className="stroke-border" strokeDasharray="2 4" />
       ))}
-      <line x1={splitX} x2={splitX} y1={pad} y2={H - pad} stroke="#d6d3d1" strokeDasharray="3 3" />
-      <text x={splitX - 5} y={pad + 9} textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="#78716c">actual</text>
+      <line x1={splitX} x2={splitX} y1={pad} y2={H - pad} className="stroke-border" strokeDasharray="3 3" />
+      <text x={splitX - 5} y={pad + 9} textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" className="fill-muted-foreground">actual</text>
       <text x={splitX + 5} y={pad + 9} textAnchor="start" fontFamily="JetBrains Mono, monospace" fontSize="9" fill={M_ACC}>forecast</text>
       <path d={`${bandHi} ${bandLo} Z`} fill="url(#ddHatch)" />
       <path d={`${bandHi} ${bandLo} Z`} fill="url(#ddBandFill)" />
-      <path d={pastPath} fill="none" stroke="#1c1917" strokeWidth="1.8" />
+      <path d={pastPath} fill="none" className="stroke-foreground" strokeWidth="1.8" />
       <path d={futPath} fill="none" stroke={M_ACC} strokeWidth="1.8" strokeDasharray="4 3" />
-      {FORECAST_DATA.past.map((v, i) => <circle key={`p${i}`} cx={sx(i)} cy={sy(v)} r="1.8" fill="#1c1917" />)}
-      {FORECAST_DATA.future.map((v, i) => <circle key={`f${i}`} cx={sx(splitIdx + i)} cy={sy(v)} r="2.2" fill="#fff" stroke={M_ACC} strokeWidth="1.3" />)}
-      <line x1={reorderX} x2={reorderX} y1={pad - 6} y2={H - pad} stroke="#1c1917" strokeWidth="1" />
-      <rect x={reorderX - 48} y={pad - 14} width="96" height="14" fill="#1c1917" rx="3" />
-      <text x={reorderX} y={pad - 4} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="8.5" fill="#fff" letterSpacing="0.6">REORDER · MAY 14</text>
+      {FORECAST_DATA.past.map((v, i) => <circle key={`p${i}`} cx={sx(i)} cy={sy(v)} r="1.8" className="fill-foreground" />)}
+      {FORECAST_DATA.future.map((v, i) => <circle key={`f${i}`} cx={sx(splitIdx + i)} cy={sy(v)} r="2.2" className="fill-background" stroke={M_ACC} strokeWidth="1.3" />)}
+      <line x1={reorderX} x2={reorderX} y1={pad - 6} y2={H - pad} className="stroke-foreground" strokeWidth="1" />
+      <rect x={reorderX - 48} y={pad - 14} width="96" height="14" className="fill-foreground" rx="3" />
+      <text x={reorderX} y={pad - 4} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="8.5" className="fill-background" letterSpacing="0.6">REORDER · MAY 14</text>
       <line x1={stockoutX} x2={stockoutX} y1={pad - 6} y2={H - pad} stroke="#dc2626" strokeWidth="1" strokeDasharray="2 2" />
       <rect x={stockoutX - 44} y={pad - 14} width="88" height="14" fill="#fef2f2" stroke="#fecaca" rx="3" />
       <text x={stockoutX} y={pad - 4} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="8.5" fill="#b91c1c" letterSpacing="0.6">STOCKOUT · MAY 19</text>
@@ -255,7 +315,7 @@ function ForecastChart() {
 function SaturdayPreview() {
   const hours = ["4p", "5p", "6p", "7p", "8p", "9p", "10p"];
   return (
-    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 p-3">
+    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3">
       <div className="flex items-center gap-2 mb-2">
         <MonoCap>sat may 1 · closing window</MonoCap>
         <span className="ml-auto text-[10.5px] font-mono text-amber-600">−1 barista</span>
@@ -263,11 +323,13 @@ function SaturdayPreview() {
       <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
         {hours.map((h, i) => (
           <div key={h} className="flex flex-col items-center gap-1">
-            <div className="text-[9px] font-mono text-stone-400 tabular-nums">{h}</div>
-            <div className="w-full h-5 rounded-sm border" style={{
-              background: i <= 5 ? "#1c1917" : "#fff",
-              borderColor: i <= 5 ? "#1c1917" : "#d6d3d1",
-            }} />
+            <div className="text-[9px] font-mono text-stone-400 dark:text-stone-500 tabular-nums">{h}</div>
+            <div className={cn(
+              "w-full h-5 rounded-sm border",
+              i <= 5
+                ? "bg-foreground border-foreground"
+                : "bg-background border-border",
+            )} />
             <div className="w-full h-5 rounded-sm border border-dashed" style={{
               borderColor: "#d97706", background: "#fffbeb",
             }} />
@@ -277,7 +339,7 @@ function SaturdayPreview() {
       <div className="flex items-center gap-3 mt-2 text-[10.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1"><span className="w-2 h-2 bg-foreground rounded-sm" /> scheduled</span>
         <span className="inline-flex items-center gap-1"><span className="w-2 h-2 border border-dashed border-amber-600 bg-amber-50 rounded-sm" /> suggested</span>
-        <span className="ml-auto font-mono text-stone-600">+6h · $84 labor</span>
+        <span className="ml-auto font-mono text-stone-600 dark:text-stone-300">+6h · $84 labor</span>
       </div>
     </div>
   );
@@ -325,7 +387,7 @@ function WatchlistMini() {
             <span className="text-[12.5px] flex-1 truncate">{r.name}</span>
             <span className="font-mono text-[11px] tabular-nums">
               <span style={{ color: tone, fontWeight: 600 }}>{r.stock}</span>
-              <span className="text-stone-400">/{r.par}</span>
+              <span className="text-stone-400 dark:text-stone-500">/{r.par}</span>
             </span>
             <Sparkline data={r.spark} color={tone} width={48} height={18} fill />
             <span className="font-mono text-[10.5px] tabular-nums" style={{ color: tone, width: 30, textAlign: "right" }}>
@@ -357,12 +419,13 @@ function ChatRow({ from = "merchiva", children, time, footer }: {
   time?: string;
   footer?: React.ReactNode;
 }) {
+  const t = useT();
   if (from === "system") {
     return (
       <div className="flex items-center gap-3 py-2">
-        <div className="flex-1 h-px bg-stone-200" />
+        <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
         <MonoCap>{children}</MonoCap>
-        <div className="flex-1 h-px bg-stone-200" />
+        <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
       </div>
     );
   }
@@ -371,7 +434,7 @@ function ChatRow({ from = "merchiva", children, time, footer }: {
       <NotchM size={32} fg="#fff" bg="#1c1917" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-[12.5px] font-semibold tracking-tight">Mr. Merchiva</span>
+          <span className="text-[12.5px] font-semibold tracking-tight">{t("merchiva.name")}</span>
           <MonoCap color="#a8a29e">{time}</MonoCap>
         </div>
         <div className="flex flex-col gap-2">
@@ -379,6 +442,58 @@ function ChatRow({ from = "merchiva", children, time, footer }: {
         </div>
         {footer && <div className="mt-2">{footer}</div>}
       </div>
+    </div>
+  );
+}
+
+function VoiceCallRow({ message }: { message: ChatMessage }) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
+  const turns = message.voiceCall?.turns ?? [];
+  const durationSec = message.voiceCall?.durationSec ?? 0;
+  const mm = Math.floor(durationSec / 60);
+  const ss = (durationSec % 60).toString().padStart(2, "0");
+  const dur = `${mm}:${ss}`;
+  const canExpand = turns.length > 0;
+  return (
+    <div className="flex flex-col items-center gap-2 py-2">
+      <button
+        type="button"
+        onClick={() => canExpand && setExpanded((v) => !v)}
+        disabled={!canExpand}
+        className={cn(
+          "inline-flex items-center gap-2 rounded-full border border-border bg-stone-50 dark:bg-stone-950 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground",
+          canExpand && "hover:bg-stone-100 dark:hover:bg-stone-900 cursor-pointer",
+        )}
+      >
+        <Phone className="h-3 w-3" />
+        <span>{t("merchiva.call.title")}</span>
+        <span className="text-stone-400">·</span>
+        <span className="tabular-nums">{dur}</span>
+        {canExpand && (
+          <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
+        )}
+      </button>
+      {expanded && canExpand && (
+        <div className="w-full max-w-[680px] rounded-[0.3rem] border border-border bg-stone-50/40 dark:bg-stone-950/40 p-3 text-[12.5px] space-y-3 leading-[1.55]">
+          {turns.map((turn, i) => (
+            <div key={i} className="space-y-1.5">
+              <div>
+                <span className="font-mono text-[10px] uppercase tracking-wide text-stone-500 mr-2">
+                  {t("merchiva.call.youSaid")}
+                </span>
+                <span className="whitespace-pre-wrap">{turn.user}</span>
+              </div>
+              <div>
+                <span className="font-mono text-[10px] uppercase tracking-wide text-stone-500 mr-2">
+                  {t("merchiva.call.merchivaSaid")}
+                </span>
+                <span className="whitespace-pre-wrap">{turn.ai}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -409,13 +524,13 @@ function InsightCard({
         <div className="inline-flex items-center gap-1.5 text-[10.5px] font-mono text-muted-foreground">
           confidence
           <span className="tabular-nums text-foreground font-semibold">{(confidence * 100).toFixed(0)}%</span>
-          <span className="inline-block w-12 h-1 rounded-full bg-stone-100 overflow-hidden">
+          <span className="inline-block w-12 h-1 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
             <span className="block h-full" style={{ width: `${confidence * 100}%`, background: M_ACC }} />
           </span>
         </div>
       </div>
       <h3 className="text-[20px] font-semibold tracking-tight leading-[1.2]">{title}</h3>
-      <p className="text-[13.5px] text-stone-600 leading-[1.55]" style={{ textWrap: "pretty" }}>{body}</p>
+      <p className="text-[13.5px] text-stone-600 dark:text-stone-300 leading-[1.55]" style={{ textWrap: "pretty" }}>{body}</p>
 
       {embed}
 
@@ -437,11 +552,11 @@ function InsightCard({
         )}
       </div>
       {expanded && reasoning && (
-        <div className="border-t border-border pt-3 -mx-4 -mb-4 px-4 pb-4 bg-stone-50/60">
+        <div className="border-t border-border pt-3 -mx-4 -mb-4 px-4 pb-4 bg-stone-50/60 dark:bg-stone-950/60">
           <MonoCap>based on</MonoCap>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {reasoning.map((r) => (
-              <span key={r} className="inline-flex items-center gap-1.5 px-2 py-1 border border-border rounded-[0.3rem] bg-background font-mono text-[10.5px] text-stone-600">
+              <span key={r} className="inline-flex items-center gap-1.5 px-2 py-1 border border-border rounded-[0.3rem] bg-background font-mono text-[10.5px] text-stone-600 dark:text-stone-300">
                 <span className="w-1 h-1 rounded-full" style={{ background: M_ACC }} />
                 {r}
               </span>
@@ -466,12 +581,12 @@ function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
   if (insight.type === "inventory" && insight.data) {
     const d = insight.data as { itemName: string; currentStock: number; minStock: number; maxStock: number; unit: string; daysOfCover: number };
     return (
-      <div className="rounded-[0.3rem] border border-border bg-stone-50/40 p-3">
+      <div className="rounded-[0.3rem] border border-border bg-stone-50/40 dark:bg-stone-950/40 p-3">
         <div className="flex items-baseline gap-2 mb-2">
           <div className="text-[12.5px] font-semibold">{d.itemName}</div>
           <MonoCap>{d.currentStock} / {d.maxStock} {d.unit} · ~{d.daysOfCover}d cover</MonoCap>
         </div>
-        <div className="w-full h-2 rounded-full bg-stone-100 overflow-hidden">
+        <div className="w-full h-2 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{
@@ -503,130 +618,1162 @@ function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
   return null;
 }
 
-// ── Action block parsing + approval ─────────────────────────────────────────
+// ── Action approval UI ─────────────────────────────────────────────────────
 
-interface PendingAction {
-  id: string;
-  action: Record<string, unknown>;
-  status: "pending" | "approved" | "rejected";
+const ACTION_META: Record<string, { label: string; icon: React.ReactNode; fields: string[]; risk?: "low" | "medium" | "high" }> = {
+  // Scheduling
+  addShift:            { label: "排班", icon: <Calendar className="h-3 w-3" />, fields: ["staffName", "date", "startTime", "endTime", "shiftType", "staffRoles"] },
+  updateShift:         { label: "修改班次", icon: <Pencil className="h-3 w-3" />, fields: ["shiftId", "date", "startTime", "endTime", "shiftType"] },
+  deleteShift:         { label: "删除班次", icon: <CalendarX className="h-3 w-3" />, fields: ["shiftId"], risk: "high" },
+  approveTimeOff:      { label: "审批请假", icon: <CheckCircle2 className="h-3 w-3" />, fields: ["requestId", "approved", "reason"] },
+  approveShiftTrade:   { label: "审批换班", icon: <ArrowLeftRight className="h-3 w-3" />, fields: ["tradeId", "approved"] },
+  // Staff
+  addStaffMember:      { label: "添加员工", icon: <UserPlus className="h-3 w-3" />, fields: ["name", "role", "hourlyRate"] },
+  updateStaffMember:   { label: "修改员工", icon: <Pencil className="h-3 w-3" />, fields: ["staffMemberId", "name", "role", "hourlyRate"] },
+  deleteStaffMember:   { label: "删除员工", icon: <UserMinus className="h-3 w-3" />, fields: ["staffMemberId"], risk: "high" },
+  // Roles
+  addRole:             { label: "新建岗位", icon: <Plus className="h-3 w-3" />, fields: ["name", "description", "icon", "color"] },
+  updateRole:          { label: "修改岗位", icon: <Pencil className="h-3 w-3" />, fields: ["roleId", "name", "description", "icon", "color"] },
+  deleteRole:          { label: "删除岗位", icon: <Trash2 className="h-3 w-3" />, fields: ["roleId"], risk: "high" },
+  // Role Tasks
+  addRoleTask:         { label: "添加任务", icon: <ListChecks className="h-3 w-3" />, fields: ["roleId", "title", "description", "startTime", "endTime", "requiresEvidence"] },
+  updateRoleTask:      { label: "修改任务", icon: <Pencil className="h-3 w-3" />, fields: ["taskId", "title", "description"] },
+  deleteRoleTask:      { label: "删除任务", icon: <Trash2 className="h-3 w-3" />, fields: ["taskId"], risk: "high" },
+  // Products
+  addProduct:          { label: "添加商品", icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
+  createProduct:       { label: "添加商品", icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
+  updateProduct:       { label: "修改商品", icon: <Pencil className="h-3 w-3" />, fields: ["productId", "name", "category", "price"] },
+  deleteProduct:       { label: "删除商品", icon: <Trash2 className="h-3 w-3" />, fields: ["productId"], risk: "high" },
+  // Inventory
+  addInventoryItem:    { label: "添加库存", icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
+  createInventoryItem: { label: "添加库存", icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
+  updateInventory:     { label: "更新库存", icon: <Package className="h-3 w-3" />, fields: ["itemName", "quantity", "type"] },
+  updateInventoryItem: { label: "修改库存", icon: <Pencil className="h-3 w-3" />, fields: ["itemId", "name", "minStock", "maxStock"] },
+  deleteInventoryItem: { label: "删除库存", icon: <Trash2 className="h-3 w-3" />, fields: ["itemId"], risk: "high" },
+  // Pricing
+  updatePrice:         { label: "修改价格", icon: <Tag className="h-3 w-3" />, fields: ["productName", "newPrice"] },
+  addCoupon:           { label: "创建优惠券", icon: <Ticket className="h-3 w-3" />, fields: ["code", "discountType", "discountValue", "expiresAt"] },
+  updateCoupon:        { label: "修改优惠券", icon: <Pencil className="h-3 w-3" />, fields: ["couponId", "code", "discountValue"] },
+  deleteCoupon:        { label: "删除优惠券", icon: <Trash2 className="h-3 w-3" />, fields: ["couponId"], risk: "high" },
+  // Suppliers
+  addSupplier:         { label: "添加供应商", icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
+  createSupplier:      { label: "添加供应商", icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
+  updateSupplier:      { label: "修改供应商", icon: <Pencil className="h-3 w-3" />, fields: ["supplierId", "name", "contactName"] },
+  deleteSupplier:      { label: "删除供应商", icon: <Trash2 className="h-3 w-3" />, fields: ["supplierId"], risk: "high" },
+  createPurchaseOrder: { label: "创建采购单", icon: <Truck className="h-3 w-3" />, fields: ["supplierId", "items", "total"] },
+  // Notifications
+  createNotification:  { label: "发送通知", icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
+  sendNotification:    { label: "发送通知", icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
+  // Builder
+  addBuilderElement:    { label: "添加组件", icon: <Plus className="h-3 w-3" />, fields: ["elements"] },
+  deleteBuilderElement: { label: "删除组件", icon: <Trash2 className="h-3 w-3" />, fields: ["targets"], risk: "medium" },
+  addBuilderFunction:   { label: "添加函数", icon: <Sparkles className="h-3 w-3" />, fields: ["name"] },
+  editBuilderHtml:      { label: "编辑HTML", icon: <Pencil className="h-3 w-3" />, fields: ["old_string", "new_string", "replace_all"], risk: "medium" },
+  setBuilderHtml:       { label: "替换页面HTML", icon: <Pencil className="h-3 w-3" />, fields: ["html"], risk: "medium" },
+  appendBuilderHtml:    { label: "追加HTML", icon: <Plus className="h-3 w-3" />, fields: ["html"] },
+  replaceBuilderHtml:   { label: "替换元素", icon: <Pencil className="h-3 w-3" />, fields: ["selector", "html"], risk: "medium" },
+  deleteBuilderHtml:    { label: "删除元素", icon: <Trash2 className="h-3 w-3" />, fields: ["selector"], risk: "medium" },
+  updateBuilderPage:    { label: "更新页面属性", icon: <Pencil className="h-3 w-3" />, fields: ["pageId", "name", "slug", "title", "description", "keywords", "ogImage", "ogTitle", "ogDescription", "canonicalUrl", "robots"] },
+  updateBuilderSite:    { label: "更新站点属性", icon: <Pencil className="h-3 w-3" />, fields: ["name", "slug", "customDomain", "published", "plugins"], risk: "medium" },
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  staffName: "员工", date: "日期", startTime: "开始", endTime: "结束",
+  shiftType: "班次", staffRoles: "岗位", itemName: "商品", quantity: "数量",
+  type: "类型", supplier: "供应商", supplierId: "供应商", items: "商品",
+  title: "标题", body: "内容", name: "名称", role: "角色", hourlyRate: "时薪",
+  productName: "商品", productId: "商品ID", newPrice: "新价格", price: "价格", cost: "成本",
+  category: "分类", description: "描述", icon: "图标", color: "颜色",
+  roleId: "岗位", taskId: "任务", shiftId: "班次", staffMemberId: "员工",
+  currentStock: "当前库存", minStock: "最低库存", maxStock: "最高库存", unit: "单位",
+  costPerUnit: "单价", contactName: "联系人", email: "邮箱", phone: "电话",
+  code: "优惠码", discountType: "折扣类型", discountValue: "折扣值", expiresAt: "过期日",
+  maxUses: "最大使用次数", minPurchase: "最低消费", total: "总计",
+  requestId: "请求", tradeId: "换班", approved: "批准", reason: "原因",
+  requiresEvidence: "需要证据", itemId: "物品", couponId: "优惠券", active: "启用",
+  variants: "规格", notes: "备注", address: "地址", paymentTerms: "付款条件",
+  old_string: "查找", new_string: "替换为", replace_all: "全部替换",
+  html: "HTML", selector: "选择器", targets: "目标", elements: "元素",
+  pageId: "页面", slug: "Slug", keywords: "关键词", ogImage: "OG 图",
+  ogTitle: "OG 标题", ogDescription: "OG 描述", canonicalUrl: "Canonical",
+  robots: "Robots", customDomain: "自定义域名", published: "已发布", plugins: "插件",
+};
+
+function formatActionValue(val: unknown, depth = 0): string {
+  if (val == null) return "";
+  if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return String(val);
+  if (depth > 3) return "…";
+  if (Array.isArray(val)) {
+    return val.map((v) => formatActionValue(v, depth + 1)).join(" · ");
+  }
+  if (typeof val === "object") {
+    return Object.entries(val as Record<string, unknown>)
+      .map(([k, fv]) => `${k}: ${formatActionValue(fv, depth + 1)}`)
+      .join(", ");
+  }
+  return String(val);
 }
 
-function parseActions(text: string): { cleanText: string; actions: Record<string, unknown>[] } {
-  const actions: Record<string, unknown>[] = [];
-  const cleanText = text.replace(/```action\n([\s\S]*?)```/g, (_match, json) => {
-    try { actions.push(JSON.parse(json.trim())); } catch {}
-    return "";
-  }).trim();
-  return { cleanText, actions };
+function ShiftPreviewStrip({ action }: { action: Record<string, unknown> }) {
+  const name = String(action.staffName ?? "");
+  const date = String(action.date ?? "");
+  const start = String(action.startTime ?? "");
+  const end = String(action.endTime ?? "");
+  const type = String(action.shiftType ?? "");
+  const typeColors: Record<string, string> = {
+    morning: "bg-amber-100 text-amber-700 border-amber-200",
+    afternoon: "bg-sky-100 text-sky-700 border-sky-200",
+    evening: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    closing: "bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700",
+  };
+  const d = date ? new Date(date + "T00:00:00") : null;
+  const dayLabel = d ? d.toLocaleDateString("zh-CN", { weekday: "short", month: "numeric", day: "numeric" }) : date;
+  return (
+    <div className="flex items-center gap-2 mt-1 mb-1">
+      <Calendar className="h-3.5 w-3.5 text-stone-400 dark:text-stone-500 shrink-0" />
+      <span className="text-[12.5px] font-medium">{name}</span>
+      <span className="text-[11px] text-muted-foreground font-mono">{dayLabel}</span>
+      <span className="text-[11px] font-mono text-stone-600 dark:text-stone-300">{start}–{end}</span>
+      {type && (
+        <span className={cn("text-[9.5px] font-mono uppercase px-1.5 py-0.5 rounded border", typeColors[type] ?? "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700")}>
+          {type}
+        </span>
+      )}
+    </div>
+  );
 }
 
-function ActionApprovalCard({ action, onApprove, onReject, status }: {
+function RolePreviewStrip({ action }: { action: Record<string, unknown> }) {
+  const name = String(action.name ?? action.title ?? "");
+  const icon = String(action.icon ?? "user");
+  const color = String(action.color ?? "#44403c");
+  const desc = String(action.description ?? action.des ?? "");
+  return (
+    <div className="flex items-center gap-2.5 mt-1 mb-1">
+      <span className="w-7 h-7 rounded-[0.2rem] flex items-center justify-center shrink-0" style={{ background: color }}>
+        <RoleIcon name={icon} className="h-3.5 w-3.5 text-white" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-[12.5px] font-semibold">{name}</div>
+        {desc && <div className="text-[10.5px] text-muted-foreground truncate">{desc}</div>}
+      </div>
+    </div>
+  );
+}
+
+function BuilderAddPreview({ action }: { action: Record<string, unknown> }) {
+  const elements = Array.isArray(action.elements) ? action.elements as Array<Record<string, unknown>> : [];
+  if (elements.length === 0) return null;
+  return (
+    <div className="mt-1 mb-1">
+      <div className="text-[10.5px] text-muted-foreground font-mono mb-1">
+        {elements.length} {elements.length === 1 ? "element" : "elements"}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {elements.slice(0, 12).map((el, i) => {
+          const type = String(el.type ?? "?");
+          const props = (el.props ?? {}) as Record<string, unknown>;
+          const tag = props.tag ? String(props.tag) : null;
+          const label = tag ? `${type}/${tag}` : type;
+          const content = el.content ? String(el.content).slice(0, 24) : null;
+          return (
+            <span key={i} className="inline-flex items-center gap-1.5 h-5 px-1.5 rounded-[0.2rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[10.5px]">
+              <span className="font-mono text-stone-600 dark:text-stone-400">{label}</span>
+              {content && <span className="text-stone-700 dark:text-stone-300 truncate max-w-[140px]">{content}</span>}
+            </span>
+          );
+        })}
+        {elements.length > 12 && (
+          <span className="text-[10.5px] text-muted-foreground">+{elements.length - 12} more</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BuilderDeletePreview({ action }: { action: Record<string, unknown> }) {
+  const targets = Array.isArray(action.targets) ? action.targets as unknown[] : [];
+  if (targets.length === 0) return null;
+  return (
+    <div className="mt-1 mb-1 flex flex-wrap gap-1">
+      {targets.map((t, i) => (
+        <span key={i} className="inline-flex items-center h-5 px-1.5 rounded-[0.2rem] bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-[10.5px] font-mono">
+          {String(t)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Renders a Claude-Code-style old/new diff for the editBuilderHtml action.
+function BuilderEditPreview({ action }: { action: Record<string, unknown> }) {
+  const oldStr = action.old_string == null ? "" : String(action.old_string);
+  const newStr = action.new_string == null ? "" : String(action.new_string);
+  const replaceAll = Boolean(action.replace_all);
+  if (!oldStr && !newStr) return null;
+  const MAX = 360;
+  const clip = (s: string) => (s.length > MAX ? s.slice(0, MAX) + "…" : s);
+  return (
+    <div className="mt-1 mb-1 space-y-1">
+      {replaceAll && (
+        <div className="inline-flex items-center h-4 px-1.5 rounded-[0.2rem] bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-[9.5px] font-mono uppercase tracking-wider">
+          replace_all
+        </div>
+      )}
+      <div className="rounded-[0.2rem] border border-red-200 dark:border-red-900 bg-red-50/60 dark:bg-red-950/30 px-2 py-1 font-mono text-[10.5px] text-red-800 dark:text-red-200 whitespace-pre-wrap break-all">
+        <span className="select-none text-red-400 dark:text-red-500 mr-1">-</span>{clip(oldStr)}
+      </div>
+      <div className="rounded-[0.2rem] border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 px-2 py-1 font-mono text-[10.5px] text-emerald-800 dark:text-emerald-200 whitespace-pre-wrap break-all">
+        <span className="select-none text-emerald-400 dark:text-emerald-500 mr-1">+</span>{clip(newStr)}
+      </div>
+    </div>
+  );
+}
+
+function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted }: {
   action: Record<string, unknown>;
   onApprove: () => void;
   onReject: () => void;
   status: "pending" | "approved" | "rejected";
+  alreadyExecuted?: boolean;
 }) {
   const actionName = String(action.action ?? "unknown");
-  const labels: Record<string, string> = {
-    addShift: "Add Shift",
-    updateInventory: "Update Inventory",
-    createPurchaseOrder: "Create PO",
-    createNotification: "Create Notification",
-    updatePrice: "Update Price",
-    addStaffMember: "Add Staff Member",
-  };
+  const meta = ACTION_META[actionName];
+  const [executing, setExecuting] = useState(false);
+  const autoRan = useRef(!!alreadyExecuted);
+  const isHighRisk = meta?.risk === "high";
+  const isShiftAction = actionName === "addShift" || actionName === "updateShift";
+  const isRoleAction = actionName === "addRole" || actionName === "updateRole";
+  const isBuilderAdd = actionName === "addBuilderElement";
+  const isBuilderDelete = actionName === "deleteBuilderElement";
+  const isBuilderEdit = actionName === "editBuilderHtml";
+
+  useEffect(() => {
+    if (status !== "pending" || autoRan.current || isHighRisk) return;
+    autoRan.current = true;
+    setExecuting(true);
+    Promise.resolve(onApprove()).finally(() => setExecuting(false));
+  }, [status, onApprove, isHighRisk]);
+
+  const displayFields = (meta?.fields ?? Object.keys(action).filter((k) => k !== "action"))
+    .filter((k) => action[k] != null);
+
+  const borderColor = status === "approved"
+    ? "border-emerald-200 bg-emerald-50/50"
+    : status === "rejected"
+    ? "border-red-200 bg-red-50/50"
+    : isHighRisk
+    ? "border-amber-200 bg-amber-50/30"
+    : "border-border bg-stone-50/60 dark:bg-stone-950/60";
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 p-3 mt-2">
+    <div className={cn("rounded-[0.3rem] border p-3 mt-2", borderColor)}>
+      {/* Header */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700">
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">ACTION</span>
+        <span className={cn(
+          "h-6 px-2 rounded-[0.2rem] inline-flex items-center gap-1.5",
+          status === "approved" ? "bg-emerald-100 border border-emerald-200 text-emerald-700" :
+          status === "rejected" ? "bg-red-100 border border-red-200 text-red-700" :
+          isHighRisk ? "bg-amber-100 border border-amber-200 text-amber-700" :
+          "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300"
+        )}>
+          {meta?.icon ?? <ArrowRight className="h-3 w-3" />}
+          <span className="font-mono text-[10px] tracking-[0.06em] uppercase font-semibold">
+            {meta?.label ?? actionName}
+          </span>
         </span>
-        <span className="text-[12px] font-medium">{labels[actionName] ?? actionName}</span>
+        {isHighRisk && status === "pending" && (
+          <span className="text-[10px] font-mono text-amber-600 inline-flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" /> 需要确认
+          </span>
+        )}
+        {executing && (
+          <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
+            <Loader2 className="h-3 w-3 animate-spin" /> 执行中...
+          </span>
+        )}
+        {status === "approved" && !executing && (
+          <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
+            <Check className="h-3 w-3" /> 已执行
+          </span>
+        )}
+        {status === "rejected" && (
+          <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+            <X className="h-3 w-3" /> 已撤销
+          </span>
+        )}
       </div>
-      <pre className="text-[11px] font-mono text-stone-600 bg-stone-100 rounded-[0.2rem] p-2 overflow-x-auto mb-2">
-        {JSON.stringify(action, null, 2)}
-      </pre>
-      {status === "pending" ? (
-        <div className="flex items-center gap-1.5">
-          <button onClick={onApprove}
-            className="h-7 px-3 rounded-[0.3rem] bg-foreground text-background text-[11px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5">
-            <Check className="h-3 w-3" /> Approve
+
+      {/* Rich preview for specific action types */}
+      {isShiftAction && status !== "rejected" && <ShiftPreviewStrip action={action} />}
+      {isRoleAction && status !== "rejected" && <RolePreviewStrip action={action} />}
+      {isBuilderAdd && status !== "rejected" && <BuilderAddPreview action={action} />}
+      {isBuilderDelete && status !== "rejected" && <BuilderDeletePreview action={action} />}
+      {isBuilderEdit && status !== "rejected" && <BuilderEditPreview action={action} />}
+
+      {/* Field grid (skip fields already shown in rich preview) */}
+      {!isShiftAction && !isRoleAction && !isBuilderAdd && !isBuilderDelete && !isBuilderEdit && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-2">
+          {displayFields.map((key) => {
+            const val = action[key];
+            const display = formatActionValue(val);
+            return (
+              <div key={key} className={cn("flex items-baseline gap-1.5", Array.isArray(val) && typeof val[0] === "object" && "col-span-2")}>
+                <span className="text-[10.5px] text-muted-foreground font-mono shrink-0">
+                  {FIELD_LABELS[key] ?? key}
+                </span>
+                <span className="text-[12.5px] font-medium truncate">{display}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Approve / Reject buttons */}
+      {status === "pending" && !executing && isHighRisk && (
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={() => { setExecuting(true); Promise.resolve(onApprove()).finally(() => setExecuting(false)); }}
+            className="h-7 px-3 rounded-[0.3rem] border border-emerald-200 bg-emerald-50 text-emerald-700 text-[11px] font-semibold hover:bg-emerald-100 inline-flex items-center gap-1.5"
+          >
+            <Check className="h-3 w-3" /> 确认执行
           </button>
-          <button onClick={onReject}
-            className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-muted">
-            Reject
+          <button
+            onClick={onReject}
+            className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5"
+          >
+            <X className="h-3 w-3" /> 取消
           </button>
         </div>
-      ) : (
-        <div className={cn(
-          "text-[11px] font-mono inline-flex items-center gap-1",
-          status === "approved" ? "text-emerald-600" : "text-red-600"
-        )}>
-          <Check className="h-3 w-3" /> {status === "approved" ? "Approved & executed" : "Rejected"}
+      )}
+      {status === "approved" && !executing && (
+        <button onClick={onReject}
+          className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 mt-1">
+          撤销
+        </button>
+      )}
+    </div>
+  );
+}
+
+const ACTION_CATEGORY_LABELS: Record<string, string> = {
+  scheduling: "排班",
+  roles: "岗位与任务",
+  inventory: "库存",
+  products: "商品",
+  pricing: "价格与优惠券",
+  suppliers: "供应商与采购",
+  staffing: "员工",
+  notifications: "通知",
+};
+
+const ACTION_CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  scheduling: <Calendar className="h-[10px] w-[10px]" />,
+  roles: <ListChecks className="h-[10px] w-[10px]" />,
+  inventory: <Package className="h-[10px] w-[10px]" />,
+  products: <ShoppingCart className="h-[10px] w-[10px]" />,
+  pricing: <Tag className="h-[10px] w-[10px]" />,
+  suppliers: <Truck className="h-[10px] w-[10px]" />,
+  staffing: <Users className="h-[10px] w-[10px]" />,
+  notifications: <Bell className="h-[10px] w-[10px]" />,
+};
+
+const ACTION_RISK_LABELS: Record<string, string> = {
+  low: "低",
+  medium: "中",
+  high: "高",
+};
+
+const ACTION_RISK_CLASS: Record<string, string> = {
+  low: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  medium: "border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 text-stone-600 dark:text-stone-300",
+  high: "border-amber-200 bg-amber-50 text-amber-700",
+};
+
+function ActionsListCard() {
+  const catalog = getActionCatalog();
+  const categoryOrder = ["scheduling", "staffing", "roles", "products", "inventory", "pricing", "suppliers", "notifications"];
+  const grouped = categoryOrder
+    .map((category) => ({ category, actions: catalog.filter((action) => action.category === category) }))
+    .filter((group) => group.actions.length > 0);
+
+  return (
+    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden mt-2">
+      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+          <Sparkles className="h-[10px] w-[10px]" />
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">ACTIONS</span>
+        </span>
+        <span className="text-[11px] text-muted-foreground font-mono">{catalog.length} 个可用动作</span>
+      </div>
+      <div className="max-h-[460px] overflow-y-auto">
+        {grouped.map(({ category, actions }) => (
+          <div key={category} className="border-b border-border last:border-b-0">
+            <div className="px-3 py-2 bg-stone-50/70 dark:bg-stone-950/70 flex items-center gap-2">
+              <span className="h-5 w-5 rounded-[0.2rem] border border-stone-200 dark:border-stone-700 bg-background text-stone-600 dark:text-stone-300 inline-flex items-center justify-center">
+                {ACTION_CATEGORY_ICONS[category] ?? <ArrowRight className="h-[10px] w-[10px]" />}
+              </span>
+              <span className="text-[12px] font-semibold">{ACTION_CATEGORY_LABELS[category] ?? category}</span>
+              <span className="text-[10px] text-muted-foreground font-mono ml-auto">{actions.length}</span>
+            </div>
+            <div className="divide-y divide-border">
+              {actions.map((action) => {
+                const required = action.parameters.filter((param) => param.required);
+                const optional = action.parameters.length - required.length;
+                const permission = action.requiredPermission
+                  ? `${action.requiredPermission.section}:${action.requiredPermission.action}`
+                  : "none";
+                return (
+                  <div key={action.name} className="px-3 py-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <code className="text-[12px] font-mono font-semibold text-stone-800 dark:text-stone-200 truncate">{action.name}</code>
+                      <span className={cn(
+                        "h-5 px-1.5 rounded-[0.2rem] border text-[9px] font-mono uppercase shrink-0",
+                        ACTION_RISK_CLASS[action.riskLevel]
+                      )}>
+                        {ACTION_RISK_LABELS[action.riskLevel]}风险
+                      </span>
+                    </div>
+                    <div className="text-[11.5px] text-muted-foreground leading-snug mt-1">
+                      {action.description}
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {required.map((param) => (
+                        <span key={param.name} className="h-5 px-1.5 rounded-[0.2rem] border border-border bg-background text-[10px] font-mono inline-flex items-center">
+                          {param.name}: {param.type}
+                        </span>
+                      ))}
+                      {optional > 0 && (
+                        <span className="h-5 px-1.5 rounded-[0.2rem] border border-border bg-stone-50 dark:bg-stone-950 text-[10px] font-mono text-muted-foreground inline-flex items-center">
+                          +{optional} optional
+                        </span>
+                      )}
+                      {permission !== "none" && (
+                        <span className="h-5 px-1.5 rounded-[0.2rem] border border-border bg-stone-50 dark:bg-stone-950 text-[10px] font-mono text-muted-foreground inline-flex items-center">
+                          {permission}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Q&A form UI ──────────────────────────────────────────────────────────
+
+function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: string) => void }) {
+  const [selections, setSelections] = useState<Record<number, string[]>>({});
+  const [otherOpen, setOtherOpen] = useState<Record<number, boolean>>({});
+  const [otherText, setOtherText] = useState<Record<number, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const allAnswered = items.every((_, i) => (selections[i]?.length ?? 0) > 0);
+
+  const handleToggle = (qIndex: number, answer: string) => {
+    if (submitted) return;
+    setSelections((prev) => {
+      const current = prev[qIndex] ?? [];
+      const has = current.includes(answer);
+      return { ...prev, [qIndex]: has ? current.filter((a) => a !== answer) : [...current, answer] };
+    });
+  };
+
+  const handleOtherToggle = (qIndex: number) => {
+    if (submitted) return;
+    setOtherOpen((prev) => ({ ...prev, [qIndex]: !prev[qIndex] }));
+  };
+
+  const handleOtherConfirm = (qIndex: number) => {
+    const text = (otherText[qIndex] ?? "").trim();
+    if (!text) return;
+    setSelections((prev) => {
+      const current = prev[qIndex] ?? [];
+      return { ...prev, [qIndex]: current.includes(text) ? current : [...current, text] };
+    });
+    setOtherText((prev) => ({ ...prev, [qIndex]: "" }));
+    setOtherOpen((prev) => ({ ...prev, [qIndex]: false }));
+  };
+
+  const handleSubmit = () => {
+    if (!allAnswered || submitted) return;
+    setSubmitted(true);
+    const summary = items.map((item, i) => `${item.q} → ${(selections[i] ?? []).join(", ")}`).join("\n");
+    onSubmit(summary);
+  };
+
+  const totalSelected = Object.values(selections).reduce((sum, arr) => sum + arr.length, 0);
+
+  return (
+    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1"
+          style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">Q&A</span>
+        </span>
+        {!submitted && (
+          <span className="text-[10.5px] text-muted-foreground font-mono">
+            可多选 · 已选 {totalSelected} 项
+          </span>
+        )}
+      </div>
+      {items.map((item, qi) => (
+        <div key={qi}>
+          <p className="text-[13px] font-medium text-stone-800 dark:text-stone-200 mb-1.5">{item.q}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {item.a.map((answer) => {
+              const selected = (selections[qi] ?? []).includes(answer);
+              return (
+                <button
+                  key={answer}
+                  disabled={submitted}
+                  onClick={() => handleToggle(qi, answer)}
+                  className={cn(
+                    "h-8 px-3 rounded-[0.3rem] text-[12px] font-medium transition-colors inline-flex items-center gap-1.5",
+                    selected && !submitted
+                      ? "bg-foreground text-background"
+                      : submitted && selected
+                      ? "bg-foreground text-background opacity-70"
+                      : submitted
+                      ? "border border-border bg-background text-muted-foreground opacity-50 cursor-not-allowed"
+                      : "border border-border bg-background text-foreground hover:bg-muted"
+                  )}
+                >
+                  {selected && <Check className="h-3 w-3" />}
+                  {answer}
+                </button>
+              );
+            })}
+            {!submitted && (
+              <button
+                onClick={() => handleOtherToggle(qi)}
+                className={cn(
+                  "h-8 px-3 rounded-[0.3rem] text-[12px] font-medium transition-colors",
+                  otherOpen[qi]
+                    ? "bg-foreground text-background"
+                    : "border border-dashed border-border bg-background text-muted-foreground hover:bg-muted"
+                )}
+              >
+                Other...
+              </button>
+            )}
+          </div>
+          {otherOpen[qi] && !submitted && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <input
+                type="text"
+                value={otherText[qi] ?? ""}
+                onChange={(e) => setOtherText((prev) => ({ ...prev, [qi]: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") handleOtherConfirm(qi); }}
+                placeholder="输入自定义回复..."
+                className="flex-1 h-8 px-2.5 rounded-[0.3rem] border border-border bg-background text-[12px] outline-none focus:border-stone-400"
+              />
+              <button
+                onClick={() => handleOtherConfirm(qi)}
+                disabled={!(otherText[qi] ?? "").trim()}
+                className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 disabled:opacity-40"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+      {!submitted && (
+        <button
+          disabled={!allAnswered}
+          onClick={handleSubmit}
+          className={cn(
+            "h-9 w-full rounded-[0.3rem] text-[13px] font-medium transition-colors inline-flex items-center justify-center gap-2",
+            allAnswered
+              ? "bg-foreground text-background hover:bg-foreground/90"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          )}
+        >
+          <Check className="h-3.5 w-3.5" />
+          {allAnswered ? "提交" : "每题至少选择一项"}
+        </button>
+      )}
+      {submitted && (
+        <div className="text-[11px] font-mono text-emerald-600 inline-flex items-center gap-1">
+          <Check className="h-3 w-3" /> 已提交
         </div>
       )}
     </div>
   );
 }
 
-// ── Q&A command parsing ────────────────────────────────────────────────────
+// ── Roles & Tasks UI ──────────────────────────────────────────────────────
 
-interface QAItem {
-  q: string;
-  a: string[];
+import type { QAItem, RoleAddCmd, TaskAddCmd } from "@/lib/merchiva/skills/types";
+
+function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
+  return (
+    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden mt-2">
+      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+          <Users className="h-[10px] w-[10px]" />
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">ROLES</span>
+        </span>
+        <span className="text-[11px] text-muted-foreground font-mono">{roles.length} 个岗位</span>
+      </div>
+      {roles.length === 0 ? (
+        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">暂无岗位</div>
+      ) : (
+        <div className="divide-y divide-border">
+          {roles.map((role) => (
+            <div key={role.id} className="px-3 py-2.5 flex items-center gap-3">
+              <div className="h-8 w-8 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+                style={{ borderColor: role.color, color: role.color }}>
+                <RoleIcon name={role.icon} className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12.5px] font-medium leading-tight">{role.name}</div>
+                {role.description && (
+                  <div className="text-[10.5px] text-muted-foreground leading-tight mt-0.5 truncate">{role.description}</div>
+                )}
+              </div>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
-function parseAskCommands(text: string): { cleanText: string; questions: QAItem[] } {
-  const questions: QAItem[] = [];
-  const cleanText = text.replace(/\/ask\s+['"`]?(\[[\s\S]*?\])['"`]?/g, (_match, json) => {
-    try {
-      const parsed = JSON.parse(json.trim());
-      if (Array.isArray(parsed)) {
-        for (const item of parsed) {
-          if (item.q && Array.isArray(item.a)) {
-            questions.push({ q: String(item.q), a: item.a.map(String) });
-          }
-        }
-      }
-    } catch {}
-    return "";
-  }).trim();
-  return { cleanText, questions };
-}
-
-function QACard({ item, onAnswer }: { item: QAItem; onAnswer: (answer: string) => void }) {
-  const [selected, setSelected] = useState<string | null>(null);
+function RoleAddCard({ role, status, onDelete }: {
+  role: RoleAddCmd;
+  status: "pending" | "adding" | "added" | "rejected" | "deleting";
+  onDelete: () => void;
+}) {
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 p-3 mt-2">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1"
-          style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">Q&A</span>
+    <div className={cn(
+      "rounded-[0.3rem] border p-3 mt-2",
+      status === "added" ? "border-emerald-200 bg-emerald-50/50" :
+      status === "rejected" ? "border-red-200 bg-red-50/50" :
+      "border-border bg-stone-50/60 dark:bg-stone-950/60"
+    )}>
+      <div className="flex items-center gap-2 mb-2.5">
+        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+          <Users className="h-[10px] w-[10px]" />
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">NEW ROLE</span>
         </span>
+        {status === "adding" && (
+          <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
+            <Loader2 className="h-3 w-3 animate-spin" /> 添加中...
+          </span>
+        )}
+        {status === "deleting" && (
+          <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+            <Loader2 className="h-3 w-3 animate-spin" /> 删除中...
+          </span>
+        )}
+        {status === "added" && (
+          <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
+            <Check className="h-3 w-3" /> 已添加
+          </span>
+        )}
+        {status === "rejected" && (
+          <span className="text-[10.5px] font-mono text-red-500 ml-auto">已删除</span>
+        )}
       </div>
-      <p className="text-[13px] font-medium text-stone-800 mb-2">{item.q}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {item.a.map((answer) => (
-          <button
-            key={answer}
-            disabled={selected !== null}
-            onClick={() => { setSelected(answer); onAnswer(answer); }}
-            className={cn(
-              "h-8 px-3 rounded-[0.3rem] text-[12px] font-medium transition-colors",
-              selected === answer
-                ? "bg-foreground text-background"
-                : selected !== null
-                ? "border border-border bg-background text-muted-foreground opacity-50 cursor-not-allowed"
-                : "border border-border bg-background text-foreground hover:bg-muted"
-            )}
-          >
-            {answer}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 mb-2">
+        <div className="h-10 w-10 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+          style={{ borderColor: role.color, color: role.color }}>
+          <RoleIcon name={role.icon} className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="text-[14px] font-semibold leading-tight">{role.title}</div>
+          {role.des && <div className="text-[11.5px] text-muted-foreground mt-0.5">{role.des}</div>}
+        </div>
       </div>
+      {role.tasks && (
+        <div className="mb-2.5">
+          <MonoCap>职责</MonoCap>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {role.tasks.split(",").map((t) => t.trim()).filter(Boolean).map((task) => (
+              <span key={task} className="inline-flex items-center px-2 py-0.5 rounded-[0.2rem] border border-border bg-background text-[11px]">
+                {task}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
+        <span className="text-[11px] font-mono text-muted-foreground">{role.color}</span>
+      </div>
+      {status === "added" && (
+        <button onClick={onDelete}
+          className="h-7 px-3 mt-2.5 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
+          <Trash2 className="h-3 w-3" /> 删除
+        </button>
+      )}
     </div>
+  );
+}
+
+// ── Task command UI ────────────────────────────────────────────────────────
+
+function TasksListInline({ roleId, roleName }: { roleId: string; roleName: string }) {
+  const [tasks, setTasks] = useState<Array<{ id: string; title: string; description: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getRoleTasks(roleId)
+      .then((t) => setTasks(t.map((tk) => ({
+        id: tk.id, title: tk.title, description: tk.description,
+        startTime: tk.startTime, endTime: tk.endTime,
+        requiresEvidence: tk.requiresEvidence,
+      }))))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [roleId]);
+
+  if (loading) {
+    return (
+      <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> 加载任务...
+      </div>
+    );
+  }
+
+  return <TasksListCard roleName={roleName} tasks={tasks} />;
+}
+
+function TasksListCard({ roleName, tasks: initialTasks }: {
+  roleName: string;
+  tasks: Array<{ id: string; title: string; description: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean }>;
+}) {
+  const [tasks, setTasks] = useState(initialTasks);
+  const [deleting, setDeleting] = useState<Set<string>>(new Set());
+
+  const handleDelete = async (id: string) => {
+    setDeleting((prev) => new Set(prev).add(id));
+    try {
+      await execDeleteRoleTask(id);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      console.error(`[TasksListCard] Failed to delete task:`, err);
+      toast.error("删除任务失败");
+    } finally {
+      setDeleting((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    }
+  };
+
+  return (
+    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden mt-2">
+      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+          <Clipboard className="h-[10px] w-[10px]" />
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">TASKS</span>
+        </span>
+        <span className="text-[12px] font-medium">{roleName}</span>
+        <span className="text-[10.5px] text-muted-foreground font-mono ml-auto">{tasks.length} 项</span>
+      </div>
+      {tasks.length === 0 ? (
+        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">该岗位暂无任务</div>
+      ) : (
+        <div className="divide-y divide-border">
+          {tasks.map((task) => (
+            <div key={task.id} className="px-3 py-2.5 flex items-center gap-3 group">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="text-[12.5px] font-medium leading-tight">{task.title}</div>
+                  {task.requiresEvidence && (
+                    <span className="h-4 px-1 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-mono uppercase inline-flex items-center">
+                      证明
+                    </span>
+                  )}
+                </div>
+                {task.description && (
+                  <div className="text-[10.5px] text-muted-foreground leading-tight mt-0.5 truncate">{task.description}</div>
+                )}
+              </div>
+              {task.startTime && (
+                <span className="text-[10.5px] font-mono text-muted-foreground tabular-nums shrink-0">
+                  {task.startTime}–{task.endTime ?? ""}
+                </span>
+              )}
+              <button
+                onClick={() => handleDelete(task.id)}
+                disabled={deleting.has(task.id)}
+                className="h-6 w-6 shrink-0 rounded-[0.2rem] flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+              >
+                {deleting.has(task.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskAddCard({ task, roleColor, status, onDelete }: {
+  task: TaskAddCmd;
+  roleColor: string;
+  status: "pending" | "adding" | "added" | "rejected" | "deleting";
+  onDelete: () => void;
+}) {
+
+  return (
+    <div className={cn(
+      "rounded-[0.3rem] border p-3 mt-2",
+      status === "added" ? "border-emerald-200 bg-emerald-50/50" :
+      status === "rejected" ? "border-red-200 bg-red-50/50" :
+      "border-border bg-stone-50/60 dark:bg-stone-950/60"
+    )}>
+      <div className="flex items-center gap-2 mb-2.5">
+        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+          <Clipboard className="h-[10px] w-[10px]" />
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">NEW TASK</span>
+        </span>
+        <span className="text-[11px] text-muted-foreground">→ {task.role}</span>
+        {status === "adding" && (
+          <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
+            <Loader2 className="h-3 w-3 animate-spin" /> 添加中...
+          </span>
+        )}
+        {status === "deleting" && (
+          <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+            <Loader2 className="h-3 w-3 animate-spin" /> 删除中...
+          </span>
+        )}
+        {status === "added" && (
+          <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
+            <Check className="h-3 w-3" /> 已添加
+          </span>
+        )}
+        {status === "rejected" && (
+          <span className="text-[10.5px] font-mono text-red-500 ml-auto">已删除</span>
+        )}
+      </div>
+      <div className="flex items-start gap-3 mb-2">
+        <span className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: roleColor }} />
+        <div className="flex-1 min-w-0">
+          <div className="text-[13.5px] font-semibold leading-tight">{task.title}</div>
+          {task.des && <div className="text-[11.5px] text-muted-foreground mt-0.5">{task.des}</div>}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 mb-2.5 text-[11px]">
+        {task.startTime && (
+          <div className="flex items-center gap-1.5">
+            <Clock className="h-3 w-3 text-muted-foreground" />
+            <span className="font-mono tabular-nums">{task.startTime}–{task.endTime ?? ""}</span>
+          </div>
+        )}
+        {task.requiresEvidence && (
+          <span className="h-5 px-1.5 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-mono uppercase inline-flex items-center gap-1">
+            <Camera className="h-[10px] w-[10px]" /> 需要证明
+          </span>
+        )}
+      </div>
+      {status === "added" && (
+        <button onClick={onDelete}
+          className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
+          <Trash2 className="h-3 w-3" /> 删除
+        </button>
+      )}
+    </div>
+  );
+}
+
+function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRoles, rejectedTasks, onRejectRole, onRejectTask }: {
+  roles?: RoleAddCmd[];
+  tasks?: TaskAddCmd[];
+  staffRolesRef: React.RefObject<Array<{ id: unknown; name: string; color: string; icon: string; description: string }>>;
+  alreadyExecuted?: boolean;
+  rejectedRoles?: number[];
+  rejectedTasks?: number[];
+  onRejectRole?: (index: number) => void;
+  onRejectTask?: (index: number) => void;
+}) {
+  const rejRoles = new Set(rejectedRoles ?? []);
+  const rejTasks = new Set(rejectedTasks ?? []);
+  const safeRoles = roles ?? [];
+  const safeTasks = tasks ?? [];
+
+  type Status = "pending" | "adding" | "added" | "rejected" | "deleting";
+  const [roleStatuses, setRoleStatuses] = useState<Record<number, Status>>(
+    () => Object.fromEntries(safeRoles.map((_, i) => [i, rejRoles.has(i) ? "rejected" : alreadyExecuted ? "added" : "pending"]))
+  );
+  const [taskStatuses, setTaskStatuses] = useState<Record<number, Status>>(
+    () => Object.fromEntries(safeTasks.map((_, i) => [i, rejTasks.has(i) ? "rejected" : alreadyExecuted ? "added" : "pending"]))
+  );
+  const autoRan = useRef(!!alreadyExecuted);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getDbRoles = useCallback((): any[] => {
+    try {
+      const c = getConnection();
+      if (!c) return staffRolesRef.current;
+      return Array.from((c as any).db.staffRole.iter());
+    } catch { return staffRolesRef.current; }
+  }, [staffRolesRef]);
+
+  const findRoleByName = useCallback((name: string) => {
+    const lower = name.toLowerCase();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getDbRoles().find((r: any) => r?.name?.toLowerCase() === lower);
+  }, [getDbRoles]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getDbTasks = useCallback((): any[] => {
+    try {
+      const c = getConnection();
+      if (!c) return [];
+      return Array.from((c as any).db.roleTask.iter());
+    } catch { return []; }
+  }, []);
+
+  const handleDeleteRole = useCallback(async (i: number) => {
+    const role = safeRoles[i];
+    if (!role) return;
+    setRoleStatuses((prev) => ({ ...prev, [i]: "deleting" }));
+    try {
+      const found = findRoleByName(role.title);
+      if (found) await execDeleteStaffRole(String(found.id));
+      setRoleStatuses((prev) => ({ ...prev, [i]: "rejected" }));
+      onRejectRole?.(i);
+    } catch (err) {
+      console.error(`[CommandGroup] Failed to delete role "${role.title}":`, err);
+      toast.error(`删除岗位失败`);
+      setRoleStatuses((prev) => ({ ...prev, [i]: "added" }));
+    }
+  }, [safeRoles, findRoleByName, onRejectRole]);
+
+  const handleDeleteTask = useCallback(async (i: number) => {
+    const task = safeTasks[i];
+    if (!task) return;
+    setTaskStatuses((prev) => ({ ...prev, [i]: "deleting" }));
+    try {
+      const role = findRoleByName(task.role);
+      const roleId = role ? String(role.id) : null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const dbTask = getDbTasks().find((t: any) =>
+        t?.title === task.title && (roleId ? String(t?.roleId) === roleId : true)
+      );
+      if (dbTask) await execDeleteRoleTask(String(dbTask.id));
+      setTaskStatuses((prev) => ({ ...prev, [i]: "rejected" }));
+      onRejectTask?.(i);
+    } catch (err) {
+      console.error(`[CommandGroup] Failed to delete task "${task.title}":`, err);
+      toast.error(`删除任务失败`);
+      setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
+    }
+  }, [safeTasks, findRoleByName, getDbTasks, onRejectTask]);
+
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+
+    (async () => {
+      // Step 1: create roles sequentially
+      for (let i = 0; i < safeRoles.length; i++) {
+        if (rejRoles.has(i)) continue;
+        const role = safeRoles[i];
+        setRoleStatuses((prev) => ({ ...prev, [i]: "adding" }));
+        try {
+          if (!findRoleByName(role.title)) {
+            await execAddStaffRole({
+              name: role.title,
+              color: role.color,
+              icon: role.icon,
+              description: role.des,
+              permissions: JSON.stringify([]),
+            });
+          }
+          for (let attempt = 0; attempt < 15; attempt++) {
+            if (findRoleByName(role.title)) break;
+            await new Promise((r) => setTimeout(r, 400));
+          }
+          setRoleStatuses((prev) => ({ ...prev, [i]: "added" }));
+        } catch (err) {
+          console.error(`[CommandGroup] Failed to create role "${role.title}":`, err);
+          setRoleStatuses((prev) => ({ ...prev, [i]: "pending" }));
+        }
+      }
+
+      // Step 2: add tasks — resolve role by exact name, skip duplicates
+      for (let i = 0; i < safeTasks.length; i++) {
+        if (rejTasks.has(i)) continue;
+        const task = safeTasks[i];
+        setTaskStatuses((prev) => ({ ...prev, [i]: "adding" }));
+        try {
+          let found = findRoleByName(task.role);
+          if (!found) {
+            for (let attempt = 0; attempt < 15; attempt++) {
+              await new Promise((r) => setTimeout(r, 400));
+              found = findRoleByName(task.role);
+              if (found) break;
+            }
+          }
+          if (!found) {
+            console.error(`[CommandGroup] Role not found for task "${task.title}": "${task.role}"`);
+            toast.error(`找不到岗位「${task.role}」`);
+            setTaskStatuses((prev) => ({ ...prev, [i]: "pending" }));
+            continue;
+          }
+          const roleId = String(found.id);
+          const titleLower = task.title.toLowerCase();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const duplicate = getDbTasks().find((t: any) =>
+            t?.title?.toLowerCase() === titleLower && String(t?.roleId) === roleId
+          );
+          if (duplicate) {
+            setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
+            continue;
+          }
+          await execAddRoleTask({
+            roleId,
+            title: task.title,
+            description: task.des,
+            startTime: task.startTime,
+            endTime: task.endTime,
+            sortOrder: i,
+            requiresEvidence: task.requiresEvidence,
+            notifyChats: [],
+          });
+          setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
+        } catch (err) {
+          console.error(`[CommandGroup] Failed to add task "${task.title}":`, err);
+          setTaskStatuses((prev) => ({ ...prev, [i]: "pending" }));
+        }
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <>
+      {safeRoles.map((role, i) => (
+        <RoleAddCard
+          key={`r-${i}`}
+          role={role}
+          status={roleStatuses[i] ?? "pending"}
+          onDelete={() => handleDeleteRole(i)}
+        />
+      ))}
+      {safeTasks.map((task, i) => {
+        const matchedRole = findRoleByName(task.role);
+        return (
+          <TaskAddCard
+            key={`t-${i}`}
+            task={task}
+            roleColor={matchedRole?.color ?? "#44403c"}
+            status={taskStatuses[i] ?? "pending"}
+            onDelete={() => handleDeleteTask(i)}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+// ── Task delete group ─────────────────────────────────────────────────────
+
+function TaskDeleteGroup({ deletes, alreadyExecuted }: {
+  deletes: TaskDeleteCmd[];
+  alreadyExecuted?: boolean;
+}) {
+  type Status = "pending" | "deleting" | "deleted" | "failed";
+  const [statuses, setStatuses] = useState<Record<number, Status>>(
+    () => Object.fromEntries(deletes.map((_, i) => [i, alreadyExecuted ? "deleted" : "pending"]))
+  );
+  const autoRan = useRef(!!alreadyExecuted);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getDbRoles = (): any[] => {
+    try {
+      const c = getConnection();
+      if (!c) return [];
+      return Array.from((c as any).db.staffRole.iter());
+    } catch { return []; }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getDbTasks = (): any[] => {
+    try {
+      const c = getConnection();
+      if (!c) return [];
+      return Array.from((c as any).db.roleTask.iter());
+    } catch { return []; }
+  };
+
+  useEffect(() => {
+    if (autoRan.current) return;
+    autoRan.current = true;
+
+    (async () => {
+      for (let i = 0; i < deletes.length; i++) {
+        const del = deletes[i];
+        setStatuses((prev) => ({ ...prev, [i]: "deleting" }));
+        try {
+          const roleLower = del.role.toLowerCase();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const role = getDbRoles().find((r: any) => r?.name?.toLowerCase() === roleLower);
+          const roleId = role ? String(role.id) : null;
+          const titleLower = del.title.toLowerCase();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const dbTask = getDbTasks().find((t: any) =>
+            t?.title?.toLowerCase() === titleLower && (roleId ? String(t?.roleId) === roleId : true)
+          );
+          if (dbTask) {
+            await execDeleteRoleTask(String(dbTask.id));
+            setStatuses((prev) => ({ ...prev, [i]: "deleted" }));
+          } else {
+            console.warn(`[TaskDeleteGroup] Task not found: "${del.title}" in role "${del.role}"`);
+            setStatuses((prev) => ({ ...prev, [i]: "deleted" }));
+          }
+        } catch (err) {
+          console.error(`[TaskDeleteGroup] Failed to delete "${del.title}":`, err);
+          setStatuses((prev) => ({ ...prev, [i]: "failed" }));
+        }
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <>
+      {deletes.map((del, i) => (
+        <div key={`del-${i}`} className={cn(
+          "rounded-[0.3rem] border p-3 mt-2",
+          statuses[i] === "deleted" ? "border-red-200 bg-red-50/50" :
+          statuses[i] === "failed" ? "border-amber-200 bg-amber-50/50" :
+          "border-border bg-stone-50/60 dark:bg-stone-950/60"
+        )}>
+          <div className="flex items-center gap-2">
+            <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-red-100 border border-red-200 text-red-600">
+              <Trash2 className="h-[10px] w-[10px]" />
+              <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">DELETE</span>
+            </span>
+            <span className="text-[12px] font-medium truncate">{del.title}</span>
+            <span className="text-[11px] text-muted-foreground">← {del.role}</span>
+            {statuses[i] === "deleting" && (
+              <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
+                <Loader2 className="h-3 w-3 animate-spin" /> 删除中...
+              </span>
+            )}
+            {statuses[i] === "deleted" && (
+              <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+                <Check className="h-3 w-3" /> 已删除
+              </span>
+            )}
+            {statuses[i] === "failed" && (
+              <span className="text-[10.5px] font-mono text-amber-600 ml-auto">删除失败</span>
+            )}
+          </div>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -641,20 +1788,20 @@ const mdComponents: Record<string, React.ComponentType<React.HTMLAttributes<HTML
   li: ({ children, ...props }) => <li className="text-[13.5px]" {...props}>{children}</li>,
   code: ({ children, className, ...props }) => {
     if (className?.includes("language-")) {
-      return <code className="block bg-stone-100 rounded-[0.3rem] p-2 text-[11px] font-mono text-stone-700 overflow-x-auto my-1.5" {...props}>{children}</code>;
+      return <code className="block bg-stone-100 dark:bg-stone-800 rounded-[0.3rem] p-2 text-[11px] font-mono text-stone-700 dark:text-stone-300 overflow-x-auto my-1.5" {...props}>{children}</code>;
     }
-    return <code className="bg-stone-100 rounded-[0.2rem] px-1 py-0.5 text-[12px] font-mono text-stone-700" {...props}>{children}</code>;
+    return <code className="bg-stone-100 dark:bg-stone-800 rounded-[0.2rem] px-1 py-0.5 text-[12px] font-mono text-stone-700 dark:text-stone-300" {...props}>{children}</code>;
   },
   pre: ({ children, ...props }) => <pre className="mb-1.5 last:mb-0" {...props}>{children}</pre>,
   h1: ({ children, ...props }) => <h1 className="text-[16px] font-semibold mb-1" {...props}>{children}</h1>,
   h2: ({ children, ...props }) => <h2 className="text-[15px] font-semibold mb-1" {...props}>{children}</h2>,
   h3: ({ children, ...props }) => <h3 className="text-[14px] font-semibold mb-1" {...props}>{children}</h3>,
-  blockquote: ({ children, ...props }) => <blockquote className="border-l-2 border-stone-300 pl-3 text-stone-600 my-1.5" {...props}>{children}</blockquote>,
+  blockquote: ({ children, ...props }) => <blockquote className="border-l-2 border-stone-300 dark:border-stone-700 pl-3 text-stone-600 dark:text-stone-300 my-1.5" {...props}>{children}</blockquote>,
   table: ({ children, ...props }) => <div className="overflow-x-auto my-1.5"><table className="text-[12px] w-full border-collapse" {...props}>{children}</table></div>,
-  th: ({ children, ...props }) => <th className="text-left px-2 py-1 border-b border-border font-semibold text-[11px] font-mono uppercase text-stone-500" {...props}>{children}</th>,
+  th: ({ children, ...props }) => <th className="text-left px-2 py-1 border-b border-border font-semibold text-[11px] font-mono uppercase text-stone-500 dark:text-stone-400" {...props}>{children}</th>,
   td: ({ children, ...props }) => <td className="px-2 py-1 border-b border-border/50" {...props}>{children}</td>,
   hr: (props) => <hr className="border-border my-2" {...props} />,
-  a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-stone-700 hover:text-foreground" {...props}>{children}</a>,
+  a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-stone-700 dark:text-stone-300 hover:text-foreground" {...props}>{children}</a>,
 };
 
 function MerchivaMarkdown({ content }: { content: string }) {
@@ -665,50 +1812,333 @@ function MerchivaMarkdown({ content }: { content: string }) {
   );
 }
 
-// ── Chat message types ──────────────────────────────────────────────────────
+// ── Chat message types (imported from lib/merchiva/skills/types) ────────────
 
-interface ChatMessage {
-  id: string;
-  from: "user" | "merchiva" | "system";
-  text: string;
-  time: string;
-  actions?: PendingAction[];
-  questions?: QAItem[];
-}
-
-function loadChatHistory(orgId: string | null): ChatMessage[] {
-  if (typeof window === "undefined" || !orgId) return [];
+function parseSessionMessages(raw: string | undefined | null): ChatMessage[] {
+  if (!raw || raw === "[]") return [];
   try {
-    const raw = localStorage.getItem(`merchiva_chat_${orgId}`);
-    return raw ? JSON.parse(raw) : [];
+    const msgs: ChatMessage[] = JSON.parse(raw);
+    return msgs.map((m) => ({ ...m, executed: true }));
   } catch { return []; }
 }
 
-function saveChatHistory(orgId: string | null, messages: ChatMessage[]): void {
-  if (typeof window === "undefined" || !orgId) return;
-  try {
-    const toSave = messages.slice(-50);
-    localStorage.setItem(`merchiva_chat_${orgId}`, JSON.stringify(toSave));
-  } catch {}
+function expandHistoryFromMessages(
+  messages: ChatMessage[],
+): Array<{ role: "user" | "assistant"; content: string }> {
+  const out: Array<{ role: "user" | "assistant"; content: string }> = [];
+  for (const m of messages) {
+    if (m.from === "system") continue;
+    if (m.from === "voice-call") {
+      for (const turn of m.voiceCall?.turns ?? []) {
+        if (turn.user) out.push({ role: "user", content: turn.user });
+        if (turn.ai) out.push({ role: "assistant", content: turn.ai });
+      }
+      continue;
+    }
+    if (!m.text) continue;
+    out.push({
+      role: m.from === "user" ? "user" : "assistant",
+      content: m.text,
+    });
+  }
+  return out;
 }
 
-export function MerchivaChat() {
-  const { currentOrg, organizationId } = usePermissions();
+// ── Data mention categories ─────────────────────────────────────────────────
+
+const DATA_CATEGORIES = [
+  { id: "inventory", label: "Inventory", icon: "package", desc: "Stock levels, low items, suppliers" },
+  { id: "sales", label: "Sales", icon: "trending-up", desc: "Revenue, orders, trends" },
+  { id: "staffing", label: "Staffing", icon: "users", desc: "Shifts, schedule, team" },
+  { id: "products", label: "Products", icon: "shopping-bag", desc: "Catalog, pricing, performance" },
+  { id: "all", label: "Everything", icon: "database", desc: "All store data" },
+] as const;
+
+const DATA_ICONS: Record<string, React.ReactNode> = {
+  inventory: <Package className="h-3.5 w-3.5" />,
+  sales: <ArrowRight className="h-3.5 w-3.5" />,
+  staffing: <Users className="h-3.5 w-3.5" />,
+  products: <Eye className="h-3.5 w-3.5" />,
+  all: <Sparkles className="h-3.5 w-3.5" />,
+};
+
+const THINKING_PATTERNS: [RegExp, string][] = [
+  [/排班|班次|shift|schedule|调班/i, "schedule"],
+  [/库存|inventory|stock|进货|补货/i, "inventory"],
+  [/销售|revenue|sales|营收|营业额/i, "sales"],
+  [/产品|product|menu|菜单|价格|price/i, "product"],
+  [/员工|staff|team|团队|成员/i, "staff"],
+  [/供应商|supplier|采购|purchase/i, "supplier"],
+  [/报告|report|分析|analyz|trend|趋势/i, "report"],
+  [/预测|forecast|predict/i, "forecast"],
+  [/任务|task|todo/i, "task"],
+  [/角色|role|岗位|职位/i, "role"],
+  [/通知|notif|提醒|alert/i, "notification"],
+];
+
+// Truncate a CSS selector for chip display — keep the tail, since that's where
+// the disambiguating tag/nth-of-type lives (the root prefix is shared).
+function shortSelector(selector: string): string {
+  const trimmed = selector.replace(/^#__merchiva_root\s*>\s*/, "");
+  if (trimmed.length <= 20) return trimmed;
+  return "…" + trimmed.slice(-19);
+}
+
+function getThinkingLabel(
+  text: string,
+  phase: "analyze" | "fetch" | "process",
+  t: (path: string) => string,
+): string {
+  const phaseKey = phase.charAt(0).toUpperCase() + phase.slice(1);
+  for (const [re, category] of THINKING_PATTERNS) {
+    if (re.test(text)) {
+      return t(`merchiva.thinking.${category}${phaseKey}`);
+    }
+  }
+  return t(`merchiva.thinking.default${phaseKey}`);
+}
+
+export interface BuilderModeContext {
+  siteId: string;
+  siteName: string;
+  pageId: string;
+  pageName: string;
+  // Legacy Craft.js path — empty array when in HTML mode.
+  elements: Array<{ name: string; type: string; props: Record<string, unknown> }>;
+  theme?: Record<string, unknown>;
+  // HTML mode — present means the AI should use setBuilderHtml/replaceBuilderHtml etc.
+  html?: string;
+  // Currently selected element's CSS selector in HTML mode (helps the AI target edits)
+  selectedSelector?: string | null;
+  // Site-wide values authored in the Values panel. Keys can be referenced in
+  // HTML as `{key}` and are resolved at render time alongside system values
+  // like {userName}, {siteName}, {currentYear}.
+  customValues?: Record<string, string>;
+  // All pages in the current site so the AI can switch / delete by id.
+  pages?: Array<{ id: string; name: string; slug: string }>;
+  // Names of FlowFn functions stored in this site's local list — the AI uses
+  // these to know what to edit (replace by name) or delete.
+  functions?: string[];
+  // Page SEO metadata so the AI sees current title/description/OG fields and
+  // can update them via updateBuilderPage.
+  pageSlug?: string;
+  pageMetadata?: Record<string, string | undefined>;
+  // Site identity + plugin flags so the AI can update them via updateBuilderSite.
+  siteSlug?: string;
+  customDomain?: string | null;
+  sitePublished?: boolean;
+  siteFeatures?: Record<string, boolean>;
+}
+
+export function MerchivaChat({
+  compact = false,
+  header = true,
+  builderContext,
+}: {
+  compact?: boolean;
+  header?: boolean;
+  builderContext?: BuilderModeContext;
+} = {}) {
+  const { currentOrg, organizationId, isOwner, role: orgRole, can, permissions: userPermissions } = usePermissions();
+  const { locale } = useI18n();
+  const t = useT();
+  const builderMode = !!builderContext;
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadChatHistory(organizationId));
+  const [thinkingPhase, setThinkingPhase] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [callOpen, setCallOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Session management
+  // useAiChatSessions() returns [rows[], boolean] from useTable
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sessionsTuple = useAiChatSessions() as any;
+  const sessionRows: any[] = Array.isArray(sessionsTuple) && Array.isArray(sessionsTuple[0]) ? sessionsTuple[0] : (Array.isArray(sessionsTuple) ? sessionsTuple : []);
+  const sessionsReady = Array.isArray(sessionsTuple) && sessionsTuple[1] === true;
+  const mySessions = useMemo(() => {
+    if (!organizationId || !sessionRows) return [];
+    return sessionRows
+      .filter((s: any) => s && s.organizationId === organizationId)
+      .sort((a: any, b: any) => {
+        const ta = typeof a.updatedAt === "object" && "microsSinceUnixEpoch" in a.updatedAt ? Number(a.updatedAt.microsSinceUnixEpoch) : 0;
+        const tb = typeof b.updatedAt === "object" && "microsSinceUnixEpoch" in b.updatedAt ? Number(b.updatedAt.microsSinceUnixEpoch) : 0;
+        return tb - ta;
+      });
+  }, [sessionRows, organizationId]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionListOpen, setSessionListOpen] = useState(false);
+  const sessionInitDone = useRef(false);
+
+  // Builder mode uses site-scoped localStorage instead of SpacetimeDB sessions
+  const builderStorageKey = builderMode ? `merchiva_builder_chat_${builderContext!.siteId}` : null;
+
+  // Initialize: load most recent session or create one (or hydrate from localStorage in builder mode)
   useEffect(() => {
-    if (messages.length > 0) saveChatHistory(organizationId, messages);
-  }, [messages, organizationId]);
+    if (sessionInitDone.current) return;
+    if (builderMode && builderStorageKey) {
+      try {
+        const raw = localStorage.getItem(builderStorageKey);
+        if (raw) setMessages(parseSessionMessages(raw));
+      } catch {}
+      sessionInitDone.current = true;
+      return;
+    }
+    if (!organizationId || !sessionsReady) return;
+    if (mySessions.length > 0) {
+      const latest = mySessions.find((s: any) => !s.archived) ?? mySessions[0];
+      const sid = latest.id.toHexString ? latest.id.toHexString() : String(latest.id);
+      setActiveSessionId(sid);
+      setMessages(parseSessionMessages(latest.messages));
+      sessionInitDone.current = true;
+    } else if (getConnection()) {
+      execCreateSession("New conversation").catch(() => {});
+      sessionInitDone.current = true;
+    }
+  }, [organizationId, mySessions, sessionsReady, builderMode, builderStorageKey]);
+
+  // When sessions update and we just created one, pick the newest (skip in builder mode)
+  useEffect(() => {
+    if (builderMode) return;
+    if (activeSessionId || !sessionInitDone.current || mySessions.length === 0) return;
+    const latest = mySessions[0];
+    const sid = latest.id.toHexString ? latest.id.toHexString() : String(latest.id);
+    setActiveSessionId(sid);
+    setMessages(parseSessionMessages(latest.messages));
+  }, [mySessions, activeSessionId, builderMode]);
+
+  // Save messages on change — to SpacetimeDB session or to localStorage (builder mode)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (messages.length === 0) return;
+    if (builderMode && builderStorageKey) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        try {
+          localStorage.setItem(builderStorageKey, JSON.stringify(messages.slice(-50)));
+        } catch {}
+      }, 500);
+      return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+    }
+    if (!activeSessionId || !organizationId) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      const json = JSON.stringify(messages.slice(-50));
+      execSaveSession(activeSessionId, json).catch(() => {});
+    }, 1000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [messages, activeSessionId, organizationId, builderMode, builderStorageKey]);
+
+  const switchSession = useCallback((sessionId: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const session = mySessions.find((s: any) => {
+      const sid = s.id.toHexString ? s.id.toHexString() : String(s.id);
+      return sid === sessionId;
+    });
+    setActiveSessionId(sessionId);
+    setMessages(session ? parseSessionMessages(session.messages) : []);
+    setSessionListOpen(false);
+  }, [mySessions]);
+
+  const handleNewChat = useCallback(async () => {
+    if (builderMode && builderStorageKey) {
+      try { localStorage.removeItem(builderStorageKey); } catch {}
+      setMessages([]);
+      return;
+    }
+    if (activeSessionId && messages.length > 0) {
+      const json = JSON.stringify(messages.slice(-50));
+      execSaveSession(activeSessionId, json).catch(() => {});
+    }
+    setActiveSessionId(null);
+    setMessages([]);
+    execCreateSession("New conversation").catch(() => {});
+    setSessionListOpen(false);
+  }, [activeSessionId, messages, builderMode, builderStorageKey]);
+
+  // @data mention
+  const [dataMentionOpen, setDataMentionOpen] = useState(false);
+  const [attachedData, setAttachedData] = useState<string[]>([]);
+
+  // Voice recording
+  const [recording, setRecording] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+
+  // File upload
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<{ name: string; url: string; type: string }[]>([]);
+
+  // Element picker (builder mode only) — lets the user click any element in
+  // the canvas iframe and attach it as context to the next prompt.
+  const [pickMode, setPickMode] = useState(false);
+  const [attachedElements, setAttachedElements] = useState<Array<{ selector: string; tag: string; outerHtml: string }>>([]);
+
+  // Listen for picked elements dispatched by html-editor when pickMode is active.
+  useEffect(() => {
+    function onPicked(e: Event) {
+      const detail = (e as CustomEvent).detail as { selector?: string; tag?: string; outerHtml?: string } | undefined;
+      if (!detail?.selector) return;
+      setAttachedElements((prev) =>
+        prev.some((el) => el.selector === detail.selector)
+          ? prev
+          : [...prev, { selector: detail.selector!, tag: detail.tag ?? "?", outerHtml: detail.outerHtml ?? "" }],
+      );
+      setPickMode(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("builder:set-pick-mode", { detail: { active: false } }));
+      }
+    }
+    window.addEventListener("builder:element-picked", onPicked);
+    return () => window.removeEventListener("builder:element-picked", onPicked);
+  }, []);
+
+  // Esc cancels pick mode.
+  useEffect(() => {
+    if (!pickMode) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setPickMode(false);
+        window.dispatchEvent(new CustomEvent("builder:set-pick-mode", { detail: { active: false } }));
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pickMode]);
+
+  const togglePickMode = useCallback(() => {
+    setPickMode((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("builder:set-pick-mode", { detail: { active: next } }));
+      }
+      return next;
+    });
+  }, []);
+
+  const removeAttachedElement = useCallback((idx: number) => {
+    setAttachedElements((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
   const orgName = currentOrg?.name ?? "your store";
 
   const { items: invItems } = useInventory(organizationId);
   const { history: salesHistory, hourly: salesHourly } = useSales();
-  const { shifts, team } = useStaffing(organizationId, null, false);
+  const { shifts, team, roles: staffingRoles, presets: shiftPresets, allAvailability, myTimeOffRequests: timeOffRequests, orgShiftTrades: shiftTrades } = useStaffing(organizationId, null, false);
   const { products } = useProducts(organizationId);
   const [rawNotifs] = useNotifications();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const staffRoles = (useStaffRoles() as any[] || []).filter((r: any) => r && typeof r === "object" && r.name) as Array<{ id: any; name: string; color: string; icon: string; description: string; permissions: string }>;
+  const staffRolesRef = useRef(staffRoles);
+  staffRolesRef.current = staffRoles;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawRoleTasksResult = useRoleTasks() as any;
+  const roleTasks = useMemo(() => {
+    const rows = Array.isArray(rawRoleTasksResult) ? rawRoleTasksResult[0] : rawRoleTasksResult;
+    if (!organizationId || !Array.isArray(rows)) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return rows.filter((t: any) => t && t.organizationId === organizationId);
+  }, [rawRoleTasksResult, organizationId]);
 
   const insights = useMemo(
     () => generateInsights(invItems, shifts, salesHistory, salesHourly),
@@ -721,97 +2151,518 @@ export function MerchivaChat() {
   );
 
   // Build store context for AI
-  const storeContext = useMemo(() => ({
-    storeName: orgName,
-    today: new Date().toISOString().slice(0, 10),
-    inventory: invItems.slice(0, 50).map((i) => ({
-      name: i.name, category: i.category, stock: i.currentStock,
-      min: i.minStock, max: i.maxStock, unit: i.unit, supplier: i.supplier,
-      status: i.status,
-    })),
-    todayShifts: shifts.filter((s) => s.date === new Date().toISOString().slice(0, 10)).map((s) => ({
-      name: s.staffName, role: s.staffRoles.join(", "), start: s.startTime, end: s.endTime, type: s.shiftType,
-    })),
-    upcomingShifts: shifts.filter((s) => s.date > new Date().toISOString().slice(0, 10)).slice(0, 20).map((s) => ({
-      name: s.staffName, date: s.date, start: s.startTime, end: s.endTime,
-    })),
-    team: team.map((m) => ({ name: m.displayName, role: m.role })),
-    recentSales: salesHistory.slice(-7).map((s) => ({ date: s.date, revenue: s.actual })),
-    todaySales: salesHourly.map((s) => ({ hour: s.hour, revenue: s.actual })),
-    products: products.slice(0, 30).map((p) => ({ name: p.name, price: p.price, category: p.category })),
-    unreadNotifications: rawNotifs.filter((n) => !n.read).length,
-    insights: insights.map((i) => ({ type: i.type, title: i.title, severity: i.severity })),
-  }), [orgName, invItems, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights]);
+  const today = new Date().toISOString().slice(0, 10);
+  const storeContext = useMemo(() => {
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return {
+      storeName: orgName,
+      today,
+      inventory: invItems.slice(0, 50).map((i) => ({
+        id: i.id, name: i.name, category: i.category, stock: i.currentStock,
+        min: i.minStock, max: i.maxStock, unit: i.unit, supplier: i.supplier,
+        status: i.status,
+      })),
+      todayShifts: shifts.filter((s) => s.date === today).map((s) => ({
+        id: s.id, name: s.staffName, role: s.staffRoles.join(", "), start: s.startTime, end: s.endTime, type: s.shiftType,
+      })),
+      upcomingShifts: shifts.filter((s) => s.date > today).slice(0, 30).map((s) => ({
+        id: s.id, name: s.staffName, date: s.date, start: s.startTime, end: s.endTime, type: s.shiftType,
+      })),
+      team: team.map((m) => ({ id: m.id, name: m.displayName, role: m.role })),
+      recentSales: salesHistory.slice(-7).map((s) => ({ date: s.date, revenue: s.actual })),
+      todaySales: salesHourly.map((s) => ({ hour: s.hour, revenue: s.actual })),
+      products: products.slice(0, 30).map((p) => ({ id: p.id, name: p.name, price: p.price, category: p.category })),
+      unreadNotifications: rawNotifs.filter((n) => !n.read).length,
+      insights: insights.map((i) => ({ type: i.type, title: i.title, severity: i.severity })),
+      // Roles with IDs and tasks
+      roles: staffRoles.map((r) => ({
+        id: String(r.id), name: r.name, color: r.color, icon: r.icon, description: r.description,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tasks: roleTasks.filter((t: any) => t.roleId === String(r.id)).map((t: any) => ({
+          id: String(t.id), title: t.title, description: t.description,
+          startTime: t.startTime ?? null, endTime: t.endTime ?? null,
+          requiresEvidence: t.requiresEvidence ?? false,
+        })),
+      })),
+      // Shift presets (templates)
+      shiftPresets: shiftPresets.map((p) => ({
+        id: p.id, name: p.name, startTime: p.startTime, endTime: p.endTime,
+      })),
+      // Staff availability (per person, per day of week)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      availability: allAvailability.slice(0, 20).map((a: any) => {
+        const memberName = team.find((m) => m.userId === a.userId)?.displayName ?? a.userId;
+        const availDays = Array.isArray(a.days)
+          ? a.days.map((available: boolean, i: number) => available ? dayNames[i] : null).filter(Boolean)
+          : [];
+        return { staffName: memberName, type: a.type, availableDays: availDays, startDate: a.startDate, endDate: a.endDate };
+      }),
+      // Pending time-off requests
+      timeOffRequests: timeOffRequests.filter((r) => r.status === "pending").map((r) => ({
+        id: r.id, staffName: team.find((m) => m.userId === r.userId)?.displayName ?? r.userId,
+        startDate: r.startDate, endDate: r.endDate, fullDays: r.fullDays, status: r.status,
+      })),
+      // Pending shift trades
+      shiftTrades: shiftTrades.filter((t) => t.status === "pending").map((t) => ({
+        id: t.id, type: t.type, status: t.status,
+        requester: team.find((m) => m.id === t.requesterId)?.displayName ?? t.requesterId,
+        managerApproved: t.managerApproved,
+      })),
+      // Builder mode: editing a website page in the visual builder
+      builder: builderContext ? {
+        siteId: builderContext.siteId,
+        siteName: builderContext.siteName,
+        pageId: builderContext.pageId,
+        pageName: builderContext.pageName,
+        elements: builderContext.elements,
+        theme: builderContext.theme,
+        // HTML mode fields — only set when the editor is in HTML mode
+        html: builderContext.html,
+        selectedSelector: builderContext.selectedSelector,
+        mode: builderContext.html != null ? "html" : "craft",
+        // Global values — AI can reference these as {key} in HTML output
+        customValues: builderContext.customValues,
+        // Page list (for addBuilderPage / deleteBuilderPage)
+        pages: builderContext.pages,
+        // FlowFn function names (for addBuilderFunction replace + deleteBuilderFunction)
+        functions: builderContext.functions,
+        // Page metadata + site identity / plugins (for updateBuilderPage / updateBuilderSite)
+        pageSlug: builderContext.pageSlug,
+        pageMetadata: builderContext.pageMetadata,
+        siteSlug: builderContext.siteSlug,
+        customDomain: builderContext.customDomain,
+        sitePublished: builderContext.sitePublished,
+        siteFeatures: builderContext.siteFeatures,
+      } : undefined,
+    };
+  }, [orgName, today, invItems, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, builderContext]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom only when a new message is added
+  const prevMsgCount = useRef(messages.length);
   useEffect(() => {
-    if (scrollRef.current) {
+    if (messages.length > prevMsgCount.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+    prevMsgCount.current = messages.length;
   }, [messages]);
+
+  const flushSummaryBuffer = useCallback(async (force?: boolean) => {
+    if (!organizationId) return;
+    const bufKey = `merchiva_memory_${organizationId}_buf`;
+    const raw = localStorage.getItem(bufKey);
+    const buf: Array<{ role: string; content: string }> = raw ? JSON.parse(raw) : [];
+    if (buf.length === 0) return;
+    if (!force && buf.length < 4) return;
+    const mem = loadMemory(organizationId);
+    localStorage.removeItem(bufKey);
+    try {
+      const res = await fetch("/api/store-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summarize: { prevSummary: mem.summary, newMessages: buf } }),
+      });
+      const data = await res.json();
+      if (data.summary) {
+        saveMemoryField(organizationId, "summary", data.summary);
+        // Save summary to current session without archiving or clearing
+        if (activeSessionId) {
+          execSaveSession(activeSessionId, JSON.stringify(messages.slice(-50)), undefined, data.summary).catch(() => {});
+        }
+      }
+    } catch {
+      localStorage.setItem(bufKey, JSON.stringify(buf));
+    }
+  }, [organizationId, activeSessionId, messages]);
+
+  const summaryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const bufferAndMaybeSummarize = useCallback((userText: string, aiText: string) => {
+    if (!organizationId) return;
+    const bufKey = `merchiva_memory_${organizationId}_buf`;
+    const raw = localStorage.getItem(bufKey);
+    const buf: Array<{ role: string; content: string }> = raw ? JSON.parse(raw) : [];
+    buf.push({ role: "user", content: userText }, { role: "assistant", content: aiText });
+    localStorage.setItem(bufKey, JSON.stringify(buf));
+    if (buf.length >= 4) {
+      flushSummaryBuffer();
+    } else {
+      if (summaryTimerRef.current) clearTimeout(summaryTimerRef.current);
+      summaryTimerRef.current = setTimeout(() => flushSummaryBuffer(true), 2 * 60 * 1000);
+    }
+  }, [organizationId, flushSummaryBuffer]);
+
+  useEffect(() => {
+    return () => { if (summaryTimerRef.current) clearTimeout(summaryTimerRef.current); };
+  }, []);
+
+  // ── Voice recording ──────────────────────────────────────────────────────
+  const startVoice = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!SR) {
+      alert("Your browser doesn't support voice input.");
+      return;
+    }
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = locale === "zh" ? "zh-CN"
+      : locale === "es" ? "es-ES"
+      : locale === "fr" ? "fr-FR"
+      : locale === "ar" ? "ar-SA"
+      : locale === "hi" ? "hi-IN"
+      : "en-US";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r[0].transcript)
+        .join("");
+      setDraft(transcript);
+    };
+    recognition.onend = () => setRecording(false);
+    recognition.onerror = () => setRecording(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setRecording(true);
+  }, [locale]);
+
+  const stopVoice = useCallback(() => {
+    recognitionRef.current?.stop();
+    setRecording(false);
+  }, []);
+
+  // ── File upload ─────────────────────────────────────────────────────────
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    for (const file of Array.from(files)) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        setAttachedFiles((prev) => [...prev, {
+          name: file.name,
+          url: base64,
+          type: file.type.startsWith("image/") ? "image" : "file",
+        }]);
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = "";
+  }, []);
+
+  const removeFile = useCallback((idx: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
+  // ── @data mention ───────────────────────────────────────────────────────
+  const toggleDataMention = useCallback((id: string) => {
+    setAttachedData((prev) =>
+      id === "all"
+        ? prev.includes("all") ? [] : ["all"]
+        : prev.includes(id)
+          ? prev.filter((d) => d !== id)
+          : [...prev.filter((d) => d !== "all"), id]
+    );
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || sending) return;
 
+    // Client-side: intercept local list/delete commands
+    const parsed = parseAllSkills(text);
+    if (parsed.actionsList && !parsed.actions.length && !parsed.tasksAdd.length && !parsed.rolesAdd.length && !parsed.tasksDelete.length) {
+      const userMsg: ChatMessage = {
+        id: `u-${Date.now()}`,
+        from: "user",
+        text: text.trim(),
+        time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
+      };
+      const aiMsg: ChatMessage = {
+        id: `a-${Date.now()}`,
+        from: "system",
+        text: parsed.cleanText || "这是当前可用的全部 AI actions：",
+        time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
+        actionsList: true,
+      };
+      setMessages((prev) => [...prev, userMsg, aiMsg]);
+      setDraft("");
+      return;
+    }
+    if (parsed.tasksDelete.length > 0 && !parsed.tasksAdd.length && !parsed.rolesAdd.length && !parsed.actions.length) {
+      const userMsg: ChatMessage = {
+        id: `u-${Date.now()}`,
+        from: "user",
+        text: text.trim(),
+        time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
+      };
+      const aiMsg: ChatMessage = {
+        id: `a-${Date.now()}`,
+        from: "merchiva",
+        text: parsed.cleanText || "",
+        time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
+        tasksDelete: parsed.tasksDelete,
+      };
+      setMessages((prev) => [...prev, userMsg, aiMsg]);
+      setDraft("");
+      return;
+    }
+
+    // Build prefix for attached data context
+    const dataPrefix = attachedData.length > 0
+      ? `[Context: user attached @${attachedData.join(", @")} data]\n`
+      : "";
+    const filePrefix = attachedFiles.length > 0
+      ? `[User attached ${attachedFiles.length} file(s): ${attachedFiles.map((f) => f.name).join(", ")}]\n`
+      : "";
+    // Attached elements: give the AI the exact HTML it can use as old_string for
+    // editBuilderHtml, plus the CSS selector for fallback selector-based actions.
+    const elementPrefix = attachedElements.length > 0
+      ? `[User pinned ${attachedElements.length} element${attachedElements.length === 1 ? "" : "s"} from the page — apply edits to THESE specifically]\n${attachedElements
+          .map((el, i) => `Element ${i + 1}: <${el.tag}> at selector \`${el.selector}\`\n\`\`\`html\n${el.outerHtml}\n\`\`\``)
+          .join("\n")}\n`
+      : "";
+
+    const fullText = `${dataPrefix}${filePrefix}${elementPrefix}${text.trim()}`;
+
+    const displayParts: string[] = [];
+    if (attachedData.length > 0) displayParts.push(`@${attachedData.join(" @")}`);
+    if (attachedFiles.length > 0) displayParts.push(`📎 ${attachedFiles.map((f) => f.name).join(", ")}`);
+    if (attachedElements.length > 0) displayParts.push(`📌 ${attachedElements.map((el) => `<${el.tag}>`).join(" ")}`);
+    const displayText = displayParts.length > 0
+      ? `${text.trim()}\n${displayParts.join(" · ")}`
+      : text.trim();
+
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       from: "user",
-      text: text.trim(),
-      time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+      text: displayText,
+      time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
     };
     setMessages((prev) => [...prev, userMsg]);
     setDraft("");
+    setAttachedData([]);
+    setAttachedFiles([]);
+    setAttachedElements([]);
+    setDataMentionOpen(false);
     setSending(true);
+    setThinkingPhase(getThinkingLabel(text, "analyze", t));
 
     try {
-      const history = messages.filter((m) => m.from !== "system").map((m) => ({
-        role: m.from === "user" ? "user" : "assistant",
-        content: m.text,
-      }));
+      const last10 = expandHistoryFromMessages(messages).slice(-10);
 
+      const mem = organizationId ? loadMemory(organizationId) : { summary: "", storeOverview: "", userPreferences: "" };
+
+      setThinkingPhase(getThinkingLabel(text, "fetch", t));
       const res = await fetch("/api/store-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text.trim(),
-          history,
+          message: fullText,
+          history: last10,
           context: storeContext,
-          lang: navigator.language.startsWith("zh") ? "zh" : "en",
+          lang: locale,
+          stream: true,
+          memory: {
+            summary: mem.summary || undefined,
+            storeOverview: mem.storeOverview || undefined,
+            userPreferences: mem.userPreferences || undefined,
+          },
+          permissions: {
+            isOwner,
+            role: orgRole,
+            sections: Object.fromEntries(
+              Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
+            ),
+          },
         }),
       });
 
-      const data = await res.json();
-      const reply = data.reply ?? data.error ?? "No response";
+      const streamMsgId = `a-${Date.now()}`;
+      const streamTime = new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
 
-      const { cleanText: afterActions, actions } = parseActions(reply);
-      const { cleanText, questions } = parseAskCommands(afterActions);
+      if (!res.ok || !res.body) {
+        const errBody = !res.body ? "no body" : await res.text();
+        console.error("[Mr. Merchiva] Stream failed:", res.status, errBody);
+        throw new Error("Stream unavailable");
+      }
 
-      const aiMsg: ChatMessage = {
-        id: `a-${Date.now()}`,
-        from: "merchiva",
-        text: cleanText,
-        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-        actions: actions.map((a, i) => ({
-          id: `act-${Date.now()}-${i}`,
-          action: a,
-          status: "pending" as const,
-        })),
-        questions: questions.length > 0 ? questions : undefined,
-      };
-      setMessages((prev) => [...prev, aiMsg]);
+      // Add a placeholder message for streaming
+      setMessages((prev) => [...prev, {
+        id: streamMsgId,
+        from: "merchiva" as const,
+        text: "",
+        time: streamTime,
+      }]);
+      setThinkingPhase("");
+
+      // Read text stream from AI SDK (plain text chunks)
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullReply = "";
+      const cmdRe = /\/(?:tasks|roles)\s+(?:add|delete|list)\s+(?:'[^']*'?|"[^"]*"?|`[^`]*`?|\{[^}]*\}?)/g;
+
+      function stripActionBlocks(text: string): string {
+        // Use the same brace-counting extractor as parseActions so display and
+        // parsing agree — keeps nested-object action blocks (e.g. builder elements
+        // with style/props sub-objects) from leaking into the visible message.
+        const { cleanText } = extractActionBlocks(text);
+        return cleanText.replace(cmdRe, "").trim();
+      }
+
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          if (chunk) {
+            fullReply += chunk;
+            const visible = stripActionBlocks(fullReply);
+            const display = visible || (fullReply.length > 0 ? "..." : "");
+            setMessages((prev) => prev.map((m) =>
+              m.id === streamMsgId ? { ...m, text: display } : m
+            ));
+          }
+        }
+      } catch (streamErr) {
+        console.warn("[Mr. Merchiva] Stream read error:", streamErr);
+      }
+
+      let reply = fullReply;
+
+      // Fallback: if stream returned nothing, retry non-streaming
+      if (!reply.trim()) {
+        console.log("[Mr. Merchiva] Stream empty, retrying non-streaming...");
+        setMessages((prev) => prev.map((m) =>
+          m.id === streamMsgId ? { ...m, text: "..." } : m
+        ));
+        try {
+          const fallbackRes = await fetch("/api/store-ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: fullText,
+              history: last10,
+              context: storeContext,
+              lang: locale,
+              memory: {
+                summary: mem.summary || undefined,
+                storeOverview: mem.storeOverview || undefined,
+                userPreferences: mem.userPreferences || undefined,
+              },
+              permissions: {
+                isOwner,
+                role: orgRole,
+                sections: Object.fromEntries(
+                  Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
+                ),
+              },
+            }),
+          });
+          const fallbackData = await fallbackRes.json();
+          if (!fallbackRes.ok) {
+            console.error("[Mr. Merchiva] API error:", fallbackRes.status, fallbackData);
+          }
+          reply = fallbackData.reply ?? "";
+        } catch (fallbackErr) {
+          console.error("[Mr. Merchiva] Fallback failed:", fallbackErr);
+        }
+      }
+
+      if (!reply.trim()) {
+        setMessages((prev) => prev.map((m) =>
+          m.id === streamMsgId ? { ...m, text: t("merchiva.errorNoResponse") } : m
+        ));
+        setSending(false);
+        setThinkingPhase("");
+        return;
+      }
+
+      setThinkingPhase(getThinkingLabel(text, "process", t));
+      const parsed = parseAllSkills(reply);
+      console.log("[Mr. Merchiva] Parsed:", { actions: parsed.actions.length, actionsList: parsed.actionsList, tasks: parsed.tasksAdd.length, deletes: parsed.tasksDelete.length, roles: parsed.rolesAdd.length, questions: parsed.questions.length });
+
+      // Handle memory update commands from AI
+      if (organizationId && parsed.memoryUpdates.length > 0) {
+        for (const update of parsed.memoryUpdates) {
+          saveMemoryField(organizationId, update.field, update.value);
+        }
+      }
+
+      // If AI response was only commands/actions with no visible text,
+      // show the raw reply so user can see what AI said
+      const hasStructured = parsed.actions.length > 0 || parsed.rolesAdd.length > 0 ||
+        parsed.tasksAdd.length > 0 || parsed.tasksDelete.length > 0 || parsed.questions.length > 0 ||
+        parsed.actionsList;
+      const displayText = parsed.cleanText || (
+        parsed.actionsList && parsed.actions.length === 0
+          ? "这是当前可用的全部 AI actions："
+          : hasStructured ? "" : reply.trim()
+      );
+
+      // Finalize message with parsed commands
+      setMessages((prev) => prev.map((m) =>
+        m.id === streamMsgId ? {
+          ...m,
+          from: parsed.actionsList && parsed.actions.length === 0 ? "system" : m.from,
+          text: displayText,
+          actions: parsed.actions.length > 0 ? parsed.actions : undefined,
+          actionsList: parsed.actionsList || undefined,
+          questions: parsed.questions.length > 0 ? parsed.questions : undefined,
+          rolesAdd: parsed.rolesAdd.length > 0 ? parsed.rolesAdd : undefined,
+          rolesList: parsed.rolesList || undefined,
+          tasksAdd: parsed.tasksAdd.length > 0 ? parsed.tasksAdd : undefined,
+          tasksDelete: parsed.tasksDelete.length > 0 ? parsed.tasksDelete : undefined,
+          tasksList: parsed.tasksList || undefined,
+        } : m
+      ));
+
+      // Auto-title session from first user message
+      if (activeSessionId && messages.length <= 2) {
+        const title = text.trim().slice(0, 30) || "Chat";
+        execSaveSession(activeSessionId, JSON.stringify(messages.slice(-50)), title).catch(() => {});
+      }
+
+      // Background: summarize conversational turns, not system catalog output.
+      if (!parsed.actionsList) bufferAndMaybeSummarize(text.trim(), parsed.cleanText);
     } catch {
       setMessages((prev) => [...prev, {
         id: `e-${Date.now()}`,
         from: "merchiva",
-        text: "Sorry, I couldn't reach the AI service. Please try again.",
-        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        text: t("merchiva.errorNoResponse"),
+        time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
       }]);
     } finally {
       setSending(false);
+      setThinkingPhase("");
     }
-  }, [sending, messages, storeContext]);
+  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, attachedElements, toggleDataMention, isOwner, orgRole, userPermissions, locale, t, activeSessionId]);
 
   const handleApprove = useCallback(async (msgId: string, actionId: string) => {
+    // Read action data from current messages state BEFORE updating
+    const msg = messages.find((m) => m.id === msgId);
+    const actionData = msg?.actions?.find((a) => a.id === actionId)?.action;
+
+    if (!actionData) {
+      console.error("[Approve] Action not found:", msgId, actionId);
+      return;
+    }
+
+    console.log("[Approve] Executing:", actionData);
+
+    if (actionData.action === "addShift") {
+      const member = team.find((m) => m.displayName === actionData.staffName);
+      if (!member) {
+        const validNames = team.map((m) => m.displayName);
+        toast.error(`"${actionData.staffName}" is not a team member. Add them first or pick from: ${validNames.join(", ") || "(no team members yet)"}`);
+        return;
+      }
+      actionData.memberId = member.id;
+    }
+
+    // Mark as approved optimistically
     setMessages((prev) => prev.map((m) => {
       if (m.id !== msgId) return m;
       return {
@@ -822,58 +2673,23 @@ export function MerchivaChat() {
       };
     }));
 
-    const msg = messages.find((m) => m.id === msgId);
-    const action = msg?.actions?.find((a) => a.id === actionId);
-    if (!action) return;
-
     try {
-      const conn = (await import("@/lib/spacetimedb/client")).getConnection();
-      if (!conn) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const r = (conn as any).reducers;
-      const act = action.action;
-
-      switch (act.action) {
-        case "addShift":
-          await r.addShift({
-            organizationId: (await import("@/lib/spacetimedb/client")).getActiveOrgId(),
-            memberId: null,
-            staffName: String(act.staffName ?? ""),
-            staffRole: null,
-            staffRoles: JSON.stringify(act.staffRoles ?? []),
-            date: String(act.date ?? ""),
-            shiftType: String(act.shiftType ?? "morning"),
-            startTime: String(act.startTime ?? "09:00"),
-            endTime: String(act.endTime ?? "17:00"),
-            predictedDemand: "medium",
-          });
-          break;
-        case "createNotification":
-          await r.createNotification({
-            organizationId: (await import("@/lib/spacetimedb/client")).getActiveOrgId(),
-            targetIdentity: conn.identity,
-            type: String(act.type ?? "general"),
-            title: String(act.title ?? ""),
-            body: String(act.body ?? ""),
-            link: null,
-          });
-          break;
-        case "addStaffMember":
-          await r.addStaffMember({
-            organizationId: (await import("@/lib/spacetimedb/client")).getActiveOrgId(),
-            name: String(act.name ?? ""),
-            role: String(act.role ?? "Staff"),
-            hourlyRate: Number(act.hourlyRate ?? 0),
-            availability: "[]",
-          });
-          break;
-        default:
-          console.log("Action not implemented:", act.action);
-      }
+      await executeAction(actionData);
+      console.log("[Approve] Success:", actionData.action);
     } catch (err) {
-      console.error("Action execution failed:", err);
+      console.error("[Approve] Failed:", err);
+      // Revert to pending on failure
+      setMessages((prev) => prev.map((m) => {
+        if (m.id !== msgId) return m;
+        return {
+          ...m,
+          actions: m.actions?.map((a) =>
+            a.id === actionId ? { ...a, status: "pending" as const } : a
+          ),
+        };
+      }));
     }
-  }, [messages]);
+  }, [messages, team]);
 
   const handleReject = useCallback((msgId: string, actionId: string) => {
     setMessages((prev) => prev.map((m) => {
@@ -887,58 +2703,152 @@ export function MerchivaChat() {
     }));
   }, []);
 
-  const quickChips = [
-    "Forecast next week",
-    "Who can cover Saturday?",
-    "Draft a PO",
-    "Top sellers today",
-    "Schedule a morning shift for tomorrow",
-  ];
+  const quickChips = useMemo(() => {
+    if (builderMode) {
+      return [
+        "Add a hero section",
+        "Add a contact form",
+        "Make this page mobile-friendly",
+        "Delete the footer",
+        "Add a pricing table",
+      ];
+    }
+    const chips: string[] = [];
 
-  const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }).toLowerCase();
+    // Context-aware chips based on pending requests
+    const pendingTimeOff = timeOffRequests.filter((r) => r.status === "pending").length;
+    const pendingTrades = shiftTrades.filter((t) => t.status === "pending").length;
+
+    if (pendingTimeOff > 0) {
+      chips.push(t("merchiva.quickChips.pendingTimeOff").replace("{n}", String(pendingTimeOff)));
+    }
+    if (pendingTrades > 0) {
+      chips.push(t("merchiva.quickChips.pendingTrades").replace("{n}", String(pendingTrades)));
+    }
+
+    chips.push(t("merchiva.quickChips.scheduleNextWeek"));
+    chips.push(t("merchiva.quickChips.coverSaturday"));
+
+    if (staffRoles.length === 0) {
+      chips.push(t("merchiva.quickChips.createFirstRole"));
+    } else {
+      chips.push(t("merchiva.quickChips.manageRoles"));
+    }
+
+    chips.push(t("merchiva.quickChips.salesSummary"));
+    chips.push(t("merchiva.quickChips.inventoryAlerts"));
+
+    return chips.slice(0, 5);
+  }, [timeOffRequests, shiftTrades, staffRoles, t, builderMode]);
+
+  const todayStr = new Date().toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric" }).toLowerCase();
 
   return (
-    <section className="rounded-lg border border-border bg-background overflow-hidden flex flex-col min-h-0">
+    <section className={cn(
+      "bg-background overflow-hidden flex flex-col min-h-0 h-full flex-1",
+      compact ? "h-full" : "rounded-lg border border-border"
+    )}>
       {/* Header */}
-      <header className="px-5 py-3 border-b border-border flex items-center gap-3 shrink-0" style={{ background: M_ACC_SOFT }}>
-        <NotchM size={36} fg={M_ACC_SOFT} bg="#1c1917" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-[15px] font-semibold tracking-tight">Mr. Merchiva</span>
-            <span className="inline-flex items-center gap-1 ml-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <MonoCap color="#059669">online</MonoCap>
-            </span>
+      {header &&(
+        <header className={cn(
+          "border-b border-border flex items-center gap-3 shrink-0",
+          compact ? "px-4 py-2.5" : "px-5 py-3"
+        )} style={{ background: M_ACC_SOFT }}>
+          <NotchM size={compact ? 28 : 36} fg={M_ACC_SOFT} bg="#1c1917" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className={cn(compact ? "text-[13px]" : "text-[15px]", "font-semibold tracking-tight")}>{t("merchiva.name")}</span>
+              <span className="inline-flex items-center gap-1 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <MonoCap color="#059669">{t("merchiva.online")}</MonoCap>
+              </span>
+            </div>
+            {!compact && (
+              <div className="text-[11.5px] text-stone-600 dark:text-stone-300 mt-0.5">
+                {t("merchiva.opsAgent").replace("{orgName}", orgName)}
+              </div>
+            )}
           </div>
-          <div className="text-[11.5px] text-stone-600 mt-0.5">
-            Your ops agent · trained on {orgName}
+          {!compact && (
+            <>
+              <button onClick={handleNewChat} title={t("merchiva.newChat")}
+                className="h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted" style={{ borderColor: M_ACC_BD }}>
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => setSessionListOpen((v) => !v)} title={t("merchiva.chatHistory")}
+                className={cn("h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted", sessionListOpen && "bg-muted")} style={{ borderColor: M_ACC_BD }}>
+                <History className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </header>
+      )
+
+      }
+
+      {/* Session history panel */}
+      {sessionListOpen && (
+        <div className="border-b border-border bg-stone-50/60 dark:bg-stone-950/60 max-h-[240px] overflow-auto shrink-0">
+          <div className="px-4 py-2 flex items-center justify-between">
+            <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold text-muted-foreground">{t("merchiva.history")}</span>
+            <span className="text-[10.5px] text-muted-foreground font-mono">{t("merchiva.conversations").replace("{n}", String(mySessions.length))}</span>
           </div>
+          {mySessions.length === 0 ? (
+            <div className="px-4 py-3 text-[12px] text-muted-foreground text-center">{t("merchiva.noConversations")}</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {mySessions.map((session) => {
+                const sid = session.id.toHexString ? session.id.toHexString() : String(session.id);
+                const isActive = sid === activeSessionId;
+                const ts = typeof session.updatedAt === "object" && "microsSinceUnixEpoch" in session.updatedAt
+                  ? new Date(Number(session.updatedAt.microsSinceUnixEpoch) / 1000)
+                  : new Date();
+                return (
+                  <button key={sid} onClick={() => switchSession(sid)}
+                    className={cn(
+                      "w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-stone-100/80 dark:bg-stone-800/80 transition-colors",
+                      isActive && "bg-stone-100 dark:bg-stone-800"
+                    )}>
+                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-medium truncate">{session.title || t("merchiva.untitled")}</div>
+                      <div className="text-[10.5px] text-muted-foreground font-mono">
+                        {ts.toLocaleDateString(locale, { month: "short", day: "numeric" })} · {ts.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}
+                      </div>
+                    </div>
+                    {session.archived && (
+                      <span className="h-4 px-1 rounded-[0.2rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 text-[8px] font-mono uppercase shrink-0">{t("merchiva.archived")}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-        <button className="h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted" style={{ borderColor: M_ACC_BD }}>
-          <History className="h-3.5 w-3.5" />
-        </button>
-        <button className="h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted" style={{ borderColor: M_ACC_BD }}>
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </button>
-      </header>
+      )}
 
       {/* Thread */}
-      <div ref={scrollRef} className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-5 min-h-0">
-        <ChatRow from="system">today · {todayStr}</ChatRow>
+      <div ref={scrollRef} className={cn(
+        "flex-1 overflow-auto scroll-smooth flex flex-col gap-5 min-h-0",
+        compact ? "px-4 py-3 gap-3" : "px-6 py-5"
+      )}>
+        <ChatRow from="system">{t("merchiva.today")} · {todayStr}</ChatRow>
 
-        {/* Auto-generated insights */}
-        <ChatRow time="06:14">
-          <div className="text-[14px] text-stone-800 leading-[1.55] max-w-[680px]">
-            {headline}
-          </div>
-        </ChatRow>
+        {/* Auto-generated insights (skip in compact mode) */}
+        {!compact && (
+          <ChatRow time="06:14">
+            <div className="text-[14px] text-stone-800 dark:text-stone-200 leading-[1.55] max-w-[680px]">
+              {headline}
+            </div>
+          </ChatRow>
+        )}
 
-        {insights.map((insight, idx) => (
+        {!compact && insights.map((insight, idx) => (
           <ChatRow key={insight.id} time={`06:${14 + idx}`}>
             {insight.type === "watchlist" ? (
               <Bubble>
                 <div className="flex items-center gap-2">
-                  <span className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 bg-stone-100 border border-stone-200 text-stone-600">
+                  <span className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
                     {INSIGHT_ICONS[insight.type]}
                     <span className="font-mono text-[10px] tracking-[0.08em] uppercase font-semibold">{insight.type}</span>
                   </span>
@@ -964,6 +2874,19 @@ export function MerchivaChat() {
 
         {/* User/AI conversation messages */}
         {messages.map((msg) => {
+          if (msg.from === "voice-call") {
+            return <VoiceCallRow key={msg.id} message={msg} />;
+          }
+          if (msg.from === "system") {
+            return msg.actionsList ? (
+              <div key={msg.id} className="mx-auto w-full max-w-[680px]">
+                <ChatRow from="system">{msg.text}</ChatRow>
+                <ActionsListCard />
+              </div>
+            ) : (
+              <ChatRow key={msg.id} from="system">{msg.text}</ChatRow>
+            );
+          }
           if (msg.from === "user") {
             return (
               <div key={msg.id} className="flex justify-end">
@@ -977,21 +2900,76 @@ export function MerchivaChat() {
           return (
             <ChatRow key={msg.id} time={msg.time}>
               <Bubble>
-                <div className="text-[13.5px] text-stone-800 leading-[1.55]">
+                <div className="text-[13.5px] text-stone-800 dark:text-stone-200 leading-[1.55]">
                   <MerchivaMarkdown content={msg.text} />
                 </div>
-                {msg.actions?.map((act) => (
-                  <ActionApprovalCard
-                    key={act.id}
-                    action={act.action}
-                    status={act.status}
-                    onApprove={() => handleApprove(msg.id, act.id)}
-                    onReject={() => handleReject(msg.id, act.id)}
+                {msg.actions && msg.actions.length > 0 && (
+                  <>
+                    {msg.actions.map((act) => (
+                      <ActionApprovalCard
+                        key={act.id}
+                        action={act.action}
+                        status={act.status}
+                        alreadyExecuted={msg.executed}
+                        onApprove={() => handleApprove(msg.id, act.id)}
+                        onReject={() => handleReject(msg.id, act.id)}
+                      />
+                    ))}
+                  </>
+                )}
+                {msg.actionsList && (
+                  <ActionsListCard />
+                )}
+                {msg.questions && msg.questions.length > 0 && (
+                  <QAForm items={msg.questions} onSubmit={(summary) => sendMessage(summary)} />
+                )}
+                {msg.rolesList && (
+                  <RolesListCard roles={staffRoles.map((r) => ({
+                    id: r.id.toHexString(),
+                    name: r.name,
+                    color: r.color,
+                    icon: r.icon,
+                    description: r.description,
+                  }))} />
+                )}
+                {msg.tasksList && (() => {
+                  const matchedRole = staffRoles.find((r) =>
+                    r.name.toLowerCase() === msg.tasksList!.toLowerCase()
+                  );
+                  return matchedRole ? (
+                    <TasksListInline roleId={matchedRole.id} roleName={matchedRole.name} />
+                  ) : (
+                    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 text-[12px] text-muted-foreground">
+                      未找到岗位「{msg.tasksList}」
+                    </div>
+                  );
+                })()}
+                {(msg.rolesAdd || msg.tasksAdd) && (
+                  <CommandGroup
+                    roles={msg.rolesAdd}
+                    tasks={msg.tasksAdd}
+                    staffRolesRef={staffRolesRef}
+                    alreadyExecuted={msg.executed}
+                    rejectedRoles={msg.rejectedRoles}
+                    rejectedTasks={msg.rejectedTasks}
+                    onRejectRole={(idx) => {
+                      setMessages((prev) => prev.map((m) =>
+                        m.id === msg.id ? { ...m, rejectedRoles: [...(m.rejectedRoles ?? []), idx] } : m
+                      ));
+                    }}
+                    onRejectTask={(idx) => {
+                      setMessages((prev) => prev.map((m) =>
+                        m.id === msg.id ? { ...m, rejectedTasks: [...(m.rejectedTasks ?? []), idx] } : m
+                      ));
+                    }}
                   />
-                ))}
-                {msg.questions?.map((qa, i) => (
-                  <QACard key={`qa-${msg.id}-${i}`} item={qa} onAnswer={(answer) => sendMessage(answer)} />
-                ))}
+                )}
+                {msg.tasksDelete && msg.tasksDelete.length > 0 && (
+                  <TaskDeleteGroup
+                    deletes={msg.tasksDelete}
+                    alreadyExecuted={msg.executed}
+                  />
+                )}
               </Bubble>
             </ChatRow>
           );
@@ -1000,19 +2978,19 @@ export function MerchivaChat() {
         {sending && (
           <ChatRow time="">
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Mr. Merchiva is thinking...
+              <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: M_ACC }} />
+              <span className="animate-pulse">{thinkingPhase || t("merchiva.thinking.defaultFetch")}</span>
             </div>
           </ChatRow>
         )}
 
         {messages.length === 0 && (
-          <ChatRow from="system">type a message to chat with Mr. Merchiva</ChatRow>
+          <ChatRow from="system">{t("merchiva.emptyState")}</ChatRow>
         )}
       </div>
 
       {/* Quick chips */}
-      <div className="px-6 pt-3 pb-2 flex items-center gap-1.5 flex-wrap shrink-0">
+      <div className={cn("pt-3 pb-2 flex items-center gap-1.5 flex-wrap shrink-0", compact ? "px-4" : "px-6")}>
         {quickChips.map((s) => (
           <button key={s} onClick={() => sendMessage(s)}
             className="h-7 px-2.5 rounded-full border border-border bg-background text-[11.5px] text-muted-foreground hover:bg-muted inline-flex items-center gap-1.5">
@@ -1022,8 +3000,72 @@ export function MerchivaChat() {
         ))}
       </div>
 
+      {/* Attached data/files/elements preview */}
+      {(attachedData.length > 0 || attachedFiles.length > 0 || attachedElements.length > 0) && (
+        <div className={cn("pt-2 flex items-center gap-1.5 flex-wrap shrink-0", compact ? "px-4" : "px-6")}>
+          {attachedData.map((d) => (
+            <span key={d} className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 text-[11px] font-mono font-medium"
+              style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
+              {DATA_ICONS[d]}
+              @{d}
+              <button onClick={() => toggleDataMention(d)} className="ml-0.5 hover:text-foreground">×</button>
+            </span>
+          ))}
+          {attachedFiles.map((f, i) => (
+            <span key={i} className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-[11px] font-mono">
+              <Paperclip className="h-3 w-3" />
+              {f.name.length > 20 ? f.name.slice(0, 17) + "..." : f.name}
+              <button onClick={() => removeFile(i)} className="ml-0.5 hover:text-foreground">×</button>
+            </span>
+          ))}
+          {attachedElements.map((el, i) => (
+            <span
+              key={`${el.selector}-${i}`}
+              title={el.selector}
+              className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 text-sky-700 dark:text-sky-300 text-[11px] font-mono"
+            >
+              <MousePointer2 className="h-3 w-3" />
+              &lt;{el.tag}&gt;
+              <span className="text-sky-500/70 dark:text-sky-400/60 max-w-[120px] truncate">
+                {shortSelector(el.selector)}
+              </span>
+              <button onClick={() => removeAttachedElement(i)} className="ml-0.5 hover:text-foreground">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* @data mention dropdown */}
+      {dataMentionOpen && (
+        <div className={cn("pt-2 shrink-0", compact ? "px-4" : "px-6")}>
+          <div className="rounded-[0.3rem] border border-border bg-background p-2 space-y-0.5">
+            <div className="px-2 pb-1">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("merchiva.mentionData")}</span>
+            </div>
+            {DATA_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => toggleDataMention(cat.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-2.5 py-2 rounded-[0.3rem] text-left transition-colors",
+                  attachedData.includes(cat.id) ? "bg-foreground text-background" : "hover:bg-muted"
+                )}
+              >
+                {DATA_ICONS[cat.id]}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12.5px] font-medium">{cat.label}</div>
+                  <div className={cn("text-[10.5px]", attachedData.includes(cat.id) ? "text-background/60" : "text-muted-foreground")}>{cat.desc}</div>
+                </div>
+                {attachedData.includes(cat.id) && <Check className="h-3.5 w-3.5 shrink-0" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Composer */}
-      <div className="px-6 pb-5 pt-2 shrink-0">
+      <div className={cn("pt-2 shrink-0", compact ? "px-4 pb-3" : "px-6 pb-5")}>
+        <input ref={fileInputRef} type="file" accept="image/*,.pdf,.csv,.xlsx,.txt" multiple className="hidden" onChange={handleFileSelect} />
         <div className="rounded-lg border border-border bg-background focus-within:border-stone-400 transition-colors">
           <textarea
             rows={2}
@@ -1035,33 +3077,153 @@ export function MerchivaChat() {
                 sendMessage(draft);
               }
             }}
-            placeholder={`Ask Mr. Merchiva anything — "schedule a shift", "reorder oat milk", "sales report"`}
+            placeholder={t("merchiva.composerPlaceholder")}
             className="w-full resize-none bg-transparent border-0 outline-none px-4 pt-3 pb-2 text-[14px] leading-[1.5] placeholder:text-muted-foreground/60"
           />
           <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-            <button className="h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center" title="Attach">
+            <button onClick={() => fileInputRef.current?.click()}
+              className="h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center" title={t("merchiva.attachFile")}>
               <Paperclip className="h-[15px] w-[15px]" />
             </button>
-            <button className="h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center" title="Voice">
+            <button onClick={recording ? stopVoice : startVoice}
+              className={cn(
+                "h-8 w-8 rounded-[0.3rem] inline-flex items-center justify-center transition-colors",
+                recording ? "bg-red-500 text-white animate-pulse" : "text-muted-foreground hover:bg-muted"
+              )} title={recording ? t("merchiva.stopRecording") : t("merchiva.voiceInput")}>
               <Mic className="h-[15px] w-[15px]" />
             </button>
-            <button className="h-8 px-2 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center gap-1.5" title="Mention data">
-              <AtSign className="h-[14px] w-[14px]" />
-              <span className="text-[11.5px]">data</span>
-            </button>
+            {!builderMode && (
+              <button onClick={() => setCallOpen(true)}
+                className="h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center"
+                title={t("merchiva.startCall")}>
+                <Phone className="h-[15px] w-[15px]" />
+              </button>
+            )}
+            {!builderMode && (
+              <button onClick={() => setDataMentionOpen((v) => !v)}
+                className={cn(
+                  "h-8 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 transition-colors",
+                  dataMentionOpen || attachedData.length > 0
+                    ? "text-foreground bg-muted"
+                    : "text-muted-foreground hover:bg-muted"
+                )} title={t("merchiva.mentionData")}>
+                <AtSign className="h-[14px] w-[14px]" />
+                <span className="text-[11.5px]">{t("merchiva.dataLabel")}{attachedData.length > 0 ? ` · ${attachedData.length}` : ""}</span>
+              </button>
+            )}
+            {builderMode && (
+              <button
+                onClick={togglePickMode}
+                className={cn(
+                  "h-8 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 transition-colors",
+                  pickMode
+                    ? "bg-sky-500 text-white hover:bg-sky-600"
+                    : attachedElements.length > 0
+                      ? "text-foreground bg-muted"
+                      : "text-muted-foreground hover:bg-muted",
+                )}
+                title={pickMode ? "Click any element in the canvas · Esc to cancel" : "Pick an element to attach"}
+              >
+                <MousePointer2 className="h-[14px] w-[14px]" />
+                <span className="text-[11.5px]">
+                  {pickMode ? "Click element…" : `Element${attachedElements.length > 0 ? ` · ${attachedElements.length}` : ""}`}
+                </span>
+              </button>
+            )}
             <div className="flex-1" />
-            <kbd className="font-mono text-[10px] text-stone-400 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ to send</kbd>
+            <kbd className="font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ {t("merchiva.sendShortcut")}</kbd>
             <button
-              disabled={!draft.trim() || sending}
+              disabled={(!draft.trim() && attachedFiles.length === 0 && attachedElements.length === 0) || sending}
               onClick={() => sendMessage(draft)}
               className="h-9 px-4 rounded-[0.3rem] bg-foreground text-background text-[13px] font-medium hover:bg-foreground/90 inline-flex items-center gap-2 disabled:opacity-30"
             >
-              {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
+              {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("merchiva.send")}
               {!sending && <ArrowUp className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
       </div>
+
+      <MerchivaCallModal
+        open={callOpen}
+        onClose={() => setCallOpen(false)}
+        getContext={() => ({
+          history: expandHistoryFromMessages(messages).slice(-10),
+          storeContext,
+          memory: organizationId
+            ? loadMemory(organizationId)
+            : { summary: "", storeOverview: "", userPreferences: "" },
+          permissions: {
+            isOwner,
+            role: orgRole,
+            sections: Object.fromEntries(
+              Object.entries(userPermissions).map(([k, v]) => [
+                k,
+                { view: v?.view, edit: v?.edit },
+              ]),
+            ),
+          },
+        })}
+        onTurnComplete={(userText, aiText) => {
+          setMessages((prev) => {
+            // An "open" voice-call message at the tail has durationSec === 0
+            // (set by onCallEnd to a non-zero value when the call finishes).
+            const last = prev[prev.length - 1];
+            const isOpenCall =
+              last?.from === "voice-call" && (last.voiceCall?.durationSec ?? 0) === 0;
+            if (isOpenCall && last) {
+              return [
+                ...prev.slice(0, -1),
+                {
+                  ...last,
+                  voiceCall: {
+                    durationSec: 0,
+                    turns: [
+                      ...(last.voiceCall?.turns ?? []),
+                      { user: userText, ai: aiText },
+                    ],
+                  },
+                },
+              ];
+            }
+            const now = new Date();
+            const time = now.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
+            return [
+              ...prev,
+              {
+                id: `vc-${now.getTime()}`,
+                from: "voice-call",
+                text: "",
+                time,
+                voiceCall: { durationSec: 0, turns: [{ user: userText, ai: aiText }] },
+              },
+            ];
+          });
+        }}
+        onCallEnd={(durationSec) => {
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (
+              !last ||
+              last.from !== "voice-call" ||
+              (last.voiceCall?.durationSec ?? 0) !== 0
+            ) {
+              return prev;
+            }
+            return [
+              ...prev.slice(0, -1),
+              {
+                ...last,
+                voiceCall: {
+                  // Force >= 1 so the "open" sentinel (durationSec === 0) flips.
+                  durationSec: Math.max(1, durationSec),
+                  turns: last.voiceCall?.turns ?? [],
+                },
+              },
+            ];
+          });
+        }}
+      />
     </section>
   );
 }
@@ -1158,15 +3320,15 @@ function TodayScheduleCard() {
           <div className="px-5 pt-3 pb-4">
             <div className="relative h-3 mb-1">
               {ticks.map((h) => (
-                <div key={h} className="absolute font-mono text-[9px] text-stone-400 tabular-nums -translate-x-1/2" style={{ left: `${pct(h * 60)}%` }}>
+                <div key={h} className="absolute font-mono text-[9px] text-stone-400 dark:text-stone-500 tabular-nums -translate-x-1/2" style={{ left: `${pct(h * 60)}%` }}>
                   {h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
                 </div>
               ))}
             </div>
-            <div className="relative rounded-[0.3rem] border border-border bg-stone-50 overflow-hidden"
+            <div className="relative rounded-[0.3rem] border border-border bg-stone-50 dark:bg-stone-950 overflow-hidden"
               style={{ height: lanes.length * 22 + (lanes.length - 1) * 3 + 8 }}>
               {ticks.map((h) => (
-                <div key={h} className="absolute top-0 bottom-0 w-px bg-stone-200" style={{ left: `${pct(h * 60)}%` }} />
+                <div key={h} className="absolute top-0 bottom-0 w-px bg-stone-200 dark:bg-stone-700" style={{ left: `${pct(h * 60)}%` }} />
               ))}
               {shifts.map((s) => {
                 const left = pct(s.startMin);
@@ -1175,15 +3337,17 @@ function TodayScheduleCard() {
                 const lane = shiftLanes.get(s.id) ?? 0;
                 return (
                   <div key={s.id}
-                    className="absolute flex items-center gap-1.5 px-1.5 rounded-[0.2rem] border text-[10px] font-medium whitespace-nowrap overflow-hidden"
+                    className={cn(
+                      "absolute flex items-center gap-1.5 px-1.5 rounded-[0.2rem] border text-[10px] font-medium whitespace-nowrap overflow-hidden",
+                      isActive
+                        ? "bg-foreground border-foreground text-background"
+                        : "bg-background border-border text-foreground",
+                    )}
                     style={{
                       left: `${left}%`, width: `${width}%`,
                       top: lane * 25 + 4, height: 21,
-                      background: isActive ? "#1c1917" : "#fff",
-                      borderColor: isActive ? "#1c1917" : "#d6d3d1",
-                      color: isActive ? "#fff" : "#1c1917",
                     }}>
-                    <span className="w-1 h-1 rounded-full shrink-0" style={{ background: isActive ? "#fff" : (SHIFT_COLORS[s.shiftType] || "#78716c") }} />
+                    <span className="w-1 h-1 rounded-full shrink-0" style={{ background: isActive ? "var(--background)" : (SHIFT_COLORS[s.shiftType] || "#78716c") }} />
                     <span className="overflow-hidden text-ellipsis">{s.name.split(" ")[0]}</span>
                   </div>
                 );
@@ -1307,7 +3471,7 @@ function NotificationsCard() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <div className="text-[12.5px] font-medium leading-tight truncate">{n.title}</div>
-                    <span className="ml-auto font-mono text-[10px] text-stone-400 tabular-nums shrink-0">{ago}</span>
+                    <span className="ml-auto font-mono text-[10px] text-stone-400 dark:text-stone-500 tabular-nums shrink-0">{ago}</span>
                   </div>
                   <div className="text-[11.5px] text-muted-foreground leading-snug mt-1">{n.body}</div>
                   {(n.type === "shift_trade" || n.type === "time_off") && (
@@ -1401,6 +3565,7 @@ function MobileKpiRow() {
 
 function MobileMerchivaChat() {
   const { currentOrg, organizationId } = usePermissions();
+  const t = useT();
   const orgName = currentOrg?.name ?? "your store";
 
   const { items: invItems } = useInventory(organizationId);
@@ -1418,9 +3583,9 @@ function MobileMerchivaChat() {
   );
 
   const quickChips = [
-    "Forecast next week",
-    "Draft a PO",
-    "Top sellers today",
+    t("merchiva.quickSchedule"),
+    t("merchiva.quickSales"),
+    t("merchiva.quickInventory"),
   ];
 
   const MOBILE_ICONS: Record<string, React.ReactNode> = {
@@ -1437,13 +3602,13 @@ function MobileMerchivaChat() {
         <NotchM size={32} fg={M_ACC_SOFT} bg="#1c1917" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[14px] font-semibold tracking-tight">Mr. Merchiva</span>
+            <span className="text-[14px] font-semibold tracking-tight">{t("merchiva.name")}</span>
             <span className="inline-flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <MonoCap color="#059669">online</MonoCap>
+              <MonoCap color="#059669">{t("merchiva.online")}</MonoCap>
             </span>
           </div>
-          <div className="text-[10.5px] text-stone-600 mt-0.5">Trained on {orgName}</div>
+          <div className="text-[10.5px] text-stone-600 dark:text-stone-300 mt-0.5">{t("merchiva.trainedOn").replace("{orgName}", orgName)}</div>
         </div>
       </header>
 
@@ -1452,10 +3617,10 @@ function MobileMerchivaChat() {
         <NotchM size={28} fg="#fff" bg="#1c1917" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[12px] font-semibold">Mr. Merchiva</span>
+            <span className="text-[12px] font-semibold">{t("merchiva.name")}</span>
             <MonoCap color="#a8a29e">06:14</MonoCap>
           </div>
-          <p className="text-[13px] text-stone-800 leading-[1.5]">{headline}</p>
+          <p className="text-[13px] text-stone-800 dark:text-stone-200 leading-[1.5]">{headline}</p>
         </div>
       </div>
 
@@ -1473,7 +3638,7 @@ function MobileMerchivaChat() {
         ))}
         {insights.length === 0 && (
           <div className="rounded-[0.3rem] border border-border bg-background p-3 text-center text-[12px] text-muted-foreground">
-            All clear — no issues found.
+            {t("merchiva.allClear")}
           </div>
         )}
       </div>
@@ -1493,7 +3658,7 @@ function MobileMerchivaChat() {
         <div className="flex items-center gap-2 rounded-[0.3rem] border border-border bg-background px-3 py-2">
           <input
             type="text"
-            placeholder="Ask Mr. Merchiva..."
+            placeholder={t("merchiva.composerPlaceholder")}
             className="flex-1 bg-transparent outline-none text-[13px] placeholder:text-muted-foreground/60"
           />
           <button className="h-7 w-7 rounded-[0.3rem] bg-foreground text-background inline-flex items-center justify-center">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Settings,
   Zap,
@@ -105,6 +105,7 @@ export default function SettingsPage() {
   const t = useT();
   const { locale, setLocale } = useI18n();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { role, organizationId, can, organizations, currentOrg, switchOrg } = usePermissions();
   const { signOut, user: authUser, accounts, switchAccount } = useAuth();
   const isAdmin = role === "owner" || role === "manager";
@@ -854,7 +855,7 @@ export default function SettingsPage() {
                             return { ...f, dayTimes };
                           })}
                             className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
-                            <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`} />
+                            <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`} />
                           </button>
                         </div>
                       </div>
@@ -897,7 +898,7 @@ export default function SettingsPage() {
                 <Label>{t("settings.fullDays")}</Label>
                 <button onClick={() => setTimeOffForm((f) => ({ ...f, fullDays: !f.fullDays }))}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${timeOffForm.fullDays ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
-                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${timeOffForm.fullDays ? "translate-x-4" : "translate-x-0.5"}`} />
+                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${timeOffForm.fullDays ? "translate-x-4" : "translate-x-0.5"}`} />
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1104,6 +1105,7 @@ export default function SettingsPage() {
                     { key: "settings" as const, label: t("settings.permSettings"), actions: ["view"] as const },
                     { key: "team" as const, label: t("settings.permTeam"), actions: ["view", "invite", "edit"] as const },
                     { key: "website" as const, label: t("settings.permWebsite"), actions: ["view", "edit"] as const },
+                    { key: "training_grading" as const, label: t("settings.permTrainingGrading"), actions: ["view", "edit"] as const },
                   ]).map(({ key, label, actions }) => (
                     <div key={key} className="flex items-center gap-3 px-1 py-1.5 rounded hover:bg-muted/50">
                       <span className="text-sm flex-1">{label}</span>
@@ -1540,7 +1542,7 @@ export default function SettingsPage() {
         className={`relative inline-flex h-5 w-[34px] items-center rounded-full shrink-0 transition-colors ${checked ? "bg-foreground" : "bg-muted border border-border"}`}
         aria-label={`Toggle ${title}`}
       >
-        <span className={`inline-block h-3.5 w-3.5 rounded-full shadow transition-transform ${checked ? "bg-white translate-x-[15px]" : "bg-white translate-x-[2px]"}`} />
+        <span className={`inline-block h-3.5 w-3.5 rounded-full shadow transition-transform ${checked ? "bg-white dark:bg-stone-900 translate-x-[15px]" : "bg-white dark:bg-stone-900 translate-x-[2px]"}`} />
       </button>
     </div>
   );
@@ -1831,6 +1833,7 @@ export default function SettingsPage() {
               title={t("settings.billing")}
               meta={t("settings.currentSubscription")}
               right={<SBadge tone="ok">{t("settings.active")}</SBadge>}
+              onClick={() => router.push("/~/settings/billing")}
             />
             <SRow
               icon={<FileText className="h-4 w-4 text-foreground" />}
@@ -2751,7 +2754,7 @@ function SettingsDesktop(props: SettingsDesktopProps) {
                     className={`relative inline-flex h-5 w-9 items-center rounded-full border shrink-0 transition-colors ${props.storeMachine ? "bg-foreground border-foreground" : "bg-background border-border"}`}
                     aria-label={t("settings.storeMachineModeLabel")}
                   >
-                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${props.storeMachine ? "translate-x-4" : "translate-x-0.5"}`} />
+                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${props.storeMachine ? "translate-x-4" : "translate-x-0.5"}`} />
                   </button>
                 </DesktopField>
               </DesktopCard>
