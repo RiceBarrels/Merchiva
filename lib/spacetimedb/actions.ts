@@ -806,6 +806,16 @@ export async function archiveAiChatSession(sessionId: string): Promise<void> {
   return conn().reducers.archiveAiChatSession({ organizationId: orgId(), sessionId });
 }
 
+// ─── AI background jobs (server-side generation) ───────────────────────────
+
+export async function consumeAiJob(jobId: string): Promise<void> {
+  return conn().reducers.consumeAiJob({ organizationId: orgId(), jobId });
+}
+
+export async function deleteAiJob(jobId: string): Promise<void> {
+  return conn().reducers.deleteAiJob({ organizationId: orgId(), jobId });
+}
+
 // ─── Training: Curriculum Days ──────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -984,5 +994,72 @@ export async function updateOrgSubscription(data: {
     subscriptionPriceId: data.subscriptionPriceId ?? undefined,
     subscriptionInterval: data.subscriptionInterval ?? undefined,
     currentPeriodEnd: periodEnd,
+  });
+}
+
+// ─── Daily Briefing + Schedule Proposal ──────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function insightsReducer(name: string): ((args: Record<string, any>) => Promise<void>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reducer = (conn().reducers as any)[name];
+  if (typeof reducer !== "function") {
+    throw new Error(
+      `Reducer "${name}" is not available. Run \`spacetime publish\` + \`spacetime generate\` to enable.`,
+    );
+  }
+  return reducer;
+}
+
+export async function saveDailyBriefing(data: {
+  date: string;
+  content: string;
+  summary?: string | null;
+  generatedBy: string;
+}): Promise<void> {
+  return insightsReducer("saveDailyBriefing")({
+    organizationId: orgId(),
+    date: data.date,
+    content: data.content,
+    summary: data.summary ?? undefined,
+    generatedBy: data.generatedBy,
+  });
+}
+
+export async function saveScheduleProposal(data: {
+  weekStart: string;
+  weekEnd: string;
+  shifts: unknown;       // serializable: will be JSON.stringify'd
+  status: "draft" | "committed" | "rejected";
+  generatedBy: string;
+}): Promise<void> {
+  return insightsReducer("saveScheduleProposal")({
+    organizationId: orgId(),
+    weekStart: data.weekStart,
+    weekEnd: data.weekEnd,
+    shifts: typeof data.shifts === "string" ? data.shifts : JSON.stringify(data.shifts),
+    status: data.status,
+    generatedBy: data.generatedBy,
+  });
+}
+
+export async function commitScheduleProposal(proposalId: string): Promise<void> {
+  return insightsReducer("commitScheduleProposal")({
+    organizationId: orgId(),
+    proposalId,
+  });
+}
+
+export async function rejectScheduleProposal(proposalId: string): Promise<void> {
+  return insightsReducer("rejectScheduleProposal")({
+    organizationId: orgId(),
+    proposalId,
+  });
+}
+
+export async function setAutoCommitSchedules(autoCommit: boolean): Promise<void> {
+  return insightsReducer("setAutoCommitSchedules")({
+    organizationId: orgId(),
+    autoCommit,
   });
 }

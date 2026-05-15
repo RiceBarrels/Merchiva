@@ -4,8 +4,78 @@ const path = require("path");
 const DEV_URL = "http://localhost:3000";
 const PROD_URL = process.env.MERCHIVA_URL || "https://merchiva.vercel.app";
 const isDev = process.env.NODE_ENV === "development";
+// Custom protocol scheme used for 3rd-party OAuth callbacks. The system
+// browser hits /api/auth/callback, which redirects to merchiva://auth-callback?…
+// The OS routes that URL to this app via `open-url` (macOS) or argv on a
+// second instance (Windows/Linux). See `handleAuthUrl` below.
+const SCHEME = "merchiva";
 
 let mainWindow;
+// If a merchiva:// URL fires before the renderer is ready (cold start from
+// the system browser), we stash it here and deliver once webContents loads.
+let pendingAuthCallback = null;
+
+// Register this app as the default handler for merchiva:// URLs. Without this,
+// the OS won't route the callback URL back to us.
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient(SCHEME, process.execPath, [
+      path.resolve(process.argv[1]),
+    ]);
+  }
+} else {
+  app.setAsDefaultProtocolClient(SCHEME);
+}
+
+// Single-instance lock — when the system browser fires the merchiva:// URL,
+// the OS launches the app again. We catch that here, forward the URL to the
+// existing window, and let the second process quit.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, argv) => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+    // Windows/Linux: protocol URL arrives as a command-line arg.
+    const url = argv.find((a) => typeof a === "string" && a.startsWith(`${SCHEME}://`));
+    if (url) handleAuthUrl(url);
+  });
+
+  // macOS: protocol URL arrives via the `open-url` event.
+  app.on("open-url", (event, url) => {
+    event.preventDefault();
+    handleAuthUrl(url);
+  });
+
+  app.whenReady().then(() => {
+    createWindow();
+    // Cold-start case (Windows/Linux): if the app was launched BY the
+    // protocol URL, it's in process.argv.
+    const url = process.argv.find((a) => typeof a === "string" && a.startsWith(`${SCHEME}://`));
+    if (url) handleAuthUrl(url);
+  });
+}
+
+function handleAuthUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== `${SCHEME}:`) return;
+    if (parsed.hostname !== "auth-callback") return;
+    const params = {};
+    parsed.searchParams.forEach((v, k) => { params[k] = v; });
+    if (mainWindow && !mainWindow.webContents.isLoading()) {
+      mainWindow.focus();
+      mainWindow.webContents.send("auth:callback", params);
+    } else {
+      pendingAuthCallback = params;
+    }
+  } catch (err) {
+    console.error("[electron] failed to parse auth URL:", err);
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -32,12 +102,22 @@ function createWindow() {
     },
   });
 
-  const url = isDev ? DEV_URL : PROD_URL;
-  mainWindow.loadURL(url);
+  // In the Electron shell we skip the marketing landing — the login page
+  // auto-redirects to /~/dashboard when a session is already stored.
+  const baseUrl = isDev ? DEV_URL : PROD_URL;
+  mainWindow.loadURL(`${baseUrl}/login`);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http")) shell.openExternal(url);
     return { action: "deny" };
+  });
+
+  // Deliver any auth-callback that arrived before the renderer was ready.
+  mainWindow.webContents.on("did-finish-load", () => {
+    if (pendingAuthCallback) {
+      mainWindow.webContents.send("auth:callback", pendingAuthCallback);
+      pendingAuthCallback = null;
+    }
   });
 
   // Navigation IPC handlers
@@ -57,6 +137,14 @@ function createWindow() {
     event.returnValue = mainWindow?.isFullScreen() ?? false;
   });
 
+  // 3rd-party OAuth — renderer hands us the WorkOS authorization URL; we open
+  // it in the system browser so Google/Apple don't reject the embedded webview.
+  ipcMain.handle("auth:openExternal", (_event, url) => {
+    if (typeof url !== "string") return;
+    if (!/^https?:\/\//.test(url)) return;
+    shell.openExternal(url);
+  });
+
   if (isDev) {
     mainWindow.webContents.openDevTools({ mode: "detach" });
   }
@@ -65,8 +153,6 @@ function createWindow() {
     mainWindow = null;
   });
 }
-
-app.whenReady().then(createWindow);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

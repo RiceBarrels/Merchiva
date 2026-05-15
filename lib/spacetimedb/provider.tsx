@@ -28,7 +28,13 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
     const handler = (e: PromiseRejectionEvent) => {
       const msg = String(e.reason);
       if (msg.includes("deserialize")) {
+        // Log full stack — these usually mean the deployed schema doesn't match
+        // the generated SDK bindings (publish without `spacetime generate`,
+        // or stale browser cache after a breaking change). Clearing the
+        // stdb_token in localStorage + hard-refreshing usually fixes it.
         console.error("[STDB DESER]", msg);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((e.reason as any)?.stack) console.error("[STDB DESER stack]", (e.reason as any).stack);
         e.preventDefault();
       }
     };
@@ -81,27 +87,56 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
     return () => clearTimeout(timer);
   }, [connected, retryCount]);
 
+  // Auto-recovery: if the connection times out and we haven't already tried
+  // clearing caches in this tab, drop the cached SpacetimeDB token + any SDK
+  // cache and reload once. This unblocks the most common post-schema-change
+  // failure mode where the SDK silently waits forever on a stale handshake.
+  useEffect(() => {
+    if (!timedOut) return;
+    const ATTEMPTED_KEY = "stdb_recovery_tried";
+    if (typeof window === "undefined") return;
+    if (sessionStorage.getItem(ATTEMPTED_KEY)) return; // already retried this tab
+    sessionStorage.setItem(ATTEMPTED_KEY, "1");
+    console.warn("[SpacetimeDB] Connection timed out — clearing stdb_token + SDK caches and reloading once");
+    try { localStorage.removeItem("stdb_token"); } catch {}
+    // Best-effort wipe any IndexedDB caches the SDK may keep. Names vary by
+    // SDK version; just enumerate and drop anything spacetime-prefixed.
+    if (typeof indexedDB !== "undefined" && typeof indexedDB.databases === "function") {
+      indexedDB.databases().then((dbs) => {
+        for (const db of dbs) {
+          if (db.name && /spacetime/i.test(db.name)) {
+            try { indexedDB.deleteDatabase(db.name); } catch {}
+          }
+        }
+      }).finally(() => window.location.reload()).catch(() => window.location.reload());
+    } else {
+      window.location.reload();
+    }
+  }, [timedOut]);
+
+  // Once connected successfully, clear the recovery flag so a future failure
+  // gets one fresh attempt rather than being stuck in "already tried".
+  useEffect(() => {
+    if (connected && typeof window !== "undefined") {
+      try { sessionStorage.removeItem("stdb_recovery_tried"); } catch {}
+    }
+  }, [connected]);
+
   const builder = useMemo(() => {
     if (!authToken) return null;
 
     console.log(`ℹ️ INFO Connecting to SpacetimeDB WS...${retryCount > 0 ? ` (retry ${retryCount})` : ""}`);
-    let canBrotli = false;
-    try {
-      if (
-        typeof DecompressionStream !== "undefined" &&
-        typeof ReadableStream !== "undefined" &&
-        Symbol.asyncIterator in ReadableStream.prototype
-      ) {
-        new DecompressionStream("brotli" as CompressionFormat);
-        canBrotli = true;
-      }
-    } catch {}
+    // Brotli compression sometimes hangs the post-WS-handshake protocol on
+    // maincloud after a breaking schema publish. Disabling compression is a
+    // safe and effective workaround — the bandwidth cost is negligible at
+    // editor scale, and we trade a few KB for a connection that actually
+    // completes.
 
     return DbConnection.builder()
       .withUri(SPACETIMEDB_URI)
       .withDatabaseName(SPACETIMEDB_MODULE)
       .withToken(authToken)
-      .withCompression(canBrotli ? "brotli" : "none")
+      .withCompression("none")
       .onConnect((conn, _identity, newToken) => {
         console.log("ℹ️ INFO Connected to SpacetimeDB WS");
         if (retryCount > 0) setRetryCount(0);
@@ -181,6 +216,16 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           ]);
         } catch {
           console.warn("[SpacetimeDB] Coupon/queue tables not available on server");
+        }
+        try {
+          // Background AI generation jobs created by /api/store-ai/enqueue.
+          // Separate try/catch so the table being absent on an older server
+          // doesn't break the rest of the subscriptions.
+          conn.subscriptionBuilder().subscribe([
+            "SELECT * FROM ai_job",
+          ]);
+        } catch {
+          console.warn("[SpacetimeDB] ai_job table not available on server");
         }
       })
       .onDisconnect(() => {

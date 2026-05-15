@@ -10,12 +10,14 @@ export async function GET(req: NextRequest) {
   }
 
   let redirectTo = "/~/dashboard";
+  let client: "web" | "electron" = "web";
   if (state) {
     try {
       const parsed = JSON.parse(
         Buffer.from(state, "base64url").toString("utf-8"),
       );
       if (parsed.redirectTo) redirectTo = parsed.redirectTo;
+      if (parsed.client === "electron") client = "electron";
     } catch {}
   }
 
@@ -38,6 +40,20 @@ export async function GET(req: NextRequest) {
       }),
       redirect_to: redirectTo,
     });
+
+    // Electron clients: hand the tokens back through the merchiva:// custom
+    // protocol. The OS routes the URL to the desktop app, which forwards the
+    // params to the renderer over IPC. The browser tab serves a tiny landing
+    // that triggers the protocol jump and closes itself.
+    if (client === "electron") {
+      const protocolUrl = `merchiva://auth-callback?${params.toString()}`;
+      const escaped = protocolUrl.replace(/"/g, "&quot;");
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Signing you in…</title><style>body{font-family:Inter,system-ui,sans-serif;background:#0c0a09;color:#fafaf9;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;padding:24px}.box{max-width:420px}h1{font-size:18px;font-weight:600;margin:0 0 8px}p{font-size:14px;color:#a8a29e;margin:0 0 16px;line-height:1.5}a{color:#fafaf9;text-decoration:underline}</style></head><body><div class="box"><h1>Returning to Merchiva…</h1><p>If the desktop app doesn't open automatically, <a href="${escaped}">click here</a>.</p><p style="font-size:12px;opacity:.6">You can close this tab.</p></div><script>window.location.href = ${JSON.stringify(protocolUrl)};setTimeout(function(){window.close()},1500);</script></body></html>`;
+      return new NextResponse(html, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
 
     return NextResponse.redirect(
       new URL(`/auth-callback?${params.toString()}`, req.url),

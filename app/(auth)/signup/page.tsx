@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useMemo } from "react";
+import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react";
@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
-import { useAuth } from "@/lib/auth/context";
+import { useAuth, addAccountToStorage } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
+import { getElectron, isElectron } from "@/lib/electron";
 
 /* ── Password strength ─────────────────────────────── */
 
@@ -127,21 +128,53 @@ function SignupForm() {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     try {
+      const electron = isElectron();
       const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, redirectTo: next }),
+        body: JSON.stringify({
+          provider,
+          redirectTo: next,
+          client: electron ? "electron" : "web",
+        }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
+      if (!data.url) {
         setError(data.error ?? t("login.oauthFailed"));
+        return;
+      }
+      if (electron) {
+        await getElectron()?.openExternalAuth(data.url);
+      } else {
+        window.location.href = data.url;
       }
     } catch {
       setError(t("login.oauthFailed"));
     }
   };
+
+  // Receive the merchiva:// callback from the Electron main process and
+  // complete the sign-in flow client-side, same as the web /auth-callback.
+  useEffect(() => {
+    const bridge = getElectron();
+    if (!bridge) return;
+    const unsubscribe = bridge.onAuthCallback((params) => {
+      if (params.error) { setError(params.error); return; }
+      const { access_token, refresh_token, user, redirect_to } = params;
+      if (!access_token || !refresh_token || !user) {
+        setError(t("login.oauthFailed"));
+        return;
+      }
+      try {
+        const parsedUser = JSON.parse(user);
+        addAccountToStorage(access_token, refresh_token, parsedUser);
+        window.location.href = redirect_to || "/~/dashboard";
+      } catch {
+        setError(t("login.oauthFailed"));
+      }
+    });
+    return unsubscribe;
+  }, [t]);
 
   const loginHref = `/login${next !== "/~/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`;
 

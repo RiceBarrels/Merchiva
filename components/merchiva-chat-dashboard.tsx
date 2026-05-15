@@ -39,6 +39,9 @@ import { useStaffRoles, useRoleTasks, useAiChatSessions } from "@/lib/spacetimed
 import { toast } from "sonner";
 import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/skills/registry";
 import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
+import { useAiJobs } from "@/lib/spacetimedb/hooks";
+import { consumeAiJob, deleteAiJob } from "@/lib/spacetimedb/actions";
+import { getStoredToken } from "@/lib/spacetimedb/client";
 import type { ChatMessage, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
 import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
 import { useI18n, useT } from "@/lib/i18n/context";
@@ -2368,6 +2371,115 @@ export function MerchivaChat({
     );
   }, []);
 
+  // ── Background job subscription ───────────────────────────────────────────
+  // The /api/store-ai/enqueue endpoint creates ai_job rows that the server
+  // streams chunks into. Subscribe here so partial text shows live and final
+  // results get parsed + executed even if the user closed and reopened the tab.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiJobsTuple = useAiJobs() as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aiJobRows: any[] = Array.isArray(aiJobsTuple) && Array.isArray(aiJobsTuple[0])
+    ? aiJobsTuple[0]
+    : (Array.isArray(aiJobsTuple) ? aiJobsTuple : []);
+  const renderedJobIdsRef = useRef<Set<string>>(new Set());
+  const finalizedJobIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!organizationId || !activeSessionId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const myJobs = aiJobRows.filter((j: any) => j && j.organizationId === organizationId && j.sessionId === activeSessionId);
+    if (myJobs.length === 0) return;
+
+    for (const job of myJobs) {
+      const jobId = job.id?.toHexString ? job.id.toHexString() : String(job.id);
+      const msgId = `job-${jobId}`;
+      const isDone = job.status === "done" || job.status === "failed";
+      const isConsumed = !!job.consumed;
+
+      // 1) New job → seed a placeholder merchiva message and clear the
+      //    sending spinner. The upstream userMsg was already inserted in
+      //    sendMessage(); the placeholder belongs immediately after it.
+      if (!renderedJobIdsRef.current.has(jobId)) {
+        renderedJobIdsRef.current.add(jobId);
+        setSending(false);
+        setThinkingPhase("");
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msgId)) return prev;
+          return [...prev, {
+            id: msgId,
+            from: "merchiva" as const,
+            text: "",
+            time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
+          }];
+        });
+      }
+
+      // 2) Live partial text — strip action JSON for display.
+      if (!isDone) {
+        const visible = extractActionBlocks(String(job.partialText ?? "")).cleanText;
+        const display = visible || (job.partialText?.length > 0 ? "..." : "");
+        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, text: display } : m)));
+        continue;
+      }
+
+      // 3) Done / failed — finalize once.
+      if (finalizedJobIdsRef.current.has(jobId)) continue;
+      finalizedJobIdsRef.current.add(jobId);
+
+      if (job.status === "failed") {
+        setMessages((prev) => prev.map((m) => (
+          m.id === msgId
+            ? { ...m, text: t("merchiva.errorNoResponse") + (job.error ? ` (${String(job.error).slice(0, 200)})` : "") }
+            : m
+        )));
+        consumeAiJob(jobId).catch(() => {});
+        continue;
+      }
+
+      const finalText = String(job.finalText ?? job.partialText ?? "");
+      if (!finalText.trim()) {
+        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, text: t("merchiva.errorNoResponse") } : m)));
+        consumeAiJob(jobId).catch(() => {});
+        continue;
+      }
+
+      const parsed = parseAllSkills(finalText);
+      if (organizationId && parsed.memoryUpdates.length > 0) {
+        for (const update of parsed.memoryUpdates) saveMemoryField(organizationId, update.field, update.value);
+      }
+      const hasStructured = parsed.actions.length > 0 || parsed.rolesAdd.length > 0 ||
+        parsed.tasksAdd.length > 0 || parsed.tasksDelete.length > 0 || parsed.questions.length > 0 || parsed.actionsList;
+      const displayText = parsed.cleanText || (
+        parsed.actionsList && parsed.actions.length === 0
+          ? "这是当前可用的全部 AI actions："
+          : hasStructured ? "" : finalText.trim()
+      );
+      setMessages((prev) => prev.map((m) => (
+        m.id === msgId
+          ? {
+              ...m,
+              from: parsed.actionsList && parsed.actions.length === 0 ? "system" : m.from,
+              text: displayText,
+              actions: parsed.actions.length > 0 ? parsed.actions : undefined,
+              actionsList: parsed.actionsList || undefined,
+              questions: parsed.questions.length > 0 ? parsed.questions : undefined,
+              rolesAdd: parsed.rolesAdd.length > 0 ? parsed.rolesAdd : undefined,
+              rolesList: parsed.rolesList || undefined,
+              tasksAdd: parsed.tasksAdd.length > 0 ? parsed.tasksAdd : undefined,
+              tasksDelete: parsed.tasksDelete.length > 0 ? parsed.tasksDelete : undefined,
+              tasksList: parsed.tasksList || undefined,
+            }
+          : m
+      )));
+      // Fire-and-forget: mark consumed so we don't re-process on next render
+      // (and so other tabs don't double-execute the same actions).
+      consumeAiJob(jobId).catch(() => {});
+      // House-keeping: drop fully-consumed rows after a delay so the table
+      // doesn't grow unbounded. Failures here are non-fatal.
+      setTimeout(() => { deleteAiJob(jobId).catch(() => {}); }, 60_000);
+    }
+  }, [aiJobRows, organizationId, activeSessionId, locale, t]);
+
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || sending) return;
 
@@ -2456,6 +2568,56 @@ export function MerchivaChat({
       const mem = organizationId ? loadMemory(organizationId) : { summary: "", storeOverview: "", userPreferences: "" };
 
       setThinkingPhase(getThinkingLabel(text, "fetch", t));
+
+      // ── Background path: enqueue server-side so the AI keeps generating
+      // even if the user closes the tab. The reducer creates an ai_job row;
+      // the subscription effect below picks it up, renders partialText as it
+      // streams, and runs parsed actions when the row flips to status='done'.
+      const token = getStoredToken();
+      if (token && organizationId && activeSessionId) {
+        try {
+          const enq = await fetch("/api/store-ai/enqueue", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token,
+              organizationId,
+              sessionId: activeSessionId,
+              message: fullText,
+              history: last10,
+              context: storeContext,
+              lang: locale,
+              memory: {
+                summary: mem.summary || undefined,
+                storeOverview: mem.storeOverview || undefined,
+                userPreferences: mem.userPreferences || undefined,
+              },
+              permissions: {
+                isOwner,
+                role: orgRole,
+                sections: Object.fromEntries(
+                  Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
+                ),
+              },
+            }),
+          });
+          if (!enq.ok) {
+            const e = await enq.text().catch(() => "");
+            console.error("[Mr. Merchiva] enqueue failed:", enq.status, e);
+            throw new Error("Enqueue failed: " + e);
+          }
+          // Sending state is cleared by the subscription effect when the new
+          // job appears. No streaming reader needed — the row is the source
+          // of truth from here.
+          setThinkingPhase("");
+          return;
+        } catch (err) {
+          // Fall through to legacy streaming path on enqueue failure
+          console.warn("[Mr. Merchiva] enqueue failed, falling back to streaming:", err);
+        }
+      }
+
+      // ── Legacy streaming fallback (when no token / not in a session) ──
       const res = await fetch("/api/store-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -152,6 +152,9 @@ const settingsTable = table(
     googlePlacesId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
+    // Auto-commit AI-generated 7-day schedule proposals as real shifts when no
+    // shifts exist for the upcoming week. Default true; owners can opt out.
+    autoCommitSchedules: t.option(t.bool()),
   }
 );
 
@@ -1296,6 +1299,54 @@ const trainingFinalGradeTable = table(
   }
 );
 
+// ─── Daily Briefing (AI-generated morning insights) ──────────────────────────
+
+const dailyBriefingTable = table(
+  {
+    name: 'daily_briefing',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    date: t.string(),                  // YYYY-MM-DD (idempotency key with org)
+    content: t.string(),               // markdown body — bullet list of insights
+    summary: t.option(t.string()),     // one-line headline
+    generatedBy: t.string(),           // model name
+    generatedAt: t.timestamp(),
+  }
+);
+
+// ─── Schedule Proposal (AI-drafted 7-day shift suggestions) ──────────────────
+
+const scheduleProposalTable = table(
+  {
+    name: 'schedule_proposal',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    weekStart: t.string(),             // YYYY-MM-DD (idempotency key with org)
+    weekEnd: t.string(),               // YYYY-MM-DD
+    // JSON-encoded array: [{ date, staffName, staffRoles, startTime, endTime, shiftType }]
+    shifts: t.string(),
+    // 'draft' = waiting for owner action; 'committed' = inserted as real shifts;
+    // 'rejected' = owner declined. Auto-committed proposals are inserted as
+    // shifts AND saved as 'committed' for audit.
+    status: t.string(),
+    generatedBy: t.string(),
+    generatedAt: t.timestamp(),
+    decidedAt: t.option(t.timestamp()),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1351,6 +1402,8 @@ const spacetimedb = schema({
   trainingObjectiveGrade: trainingObjectiveGradeTable,
   trainingDayGrade: trainingDayGradeTable,
   trainingFinalGrade: trainingFinalGradeTable,
+  dailyBriefing: dailyBriefingTable,
+  scheduleProposal: scheduleProposalTable,
 });
 
 export default spacetimedb;
@@ -1552,6 +1605,7 @@ export const createOrg = spacetimedb.reducer(
       googlePlacesId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
+      autoCommitSchedules: undefined,
     });
   }
 );
@@ -4875,6 +4929,142 @@ export const setTrainingFinalGrade = spacetimedb.reducer(
       comment: args.comment,
       gradedBy: ctx.sender,
       gradedAt: ctx.timestamp,
+    });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DAILY BRIEFING + SCHEDULE PROPOSAL REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Upsert today's morning briefing for an org. Idempotent on (orgId, date) —
+ * calling again overwrites. Owner/manager only.
+ */
+export const saveDailyBriefing = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    date: t.string(),
+    content: t.string(),
+    summary: t.option(t.string()),
+    generatedBy: t.string(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    for (const row of [...ctx.db.dailyBriefing.iter()]) {
+      if (row.organizationId === args.organizationId && row.date === args.date) {
+        ctx.db.dailyBriefing.delete(row);
+      }
+    }
+
+    ctx.db.dailyBriefing.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      date: args.date,
+      content: args.content,
+      summary: args.summary,
+      generatedBy: args.generatedBy,
+      generatedAt: ctx.timestamp,
+    });
+  }
+);
+
+/**
+ * Save a 7-day schedule proposal. Idempotent on (orgId, weekStart) — calling
+ * again overwrites a still-draft proposal for the same week. Committed
+ * proposals are kept for audit and won't be re-overwritten.
+ */
+export const saveScheduleProposal = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    weekStart: t.string(),
+    weekEnd: t.string(),
+    shifts: t.string(),
+    status: t.string(),
+    generatedBy: t.string(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    for (const row of [...ctx.db.scheduleProposal.iter()]) {
+      if (
+        row.organizationId === args.organizationId &&
+        row.weekStart === args.weekStart &&
+        row.status === 'draft'
+      ) {
+        ctx.db.scheduleProposal.delete(row);
+      }
+    }
+
+    ctx.db.scheduleProposal.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      weekStart: args.weekStart,
+      weekEnd: args.weekEnd,
+      shifts: args.shifts,
+      status: args.status,
+      generatedBy: args.generatedBy,
+      generatedAt: ctx.timestamp,
+      decidedAt: args.status === 'committed' ? ctx.timestamp : undefined,
+    });
+  }
+);
+
+/** Mark a schedule proposal as committed (owner accepted it). */
+export const commitScheduleProposal = spacetimedb.reducer(
+  { organizationId: t.string(), proposalId: t.string() },
+  (ctx, { organizationId, proposalId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const proposal = [...ctx.db.scheduleProposal.iter()]
+      .find(p => p.id.toString() === proposalId && p.organizationId === organizationId);
+    if (!proposal) throw new Error('Proposal not found');
+    ctx.db.scheduleProposal.delete(proposal);
+    ctx.db.scheduleProposal.insert({
+      ...proposal,
+      status: 'committed',
+      decidedAt: ctx.timestamp,
+    });
+  }
+);
+
+/** Mark a schedule proposal as rejected. */
+export const rejectScheduleProposal = spacetimedb.reducer(
+  { organizationId: t.string(), proposalId: t.string() },
+  (ctx, { organizationId, proposalId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const proposal = [...ctx.db.scheduleProposal.iter()]
+      .find(p => p.id.toString() === proposalId && p.organizationId === organizationId);
+    if (!proposal) throw new Error('Proposal not found');
+    ctx.db.scheduleProposal.delete(proposal);
+    ctx.db.scheduleProposal.insert({
+      ...proposal,
+      status: 'rejected',
+      decidedAt: ctx.timestamp,
+    });
+  }
+);
+
+/** Toggle whether AI-generated schedules auto-commit when no shifts exist. */
+export const setAutoCommitSchedules = spacetimedb.reducer(
+  { organizationId: t.string(), autoCommit: t.bool() },
+  (ctx, { organizationId, autoCommit }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role !== 'owner') unauthorized('Owner only');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      autoCommitSchedules: autoCommit,
+      updatedAt: ctx.timestamp,
     });
   }
 );

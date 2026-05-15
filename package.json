@@ -27,6 +27,14 @@
     "files": [
       "electron/**/*"
     ],
+    "protocols": [
+      {
+        "name": "Merchiva",
+        "schemes": [
+          "merchiva"
+        ]
+      }
+    ],
     "mac": {
       "target": "dmg",
       "category": "public.app-category.business",

@@ -92,6 +92,10 @@ export function useQueueEntries() { return useTable(tables.queueEntry); }
 export function useAiChatHistory() { return useTable(tables.aiChatHistory); }
 export function useAiChatSessions() { return useTable(tables.aiChatSession); }
 
+// Background AI jobs (server-side generation via /api/store-ai/enqueue).
+// Subscription is org-wide; consumers filter by sessionId locally.
+export function useAiJobs() { return useTable(tables.aiJob); }
+
 // ── Training ────────────────────────────────────────────────────────────────
 // Returns the same [rows, ready] tuple shape as the other hooks. Until the
 // SpacetimeDB bindings are regenerated (`spacetime generate`) the underlying
@@ -121,6 +125,18 @@ export function useTrainingDayGrades() {
 }
 export function useTrainingFinalGrades() {
   const tbl = (tables as any).trainingFinalGrade;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+
+// ── Daily Briefing + Schedule Proposal ──────────────────────────────────────
+export function useDailyBriefings() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tbl = (tables as any).dailyBriefing;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+export function useScheduleProposals() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tbl = (tables as any).scheduleProposal;
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 /* eslint-enable */

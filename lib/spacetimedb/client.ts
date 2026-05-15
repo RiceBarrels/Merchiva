@@ -14,8 +14,12 @@ import type { DbConnectionImpl } from "spacetimedb/sdk";
 export const SPACETIMEDB_URI =
   process.env.NEXT_PUBLIC_SPACETIMEDB_URI ?? "ws://localhost:3000";
 
+// Database identity hex (preferred over the friendly name — `withDatabaseName`
+// accepts either, and identity is stable across re-publishes). Set via
+// NEXT_PUBLIC_SPACETIMEDB_MODULE in .env.local.
 export const SPACETIMEDB_MODULE =
-  process.env.NEXT_PUBLIC_SPACETIMEDB_MODULE ?? "bizops";
+  process.env.NEXT_PUBLIC_SPACETIMEDB_MODULE ??
+  "c200b446cd88a8dfa10c16c03d8f315007c61f331ff36bd711acba146a2f43aa";
 
 /** Retrieves a persisted auth token from localStorage (client only). */
 export function getStoredToken(): string | undefined {

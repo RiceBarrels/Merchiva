@@ -31,7 +31,7 @@ function periodEndToDate(p: OrgRow["currentPeriodEnd"]): Date | null {
   if (!p) return null;
   const micros = p.microsSinceUnixEpoch;
   if (typeof micros !== "bigint") return null;
-  return new Date(Number(micros / 1000n));
+  return new Date(Number(micros / BigInt(1000)));
 }
 
 const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
