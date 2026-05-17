@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.inventory", href: "/~/inventory",       icon: Package,         permissionKey: "inventory" },
   { labelKey: "nav.wasteLog",  href: "/~/inventory/waste", icon: Trash2,          permissionKey: "inventory" },
   { labelKey: "nav.sales",     href: "/~/sales",           icon: TrendingUp,      permissionKey: "sales" },
-  { labelKey: "nav.staffing",  href: "/~/staffing",        icon: Users,           permissionKey: "staffing" },
+  { labelKey: "nav.personnel", href: "/~/personnel",       icon: Users,           permissionKey: "staffing" },
   { labelKey: "nav.products",  href: "/~/products",        icon: ShoppingBag,     permissionKey: "products" },
   { labelKey: "nav.reports",   href: "/~/reports",         icon: FileBarChart,    permissionKey: "sales" },
   { labelKey: "nav.customers", href: "/~/customers",       icon: UserRoundSearch, permissionKey: "sales" },
@@ -44,7 +44,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in"]);
 
-const PRIMARY_HREFS = ["/~/dashboard", "/~/staffing", "/~/chat"];
+const PRIMARY_HREFS = ["/~/dashboard", "/~/personnel", "/~/chat"];
 
 export function BottomBar() {
   const t = useT();

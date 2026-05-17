@@ -59,6 +59,7 @@ export default function PublishedSiteSubPage({ params }: Props) {
           theme={site.theme}
           basePath={`/s/${slug}`}
           customValues={site.values}
+          customTokens={site.tokens}
           valueContext={{ siteName: site.name }}
         />
       ) : (

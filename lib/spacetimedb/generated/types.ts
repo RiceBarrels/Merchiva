@@ -104,6 +104,17 @@ export const CustomerPoints = __t.object("CustomerPoints", {
 });
 export type CustomerPoints = __Infer<typeof CustomerPoints>;
 
+export const DailyBriefing = __t.object("DailyBriefing", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  date: __t.string(),
+  content: __t.string(),
+  summary: __t.option(__t.string()),
+  generatedBy: __t.string(),
+  generatedAt: __t.timestamp(),
+});
+export type DailyBriefing = __Infer<typeof DailyBriefing>;
+
 export const Expense = __t.object("Expense", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -368,6 +379,23 @@ export const RoleTask = __t.object("RoleTask", {
 });
 export type RoleTask = __Infer<typeof RoleTask>;
 
+export const RoleTaskAssignment = __t.object("RoleTaskAssignment", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  taskId: __t.string(),
+  memberId: __t.string(),
+  dueAt: __t.timestamp(),
+  status: __t.string(),
+  evidenceUrl: __t.option(__t.string()),
+  note: __t.option(__t.string()),
+  completedAt: __t.option(__t.timestamp()),
+  completedBy: __t.option(__t.identity()),
+  skipReason: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  createdBy: __t.identity(),
+});
+export type RoleTaskAssignment = __Infer<typeof RoleTaskAssignment>;
+
 export const SalesRecord = __t.object("SalesRecord", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -382,6 +410,19 @@ export const SalesRecord = __t.object("SalesRecord", {
   createdAt: __t.timestamp(),
 });
 export type SalesRecord = __Infer<typeof SalesRecord>;
+
+export const ScheduleProposal = __t.object("ScheduleProposal", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  weekStart: __t.string(),
+  weekEnd: __t.string(),
+  shifts: __t.string(),
+  status: __t.string(),
+  generatedBy: __t.string(),
+  generatedAt: __t.timestamp(),
+  decidedAt: __t.option(__t.timestamp()),
+});
+export type ScheduleProposal = __Infer<typeof ScheduleProposal>;
 
 export const Settings = __t.object("Settings", {
   id: __t.uuid(),
@@ -403,6 +444,9 @@ export const Settings = __t.object("Settings", {
   googlePlacesId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
+  autoCommitSchedules: __t.option(__t.bool()),
+  openingHours: __t.option(__t.string()),
+  countryCode: __t.option(__t.string()),
 });
 export type Settings = __Infer<typeof Settings>;
 

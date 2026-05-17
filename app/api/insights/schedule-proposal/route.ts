@@ -124,16 +124,45 @@ export async function POST(req: NextRequest) {
     });
 
     // Normalize and clamp to the requested window in case the model drifts.
+    // Also drop shifts whose staffName doesn't match a real team row — the
+    // schema describe() text begs the model not to invent names, but at temp>0
+    // it still happens, and bad names slip past addShift (no server-side
+    // validation) and become "ghost" shifts that count in totals but don't
+    // render in the grid.
+    const team = (context?.team ?? []) as Array<{ name?: string }>;
+    const validNames = new Set(
+      team
+        .map((m) => (typeof m?.name === "string" ? m.name.trim() : ""))
+        .filter((n) => n.length > 0),
+    );
+    const validNamesLower = new Set(Array.from(validNames).map((n) => n.toLowerCase()));
+    const droppedNames = new Set<string>();
+    const filteredShifts = object.shifts.filter((s) => {
+      if (s.date < weekStart || s.date > weekEnd) return false;
+      const name = (s.staffName ?? "").trim();
+      const ok = validNames.has(name) || validNamesLower.has(name.toLowerCase());
+      if (!ok) droppedNames.add(name || "(empty)");
+      return ok;
+    });
+
+    if (droppedNames.size > 0) {
+      console.warn(
+        "[insights/schedule-proposal] dropped shifts for unknown names:",
+        Array.from(droppedNames),
+      );
+    }
+
     const clamped = {
       ...object,
       weekStart,
       weekEnd,
-      shifts: object.shifts.filter((s) => s.date >= weekStart && s.date <= weekEnd),
+      shifts: filteredShifts,
     };
 
     return NextResponse.json({
       ...clamped,
       generatedBy: modelName,
+      droppedNames: Array.from(droppedNames),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

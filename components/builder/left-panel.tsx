@@ -21,6 +21,7 @@ import type { Site, SitePage, SiteElement } from "@/lib/types";
 import type { PageTemplateId } from "@/lib/builder/page-templates";
 import { componentDragState } from "./component-drag-state";
 import { ValuePanel } from "./value-panel";
+import { TokenPanel } from "./token-panel";
 
 interface LeftPanelProps {
   site: Site;
@@ -314,6 +315,11 @@ export function LeftPanel({
 
       {/* Values section */}
       <ValuePanel site={site} />
+
+      <Separator />
+
+      {/* Design tokens — site-level overrides */}
+      <TokenPanel site={site} />
 
       <Separator />
 

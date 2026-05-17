@@ -28,6 +28,7 @@
     "inventory": "库存",
     "wasteLog": "报损记录",
     "sales": "销售预测",
+    "personnel": "人员管理",
     "staffing": "排班",
     "products": "商品",
     "reports": "报表",
@@ -508,6 +509,25 @@
       "tabCode": "代码",
       "tabTests": "测试",
       "tabConsole": "控制台"
+    },
+    "tokens": {
+      "colorsLabel": "Token",
+      "pickToken": "选择设计 Token"
+    },
+    "tokenPanel": {
+      "title": "设计 Token",
+      "colors": "颜色",
+      "spacing": "间距",
+      "textSizes": "字号",
+      "radius": "圆角",
+      "reset": "恢复默认",
+      "delete": "删除自定义 Token",
+      "addCustom": "添加自定义 Token",
+      "namePlaceholder": "名称（例如 brand-blue）",
+      "invalidName": "名称为空或已被使用",
+      "valueRequired": "请填写值",
+      "cancel": "取消",
+      "add": "添加"
     }
   },
   "status": {
@@ -1503,6 +1523,7 @@
       "afternoon": "下午好",
       "evening": "晚上好"
     },
+    "morningBriefing": "晨间简报",
     "time": {
       "justNow": "刚刚",
       "minutesAgo": "{n} 分钟前",

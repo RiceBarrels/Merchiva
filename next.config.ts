@@ -24,6 +24,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    // /~/staffing and /~/training were folded into /~/personnel — keep the
+    // URLs alive for bookmarks, dashboard widgets, and any Merchiva action
+    // that still references them.
+    return [
+      { source: "/~/staffing",      destination: "/~/personnel", permanent: true },
+      { source: "/~/staffing/todo", destination: "/~/personnel", permanent: true },
+      { source: "/~/training",      destination: "/~/personnel", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

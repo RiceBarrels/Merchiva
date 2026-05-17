@@ -347,7 +347,7 @@ export function ScheduleOverviewWidget() {
       title="Schedule Overview"
       action={
         <Link
-          href="/~/staffing"
+          href="/~/personnel"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           View all <ChevronRight className="h-3 w-3" />

@@ -73,7 +73,7 @@ export async function getTeamForScheduling(
     .map((row: any) => ({
       id: row.id,
       organizationId: row.organizationId,
-      userId: row.userId,
+      userId: typeof row.userId?.toHexString === "function" ? row.userId.toHexString() : String(row.userId),
       role: row.role,
       displayName: row.displayName ?? "",
       email: row.email ?? "",

@@ -28,7 +28,8 @@
     "inventory": "इन्वेंटरी",
     "wasteLog": "अपशिष्ट लॉग",
     "sales": "बिक्री पूर्वानुमान",
-    "staffing": "स्टाफिंग",
+    "personnel": "कार्मिक",
+    "staffing": "शेड्यूल",
     "products": "उत्पाद",
     "reports": "रिपोर्ट",
     "customers": "ग्राहक",
@@ -508,6 +509,25 @@
       "tabCode": "कोड",
       "tabTests": "परीक्षण",
       "tabConsole": "कंसोल"
+    },
+    "tokens": {
+      "colorsLabel": "टोकन",
+      "pickToken": "डिज़ाइन टोकन चुनें"
+    },
+    "tokenPanel": {
+      "title": "डिज़ाइन टोकन",
+      "colors": "रंग",
+      "spacing": "रिक्ति",
+      "textSizes": "टेक्स्ट आकार",
+      "radius": "त्रिज्या",
+      "reset": "डिफ़ॉल्ट पर रीसेट करें",
+      "delete": "कस्टम टोकन हटाएँ",
+      "addCustom": "कस्टम टोकन जोड़ें",
+      "namePlaceholder": "नाम (जैसे brand-blue)",
+      "invalidName": "नाम खाली है या पहले से उपयोग में है",
+      "valueRequired": "मान आवश्यक है",
+      "cancel": "रद्द करें",
+      "add": "जोड़ें"
     }
   },
   "status": {
@@ -1503,6 +1523,7 @@
       "afternoon": "नमस्कार",
       "evening": "शुभ संध्या"
     },
+    "morningBriefing": "सुबह की ब्रीफिंग",
     "time": {
       "justNow": "अभी",
       "minutesAgo": "{n} मिनट पहले",

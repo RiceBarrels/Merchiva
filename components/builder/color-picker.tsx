@@ -5,6 +5,9 @@ import ReactDOM from "react-dom";
 import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
+import { mergedTokensFor, tokenRef, tokenFromValue, type DesignToken } from "@/lib/builder/design-tokens";
+import { useBuilderSite } from "@/lib/builder/site-context";
 
 // ─── Color math ─────────────────────────────────────────────────────────────
 
@@ -159,6 +162,11 @@ export function ColorPicker({
   className,
   trigger,
 }: ColorPickerProps) {
+  const t = useT();
+  const site = useBuilderSite();
+  const colorTokens = mergedTokensFor("color", site?.tokens);
+  const activeToken: DesignToken | null =
+    tokenFromValue(value) ?? colorTokens.find((c) => `var(${c.cssVar})` === value) ?? null;
   const parsed = parseColor(value) ?? { r: 0, g: 0, b: 0, a: 1 };
   const [hsva, setHsva] = useState<HSVA>(() => rgbToHsv(parsed));
   const [hexInput, setHexInput] = useState(() => rgbaToHex(parsed, showAlpha));
@@ -276,7 +284,10 @@ export function ColorPicker({
         {trigger ?? (
           <>
             <span className="absolute inset-0 pointer-events-none" style={{ background: CHECKER_BG }} />
-            <span className="absolute inset-0 pointer-events-none" style={{ backgroundColor: swatchColor }} />
+            <span
+              className="absolute inset-0 pointer-events-none"
+              style={{ backgroundColor: activeToken ? `var(${activeToken.cssVar})` : swatchColor }}
+            />
           </>
         )}
       </button>
@@ -392,6 +403,42 @@ export function ColorPicker({
                 aria-label={`Use ${p}`}
               />
             ))}
+          </div>
+
+          {/* Design tokens — inserts var(--mv-color-…) so the value
+              resolves from globals.css at render time. Includes both the
+              predefined tokens and any user-added custom ones from
+              site.tokens via the BuilderSiteContext. */}
+          <div className="pt-1.5 border-t border-border space-y-1">
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
+              {t("builder.tokens.colorsLabel")}
+            </p>
+            <div className="grid grid-cols-11 gap-1">
+              {colorTokens.map((tok) => {
+                const isActive = activeToken?.cssVar === tok.cssVar;
+                return (
+                  <button
+                    key={tok.cssVar}
+                    type="button"
+                    onClick={() => onChange(tokenRef(tok))}
+                    title={`${tok.label} · var(${tok.cssVar})`}
+                    aria-label={`Use token ${tok.label}`}
+                    className={cn(
+                      "h-4 w-4 rounded-[0.2rem] border transition-transform hover:scale-110",
+                      isActive
+                        ? "border-foreground ring-1 ring-foreground"
+                        : "border-border",
+                    )}
+                    style={{ backgroundColor: `var(${tok.cssVar})` }}
+                  />
+                );
+              })}
+            </div>
+            {activeToken && (
+              <p className="text-[10px] font-mono text-muted-foreground truncate">
+                {activeToken.label} · {activeToken.cssVar}
+              </p>
+            )}
           </div>
         </div>,
         document.body,

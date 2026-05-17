@@ -14,5 +14,8 @@
   },
   "devDependencies": {
     "typescript": "~5.6.2"
+  },
+  "patchedDependencies": {
+    "spacetimedb@2.2.0": "patches/spacetimedb@2.2.0.patch"
   }
 }

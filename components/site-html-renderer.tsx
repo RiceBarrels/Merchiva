@@ -17,6 +17,7 @@ import { Testimonial } from "@/components/site-elements/testimonial";
 import { PricingTable } from "@/components/site-elements/pricing-table";
 import { MembershipElement } from "@/components/site-elements/membership-element";
 import { getSystemValues, resolveValues, type ValueContext } from "@/lib/builder/site-values";
+import { tokenStyleVars } from "@/lib/builder/design-tokens";
 import type { SiteTheme, Product } from "@/lib/types";
 
 // Map of data-widget="…" → React component. Each component receives the
@@ -44,9 +45,13 @@ interface SiteHtmlRendererProps {
   basePath?: string;
   customValues?: Record<string, string>;
   valueContext?: ValueContext;
+  /** Site-level design token overrides (keyed by --mv-* CSS var name).
+   *  Inlined onto the wrapper element so the storefront renders with the
+   *  same brand colors/spacing as the builder preview. */
+  customTokens?: Record<string, string>;
 }
 
-export function SiteHtmlRenderer({ html, theme, products, siteSlug, basePath, customValues, valueContext }: SiteHtmlRendererProps) {
+export function SiteHtmlRenderer({ html, theme, products, siteSlug, basePath, customValues, valueContext, customTokens }: SiteHtmlRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rootsRef = useRef<Root[]>([]);
   const animationCleanupsRef = useRef<Array<() => void>>([]);
@@ -141,8 +146,15 @@ export function SiteHtmlRenderer({ html, theme, products, siteSlug, basePath, cu
     // Re-mount whenever HTML changes — placeholders may have moved
   }, [resolvedHtml, products, siteSlug, basePath]);
 
+  // Merge theme vars + design-token overrides onto the wrapper. The token
+  // overrides win when both define the same custom property.
+  const wrapperStyle: React.CSSProperties = {
+    ...themeVars(theme),
+    ...(tokenStyleVars(customTokens) as React.CSSProperties),
+  };
+
   return (
-    <div style={themeVars(theme)}>
+    <div style={wrapperStyle}>
       {googleFontsUrl && (
         // eslint-disable-next-line @next/next/no-page-custom-font
         <link rel="stylesheet" href={googleFontsUrl} />

@@ -41,6 +41,32 @@ function getOpenRouterVoiceModel() {
   return getOpenRouter().chat(getVoiceModel());
 }
 
+// Curated kaomoji palette the triage model can pick from. Listed in the
+// schema description so the model emits one verbatim. Kept short and
+// mood-tagged so the model can pair the face with the reply's tone. The
+// client's MerchivaWatermark uses whatever string the model returns —
+// values outside this list still render fine, just less consistent.
+const KAOMOJI_PALETTE = [
+  { face: "(◕‿◕)",       mood: "default friendly" },
+  { face: "(•‿•)",       mood: "neutral acknowledgment" },
+  { face: "(｡◕‿◕｡)",     mood: "happy, warm greeting" },
+  { face: "(｡♥‿♥｡)",     mood: "delighted, praise from user" },
+  { face: "(◕‿◕✿)",     mood: "cheerful confirmation" },
+  { face: "ʕ•ᴥ•ʔ",       mood: "casual, chitchat" },
+  { face: "(ᵔᴥᵔ)",       mood: "calm, satisfied" },
+  { face: "(=^･ω･^=)",   mood: "playful, light tone" },
+  { face: "ヽ(•‿•)ノ",   mood: "enthusiastic, celebrating" },
+  { face: "⊂(◉‿◉)つ",   mood: "offering help, hands extended" },
+  { face: "(￣ω￣)",       mood: "thinking, working on it" },
+  { face: "(¬‿¬)",       mood: "smug, slight teasing" },
+  { face: "(；¬＿¬)",     mood: "skeptical, mild concern" },
+  { face: "(・_・;)",     mood: "uncertain, asking clarification" },
+  { face: "(°ロ°) !",     mood: "surprised, noticed an anomaly" },
+  { face: "(╥﹏╥)",       mood: "apologetic, error/failure" },
+  { face: "(>_<)",       mood: "frustrated on user's behalf" },
+  { face: "(￣Д￣)ﾉ",     mood: "warning, something needs attention" },
+] as const;
+
 const triageSchema = z.object({
   needsThinking: z
     .boolean()
@@ -51,6 +77,11 @@ const triageSchema = z.object({
     .string()
     .describe(
       "If needsThinking=false (simple): the FULL reply in user's language — plain text for chitchat, OR text plus ```action``` JSON blocks for simple writes (one block per action). If needsThinking=true (complex): a 1-2 sentence friendly acknowledgment naming what you're about to check. In voice mode: NEVER include action blocks — TTS can't speak them.",
+    ),
+  kaomoji: z
+    .string()
+    .describe(
+      `Pick ONE kaomoji from the palette below that matches the mood of your reply. This face is displayed as a watermark on the chat panel so the user gets ambient feedback about your tone. Return the face EXACTLY as written (the unicode characters, no quotes, no surrounding text). Palette:\n${KAOMOJI_PALETTE.map((k) => `- ${k.face} — ${k.mood}`).join("\n")}\nPick the one that fits — happy/warm faces for praise and easy wins, thinking faces while you're escalating to the heavy model, surprised/concerned for anomalies you spot, apologetic for errors. Default to (◕‿◕) when in doubt.`,
     ),
 });
 
@@ -90,7 +121,7 @@ Spoken acknowledgment examples (adapt — never copy verbatim):
 
 LANGUAGE: write \`message\` in ${languageName}.
 
-FORMATTING (CRITICAL — TTS): plain spoken text only. NO markdown, NO code blocks, NO \`\`\`action\`\`\` blocks, NO JSON, NO bullet lists, NO numbered lists, NO headers. Spell out numbers naturally when it sounds clearer.`;
+FORMATTING (CRITICAL — TTS): plain spoken text only. NO markdown, NO code blocks, NO \`\`\`action\`\`\` blocks, NO JSON, NO bullet lists, NO numbered lists, NO headers. NO emoji of any kind (no 🌟 ✅ 👍 ❤️ 🎉 etc.) — emoji is reserved for the \`kaomoji\` field, never inside \`message\`. Spell out numbers naturally when it sounds clearer.`;
   }
 
   return `You are Mr. Merchiva's triage layer. Read the user's request together with the conversation history, then decide:
@@ -130,7 +161,9 @@ When emitting \`\`\`action\`\`\` blocks (only for case A simple writes), follow 
 - For updatePrice: include productId (if known from context) or productName, plus newPrice
 - For role/task changes: use the IDs from conversation context — if the ID isn't known, ESCALATE instead
 
-FORMATTING for non-action-block content in \`message\`: plain conversational text. Action blocks ARE allowed for simple writes (case A only).`;
+FORMATTING for non-action-block content in \`message\`: plain conversational text. Action blocks ARE allowed for simple writes (case A only).
+
+NO EMOJI: never use emoji (🌟 ✅ 👍 ❤️ 🎉 ✨ 🚀 etc.) in the \`message\` field. The mood expression slot is the \`kaomoji\` field — that's where the face goes. Plain text only in \`message\`, kaomoji is separate.`;
 }
 
 interface MemoryContext {
@@ -285,7 +318,54 @@ User: "remove the 'tagline' value"
 \`\`\`action
 {"action":"deleteBuilderValue","key":"tagline"}
 \`\`\`
-After deletion, any HTML still referencing {tagline} will render the literal text "{tagline}" — offer to clean those up.`;
+After deletion, any HTML still referencing {tagline} will render the literal text "{tagline}" — offer to clean those up.
+
+🎨 DESIGN TOKENS — CSS custom properties on the site wrapper.
+
+When the user pastes a CSS \`:root { --x: y; … }\` block (shadcn / tweakcn theme, design system variables, or arbitrary CSS variables), DO NOT copy the rules into the page HTML. Instead extract every \`--name: value\` declaration and call ONE \`setSiteTokens\` action with all the variables as a JSON map. The system injects them onto the site wrapper so any HTML that references \`var(--name)\` resolves them.
+
+Action format:
+\`\`\`action
+{"action":"setSiteTokens","tokens":{"--background":"oklch(0.97 0 0)","--primary":"oklch(0.48 0.12 263)"},"replace":false}
+\`\`\`
+- \`tokens\`: object mapping CSS variable name → value. Keys may include or omit the leading \`--\`. Values are raw CSS (oklch / hex / rgb / px / rem / strings).
+- \`replace\`: if true, wipe ALL existing site tokens first (use when the user says "set the theme to this", "use these as the theme", or pastes a complete \`:root\` block they want as the authoritative theme). Default false (merge).
+- To remove a token, pass it with an empty string value, or use \`deleteSiteTokens({keys:[…]})\`.
+
+Built-in design tokens (already defined in globals.css — both \`:root\` and \`.dark\`):
+- Colors (shadcn-style semantic palette): --background, --foreground, --card, --card-foreground, --popover, --popover-foreground, --primary, --primary-foreground, --secondary, --secondary-foreground, --muted, --muted-foreground, --accent, --accent-foreground, --destructive, --destructive-foreground, --border, --input, --ring, --chart-1…5, --sidebar, --sidebar-foreground, --sidebar-primary, --sidebar-accent, --sidebar-border, --sidebar-ring
+- Fonts: --font-sans, --font-serif, --font-mono
+- Base radius: --radius (default 0.5rem). Computed: --radius-sm, --radius-md, --radius-lg, --radius-xl
+- Shadows: --shadow-2xs, --shadow-xs, --shadow-sm, --shadow, --shadow-md, --shadow-lg, --shadow-xl, --shadow-2xl
+- Spacing (Merchiva extension): --mv-space-{xs,sm,md,lg,xl,2xl,3xl}
+- Text sizes (Merchiva extension): --mv-text-{xs,sm,base,lg,xl,2xl,3xl,4xl,5xl}
+
+The user can override any of these via setSiteTokens — same action, pass the CSS var name as the key. For brand-new tokens that don't exist yet, use the \`--mv-color-{slug}\` / \`--mv-space-{slug}\` etc. namespace so they show up in the corresponding builder picker dropdown.
+
+When you setSiteTokens, also consider whether the page HTML should be updated to USE the new variables. E.g. if the user pastes a theme with \`--primary\`, follow up with editBuilderHtml to swap a hard-coded \`background:#1c1917\` for \`background:var(--primary)\` on the appropriate elements. Ask the user if they want that update applied — don't assume.
+
+EXAMPLE — user pastes:
+\`\`\`
+:root {
+  --background: oklch(0.9755 0.0045 258.3245);
+  --primary: oklch(0.4815 0.1178 263.3758);
+  --primary-foreground: oklch(0.9856 0.0278 98.0540);
+}
+\`\`\`
+Correct response:
+我把这套主题套到了站点上。新加的 CSS 变量已经写到 site tokens 里了；之后 HTML 里用 var(--primary) 之类的引用都会解析到这套值。
+
+\`\`\`action
+{"action":"setSiteTokens","tokens":{"--background":"oklch(0.9755 0.0045 258.3245)","--primary":"oklch(0.4815 0.1178 263.3758)","--primary-foreground":"oklch(0.9856 0.0278 98.0540)"},"replace":false}
+\`\`\`
+
+EXAMPLE — user says "use this as the only theme, replace anything I had before":
+Same action with \`"replace":true\`.
+
+EXAMPLE — user says "delete --primary":
+\`\`\`action
+{"action":"deleteSiteTokens","keys":["--primary"]}
+\`\`\``;
 
   return `🏗️ BUILDER MODE (HTML) — You are editing a website page as raw HTML.
 
@@ -738,6 +818,7 @@ RULES:
 - Be concise: use bullet points, mono numbers, short sentences
 - If data is missing, say so honestly
 - IMPORTANT: When scheduling shifts, you can ONLY assign shifts to existing team members listed in the "team" array in LIVE STORE DATA. The "team" array contains each member's id, name, and role. The staffName in addShift MUST exactly match a name from the team list. If the user asks to schedule a shift for someone not on the team, refuse and show the current team roster so they can pick a valid name or add the person first. You do NOT need to provide memberId — the system resolves it automatically from staffName.
+- TEAM MEMBERSHIP: To add a person to the team, prefer **inviteTeamMember(email, role, orgName?, inviterEmail?)** — this sends an email invite with a sign-up link. Use this when the user gives an email address ("invite alice@example.com as a manager"). Only fall back to **addStaffMember(name, role, hourlyRate?)** when you only have a name (e.g. for placeholders / contractors who won't log in). For inviteTeamMember, always pass orgName = LIVE STORE DATA.storeName so the email reads naturally.
 - IMPORTANT: When scheduling shifts for multiple days (e.g. "next week Mon-Fri"), output ONE \`\`\`action block PER DAY. Each day needs its own separate addShift action with the specific date. Never combine multiple days into one action.
 - CRITICAL: When the user asks to ADD/CREATE/EDIT/DELETE anything, you MUST output the machine-readable action blocks. NEVER just describe what you would do. Output the actual \`\`\`action blocks.
 - For role/position management, use the addRole, updateRole, deleteRole actions. For role tasks, use addRoleTask, updateRoleTask, deleteRoleTask actions.
@@ -753,6 +834,39 @@ SCHEDULING RULES:
 - When asked to "swap" two shifts, output two updateShift actions that reassign each person.
 - Check "timeOffRequests" — if someone has approved time off, do NOT schedule them for those dates.
 - Check "shiftTrades" — mention pending trades that may affect the schedule.
+
+AUTO-SCHEDULE BEHAVIOR (CRITICAL — do NOT ask the user for details when these triggers fire):
+Triggers: the user asks to schedule but DOESN'T name a person — e.g. "排一下周日的班", "auto schedule Sunday", "帮我排下周三", "fill the schedule for tomorrow", "自动搞", "you decide", "排个班", "排周末".
+What to do INSTEAD of asking back:
+  1. Look at \`upcomingShifts\` and the last week of shifts in the LIVE STORE DATA. Identify recurring patterns: which member usually works that weekday and at what time.
+  2. **Check \`openingHours\` FIRST**. If \`hoursStatus === "unset"\`, do NOT invent shifts — reply with ONE sentence asking the user to set opening hours at /~/settings, optionally followed by a fallback proposal in PROSE (no action blocks). If \`hoursStatus === "set"\`, the per-day shape is \`{ open: "HH:MM", close: "HH:MM", closed: bool }\` keyed by mon/tue/.../sun. Skip days where \`closed === true\`. Clamp shift \`startTime\` to ≥ open and \`endTime\` to ≤ close.
+  3. **Check \`upcomingHolidays\`**. Each entry is \`{ date, name, kind, countryCode }\`. If the target date matches one, mention the holiday in one short sentence in your reply (e.g. "Saturday is Memorial Day — expect higher foot traffic, staffing both members") and consider scheduling MORE coverage (extra person, longer shift). Don't auto-close on holidays unless the user said so.
+  4. If a clear historical pattern exists → schedule the same person at the same time. Reuse the historical \`shiftType\`.
+  5. If no historical pattern for that weekday → use the most common \`shiftPresets\` entry, or fall back to a sensible default within opening hours (morning = open → open+7h, afternoon = midday → close).
+  6. If \`team\` has only 1–2 active members → schedule ALL of them for the day (don't try to be clever about "off days" without explicit time-off data).
+  7. Filter the team by \`availability\` for that weekday and \`timeOffRequests\` (skip anyone with approved time off on that date).
+  8. ALWAYS include \`staffRoles\`: pull the role name(s) from the matched team member's \`role\` field. Pass an array, e.g. \`"staffRoles":["Manager"]\`. NEVER omit this or pass an empty array — empty roles make the schedule grid render incomplete and the AI is rejected by the reducer.
+  9. Output one \`addShift\` action PER person PER day. Don't combine. Don't ask. Don't return prose explaining "could you tell me…".
+  10. If the team list is genuinely empty, THEN say so and ask the user to add team members first.
+The user said "自动" — they explicitly do NOT want to be asked. Match that intent.
+
+EXAMPLE — hours unset:
+User: "排一下周日的班"
+Context: \`hoursStatus="unset"\`, team has Muheng & Colin.
+Correct response (PROSE ONLY — no action blocks):
+还没设置营业时间，无法准确排班。请到 /~/settings → 营业时间 配置每日开关时段，然后再让我排。如果只是想按上周日的模式继续，我可以按 07:00–14:00 / 14:00–22:00 来排，告诉我可以就执行。
+
+EXAMPLE — hours set, holiday flagged:
+User: "auto schedule Saturday"
+Context: \`openingHours.sat = {open:"08:00",close:"22:00"}\`, \`upcomingHolidays\` includes 2026-05-25 Memorial Day.
+Correct response:
+周六是 Memorial Day，客流可能高于平时，安排两人:
+\`\`\`action
+{"action":"addShift","staffName":"Muheng Fan","date":"2026-05-25","startTime":"08:00","endTime":"15:00","shiftType":"morning","staffRoles":["owner"]}
+\`\`\`
+\`\`\`action
+{"action":"addShift","staffName":"Colin Wilson","date":"2026-05-25","startTime":"14:00","endTime":"22:00","shiftType":"afternoon","staffRoles":["manager"]}
+\`\`\`
 
 ROLE/POSITION RULES:
 - The "roles" array includes each role's ID, tasks, and description. Use the role ID for updateRole/deleteRole.
@@ -790,10 +904,19 @@ Correct response:
 \`\`\`
 
 User: "添加一个员工叫小明"
+(only a name — use addStaffMember for placeholder rows)
 Correct response:
 \`\`\`action
 {"action":"addStaffMember","name":"小明","role":"Staff","hourlyRate":18.00}
 \`\`\`
+
+User: "邀请 alice@example.com 当 manager"
+(has an email — use inviteTeamMember so an actual invite email goes out)
+Correct response:
+\`\`\`action
+{"action":"inviteTeamMember","email":"alice@example.com","role":"manager","orgName":"BJ Cafe"}
+\`\`\`
+邀请已发送，对方会收到一封带注册链接的邮件，7 天内有效。
 
 User: "删除清洁员岗位"
 Correct response:
@@ -828,6 +951,19 @@ Correct response:
 \`\`\`
 (... one action per person per day)
 
+User: "给排一下周日的班" / "auto schedule Sunday" / "自动搞"
+(no person named — TRIGGER AUTO-SCHEDULE BEHAVIOR. Do NOT ask back.)
+Suppose LIVE STORE DATA shows team=[{name:"Muheng Fan",role:"owner"}, {name:"Colin Wilson",role:"manager"}] and upcomingShifts on past Sundays were Muheng 07:00–14:00, Colin 14:00–22:00.
+Correct response:
+好的，按上周日的排班继续：
+\`\`\`action
+{"action":"addShift","staffName":"Muheng Fan","date":"2026-05-17","startTime":"07:00","endTime":"14:00","shiftType":"morning","staffRoles":["owner"]}
+\`\`\`
+\`\`\`action
+{"action":"addShift","staffName":"Colin Wilson","date":"2026-05-17","startTime":"14:00","endTime":"22:00","shiftType":"afternoon","staffRoles":["manager"]}
+\`\`\`
+(Each shift carries staffRoles from the matched team member. NEVER ask the user to provide names — pick from team and recent patterns.)
+
 User: "approve Sarah's time off request"
 Correct response:
 \`\`\`action
@@ -840,7 +976,28 @@ Correct response:
 {"action":"updateShift","shiftId":"the-shift-id","startTime":"17:00","endTime":"23:00","shiftType":"evening"}
 \`\`\`
 
-END OF EXAMPLES. Always output the action blocks, never just text descriptions.
+User: "增加培训文档" / "add a training day" / "新建培训"
+Wrong response: "好的，已为您添加培训文档" — DO NOT just claim success in text. You MUST emit an addTrainingDay action block. If the user hasn't provided a title yet, ASK ONCE for it, then on their reply emit the action.
+Correct response (when user provided "标题：如何制作拿铁 内容：咖啡机操作步骤、牛奶打发技巧、拉花基础等"):
+好的，我为您添加这条培训：
+\`\`\`action
+{"action":"addTrainingDay","title":"如何制作拿铁","description":"<h2>咖啡机操作步骤</h2><ol><li>预热咖啡机</li><li>研磨咖啡豆</li><li>压实粉饼</li></ol><h2>牛奶打发技巧</h2><ul><li>使用全脂冷牛奶</li><li>蒸汽棒位置贴近液面，制造旋涡</li></ul><h2>拉花基础</h2><p>从高处倒入断奶，待杯子半满后降低壶口、加快流速完成图案。</p>"}
+\`\`\`
+
+User: "在培训第三天加一个目标：能独立完成5杯拿铁拉花"
+Correct response:
+\`\`\`action
+{"action":"addTrainingObjective","dayNumber":3,"title":"独立完成5杯拿铁拉花","description":"无需协助，在20分钟内完成5杯心形或叶子拉花，合格率≥80%"}
+\`\`\`
+
+User: "删除第二天的培训"
+Correct response:
+\`\`\`action
+{"action":"deleteTrainingDay","dayNumber":2}
+\`\`\`
+⚠️ 这会同时删除该天下所有培训目标和评分。
+
+END OF EXAMPLES. Always output the action blocks, never just text descriptions. If you find yourself writing "已为您添加…" / "已为您删除…" / "Added…" without a preceding \`\`\`action\`\`\` block, STOP and write the block instead — those are hallucinations of success, the action never happened without the block.
 - When suggesting shifts, check existing shifts to avoid conflicts
 - NEVER invent or fabricate team member names for shifts. The staffName in addShift MUST exactly match a name from the team list. If the team list is empty, tell the user to add team members first.`;
 }
@@ -936,7 +1093,7 @@ export async function POST(req: NextRequest) {
         { role: "user" as const, content: message },
       ];
 
-      let triage: { needsThinking: boolean; message: string };
+      let triage: { needsThinking: boolean; message: string; kaomoji?: string };
       try {
         const triageResult = await generateObject({
           model: triageModel,
@@ -957,7 +1114,7 @@ export async function POST(req: NextRequest) {
         });
         triage = triageResult.object;
         console.log(
-          `[store-ai] Triage (${callMode}/${triageModelName}): needsThinking=${triage.needsThinking}, msg="${triage.message.slice(0, 120)}"`,
+          `[store-ai] Triage (${callMode}/${triageModelName}): needsThinking=${triage.needsThinking}, kaomoji="${triage.kaomoji ?? ""}", msg="${triage.message.slice(0, 120)}"`,
         );
       } catch (e) {
         console.error(
@@ -968,11 +1125,18 @@ export async function POST(req: NextRequest) {
       }
 
       const encoder = new TextEncoder();
-      const responseHeaders = {
+      // Triage's kaomoji is surfaced as a response header so the client
+      // can pin the chat watermark to that face before consuming the body.
+      // Headers must be ASCII-safe; we base64-encode the UTF-8 bytes.
+      const kaomojiHeader = triage.kaomoji
+        ? Buffer.from(triage.kaomoji, "utf-8").toString("base64")
+        : "";
+      const responseHeaders: Record<string, string> = {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         "X-Accel-Buffering": "no",
       };
+      if (kaomojiHeader) responseHeaders["X-Merchiva-Kaomoji"] = kaomojiHeader;
 
       // Direct answer — no thinking model needed.
       if (!triage.needsThinking) {

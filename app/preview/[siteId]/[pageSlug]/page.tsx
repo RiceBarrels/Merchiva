@@ -92,6 +92,7 @@ export default function PreviewSubPage({
           products={products}
           basePath={`/preview/${siteId}`}
           customValues={site.values}
+          customTokens={site.tokens}
           valueContext={{ siteName: site.name }}
         />
       ) : (

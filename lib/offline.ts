@@ -33,7 +33,13 @@ export interface QueuedMutation {
   action: string; // reducer name
   args: Record<string, unknown>;
   timestamp: string;
+  // Number of failed replay attempts. Mutations are dropped after MAX_REPLAY_ATTEMPTS
+  // so a single broken queued reducer (e.g. stale args after a schema change)
+  // doesn't keep re-failing on every reconnection.
+  attempts?: number;
 }
+
+const MAX_REPLAY_ATTEMPTS = 3;
 
 // ─── IndexedDB helpers ──────────────────────────────────────────────────────
 
@@ -298,12 +304,27 @@ export const mutationQueue = {
           s.delete(mutation.id) as IDBRequest<undefined>
         );
       } catch (err) {
+        const attempts = (mutation.attempts ?? 0) + 1;
         console.error(
-          `[mutationQueue] Failed to replay "${mutation.action}":`,
+          `[mutationQueue] Failed to replay "${mutation.action}" (attempt ${attempts}/${MAX_REPLAY_ATTEMPTS}):`,
           err
         );
         failed++;
-        // Leave the failed mutation in the queue for a future retry
+        if (attempts >= MAX_REPLAY_ATTEMPTS) {
+          // Permanently drop the broken mutation so a single bad row doesn't
+          // wedge the queue forever (e.g. stale args after a schema change).
+          console.warn(
+            `[mutationQueue] Dropping "${mutation.action}" after ${attempts} failed attempts`
+          );
+          await withStore(MUTATION_STORE, "readwrite", (s) =>
+            s.delete(mutation.id) as IDBRequest<undefined>
+          );
+        } else {
+          // Bump the attempts counter and leave it in the queue for the next reconnect.
+          await withStore(MUTATION_STORE, "readwrite", (s) =>
+            s.put({ ...mutation, attempts }) as IDBRequest<IDBValidKey>
+          );
+        }
       }
     }
 

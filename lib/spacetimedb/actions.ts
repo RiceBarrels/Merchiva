@@ -196,6 +196,78 @@ export async function deleteRoleTask(id: string): Promise<void> {
   return conn().reducers.deleteRoleTask({ organizationId: orgId(), roleTaskId: id });
 }
 
+// ─── Role Task Assignments (todos) ────────────────────────────────────────────
+
+export async function assignRoleTask(data: {
+  taskId: string;
+  memberId: string;
+  dueAt: Date;
+  organizationId?: string;
+}): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).assignRoleTask({
+    organizationId: data.organizationId ?? orgId(),
+    taskId: data.taskId,
+    memberId: data.memberId,
+    dueAt: data.dueAt,
+  });
+}
+
+export async function completeRoleTask(data: {
+  assignmentId: string;
+  evidenceUrl?: string | null;
+  note?: string | null;
+  organizationId?: string;
+}): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).completeRoleTask({
+    organizationId: data.organizationId ?? orgId(),
+    assignmentId: data.assignmentId,
+    evidenceUrl: data.evidenceUrl ?? undefined,
+    note: data.note ?? undefined,
+  });
+}
+
+export async function skipRoleTask(data: {
+  assignmentId: string;
+  reason?: string;
+  organizationId?: string;
+}): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).skipRoleTask({
+    organizationId: data.organizationId ?? orgId(),
+    assignmentId: data.assignmentId,
+    reason: data.reason ?? undefined,
+  });
+}
+
+export async function deleteRoleTaskAssignment(id: string, organizationId?: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).deleteRoleTaskAssignment({
+    organizationId: organizationId ?? orgId(),
+    assignmentId: id,
+  });
+}
+
+// One-shot completion: the staff member is looking at the role task and
+// "completes" it directly with evidence — no pre-assigned row required.
+export async function recordTaskCompletion(data: {
+  taskId: string;
+  memberId?: string;
+  evidenceUrl?: string | null;
+  note?: string | null;
+  organizationId?: string;
+}): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).recordTaskCompletion({
+    organizationId: data.organizationId ?? orgId(),
+    taskId: data.taskId,
+    memberId: data.memberId ?? undefined,
+    evidenceUrl: data.evidenceUrl ?? undefined,
+    note: data.note ?? undefined,
+  });
+}
+
 // ─── Shift Presets (read from SpacetimeDB table, no write reducers yet)
 
 export async function getShiftPresets(_orgId?: string): Promise<ShiftPreset[]> {
@@ -388,7 +460,7 @@ export async function refundPayment(paymentId: string, amount?: number, reason?:
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createConversation(organizationId: string, type: string, memberUserIds: string[], name?: string): Promise<void> {
-  return conn().reducers.createConversation({ organizationId, type, name: name ?? "", memberUserIds });
+  return conn().reducers.createConversation({ organizationId, type, name: name ?? "", memberUserIds: JSON.stringify(memberUserIds) });
 }
 
 export async function sendMessage(conversationId: string, content: string, _replyToId?: string, _attachment?: unknown): Promise<void> {
@@ -1061,5 +1133,21 @@ export async function setAutoCommitSchedules(autoCommit: boolean): Promise<void>
   return insightsReducer("setAutoCommitSchedules")({
     organizationId: orgId(),
     autoCommit,
+  });
+}
+
+// Weekly opening hours JSON. Shape (per day, mon..sun):
+//   { open: "HH:MM", close: "HH:MM", closed: boolean }
+// Null clears the value; otherwise the JSON string is stored verbatim.
+export async function updateOpeningHours(data: {
+  openingHours?: string | null;
+  countryCode?: string | null;
+  organizationId?: string;
+}): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).updateOpeningHours({
+    organizationId: data.organizationId ?? orgId(),
+    openingHours: data.openingHours ?? undefined,
+    countryCode: data.countryCode ?? undefined,
   });
 }

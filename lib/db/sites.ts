@@ -34,7 +34,7 @@ function parseJsonField<T>(value: string | T, fallback: T): T {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function siteFromRow(row: any): Site {
   const rawFeatures = parseJsonField(row.features, {} as Record<string, unknown>);
-  const { _values, ...restFeatures } = rawFeatures as Record<string, unknown>;
+  const { _values, _tokens, ...restFeatures } = rawFeatures as Record<string, unknown>;
   return {
     id: row.id.toString(),
     organizationId: row.organizationId,
@@ -45,6 +45,7 @@ function siteFromRow(row: any): Site {
     published: row.published ?? false,
     customDomain: row.customDomain ?? null,
     values: _values && typeof _values === "object" ? (_values as Record<string, string>) : undefined,
+    tokens: _tokens && typeof _tokens === "object" ? (_tokens as Record<string, string>) : undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

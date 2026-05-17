@@ -28,7 +28,14 @@ import {
   addCoupon,
   updateCoupon,
   deleteCoupon,
+  addTrainingDay,
+  updateTrainingDay,
+  deleteTrainingDay,
+  addTrainingObjective,
+  updateTrainingObjective,
+  deleteTrainingObjective,
 } from "@/lib/spacetimedb/actions";
+import { getConnection } from "@/lib/spacetimedb/client";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -41,7 +48,8 @@ export type ActionCategory =
   | "suppliers"
   | "staffing"
   | "notifications"
-  | "builder";
+  | "builder"
+  | "training";
 
 export interface ParameterDef {
   type: "string" | "number" | "boolean" | "array" | "object";
@@ -185,7 +193,7 @@ register({
 
 register({
   name: "addStaffMember",
-  description: "Add a new team member",
+  description: "Add a new team member as a placeholder (no email invite). Use inviteTeamMember instead when you have the person's email and want them to sign in.",
   category: "staffing",
   parameters: {
     name: { type: "string", required: true, description: "Staff member name" },
@@ -203,6 +211,95 @@ register({
     });
   },
   toastMessage: (p) => `Staff added: ${p.name}`,
+});
+
+// Invite a person by email to join the org. Goes through the same flow the
+// Settings page uses: inviteToOrg reducer creates an OrgInvitation row, we
+// poll for its token, then POST to /api/team/send-invite-email to actually
+// send the email. The recipient lands at /invite/{token} when they click it.
+register({
+  name: "inviteTeamMember",
+  description:
+    "Invite a person to join the organization by email. Creates an invitation row and sends an invite email with a sign-up link. Use this when the user gives you an email address (not just a name).",
+  category: "staffing",
+  parameters: {
+    email: { type: "string", required: true, description: "Email address to invite" },
+    role: {
+      type: "string",
+      required: false,
+      description: "Role to invite as: 'staff' (default), 'manager', or 'owner'. Only owners can invite managers.",
+      enum: ["staff", "manager", "owner"],
+    },
+    orgName: {
+      type: "string",
+      required: false,
+      description:
+        "Display name of the organization, used in the invite email. Read from `storeName` in LIVE STORE DATA.",
+    },
+    inviterEmail: {
+      type: "string",
+      required: false,
+      description:
+        "Email of the person sending the invite (you, the current user). The email greeting uses this — read it from the conversation if known; otherwise the placeholder 'a teammate' is used.",
+    },
+  },
+  requiredPermission: { section: "team", action: "edit" },
+  riskLevel: "medium",
+  execute: async (p) => {
+    const email = String(p.email ?? "").trim();
+    if (!email) throw new Error("email is required");
+    const role = String(p.role ?? "staff").toLowerCase();
+    if (!["staff", "manager", "owner"].includes(role)) {
+      throw new Error(`Invalid role: ${role}`);
+    }
+
+    // Default permissions blob — same shape the Settings UI uses.
+    const { defaultPermissions } = await import("@/lib/db/team");
+    const permissions = JSON.stringify(defaultPermissions());
+
+    const { inviteToOrg } = await import("@/lib/spacetimedb/actions");
+    await inviteToOrg({ email, role, permissions });
+
+    // Poll for the freshly-created invitation row so we can email the token.
+    // SpacetimeDB subscription lag is typically <500 ms; cap at ~3 s.
+    const { getInvitations } = await import("@/lib/db/team");
+    const { getActiveOrgId } = await import("@/lib/spacetimedb/client");
+    const orgIdValue = getActiveOrgId();
+    let token: string | null = null;
+    for (let attempt = 0; attempt < 12 && !token; attempt++) {
+      await new Promise((r) => setTimeout(r, 250));
+      try {
+        const fresh = await getInvitations(orgIdValue);
+        const match = fresh
+          .filter((inv) => inv.email.toLowerCase() === email.toLowerCase() && !inv.acceptedAt)
+          .sort((a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime())[0];
+        if (match) token = match.token;
+      } catch {
+        // ignore intermittent fetch errors during early subscription
+      }
+    }
+
+    if (!token) {
+      // The invitation row was created but we couldn't fetch its token to email.
+      // The user can still resend from /~/settings → Team.
+      throw new Error(
+        "Invitation created but the email could not be queued — open /~/settings → Team to resend.",
+      );
+    }
+
+    const orgName = String(p.orgName ?? "your team");
+    const inviterEmail = String(p.inviterEmail ?? "a teammate");
+    const res = await fetch("/api/team/send-invite-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: email, token, orgName, inviterEmail, role }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(`Email send failed: ${detail.slice(0, 200)}`);
+    }
+  },
+  toastMessage: (p) => `Invite sent to ${String(p.email ?? "")}`,
 });
 
 register({
@@ -1066,6 +1163,46 @@ register({
 });
 
 register({
+  name: "setSiteTokens",
+  description:
+    "Bulk-write design tokens (CSS custom properties) onto the current site. Use this when the user pastes a `:root { --x: y; … }` block or a tweakcn/shadcn theme — extract the variables and pass them as a JSON map. Keys can be plain (\"background\") or already prefixed (\"--background\"); the system will normalize them. Values are raw CSS (e.g. \"oklch(0.97 0 0)\", \"#1c1917\", \"16px\"). Set `replace: true` to wipe the site's existing tokens before applying (use when the user says \"set the theme to this\"); otherwise the call merges with existing tokens. To remove a token, pass an empty string for that key.",
+  category: "builder",
+  parameters: {
+    tokens: { type: "object", required: true, description: "Map of CSS variable name → value. Keys may omit the leading \"--\"." },
+    replace: { type: "boolean", required: false, description: "If true, clear existing site.tokens before applying. Default false (merge)." },
+  },
+  riskLevel: "medium",
+  execute: async (p) => {
+    const raw = p.tokens;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    dispatchBuilderEvent("builder:set-tokens", {
+      tokens: raw as Record<string, string>,
+      replace: Boolean(p.replace),
+    });
+  },
+  toastMessage: (p) => {
+    const count = p.tokens && typeof p.tokens === "object" ? Object.keys(p.tokens).length : 0;
+    return p.replace ? `Theme replaced (${count} tokens)` : `${count} token${count === 1 ? "" : "s"} applied`;
+  },
+});
+
+register({
+  name: "deleteSiteTokens",
+  description: "Remove one or more design tokens from the site by CSS variable name.",
+  category: "builder",
+  parameters: {
+    keys: { type: "array", required: true, description: "CSS variable names to remove (with or without leading \"--\")." },
+  },
+  riskLevel: "low",
+  execute: async (p) => {
+    const keys = Array.isArray(p.keys) ? (p.keys as unknown[]).map(String) : [];
+    if (keys.length === 0) return;
+    dispatchBuilderEvent("builder:delete-tokens", { keys });
+  },
+  toastMessage: (p) => `${Array.isArray(p.keys) ? p.keys.length : 0} token(s) removed`,
+});
+
+register({
   name: "deleteBuilderValue",
   description: "Remove a custom site value by key. References to it in HTML will fall back to the literal {key} text.",
   category: "builder",
@@ -1130,6 +1267,284 @@ register({
   toastMessage: () => "Site settings updated",
 });
 
+// ─── Training Curriculum ──────────────────────────────────────────────────────
+//
+// Mr. Merchiva can author and edit the daily training curriculum used by the
+// Training page. The store reducers operate on `dayId` (UUID). For convenience
+// — and because the model usually refers to days by their human number ("Day 3")
+// — every update/delete action also accepts a `dayNumber` and resolves it to a
+// `dayId` by inspecting the locally subscribed `trainingDay` rows. The lookup
+// is scoped to the active org via the standard auth subscription filter.
+//
+// Content note: `description` is rich-text HTML produced by Quill. The model
+// may emit raw HTML directly and it will render identically in the editor and
+// the read views (shared `.merchiva-quill-prose` styling).
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+interface CachedTrainingDay {
+  id: string;
+  organizationId: string;
+  dayNumber: number;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+}
+
+interface CachedTrainingObjective {
+  id: string;
+  organizationId: string;
+  dayId: string;
+  text: string;
+  sortOrder: number;
+}
+
+function readTrainingDays(): CachedTrainingDay[] {
+  const c = getConnection();
+  if (!c) return [];
+  try {
+    const iter = (c as any).db?.trainingDay?.iter?.();
+    if (!iter) return [];
+    return Array.from(iter as Iterable<any>).map((r) => ({
+      id: r.id?.toString?.() ?? String(r.id),
+      organizationId: r.organizationId,
+      dayNumber: Number(r.dayNumber),
+      title: String(r.title ?? ""),
+      description: r.description ?? null,
+      sortOrder: Number(r.sortOrder ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function readTrainingObjectives(): CachedTrainingObjective[] {
+  const c = getConnection();
+  if (!c) return [];
+  try {
+    const iter = (c as any).db?.trainingObjective?.iter?.();
+    if (!iter) return [];
+    return Array.from(iter as Iterable<any>).map((r) => ({
+      id: r.id?.toString?.() ?? String(r.id),
+      organizationId: r.organizationId,
+      dayId: r.dayId,
+      text: String(r.text ?? ""),
+      sortOrder: Number(r.sortOrder ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function resolveDay(p: Record<string, unknown>): CachedTrainingDay {
+  const id = p.dayId ? String(p.dayId) : null;
+  const num = p.dayNumber != null ? Number(p.dayNumber) : null;
+  const days = readTrainingDays();
+  if (id) {
+    const hit = days.find((d) => d.id === id);
+    if (hit) return hit;
+  }
+  if (num != null && !Number.isNaN(num)) {
+    const hit = days.find((d) => d.dayNumber === num);
+    if (hit) return hit;
+  }
+  throw new Error("Day not found — provide a valid dayId or dayNumber");
+}
+
+function nextObjectiveSort(dayId: string): number {
+  const list = readTrainingObjectives().filter((o) => o.dayId === dayId);
+  return list.length === 0
+    ? 0
+    : Math.max(...list.map((o) => o.sortOrder)) + 1;
+}
+
+register({
+  name: "addTrainingDay",
+  description:
+    "Add a new day to the training curriculum. Provide a title and optional rich-text HTML content (description). The new day goes to the end unless dayNumber/sortOrder are set.",
+  category: "training",
+  parameters: {
+    title: { type: "string", required: true, description: "Day title, e.g. 'Espresso Pull'" },
+    description: {
+      type: "string",
+      required: false,
+      description:
+        "Rich-text HTML content for the day (Quill output: <h1>, <h2>, <p>, <ul>, <ol>, <blockquote>, <strong>, <em>, <code>, <a>, <img>). Plain text is also accepted.",
+    },
+    dayNumber: { type: "number", required: false, description: "1-based day number; defaults to last + 1" },
+    sortOrder: { type: "number", required: false, description: "Display order; defaults to last + 1" },
+  },
+  requiredPermission: { section: "staffing", action: "edit" },
+  riskLevel: "medium",
+  execute: async (p) => {
+    const existing = readTrainingDays();
+    const fallback = existing.length;
+    await addTrainingDay({
+      dayNumber:
+        p.dayNumber != null ? Math.max(1, Number(p.dayNumber)) : fallback + 1,
+      title: String(p.title ?? "Untitled day"),
+      description: p.description ? String(p.description) : null,
+      sortOrder:
+        p.sortOrder != null ? Math.max(0, Number(p.sortOrder)) : fallback,
+    });
+  },
+  toastMessage: (p) => `Training day added: ${p.title ?? "Untitled day"}`,
+});
+
+register({
+  name: "updateTrainingDay",
+  description:
+    "Edit an existing curriculum day. Provide dayId OR dayNumber to identify the day, then any of title / description (HTML) / sortOrder / dayNumber.",
+  category: "training",
+  parameters: {
+    dayId: { type: "string", required: false, description: "Day UUID (preferred)" },
+    dayNumber: { type: "number", required: false, description: "Existing day number to identify the day, if dayId is not known" },
+    title: { type: "string", required: false, description: "New title" },
+    description: {
+      type: "string",
+      required: false,
+      description:
+        "New rich-text HTML content for the day. Pass an empty string to clear.",
+    },
+    newDayNumber: { type: "number", required: false, description: "Change which day-number this entry occupies" },
+    sortOrder: { type: "number", required: false, description: "Display order" },
+  },
+  requiredPermission: { section: "staffing", action: "edit" },
+  riskLevel: "medium",
+  execute: async (p) => {
+    const day = resolveDay(p);
+    const nextTitle = p.title != null ? String(p.title) : day.title;
+    const nextDescRaw =
+      "description" in p ? (p.description == null ? null : String(p.description)) : day.description;
+    const nextDesc = nextDescRaw && nextDescRaw.trim() ? nextDescRaw : null;
+    const nextDayNumber =
+      p.newDayNumber != null ? Math.max(1, Number(p.newDayNumber)) : day.dayNumber;
+    const nextSort =
+      p.sortOrder != null ? Math.max(0, Number(p.sortOrder)) : day.sortOrder;
+    await updateTrainingDay(day.id, {
+      dayNumber: nextDayNumber,
+      title: nextTitle,
+      description: nextDesc,
+      sortOrder: nextSort,
+    });
+  },
+  toastMessage: (p) => `Training day updated${p.dayId ?? p.dayNumber ? `: ${p.dayId ?? `Day ${p.dayNumber}`}` : ""}`,
+});
+
+register({
+  name: "deleteTrainingDay",
+  description:
+    "Delete a curriculum day. Cascades to its objectives and any saved grades for that day.",
+  category: "training",
+  parameters: {
+    dayId: { type: "string", required: false, description: "Day UUID (preferred)" },
+    dayNumber: { type: "number", required: false, description: "Day number if dayId is unknown" },
+  },
+  requiredPermission: { section: "staffing", action: "edit" },
+  riskLevel: "high",
+  execute: async (p) => {
+    const day = resolveDay(p);
+    await deleteTrainingDay(day.id);
+  },
+  toastMessage: (p) => `Training day deleted${p.dayNumber ? ` (Day ${p.dayNumber})` : ""}`,
+});
+
+register({
+  name: "addTrainingObjective",
+  description:
+    "Add an objective/attachment to a curriculum day. Identify the day via dayId or dayNumber. `text` is the objective description; `mediaUrl` + `mediaType` attach an image or video.",
+  category: "training",
+  parameters: {
+    dayId: { type: "string", required: false, description: "Day UUID (preferred)" },
+    dayNumber: { type: "number", required: false, description: "Day number, e.g. 3" },
+    text: { type: "string", required: true, description: "Objective text (plain or HTML)" },
+    mediaUrl: { type: "string", required: false, description: "Optional uploaded asset URL" },
+    mediaType: {
+      type: "string",
+      required: false,
+      description: "Media kind",
+      enum: ["image", "video"],
+    },
+    sortOrder: { type: "number", required: false, description: "Display order; defaults to end of list" },
+  },
+  requiredPermission: { section: "staffing", action: "edit" },
+  riskLevel: "medium",
+  execute: async (p) => {
+    const day = resolveDay(p);
+    const mediaType =
+      p.mediaType === "image" || p.mediaType === "video" ? (p.mediaType as "image" | "video") : null;
+    await addTrainingObjective({
+      dayId: day.id,
+      text: String(p.text ?? ""),
+      mediaUrl: p.mediaUrl ? String(p.mediaUrl) : null,
+      mediaType,
+      sortOrder: p.sortOrder != null ? Math.max(0, Number(p.sortOrder)) : nextObjectiveSort(day.id),
+    });
+  },
+  toastMessage: (p) => `Objective added to ${p.dayId ?? `Day ${p.dayNumber ?? "?"}`}`,
+});
+
+register({
+  name: "updateTrainingObjective",
+  description:
+    "Edit an objective. Provide objectiveId, then any of text / mediaUrl / mediaType / sortOrder.",
+  category: "training",
+  parameters: {
+    objectiveId: { type: "string", required: true, description: "Objective UUID" },
+    text: { type: "string", required: false, description: "New text (plain or HTML)" },
+    mediaUrl: { type: "string", required: false, description: "New media URL, or empty string to clear" },
+    mediaType: {
+      type: "string",
+      required: false,
+      description: "Media kind (or empty string to clear)",
+      enum: ["image", "video"],
+    },
+    sortOrder: { type: "number", required: false, description: "Display order" },
+  },
+  requiredPermission: { section: "staffing", action: "edit" },
+  riskLevel: "medium",
+  execute: async (p) => {
+    const objId = String(p.objectiveId ?? "");
+    if (!objId) throw new Error("objectiveId is required");
+    const current = readTrainingObjectives().find((o) => o.id === objId);
+    if (!current) throw new Error(`Objective not found: ${objId}`);
+    const nextText = p.text != null ? String(p.text) : current.text;
+    const nextMediaUrl =
+      "mediaUrl" in p ? (p.mediaUrl ? String(p.mediaUrl) : null) : undefined;
+    const nextMediaType =
+      "mediaType" in p
+        ? p.mediaType === "image" || p.mediaType === "video"
+          ? (p.mediaType as "image" | "video")
+          : null
+        : undefined;
+    await updateTrainingObjective(objId, {
+      text: nextText,
+      ...(nextMediaUrl !== undefined ? { mediaUrl: nextMediaUrl } : {}),
+      ...(nextMediaType !== undefined ? { mediaType: nextMediaType } : {}),
+      sortOrder:
+        p.sortOrder != null ? Math.max(0, Number(p.sortOrder)) : current.sortOrder,
+    });
+  },
+  toastMessage: () => "Objective updated",
+});
+
+register({
+  name: "deleteTrainingObjective",
+  description: "Delete a single objective from a curriculum day.",
+  category: "training",
+  parameters: {
+    objectiveId: { type: "string", required: true, description: "Objective UUID" },
+  },
+  requiredPermission: { section: "staffing", action: "edit" },
+  riskLevel: "high",
+  execute: async (p) => {
+    await deleteTrainingObjective(String(p.objectiveId ?? ""));
+  },
+  toastMessage: () => "Objective deleted",
+});
+
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 // ─── Registry API ──────────────────────────────────────────────────────────────
 
 export function getAction(name: string): ActionDefinition | undefined {
@@ -1187,6 +1602,7 @@ export function generateActionsPrompt(): string {
     staffing: "Staff Members",
     notifications: "Notifications",
     builder: "Website Builder",
+    training: "Training Curriculum",
   };
 
   const sections: string[] = [];

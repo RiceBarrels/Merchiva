@@ -28,9 +28,18 @@ import {
 } from "@/lib/spacetimedb/actions";
 import { useI18n } from "@/lib/i18n/context";
 import { useT } from "@/lib/i18n/context";
-import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+function sanitizeBriefingHtml(input: string): string {
+  return input
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<(script|style|iframe|object|embed|link|meta)\b[^>]*>/gi, "")
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/\s(href|src)\s*=\s*("\s*javascript:[^"]*"|'\s*javascript:[^']*'|javascript:[^\s>]+)/gi, "");
+}
 
 interface BriefingRow {
   id: { toString(): string };
@@ -408,10 +417,17 @@ export function MorningBriefingCard() {
       {/* Briefing */}
       <Card>
         <CardHeader>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 text-left"
+          <div
+            role="button"
+            tabIndex={0}
+            className="flex w-full items-center gap-2 text-left cursor-pointer"
             onClick={() => setBriefingExpanded((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setBriefingExpanded((v) => !v);
+              }
+            }}
           >
             <Sparkles className="h-4 w-4 text-amber-500" />
             <CardTitle className="text-sm">{t("dashboard.morningBriefing") || "Morning Briefing"}</CardTitle>
@@ -436,14 +452,15 @@ export function MorningBriefingCard() {
               </button>
               <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", briefingExpanded && "rotate-180")} />
             </div>
-          </button>
+          </div>
         </CardHeader>
         {briefingExpanded && (
           <CardContent className="pt-0">
             {todaysBriefing ? (
-              <div className="text-[13px] leading-relaxed prose-sm max-w-none">
-                <ReactMarkdown>{todaysBriefing.content}</ReactMarkdown>
-              </div>
+              <div
+                className="merchiva-rich-text text-[13px] leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: sanitizeBriefingHtml(todaysBriefing.content) }}
+              />
             ) : busyBriefing ? (
               <div className="flex items-center gap-2 text-[12px] text-muted-foreground py-3">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

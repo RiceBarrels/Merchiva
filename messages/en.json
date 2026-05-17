@@ -28,6 +28,7 @@
     "inventory": "Inventory",
     "wasteLog": "Waste Log",
     "sales": "Sales Prediction",
+    "personnel": "Personnel",
     "staffing": "Staffing",
     "products": "Products",
     "reports": "Reports",
@@ -508,6 +509,25 @@
       "tabCode": "Code",
       "tabTests": "Tests",
       "tabConsole": "Console"
+    },
+    "tokens": {
+      "colorsLabel": "Tokens",
+      "pickToken": "Pick a design token"
+    },
+    "tokenPanel": {
+      "title": "Design Tokens",
+      "colors": "Colors",
+      "spacing": "Spacing",
+      "textSizes": "Text Sizes",
+      "radius": "Radius",
+      "reset": "Reset to default",
+      "delete": "Delete custom token",
+      "addCustom": "Add a custom token",
+      "namePlaceholder": "Name (e.g. brand-blue)",
+      "invalidName": "Name is empty or already in use",
+      "valueRequired": "Value is required",
+      "cancel": "Cancel",
+      "add": "Add"
     }
   },
   "status": {
@@ -1503,6 +1523,7 @@
       "afternoon": "Good afternoon",
       "evening": "Good evening"
     },
+    "morningBriefing": "Morning Briefing",
     "time": {
       "justNow": "just now",
       "minutesAgo": "{n}m ago",

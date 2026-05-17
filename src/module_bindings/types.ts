@@ -10,6 +10,45 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const AiChatHistory = __t.object("AiChatHistory", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  userId: __t.identity(),
+  messages: __t.string(),
+  summary: __t.option(__t.string()),
+  updatedAt: __t.timestamp(),
+});
+export type AiChatHistory = __Infer<typeof AiChatHistory>;
+
+export const AiChatSession = __t.object("AiChatSession", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  userId: __t.identity(),
+  title: __t.string(),
+  messages: __t.string(),
+  summary: __t.option(__t.string()),
+  archived: __t.bool(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type AiChatSession = __Infer<typeof AiChatSession>;
+
+export const AiJob = __t.object("AiJob", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  sessionId: __t.string(),
+  userId: __t.identity(),
+  prompt: __t.string(),
+  status: __t.string(),
+  partialText: __t.string(),
+  finalText: __t.option(__t.string()),
+  error: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+  consumed: __t.bool(),
+});
+export type AiJob = __Infer<typeof AiJob>;
+
 export const ChatConversation = __t.object("ChatConversation", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -64,6 +103,17 @@ export const CustomerPoints = __t.object("CustomerPoints", {
   updatedAt: __t.timestamp(),
 });
 export type CustomerPoints = __Infer<typeof CustomerPoints>;
+
+export const DailyBriefing = __t.object("DailyBriefing", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  date: __t.string(),
+  content: __t.string(),
+  summary: __t.option(__t.string()),
+  generatedBy: __t.string(),
+  generatedAt: __t.timestamp(),
+});
+export type DailyBriefing = __Infer<typeof DailyBriefing>;
 
 export const Expense = __t.object("Expense", {
   id: __t.uuid(),
@@ -204,6 +254,11 @@ export const Organization = __t.object("Organization", {
   ownerId: __t.identity(),
   name: __t.string(),
   createdAt: __t.timestamp(),
+  stripeCustomerId: __t.option(__t.string()),
+  subscriptionStatus: __t.option(__t.string()),
+  subscriptionPriceId: __t.option(__t.string()),
+  subscriptionInterval: __t.option(__t.string()),
+  currentPeriodEnd: __t.option(__t.timestamp()),
 });
 export type Organization = __Infer<typeof Organization>;
 
@@ -259,6 +314,7 @@ export const Product = __t.object("Product", {
   imageUrl: __t.option(__t.string()),
   description: __t.option(__t.string()),
   nameI18N: __t.option(__t.string()),
+  options: __t.option(__t.string()),
   squareItemId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
@@ -323,6 +379,23 @@ export const RoleTask = __t.object("RoleTask", {
 });
 export type RoleTask = __Infer<typeof RoleTask>;
 
+export const RoleTaskAssignment = __t.object("RoleTaskAssignment", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  taskId: __t.string(),
+  memberId: __t.string(),
+  dueAt: __t.timestamp(),
+  status: __t.string(),
+  evidenceUrl: __t.option(__t.string()),
+  note: __t.option(__t.string()),
+  completedAt: __t.option(__t.timestamp()),
+  completedBy: __t.option(__t.identity()),
+  skipReason: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  createdBy: __t.identity(),
+});
+export type RoleTaskAssignment = __Infer<typeof RoleTaskAssignment>;
+
 export const SalesRecord = __t.object("SalesRecord", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -337,6 +410,19 @@ export const SalesRecord = __t.object("SalesRecord", {
   createdAt: __t.timestamp(),
 });
 export type SalesRecord = __Infer<typeof SalesRecord>;
+
+export const ScheduleProposal = __t.object("ScheduleProposal", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  weekStart: __t.string(),
+  weekEnd: __t.string(),
+  shifts: __t.string(),
+  status: __t.string(),
+  generatedBy: __t.string(),
+  generatedAt: __t.timestamp(),
+  decidedAt: __t.option(__t.timestamp()),
+});
+export type ScheduleProposal = __Infer<typeof ScheduleProposal>;
 
 export const Settings = __t.object("Settings", {
   id: __t.uuid(),
@@ -358,6 +444,9 @@ export const Settings = __t.object("Settings", {
   googlePlacesId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
+  autoCommitSchedules: __t.option(__t.bool()),
+  openingHours: __t.option(__t.string()),
+  countryCode: __t.option(__t.string()),
 });
 export type Settings = __Infer<typeof Settings>;
 
@@ -594,6 +683,66 @@ export const Todo = __t.object("Todo", {
   createdAt: __t.timestamp(),
 });
 export type Todo = __Infer<typeof Todo>;
+
+export const TrainingDay = __t.object("TrainingDay", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  dayNumber: __t.i32(),
+  title: __t.string(),
+  description: __t.option(__t.string()),
+  sortOrder: __t.i32(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type TrainingDay = __Infer<typeof TrainingDay>;
+
+export const TrainingDayGrade = __t.object("TrainingDayGrade", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  traineeId: __t.string(),
+  dayId: __t.string(),
+  rating: __t.i32(),
+  comment: __t.option(__t.string()),
+  gradedBy: __t.identity(),
+  gradedAt: __t.timestamp(),
+});
+export type TrainingDayGrade = __Infer<typeof TrainingDayGrade>;
+
+export const TrainingFinalGrade = __t.object("TrainingFinalGrade", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  traineeId: __t.string(),
+  score: __t.i32(),
+  comment: __t.option(__t.string()),
+  gradedBy: __t.identity(),
+  gradedAt: __t.timestamp(),
+});
+export type TrainingFinalGrade = __Infer<typeof TrainingFinalGrade>;
+
+export const TrainingObjective = __t.object("TrainingObjective", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  dayId: __t.string(),
+  text: __t.string(),
+  mediaUrl: __t.option(__t.string()),
+  mediaType: __t.option(__t.string()),
+  sortOrder: __t.i32(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type TrainingObjective = __Infer<typeof TrainingObjective>;
+
+export const TrainingObjectiveGrade = __t.object("TrainingObjectiveGrade", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  traineeId: __t.string(),
+  objectiveId: __t.string(),
+  status: __t.string(),
+  comment: __t.option(__t.string()),
+  gradedBy: __t.identity(),
+  gradedAt: __t.timestamp(),
+});
+export type TrainingObjectiveGrade = __Infer<typeof TrainingObjectiveGrade>;
 
 export const User = __t.object("User", {
   identity: __t.identity(),

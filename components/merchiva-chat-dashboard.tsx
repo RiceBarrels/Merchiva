@@ -4,14 +4,14 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp,
   Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Loader2,
-  Calendar, History, MoreHorizontal, Sparkles,
+  Calendar, History, Sparkles,
   ArrowLeftRight, CalendarX, Truck, Trash2, Plus, MessageSquare,
   User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones,
   Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog,
   Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase,
   Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter,
   Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X,
-  CheckCircle2, XCircle, AlertTriangle, MousePointer2,
+  CheckCircle2, AlertTriangle, MousePointer2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -32,10 +32,10 @@ import {
   getRoleTasks,
   createAiChatSession as execCreateSession,
   saveAiChatSession as execSaveSession,
-  archiveAiChatSession as execArchiveSession,
 } from "@/lib/spacetimedb/actions";
 import { getConnection } from "@/lib/spacetimedb/client";
-import { useStaffRoles, useRoleTasks, useAiChatSessions } from "@/lib/spacetimedb/hooks";
+import { useStaffRoles, useRoleTasks, useAiChatSessions, useTrainingDays, useTrainingObjectives, useSettingsRows } from "@/lib/spacetimedb/hooks";
+import { getUpcomingHolidays, inferCountryFromLocale, parseOpeningHours } from "@/lib/holidays";
 import { toast } from "sonner";
 import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/skills/registry";
 import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
@@ -45,6 +45,7 @@ import { getStoredToken } from "@/lib/spacetimedb/client";
 import type { ChatMessage, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
 import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
 import { useI18n, useT } from "@/lib/i18n/context";
+import { MerchivaLogo } from "@/components/logo";
 import { MerchivaCallModal } from "@/components/merchiva-call-modal";
 
 // ── Brand colors ────────────────────────────────────────────────────────────
@@ -67,20 +68,6 @@ const ROLE_ICON_MAP: Record<string, LucideIcon> = {
   "shield": Shield, "wine": Wine, "moon-star": MoonStar, "sun": Sun,
   "receipt-text": ReceiptText, "hand-platter": HandPlatter,
 };
-
-const ROLE_COLORS = [
-  "#44403c", "#78716c", "#57534e", "#a8a29e",
-  "#292524", "#6b7280", "#374151", "#4b5563", "#9ca3af",
-];
-
-const ROLE_ICON_LIST = [
-  "coffee", "utensils", "chef-hat", "store", "receipt", "banknote",
-  "package", "box", "shopping-cart", "truck", "clipboard", "wrench",
-  "hammer", "sparkles", "headphones", "heart-pulse", "shield",
-  "briefcase", "award", "star", "clock", "phone", "mail",
-  "leaf", "music", "camera", "palette", "baby", "dog",
-  "zap", "user", "wine", "moon-star", "sun", "receipt-text", "hand-platter",
-];
 
 function RoleIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const Comp = ROLE_ICON_MAP[name] ?? User;
@@ -249,105 +236,6 @@ function KpiStrip() {
   );
 }
 
-// ── Forecast Chart (inline in chat) ─────────────────────────────────────────
-
-const FORECAST_DATA = {
-  sku: "OAT-1L",
-  name: "Oat milk · 1L",
-  past: [38, 42, 39, 45, 47, 51, 49, 46, 52, 55, 53, 58, 56, 62],
-  future: [63, 66, 64, 70, 72, 68, 74, 76, 73, 78, 80, 77, 82, 84],
-  bandHi: [68, 72, 71, 78, 81, 78, 85, 88, 86, 92, 95, 93, 99, 102],
-  bandLo: [58, 60, 57, 62, 63, 58, 63, 64, 60, 64, 65, 61, 65, 66],
-  reorderDay: 4,
-  stockoutDay: 9,
-};
-
-function ForecastChart() {
-  const W = 600, H = 160, pad = 28;
-  const all = [...FORECAST_DATA.past, ...FORECAST_DATA.future, ...FORECAST_DATA.bandHi];
-  const max = Math.max(...all) * 1.12;
-  const len = FORECAST_DATA.past.length + FORECAST_DATA.future.length - 1;
-  const sx = (i: number) => pad + (i / len) * (W - pad * 2);
-  const sy = (v: number) => H - pad - (v / max) * (H - pad * 2);
-  const pastPath = FORECAST_DATA.past.map((v, i) => `${i === 0 ? "M" : "L"} ${sx(i)} ${sy(v)}`).join(" ");
-  const splitIdx = FORECAST_DATA.past.length - 1;
-  const futPath = FORECAST_DATA.future.map((v, i) => `${i === 0 ? "M" : "L"} ${sx(splitIdx + i)} ${sy(v)}`).join(" ");
-  const bandHi = FORECAST_DATA.bandHi.map((v, i) => `${i === 0 ? "M" : "L"} ${sx(splitIdx + i)} ${sy(v)}`).join(" ");
-  const bandLo = FORECAST_DATA.bandLo.map((_v, i) =>
-    `L ${sx(splitIdx + (FORECAST_DATA.bandLo.length - 1 - i))} ${sy(FORECAST_DATA.bandLo[FORECAST_DATA.bandLo.length - 1 - i])}`
-  ).join(" ");
-  const reorderX = sx(splitIdx + FORECAST_DATA.reorderDay);
-  const stockoutX = sx(splitIdx + FORECAST_DATA.stockoutDay);
-  const splitX = sx(splitIdx);
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="ddBandFill" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={M_ACC} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={M_ACC} stopOpacity="0.02" />
-        </linearGradient>
-        <pattern id="ddHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="6" stroke={M_ACC} strokeWidth="0.7" strokeOpacity="0.2" />
-        </pattern>
-      </defs>
-      {[0.5, 1].map((p) => (
-        <line key={p} x1={pad} x2={W - pad} y1={sy(max * p)} y2={sy(max * p)} className="stroke-border" strokeDasharray="2 4" />
-      ))}
-      <line x1={splitX} x2={splitX} y1={pad} y2={H - pad} className="stroke-border" strokeDasharray="3 3" />
-      <text x={splitX - 5} y={pad + 9} textAnchor="end" fontFamily="JetBrains Mono, monospace" fontSize="9" className="fill-muted-foreground">actual</text>
-      <text x={splitX + 5} y={pad + 9} textAnchor="start" fontFamily="JetBrains Mono, monospace" fontSize="9" fill={M_ACC}>forecast</text>
-      <path d={`${bandHi} ${bandLo} Z`} fill="url(#ddHatch)" />
-      <path d={`${bandHi} ${bandLo} Z`} fill="url(#ddBandFill)" />
-      <path d={pastPath} fill="none" className="stroke-foreground" strokeWidth="1.8" />
-      <path d={futPath} fill="none" stroke={M_ACC} strokeWidth="1.8" strokeDasharray="4 3" />
-      {FORECAST_DATA.past.map((v, i) => <circle key={`p${i}`} cx={sx(i)} cy={sy(v)} r="1.8" className="fill-foreground" />)}
-      {FORECAST_DATA.future.map((v, i) => <circle key={`f${i}`} cx={sx(splitIdx + i)} cy={sy(v)} r="2.2" className="fill-background" stroke={M_ACC} strokeWidth="1.3" />)}
-      <line x1={reorderX} x2={reorderX} y1={pad - 6} y2={H - pad} className="stroke-foreground" strokeWidth="1" />
-      <rect x={reorderX - 48} y={pad - 14} width="96" height="14" className="fill-foreground" rx="3" />
-      <text x={reorderX} y={pad - 4} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="8.5" className="fill-background" letterSpacing="0.6">REORDER · MAY 14</text>
-      <line x1={stockoutX} x2={stockoutX} y1={pad - 6} y2={H - pad} stroke="#dc2626" strokeWidth="1" strokeDasharray="2 2" />
-      <rect x={stockoutX - 44} y={pad - 14} width="88" height="14" fill="#fef2f2" stroke="#fecaca" rx="3" />
-      <text x={stockoutX} y={pad - 4} textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="8.5" fill="#b91c1c" letterSpacing="0.6">STOCKOUT · MAY 19</text>
-    </svg>
-  );
-}
-
-// ── Saturday preview (staffing embed) ───────────────────────────────────────
-
-function SaturdayPreview() {
-  const hours = ["4p", "5p", "6p", "7p", "8p", "9p", "10p"];
-  return (
-    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3">
-      <div className="flex items-center gap-2 mb-2">
-        <MonoCap>sat may 1 · closing window</MonoCap>
-        <span className="ml-auto text-[10.5px] font-mono text-amber-600">−1 barista</span>
-      </div>
-      <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(7, 1fr)" }}>
-        {hours.map((h, i) => (
-          <div key={h} className="flex flex-col items-center gap-1">
-            <div className="text-[9px] font-mono text-stone-400 dark:text-stone-500 tabular-nums">{h}</div>
-            <div className={cn(
-              "w-full h-5 rounded-sm border",
-              i <= 5
-                ? "bg-foreground border-foreground"
-                : "bg-background border-border",
-            )} />
-            <div className="w-full h-5 rounded-sm border border-dashed" style={{
-              borderColor: "#d97706", background: "#fffbeb",
-            }} />
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-3 mt-2 text-[10.5px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 bg-foreground rounded-sm" /> scheduled</span>
-        <span className="inline-flex items-center gap-1"><span className="w-2 h-2 border border-dashed border-amber-600 bg-amber-50 rounded-sm" /> suggested</span>
-        <span className="ml-auto font-mono text-stone-600 dark:text-stone-300">+6h · $84 labor</span>
-      </div>
-    </div>
-  );
-}
-
 // ── Watchlist ────────────────────────────────────────────────────────────────
 
 const WATCHLIST = [
@@ -404,6 +292,136 @@ function WatchlistMini() {
 }
 
 // ── Chat components ─────────────────────────────────────────────────────────
+
+// Rotating kaomoji faces shown in the chat's empty state. Picked once at
+// mount and then cycled every 2.4s with a quick fade between faces. Kept
+// short so they all render in a single monospace line.
+const KAOMOJIS = [
+  "(｡◕‿◕｡)",
+  "ʕ•ᴥ•ʔ",
+  "(•‿•)",
+  "(ᵔᴥᵔ)",
+  "ヽ(°〇°)ﾉ",
+  "(｡♥‿♥｡)",
+  "(◕‿◕✿)",
+  "(✿◠‿◠)",
+  "⊂(◉‿◉)つ",
+  "(｡• ᵕ •｡)",
+  "(◠‿◠)",
+  "(=^･ω･^=)",
+  "(•◡•)",
+  "ヽ(•‿•)ノ",
+  "(づ｡◕‿‿◕｡)づ",
+  "(￣ω￣)",
+  "(っ˘ω˘ς )",
+  "(*´︶`*)",
+] as const;
+
+// Watermark backdrop for the Merchiva chat thread. Renders absolutely
+// behind the scrolling message list so it stays visible even after the
+// conversation starts — messages with opaque Bubble backgrounds cover it
+// where they sit; the watermark fills the gaps. Pointer-events disabled
+// so the user can still scroll/select through it.
+//
+// The face is static while the chat is idle (one random pick at mount).
+// It only changes when the OSS triage model picks a mood for its reply
+// and the chat dashboard dispatches `merchiva:set-kaomoji` — at that
+// point we fade to the AI's chosen face and leave it there until the
+// next AI turn.
+// Talking face used during voice calls. The watermark swaps between
+// these two while the AI's TTS audio is playing, driven by the audio
+// analyser's amplitude reading dispatched from the call modal.
+const TALK_FACE_CLOSED = "(◕‿◕)";
+const TALK_FACE_OPEN = "(◕O◕)";
+
+function MerchivaWatermark() {
+  const t = useT();
+  const [face, setFace] = useState<string>(() => KAOMOJIS[Math.floor(Math.random() * KAOMOJIS.length)]);
+  const [visible, setVisible] = useState(true);
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [mouthOpen, setMouthOpen] = useState(false);
+
+  // AI-driven kaomoji from the OSS triage layer. The chat dashboard
+  // dispatches this after reading the X-Merchiva-Kaomoji response header.
+  useEffect(() => {
+    function onSetKaomoji(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail !== "string" || !detail.trim()) return;
+      setVisible(false);
+      const swap = setTimeout(() => {
+        setFace(detail);
+        setVisible(true);
+      }, 200);
+      return () => clearTimeout(swap);
+    }
+    window.addEventListener("merchiva:set-kaomoji", onSetKaomoji);
+    return () => window.removeEventListener("merchiva:set-kaomoji", onSetKaomoji);
+  }, []);
+
+  // Voice-call mouth animation. The call modal dispatches one event per
+  // animation frame while a TTS clip is playing — `{active:true, level}` —
+  // and `{active:false}` when the clip ends. We flip between an open and
+  // closed face based on a level threshold; the inactive transition is
+  // debounced by 600ms so the gap between back-to-back sentences doesn't
+  // briefly reset the face.
+  useEffect(() => {
+    let restoreTimer: ReturnType<typeof setTimeout> | null = null;
+    function onMouth(e: Event) {
+      const detail = (e as CustomEvent).detail as { active?: boolean; level?: number } | undefined;
+      if (!detail) return;
+      if (detail.active) {
+        if (restoreTimer) { clearTimeout(restoreTimer); restoreTimer = null; }
+        setVoiceActive(true);
+        setMouthOpen((detail.level ?? 0) > 0.12);
+      } else {
+        restoreTimer = setTimeout(() => {
+          setVoiceActive(false);
+          setMouthOpen(false);
+          restoreTimer = null;
+        }, 600);
+      }
+    }
+    window.addEventListener("merchiva:voice-mouth", onMouth);
+    return () => {
+      window.removeEventListener("merchiva:voice-mouth", onMouth);
+      if (restoreTimer) clearTimeout(restoreTimer);
+    };
+  }, []);
+
+  // While the call is speaking, the dedicated talking face overrides the
+  // AI's chosen mood face so the mouth animation is legible (most picked
+  // faces don't have an obvious open variant). When voice playback ends
+  // we revert to whatever face the OSS layer last picked.
+  const displayedFace = voiceActive ? (mouthOpen ? TALK_FACE_OPEN : TALK_FACE_CLOSED) : face;
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center gap-2 select-none"
+    >
+      <div
+        className={cn(
+          "font-mono leading-none tracking-normal",
+          // While speaking we want crisp swaps between open/closed mouth;
+          // outside voice mode we fade between AI-picked faces.
+          voiceActive ? "transition-none" : "transition-opacity duration-300",
+        )}
+        style={{ color: M_ACC, opacity: visible ? 0.42 : 0, fontSize: 32 }}
+      >
+        {displayedFace}
+      </div>
+      <div
+        className="flex flex-col items-center gap-2 transition-opacity duration-300"
+        style={{ opacity: visible ? 0.32 : 0 }}
+      >
+        <MerchivaLogo size={64} fg="var(--foreground)" />
+        <span className="text-[10.5px] uppercase tracking-[0.22em] text-muted-foreground">
+          {t("merchiva.brand") || "Mr. Merchiva"}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function Bubble({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
   return (
@@ -632,6 +650,7 @@ const ACTION_META: Record<string, { label: string; icon: React.ReactNode; fields
   approveShiftTrade:   { label: "审批换班", icon: <ArrowLeftRight className="h-3 w-3" />, fields: ["tradeId", "approved"] },
   // Staff
   addStaffMember:      { label: "添加员工", icon: <UserPlus className="h-3 w-3" />, fields: ["name", "role", "hourlyRate"] },
+  inviteTeamMember:    { label: "邀请加入团队", icon: <Mail className="h-3 w-3" />, fields: ["email", "role", "orgName"] },
   updateStaffMember:   { label: "修改员工", icon: <Pencil className="h-3 w-3" />, fields: ["staffMemberId", "name", "role", "hourlyRate"] },
   deleteStaffMember:   { label: "删除员工", icon: <UserMinus className="h-3 w-3" />, fields: ["staffMemberId"], risk: "high" },
   // Roles
@@ -1942,7 +1961,7 @@ export function MerchivaChat({
   header?: boolean;
   builderContext?: BuilderModeContext;
 } = {}) {
-  const { currentOrg, organizationId, isOwner, role: orgRole, can, permissions: userPermissions } = usePermissions();
+  const { currentOrg, organizationId, isOwner, role: orgRole, permissions: userPermissions } = usePermissions();
   const { locale } = useI18n();
   const t = useT();
   const builderMode = !!builderContext;
@@ -1972,6 +1991,11 @@ export function MerchivaChat({
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionListOpen, setSessionListOpen] = useState(false);
   const sessionInitDone = useRef(false);
+  // Session-level circuit breaker for the background-enqueue path. If the
+  // server returns 501 "reducer_missing" once, we know the SpacetimeDB module
+  // isn't republished yet and skip the enqueue call entirely until the page
+  // is reloaded — sendMessage falls straight through to the streaming route.
+  const enqueueDisabledRef = useRef(false);
 
   // Builder mode uses site-scoped localStorage instead of SpacetimeDB sessions
   const builderStorageKey = builderMode ? `merchiva_builder_chat_${builderContext!.siteId}` : null;
@@ -2127,9 +2151,16 @@ export function MerchivaChat({
 
   const { items: invItems } = useInventory(organizationId);
   const { history: salesHistory, hourly: salesHourly } = useSales();
-  const { shifts, team, roles: staffingRoles, presets: shiftPresets, allAvailability, myTimeOffRequests: timeOffRequests, orgShiftTrades: shiftTrades } = useStaffing(organizationId, null, false);
+  const { shifts, team, presets: shiftPresets, allAvailability, myTimeOffRequests: timeOffRequests, orgShiftTrades: shiftTrades } = useStaffing(organizationId, null, false);
   const { products } = useProducts(organizationId);
   const [rawNotifs] = useNotifications();
+  // Settings row for this org — opening hours + country code for holiday lookup.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [settingsRows] = useSettingsRows() as any;
+   
+  const orgSettings = useMemo(() => (Array.isArray(settingsRows)
+    ? settingsRows.find((s: any) => s?.organizationId === organizationId)
+    : undefined), [settingsRows, organizationId]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const staffRoles = (useStaffRoles() as any[] || []).filter((r: any) => r && typeof r === "object" && r.name) as Array<{ id: any; name: string; color: string; icon: string; description: string; permissions: string }>;
   const staffRolesRef = useRef(staffRoles);
@@ -2142,6 +2173,45 @@ export function MerchivaChat({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return rows.filter((t: any) => t && t.organizationId === organizationId);
   }, [rawRoleTasksResult, organizationId]);
+
+  // Training curriculum — surfaced into storeContext so Mr. Merchiva can
+  // reference existing days by number ("Day 3") and edit / add objectives.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [rawTrainingDays] = useTrainingDays() as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [rawTrainingObjectives] = useTrainingObjectives() as any;
+  const trainingDays = useMemo(() => {
+    if (!organizationId || !Array.isArray(rawTrainingDays)) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (rawTrainingDays as any[])
+      .filter((d) => d && d.organizationId === organizationId)
+      .map((d) => ({
+        id: d.id?.toString?.() ?? String(d.id),
+        dayNumber: Number(d.dayNumber ?? 0),
+        title: String(d.title ?? ""),
+        sortOrder: Number(d.sortOrder ?? 0),
+        // Plain-text excerpt of the day's content so the model can scan it
+        // without paying for full HTML token cost.
+        excerpt: typeof d.description === "string"
+          ? d.description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 240)
+          : "",
+      }))
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.dayNumber - b.dayNumber);
+  }, [rawTrainingDays, organizationId]);
+  const trainingObjectives = useMemo(() => {
+    if (!organizationId || !Array.isArray(rawTrainingObjectives)) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (rawTrainingObjectives as any[])
+      .filter((o) => o && o.organizationId === organizationId)
+      .map((o) => ({
+        id: o.id?.toString?.() ?? String(o.id),
+        dayId: String(o.dayId ?? ""),
+        text: typeof o.text === "string"
+          ? o.text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)
+          : "",
+        mediaType: o.mediaType ?? null,
+      }));
+  }, [rawTrainingObjectives, organizationId]);
 
   const insights = useMemo(
     () => generateInsights(invItems, shifts, salesHistory, salesHourly),
@@ -2157,9 +2227,19 @@ export function MerchivaChat({
   const today = new Date().toISOString().slice(0, 10);
   const storeContext = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    // Opening hours + upcoming holidays — surfaced so the auto-scheduler can
+    // align shifts with open/close and flag dates that may need special hours.
+    const openingHours = parseOpeningHours(orgSettings?.openingHours ?? null);
+    const hoursStatus: "set" | "unset" = openingHours ? "set" : "unset";
+    const countryCode = (orgSettings?.countryCode as string | undefined) ?? inferCountryFromLocale(locale);
+    const upcomingHolidays = getUpcomingHolidays(countryCode, 14);
     return {
       storeName: orgName,
       today,
+      openingHours,
+      hoursStatus,
+      countryCode,
+      upcomingHolidays,
       inventory: invItems.slice(0, 50).map((i) => ({
         id: i.id, name: i.name, category: i.category, stock: i.currentStock,
         min: i.minStock, max: i.maxStock, unit: i.unit, supplier: i.supplier,
@@ -2211,6 +2291,18 @@ export function MerchivaChat({
         requester: team.find((m) => m.id === t.requesterId)?.displayName ?? t.requesterId,
         managerApproved: t.managerApproved,
       })),
+      // Training curriculum (so Merchiva can edit it by dayNumber / dayId)
+      training: trainingDays.length === 0 ? undefined : {
+        days: trainingDays.map((d) => ({
+          id: d.id,
+          dayNumber: d.dayNumber,
+          title: d.title,
+          excerpt: d.excerpt,
+          objectives: trainingObjectives
+            .filter((o) => o.dayId === d.id)
+            .map((o) => ({ id: o.id, text: o.text, mediaType: o.mediaType })),
+        })),
+      },
       // Builder mode: editing a website page in the visual builder
       builder: builderContext ? {
         siteId: builderContext.siteId,
@@ -2238,7 +2330,7 @@ export function MerchivaChat({
         siteFeatures: builderContext.siteFeatures,
       } : undefined,
     };
-  }, [orgName, today, invItems, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, builderContext]);
+  }, [orgName, today, invItems, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, trainingDays, trainingObjectives, builderContext, orgSettings, locale]);
 
   // Scroll to bottom only when a new message is added
   const prevMsgCount = useRef(messages.length);
@@ -2394,7 +2486,6 @@ export function MerchivaChat({
       const jobId = job.id?.toHexString ? job.id.toHexString() : String(job.id);
       const msgId = `job-${jobId}`;
       const isDone = job.status === "done" || job.status === "failed";
-      const isConsumed = !!job.consumed;
 
       // 1) New job → seed a placeholder merchiva message and clear the
       //    sending spinner. The upstream userMsg was already inserted in
@@ -2573,8 +2664,11 @@ export function MerchivaChat({
       // even if the user closes the tab. The reducer creates an ai_job row;
       // the subscription effect below picks it up, renders partialText as it
       // streams, and runs parsed actions when the row flips to status='done'.
+      // If the SpacetimeDB module hasn't been republished with the AI-job
+      // reducers yet, the route returns 501 once and we stay on streaming for
+      // the rest of the session — no need to keep hammering the endpoint.
       const token = getStoredToken();
-      if (token && organizationId && activeSessionId) {
+      if (token && organizationId && activeSessionId && !enqueueDisabledRef.current) {
         try {
           const enq = await fetch("/api/store-ai/enqueue", {
             method: "POST",
@@ -2601,19 +2695,24 @@ export function MerchivaChat({
               },
             }),
           });
-          if (!enq.ok) {
-            const e = await enq.text().catch(() => "");
-            console.error("[Mr. Merchiva] enqueue failed:", enq.status, e);
-            throw new Error("Enqueue failed: " + e);
+          if (enq.ok) {
+            // Sending state is cleared by the subscription effect when the new
+            // job appears. No streaming reader needed — the row is the source
+            // of truth from here.
+            setThinkingPhase("");
+            return;
           }
-          // Sending state is cleared by the subscription effect when the new
-          // job appears. No streaming reader needed — the row is the source
-          // of truth from here.
-          setThinkingPhase("");
-          return;
+          // 501 with code: "reducer_missing" — server-side ai_job reducer isn't
+          // deployed. Disable enqueue for this session and silently fall back.
+          if (enq.status === 501) {
+            enqueueDisabledRef.current = true;
+            console.info("[Mr. Merchiva] background enqueue unavailable (module not yet republished); using streaming path.");
+          } else {
+            const e = await enq.text().catch(() => "");
+            console.warn("[Mr. Merchiva] enqueue returned", enq.status, "— falling back to streaming:", e);
+          }
         } catch (err) {
-          // Fall through to legacy streaming path on enqueue failure
-          console.warn("[Mr. Merchiva] enqueue failed, falling back to streaming:", err);
+          console.warn("[Mr. Merchiva] enqueue request failed — falling back to streaming:", err);
         }
       }
 
@@ -2641,6 +2740,26 @@ export function MerchivaChat({
           },
         }),
       });
+
+      // Pull the kaomoji the OSS triage picked (header is base64 of the
+      // raw UTF-8 face) and surface it to the chat watermark.
+      const kaomojiB64 = res.headers.get("X-Merchiva-Kaomoji");
+      if (kaomojiB64) {
+        try {
+          const face = atob(kaomojiB64);
+          // atob returns a "binary string"; decode it back to UTF-8.
+          const bytes = new Uint8Array(face.length);
+          for (let i = 0; i < face.length; i++) bytes[i] = face.charCodeAt(i);
+          const decoded = new TextDecoder("utf-8").decode(bytes);
+          if (decoded) {
+            window.dispatchEvent(
+              new CustomEvent("merchiva:set-kaomoji", { detail: decoded }),
+            );
+          }
+        } catch (err) {
+          console.warn("[Mr. Merchiva] kaomoji header decode failed:", err);
+        }
+      }
 
       const streamMsgId = `a-${Date.now()}`;
       const streamTime = new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
@@ -2989,11 +3108,14 @@ export function MerchivaChat({
         </div>
       )}
 
-      {/* Thread */}
-      <div ref={scrollRef} className={cn(
-        "flex-1 overflow-auto scroll-smooth flex flex-col gap-5 min-h-0",
-        compact ? "px-4 py-3 gap-3" : "px-6 py-5"
-      )}>
+      {/* Thread — wrapper provides positioning context for the watermark
+          backdrop that sits behind the scroll area. */}
+      <div className="relative flex-1 flex flex-col min-h-0">
+        <MerchivaWatermark />
+        <div ref={scrollRef} className={cn(
+          "relative z-10 flex-1 overflow-auto scroll-smooth flex flex-col gap-5 min-h-0",
+          compact ? "px-4 py-3 gap-3" : "px-6 py-5"
+        )}>
         <ChatRow from="system">{t("merchiva.today")} · {todayStr}</ChatRow>
 
         {/* Auto-generated insights (skip in compact mode) */}
@@ -3146,9 +3268,7 @@ export function MerchivaChat({
           </ChatRow>
         )}
 
-        {messages.length === 0 && (
-          <ChatRow from="system">{t("merchiva.emptyState")}</ChatRow>
-        )}
+        </div>
       </div>
 
       {/* Quick chips */}
@@ -3394,7 +3514,7 @@ export function MerchivaChat({
 
 function TodayScheduleCard() {
   const { organizationId } = usePermissions();
-  const { shifts: allShifts, loading } = useStaffing(organizationId, null, false);
+  const { shifts: allShifts } = useStaffing(organizationId, null, false);
 
   const today = new Date().toISOString().slice(0, 10);
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();

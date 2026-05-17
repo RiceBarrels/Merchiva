@@ -125,7 +125,7 @@ const navItems: NavItemExt[] = [
   { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory" },
   { labelKey: "nav.products",  href: "/~/products",    icon: ShoppingBag,     permissionKey: "products"  },
   { labelKey: "nav.sales",     href: "/~/sales",       icon: TrendingUp,      permissionKey: "sales"     },
-  { labelKey: "nav.staffing",  href: "/~/staffing",    icon: Users,           permissionKey: "staffing"  },
+  { labelKey: "nav.personnel", href: "/~/personnel",   icon: Users,           permissionKey: "staffing"  },
   { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
   { labelKey: "nav.chat",      href: "/~/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website"   },

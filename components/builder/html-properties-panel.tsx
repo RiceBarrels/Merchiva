@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   AlignCenter,
   AlignJustify,
@@ -19,6 +19,17 @@ import type { HtmlSelectionInfo } from "./html-canvas";
 import type { BuilderAnimation, EntryAnimationType } from "@/lib/builder/animation";
 import { updatePage, updateSite } from "@/lib/spacetimedb/actions";
 import type { Site, SitePage, PageMetadata, SiteFeatures } from "@/lib/types";
+import { useT } from "@/lib/i18n/context";
+import {
+  SPACE_TOKENS,
+  TEXT_TOKENS,
+  RADIUS_TOKENS,
+  type DesignToken,
+  tokenRef,
+  tokenFromValue,
+  customTokensFor,
+} from "@/lib/builder/design-tokens";
+import { useBuilderSite } from "@/lib/builder/site-context";
 
 interface HtmlPropertiesPanelProps {
   selected: HtmlSelectionInfo | null;
@@ -440,7 +451,7 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
           )}
           {(isFlex || isGrid) && (
             <Row label="Gap">
-              <TextInput value={styles.gap ?? ""} onChange={(v) => commitOne("gap", v)} placeholder="0" mono />
+              <TextInput value={styles.gap ?? ""} onChange={(v) => commitOne("gap", v)} placeholder="0" mono tokens={SPACE_TOKENS} />
             </Row>
           )}
         </Section>
@@ -512,7 +523,7 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
 
         <Section label="Typography" defaultOpen>
           <Row label="Size">
-            <TextInput value={styles.fontSize ?? ""} onChange={(v) => commitOne("fontSize", v)} placeholder="16px" mono />
+            <TextInput value={styles.fontSize ?? ""} onChange={(v) => commitOne("fontSize", v)} placeholder="16px" mono tokens={TEXT_TOKENS} />
           </Row>
           <Row label="Weight">
             <SegmentedControl
@@ -583,7 +594,7 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
             <ColorInput value={styles.borderColor ?? ""} onChange={(v) => commitOne("borderColor", v)} />
           </Row>
           <Row label="Radius">
-            <TextInput value={styles.borderRadius ?? ""} onChange={(v) => commitOne("borderRadius", v)} placeholder="0" mono />
+            <TextInput value={styles.borderRadius ?? ""} onChange={(v) => commitOne("borderRadius", v)} placeholder="0" mono tokens={RADIUS_TOKENS} />
           </Row>
         </Section>
 
@@ -1083,14 +1094,19 @@ function TextInput({
   onEnter,
   placeholder,
   mono,
+  tokens,
 }: {
   value: string;
   onChange: (next: string) => void;
   onEnter?: () => void;
   placeholder?: string;
   mono?: boolean;
+  /** When provided, render a token-picker button next to the input. Picking
+   *  a token writes `var(--mv-…)` into the value. */
+  tokens?: DesignToken[];
 }) {
-  return (
+  const active = tokens ? tokenFromValue(value) : null;
+  const input = (
     <input
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -1104,8 +1120,99 @@ function TextInput({
       className={cn(
         "w-full h-[26px] px-2 text-[11.5px] border border-border rounded-[4px] bg-background text-foreground outline-none focus:border-stone-400 dark:focus:border-stone-500 placeholder:text-stone-400",
         mono && "font-mono",
+        active && "font-mono text-[10.5px]",
       )}
     />
+  );
+  if (!tokens) return input;
+  return (
+    <div className="flex w-full items-center gap-1">
+      <div className="flex-1 min-w-0">{input}</div>
+      <TokenPickerButton
+        tokens={tokens}
+        active={active}
+        onPick={(tok) => onChange(tokenRef(tok))}
+      />
+    </div>
+  );
+}
+
+// Small "$" button next to a numeric/text input that opens a popover listing
+// design tokens. Picking a token writes the corresponding `var(--mv-…)`
+// expression into the value.
+function TokenPickerButton({
+  tokens,
+  onPick,
+  active,
+}: {
+  tokens: DesignToken[];
+  onPick: (tok: DesignToken) => void;
+  active: DesignToken | null;
+}) {
+  const t = useT();
+  const site = useBuilderSite();
+  // Append any custom tokens of this category from the site so they show
+  // up in the dropdown alongside the predefined ones. Category is inferred
+  // from the first item — all entries in `tokens` share a category.
+  const merged = tokens.length > 0
+    ? [...tokens, ...customTokensFor(tokens[0].category, site?.tokens)]
+    : tokens;
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={active ? `${active.label} · var(${active.cssVar})` : t("builder.tokens.pickToken")}
+        className={cn(
+          "h-[26px] w-[26px] inline-flex items-center justify-center border rounded-[4px] text-[11px] font-mono transition-colors",
+          active
+            ? "border-foreground bg-stone-200 dark:bg-stone-700 text-foreground"
+            : "border-border text-muted-foreground hover:bg-muted",
+        )}
+      >
+        $
+      </button>
+      {open && (
+        <div className="absolute right-0 top-[28px] z-[9999] min-w-[160px] rounded-[4px] border border-border bg-popover shadow-lg py-1">
+          {merged.map((tok) => {
+            const isActive = active?.cssVar === tok.cssVar;
+            return (
+              <button
+                key={tok.id}
+                type="button"
+                onClick={() => { onPick(tok); setOpen(false); }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-3 px-2 py-1 text-left text-[11px] transition-colors",
+                  isActive ? "bg-accent text-foreground" : "hover:bg-accent/60",
+                )}
+              >
+                <span className="truncate">{tok.label}</span>
+                <span className="font-mono text-[10px] text-muted-foreground shrink-0">{tok.sample}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

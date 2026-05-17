@@ -30,4 +30,7 @@ export default __t.row({
   googlePlacesId: __t.option(__t.string()).name("google_places_id"),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),
+  autoCommitSchedules: __t.option(__t.bool()).name("auto_commit_schedules"),
+  openingHours: __t.option(__t.string()).name("opening_hours"),
+  countryCode: __t.option(__t.string()).name("country_code"),
 });

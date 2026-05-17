@@ -24,6 +24,8 @@ import { createPage, updatePage, updateSite } from "@/lib/spacetimedb/actions";
 import { buildPageTemplate, type PageTemplateId } from "@/lib/builder/page-templates";
 import { registerHtmlBridge } from "@/lib/builder/html-bridge";
 import { prettyPrintHtml } from "@/lib/builder/html-format";
+import { buildTokenCss } from "@/lib/builder/design-tokens";
+import { BuilderSiteProvider } from "@/lib/builder/site-context";
 import type { Site, SitePage, Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Layers, MousePointerSquareDashed, SlidersHorizontal } from "lucide-react";
@@ -608,6 +610,59 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
     }, 80);
   }, [flushValuesQueue]);
 
+  // Same coalescing pattern for design tokens (site.features._tokens).
+  // Each AI setSiteTokens call appends to `pending`; setting a value to
+  // `null` deletes the key. `replace` clears existing tokens before the
+  // new map lands so users can paste a full theme that fully replaces the
+  // previous one.
+  const tokensQueueRef = useRef<{
+    pending: Map<string, string | null>;
+    replace: boolean;
+    timer: ReturnType<typeof setTimeout> | null;
+    flushing: boolean;
+  }>({ pending: new Map(), replace: false, timer: null, flushing: false });
+
+  const flushTokensQueue = useCallback(async () => {
+    const q = tokensQueueRef.current;
+    if (q.flushing) return;
+    q.flushing = true;
+    try {
+      while (q.pending.size > 0 || q.replace) {
+        const batch = q.pending;
+        const replace = q.replace;
+        q.pending = new Map();
+        q.replace = false;
+        const latest = siteRef.current;
+        const merged: Record<string, string> = replace ? {} : { ...(latest.tokens ?? {}) };
+        for (const [k, v] of batch) {
+          if (v === null) delete merged[k];
+          else merged[k] = v;
+        }
+        const featuresWithTokens = {
+          ...latest.features,
+          _tokens: Object.keys(merged).length > 0 ? merged : undefined,
+        };
+        try {
+          await updateSite(latest.id, { features: JSON.stringify(featuresWithTokens) });
+        } catch (err) {
+          console.error("[builder:tokens] flush failed:", err);
+          break;
+        }
+      }
+    } finally {
+      q.flushing = false;
+    }
+  }, []);
+
+  const scheduleTokensFlush = useCallback(() => {
+    const q = tokensQueueRef.current;
+    if (q.timer) return;
+    q.timer = setTimeout(() => {
+      q.timer = null;
+      flushTokensQueue();
+    }, 80);
+  }, [flushTokensQueue]);
+
   // ── AI event listeners (HTML actions from Mr. Merchiva) ────────────────────
   useEffect(() => {
     function setHtmlEvent(e: Event) {
@@ -716,6 +771,55 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
       valuesQueueRef.current.pending.set(key, null);
       scheduleValuesFlush();
     }
+    // Bulk design-token write from the AI's setSiteTokens action. Detail
+    // shape: { tokens: Record<string, string>, replace?: boolean }.
+    // tokens map keys are CSS variable names (e.g. "--background" or
+    // "--mv-color-brand-primary"); values are raw CSS values (e.g.
+    // "oklch(0.97 …)"). When replace=true the queue is reset so the next
+    // flush wipes existing site.tokens before writing.
+    function setTokensEvent(e: Event) {
+      const detail = (e as CustomEvent).detail as {
+        tokens?: Record<string, string>;
+        replace?: boolean;
+      } | undefined;
+      const tokens = detail?.tokens;
+      if (!tokens || typeof tokens !== "object") return;
+      const q = tokensQueueRef.current;
+      if (detail?.replace) {
+        q.pending.clear();
+        q.replace = true;
+      }
+      for (const [rawKey, rawVal] of Object.entries(tokens)) {
+        // Normalize keys: strip wrapping var(...) and trim. Accept plain
+        // "background" as "--background" for convenience.
+        let key = String(rawKey).trim();
+        if (!key) continue;
+        const varMatch = key.match(/^var\(\s*(--[^)\s]+)\s*\)$/i);
+        if (varMatch) key = varMatch[1];
+        if (!key.startsWith("--")) key = `--${key}`;
+        if (!/^--[a-z0-9-_]+$/i.test(key)) continue;
+        const val = String(rawVal ?? "").trim();
+        if (!val) {
+          q.pending.set(key, null);
+        } else {
+          q.pending.set(key, val);
+        }
+      }
+      scheduleTokensFlush();
+    }
+    function deleteTokensEvent(e: Event) {
+      const detail = (e as CustomEvent).detail as { keys?: string[] } | undefined;
+      const keys = detail?.keys;
+      if (!Array.isArray(keys)) return;
+      const q = tokensQueueRef.current;
+      for (const k of keys) {
+        let key = String(k).trim();
+        if (!key) continue;
+        if (!key.startsWith("--")) key = `--${key}`;
+        q.pending.set(key, null);
+      }
+      scheduleTokensFlush();
+    }
     // AI page-property patch — stage and flush via pagePatchRef.
     function updatePageEvent(e: Event) {
       const detail = (e as CustomEvent).detail as Record<string, unknown> | undefined;
@@ -755,6 +859,8 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
     window.addEventListener("flowfn:ai-delete-function", deleteFunctionEvent);
     window.addEventListener("builder:set-value", setValueEvent);
     window.addEventListener("builder:delete-value", deleteValueEvent);
+    window.addEventListener("builder:set-tokens", setTokensEvent);
+    window.addEventListener("builder:delete-tokens", deleteTokensEvent);
     window.addEventListener("builder:update-page", updatePageEvent);
     window.addEventListener("builder:update-site", updateSiteEvent);
     return () => {
@@ -766,10 +872,12 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
       window.removeEventListener("flowfn:ai-delete-function", deleteFunctionEvent);
       window.removeEventListener("builder:set-value", setValueEvent);
       window.removeEventListener("builder:delete-value", deleteValueEvent);
+      window.removeEventListener("builder:set-tokens", setTokensEvent);
+      window.removeEventListener("builder:delete-tokens", deleteTokensEvent);
       window.removeEventListener("builder:update-page", updatePageEvent);
       window.removeEventListener("builder:update-site", updateSiteEvent);
     };
-  }, [html, setHtml, scheduleValuesFlush, schedulePagePatchFlush, scheduleSitePatchFlush]);
+  }, [html, setHtml, scheduleValuesFlush, scheduleTokensFlush, schedulePagePatchFlush, scheduleSitePatchFlush]);
 
   // ── Page management ────────────────────────────────────────────────────────
   const handlePageSwitch = useCallback((pageId: string) => {
@@ -857,13 +965,16 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
     [site.id, pages.length],
   );
 
-  // Theme CSS injected into the iframe so the user's site theme variables are available
-  const themeCss = site.theme
+  // Theme CSS injected into the iframe so the user's site theme variables are available.
+  // We also append the global builder design tokens so `var(--mv-…)` references
+  // in the user's inline styles resolve inside the sandboxed iframe.
+  const siteThemeCss = site.theme
     ? `:root {${Object.entries(site.theme as unknown as Record<string, unknown>)
         .filter(([, v]) => typeof v === "string" || typeof v === "number")
         .map(([k, v]) => `--theme-${k.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())}: ${String(v)};`)
         .join(" ")}}`
     : "";
+  const themeCss = `${siteThemeCss}\n${buildTokenCss(site.tokens)}`;
 
   // Read function names from localStorage for AI context. Re-read on every
   // render so the list stays roughly in sync after the AI adds/removes one.
@@ -999,6 +1110,7 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
   );
 
   return (
+    <BuilderSiteProvider value={site}>
     <div className="flex h-full flex-col">
       <BuilderToolbar
         site={site}
@@ -1044,6 +1156,7 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
         </ResizablePanelGroup>
       )}
     </div>
+    </BuilderSiteProvider>
   );
 }
 

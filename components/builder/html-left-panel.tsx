@@ -5,6 +5,7 @@ import { ChevronDown, Plus, Globe } from "lucide-react";
 import { PageSettingsDialog } from "./page-settings-dialog";
 import { PageTemplateDialog } from "./page-template-dialog";
 import { ValuePanel } from "./value-panel";
+import { TokenPanel } from "./token-panel";
 import { PagesTree } from "./pages-tree";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
@@ -127,6 +128,13 @@ export function HtmlLeftPanel({
 
         {/* Global values — referenced in HTML as {key} and resolved at render */}
         <ValuePanel site={site} />
+
+        <Separator />
+
+        {/* Design tokens — site-level overrides of the global --mv-* tokens
+            picked from globals.css. Overrides flow through site.tokens and
+            are inlined into the iframe and storefront wrappers. */}
+        <TokenPanel site={site} />
       </div>
 
       <PageTemplateDialog

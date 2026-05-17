@@ -5,7 +5,7 @@ import type Quill from "quill";
 import "quill/dist/quill.core.css";
 import {
   Heading1, Heading2, Bold, Italic, Code, List, ListOrdered,
-  Quote, Link as LinkIcon, Eraser,
+  Quote, Link as LinkIcon, Eraser, Image as ImageIcon, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,11 @@ interface QuillEditorProps {
   disabled?: boolean;
   className?: string;
   minHeight?: number;
+  /** When provided, an Image button appears in the toolbar. The callback
+   *  receives the file the user picked and should return the URL the image is
+   *  hosted at (or null on failure). The editor inserts an inline `<img>` at
+   *  the caret position once the upload resolves. */
+  onUploadImage?: (file: File) => Promise<string | null>;
 }
 
 type ActiveFormats = Record<string, unknown>;
@@ -27,13 +32,16 @@ export function QuillEditor({
   disabled,
   className,
   minHeight = 160,
+  onUploadImage,
 }: QuillEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const quillRef = useRef<Quill | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const onChangeRef = useRef(onChange);
   const lastEmittedRef = useRef<string>(value);
   const [ready, setReady] = useState(false);
   const [active, setActive] = useState<ActiveFormats>({});
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -54,7 +62,7 @@ export function QuillEditor({
         modules: { toolbar: false },
         formats: [
           "header", "bold", "italic", "code", "code-block",
-          "list", "blockquote", "link",
+          "list", "blockquote", "link", "image",
         ],
       });
 
@@ -156,6 +164,42 @@ export function QuillEditor({
     }
   }, [ensureFocus]);
 
+  const pickImage = useCallback(() => {
+    if (!onUploadImage || uploading) return;
+    fileInputRef.current?.click();
+  }, [onUploadImage, uploading]);
+
+  const insertImage = useCallback(
+    async (file: File) => {
+      if (!onUploadImage) return;
+      const editor = quillRef.current;
+      if (!editor) return;
+      // Remember caret position BEFORE the upload — the editor may lose focus
+      // while the user waits.
+      const sel = editor.getSelection(true);
+      const insertAt = sel ? sel.index : editor.getLength();
+      setUploading(true);
+      try {
+        const url = await onUploadImage(file);
+        if (!url) return;
+        editor.insertEmbed(insertAt, "image", url, "user");
+        // Move caret past the inserted image.
+        editor.setSelection(insertAt + 1, 0, "user");
+        // Quill's `insertEmbed` does not always fire `text-change` in older
+        // builds — sync the emitted value manually to be safe.
+        const root = editor.root.innerHTML;
+        const html = root === "<p><br></p>" ? "" : root;
+        lastEmittedRef.current = html;
+        onChangeRef.current(html);
+      } catch (err) {
+        console.error("[QuillEditor] image upload failed", err);
+      } finally {
+        setUploading(false);
+      }
+    },
+    [onUploadImage],
+  );
+
   const isActive = (fmt: string, val?: string | number): boolean => {
     const v = active[fmt];
     if (val === undefined) return Boolean(v);
@@ -175,6 +219,18 @@ export function QuillEditor({
     { kind: "btn", label: "Quote", icon: Quote, active: isActive("blockquote"), onClick: () => setBlock("blockquote", true) },
     { kind: "sep" },
     { kind: "btn", label: "Link", icon: LinkIcon, active: isActive("link"), onClick: insertLink },
+    ...(onUploadImage
+      ? ([
+          {
+            kind: "btn" as const,
+            label: uploading ? "Uploading…" : "Insert image",
+            icon: uploading ? Loader2 : ImageIcon,
+            active: false,
+            onClick: pickImage,
+            spin: uploading,
+          },
+        ] satisfies ToolItem[])
+      : []),
     { kind: "btn", label: "Clear formatting", icon: Eraser, active: false, onClick: clearFormat },
   ];
 
@@ -213,7 +269,10 @@ export function QuillEditor({
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <Icon
+                className={cn("h-3.5 w-3.5", tool.spin && "animate-spin")}
+                strokeWidth={1.75}
+              />
             </button>
           );
         })}
@@ -223,6 +282,19 @@ export function QuillEditor({
         </span>
       </div>
       <div ref={hostRef} />
+      {onUploadImage && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void insertImage(f);
+            e.target.value = "";
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -235,4 +307,6 @@ type ToolItem =
       icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
       active: boolean;
       onClick: () => void;
+      /** Spin the icon (used while an upload is in flight). */
+      spin?: boolean;
     };

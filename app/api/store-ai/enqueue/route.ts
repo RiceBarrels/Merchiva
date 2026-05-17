@@ -75,11 +75,25 @@ export async function POST(req: NextRequest) {
     // immediately. The reducer assigns a UUID; we round-trip through the user's
     // own jobs to find it, but in practice the client queries by sessionId+
     // status so it doesn't need the id back.
-    await callReducer({
-      token,
-      name: "createAiJob",
-      args: [organizationId, sessionId, message],
-    });
+    try {
+      await callReducer({
+        token,
+        name: "createAiJob",
+        args: [organizationId, sessionId, message],
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // The maincloud module may not have been republished with the AI-job
+      // reducers yet. Surface a recognizable code so the client can silently
+      // fall back to the streaming path without throwing a 500 in the console.
+      if (/\(404\)|No such procedure/i.test(msg)) {
+        return NextResponse.json(
+          { error: "createAiJob reducer not deployed", code: "reducer_missing" },
+          { status: 501 },
+        );
+      }
+      throw err;
+    }
 
     // Kick off the actual AI work AFTER the response returns. Next.js
     // `after()` is the supported way to schedule post-response work on
@@ -355,5 +369,11 @@ ${JSON.stringify(context, null, 2)}
 
 ${skillPrompts}
 
-Output your reply as plain text plus \`\`\`action\`\`\` JSON blocks for any actions. The client will execute the actions when it receives the finalized job result.`;
+Output your reply as plain text plus \`\`\`action\`\`\` JSON blocks for any actions. The client will execute the actions when it receives the finalized job result.
+
+🚨 CRITICAL — NEVER HALLUCINATE SUCCESS:
+- When the user asks to ADD / CREATE / EDIT / DELETE anything (training docs, products, shifts, roles, values, pages, etc.), you MUST emit a \`\`\`action\`\`\` block with the matching action name. NEVER respond with "已为您添加…" / "Done, added X" / "Added the training doc" without a preceding \`\`\`action\`\`\` block — those are hallucinations, the action did not happen.
+- If you don't have enough info yet (missing title, missing id), ASK ONCE for the missing piece. Don't pretend.
+- If you don't know which action name applies, look at the actions catalog above; pick the closest one. If genuinely none applies, say so honestly: "I don't have a tool for that yet."
+- After emitting the action block, you may add a one-line confirmation in plain text, but the block itself is what actually executes — the text alone does nothing.`;
 }

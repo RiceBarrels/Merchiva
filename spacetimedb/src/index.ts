@@ -154,7 +154,18 @@ const settingsTable = table(
     updatedAt: t.timestamp(),
     // Auto-commit AI-generated 7-day schedule proposals as real shifts when no
     // shifts exist for the upcoming week. Default true; owners can opt out.
-    autoCommitSchedules: t.option(t.bool()),
+    autoCommitSchedules: t.option(t.bool()).default(undefined),
+    // JSON-encoded weekly hours map. Shape:
+    //   {"mon":{"open":"07:00","close":"21:00","closed":false},
+    //    "tue":{...}, ..., "sun":{"closed":true}}
+    // Read by the auto-scheduler so AI shifts align with open/close, and by
+    // public site code that needs to render hours. null/missing = unset (AI
+    // should prompt the user to configure in /~/settings).
+    openingHours: t.option(t.string()).default(undefined),
+    // ISO country code (e.g. "US", "CN") used to look up regional public
+    // holidays so the AI can flag them when proposing schedules. Optional —
+    // defaults to undefined; the chat helper falls back to locale inference.
+    countryCode: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1347,6 +1358,37 @@ const scheduleProposalTable = table(
   }
 );
 
+// One row per (roleTask, member, dueAt) assignment. Materializes a recurring
+// role task into a concrete to-do that a specific staff member has to complete
+// by a due time. Evidence (image URL + optional text note) is stored on the
+// completion side so managers can audit what was actually done.
+const roleTaskAssignmentTable = table(
+  {
+    name: 'role_task_assignment',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byMemberId', algorithm: 'btree', columns: ['memberId'] },
+      { accessor: 'byTaskId', algorithm: 'btree', columns: ['taskId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    taskId: t.string(),                  // RoleTask.id this assignment instantiates
+    memberId: t.string(),                // StaffMember.id assigned to do the work
+    dueAt: t.timestamp(),                // when it has to be done by
+    status: t.string(),                  // 'pending' | 'completed' | 'skipped'
+    evidenceUrl: t.option(t.string()),   // UploadThing URL (image)
+    note: t.option(t.string()),          // free-text note from the staff member
+    completedAt: t.option(t.timestamp()),
+    completedBy: t.option(t.identity()),
+    skipReason: t.option(t.string()),
+    createdAt: t.timestamp(),
+    createdBy: t.identity(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1404,6 +1446,7 @@ const spacetimedb = schema({
   trainingFinalGrade: trainingFinalGradeTable,
   dailyBriefing: dailyBriefingTable,
   scheduleProposal: scheduleProposalTable,
+  roleTaskAssignment: roleTaskAssignmentTable,
 });
 
 export default spacetimedb;
@@ -1606,6 +1649,8 @@ export const createOrg = spacetimedb.reducer(
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
       autoCommitSchedules: undefined,
+      openingHours: undefined,
+      countryCode: undefined,
     });
   }
 );
@@ -2376,6 +2421,35 @@ export const deleteStaffMember = spacetimedb.reducer(
   }
 );
 
+// Resolve `staffName` to a real staff_member row, or throw. Used by addShift
+// and updateShift so the AI (or a misbehaving client) can't write a shift for
+// a person who doesn't exist on the team. Match is case-insensitive on the
+// trimmed name and falls back to memberId lookup when one was provided.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveStaffForShift(
+  ctx: any,
+  organizationId: string,
+  staffName: string,
+  memberId: string | undefined,
+): { memberId: string; name: string } {
+  const wantedName = (staffName ?? '').trim();
+  const wantedLower = wantedName.toLowerCase();
+  const teamRows = [...ctx.db.staffMember.byOrganizationId.filter(organizationId)];
+  // memberId explicitly provided — trust it after verifying it's in the org.
+  if (memberId) {
+    const byId = teamRows.find((m) => m.id.toString() === memberId);
+    if (byId) return { memberId: byId.id.toString(), name: byId.name };
+  }
+  if (!wantedName) throw new Error('staffName is required');
+  const match = teamRows.find((m) => m.name.trim().toLowerCase() === wantedLower);
+  if (!match) {
+    throw new Error(
+      `Unknown staffName "${wantedName}" — not on the team roster. Add the person first or use an exact name.`,
+    );
+  }
+  return { memberId: match.id.toString(), name: match.name };
+}
+
 export const addShift = spacetimedb.reducer(
   {
     organizationId: t.string(),
@@ -2394,11 +2468,13 @@ export const addShift = spacetimedb.reducer(
     const perms = JSON.parse(member.permissions);
     if (!perms.staffing?.edit) unauthorized('No staffing edit permission');
 
+    const resolved = resolveStaffForShift(ctx, args.organizationId, args.staffName, args.memberId);
+
     ctx.db.shift.insert({
       id: ctx.newUuidV4(),
       organizationId: args.organizationId,
-      memberId: args.memberId,
-      staffName: args.staffName,
+      memberId: resolved.memberId,
+      staffName: resolved.name,
       staffRole: args.staffRole,
       staffRoles: args.staffRoles,
       date: args.date,
@@ -2431,11 +2507,22 @@ export const updateShift = spacetimedb.reducer(
     if (!perms.staffing?.edit) unauthorized('No staffing edit permission');
 
     const shift = findItemInOrg(ctx.db.shift, args.organizationId, args.shiftId);
+
+    // If staffName changed (or no memberId was supplied), re-resolve against
+    // the team roster. Same guard as addShift — keeps ghost names out of the
+    // shift table.
+    const resolved = resolveStaffForShift(
+      ctx,
+      args.organizationId,
+      args.staffName || shift.staffName,
+      args.memberId ?? shift.memberId ?? undefined,
+    );
+
     ctx.db.shift.delete(shift);
     ctx.db.shift.insert({
       ...shift,
-      memberId: args.memberId,
-      staffName: args.staffName,
+      memberId: resolved.memberId,
+      staffName: resolved.name,
       staffRole: args.staffRole,
       staffRoles: args.staffRoles,
       date: args.date,
@@ -2878,13 +2965,18 @@ export const createConversation = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
     });
 
-    // Add creator as member
-    ctx.db.chatMember.insert({
-      id: ctx.newUuidV4(),
-      conversationId: convId.toString(),
-      userId: ctx.sender,
-      joinedAt: ctx.timestamp,
-    });
+    const senderHex = ctx.sender.toString();
+    const requested: string[] = memberUserIds ? JSON.parse(memberUserIds) : [];
+    const allHex = Array.from(new Set([senderHex, ...requested]));
+
+    for (const hex of allHex) {
+      ctx.db.chatMember.insert({
+        id: ctx.newUuidV4(),
+        conversationId: convId.toString(),
+        userId: hex as unknown as typeof ctx.sender,
+        joinedAt: ctx.timestamp,
+      });
+    }
   }
 );
 
@@ -5065,6 +5157,185 @@ export const setAutoCommitSchedules = spacetimedb.reducer(
       ...existing,
       autoCommitSchedules: autoCommit,
       updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+// Owner/manager sets the store's weekly opening hours and (optionally) the
+// country code used to look up public holidays. `openingHours` is a JSON
+// string the client validates; we pass it through without re-parsing here.
+export const updateOpeningHours = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    openingHours: t.option(t.string()),
+    countryCode: t.option(t.string()),
+  },
+  (ctx, { organizationId, openingHours, countryCode }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      openingHours: openingHours ?? existing.openingHours,
+      countryCode: countryCode ?? existing.countryCode,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROLE TASK ASSIGNMENTS — todos materialized from RoleTask templates
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Manager assigns a role-task to a specific staff member with a due time.
+export const assignRoleTask = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    taskId: t.string(),
+    memberId: t.string(),
+    dueAt: t.timestamp(),
+  },
+  (ctx, { organizationId, taskId, memberId, dueAt }) => {
+    findActiveMember(ctx, organizationId);
+
+    // Sanity-check that the referenced task and member belong to this org.
+    const task = [...ctx.db.roleTask.byOrganizationId.filter(organizationId)]
+      .find(r => r.id.toString() === taskId);
+    if (!task) throw new Error('Role task not found');
+    const member = [...ctx.db.staffMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.id.toString() === memberId);
+    if (!member) throw new Error('Staff member not found');
+
+    ctx.db.roleTaskAssignment.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      taskId,
+      memberId,
+      dueAt,
+      status: 'pending',
+      evidenceUrl: undefined,
+      note: undefined,
+      completedAt: undefined,
+      completedBy: undefined,
+      skipReason: undefined,
+      createdAt: ctx.timestamp,
+      createdBy: ctx.sender,
+    });
+  }
+);
+
+// Staff member marks an assignment done. evidenceUrl/note are optional —
+// even if the underlying RoleTask requires evidence, validation is on the
+// client side so a manager can still complete on behalf of someone without
+// re-uploading a photo.
+export const completeRoleTask = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    assignmentId: t.string(),
+    evidenceUrl: t.option(t.string()),
+    note: t.option(t.string()),
+  },
+  (ctx, { organizationId, assignmentId, evidenceUrl, note }) => {
+    findActiveMember(ctx, organizationId);
+
+    const existing = [...ctx.db.roleTaskAssignment.byOrganizationId.filter(organizationId)]
+      .find(a => a.id.toString() === assignmentId);
+    if (!existing) throw new Error('Assignment not found');
+
+    ctx.db.roleTaskAssignment.delete(existing);
+    ctx.db.roleTaskAssignment.insert({
+      ...existing,
+      status: 'completed',
+      evidenceUrl: evidenceUrl ?? existing.evidenceUrl,
+      note: note ?? existing.note,
+      completedAt: ctx.timestamp,
+      completedBy: ctx.sender,
+      skipReason: undefined,
+    });
+  }
+);
+
+// Marks an assignment as skipped — used when a task no longer applies (e.g.
+// store closed early, equipment broken). Keeps the row for audit.
+export const skipRoleTask = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    assignmentId: t.string(),
+    reason: t.option(t.string()),
+  },
+  (ctx, { organizationId, assignmentId, reason }) => {
+    findActiveMember(ctx, organizationId);
+
+    const existing = [...ctx.db.roleTaskAssignment.byOrganizationId.filter(organizationId)]
+      .find(a => a.id.toString() === assignmentId);
+    if (!existing) throw new Error('Assignment not found');
+
+    ctx.db.roleTaskAssignment.delete(existing);
+    ctx.db.roleTaskAssignment.insert({
+      ...existing,
+      status: 'skipped',
+      skipReason: reason,
+      completedAt: ctx.timestamp,
+      completedBy: ctx.sender,
+    });
+  }
+);
+
+// Manager removes an assignment that was created in error.
+export const deleteRoleTaskAssignment = spacetimedb.reducer(
+  { organizationId: t.string(), assignmentId: t.string() },
+  (ctx, { organizationId, assignmentId }) => {
+    findActiveMember(ctx, organizationId);
+
+    const existing = [...ctx.db.roleTaskAssignment.byOrganizationId.filter(organizationId)]
+      .find(a => a.id.toString() === assignmentId);
+    if (!existing) throw new Error('Assignment not found');
+
+    ctx.db.roleTaskAssignment.delete(existing);
+  }
+);
+
+// One-shot completion: insert a row that's already marked "completed". This is
+// the primary path — the staff member opens the Tasks tab, sees the role tasks
+// for their org, taps "Complete" on one, uploads an evidence photo + optional
+// note, and we record the completion directly. No pre-assignment step needed.
+//
+// memberId is optional — when the caller is a staff member completing their
+// own task, the client can pass their StaffMember.id; if it's a manager
+// completing on behalf of someone, pass that member's id; if neither is known,
+// it stays empty (completedBy still records the identity).
+export const recordTaskCompletion = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    taskId: t.string(),
+    memberId: t.option(t.string()),
+    evidenceUrl: t.option(t.string()),
+    note: t.option(t.string()),
+  },
+  (ctx, { organizationId, taskId, memberId, evidenceUrl, note }) => {
+    findActiveMember(ctx, organizationId);
+
+    const task = [...ctx.db.roleTask.byOrganizationId.filter(organizationId)]
+      .find(r => r.id.toString() === taskId);
+    if (!task) throw new Error('Role task not found');
+
+    ctx.db.roleTaskAssignment.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      taskId,
+      memberId: memberId ?? "",
+      dueAt: ctx.timestamp,
+      status: 'completed',
+      evidenceUrl,
+      note,
+      completedAt: ctx.timestamp,
+      completedBy: ctx.sender,
+      skipReason: undefined,
+      createdAt: ctx.timestamp,
+      createdBy: ctx.sender,
     });
   }
 );

@@ -397,22 +397,28 @@ export function MobileRightPanel() {
     }
   }, [isOpen, dragging, close]);
 
-  if (progress === 0 && !isOpen) return null;
+  // Keep Mr. Merchiva mounted at all times — previously this branch returned
+  // `null` when the panel was closed, which unmounted <RightPanel> on every
+  // tiny right-swipe and reset the chat session each time. Hide via CSS
+  // (`visibility: hidden` + `pointer-events: none`) so children retain state
+  // and SpacetimeDB subscriptions stay alive while the panel is offscreen.
+  const isHidden = progress === 0 && !isOpen && !dragging;
 
   return (
-    <>
-      <div
-        className="fixed inset-y-0 right-0 z-10 flex flex-col overflow-hidden bg-background"
-        style={{
-          width: RPANEL_WIDTH,
-          transform: `translateX(${panelTranslateX}px) scale(${panelScale})`,
-          opacity: panelOpacity,
-          transformOrigin: "right center",
-          transition: transitionStyle,
-        }}
-      >
-        <RightPanel collapsible={false} />
-      </div>
-    </>
+    <div
+      aria-hidden={isHidden}
+      className="fixed inset-y-0 right-0 z-10 flex flex-col overflow-hidden bg-background"
+      style={{
+        width: RPANEL_WIDTH,
+        transform: `translateX(${panelTranslateX}px) scale(${panelScale})`,
+        opacity: panelOpacity,
+        transformOrigin: "right center",
+        transition: transitionStyle,
+        visibility: isHidden ? "hidden" : "visible",
+        pointerEvents: isHidden ? "none" : "auto",
+      }}
+    >
+      <RightPanel collapsible={false} />
+    </div>
   );
 }

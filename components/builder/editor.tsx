@@ -19,6 +19,7 @@ import { MerchivaChat, type BuilderModeContext } from "@/components/merchiva-cha
 import { themeVars } from "@/components/site-renderer";
 import { createPage, updateSite } from "@/lib/spacetimedb/actions";
 import { buildPageTemplate, type PageTemplateId } from "@/lib/builder/page-templates";
+import { BuilderSiteProvider } from "@/lib/builder/site-context";
 import type { Site, SitePage, Product } from "@/lib/types";
 
 // Wraps MerchivaChat with builder-mode context derived from the live Craft.js state.
@@ -218,6 +219,7 @@ export function BuilderEditor({
   const showDesignEditor = activeTab.kind === "page";
 
   return (
+    <BuilderSiteProvider value={site}>
     <Editor
       key={activePageId}
       resolver={resolver}
@@ -309,5 +311,6 @@ export function BuilderEditor({
         pages={pages}
       />
     </Editor>
+    </BuilderSiteProvider>
   );
 }

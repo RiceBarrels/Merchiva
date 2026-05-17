@@ -28,6 +28,7 @@ export default __t.row({
   imageUrl: __t.option(__t.string()).name("image_url"),
   description: __t.option(__t.string()),
   nameI18N: __t.option(__t.string()).name("name_i_18_n"),
+  options: __t.option(__t.string()),
   squareItemId: __t.option(__t.string()).name("square_item_id"),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),

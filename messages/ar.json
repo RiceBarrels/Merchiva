@@ -28,7 +28,8 @@
     "inventory": "المخزون",
     "wasteLog": "سجل الهدر",
     "sales": "توقعات المبيعات",
-    "staffing": "الموظفون",
+    "personnel": "الموظفون",
+    "staffing": "الجدول",
     "products": "المنتجات",
     "reports": "التقارير",
     "customers": "العملاء",
@@ -508,6 +509,25 @@
       "tabCode": "الكود",
       "tabTests": "الاختبارات",
       "tabConsole": "وحدة التحكم"
+    },
+    "tokens": {
+      "colorsLabel": "Tokens",
+      "pickToken": "اختر رمز تصميم"
+    },
+    "tokenPanel": {
+      "title": "رموز التصميم",
+      "colors": "الألوان",
+      "spacing": "التباعد",
+      "textSizes": "أحجام النص",
+      "radius": "نصف القطر",
+      "reset": "إعادة التعيين إلى الافتراضي",
+      "delete": "حذف الرمز المخصص",
+      "addCustom": "إضافة رمز مخصص",
+      "namePlaceholder": "الاسم (مثال: brand-blue)",
+      "invalidName": "الاسم فارغ أو مستخدم بالفعل",
+      "valueRequired": "القيمة مطلوبة",
+      "cancel": "إلغاء",
+      "add": "إضافة"
     }
   },
   "status": {
@@ -1503,6 +1523,7 @@
       "afternoon": "مساء الخير",
       "evening": "مساء الخير"
     },
+    "morningBriefing": "إحاطة الصباح",
     "time": {
       "justNow": "الآن",
       "minutesAgo": "قبل {n} د",

@@ -48,7 +48,6 @@ import type {
   OrgMember, Shift, ShiftType, StaffRole, StaffRolePermissions,
   StaffAvailability, TimeOffRequest, ShiftTrade, RoleTask,
 } from "@/lib/types";
-import { PermissionGuard } from "@/components/permission-guard";
 import { NotificationPanel } from "@/components/notification-panel";
 import { PageHeader } from "@/components/page-header";
 import { AutoScheduler } from "@/components/auto-scheduler";
@@ -58,7 +57,6 @@ import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
 import { useSpacetimeDB } from "spacetimedb/react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
-import { PageTabs } from "@/components/page-tabs";
 
 const ROLE_COLORS = [
   "#44403c", "#78716c", "#57534e", "#a8a29e",
@@ -274,6 +272,11 @@ interface StaffingDesktopProps {
   }>>;
   refreshing: boolean;
   autoSchedulerSlot?: React.ReactNode;
+  /** Restrict which inner subtabs are shown. When set, the tab bar is hidden
+   *  if only one entry remains. Used by the Personnel hub to split this page
+   *  across its own top tabs (Schedule shows schedule/myShifts; Roles shows
+   *  just the roles tab). */
+  subtabs?: DesktopTab[];
 }
 
 function StaffingDesktop(props: StaffingDesktopProps) {
@@ -289,9 +292,10 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     selectedRole, setSelectedRole, handleSelectRole, handleDeleteRole,
     setEditingRole, setRoleForm, setRoleDialog,
     setTaskDialog, setTaskForm, refreshing, myMemberId, selectedDay, setSelectedDay,
+    subtabs: subtabsFilter,
   } = props;
 
-  const [dTab, setDTab] = useState<DesktopTab>("schedule");
+  const [dTab, setDTab] = useState<DesktopTab>(() => subtabsFilter?.[0] ?? "schedule");
   const [railOpen, setRailOpen] = useState(true);
 
   const prevWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
@@ -897,57 +901,58 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     myShifts: t("staffing.tabs.myShifts"),
     roles: t("staffing.tabs.roles"),
   };
-  const desktopTabs: DesktopTab[] = isStaff ? ["myShifts", "roles"] : ["schedule", "myShifts", "roles"];
+  const defaultDesktopTabs: DesktopTab[] = isStaff ? ["myShifts", "roles"] : ["schedule", "myShifts", "roles"];
+  const desktopTabs: DesktopTab[] = subtabsFilter
+    ? defaultDesktopTabs.filter((t) => subtabsFilter.includes(t))
+    : defaultDesktopTabs;
+  // If the filter narrowed us down to a single tab, hide the tab bar entirely —
+  // the parent (Personnel hub) is already showing a top-level tab for this view.
+  const showTabBar = desktopTabs.length > 1;
+  // Keep `dTab` valid if the filter changes (or on first render under a filter).
+  if (!desktopTabs.includes(dTab) && desktopTabs.length > 0) {
+    // safe — render-time guard; React will rerun the next effect cycle.
+    queueMicrotask(() => setDTab(desktopTabs[0]));
+  }
 
   return (
-    <PermissionGuard section="staffing">
-      <div className="flex flex-col h-full bg-muted/30">
-        <PageHeader
-          title={t("staffing.title")}
-          subtitle={t("staffing.subtitle")}
-          right={
-            <div className="flex items-center gap-2">
-              {canEdit && props.autoSchedulerSlot}
-              {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+    <div className="flex flex-col bg-muted/30 min-h-0 flex-1">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {/* Tab bar */}
+          {showTabBar && (
+            <div className="flex items-center gap-3 px-6 border-b border-border bg-background shrink-0">
+              <div className="flex items-center gap-0">
+                {desktopTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setDTab(tab)}
+                    className={`px-4 py-2.5 text-[13px] font-medium transition-colors relative ${
+                      dTab === tab
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tabLabels[tab]}
+                    {dTab === tab && (
+                      <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-foreground rounded-full" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                {canEdit && props.autoSchedulerSlot}
+                {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              </div>
             </div>
-          }
-        />
-        <PageTabs tabs={[
-          { label: t("nav.staffing"), href: "/~/staffing" },
-          { label: t("nav.training"), href: "/~/training" },
-        ]} />
+          )}
 
-        <div className="flex-1 flex min-h-0 overflow-hidden">
-          {/* Main column */}
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-            {/* Tab bar */}
-            <div className="flex items-center gap-0 px-6 border-b border-border bg-background shrink-0">
-              {desktopTabs.map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setDTab(tab)}
-                  className={`px-4 py-2.5 text-[13px] font-medium transition-colors relative ${
-                    dTab === tab
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {tabLabels[tab]}
-                  {dTab === tab && (
-                    <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-foreground rounded-full" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            {dTab === "schedule" && !isStaff && <ScheduleGrid />}
-            {dTab === "myShifts" && <MyShiftsTab />}
-            {dTab === "roles" && <RolesTab />}
-          </div>
+          {/* Tab content */}
+          {dTab === "schedule" && !isStaff && <ScheduleGrid />}
+          {dTab === "myShifts" && <MyShiftsTab />}
+          {dTab === "roles" && <RolesTab />}
         </div>
       </div>
-    </PermissionGuard>
+    </div>
   );
 }
 
@@ -956,7 +961,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 import React from "react";
 
-export default function StaffingPage() {
+export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
   const t = useT();
 
@@ -2319,6 +2324,7 @@ export default function StaffingPage() {
             />
           ) : null
         }
+        subtabs={subtabs}
       />
       {/* ─── Dialogs still need to render (they are portals) ─── */}
       {/* Add / Edit Shift DynamicUIElement */}
@@ -2494,6 +2500,25 @@ export default function StaffingPage() {
                 <div className="space-y-1.5"><Label>{t("staffing.taskDialog.endTime")}</Label><Input type="time" value={taskForm.endTime} onChange={(e) => setTaskForm((f) => ({ ...f, endTime: e.target.value }))} /></div>
               </div>
             )}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Label>{t("staffing.taskDialog.requireEvidence")}</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("staffing.taskDialog.requireEvidenceHint")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTaskForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
+                aria-pressed={taskForm.requiresEvidence}
+                aria-label={t("staffing.taskDialog.requireEvidence")}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors shrink-0 mt-0.5 ${
+                  taskForm.requiresEvidence ? "bg-foreground border-foreground" : "bg-background border-border"
+                }`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
+                  taskForm.requiresEvidence ? "translate-x-4" : "translate-x-0.5"
+                }`} />
+              </button>
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>{t("common.cancel")}</Button>
@@ -2639,7 +2664,7 @@ export default function StaffingPage() {
   })();
 
   return (
-    <PermissionGuard section="staffing">
+    <div className="flex flex-col min-h-screen bg-background flex-1">
       <div className="flex flex-col min-h-screen bg-background">
         <PageHeader
           title={t("staffing.title")}
@@ -4515,6 +4540,6 @@ export default function StaffingPage() {
         </DynamicUIElementContent>
       </DynamicUIElement>
 
-    </PermissionGuard>
+    </div>
   );
 }

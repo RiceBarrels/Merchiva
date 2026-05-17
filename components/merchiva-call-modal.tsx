@@ -5,6 +5,7 @@ import { Mic, MicOff, PhoneOff, Loader2, Volume2, AlertTriangle } from "lucide-r
 import { cn } from "@/lib/utils";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { NotchM } from "@/components/merchiva-chat-dashboard";
+import { MerchivaLogo } from "./logo";
 
 type CallState =
   | "idle"
@@ -72,6 +73,10 @@ export function MerchivaCallModal({
   const [muted, setMuted] = useState(false);
   const [level, setLevel] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
+  // Drives the in-modal kaomoji's open/closed mouth while TTS is playing.
+  // Set from playBlob's analyser loop alongside the merchiva:voice-mouth
+  // event so the chat watermark and the modal both animate in sync.
+  const [mouthOpen, setMouthOpen] = useState(false);
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -154,15 +159,71 @@ export function MerchivaCallModal({
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audioElRef.current = audio;
+
+      // Hook the audio element into the Web Audio graph so we can read its
+      // amplitude in real time and drive the chat watermark's mouth state.
+      // Audio still plays through the speakers because analyser is wired
+      // through to ctx.destination.
+      let rafId: number | null = null;
+      const ctx = audioContextRef.current;
+      const dispatchMouth = (active: boolean, level?: number) => {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("merchiva:voice-mouth", { detail: { active, level } }),
+          );
+        } catch {/* ignore */}
+      };
+      const stopAnalyser = () => {
+        if (rafId != null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      };
+      if (ctx) {
+        try {
+          const source = ctx.createMediaElementSource(audio);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          analyser.smoothingTimeConstant = 0.6;
+          source.connect(analyser);
+          analyser.connect(ctx.destination);
+          const data = new Uint8Array(analyser.frequencyBinCount);
+          const tick = () => {
+            analyser.getByteFrequencyData(data);
+            // Mean of the low/mid frequency bins (voice sits in the bottom
+            // of the spectrum). Normalize to 0-1.
+            let sum = 0;
+            const used = Math.min(data.length, 32);
+            for (let i = 0; i < used; i++) sum += data[i];
+            const lvl = sum / used / 255;
+            dispatchMouth(true, lvl);
+            setMouthOpen(lvl > 0.12);
+            rafId = requestAnimationFrame(tick);
+          };
+          rafId = requestAnimationFrame(tick);
+        } catch (err) {
+          console.warn("[call] mouth analyser setup failed:", err);
+        }
+      }
+
       audio.onended = () => {
+        stopAnalyser();
+        setMouthOpen(false);
+        dispatchMouth(false);
         URL.revokeObjectURL(url);
         resolve();
       };
       audio.onerror = () => {
+        stopAnalyser();
+        setMouthOpen(false);
+        dispatchMouth(false);
         URL.revokeObjectURL(url);
         reject(new Error("Audio playback failed"));
       };
       audio.play().catch((e) => {
+        stopAnalyser();
+        setMouthOpen(false);
+        dispatchMouth(false);
         URL.revokeObjectURL(url);
         reject(e);
       });
@@ -529,11 +590,12 @@ export function MerchivaCallModal({
         </span>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6 min-h-0">
-        <div className="relative">
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6 min-h-0">
+        <div className="relative flex flex-col items-center justify-center px-8 py-8 gap-4">
+          {/* Pulsing colored ring — bigger so it frames the kaomoji */}
           <div
             className={cn(
-              "absolute inset-0 rounded-full transition-transform duration-150",
+              "absolute inset-0  rounded-4xl transition-transform duration-150",
               state === "listening"
                 ? "bg-emerald-500/15"
                 : state === "speaking"
@@ -546,9 +608,27 @@ export function MerchivaCallModal({
               transform: `scale(${state === "listening" || state === "speaking" ? ringScale : 1})`,
             }}
           />
-          <div className="relative h-32 w-32 rounded-full bg-stone-900 border border-white/10 flex items-center justify-center">
-            <NotchM size={64} fg="#fff" bg="#1c1917" />
+          {/* Big kaomoji avatar. While speaking the mouth swaps between
+              closed `‿` and open `O` per audio-analyser amplitude. While
+              not speaking we show a calm closed face. The transition is
+              instant during speech (transition-none) so the mouth feels
+              tied to the audio. */}
+          <div
+            className={cn(
+              "relative font-mono leading-none text-stone-100 select-none transition-none",
+            )}
+            style={{ fontSize: 64, letterSpacing: "0.02em" }}
+            aria-hidden="true"
+          >
+            {state === "speaking"
+              ? (mouthOpen ? "(◕O◕)" : "(◕‿◕)")
+              : state === "listening"
+                ? "(•‿•)"
+                : state === "thinking" || state === "transcribing"
+                  ? "(￣ω￣)"
+                  : "(◕‿◕)"}
           </div>
+          <MerchivaLogo className="h-32 w-32"/>
         </div>
 
         <div className="text-center max-w-md">

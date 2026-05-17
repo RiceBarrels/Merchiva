@@ -527,6 +527,10 @@ export interface Site {
   published: boolean;
   customDomain: string | null;
   values?: Record<string, string>;
+  // User-overridden design tokens, keyed by CSS custom property name
+  // (e.g. "--mv-color-brand-primary"). Falls back to globals.css defaults
+  // for any token not listed here. Persisted in features._tokens.
+  tokens?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }

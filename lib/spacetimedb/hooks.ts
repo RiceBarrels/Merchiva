@@ -37,6 +37,21 @@ export function useShiftTrades()       { return useTable(tables.shiftTrade); }
 export function useStaffAvailability() { return useTable(tables.staffAvailability); }
 export function useTimeOffRequests()   { return useTable(tables.timeOffRequest); }
 export function useRoleTasks()         { return useTable(tables.roleTask); }
+// roleTaskAssignment is a NEW table — until the SpacetimeDB module is
+// republished and `spacetime generate` regenerates the bindings, `tables`
+// won't have it. We always call the same number of hooks (rules-of-hooks),
+// but pass a `null`-tolerant table reference so useTable just returns [].
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const __maybeRoleTaskAssignmentTable: any =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (tables as any).roleTaskAssignment ?? { __missing: true, schema: { name: "role_task_assignment" } };
+export function useRoleTaskAssignments() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((__maybeRoleTaskAssignmentTable as any).__missing) {
+    return [[] as unknown[], false] as ReturnType<typeof useTable>;
+  }
+  return useTable(__maybeRoleTaskAssignmentTable);
+}
 
 // ── Payments ─────────────────────────────────────────────────────────────────
 export function usePayments() { return useTable(tables.payment); }

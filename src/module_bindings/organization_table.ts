@@ -15,4 +15,9 @@ export default __t.row({
   ownerId: __t.identity().name("owner_id"),
   name: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
+  stripeCustomerId: __t.option(__t.string()).name("stripe_customer_id"),
+  subscriptionStatus: __t.option(__t.string()).name("subscription_status"),
+  subscriptionPriceId: __t.option(__t.string()).name("subscription_price_id"),
+  subscriptionInterval: __t.option(__t.string()).name("subscription_interval"),
+  currentPeriodEnd: __t.option(__t.timestamp()).name("current_period_end"),
 });

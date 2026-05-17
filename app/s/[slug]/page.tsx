@@ -348,6 +348,7 @@ export default function PublicSitePage({
           siteSlug={slug}
           basePath={`/s/${slug}`}
           customValues={site.values}
+          customTokens={site.tokens}
           valueContext={{ customer, siteName: site.name }}
         />
       ) : (
