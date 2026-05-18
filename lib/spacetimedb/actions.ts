@@ -391,6 +391,47 @@ export async function deleteSite(siteId: string): Promise<void> {
   return conn().reducers.deleteSite({ organizationId: orgId(), siteId });
 }
 
+// ─── Designs ──────────────────────────────────────────────────────────────────
+
+export async function createDesign(data: {
+  name: string;
+  width: number;
+  height: number;
+  html: string;
+  preset?: string | null;
+}): Promise<void> {
+  return conn().reducers.createDesign({
+    organizationId: orgId(),
+    name: data.name,
+    width: data.width,
+    height: data.height,
+    html: data.html,
+    preset: data.preset ?? undefined,
+  });
+}
+
+export async function updateDesign(designId: string, data: {
+  name: string;
+  width: number;
+  height: number;
+  html: string;
+  preset?: string | null;
+}): Promise<void> {
+  return conn().reducers.updateDesign({
+    organizationId: orgId(),
+    designId,
+    name: data.name,
+    width: data.width,
+    height: data.height,
+    html: data.html,
+    preset: data.preset ?? undefined,
+  });
+}
+
+export async function deleteDesign(designId: string): Promise<void> {
+  return conn().reducers.deleteDesign({ organizationId: orgId(), designId });
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createPage(siteIdOrData: string | any, name?: string, slug?: string, sortOrder?: number): Promise<void> {
   const payload = typeof siteIdOrData === "string"
@@ -463,8 +504,20 @@ export async function createConversation(organizationId: string, type: string, m
   return conn().reducers.createConversation({ organizationId, type, name: name ?? "", memberUserIds: JSON.stringify(memberUserIds) });
 }
 
-export async function sendMessage(conversationId: string, content: string, _replyToId?: string, _attachment?: unknown): Promise<void> {
-  return offlineAware("sendMessage", { conversationId, content });
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+  replyToId?: string,
+  attachment?: { url: string; type: string; name: string } | null,
+): Promise<void> {
+  return offlineAware("sendMessage", {
+    conversationId,
+    content,
+    replyToId: replyToId ?? undefined,
+    attachmentUrl: attachment?.url ?? undefined,
+    attachmentType: attachment?.type ?? undefined,
+    attachmentName: attachment?.name ?? undefined,
+  });
 }
 
 export async function addMembersToConversation(convId: string, userIds: string[]): Promise<void> {

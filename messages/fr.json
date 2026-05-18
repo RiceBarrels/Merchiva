@@ -38,6 +38,7 @@
     "punchIn": "Pointer",
     "chat": "Chat",
     "website": "Site web",
+    "design": "Création",
     "membership": "Abonnement",
     "finances": "Finances",
     "suppliers": "Fournisseurs",
@@ -1437,6 +1438,38 @@
     "inviteShort": "Inviter",
     "resend": "Renvoyer"
   },
+  "lock": {
+    "title": "Appareil verrouillé",
+    "subtitle": "Saisissez votre PIN pour déverrouiller l'appareil du magasin.",
+    "subtitleWithOp": "Dernier opérateur : {name}. Saisissez votre PIN pour prendre le relais.",
+    "pinLabel": "Saisir le PIN",
+    "tapToType": "Touchez ici pour saisir",
+    "verifying": "Vérification…",
+    "pinNotRecognized": "PIN non reconnu",
+    "autolockTitle": "Verrouillage automatique",
+    "autolockSubtitle": "Exiger un PIN si l'appareil reste inactif pendant cette durée.",
+    "autolockMetaPrefix": "PIN après {label} d'inactivité",
+    "never": "Jamais"
+  },
+  "hours": {
+    "title": "Horaires d'ouverture",
+    "mobileTitle": "Horaires",
+    "subtitle": "Définissez les heures d'ouverture quotidiennes. Utilisé par l'IA pour les plannings.",
+    "open": "Ouvert",
+    "closed": "Fermé",
+    "save": "Enregistrer les horaires",
+    "toastSaved": "Horaires enregistrés",
+    "toastFailed": "Échec de l'enregistrement",
+    "allClosed": "Tous fermés",
+    "daysSuffix": " jours ouverts",
+    "day_mon": "Lun",
+    "day_tue": "Mar",
+    "day_wed": "Mer",
+    "day_thu": "Jeu",
+    "day_fri": "Ven",
+    "day_sat": "Sam",
+    "day_sun": "Dim"
+  },
   "availability": {
     "title": "Définir la disponibilité",
     "mobileTitle": "Disponibilité",
@@ -2216,6 +2249,66 @@
       "notificationAnalyze": "Lecture de la demande de notification...",
       "notificationFetch": "Création de la notification...",
       "notificationProcess": "Finalisation de la notification..."
+    }
+  },
+  "design": {
+    "list": {
+      "title": "Création",
+      "subtitle": "Affiches, visuels sociaux, signalétique — canevas à taille fixe.",
+      "newDesign": "Nouvelle création",
+      "createTitle": "Créer une création",
+      "designName": "Nom de la création",
+      "namePlaceholder": "Affiche soldes d'été",
+      "size": "Taille du canevas",
+      "loading": "Chargement des créations…",
+      "empty": "Aucune création",
+      "emptyHint": "Commencez une affiche, un visuel social ou une signalétique.",
+      "open": "Ouvrir",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "cancel": "Annuler",
+      "create": "Créer",
+      "confirmDelete": "Supprimer cette création ? Action irréversible."
+    },
+    "editor": {
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "generate": "Générer",
+      "zoomIn": "Zoom avant",
+      "zoomOut": "Zoom arrière",
+      "fit": "Ajuster à l'écran",
+      "notFound": "Création introuvable",
+      "layers": "Calques",
+      "properties": "Propriétés"
+    },
+    "ai": {
+      "title": "Générer avec l'IA",
+      "subtitle": "Décrivez la création. Le canevas est",
+      "placeholder": "Une affiche soldes d'été percutante — -50%, fond orange vif, gros titre.",
+      "generate": "Générer",
+      "generating": "Génération…",
+      "cancel": "Annuler",
+      "empty": "Décrivez la création voulue. L'IA la composera dans le canevas.",
+      "failed": "Échec de la génération."
+    },
+    "preset": {
+      "groupSocial": "Réseaux sociaux",
+      "groupPrint": "Impression",
+      "groupSignage": "Signalétique",
+      "groupCustom": "Personnalisé",
+      "custom": "Taille personnalisée…",
+      "apply": "Appliquer",
+      "instagramSquare": "Instagram carré",
+      "instagramStory": "Instagram story",
+      "facebookPost": "Publication Facebook",
+      "a4Portrait": "A4 portrait",
+      "a4Landscape": "A4 paysage",
+      "usLetter": "US Letter",
+      "a3Portrait": "A3 portrait",
+      "poster18x24": "Affiche 18×24″",
+      "receiptStrip": "Bande ticket",
+      "storeDisplay": "Écran en magasin",
+      "tableTent": "Chevalet de table"
     }
   }
 }

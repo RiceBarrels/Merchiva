@@ -38,6 +38,7 @@
     "punchIn": "पंच इन",
     "chat": "चैट",
     "website": "वेबसाइट",
+    "design": "डिज़ाइन",
     "membership": "सदस्यता",
     "finances": "वित्त",
     "suppliers": "आपूर्तिकर्ता",
@@ -1437,6 +1438,38 @@
     "inviteShort": "आमंत्रित",
     "resend": "पुनः भेजें"
   },
+  "lock": {
+    "title": "डिवाइस लॉक",
+    "subtitle": "स्टोर डिवाइस अनलॉक करने के लिए अपना PIN दर्ज करें।",
+    "subtitleWithOp": "अंतिम ऑपरेटर: {name}। नियंत्रण लेने के लिए PIN दर्ज करें।",
+    "pinLabel": "PIN दर्ज करें",
+    "tapToType": "टाइप करने के लिए यहाँ टैप करें",
+    "verifying": "सत्यापन हो रहा है…",
+    "pinNotRecognized": "PIN पहचाना नहीं गया",
+    "autolockTitle": "स्वचालित लॉक",
+    "autolockSubtitle": "स्टोर डिवाइस इतने समय तक निष्क्रिय रहने पर PIN माँगें।",
+    "autolockMetaPrefix": "{label} निष्क्रियता के बाद PIN",
+    "never": "कभी नहीं"
+  },
+  "hours": {
+    "title": "व्यावसायिक घंटे",
+    "mobileTitle": "घंटे",
+    "subtitle": "तय करें कि स्टोर हर दिन कब खुलता है। AI शेड्यूलिंग इसका उपयोग करता है।",
+    "open": "खुला",
+    "closed": "बंद",
+    "save": "व्यावसायिक घंटे सहेजें",
+    "toastSaved": "व्यावसायिक घंटे सहेजे गए",
+    "toastFailed": "व्यावसायिक घंटे सहेजने में विफल",
+    "allClosed": "सभी दिन बंद",
+    "daysSuffix": " दिन खुला",
+    "day_mon": "सोम",
+    "day_tue": "मंगल",
+    "day_wed": "बुध",
+    "day_thu": "गुरु",
+    "day_fri": "शुक्र",
+    "day_sat": "शनि",
+    "day_sun": "रवि"
+  },
   "availability": {
     "title": "उपलब्धता सेट करें",
     "mobileTitle": "उपलब्धता",
@@ -2216,6 +2249,66 @@
       "notificationAnalyze": "अधिसूचना अनुरोध पढ़ रहा हूँ...",
       "notificationFetch": "अधिसूचना बना रहा हूँ...",
       "notificationProcess": "अधिसूचना अंतिम कर रहा हूँ..."
+    }
+  },
+  "design": {
+    "list": {
+      "title": "डिज़ाइन",
+      "subtitle": "पोस्टर, सोशल इमेज, स्टोर साइनेज — फिक्स्ड साइज़ कैनवस।",
+      "newDesign": "नया डिज़ाइन",
+      "createTitle": "डिज़ाइन बनाएँ",
+      "designName": "डिज़ाइन नाम",
+      "namePlaceholder": "ग्रीष्म सेल पोस्टर",
+      "size": "कैनवस आकार",
+      "loading": "डिज़ाइन लोड हो रहे हैं…",
+      "empty": "अभी कोई डिज़ाइन नहीं",
+      "emptyHint": "पोस्टर, सोशल इमेज या स्टोर साइन से शुरू करें।",
+      "open": "खोलें",
+      "edit": "संपादित करें",
+      "delete": "हटाएँ",
+      "cancel": "रद्द करें",
+      "create": "बनाएँ",
+      "confirmDelete": "यह डिज़ाइन हटाएँ? पूर्ववत नहीं किया जा सकता।"
+    },
+    "editor": {
+      "saving": "सहेज रहा है…",
+      "saved": "सहेजा गया",
+      "generate": "जनरेट करें",
+      "zoomIn": "ज़ूम इन",
+      "zoomOut": "ज़ूम आउट",
+      "fit": "स्क्रीन में फ़िट करें",
+      "notFound": "डिज़ाइन नहीं मिला",
+      "layers": "लेयर्स",
+      "properties": "प्रॉपर्टीज़"
+    },
+    "ai": {
+      "title": "AI से जनरेट करें",
+      "subtitle": "डिज़ाइन का वर्णन करें। कैनवस है",
+      "placeholder": "एक बोल्ड ग्रीष्म सेल पोस्टर — 50% छूट, चमकीला नारंगी बैकग्राउंड, बड़ा हेडलाइन।",
+      "generate": "जनरेट करें",
+      "generating": "जनरेट हो रहा है…",
+      "cancel": "रद्द करें",
+      "empty": "जो डिज़ाइन चाहिए उसका वर्णन करें। AI उसे कैनवस में बनाएगा।",
+      "failed": "जनरेशन विफल।"
+    },
+    "preset": {
+      "groupSocial": "सोशल",
+      "groupPrint": "प्रिंट",
+      "groupSignage": "साइनेज",
+      "groupCustom": "कस्टम",
+      "custom": "कस्टम आकार…",
+      "apply": "लागू करें",
+      "instagramSquare": "इंस्टाग्राम वर्ग",
+      "instagramStory": "इंस्टाग्राम स्टोरी",
+      "facebookPost": "फेसबुक पोस्ट",
+      "a4Portrait": "A4 पोर्ट्रेट",
+      "a4Landscape": "A4 लैंडस्केप",
+      "usLetter": "US लेटर",
+      "a3Portrait": "A3 पोर्ट्रेट",
+      "poster18x24": "पोस्टर 18×24″",
+      "receiptStrip": "रसीद पट्टी",
+      "storeDisplay": "इन-स्टोर डिस्प्ले",
+      "tableTent": "टेबल टेंट"
     }
   }
 }

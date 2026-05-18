@@ -407,6 +407,20 @@ export interface Product {
   pageTemplate?: SiteElement[] | null;
 }
 
+// ─── Design (fixed-size HTML canvas, e.g. posters/social images) ────────────
+
+export interface Design {
+  id: string;
+  organizationId: string;
+  name: string;
+  width: number;
+  height: number;
+  html: string;
+  preset: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Site Builder ────────────────────────────────────────────────────────────
 
 export interface SiteTheme {

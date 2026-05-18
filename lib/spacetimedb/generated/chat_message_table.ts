@@ -16,4 +16,8 @@ export default __t.row({
   senderId: __t.identity().name("sender_id"),
   content: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
+  replyToId: __t.option(__t.uuid()).name("reply_to_id"),
+  attachmentUrl: __t.option(__t.string()).name("attachment_url"),
+  attachmentType: __t.option(__t.string()).name("attachment_type"),
+  attachmentName: __t.option(__t.string()).name("attachment_name"),
 });

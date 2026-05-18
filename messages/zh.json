@@ -38,6 +38,7 @@
     "punchIn": "打卡",
     "chat": "聊天",
     "website": "网站",
+    "design": "设计",
     "membership": "会员",
     "finances": "财务",
     "suppliers": "供应商",
@@ -1437,6 +1438,38 @@
     "inviteShort": "邀请",
     "resend": "重新发送"
   },
+  "lock": {
+    "title": "设备已锁定",
+    "subtitle": "请输入 PIN 解锁店铺设备。",
+    "subtitleWithOp": "上一位操作者：{name}。输入 PIN 接管。",
+    "pinLabel": "输入 PIN",
+    "tapToType": "点这里输入",
+    "verifying": "验证中…",
+    "pinNotRecognized": "PIN 不正确",
+    "autolockTitle": "自动锁屏",
+    "autolockSubtitle": "店铺设备闲置达到该时长后要求输入 PIN。",
+    "autolockMetaPrefix": "闲置 {label} 后要求 PIN",
+    "never": "永不"
+  },
+  "hours": {
+    "title": "营业时间",
+    "mobileTitle": "营业时间",
+    "subtitle": "设置每天的开关时间，用于 AI 自动排班。",
+    "open": "营业",
+    "closed": "休息",
+    "save": "保存营业时间",
+    "toastSaved": "营业时间已保存",
+    "toastFailed": "营业时间保存失败",
+    "allClosed": "全部休息",
+    "daysSuffix": " 天营业",
+    "day_mon": "周一",
+    "day_tue": "周二",
+    "day_wed": "周三",
+    "day_thu": "周四",
+    "day_fri": "周五",
+    "day_sat": "周六",
+    "day_sun": "周日"
+  },
   "availability": {
     "title": "设置可用时间",
     "mobileTitle": "可用时间",
@@ -2233,6 +2266,66 @@
       "notificationAnalyze": "正在理解通知需求...",
       "notificationFetch": "正在创建通知...",
       "notificationProcess": "正在整理通知..."
+    }
+  },
+  "design": {
+    "list": {
+      "title": "设计",
+      "subtitle": "海报、社交媒体图、店内招贴 — 固定尺寸画布。",
+      "newDesign": "新建设计",
+      "createTitle": "创建设计",
+      "designName": "设计名称",
+      "namePlaceholder": "夏季促销海报",
+      "size": "画布尺寸",
+      "loading": "加载设计中…",
+      "empty": "暂无设计",
+      "emptyHint": "开始制作海报、社交图或店内招贴。",
+      "open": "打开",
+      "edit": "编辑",
+      "delete": "删除",
+      "cancel": "取消",
+      "create": "创建",
+      "confirmDelete": "删除此设计？此操作无法撤销。"
+    },
+    "editor": {
+      "saving": "保存中…",
+      "saved": "已保存",
+      "generate": "AI 生成",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "fit": "适应屏幕",
+      "notFound": "未找到该设计",
+      "layers": "图层",
+      "properties": "属性"
+    },
+    "ai": {
+      "title": "用 AI 生成",
+      "subtitle": "描述你想要的设计。画布尺寸为",
+      "placeholder": "一张醒目的夏季促销海报 — 五折优惠，鲜亮的橙色背景，大标题。",
+      "generate": "生成",
+      "generating": "生成中…",
+      "cancel": "取消",
+      "empty": "用文字描述你想要的设计，AI 会在画布中创建它。",
+      "failed": "生成失败。"
+    },
+    "preset": {
+      "groupSocial": "社交媒体",
+      "groupPrint": "印刷",
+      "groupSignage": "招贴",
+      "groupCustom": "自定义",
+      "custom": "自定义尺寸…",
+      "apply": "应用",
+      "instagramSquare": "Instagram 方形",
+      "instagramStory": "Instagram 故事",
+      "facebookPost": "Facebook 帖子",
+      "a4Portrait": "A4 竖版",
+      "a4Landscape": "A4 横版",
+      "usLetter": "美式信纸",
+      "a3Portrait": "A3 竖版",
+      "poster18x24": "18×24 英寸海报",
+      "receiptStrip": "小票条",
+      "storeDisplay": "店内屏幕",
+      "tableTent": "桌牌"
     }
   }
 }

@@ -29,7 +29,8 @@ import type { ChatConversation, ChatMessage, OrgMember } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { useT } from "@/lib/i18n/context";
-import { useSpacetimeDB } from "spacetimedb/react";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
 import { MerchivaChat } from "@/components/merchiva-chat-dashboard";
 
 function MerchivaChatEmbed({ compact = false, header = true }: { compact?: boolean; header?: boolean } = {}) {
@@ -127,7 +128,18 @@ export default function ChatPage() {
       .catch((err) => console.error("Chat load failed:", err));
   }, [organizationId]);
 
-  // Load messages when conversation changes
+  // Subscribe to the chat_message table. The hook fires a re-render whenever
+  // a row is inserted/updated/deleted in the local cache — covers our own
+  // sends (the reducer's row arrives via the same WebSocket) and incoming
+  // messages from other members. The rows array itself isn't used directly:
+  // getMessages reads the same cache and produces the joined ChatMessage shape.
+  const [chatMessageRows] = useTable(tables.chatMessage);
+  const messageRowsForConv = activeConv
+    ? chatMessageRows.filter((r: { conversationId: string }) => r.conversationId === activeConv.id).length
+    : 0;
+
+  // Load messages when conversation changes OR when the message row count
+  // for the active conversation changes (new message arrives).
   useEffect(() => {
     if (!activeConv) return;
     const cachedMsgs = getCached<ChatMessage[]>(`messages_${activeConv.id}`);
@@ -138,9 +150,7 @@ export default function ChatPage() {
       const rxns = await getReactions(msgs.map((m) => m.id));
       setReactions(rxns);
     }).catch(console.error);
-  }, [activeConv]);
-
-  // Realtime updates come via SpacetimeDB WebSocket subscription (no Supabase needed)
+  }, [activeConv, messageRowsForConv]);
 
   // Auto-scroll to bottom
   useEffect(() => {

@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Package, TrendingUp, Users, ShoppingBag,
   MonitorSmartphone, KeyRound, MessageSquare, Globe, Crown,
   Settings, MoreHorizontal, X, Trash2, FileBarChart, UserRoundSearch,
+  Palette,
 } from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
@@ -38,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.punchIn",   href: "/~/punch-in",        icon: KeyRound },
   { labelKey: "nav.chat",      href: "/~/chat",            icon: MessageSquare,   permissionKey: "staffing" },
   { labelKey: "nav.website",   href: "/~/builder",         icon: Globe,           permissionKey: "website" },
+  { labelKey: "nav.design",    href: "/~/design",          icon: Palette,         permissionKey: "website" },
   { labelKey: "nav.membership", href: "/~/membership",     icon: Crown },
   { labelKey: "nav.settings",  href: "/~/settings",        icon: Settings },
 ];

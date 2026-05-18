@@ -38,6 +38,7 @@
     "punchIn": "Punch In",
     "chat": "Chat",
     "website": "Website",
+    "design": "Design",
     "membership": "Membership",
     "finances": "Finances",
     "suppliers": "Suppliers",
@@ -1437,6 +1438,38 @@
     "inviteShort": "Invite",
     "resend": "Resend"
   },
+  "lock": {
+    "title": "Device Locked",
+    "subtitle": "Enter your PIN to unlock the store device.",
+    "subtitleWithOp": "Last operator: {name}. Enter your PIN to take over.",
+    "pinLabel": "Enter PIN",
+    "tapToType": "Tap here to type",
+    "verifying": "Verifying…",
+    "pinNotRecognized": "PIN not recognized",
+    "autolockTitle": "Auto-lock after",
+    "autolockSubtitle": "Require a PIN if the store device is idle for this long.",
+    "autolockMetaPrefix": "PIN after {label} idle",
+    "never": "Never"
+  },
+  "hours": {
+    "title": "Business Hours",
+    "mobileTitle": "Hours",
+    "subtitle": "Set when the store is open each day. Used by AI scheduling.",
+    "open": "Open",
+    "closed": "Closed",
+    "save": "Save Business Hours",
+    "toastSaved": "Business hours saved",
+    "toastFailed": "Failed to save business hours",
+    "allClosed": "All days closed",
+    "daysSuffix": " days open",
+    "day_mon": "Mon",
+    "day_tue": "Tue",
+    "day_wed": "Wed",
+    "day_thu": "Thu",
+    "day_fri": "Fri",
+    "day_sat": "Sat",
+    "day_sun": "Sun"
+  },
   "availability": {
     "title": "Set Availability",
     "mobileTitle": "Availability",
@@ -2233,6 +2266,66 @@
       "notificationAnalyze": "Reading notification request...",
       "notificationFetch": "Creating notification...",
       "notificationProcess": "Finalizing notification..."
+    }
+  },
+  "design": {
+    "list": {
+      "title": "Design",
+      "subtitle": "Posters, social images, in-store signage — fixed-size canvases.",
+      "newDesign": "New design",
+      "createTitle": "Create a design",
+      "designName": "Design name",
+      "namePlaceholder": "Summer sale poster",
+      "size": "Canvas size",
+      "loading": "Loading designs…",
+      "empty": "No designs yet",
+      "emptyHint": "Start a poster, social image, or in-store sign.",
+      "open": "Open",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "create": "Create",
+      "confirmDelete": "Delete this design? This cannot be undone."
+    },
+    "editor": {
+      "saving": "Saving…",
+      "saved": "Saved",
+      "generate": "Generate",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fit": "Fit to screen",
+      "notFound": "Design not found",
+      "layers": "Layers",
+      "properties": "Properties"
+    },
+    "ai": {
+      "title": "Generate with AI",
+      "subtitle": "Describe the design. The canvas is",
+      "placeholder": "A bold summer sale poster — 50% off, vibrant orange background, large headline.",
+      "generate": "Generate",
+      "generating": "Generating…",
+      "cancel": "Cancel",
+      "empty": "Describe the design you want. The AI will compose it inside the canvas.",
+      "failed": "Generation failed."
+    },
+    "preset": {
+      "groupSocial": "Social",
+      "groupPrint": "Print",
+      "groupSignage": "Signage",
+      "groupCustom": "Custom",
+      "custom": "Custom size…",
+      "apply": "Apply",
+      "instagramSquare": "Instagram square",
+      "instagramStory": "Instagram story",
+      "facebookPost": "Facebook post",
+      "a4Portrait": "A4 portrait",
+      "a4Landscape": "A4 landscape",
+      "usLetter": "US Letter",
+      "a3Portrait": "A3 portrait",
+      "poster18x24": "Poster 18×24″",
+      "receiptStrip": "Receipt strip",
+      "storeDisplay": "In-store display",
+      "tableTent": "Table tent"
     }
   }
 }

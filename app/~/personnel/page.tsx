@@ -1,22 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   Award,
   Cake,
   CalendarClock,
+  Check,
   Download,
   FileText,
   GraduationCap,
   Inbox,
+  Loader2,
+  Mail,
   MoreHorizontal,
   Pencil,
   Search,
   Shield,
+  Trash2,
   Users,
   UserPlus,
+  X,
 } from "lucide-react";
+import {
+  removeMember,
+} from "@/lib/spacetimedb/actions";
+import { defaultPermissions } from "@/lib/db/team";
+import type { Permissions } from "@/lib/types";
+import {
+  InviteMemberDialog,
+  EditMemberDialog,
+  resendInviteEmail,
+  cancelPendingInvite,
+  type EditMemberInput,
+} from "@/components/personnel/team-dialogs";
 import { PermissionGuard } from "@/components/permission-guard";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT } from "@/lib/i18n/context";
@@ -282,9 +300,26 @@ interface RoleRow {
 }
 
 function TeamPanel({ orgId }: { orgId: string }) {
+  const { currentOrg, can } = usePermissions();
+  const orgName = currentOrg?.name ?? null;
+  // userEmail is used by resend helper, pulled directly there from useAuth.
+  const canEditTeam = can("team", "edit");
+  const canInviteTeam = can("team", "invite");
+
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [rawRoles] = useStaffRoles() as [unknown[], boolean];
   const [rawInvitations] = useOrgInvitations() as [unknown[], boolean];
+
+  // ── Dialog state ─────────────────────────────────────────────────────────
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<EditMemberInput | null>(null);
+
+  // Action menu / confirms keyed by member or invitation id.
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Resend feedback per-invitation (id → state)
+  const [resending, setResending] = useState<Record<string, boolean>>({});
 
   const members = useMemo<MemberRow[]>(
     () =>
@@ -375,6 +410,78 @@ function TeamPanel({ orgId }: { orgId: string }) {
     ).length,
   }));
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  function openEditMember(m: MemberRow) {
+    const raw = (rawMembers as Array<{ id: { toString(): string }; role: string; permissions: unknown }>)
+      .find((x) => (x.id?.toString?.() ?? String(x.id)) === m.id);
+    let parsed: Permissions = defaultPermissions();
+    const rawPerms = raw?.permissions;
+    if (typeof rawPerms === "string") {
+      try { parsed = { ...parsed, ...(JSON.parse(rawPerms) as Partial<Permissions>) }; } catch {}
+    } else if (rawPerms && typeof rawPerms === "object") {
+      parsed = { ...parsed, ...(rawPerms as Partial<Permissions>) };
+    }
+    const role = String(raw?.role ?? m.role).toLowerCase();
+    setEditingMember({
+      id: m.id,
+      displayName: m.displayName,
+      email: m.email,
+      role: role === "manager" ? "manager" : "staff",
+      perms: parsed,
+    });
+  }
+
+  async function handleRemoveMember(id: string, name: string) {
+    if (!confirm(`确认移除 ${name}？`)) return;
+    setRemovingId(id);
+    try {
+      await removeMember(id);
+      toast.success("已移除成员");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "移除失败");
+    } finally {
+      setRemovingId(null);
+      setMenuOpen(null);
+    }
+  }
+
+  async function handleResendInvite(inv: { id: string; email: string; token: string; role: string }) {
+    setResending((prev) => ({ ...prev, [inv.id]: true }));
+    const userEmail = (typeof window !== "undefined" ? localStorage.getItem("workos_user") : null);
+    let inviterEmail: string | null = null;
+    try { inviterEmail = userEmail ? JSON.parse(userEmail).email ?? null : null; } catch {}
+    const ok = await resendInviteEmail({
+      email: inv.email, token: inv.token, role: inv.role,
+      orgName, inviterEmail,
+    });
+    if (ok) toast.success("邀请邮件已重发");
+    else toast.error("邮件发送失败");
+    setResending((prev) => ({ ...prev, [inv.id]: false }));
+    setMenuOpen(null);
+  }
+
+  async function handleCancelInvite(id: string, email: string) {
+    if (!confirm(`撤回对 ${email} 的邀请？`)) return;
+    setRemovingId(id);
+    const ok = await cancelPendingInvite(id);
+    if (ok) toast.success("已撤回邀请");
+    setRemovingId(null);
+    setMenuOpen(null);
+  }
+
+  // Close action menus when clicking outside
+  const menuContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDocClick(e: MouseEvent) {
+      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target as Node)) {
+        setMenuOpen(null);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="px-4 lg:px-6 pt-5 pb-4 bg-background border-b border-border flex items-center gap-3 flex-wrap">
@@ -414,12 +521,15 @@ function TeamPanel({ orgId }: { orgId: string }) {
           >
             <Download className="h-3 w-3" strokeWidth={1.75} /> 导出
           </Link>
-          <Link
-            href="/~/settings"
-            className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5"
-          >
-            <UserPlus className="h-3 w-3" strokeWidth={1.75} /> 邀请成员
-          </Link>
+          {canInviteTeam && (
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5"
+            >
+              <UserPlus className="h-3 w-3" strokeWidth={1.75} /> 邀请成员
+            </button>
+          )}
         </div>
       </div>
 
@@ -476,21 +586,81 @@ function TeamPanel({ orgId }: { orgId: string }) {
                   <Pill tone={m.status === "active" ? "emerald" : "amber"}>
                     {m.status === "active" ? "在职" : "待入职"}
                   </Pill>
-                  <div className="flex items-center justify-end gap-0.5">
-                    <Link
-                      href="/~/settings"
-                      title="编辑"
-                      className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
-                    >
-                      <Pencil className="h-3 w-3" strokeWidth={1.75} />
-                    </Link>
-                    <button
-                      type="button"
-                      title="更多"
-                      className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
-                    >
-                      <MoreHorizontal className="h-3 w-3" strokeWidth={1.75} />
-                    </button>
+                  <div className="flex items-center justify-end gap-0.5 relative">
+                    {m.status === "invited" ? (
+                      <>
+                        {/* Pending invite — id is "inv-<uuid>" */}
+                        {(() => {
+                          const invId = m.id.replace(/^inv-/, "");
+                          const inv = (pendingInvitations as Array<{ id: { toString(): string }; email: string; token: string; role: string }>)
+                            .find((i) => i.id?.toString?.() === invId);
+                          const isResending = !!resending[invId];
+                          const isRemoving = removingId === invId;
+                          return (
+                            <>
+                              <button
+                                type="button"
+                                disabled={!inv || isResending}
+                                title="重发邀请邮件"
+                                onClick={() => inv && handleResendInvite({
+                                  id: invId, email: inv.email, token: inv.token, role: inv.role,
+                                })}
+                                className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center disabled:opacity-40"
+                              >
+                                {isResending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" strokeWidth={1.75} />}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!inv || isRemoving}
+                                title="撤回邀请"
+                                onClick={() => inv && handleCancelInvite(invId, inv.email)}
+                                className="h-7 w-7 rounded-[0.3rem] hover:bg-destructive/10 text-muted-foreground hover:text-destructive inline-flex items-center justify-center disabled:opacity-40"
+                              >
+                                {isRemoving ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" strokeWidth={1.75} />}
+                              </button>
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <>
+                        {canEditTeam && m.role.toLowerCase() !== "owner" && (
+                          <button
+                            type="button"
+                            onClick={() => openEditMember(m)}
+                            title="编辑"
+                            className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
+                          >
+                            <Pencil className="h-3 w-3" strokeWidth={1.75} />
+                          </button>
+                        )}
+                        {canEditTeam && m.role.toLowerCase() !== "owner" && (
+                          <div ref={menuOpen === m.id ? menuContainerRef : null}>
+                            <button
+                              type="button"
+                              title="更多"
+                              onClick={() => setMenuOpen(menuOpen === m.id ? null : m.id)}
+                              className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
+                            >
+                              <MoreHorizontal className="h-3 w-3" strokeWidth={1.75} />
+                            </button>
+                            {menuOpen === m.id && (
+                              <div className="absolute right-0 top-8 z-20 w-40 rounded-[0.3rem] border border-border bg-background shadow-md p-1">
+                                <button
+                                  type="button"
+                                  disabled={removingId === m.id}
+                                  onClick={() => handleRemoveMember(m.id, m.displayName)}
+                                  className="w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-[0.3rem] text-[12px] text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                                >
+                                  {removingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
+                                  移除成员
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -571,23 +741,29 @@ function TeamPanel({ orgId }: { orgId: string }) {
             </div>
           </Card>
 
-          <div className="bg-foreground text-background rounded-[0.3rem] p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <UserPlus className="h-[13px] w-[13px]" strokeWidth={1.75} />
-              <div className="text-[12.5px] font-semibold">扩充团队？</div>
+          {canInviteTeam && (
+            <div className="bg-foreground text-background rounded-[0.3rem] p-4">
+              <div className="flex items-center gap-2 mb-1.5">
+                <UserPlus className="h-[13px] w-[13px]" strokeWidth={1.75} />
+                <div className="text-[12.5px] font-semibold">扩充团队？</div>
+              </div>
+              <div className="text-[11.5px] text-background/70 leading-relaxed mb-3">
+                点击下方按钮发送邀请链接，新成员通过链接完成入职。
+              </div>
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                className="w-full h-8 rounded-[0.3rem] bg-background text-foreground text-[12px] font-medium hover:bg-background/90 inline-flex items-center justify-center"
+              >
+                生成邀请链接
+              </button>
             </div>
-            <div className="text-[11.5px] text-background/70 leading-relaxed mb-3">
-              点击下方按钮发送邀请链接，新成员通过链接完成入职。
-            </div>
-            <Link
-              href="/~/settings"
-              className="w-full h-8 rounded-[0.3rem] bg-background text-foreground text-[12px] font-medium hover:bg-background/90 inline-flex items-center justify-center"
-            >
-              生成邀请链接
-            </Link>
-          </div>
+          )}
         </div>
       </div>
+
+      <InviteMemberDialog open={inviteOpen} onClose={() => setInviteOpen(false)} orgId={orgId} />
+      <EditMemberDialog member={editingMember} onClose={() => setEditingMember(null)} />
     </div>
   );
 }

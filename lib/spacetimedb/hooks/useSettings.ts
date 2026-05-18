@@ -39,6 +39,8 @@ export function useSettings() {
       locationLatitude:    r.locationLatitude ?? null,
       locationLongitude:   r.locationLongitude ?? null,
       googlePlacesId:      r.googlePlacesId ?? null,
+      openingHours:        r.openingHours ?? null,
+      countryCode:         r.countryCode ?? null,
     };
   }, [rawSettings, organizationId]);
 

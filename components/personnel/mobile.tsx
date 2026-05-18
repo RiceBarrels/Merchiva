@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   ArrowRight,
   Award,
@@ -13,6 +14,7 @@ import {
   FileEdit,
   HelpCircle,
   Inbox,
+  Loader2,
   Mail,
   MoreVertical,
   Pencil,
@@ -20,10 +22,23 @@ import {
   Plus,
   Search,
   Shield,
+  Trash2,
   UserPlus,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/lib/context/permissions";
+import { useAuth } from "@/lib/auth/context";
+import { defaultPermissions } from "@/lib/db/team";
+import { removeMember } from "@/lib/spacetimedb/actions";
+import type { Permissions } from "@/lib/types";
+import {
+  InviteMemberDialog,
+  EditMemberDialog,
+  resendInviteEmail,
+  cancelPendingInvite,
+  type EditMemberInput,
+} from "@/components/personnel/team-dialogs";
 import {
   useOrgInvitations,
   useOrgMembers,
@@ -617,12 +632,85 @@ function IconBtn({
 // ─── Mobile Team ────────────────────────────────────────────────────────────
 
 export function MobileTeam({ orgId }: { orgId: string }) {
+  const { currentOrg, can } = usePermissions();
+  const { user } = useAuth();
+  const orgName = currentOrg?.name ?? null;
+  const inviterEmail = user?.email ?? null;
+  const canEditTeam = can("team", "edit");
+  const canInviteTeam = can("team", "invite");
+
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [rawInvitations] = useOrgInvitations() as [unknown[], boolean];
   const [rawRoles] = useStaffRoles() as [unknown[], boolean];
 
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "invited">("all");
+
+  // Dialog state
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<EditMemberInput | null>(null);
+  const [actionsFor, setActionsFor] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  function openEdit(rowId: string) {
+    const raw = (rawMembers as Array<{ id: { toString(): string }; role: string; permissions: unknown; displayName: string; email: string }>)
+      .find((x) => (x.id?.toString?.() ?? String(x.id)) === rowId);
+    if (!raw) return;
+    let parsed: Permissions = defaultPermissions();
+    const rawPerms = raw.permissions;
+    if (typeof rawPerms === "string") {
+      try { parsed = { ...parsed, ...(JSON.parse(rawPerms) as Partial<Permissions>) }; } catch {}
+    } else if (rawPerms && typeof rawPerms === "object") {
+      parsed = { ...parsed, ...(rawPerms as Partial<Permissions>) };
+    }
+    const role = String(raw.role ?? "").toLowerCase();
+    if (role === "owner") return;
+    setEditingMember({
+      id: rowId,
+      displayName: String(raw.displayName ?? "—"),
+      email: String(raw.email ?? ""),
+      role: role === "manager" ? "manager" : "staff",
+      perms: parsed,
+    });
+    setActionsFor(null);
+  }
+
+  async function doRemove(id: string, name: string) {
+    if (!confirm(`确认移除 ${name}？`)) return;
+    setBusyId(id);
+    try {
+      await removeMember(id);
+      toast.success("已移除成员");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "移除失败");
+    } finally {
+      setBusyId(null);
+      setActionsFor(null);
+    }
+  }
+
+  async function doResend(invId: string) {
+    const inv = (rawInvitations as Array<{ id: { toString(): string }; email: string; token: string; role: string }>)
+      .find((x) => x.id?.toString?.() === invId);
+    if (!inv) return;
+    setBusyId(invId);
+    const ok = await resendInviteEmail({
+      email: inv.email, token: inv.token, role: inv.role, orgName, inviterEmail,
+    });
+    if (ok) toast.success("邀请邮件已重发");
+    else toast.error("邮件发送失败");
+    setBusyId(null);
+    setActionsFor(null);
+  }
+
+  async function doCancel(invId: string, email: string) {
+    if (!confirm(`撤回对 ${email} 的邀请？`)) return;
+    setBusyId(invId);
+    const ok = await cancelPendingInvite(invId);
+    if (ok) toast.success("已撤回邀请");
+    setBusyId(null);
+    setActionsFor(null);
+  }
 
   const roles = useMemo<RoleRow[]>(
     () =>
@@ -706,12 +794,15 @@ export function MobileTeam({ orgId }: { orgId: string }) {
             className="flex-1 bg-transparent border-0 outline-none text-[12.5px] text-foreground"
           />
         </div>
-        <a
-          href="/~/settings"
-          className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1"
-        >
-          <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} /> 邀请
-        </a>
+        {canInviteTeam && (
+          <button
+            type="button"
+            onClick={() => setInviteOpen(true)}
+            className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1"
+          >
+            <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} /> 邀请
+          </button>
+        )}
       </div>
 
       {/* Filter chips */}
@@ -752,38 +843,80 @@ export function MobileTeam({ orgId }: { orgId: string }) {
           const role = roles.find((r) =>
             m.role.toLowerCase().includes(r.name.toLowerCase()),
           );
+          const isInvite = m.status === "invited";
+          const invId = isInvite ? m.id.replace(/^inv-/, "") : null;
+          const isOwner = m.role.toLowerCase() === "owner";
+          // Rows are tap-to-action; for active members the action sheet
+          // surfaces edit/remove, for pending invites it surfaces resend/cancel.
+          const canAction = canEditTeam && !isOwner;
           return (
-            <div
-              key={m.id}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 bg-background",
-                i < list.length - 1 && "border-b border-border",
-              )}
-            >
-              <Avatar name={m.displayName} size={32} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-medium tracking-[-0.015em] truncate">
-                  {m.displayName}
-                </div>
-                <div className="text-[11.5px] text-muted-foreground mt-0.5 truncate inline-flex items-center gap-1">
-                  {role && (
-                    <span
-                      className="inline-block w-1.5 h-1.5 rounded-full"
-                      style={{ background: role.color }}
-                    />
-                  )}
-                  {m.role}
-                </div>
-                {m.email && (
-                  <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate font-mono">
-                    {m.email}
-                  </div>
+            <div key={m.id} className={cn("relative", i < list.length - 1 && "border-b border-border")}>
+              <button
+                type="button"
+                disabled={!canAction}
+                onClick={() => {
+                  if (!canAction) return;
+                  if (isInvite) setActionsFor(actionsFor === m.id ? null : m.id);
+                  else openEdit(m.id);
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 bg-background text-left",
+                  canAction ? "active:bg-muted/60" : "cursor-default",
                 )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {m.status === "invited" && <Badge tone="warn">待入职</Badge>}
-                <ChevronRight className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
-              </div>
+              >
+                <Avatar name={m.displayName} size={32} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-medium tracking-[-0.015em] truncate">
+                    {m.displayName}
+                  </div>
+                  <div className="text-[11.5px] text-muted-foreground mt-0.5 truncate inline-flex items-center gap-1">
+                    {role && (
+                      <span
+                        className="inline-block w-1.5 h-1.5 rounded-full"
+                        style={{ background: role.color }}
+                      />
+                    )}
+                    {m.role}
+                  </div>
+                  {m.email && (
+                    <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate font-mono">
+                      {m.email}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isInvite && <Badge tone="warn">待入职</Badge>}
+                  {canAction && (
+                    isInvite
+                      ? <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+                      : <Pencil className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
+                  )}
+                </div>
+              </button>
+
+              {/* Pending-invite action sheet (inline expander) */}
+              {isInvite && actionsFor === m.id && invId && (
+                <div className="flex gap-2 px-4 pb-3 bg-background">
+                  <button
+                    type="button"
+                    disabled={busyId === invId}
+                    onClick={() => doResend(invId)}
+                    className="flex-1 h-8 rounded-[0.3rem] border border-border text-[12px] inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {busyId === invId ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" strokeWidth={1.75} />}
+                    重发邮件
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyId === invId}
+                    onClick={() => doCancel(invId, m.email)}
+                    className="flex-1 h-8 rounded-[0.3rem] border border-destructive/40 text-destructive text-[12px] inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {busyId === invId ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
+                    撤回
+                  </button>
+                </div>
+              )}
             </div>
           );
         })
@@ -791,9 +924,12 @@ export function MobileTeam({ orgId }: { orgId: string }) {
       <div className="h-4" />
       {/* Unused imports kept for prettier diff with the design */}
       <span className="hidden">
-        <Mail />
         <UserPlus />
+        <ChevronRight />
       </span>
+
+      <InviteMemberDialog open={inviteOpen} onClose={() => setInviteOpen(false)} orgId={orgId} />
+      <EditMemberDialog member={editingMember} onClose={() => setEditingMember(null)} />
     </div>
   );
 }

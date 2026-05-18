@@ -13,4 +13,8 @@ import {
 export default {
   conversationId: __t.string(),
   content: __t.string(),
+  replyToId: __t.option(__t.uuid()),
+  attachmentUrl: __t.option(__t.string()),
+  attachmentType: __t.option(__t.string()),
+  attachmentName: __t.option(__t.string()),
 };

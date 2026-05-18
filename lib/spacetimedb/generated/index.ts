@@ -71,6 +71,7 @@ import ConsumeAiJobReducer from "./consume_ai_job_reducer";
 import CreateAiChatSessionReducer from "./create_ai_chat_session_reducer";
 import CreateAiJobReducer from "./create_ai_job_reducer";
 import CreateConversationReducer from "./create_conversation_reducer";
+import CreateDesignReducer from "./create_design_reducer";
 import CreateMembershipTierReducer from "./create_membership_tier_reducer";
 import CreateNotificationReducer from "./create_notification_reducer";
 import CreateOrgReducer from "./create_org_reducer";
@@ -85,6 +86,7 @@ import CreateUserReducer from "./create_user_reducer";
 import DeleteAiJobReducer from "./delete_ai_job_reducer";
 import DeleteComponentReducer from "./delete_component_reducer";
 import DeleteCouponReducer from "./delete_coupon_reducer";
+import DeleteDesignReducer from "./delete_design_reducer";
 import DeleteExpenseReducer from "./delete_expense_reducer";
 import DeleteInventoryItemReducer from "./delete_inventory_item_reducer";
 import DeleteLocationReducer from "./delete_location_reducer";
@@ -139,6 +141,7 @@ import SkipRoleTaskReducer from "./skip_role_task_reducer";
 import ToggleTodoReducer from "./toggle_todo_reducer";
 import UpdateBookingStatusReducer from "./update_booking_status_reducer";
 import UpdateCouponReducer from "./update_coupon_reducer";
+import UpdateDesignReducer from "./update_design_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
 import UpdateExpenseReducer from "./update_expense_reducer";
 import UpdateInventoryItemReducer from "./update_inventory_item_reducer";
@@ -182,6 +185,7 @@ import ChatMessageRow from "./chat_message_table";
 import CouponRow from "./coupon_table";
 import CustomerPointsRow from "./customer_points_table";
 import DailyBriefingRow from "./daily_briefing_table";
+import DesignRow from "./design_table";
 import ExpenseRow from "./expense_table";
 import InventoryItemRow from "./inventory_item_table";
 import InventoryTransactionRow from "./inventory_transaction_table";
@@ -376,6 +380,20 @@ const tablesSchema = __schema({
       { name: 'daily_briefing_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, DailyBriefingRow),
+  design: __table({
+    name: 'design',
+    indexes: [
+      { accessor: 'id', name: 'design_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'design_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'design_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DesignRow),
   expense: __table({
     name: 'expense',
     indexes: [
@@ -1155,6 +1173,7 @@ const reducersSchema = __reducers(
   __reducerSchema("create_ai_chat_session", CreateAiChatSessionReducer),
   __reducerSchema("create_ai_job", CreateAiJobReducer),
   __reducerSchema("create_conversation", CreateConversationReducer),
+  __reducerSchema("create_design", CreateDesignReducer),
   __reducerSchema("create_membership_tier", CreateMembershipTierReducer),
   __reducerSchema("create_notification", CreateNotificationReducer),
   __reducerSchema("create_org", CreateOrgReducer),
@@ -1169,6 +1188,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_ai_job", DeleteAiJobReducer),
   __reducerSchema("delete_component", DeleteComponentReducer),
   __reducerSchema("delete_coupon", DeleteCouponReducer),
+  __reducerSchema("delete_design", DeleteDesignReducer),
   __reducerSchema("delete_expense", DeleteExpenseReducer),
   __reducerSchema("delete_inventory_item", DeleteInventoryItemReducer),
   __reducerSchema("delete_location", DeleteLocationReducer),
@@ -1223,6 +1243,7 @@ const reducersSchema = __reducers(
   __reducerSchema("toggle_todo", ToggleTodoReducer),
   __reducerSchema("update_booking_status", UpdateBookingStatusReducer),
   __reducerSchema("update_coupon", UpdateCouponReducer),
+  __reducerSchema("update_design", UpdateDesignReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
   __reducerSchema("update_expense", UpdateExpenseReducer),
   __reducerSchema("update_inventory_item", UpdateInventoryItemReducer),

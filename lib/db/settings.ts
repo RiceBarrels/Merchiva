@@ -17,6 +17,8 @@ export interface UserSettings {
   locationLatitude: string | null;
   locationLongitude: string | null;
   googlePlacesId: string | null;
+  openingHours: string | null;
+  countryCode: string | null;
 }
 
 export async function getSettings(): Promise<UserSettings | null> {
@@ -45,6 +47,8 @@ export async function getSettings(): Promise<UserSettings | null> {
         locationLatitude: r.locationLatitude ?? null,
         locationLongitude: r.locationLongitude ?? null,
         googlePlacesId: r.googlePlacesId ?? null,
+        openingHours: r.openingHours ?? null,
+        countryCode: r.countryCode ?? null,
       };
     }
   }

@@ -63,6 +63,7 @@ import {
   Bell,
   UserRoundSearch,
   UserPlus,
+  Palette,
 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
@@ -88,6 +89,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { clearCache } from "@/lib/cache";
 import { createOrg } from "@/lib/spacetimedb/actions";
 import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
+import { StoreDeviceLock } from "@/components/store-device-lock";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import {
   Moon,
@@ -129,6 +131,7 @@ const navItems: NavItemExt[] = [
   { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
   { labelKey: "nav.chat",      href: "/~/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website"   },
+  { labelKey: "nav.design",    href: "/~/design",      icon: Palette,         permissionKey: "website"   },
   { labelKey: "nav.punchIn",   href: "/~/punch-in",    icon: KeyRound },
 ];
 
@@ -961,6 +964,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <RightPanel />
         </div>
       )}
+      <StoreDeviceLock />
     </>
     </RightPanelMobileProvider>
     </SidebarOpenContext.Provider>

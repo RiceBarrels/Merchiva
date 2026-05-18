@@ -38,6 +38,7 @@
     "punchIn": "Fichar",
     "chat": "Chat",
     "website": "Sitio web",
+    "design": "Diseño",
     "membership": "Membresía",
     "finances": "Finanzas",
     "suppliers": "Proveedores",
@@ -1437,6 +1438,38 @@
     "inviteShort": "Invitar",
     "resend": "Reenviar"
   },
+  "lock": {
+    "title": "Dispositivo bloqueado",
+    "subtitle": "Ingresa tu PIN para desbloquear el dispositivo de la tienda.",
+    "subtitleWithOp": "Último operador: {name}. Ingresa tu PIN para tomar el control.",
+    "pinLabel": "Ingresar PIN",
+    "tapToType": "Toca aquí para escribir",
+    "verifying": "Verificando…",
+    "pinNotRecognized": "PIN no reconocido",
+    "autolockTitle": "Bloqueo automático",
+    "autolockSubtitle": "Pedir PIN si el dispositivo de la tienda está inactivo por este tiempo.",
+    "autolockMetaPrefix": "PIN tras {label} de inactividad",
+    "never": "Nunca"
+  },
+  "hours": {
+    "title": "Horario comercial",
+    "mobileTitle": "Horario",
+    "subtitle": "Define cuándo abre la tienda cada día. Lo usa la IA para programar turnos.",
+    "open": "Abierto",
+    "closed": "Cerrado",
+    "save": "Guardar horario",
+    "toastSaved": "Horario guardado",
+    "toastFailed": "No se pudo guardar el horario",
+    "allClosed": "Todos los días cerrados",
+    "daysSuffix": " días abiertos",
+    "day_mon": "Lun",
+    "day_tue": "Mar",
+    "day_wed": "Mié",
+    "day_thu": "Jue",
+    "day_fri": "Vie",
+    "day_sat": "Sáb",
+    "day_sun": "Dom"
+  },
   "availability": {
     "title": "Configurar disponibilidad",
     "mobileTitle": "Disponibilidad",
@@ -2216,6 +2249,66 @@
       "notificationAnalyze": "Leyendo solicitud de notificación...",
       "notificationFetch": "Creando notificación...",
       "notificationProcess": "Finalizando notificación..."
+    }
+  },
+  "design": {
+    "list": {
+      "title": "Diseño",
+      "subtitle": "Pósters, imágenes para redes y señalización — lienzos de tamaño fijo.",
+      "newDesign": "Nuevo diseño",
+      "createTitle": "Crear un diseño",
+      "designName": "Nombre del diseño",
+      "namePlaceholder": "Póster de rebajas de verano",
+      "size": "Tamaño del lienzo",
+      "loading": "Cargando diseños…",
+      "empty": "Aún no hay diseños",
+      "emptyHint": "Crea un póster, una imagen social o un cartel.",
+      "open": "Abrir",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "create": "Crear",
+      "confirmDelete": "¿Eliminar este diseño? No se puede deshacer."
+    },
+    "editor": {
+      "saving": "Guardando…",
+      "saved": "Guardado",
+      "generate": "Generar",
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "fit": "Ajustar a pantalla",
+      "notFound": "Diseño no encontrado",
+      "layers": "Capas",
+      "properties": "Propiedades"
+    },
+    "ai": {
+      "title": "Generar con IA",
+      "subtitle": "Describe el diseño. El lienzo es",
+      "placeholder": "Un póster llamativo de rebajas de verano — 50% de descuento, fondo naranja vibrante, titular grande.",
+      "generate": "Generar",
+      "generating": "Generando…",
+      "cancel": "Cancelar",
+      "empty": "Describe el diseño que quieres. La IA lo compondrá dentro del lienzo.",
+      "failed": "Generación fallida."
+    },
+    "preset": {
+      "groupSocial": "Redes sociales",
+      "groupPrint": "Impresión",
+      "groupSignage": "Señalización",
+      "groupCustom": "Personalizado",
+      "custom": "Tamaño personalizado…",
+      "apply": "Aplicar",
+      "instagramSquare": "Instagram cuadrado",
+      "instagramStory": "Instagram historia",
+      "facebookPost": "Publicación de Facebook",
+      "a4Portrait": "A4 vertical",
+      "a4Landscape": "A4 horizontal",
+      "usLetter": "Carta US",
+      "a3Portrait": "A3 vertical",
+      "poster18x24": "Póster 18×24″",
+      "receiptStrip": "Tira de recibo",
+      "storeDisplay": "Pantalla en tienda",
+      "tableTent": "Cartel de mesa"
     }
   }
 }

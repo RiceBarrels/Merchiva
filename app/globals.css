@@ -223,6 +223,19 @@ html.mobile-device [data-slot="input"] {
   padding-inline: 0.75rem;
 }
 
+/* iOS Safari zooms when focusing inputs with font-size < 16px. Force ≥16px on
+   touch-primary devices regardless of JS-detected mobile-device class or local
+   text-xs / text-sm overrides. Specificity (0,1,2) beats single-class utilities. */
+@media (hover: none) and (pointer: coarse) {
+  html input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  html textarea,
+  html [data-slot="input"],
+  html [data-slot="textarea"],
+  html [data-slot="select-trigger"] {
+    font-size: 16px;
+  }
+}
+
 /* Table rows */
 html.mobile-device td[data-slot="table-cell"],
 html.mobile-device th[data-slot="table-head"] {

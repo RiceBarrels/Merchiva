@@ -104,6 +104,9 @@ interface HtmlElementPaletteProps {
   // Click handler — inserts relative to the currently selected element (or
   // appends to root when nothing is selected). HtmlBuilderEditor decides where.
   onInsert: (html: string) => void;
+  // Item ids to hide. Used by the design surface to suppress link insertion
+  // (designs are static artwork — no navigation targets).
+  hideItems?: string[];
 }
 
 // MIME type used to ferry insert payloads from this palette into the iframe's
@@ -111,14 +114,16 @@ interface HtmlElementPaletteProps {
 // the external-drop branch.
 export const PALETTE_DRAG_TYPE = "application/x-merchiva-insert";
 
-export function HtmlElementPalette({ onInsert }: HtmlElementPaletteProps) {
+export function HtmlElementPalette({ onInsert, hideItems }: HtmlElementPaletteProps) {
   const t = useT();
+  const hidden = hideItems && hideItems.length > 0 ? new Set(hideItems) : null;
+  const items = hidden ? ITEMS.filter((i) => !hidden.has(i.id)) : ITEMS;
   return (
     <div className="flex items-center gap-1 overflow-x-auto px-2 py-1.5 border-b border-border bg-background shrink-0">
       <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground shrink-0 mr-2 ml-1">
         {t("builder.htmlPalette.insert")}
       </span>
-      {ITEMS.map((item) => (
+      {items.map((item) => (
         <button
           key={item.id}
           type="button"

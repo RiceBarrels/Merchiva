@@ -13,6 +13,7 @@
  */
 
 import { schema, t, table } from 'spacetimedb/server';
+import { Identity } from 'spacetimedb';
 
 // ─── Helper: throw on unauthorized ───────────────────────────────────────────
 
@@ -577,6 +578,10 @@ const chatMessageTable = table(
     senderId: t.identity(),
     content: t.string(),
     createdAt: t.timestamp(),
+    replyToId: t.option(t.uuid()).default(undefined),
+    attachmentUrl: t.option(t.string()).default(undefined),
+    attachmentType: t.option(t.string()).default(undefined),
+    attachmentName: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1389,6 +1394,33 @@ const roleTaskAssignmentTable = table(
   }
 );
 
+// ─── Design ───────────────────────────────────────────────────────────────────
+// Standalone HTML "design" surface for posters, social images, signage. Unlike
+// `site`, each design is a single fixed-size HTML document — no pages, slugs,
+// theme JSON, or publish flag. Stored as a flat HTML string so the same iframe
+// editor primitives (HtmlCanvas / HtmlElementPalette / HtmlPropertiesPanel)
+// drive it.
+const designTable = table(
+  {
+    name: 'design',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    name: t.string(),
+    width: t.i32(),
+    height: t.i32(),
+    html: t.string(),
+    preset: t.option(t.string()),   // e.g. "instagram-square", "a4-portrait"
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1447,6 +1479,7 @@ const spacetimedb = schema({
   dailyBriefing: dailyBriefingTable,
   scheduleProposal: scheduleProposalTable,
   roleTaskAssignment: roleTaskAssignmentTable,
+  design: designTable,
 });
 
 export default spacetimedb;
@@ -2973,7 +3006,7 @@ export const createConversation = spacetimedb.reducer(
       ctx.db.chatMember.insert({
         id: ctx.newUuidV4(),
         conversationId: convId.toString(),
-        userId: hex as unknown as typeof ctx.sender,
+        userId: new Identity(hex),
         joinedAt: ctx.timestamp,
       });
     }
@@ -2981,8 +3014,15 @@ export const createConversation = spacetimedb.reducer(
 );
 
 export const sendMessage = spacetimedb.reducer(
-  { conversationId: t.string(), content: t.string() },
-  (ctx, { conversationId, content }) => {
+  {
+    conversationId: t.string(),
+    content: t.string(),
+    replyToId: t.option(t.uuid()),
+    attachmentUrl: t.option(t.string()),
+    attachmentType: t.option(t.string()),
+    attachmentName: t.option(t.string()),
+  },
+  (ctx, { conversationId, content, replyToId, attachmentUrl, attachmentType, attachmentName }) => {
     // Verify sender is in the conversation
     const isMember = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
       .some(m => m.conversationId === conversationId);
@@ -2994,6 +3034,10 @@ export const sendMessage = spacetimedb.reducer(
       senderId: ctx.sender,
       content,
       createdAt: ctx.timestamp,
+      replyToId,
+      attachmentUrl,
+      attachmentType,
+      attachmentName,
     });
 
     // Bump conversation updatedAt
@@ -3072,6 +3116,68 @@ export const deleteSite = spacetimedb.reducer(
     findActiveMember(ctx, organizationId);
     const site = findItemInOrg(ctx.db.site, organizationId, siteId);
     ctx.db.site.delete(site);
+  }
+);
+
+// ─── Design reducers ──────────────────────────────────────────────────────────
+
+export const createDesign = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    name: t.string(),
+    width: t.i32(),
+    height: t.i32(),
+    html: t.string(),
+    preset: t.option(t.string()),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    ctx.db.design.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      name: args.name,
+      width: args.width,
+      height: args.height,
+      html: args.html,
+      preset: args.preset,
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateDesign = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    designId: t.string(),
+    name: t.string(),
+    width: t.i32(),
+    height: t.i32(),
+    html: t.string(),
+    preset: t.option(t.string()),
+  },
+  (ctx, args) => {
+    findActiveMember(ctx, args.organizationId);
+    const design = findItemInOrg(ctx.db.design, args.organizationId, args.designId);
+    ctx.db.design.delete(design);
+    ctx.db.design.insert({
+      ...design,
+      name: args.name,
+      width: args.width,
+      height: args.height,
+      html: args.html,
+      preset: args.preset,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const deleteDesign = spacetimedb.reducer(
+  { organizationId: t.string(), designId: t.string() },
+  (ctx, { organizationId, designId }) => {
+    findActiveMember(ctx, organizationId);
+    const design = findItemInOrg(ctx.db.design, organizationId, designId);
+    ctx.db.design.delete(design);
   }
 );
 
@@ -3559,10 +3665,16 @@ export const addMembersToConversation = spacetimedb.reducer(
 
     const ids: string[] = JSON.parse(userIds);
     for (const uid of ids) {
+      // Skip duplicates — the chat_member table doesn't enforce uniqueness on
+      // (conversationId, userId), so re-adding a member would silently bloat
+      // the table. Cheap pre-check keeps it idempotent.
+      const already = [...ctx.db.chatMember.byUserId.filter(new Identity(uid))]
+        .some((m) => m.conversationId === conversationId);
+      if (already) continue;
       ctx.db.chatMember.insert({
         id: ctx.newUuidV4(),
         conversationId,
-        userId: uid as unknown as typeof ctx.sender,
+        userId: new Identity(uid),
         joinedAt: ctx.timestamp,
       });
     }

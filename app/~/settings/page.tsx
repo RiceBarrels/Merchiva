@@ -45,20 +45,13 @@ import {
   SettingsIcon,
   UserCog,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { upsertSettings, disconnectSquare, disconnectClover, setPunchInCode } from "@/lib/spacetimedb/actions";
+import { upsertSettings, disconnectSquare, disconnectClover, setPunchInCode, updateOpeningHours } from "@/lib/spacetimedb/actions";
+import { parseOpeningHours, type WeeklyHours, type DayKey } from "@/lib/holidays";
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSettings, type UserSettings } from "@/lib/db/settings";
@@ -85,6 +78,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { hapticSuccess, hapticMedium } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth/context";
 import { useStoreMachineMode, useDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
+import { useAutolockSeconds, AUTOLOCK_OPTIONS, type AutolockSeconds } from "@/lib/store-device-lock";
 import { registerStoreDevice, removeStoreDevice, updateStoreDevice } from "@/lib/spacetimedb/actions";
 import { useNavMode, type NavMode } from "@/lib/nav-mode";
 import { uploadFiles } from "@/lib/uploadthing";
@@ -143,6 +137,19 @@ export default function SettingsPage() {
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [selectingLocation, setSelectingLocation] = useState(false);
 
+  // Business hours dialog (org-level opening hours, persisted via updateOpeningHours)
+  const [hoursDialog, setHoursDialog] = useState(false);
+  const [hoursForm, setHoursForm] = useState<Record<DayKey, { open: string; close: string; closed: boolean }>>({
+    mon: { open: "09:00", close: "17:00", closed: false },
+    tue: { open: "09:00", close: "17:00", closed: false },
+    wed: { open: "09:00", close: "17:00", closed: false },
+    thu: { open: "09:00", close: "17:00", closed: false },
+    fri: { open: "09:00", close: "17:00", closed: false },
+    sat: { open: "09:00", close: "17:00", closed: true },
+    sun: { open: "09:00", close: "17:00", closed: true },
+  });
+  const [savingHours, setSavingHours] = useState(false);
+
   // Availability dialog
   const [availDialog, setAvailDialog] = useState(false);
   const [availForm, setAvailForm] = useState({
@@ -196,6 +203,8 @@ export default function SettingsPage() {
   // Store machine mode (per-device: restricts app to POS / Inventory / Punch-in)
   const [storeMachine, setStoreMachine] = useStoreMachineMode();
   const [deviceName, setDeviceNameValue] = useDeviceName();
+  const [autolockSeconds, setAutolockSecondsValue] = useAutolockSeconds();
+  const [autolockDialog, setAutolockDialog] = useState(false);
   const [deviceNameDialog, setDeviceNameDialog] = useState(false);
   const [deviceNameInput, setDeviceNameInput] = useState("");
 
@@ -251,16 +260,6 @@ export default function SettingsPage() {
     ? myMember.punchInCode
     : null;
 
-  // Desktop breakpoint detection
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    setIsDesktop(mq.matches);
-    const h = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", h);
-    return () => mq.removeEventListener("change", h);
-  }, []);
-
   useEffect(() => {
     const token = localStorage.getItem("stdb_token");
     if (token) {
@@ -288,6 +287,23 @@ export default function SettingsPage() {
       setLocationLatitude(settings.locationLatitude ?? "");
       setLocationLongitude(settings.locationLongitude ?? "");
       setGooglePlacesId(settings.googlePlacesId ?? "");
+      const parsed = parseOpeningHours(settings.openingHours ?? null);
+      if (parsed) {
+        setHoursForm((prev) => {
+          const next = { ...prev };
+          (Object.keys(next) as DayKey[]).forEach((k) => {
+            const day = parsed[k];
+            if (day) {
+              next[k] = {
+                open: day.open ?? prev[k].open,
+                close: day.close ?? prev[k].close,
+                closed: !!day.closed,
+              };
+            }
+          });
+          return next;
+        });
+      }
     }
   }, [settings, orgName]);
 
@@ -555,6 +571,13 @@ export default function SettingsPage() {
     }
   };
 
+  const autolockLabel = (s: AutolockSeconds): string => {
+    if (s === 0) return t("lock.never");
+    if (s < 60) return `${s}s`;
+    const m = Math.round(s / 60);
+    return `${m}m`;
+  };
+
   const DAY_NAMES = [
     t("availability.daySun"),
     t("availability.dayMon"),
@@ -653,6 +676,40 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveHours = async () => {
+    if (!organizationId) return;
+    setSavingHours(true);
+    try {
+      const payload: WeeklyHours = {} as WeeklyHours;
+      (Object.keys(hoursForm) as DayKey[]).forEach((k) => {
+        const d = hoursForm[k];
+        payload[k] = d.closed
+          ? { closed: true }
+          : { open: d.open, close: d.close, closed: false };
+      });
+      await updateOpeningHours({ openingHours: JSON.stringify(payload) });
+      hapticSuccess();
+      toast.success(t("hours.toastSaved"));
+      setHoursDialog(false);
+    } catch (err) {
+      console.error("Save business hours failed:", err);
+      toast.error(t("hours.toastFailed"));
+    } finally {
+      setSavingHours(false);
+    }
+  };
+
+  // Short label for the Workspace SRow meta (e.g. "Mon–Fri 9:00–17:00" or "Not set")
+  const hoursMetaLabel = useMemo(() => {
+    if (!settings?.openingHours) return null;
+    const parsed = parseOpeningHours(settings.openingHours);
+    if (!parsed) return null;
+    const order: DayKey[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const openDays = order.filter((k) => !parsed[k]?.closed && parsed[k]?.open && parsed[k]?.close);
+    if (openDays.length === 0) return t("hours.allClosed");
+    return `${openDays.length}${t("hours.daysSuffix")}`;
+  }, [settings?.openingHours, t]);
+
   const handleSaveAvailability = async () => {
     if (!userId || !organizationId) return;
     setSavingAvail(true);
@@ -709,89 +766,88 @@ export default function SettingsPage() {
   type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
 
-  if (isDesktop) return (
-    <>
-      <SettingsDesktop
-        organizationId={organizationId}
-        settings={settings}
-        businessName={businessName}
-        setBusinessName={setBusinessName}
-        timezone={timezone}
-        setTimezone={setTimezone}
-        avatarUrl={avatarUrl}
-        userEmail={userEmail}
-        handleAvatarUpload={handleAvatarUpload}
-        uploadingAvatar={uploadingAvatar}
-        handleSaveProfile={handleSaveProfile}
-        savingProfile={savingProfile}
-        profileSaved={profileSaved}
-        isAdmin={isAdmin}
-        canEditTeam={canEditTeam}
-        storeMachine={storeMachine}
-        setStoreMachine={setStoreMachine}
-        deviceName={deviceName}
-        setDeviceNameInput={setDeviceNameInput}
-        setDeviceNameDialog={setDeviceNameDialog}
-        setExitPinDialog={setExitPinDialog}
-        setExitPinInput={setExitPinInput}
-        setExitPinError={setExitPinError}
-        orgDevices={orgDevices}
-        setManageDeviceDialog={setManageDeviceDialog}
-        setManageDeviceTarget={setManageDeviceTarget}
-        setManageDeviceNameInput={setManageDeviceNameInput}
-        myCode={myCode}
-        setMyCodeInput={setMyCodeInput}
-        setMyCodeDialog={setMyCodeDialog}
-        setAvailDialog={setAvailDialog}
-        setTimeOffDialog={setTimeOffDialog}
-        setTimeOffForm={setTimeOffForm}
-        setTeamDialog={setTeamDialog}
-        teamDialog={teamDialog}
-        teamMembers={teamMembers}
-        teamInvitations={teamInvitations}
-        teamLoading={teamLoading}
-        loadTeam={loadTeam}
-        setInviteDialog={setInviteDialog}
-        setResetCodeMember={setResetCodeMember}
-        setResetCodeInput={setResetCodeInput}
-        userId={userId}
-        handleSquareSync={handleSquareSync}
-        handleDisconnectSquare={handleDisconnectSquare}
-        squareSyncing={squareSyncing}
-        squareSyncResult={squareSyncResult}
-        handleCloverSync={handleCloverSync}
-        handleDisconnectClover={handleDisconnectClover}
-        cloverSyncing={cloverSyncing}
-        cloverSyncResult={cloverSyncResult}
-        paymentTaxRate={paymentTaxRate}
-        setPaymentTaxRate={setPaymentTaxRate}
-        paymentCurrency={paymentCurrency}
-        setPaymentCurrency={setPaymentCurrency}
-        handleSavePaymentSettings={handleSavePaymentSettings}
-        savingPayment={savingPayment}
-        paymentSaved={paymentSaved}
-        hapticSuccess={hapticSuccess}
-        removeMember={removeMember}
-        setTeamMembers={setTeamMembers}
-        cancelInvitation={cancelInvitation}
-        setTeamInvitations={setTeamInvitations}
-        locationLatitude={locationLatitude}
-        setLocationLatitude={setLocationLatitude}
-        locationLongitude={locationLongitude}
-        setLocationLongitude={setLocationLongitude}
-        googlePlacesId={googlePlacesId}
-        setGooglePlacesId={setGooglePlacesId}
-        handleGetLocation={handleGetLocation}
-        gettingLocation={gettingLocation}
-      />
-      {renderDialogs()}
-    </>
-  );
-
-  // Shared dialog rendering for both mobile and desktop
+  // Shared dialog rendering used by the main mobile-first layout
   function renderDialogs() {
     return (
       <>
+        {/* ─── Auto-lock picker ─────────────────────────────────────── */}
+        <DynamicUIElement open={autolockDialog} onOpenChange={setAutolockDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("lock.autolockTitle")}>{t("lock.autolockTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("lock.autolockSubtitle")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            <div className="space-y-1">
+              {AUTOLOCK_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => {
+                    setAutolockSecondsValue(s);
+                    setAutolockDialog(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 border rounded text-sm transition-colors ${autolockSeconds === s ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:bg-muted"}`}
+                >
+                  <span>{s === 0 ? t("lock.never") : autolockLabel(s)}</span>
+                  {autolockSeconds === s && <Check className="h-4 w-4" />}
+                </button>
+              ))}
+            </div>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
+
+        {/* ─── Business Hours DynamicUIElement ──────────────────────── */}
+        <DynamicUIElement open={hoursDialog} onOpenChange={setHoursDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("hours.mobileTitle")}>{t("hours.title")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("hours.subtitle")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            <div className="space-y-2">
+              {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as DayKey[]).map((k) => {
+                const day = hoursForm[k];
+                return (
+                  <div key={k} className="space-y-1.5 rounded border border-border p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{t(`hours.day_${k}`)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">{day.closed ? t("hours.closed") : t("hours.open")}</span>
+                        <button
+                          type="button"
+                          aria-label={`Toggle ${k}`}
+                          onClick={() => setHoursForm((f) => ({ ...f, [k]: { ...f[k], closed: !f[k].closed } }))}
+                          className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${!day.closed ? "bg-foreground border-foreground" : "bg-background border-border"}`}
+                        >
+                          <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${!day.closed ? "translate-x-3" : "translate-x-0.5"}`} />
+                        </button>
+                      </div>
+                    </div>
+                    {!day.closed && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          type="time"
+                          value={day.open}
+                          className="h-8 text-xs"
+                          onChange={(e) => setHoursForm((f) => ({ ...f, [k]: { ...f[k], open: e.target.value } }))}
+                        />
+                        <Input
+                          type="time"
+                          value={day.close}
+                          className="h-8 text-xs"
+                          onChange={(e) => setHoursForm((f) => ({ ...f, [k]: { ...f[k], close: e.target.value } }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <Button onClick={handleSaveHours} disabled={savingHours || !organizationId} className="w-full">
+                {savingHours ? <Loader2 className="h-4 w-4 animate-spin" /> : t("hours.save")}
+              </Button>
+            </div>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
+
         {/* ─── Availability DynamicUIElement ─────────────────────────── */}
         <DynamicUIElement open={availDialog} onOpenChange={setAvailDialog}>
           <DynamicUIElementContent>
@@ -1488,6 +1544,7 @@ export default function SettingsPage() {
     right,
     onClick,
     isFirst,
+    card,
   }: {
     icon: React.ReactNode;
     title: string;
@@ -1495,19 +1552,24 @@ export default function SettingsPage() {
     right?: React.ReactNode;
     onClick?: () => void;
     isFirst?: boolean;
+    isCard?: boolean;
+    card?: boolean;
   }) => {
     const Wrapper = onClick ? "button" : "div";
+    // Mobile: list rows separated by border-t. lg + card: each row is a standalone bordered card.
+    const baseBorder = `${isFirst ? "" : "border-t border-border"} ${card ? " lg:pt-6 lg:flex-col lg:items-start lg:border lg:border-border lg:rounded" : ""}`;
+    const interactive = onClick ? "transition-colors active:bg-muted/40 lg:hover:bg-muted/40" : "";
     return (
       <Wrapper
         onClick={onClick}
-        className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${isFirst ? "" : "border-t border-border"}`}
+        className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${card && " lg:pt-6 lg:flex-col lg:items-start"} ${baseBorder} ${interactive}`}
       >
         <IconTile>{icon}</IconTile>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">{title}</p>
           {meta && <p className="text-xs text-muted-foreground mt-0.5 truncate">{meta}</p>}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className={cn("flex justify-end items-end gap-2 shrink-0",card && "lg:w-full")}>
           {right}
           {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
         </div>
@@ -1533,7 +1595,7 @@ export default function SettingsPage() {
   }) => (
     <div className={`flex items-center gap-3 px-[18px] py-3.5 w-full ${isFirst ? "" : "border-t border-border"}`}>
       <IconTile>{icon}</IconTile>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1">
         <p className="text-sm font-medium text-foreground">{title}</p>
         {meta && <p className="text-xs text-muted-foreground mt-0.5">{meta}</p>}
       </div>
@@ -1577,7 +1639,7 @@ export default function SettingsPage() {
 
   return (
     <>
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-28 w-full lg:mx-auto lg:max-w-12xl lg:px-8 lg:py-6">
       <PageHeader
         title={t("settings.title")}
         subtitle={`${businessName || t("settings.yourBusiness")}${activeStaffCount > 0 ? ` · ${activeStaffCount} ${t("settings.membersSuffix")}` : ""}`}
@@ -1751,13 +1813,14 @@ export default function SettingsPage() {
       </Drawer>
 
       {/* ─── Category entries ────────────────────────────────── */}
-      <div className="bg-background">
+      <div className="bg-background lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-3 lg:bg-transparent lg:mt-4 lg:p-0">
         <SRow
           icon={<Building2 className="h-4 w-4 text-foreground" />}
           title={t("settings.groupWorkspace")}
           meta={businessName || t("settings.notSet")}
           onClick={() => setSubPanel("workspace")}
           isFirst
+          card
         />
         {isAdmin && (
           <SRow
@@ -1766,6 +1829,7 @@ export default function SettingsPage() {
             meta={`${activeStaffCount} ${t("settings.membersSuffix")}`}
             onClick={() => setSubPanel("team")}
             right={<SBadge>{String(activeStaffCount)}</SBadge>}
+            card
           />
         )}
         <SRow
@@ -1773,36 +1837,41 @@ export default function SettingsPage() {
           title={t("settings.groupNotifications")}
           meta={t("settings.shiftReminders")}
           onClick={() => setSubPanel("notifications")}
+          card
         />
         <SRow
           icon={<SettingsIcon className="h-4 w-4 text-foreground" />}
           title={t("settings.groupPreferences")}
           meta={`${themeMode === "system" ? (t("settings.themeSystem") || "System") : themeMode === "light" ? (t("settings.themeLight") || "Light") : (t("settings.themeDark") || "Dark")} · ${LOCALE_LABELS[locale]}`}
           onClick={() => setSubPanel("preferences")}
+          card
         />
         <SRow
           icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
           title={t("settings.groupDevice")}
           meta={storeMachine ? t("settings.storeMachineMode") : (deviceName || t("settings.notSet"))}
           onClick={() => setSubPanel("device")}
+          card
         />
         <SRow
           icon={<Download className="h-4 w-4 text-foreground" />}
           title={t("settings.groupData")}
           meta={t("settings.exportData")}
           onClick={() => setSubPanel("data")}
+          card
         />
         <SRow
           icon={<Info className="h-4 w-4 text-foreground" />}
           title={t("settings.groupAbout")}
           meta="beta-0.1.0"
           onClick={() => setSubPanel("about")}
+          card
         />
       </div>
 
       {/* ─── Workspace Sub-Panel ─────────────────────────────── */}
       <DynamicUIElement open={subPanel === "workspace"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md" noPadding>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>
             <DynamicUIElementTitle mobileTitle={t("settings.groupWorkspace")}>{t("settings.groupWorkspace")}</DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{t("settings.groupWorkspace")}</DynamicUIElementDescription>
@@ -1814,6 +1883,12 @@ export default function SettingsPage() {
               meta={businessName || t("settings.notSet")}
               right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[120px]">{timezone}</span>}
               isFirst
+            />
+            <SRow
+              icon={<Clock className="h-4 w-4 text-foreground" />}
+              title={t("hours.title")}
+              meta={hoursMetaLabel ?? t("settings.notSet")}
+              onClick={() => setHoursDialog(true)}
             />
             <SRow
               icon={<MapPin className="h-4 w-4 text-foreground" />}
@@ -1847,7 +1922,7 @@ export default function SettingsPage() {
 
       {/* ─── Team & Access Sub-Panel ─────────────────────────── */}
       <DynamicUIElement open={subPanel === "team"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md" noPadding>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>
             <DynamicUIElementTitle mobileTitle={t("settings.groupTeamAccess")}>{t("settings.groupTeamAccess")}</DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{t("settings.groupTeamAccess")}</DynamicUIElementDescription>
@@ -1907,7 +1982,7 @@ export default function SettingsPage() {
 
       {/* ─── Notifications Sub-Panel ─────────────────────────── */}
       <DynamicUIElement open={subPanel === "notifications"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md" noPadding>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>
             <DynamicUIElementTitle mobileTitle={t("settings.groupNotifications")}>{t("settings.groupNotifications")}</DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{t("settings.groupNotifications")}</DynamicUIElementDescription>
@@ -1941,7 +2016,7 @@ export default function SettingsPage() {
 
       {/* ─── Preferences Sub-Panel ───────────────────────────── */}
       <DynamicUIElement open={subPanel === "preferences"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md" noPadding>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>
             <DynamicUIElementTitle mobileTitle={t("settings.groupPreferences")}>{t("settings.groupPreferences")}</DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{t("settings.groupPreferences")}</DynamicUIElementDescription>
@@ -2050,7 +2125,7 @@ export default function SettingsPage() {
 
       {/* ─── Device Sub-Panel ────────────────────────────────── */}
       <DynamicUIElement open={subPanel === "device"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md" noPadding>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>
             <DynamicUIElementTitle mobileTitle={t("settings.groupDevice")}>{t("settings.groupDevice")}</DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{t("settings.groupDevice")}</DynamicUIElementDescription>
@@ -2091,6 +2166,15 @@ export default function SettingsPage() {
               onClick={() => { setMyCodeInput(""); setMyCodeDialog(true); }}
               right={myCode ? <SBadge tone="ok">{t("settings.setBadge")}</SBadge> : undefined}
             />
+            {storeMachine && (
+              <SRow
+                icon={<Clock className="h-4 w-4 text-foreground" />}
+                title={t("lock.autolockTitle")}
+                meta={autolockSeconds === 0 ? t("lock.never") : t("lock.autolockMetaPrefix").replace("{label}", autolockLabel(autolockSeconds))}
+                onClick={() => setAutolockDialog(true)}
+                right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{autolockSeconds === 0 ? "—" : autolockLabel(autolockSeconds)}</span>}
+              />
+            )}
             {isAdmin && orgDevices.length > 0 && (
               <>
                 <SGroupHeader label="Store Devices" />
@@ -2117,7 +2201,7 @@ export default function SettingsPage() {
 
       {/* ─── Data Sub-Panel ──────────────────────────────────── */}
       <DynamicUIElement open={subPanel === "data"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md" noPadding>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>
             <DynamicUIElementTitle mobileTitle={t("settings.groupData")}>{t("settings.groupData")}</DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{t("settings.groupData")}</DynamicUIElementDescription>
@@ -2140,7 +2224,7 @@ export default function SettingsPage() {
 
       {/* ─── About Sub-Panel ─────────────────────────────────── */}
       <DynamicUIElement open={subPanel === "about"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md" noPadding>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>
             <DynamicUIElementTitle mobileTitle={t("settings.groupAbout")}>{t("settings.groupAbout")}</DynamicUIElementTitle>
             <DynamicUIElementDescription className="hidden">{t("settings.groupAbout")}</DynamicUIElementDescription>
@@ -2185,807 +2269,4 @@ export default function SettingsPage() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Desktop helper components
-   ───────────────────────────────────────────────────────────────────────────── */
-
-function DesktopField({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[180px_minmax(0,1fr)] gap-4 items-start py-3 border-b last:border-b-0 border-border">
-      <div>
-        <label className="text-[13px] font-medium">{label}</label>
-        {hint && <div className="text-[11.5px] text-muted-foreground mt-0.5">{hint}</div>}
-      </div>
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function DesktopCard({
-  title,
-  desc,
-  right,
-  children,
-}: {
-  title?: string;
-  desc?: string;
-  right?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-background border border-border rounded-[0.3rem]">
-      {(title || right) && (
-        <div className="px-5 py-3 flex items-center justify-between border-b border-border">
-          <div>
-            {title && <div className="text-[14px] font-semibold">{title}</div>}
-            {desc && <div className="text-[11.5px] text-muted-foreground mt-0.5">{desc}</div>}
-          </div>
-          {right}
-        </div>
-      )}
-      <div className="px-5">{children}</div>
-    </div>
-  );
-}
-
-type DesktopSection =
-  | "business"
-  | "timezone"
-  | "locations"
-  | "forecastlocation"
-  | "availability"
-  | "timeoff"
-  | "square"
-  | "clover"
-  | "taxrate"
-  | "currency"
-  | "storemachine"
-  | "punchcode"
-  | "devicename"
-  | "storedevices"
-  | "team"
-  | "language";
-
-interface SettingsDesktopProps {
-  organizationId: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  settings: any;
-  businessName: string;
-  setBusinessName: (v: string) => void;
-  timezone: string;
-  setTimezone: (v: string) => void;
-  avatarUrl: string | null;
-  userEmail: string;
-  handleAvatarUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  uploadingAvatar: boolean;
-  handleSaveProfile: () => void;
-  savingProfile: boolean;
-  profileSaved: boolean;
-  isAdmin: boolean;
-  canEditTeam: boolean;
-  storeMachine: boolean;
-  setStoreMachine: (v: boolean) => void;
-  deviceName: string;
-  setDeviceNameInput: (v: string) => void;
-  setDeviceNameDialog: (v: boolean) => void;
-  setExitPinDialog: (v: boolean) => void;
-  setExitPinInput: (v: string) => void;
-  setExitPinError: (v: string) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  orgDevices: any[];
-  setManageDeviceDialog: (v: boolean) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setManageDeviceTarget: (d: any) => void;
-  setManageDeviceNameInput: (v: string) => void;
-  myCode: string | null;
-  setMyCodeInput: (v: string) => void;
-  setMyCodeDialog: (v: boolean) => void;
-  setAvailDialog: (v: boolean) => void;
-  setTimeOffDialog: (v: boolean) => void;
-  setTimeOffForm: (fn: (f: { fullDays: boolean; startDate: string; endDate: string; startTime: string; endTime: string; comments: string }) => { fullDays: boolean; startDate: string; endDate: string; startTime: string; endTime: string; comments: string }) => void;
-  setTeamDialog: (v: boolean) => void;
-  teamDialog: boolean;
-  teamMembers: OrgMember[];
-  teamInvitations: OrgInvitation[];
-  teamLoading: boolean;
-  loadTeam: () => void;
-  setInviteDialog: (v: boolean) => void;
-  setResetCodeMember: (m: OrgMember | null) => void;
-  setResetCodeInput: (v: string) => void;
-  userId: string | null;
-  handleSquareSync: () => void;
-  handleDisconnectSquare: () => void;
-  squareSyncing: boolean;
-  squareSyncResult: string | null;
-  handleCloverSync: () => void;
-  handleDisconnectClover: () => void;
-  cloverSyncing: boolean;
-  cloverSyncResult: string | null;
-  paymentTaxRate: string;
-  setPaymentTaxRate: (v: string) => void;
-  paymentCurrency: string;
-  setPaymentCurrency: (v: string) => void;
-  handleSavePaymentSettings: () => void;
-  savingPayment: boolean;
-  paymentSaved: boolean;
-  hapticSuccess: () => void;
-  removeMember: (id: string) => Promise<void>;
-  setTeamMembers: React.Dispatch<React.SetStateAction<OrgMember[]>>;
-  cancelInvitation: (id: string) => Promise<void>;
-  setTeamInvitations: React.Dispatch<React.SetStateAction<OrgInvitation[]>>;
-  locationLatitude: string;
-  setLocationLatitude: (v: string) => void;
-  locationLongitude: string;
-  setLocationLongitude: (v: string) => void;
-  googlePlacesId: string;
-  setGooglePlacesId: (v: string) => void;
-  handleGetLocation: () => void;
-  gettingLocation: boolean;
-}
-
-const TIMEZONES = [
-  "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
-  "America/Anchorage", "Pacific/Honolulu", "America/Phoenix",
-  "America/Toronto", "America/Vancouver",
-  "Europe/London", "Europe/Paris", "Europe/Berlin",
-  "Asia/Tokyo", "Asia/Shanghai", "Asia/Singapore", "Asia/Seoul",
-  "Australia/Sydney", "Australia/Melbourne",
-  "Pacific/Auckland",
-];
-
-interface SectionCardDef {
-  id: DesktopSection;
-  icon: React.ElementType;
-  label: string;
-  desc: string;
-}
-
-function SettingsDesktop(props: SettingsDesktopProps) {
-  const t = useT();
-  const { locale, setLocale } = useI18n();
-  const [activeSection, setActiveSection] = useState<DesktopSection | null>(null);
-
-  // Load team data when opening team detail
-  const teamLoadedRef = useRef(false);
-  useEffect(() => {
-    if (activeSection === "team" && !teamLoadedRef.current) {
-      teamLoadedRef.current = true;
-      props.loadTeam();
-    }
-  }, [activeSection]);
-
-  const groups: { title: string; cards: SectionCardDef[]; adminOnly?: boolean }[] = [
-    {
-      title: t("settings.gACCOUNT"),
-      cards: [
-        { id: "business", icon: Building2, label: t("settings.businessNameLabel"), desc: props.businessName || t("settings.notSet") },
-        { id: "timezone", icon: Globe, label: t("settings.timezoneLabel"), desc: props.timezone.replace(/_/g, " ") },
-        { id: "locations", icon: MapPin, label: t("locations.title"), desc: t("settings.manageLocations") },
-        { id: "forecastlocation", icon: Activity, label: "Forecast Location", desc: props.locationLatitude && props.locationLongitude ? `${props.locationLatitude}, ${props.locationLongitude}` : "Not set" },
-      ],
-    },
-    {
-      title: t("settings.gSCHEDULING"),
-      cards: [
-        { id: "availability", icon: Star, label: t("settings.availabilityCardLabel"), desc: t("settings.availabilityCardDesc") },
-        { id: "timeoff", icon: Calendar, label: t("settings.timeOffCardLabel"), desc: t("settings.timeOffCardDesc") },
-      ],
-    },
-    {
-      title: t("settings.gPOS_INTEGRATIONS"),
-      adminOnly: true,
-      cards: [
-        { id: "square", icon: Zap, label: t("settings.square"), desc: props.settings?.squareConnected ? t("settings.connected") : t("settings.notConnected") },
-        { id: "clover", icon: Zap, label: t("settings.clover"), desc: props.settings?.cloverConnected ? t("settings.connected") : t("settings.notConnected") },
-      ],
-    },
-    {
-      title: t("settings.gPAYMENTS"),
-      adminOnly: true,
-      cards: [
-        { id: "taxrate", icon: CreditCard, label: t("settings.taxRate"), desc: `${props.paymentTaxRate}%` },
-        { id: "currency", icon: CreditCard, label: t("settings.currency"), desc: props.paymentCurrency },
-      ],
-    },
-    {
-      title: t("settings.groupPreferences"),
-      cards: [
-        { id: "language", icon: Languages, label: t("settings.language"), desc: LOCALE_LABELS[locale] },
-      ],
-    },
-    {
-      title: t("settings.gSTOREDEVICES") ?? "STORE DEVICES",
-      adminOnly: true,
-      cards: [
-        { id: "storedevices", icon: MonitorSmartphone, label: "Store Devices", desc: `${props.orgDevices.length} registered` },
-      ],
-    },
-    {
-      title: t("settings.gTEAM"),
-      adminOnly: true,
-      cards: [
-        { id: "team", icon: Users, label: t("settings.teamMembersCard"), desc: t("settings.manageMembersRoles") },
-      ],
-    },
-  ];
-
-  const sectionMeta: Record<DesktopSection, { icon: React.ElementType; title: string; desc: string }> = {
-    business: { icon: Building2, title: t("settings.businessNameLabel"), desc: t("settings.businessIdentity") },
-    timezone: { icon: Globe, title: t("settings.timezoneLabel"), desc: t("settings.timezoneDesc") },
-    locations: { icon: MapPin, title: t("locations.title"), desc: t("settings.manageLocations") },
-    forecastlocation: { icon: Activity, title: "Forecast Location", desc: "Set coordinates and Google Places ID for sales forecasting" },
-    availability: { icon: Star, title: t("settings.availabilityCardLabel"), desc: t("settings.availabilityCardDesc") },
-    timeoff: { icon: Calendar, title: t("settings.timeOffCardLabel"), desc: t("settings.timeOffCardDesc") },
-    square: { icon: Zap, title: t("settings.square"), desc: t("settings.squareIntegrationDesc") },
-    clover: { icon: Zap, title: t("settings.clover"), desc: t("settings.cloverIntegrationDesc") },
-    taxrate: { icon: CreditCard, title: t("settings.taxRate"), desc: t("settings.taxRateDesc") },
-    currency: { icon: CreditCard, title: t("settings.currency"), desc: t("settings.currencyDesc") },
-    storemachine: { icon: MonitorSmartphone, title: t("settings.storeMachineModeLabel"), desc: t("settings.restrictDeviceDesc") },
-    punchcode: { icon: KeyRound, title: t("settings.punchInCodeLabel"), desc: t("settings.punchInCodeCardDesc") },
-    devicename: { icon: MonitorSmartphone, title: t("settings.deviceNameLabel"), desc: t("settings.identifyMachine") },
-    storedevices: { icon: MonitorSmartphone, title: "Store Devices", desc: "View and manage all registered store devices" },
-    team: { icon: Users, title: t("settings.teamMembersCard"), desc: t("settings.manageMembersRolesFull") },
-    language: { icon: Languages, title: t("settings.language"), desc: LOCALE_LABELS[locale] },
-  };
-
-  const handleCardClick = (id: DesktopSection) => {
-    if (id === "availability") {
-      props.setAvailDialog(true);
-      return;
-    }
-    if (id === "timeoff") {
-      props.setTimeOffForm(() => ({
-        fullDays: true,
-        startDate: new Date().toISOString().split("T")[0],
-        endDate: new Date().toISOString().split("T")[0],
-        startTime: "09:00",
-        endTime: "17:00",
-        comments: "",
-      }));
-      props.setTimeOffDialog(true);
-      return;
-    }
-    if (id === "punchcode") {
-      props.setMyCodeInput("");
-      props.setMyCodeDialog(true);
-      return;
-    }
-    if (id === "devicename") {
-      props.setDeviceNameInput(props.deviceName);
-      props.setDeviceNameDialog(true);
-      return;
-    }
-    setActiveSection(id);
-  };
-
-  const renderDetail = () => {
-    if (!activeSection) return null;
-    const meta = sectionMeta[activeSection];
-
-    return (
-          <div>
-
-            {activeSection === "business" && (
-              <DesktopCard title={t("settings.businessInfo")} desc={t("settings.manageBusinessIdentity")}>
-                <DesktopField label={t("settings.avatar")} hint={t("settings.uploadLogo")}>
-                  <div className="flex items-center gap-3">
-                    {props.avatarUrl ? (
-                      <img src={props.avatarUrl} alt={t("settings.avatar")} className="h-10 w-10 rounded-[0.3rem] object-cover border border-border" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-[0.3rem] bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground border border-border">
-                        {props.userEmail?.[0]?.toUpperCase() ?? "?"}
-                      </div>
-                    )}
-                    <label className="text-[12px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors">
-                      {props.uploadingAvatar ? t("settings.uploading") : t("settings.change")}
-                      <input type="file" accept="image/*" className="hidden" onChange={props.handleAvatarUpload} disabled={props.uploadingAvatar} />
-                    </label>
-                  </div>
-                </DesktopField>
-                <DesktopField label={t("settings.businessNameLabel")} hint={t("settings.shownToCustomers")}>
-                  <Input
-                    value={props.businessName}
-                    onChange={(e) => props.setBusinessName(e.target.value)}
-                    placeholder={t("settings.businessNamePlaceholder")}
-                    className="max-w-sm"
-                  />
-                </DesktopField>
-                <div className="py-3 flex justify-end">
-                  <Button onClick={props.handleSaveProfile} disabled={props.savingProfile} size="sm" className="gap-2">
-                    {props.savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.profileSaved ? t("settings.saved") : t("settings.save")}
-                  </Button>
-                </div>
-              </DesktopCard>
-            )}
-
-            {activeSection === "timezone" && (
-              <DesktopCard title={t("settings.timezoneLabel")} desc={t("settings.timezoneUsedFor")}>
-                <DesktopField label={t("settings.timezoneLabel")} hint={t("settings.timezoneHint")}>
-                  <Select value={props.timezone} onValueChange={(v) => { if (v) props.setTimezone(v); }}>
-                    <SelectTrigger className="max-w-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {TIMEZONES.map((tz) => (
-                        <SelectItem key={tz} value={tz}>{tz.replace(/_/g, " ")}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </DesktopField>
-                <div className="py-3 flex justify-end">
-                  <Button onClick={props.handleSaveProfile} disabled={props.savingProfile} size="sm" className="gap-2">
-                    {props.savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.profileSaved ? t("settings.saved") : t("settings.save")}
-                  </Button>
-                </div>
-              </DesktopCard>
-            )}
-
-            {activeSection === "locations" && props.organizationId && (
-              <div className="py-2">
-                <LocationManager organizationId={props.organizationId} />
-              </div>
-            )}
-
-            {activeSection === "forecastlocation" && (
-              <DesktopCard title="Forecast Location" desc="Coordinates and Google Places ID used by the sales forecast engine">
-                <DesktopField label="Store Coordinates" hint="Latitude and longitude of your store for weather-based forecasting">
-                  <div className="flex items-center gap-2 max-w-sm">
-                    <Input
-                      value={props.locationLatitude}
-                      onChange={(e) => props.setLocationLatitude(e.target.value)}
-                      placeholder="Latitude (e.g. 37.7749)"
-                      className="flex-1"
-                    />
-                    <Input
-                      value={props.locationLongitude}
-                      onChange={(e) => props.setLocationLongitude(e.target.value)}
-                      placeholder="Longitude (e.g. -122.4194)"
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={props.handleGetLocation}
-                      disabled={props.gettingLocation}
-                      className="gap-1.5 shrink-0"
-                    >
-                      {props.gettingLocation ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}
-                      Detect
-                    </Button>
-                  </div>
-                </DesktopField>
-                <DesktopField label="Google Places ID" hint="Used to fetch foot traffic patterns. Find yours at Google Maps > Share > Place ID.">
-                  <Input
-                    value={props.googlePlacesId}
-                    onChange={(e) => props.setGooglePlacesId(e.target.value)}
-                    placeholder="ChIJ..."
-                    className="max-w-sm font-mono text-[13px]"
-                  />
-                </DesktopField>
-                <div className="py-3 flex justify-end">
-                  <Button onClick={props.handleSaveProfile} disabled={props.savingProfile} size="sm" className="gap-2">
-                    {props.savingProfile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.profileSaved ? t("settings.saved") : t("settings.save")}
-                  </Button>
-                </div>
-              </DesktopCard>
-            )}
-
-            {activeSection === "language" && (
-              <DesktopCard title={t("settings.language")} desc={LOCALE_LABELS[locale]}>
-                <DesktopField label={t("settings.language")} hint={t("common.language")}>
-                  <Select value={locale} onValueChange={(v) => { if (v) setLocale(v as Locale); }}>
-                    <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {LOCALES.map((loc) => (
-                        <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </DesktopField>
-              </DesktopCard>
-            )}
-
-            {activeSection === "square" && (
-              <DesktopCard title={t("settings.square")} desc={t("settings.squareConnectCardDesc")}>
-                <DesktopField label={t("settings.statusLabel")} hint={t("settings.connectionStatus")}>
-                  <div className="flex items-center gap-2">
-                    {props.settings?.squareConnected ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        <span className="text-[13px] text-emerald-700 font-medium">{t("settings.connected")}</span>
-                        {props.settings.squareLastSyncedAt && (
-                          <span className="text-[11.5px] text-muted-foreground ml-2">
-                            {t("settings.lastSynced")} {new Date(props.settings.squareLastSyncedAt).toLocaleDateString()}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[13px] text-muted-foreground">{t("settings.notConnected")}</span>
-                    )}
-                  </div>
-                </DesktopField>
-                {props.squareSyncResult && (
-                  <div className="py-2">
-                    <p className="text-[12px] text-muted-foreground">{props.squareSyncResult}</p>
-                  </div>
-                )}
-                <div className="py-3 flex gap-2 justify-end">
-                  {props.settings?.squareConnected ? (
-                    <>
-                      <Button onClick={props.handleSquareSync} disabled={props.squareSyncing} size="sm" variant="outline" className="gap-2">
-                        {props.squareSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                        {t("settings.syncNow")}
-                      </Button>
-                      <Button onClick={props.handleDisconnectSquare} size="sm" variant="outline" className="gap-2 text-destructive hover:text-destructive">
-                        <Unlink className="h-3.5 w-3.5" />
-                        {t("settings.disconnect")}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button onClick={() => { window.location.href = "/api/square/oauth/authorize"; }} size="sm" className="gap-2">
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      {t("settings.connectSquare")}
-                    </Button>
-                  )}
-                </div>
-              </DesktopCard>
-            )}
-
-            {activeSection === "clover" && (
-              <DesktopCard title={t("settings.clover")} desc={t("settings.cloverConnectCardDesc")}>
-                <DesktopField label={t("settings.statusLabel")} hint={t("settings.connectionStatus")}>
-                  <div className="flex items-center gap-2">
-                    {props.settings?.cloverConnected ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        <span className="text-[13px] text-emerald-700 font-medium">{t("settings.connected")}</span>
-                        {props.settings.cloverLastSyncedAt && (
-                          <span className="text-[11.5px] text-muted-foreground ml-2">
-                            {t("settings.lastSynced")} {new Date(props.settings.cloverLastSyncedAt).toLocaleDateString()}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-[13px] text-muted-foreground">{t("settings.notConnected")}</span>
-                    )}
-                  </div>
-                </DesktopField>
-                {props.cloverSyncResult && (
-                  <div className="py-2">
-                    <p className="text-[12px] text-muted-foreground">{props.cloverSyncResult}</p>
-                  </div>
-                )}
-                <div className="py-3 flex gap-2 justify-end">
-                  {props.settings?.cloverConnected ? (
-                    <>
-                      <Button onClick={props.handleCloverSync} disabled={props.cloverSyncing} size="sm" variant="outline" className="gap-2">
-                        {props.cloverSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                        {t("settings.syncNow")}
-                      </Button>
-                      <Button onClick={props.handleDisconnectClover} size="sm" variant="outline" className="gap-2 text-destructive hover:text-destructive">
-                        <Unlink className="h-3.5 w-3.5" />
-                        {t("settings.disconnect")}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button onClick={() => { window.location.href = "/api/clover/connect"; }} size="sm" className="gap-2">
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      {t("settings.connectClover")}
-                    </Button>
-                  )}
-                </div>
-              </DesktopCard>
-            )}
-
-            {activeSection === "taxrate" && (
-              <DesktopCard title={t("settings.taxRate")} desc={t("settings.taxRateFullDesc")}>
-                <DesktopField label={t("settings.taxRatePercentLabel")} hint={t("settings.appliedToSales")}>
-                  <Input
-                    type="number"
-                    value={props.paymentTaxRate}
-                    onChange={(e) => props.setPaymentTaxRate(e.target.value)}
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    placeholder="0"
-                    className="max-w-[120px]"
-                  />
-                </DesktopField>
-                <div className="py-3 flex justify-end">
-                  <Button onClick={props.handleSavePaymentSettings} disabled={props.savingPayment} size="sm" className="gap-2">
-                    {props.savingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.paymentSaved ? t("settings.saved") : t("settings.save")}
-                  </Button>
-                </div>
-              </DesktopCard>
-            )}
-
-            {activeSection === "currency" && (
-              <DesktopCard title={t("settings.currency")} desc={t("settings.currencyDesc")}>
-                <DesktopField label={t("settings.currency")} hint={t("settings.currencyUsedFor")}>
-                  <Select value={props.paymentCurrency} onValueChange={(v) => props.setPaymentCurrency(v ?? props.paymentCurrency)}>
-                    <SelectTrigger className="max-w-[200px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">{t("settings.usdDollar")}</SelectItem>
-                      <SelectItem value="CAD">{t("settings.cadDollar")}</SelectItem>
-                      <SelectItem value="EUR">{t("settings.eurEuro")}</SelectItem>
-                      <SelectItem value="GBP">{t("settings.gbpPound")}</SelectItem>
-                      <SelectItem value="AUD">{t("settings.audDollar")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </DesktopField>
-                <div className="py-3 flex justify-end">
-                  <Button onClick={props.handleSavePaymentSettings} disabled={props.savingPayment} size="sm" className="gap-2">
-                    {props.savingPayment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    {props.paymentSaved ? t("settings.saved") : t("settings.save")}
-                  </Button>
-                </div>
-              </DesktopCard>
-            )}
-
-            {activeSection === "storemachine" && (
-              <DesktopCard title={t("settings.storeMachineModeLabel")} desc={t("settings.restrictDeviceDesc")}>
-                <DesktopField label={t("settings.enabledLabel")} hint={t("settings.onlyShowDesc")}>
-                  <button
-                    onClick={() => {
-                      if (props.storeMachine) {
-                        props.setExitPinInput(""); props.setExitPinError("");
-                        props.setExitPinDialog(true);
-                        return;
-                      }
-                      if (!props.deviceName) {
-                        props.setDeviceNameInput("");
-                        props.setDeviceNameDialog(true);
-                        return;
-                      }
-                      props.setStoreMachine(true);
-                      registerStoreDevice(getOrCreateDeviceId(), props.deviceName).catch(console.error);
-                      props.hapticSuccess();
-                    }}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full border shrink-0 transition-colors ${props.storeMachine ? "bg-foreground border-foreground" : "bg-background border-border"}`}
-                    aria-label={t("settings.storeMachineModeLabel")}
-                  >
-                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${props.storeMachine ? "translate-x-4" : "translate-x-0.5"}`} />
-                  </button>
-                </DesktopField>
-              </DesktopCard>
-            )}
-
-            {activeSection === "storedevices" && (
-              <DesktopCard title="Store Devices" desc={`${props.orgDevices.length} devices registered`}>
-                {props.orgDevices.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4">No devices registered yet. Enable store machine mode on any device to register it.</p>
-                ) : (
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">Device</th>
-                        <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">Status</th>
-                        <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">Device ID</th>
-                        <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {props.orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean }) => (
-                        <tr key={device.id.toString()}>
-                          <td className="py-2.5 pr-3 text-[13px] font-medium">{device.name || "Unnamed"}</td>
-                          <td className="py-2.5 pr-3">
-                            <Badge variant={device.enabled ? "default" : "secondary"} className="text-[10px]">
-                              {device.enabled ? "Active" : "Disabled"}
-                            </Badge>
-                          </td>
-                          <td className="py-2.5 pr-3 text-[12px] text-muted-foreground font-mono">{device.deviceId.slice(0, 8)}…</td>
-                          <td className="py-2.5 text-right space-x-1">
-                            <Button variant="ghost" size="sm" onClick={() => {
-                              props.setManageDeviceTarget(device);
-                              props.setManageDeviceNameInput(device.name);
-                              props.setManageDeviceDialog(true);
-                            }}>Rename</Button>
-                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={async () => {
-                              await removeStoreDevice(device.deviceId);
-                              toast.success("Device removed");
-                            }}>Remove</Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </DesktopCard>
-            )}
-
-            {activeSection === "team" && (
-              <DesktopCard
-                title={t("settings.teamMembersCard")}
-                desc={`${props.teamMembers.filter((m) => m.status === "active").length} ${t("settings.activeMembersCount")}`}
-                right={
-                  <Button onClick={() => props.setInviteDialog(true)} size="sm" variant="outline" className="gap-2">
-                    <UserPlus className="h-3.5 w-3.5" />
-                    {t("settings.inviteShort")}
-                  </Button>
-                }
-              >
-                {props.teamLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div>
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colMember")}</th>
-                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colRole")}</th>
-                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colEmail")}</th>
-                          <th className="text-left text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2 pr-3">{t("settings.colStatus")}</th>
-                          <th className="text-right text-[11px] font-medium text-muted-foreground uppercase tracking-wide py-2">{t("settings.colActions")}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {props.teamMembers.filter((m) => m.status === "active").map((m) => (
-                          <tr key={m.id}>
-                            <td className="py-2.5 pr-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold text-muted-foreground shrink-0">
-                                  {(m.displayName || "?")[0].toUpperCase()}
-                                </div>
-                                <span className="text-[13px] font-medium truncate max-w-[160px]">
-                                  {m.displayName || m.email}
-                                  {m.userId === props.userId && <span className="text-[11px] text-muted-foreground ml-1">{t("settings.youParenthetical")}</span>}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-2.5 pr-3">
-                              <Badge variant={m.role === "owner" ? "default" : "secondary"} className="text-[10px] capitalize">
-                                {m.role}
-                              </Badge>
-                            </td>
-                            <td className="py-2.5 pr-3">
-                              <span className="text-[12px] text-muted-foreground truncate block max-w-[200px]">{m.email}</span>
-                            </td>
-                            <td className="py-2.5 pr-3">
-                              <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600">
-                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                {t("settings.activeLabel")}
-                              </span>
-                            </td>
-                            <td className="py-2.5 text-right">
-                              <div className="flex items-center gap-2 justify-end">
-                                {props.canEditTeam && m.userId !== props.userId && (
-                                  <button
-                                    onClick={() => { props.setResetCodeMember(m); props.setResetCodeInput(""); }}
-                                    className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
-                                  >
-                                    {t("settings.resetCode")}
-                                  </button>
-                                )}
-                                {m.role !== "owner" && m.userId !== props.userId && (
-                                  <button
-                                    onClick={async () => {
-                                      await props.removeMember(m.id);
-                                      props.setTeamMembers((prev) => prev.filter((x) => x.id !== m.id));
-                                    }}
-                                    className="text-[11px] text-destructive hover:underline"
-                                  >
-                                    {t("settings.remove")}
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    {props.teamInvitations.length > 0 && (
-                      <div className="mt-4">
-                        <div className="text-[10.5px] font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                          {t("settings.pendingInvitationsLabel")} ({props.teamInvitations.length})
-                        </div>
-                        <div className="divide-y divide-border">
-                          {props.teamInvitations.map((inv) => (
-                            <div key={inv.id} className="flex items-center gap-3 py-2.5">
-                              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[11px] text-muted-foreground shrink-0">
-                                @
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-[13px] font-medium truncate block">{inv.email}</span>
-                                <span className="text-[11px] text-muted-foreground">{t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}</span>
-                              </div>
-                              <Badge variant="secondary" className="text-[10px] capitalize">{inv.role}</Badge>
-                              <button
-                                onClick={async () => {
-                                  await props.cancelInvitation(inv.id);
-                                  props.setTeamInvitations((prev) => prev.filter((x) => x.id !== inv.id));
-                                }}
-                                className="text-[11px] text-destructive hover:underline"
-                              >
-                                {t("settings.cancel")}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </DesktopCard>
-            )}
-          </div>
-    );
-  };
-
-  const detailMeta = activeSection ? sectionMeta[activeSection] : null;
-  const DetailIcon = detailMeta?.icon ?? Settings;
-
-  return (
-    <div className="flex flex-col h-full">
-      <PageHeader title={t("settings.title")} subtitle={t("settings.pageSubtitle")} />
-      <div className="flex-1 overflow-auto bg-muted">
-        <div className="max-w-6xl mx-auto px-8 py-8">
-          {groups.map((group) => {
-            if (group.adminOnly && !props.isAdmin) return null;
-            return (
-              <div key={group.title} className="mb-8">
-                <h3 className="text-[10.5px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                  {group.title}
-                </h3>
-                <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-                  {group.cards.map((card) => {
-                    const CardIcon = card.icon;
-                    return (
-                      <button
-                        key={card.id}
-                        onClick={() => handleCardClick(card.id)}
-                        className="group text-left bg-background border border-border rounded-[0.3rem] p-4 hover:border-muted-foreground transition-all"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="h-9 w-9 rounded-[0.3rem] bg-muted group-hover:bg-foreground group-hover:text-background flex items-center justify-center shrink-0 transition-colors">
-                            <CardIcon className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[14px] font-semibold truncate">{card.label}</div>
-                            <div className="text-[11.5px] text-muted-foreground mt-0.5 truncate">{card.desc}</div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ─── Detail dialog ─── */}
-      <DynamicUIElement open={!!activeSection} onOpenChange={(o) => { if (!o) setActiveSection(null); }}>
-        <DynamicUIElementContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center shrink-0">
-                <DetailIcon className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-[16px] font-semibold">{detailMeta?.title}</div>
-                <div className="text-[12px] text-muted-foreground font-normal">{detailMeta?.desc}</div>
-              </div>
-            </DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">{detailMeta?.desc}</DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          {renderDetail()}
-        </DynamicUIElementContent>
-      </DynamicUIElement>
-    </div>
-  );
-}
 

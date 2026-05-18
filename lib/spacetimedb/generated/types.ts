@@ -74,6 +74,10 @@ export const ChatMessage = __t.object("ChatMessage", {
   senderId: __t.identity(),
   content: __t.string(),
   createdAt: __t.timestamp(),
+  replyToId: __t.option(__t.uuid()),
+  attachmentUrl: __t.option(__t.string()),
+  attachmentType: __t.option(__t.string()),
+  attachmentName: __t.option(__t.string()),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
 
@@ -114,6 +118,19 @@ export const DailyBriefing = __t.object("DailyBriefing", {
   generatedAt: __t.timestamp(),
 });
 export type DailyBriefing = __Infer<typeof DailyBriefing>;
+
+export const Design = __t.object("Design", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  name: __t.string(),
+  width: __t.i32(),
+  height: __t.i32(),
+  html: __t.string(),
+  preset: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type Design = __Infer<typeof Design>;
 
 export const Expense = __t.object("Expense", {
   id: __t.uuid(),

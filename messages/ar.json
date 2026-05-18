@@ -38,6 +38,7 @@
     "punchIn": "تسجيل الحضور",
     "chat": "المحادثة",
     "website": "الموقع",
+    "design": "تصميم",
     "membership": "العضوية",
     "finances": "المالية",
     "suppliers": "الموردون",
@@ -1437,6 +1438,38 @@
     "inviteShort": "دعوة",
     "resend": "إعادة إرسال"
   },
+  "lock": {
+    "title": "الجهاز مقفل",
+    "subtitle": "أدخل رمز PIN لفتح جهاز المتجر.",
+    "subtitleWithOp": "آخر مشغل: {name}. أدخل PIN للاستلام.",
+    "pinLabel": "أدخل PIN",
+    "tapToType": "اضغط هنا للكتابة",
+    "verifying": "جارٍ التحقق…",
+    "pinNotRecognized": "PIN غير معروف",
+    "autolockTitle": "القفل التلقائي",
+    "autolockSubtitle": "اطلب PIN عند خمول الجهاز لهذه المدة.",
+    "autolockMetaPrefix": "PIN بعد {label} من الخمول",
+    "never": "أبدًا"
+  },
+  "hours": {
+    "title": "ساعات العمل",
+    "mobileTitle": "الساعات",
+    "subtitle": "حدد متى يفتح المتجر كل يوم. تستخدمه جدولة الذكاء الاصطناعي.",
+    "open": "مفتوح",
+    "closed": "مغلق",
+    "save": "حفظ ساعات العمل",
+    "toastSaved": "تم حفظ ساعات العمل",
+    "toastFailed": "فشل حفظ ساعات العمل",
+    "allClosed": "كل الأيام مغلقة",
+    "daysSuffix": " أيام مفتوحة",
+    "day_mon": "إثنين",
+    "day_tue": "ثلاثاء",
+    "day_wed": "أربعاء",
+    "day_thu": "خميس",
+    "day_fri": "جمعة",
+    "day_sat": "سبت",
+    "day_sun": "أحد"
+  },
   "availability": {
     "title": "تعيين التوفر",
     "mobileTitle": "التوفر",
@@ -2216,6 +2249,66 @@
       "notificationAnalyze": "قراءة طلب الإشعار...",
       "notificationFetch": "إنشاء إشعار...",
       "notificationProcess": "إنهاء الإشعار..."
+    }
+  },
+  "design": {
+    "list": {
+      "title": "تصميم",
+      "subtitle": "ملصقات وصور لوسائل التواصل ولافتات المتجر — لوحات بأحجام ثابتة.",
+      "newDesign": "تصميم جديد",
+      "createTitle": "إنشاء تصميم",
+      "designName": "اسم التصميم",
+      "namePlaceholder": "ملصق تخفيضات الصيف",
+      "size": "حجم اللوحة",
+      "loading": "جارٍ تحميل التصاميم…",
+      "empty": "لا توجد تصاميم بعد",
+      "emptyHint": "ابدأ بملصق أو صورة اجتماعية أو لافتة متجر.",
+      "open": "فتح",
+      "edit": "تحرير",
+      "delete": "حذف",
+      "cancel": "إلغاء",
+      "create": "إنشاء",
+      "confirmDelete": "حذف هذا التصميم؟ لا يمكن التراجع."
+    },
+    "editor": {
+      "saving": "جارٍ الحفظ…",
+      "saved": "تم الحفظ",
+      "generate": "إنشاء",
+      "zoomIn": "تكبير",
+      "zoomOut": "تصغير",
+      "fit": "ملاءمة الشاشة",
+      "notFound": "التصميم غير موجود",
+      "layers": "الطبقات",
+      "properties": "الخصائص"
+    },
+    "ai": {
+      "title": "إنشاء بالذكاء الاصطناعي",
+      "subtitle": "صف التصميم. أبعاد اللوحة",
+      "placeholder": "ملصق جريء لتخفيضات الصيف — خصم 50%، خلفية برتقالية زاهية، عنوان كبير.",
+      "generate": "إنشاء",
+      "generating": "جارٍ الإنشاء…",
+      "cancel": "إلغاء",
+      "empty": "صف التصميم الذي تريده. سيقوم الذكاء الاصطناعي بإنشائه داخل اللوحة.",
+      "failed": "فشل الإنشاء."
+    },
+    "preset": {
+      "groupSocial": "وسائل التواصل",
+      "groupPrint": "طباعة",
+      "groupSignage": "لافتات",
+      "groupCustom": "مخصص",
+      "custom": "حجم مخصص…",
+      "apply": "تطبيق",
+      "instagramSquare": "إنستغرام مربع",
+      "instagramStory": "قصة إنستغرام",
+      "facebookPost": "منشور فيسبوك",
+      "a4Portrait": "A4 عمودي",
+      "a4Landscape": "A4 أفقي",
+      "usLetter": "US Letter",
+      "a3Portrait": "A3 عمودي",
+      "poster18x24": "ملصق 18×24″",
+      "receiptStrip": "شريط إيصال",
+      "storeDisplay": "شاشة المتجر",
+      "tableTent": "لافتة طاولة"
     }
   }
 }
