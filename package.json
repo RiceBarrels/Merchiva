@@ -1,6 +1,11 @@
 {
   "name": "merchiva",
-  "version": "beta-0.1.0",
+  "version": "0.1.0-beta",
+  "description": "Merchiva — daily management platform for small businesses.",
+  "author": {
+    "name": "Merchiva",
+    "email": "colinwilsonfan@gmail.com"
+  },
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,17 +20,44 @@
     "migrate": "tsx scripts/migrate-supabase-to-stdb.ts",
     "electron:dev": "concurrently -k \"bun run dev\" \"wait-on http://localhost:3000 && NODE_ENV=development electron electron/main.js\"",
     "electron:build": "electron-builder",
-    "electron:dist": "electron-builder --mac --win"
+    "electron:dist": "electron-builder --mac --win --linux",
+    "electron:dist:mac": "electron-builder --mac",
+    "electron:dist:win": "electron-builder --win",
+    "electron:dist:linux": "electron-builder --linux"
   },
   "main": "electron/main.js",
   "build": {
     "appId": "com.merchiva.desktop",
     "productName": "Merchiva",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "build"
     },
+    "afterPack": "build/after-pack.js",
+    "asarUnpack": [],
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
     "files": [
-      "electron/**/*"
+      "electron/**/*",
+      "package.json",
+      "!**/node_modules/**/*",
+      "node_modules/electron-updater/**/*",
+      "node_modules/builder-util-runtime/**/*",
+      "node_modules/js-yaml/**/*",
+      "node_modules/lodash.escaperegexp/**/*",
+      "node_modules/lodash.isequal/**/*",
+      "node_modules/argparse/**/*",
+      "node_modules/sprintf-js/**/*",
+      "node_modules/lazy-val/**/*",
+      "node_modules/sax/**/*",
+      "node_modules/semver/**/*",
+      "node_modules/tiny-typed-emitter/**/*",
+      "node_modules/fs-extra/**/*",
+      "node_modules/graceful-fs/**/*",
+      "node_modules/universalify/**/*",
+      "node_modules/jsonfile/**/*",
+      "node_modules/debug/**/*",
+      "node_modules/ms/**/*"
     ],
     "protocols": [
       {
@@ -35,18 +67,57 @@
         ]
       }
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "RiceBarrels",
+        "repo": "Merchiva",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        },
+        {
+          "target": "zip",
+          "arch": ["universal"]
+        }
+      ],
       "category": "public.app-category.business",
-      "icon": "public/icon.png"
+      "identity": null,
+      "gatekeeperAssess": false
     },
     "win": {
-      "target": "nsis",
-      "icon": "public/icon.png"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "public/icon.png"
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Office",
+      "maintainer": "Merchiva <colinwilsonfan@gmail.com>"
+    },
+    "dmg": {
+      "writeUpdateInfo": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   },
   "dependencies": {
@@ -77,6 +148,7 @@
     "capacitor-plugin-safe-area": "^5.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.8.3",
     "html2canvas": "^1.4.1",
     "jose": "^6.2.2",
     "jspdf": "^4.2.1",

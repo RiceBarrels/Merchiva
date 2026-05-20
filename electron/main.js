@@ -1,5 +1,17 @@
-const { app, BrowserWindow, shell, nativeTheme, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, shell, nativeTheme, ipcMain } = require("electron");
 const path = require("path");
+
+// Auto-updater (electron-updater). Configured via the `publish` block in
+// package.json → fetches releases from GitHub. We attach handlers here so
+// the renderer can prompt the user; everything else runs in the background.
+let autoUpdater = null;
+try {
+  // Defer the require so dev mode (where electron-updater may not be
+  // installed in the resolved app path) doesn't crash on launch.
+  autoUpdater = require("electron-updater").autoUpdater;
+} catch (err) {
+  console.warn("[updater] electron-updater unavailable:", err?.message ?? err);
+}
 
 const DEV_URL = "http://localhost:3000";
 const PROD_URL = process.env.MERCHIVA_URL || "https://merchiva.vercel.app";
@@ -56,6 +68,86 @@ if (!gotLock) {
     // protocol URL, it's in process.argv.
     const url = process.argv.find((a) => typeof a === "string" && a.startsWith(`${SCHEME}://`));
     if (url) handleAuthUrl(url);
+    // Kick off the auto-updater after the window mounts so its UI is up to
+    // show progress / restart prompts. Skipped in dev — there's no signed
+    // build to update against, and dev-app-update.yml isn't shipped.
+    if (!isDev) setupAutoUpdater();
+  });
+}
+
+// ── Auto-updater ───────────────────────────────────────────────────────────
+// Pulls releases from GitHub (`publish.provider: github` in package.json).
+// Behavior: checks ~10s after launch and then every 6 hours while the app is
+// open. Downloads in the background; once ready, prompts the user to restart.
+let updateCheckTimer = null;
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+function setupAutoUpdater() {
+  if (!autoUpdater) return;
+
+  autoUpdater.autoDownload = true;        // download silently in background
+  autoUpdater.autoInstallOnAppQuit = true; // belt-and-suspenders for skipped prompts
+  autoUpdater.logger = {
+    info: (...a) => console.log("[updater]", ...a),
+    warn: (...a) => console.warn("[updater]", ...a),
+    error: (...a) => console.error("[updater]", ...a),
+    debug: () => {},
+  };
+
+  autoUpdater.on("checking-for-update", () => console.log("[updater] checking"));
+  autoUpdater.on("update-not-available", (info) => console.log("[updater] up to date", info?.version));
+  autoUpdater.on("update-available", (info) => console.log("[updater] available", info?.version));
+  autoUpdater.on("error", (err) => console.error("[updater] error:", err?.message ?? err));
+
+  autoUpdater.on("download-progress", (p) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("updater:progress", {
+        percent: p.percent,
+        bytesPerSecond: p.bytesPerSecond,
+        transferred: p.transferred,
+        total: p.total,
+      });
+    }
+  });
+
+  autoUpdater.on("update-downloaded", async (info) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: "info",
+      buttons: ["立即重启", "稍后"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Merchiva 有新版本",
+      message: `已下载 v${info?.version ?? "(unknown)"}`,
+      detail: "重启后即可使用最新版本。",
+    });
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
+
+  const check = () => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.warn("[updater] check failed:", err?.message ?? err);
+    });
+  };
+
+  // Initial check ~10s after launch (lets the main window settle first).
+  setTimeout(check, 10_000);
+  // Recurring check every 6 hours.
+  updateCheckTimer = setInterval(check, SIX_HOURS_MS);
+
+  // Manual trigger from the renderer (used by a "Check for updates" menu/UI).
+  ipcMain.handle("updater:check", async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      return { ok: true, version: result?.updateInfo?.version ?? null };
+    } catch (err) {
+      return { ok: false, error: String(err?.message ?? err) };
+    }
+  });
+  ipcMain.handle("updater:quitAndInstall", () => {
+    autoUpdater.quitAndInstall();
   });
 }
 
@@ -155,6 +247,10 @@ function createWindow() {
 }
 
 app.on("window-all-closed", () => {
+  if (updateCheckTimer) {
+    clearInterval(updateCheckTimer);
+    updateCheckTimer = null;
+  }
   if (process.platform !== "darwin") app.quit();
 });
 

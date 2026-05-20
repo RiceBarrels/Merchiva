@@ -73,13 +73,33 @@ export function ItemForecast() {
   const trainingRecords = useMemo(() => {
     if (!organizationId || !rawPayments) return [];
     const payments = (rawPayments as unknown as Array<Record<string, unknown>>).filter(
-      (p) => p.organizationId === organizationId && p.items,
+      (p) =>
+        p.organizationId === organizationId &&
+        p.items &&
+        p.status !== "refunded",
     );
 
     const records: { date: string; item: string; quantity: number }[] = [];
     for (const p of payments) {
-      const date = String(p.date ?? "").slice(0, 10);
-      if (!date) continue;
+      // payment.createdAt is a SpacetimeDB Timestamp object — extract epoch ms
+      // from microsSinceUnixEpoch (preferred) or fall back to toDate().
+      let ts = NaN;
+      const ca = p.createdAt as
+        | { microsSinceUnixEpoch?: bigint | number; toDate?: () => Date }
+        | string
+        | number
+        | null
+        | undefined;
+      if (ca && typeof ca === "object") {
+        if (typeof ca.toDate === "function") ts = ca.toDate().getTime();
+        else if (typeof ca.microsSinceUnixEpoch === "bigint")
+          ts = Number(ca.microsSinceUnixEpoch / 1000n);
+        else if (typeof ca.microsSinceUnixEpoch === "number")
+          ts = ca.microsSinceUnixEpoch / 1000;
+      } else if (typeof ca === "number") ts = ca;
+      else if (typeof ca === "string") ts = new Date(ca).getTime();
+      if (!Number.isFinite(ts)) continue;
+      const date = new Date(ts).toISOString().slice(0, 10);
       try {
         const items = JSON.parse(String(p.items ?? "[]")) as Array<{
           name: string;

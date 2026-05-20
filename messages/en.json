@@ -1203,6 +1203,7 @@
     "cancel": "Cancel",
     "clear": "Clear",
     "remove": "Remove",
+    "edit": "Edit",
     "notSet": "Not set",
     "groupWorkspace": "Workspace",
     "groupTeamAccess": "Team & access",
@@ -1701,7 +1702,7 @@
     },
     "empty": {
       "title": "No sales data yet",
-      "description": "Connect Square in Settings to automatically import your sales history, or manually add records via the API."
+      "description": "Ring up sales on the built-in POS or connect Square in Settings to import history."
     },
     "tabs": {
       "history": "Historical Analysis",

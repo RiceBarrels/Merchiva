@@ -88,7 +88,8 @@ function register(def: ActionDefinition) {
 
 register({
   name: "addShift",
-  description: "Add a shift for a staff member",
+  description:
+    "Add a shift for a staff member. At least one role (staffRoles) is required — the role drives the daily task checklist for the shift, so a shift with no role can't be assigned work.",
   category: "scheduling",
   parameters: {
     staffName: { type: "string", required: true, description: "Exact name from team roster" },
@@ -96,16 +97,27 @@ register({
     startTime: { type: "string", required: true, description: "HH:MM" },
     endTime: { type: "string", required: true, description: "HH:MM" },
     shiftType: { type: "string", required: false, description: "Shift type", enum: ["morning", "afternoon", "evening", "closing"] },
-    staffRoles: { type: "array", required: false, description: "Roles for this shift" },
+    staffRoles: {
+      type: "array",
+      required: true,
+      description:
+        "One or more role names for this shift, e.g. [\"barista\"]. Must be non-empty — pick from the active staff roles in LIVE STORE DATA. Required.",
+    },
   },
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
+    const roles = Array.isArray(p.staffRoles)
+      ? (p.staffRoles as unknown[]).map(String).map((s) => s.trim()).filter(Boolean)
+      : [];
+    if (roles.length === 0) {
+      throw new Error("staffRoles is required — pass at least one role for the shift.");
+    }
     await addShift({
       memberId: p.memberId ? String(p.memberId) : null,
       staffName: String(p.staffName ?? ""),
-      staffRole: p.staffRole ? String(p.staffRole) : null,
-      staffRoles: JSON.stringify(p.staffRoles ?? []),
+      staffRole: p.staffRole ? String(p.staffRole) : roles[0],
+      staffRoles: JSON.stringify(roles),
       date: String(p.date ?? ""),
       shiftType: String(p.shiftType ?? "morning"),
       startTime: String(p.startTime ?? "09:00"),

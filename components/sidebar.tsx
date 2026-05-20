@@ -952,7 +952,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Desktop layout (non-touch): permanent sidebar — not shown on builder pages ── */}
       {!isBuilderPage && (
-        <div className={cn("overflow-hidden bg-background", isMobile === false ? "flex flex-1 h-[calc(100vh-40px)]" : "hidden")}>
+        <div className={cn("overflow-hidden bg-background", isMobile === false ? "flex flex-1 h-[calc(100dvh)]" : "hidden")}>
           <div className="h-full shrink-0 transition-[width] duration-200 border-r border-border bg-background" style={{ width: sidebarCollapsed ? 64 : 220 }}>
             <SidebarContent collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
           </div>

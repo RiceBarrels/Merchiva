@@ -1203,6 +1203,7 @@
     "cancel": "Annuler",
     "clear": "Effacer",
     "remove": "Supprimer",
+    "edit": "Modifier",
     "notSet": "Non défini",
     "groupWorkspace": "Espace de travail",
     "groupTeamAccess": "Équipe et accès",
@@ -1701,7 +1702,7 @@
     },
     "empty": {
       "title": "Aucune donnée de vente pour l'instant",
-      "description": "Connectez Square dans les Paramètres pour importer automatiquement votre historique de ventes, ou ajoutez des enregistrements manuellement via l'API."
+      "description": "Encaissez sur le POS intégré, ou connectez Square dans les Paramètres pour importer votre historique."
     },
     "tabs": {
       "history": "Analyse historique",

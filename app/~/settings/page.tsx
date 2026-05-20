@@ -74,6 +74,10 @@ import { upsertAvailability, createTimeOffRequest, updateMember, removeMember, c
 import { getTeamMembers, getInvitations } from "@/lib/db/team";
 import type { OrgMember, OrgInvitation, OrgRole, Permissions } from "@/lib/types";
 import { defaultPermissions } from "@/lib/db/team";
+import {
+  EditMemberDialog,
+  type EditMemberInput,
+} from "@/components/personnel/team-dialogs";
 import { usePermissions } from "@/lib/context/permissions";
 import { hapticSuccess, hapticMedium } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth/context";
@@ -232,6 +236,7 @@ export default function SettingsPage() {
   const [resetCodeMember, setResetCodeMember] = useState<OrgMember | null>(null);
   const [resetCodeInput, setResetCodeInput] = useState("");
   const [resettingCode, setResettingCode] = useState(false);
+  const [editingMember, setEditingMember] = useState<EditMemberInput | null>(null);
 
   const [langDialogOpen, setLangDialogOpen] = useState(false);
   const [locationsDialog, setLocationsDialog] = useState(false);
@@ -982,7 +987,7 @@ export default function SettingsPage() {
         <DynamicUIElement open={teamDialog} onOpenChange={setTeamDialog}>
           <DynamicUIElementContent noPadding>
             <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("settings.teamDialogMobileTitle")}>{t("settings.teamDynamicUIElementTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementTitle mobileTitle={t("settings.teamDialogMobileTitle")}>{t("settings.teamDialogTitle")}</DynamicUIElementTitle>
               <DynamicUIElementDescription className="hidden">{t("settings.teamDialogDesc")}</DynamicUIElementDescription>
             </DynamicUIElementHeader>
             <div className="flex flex-col h-full">
@@ -1020,6 +1025,24 @@ export default function SettingsPage() {
                             className="text-xs text-muted-foreground hover:underline shrink-0"
                           >
                             {t("settings.resetCode")}
+                          </button>
+                        )}
+                        {canEditTeam && m.role !== "owner" && m.userId !== userId && (
+                          <button
+                            onClick={() => {
+                              const role = (m.role === "manager" ? "manager" : "staff") as "staff" | "manager";
+                              const perms: Permissions = { ...defaultPermissions(), ...(m.permissions ?? {}) } as Permissions;
+                              setEditingMember({
+                                id: m.id,
+                                displayName: m.displayName || m.email || "",
+                                email: m.email || "",
+                                role,
+                                perms,
+                              });
+                            }}
+                            className="text-xs text-muted-foreground hover:underline shrink-0"
+                          >
+                            {t("settings.edit")}
                           </button>
                         )}
                         {m.role !== "owner" && m.userId !== userId && (
@@ -1119,7 +1142,7 @@ export default function SettingsPage() {
         <DynamicUIElement open={inviteDialog} onOpenChange={setInviteDialog}>
           <DynamicUIElementContent>
             <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("settings.inviteDialogMobileTitle")}>{t("settings.inviteDynamicUIElementTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementTitle mobileTitle={t("settings.inviteDialogMobileTitle")}>{t("settings.inviteDialogTitle")}</DynamicUIElementTitle>
               <DynamicUIElementDescription>{t("settings.inviteDialogDesc")}</DynamicUIElementDescription>
             </DynamicUIElementHeader>
             <div className="space-y-4">
@@ -1421,6 +1444,16 @@ export default function SettingsPage() {
             </div>
           </DynamicUIElementContent>
         </DynamicUIElement>
+
+        {/* ─── Edit Member (role + permissions) ──────────────────────────── */}
+        <EditMemberDialog
+          member={editingMember}
+          onClose={() => {
+            setEditingMember(null);
+            // refresh team list so updated role/permissions are visible
+            loadTeam();
+          }}
+        />
 
         {/* ─── Reset Punch-in Code DynamicUIElement ──────────────────────── */}
         <DynamicUIElement open={!!resetCodeMember} onOpenChange={(o) => { if (!o) setResetCodeMember(null); }}>

@@ -2454,10 +2454,12 @@ export const deleteStaffMember = spacetimedb.reducer(
   }
 );
 
-// Resolve `staffName` to a real staff_member row, or throw. Used by addShift
+// Resolve `staffName` to a real team-member row, or throw. Used by addShift
 // and updateShift so the AI (or a misbehaving client) can't write a shift for
-// a person who doesn't exist on the team. Match is case-insensitive on the
-// trimmed name and falls back to memberId lookup when one was provided.
+// a person who doesn't exist on the team. The personnel page sources the team
+// roster from `org_member` (displayName), so that's the primary lookup; we
+// fall back to the legacy `staff_member` table for older orgs that haven't
+// migrated. Match is case-insensitive on the trimmed name.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resolveStaffForShift(
   ctx: any,
@@ -2467,20 +2469,37 @@ function resolveStaffForShift(
 ): { memberId: string; name: string } {
   const wantedName = (staffName ?? '').trim();
   const wantedLower = wantedName.toLowerCase();
-  const teamRows = [...ctx.db.staffMember.byOrganizationId.filter(organizationId)];
-  // memberId explicitly provided — trust it after verifying it's in the org.
+
+  // Primary: org_member rows (active only — disabled members can't take shifts).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const orgRows = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+    .filter((m: any) => m.status === 'active');
   if (memberId) {
-    const byId = teamRows.find((m) => m.id.toString() === memberId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byId = orgRows.find((m: any) => m.id.toString() === memberId);
+    if (byId) return { memberId: byId.id.toString(), name: byId.displayName };
+  }
+  if (wantedName) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byName = orgRows.find((m: any) => (m.displayName ?? '').trim().toLowerCase() === wantedLower);
+    if (byName) return { memberId: byName.id.toString(), name: byName.displayName };
+  }
+
+  // Legacy fallback: staff_member table (pre-personnel-merge orgs).
+  const staffRows = [...ctx.db.staffMember.byOrganizationId.filter(organizationId)];
+  if (memberId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byId = staffRows.find((m: any) => m.id.toString() === memberId);
     if (byId) return { memberId: byId.id.toString(), name: byId.name };
   }
   if (!wantedName) throw new Error('staffName is required');
-  const match = teamRows.find((m) => m.name.trim().toLowerCase() === wantedLower);
-  if (!match) {
-    throw new Error(
-      `Unknown staffName "${wantedName}" — not on the team roster. Add the person first or use an exact name.`,
-    );
-  }
-  return { memberId: match.id.toString(), name: match.name };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const match = staffRows.find((m: any) => m.name.trim().toLowerCase() === wantedLower);
+  if (match) return { memberId: match.id.toString(), name: match.name };
+
+  throw new Error(
+    `Unknown staffName "${wantedName}" — not on the team roster. Add the person first or use an exact name.`,
+  );
 }
 
 export const addShift = spacetimedb.reducer(
@@ -2500,6 +2519,14 @@ export const addShift = spacetimedb.reducer(
     const member = findActiveMember(ctx, args.organizationId);
     const perms = JSON.parse(member.permissions);
     if (!perms.staffing?.edit) unauthorized('No staffing edit permission');
+
+    // Every shift must be tied to at least one role — otherwise it can't be
+    // staffed against the day's role checklist or surfaced under a role view.
+    let rolesParsed: unknown[];
+    try { rolesParsed = JSON.parse(args.staffRoles); } catch { rolesParsed = []; }
+    if (!Array.isArray(rolesParsed) || rolesParsed.filter((r) => typeof r === 'string' && r.trim() !== '').length === 0) {
+      throw new Error('At least one role is required for a shift (pass staffRoles, e.g. ["barista"]).');
+    }
 
     const resolved = resolveStaffForShift(ctx, args.organizationId, args.staffName, args.memberId);
 

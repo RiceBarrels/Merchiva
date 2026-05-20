@@ -38,7 +38,7 @@ import {
   type WeatherForecast,
   type PopularTimesData,
 } from "@/lib/forecast";
-import { useSalesRecords, useShifts } from "@/lib/spacetimedb/hooks";
+import { useSalesRecords, useShifts, usePayments } from "@/lib/spacetimedb/hooks";
 import { usePermissions } from "@/lib/context/permissions";
 import { cn } from "@/lib/utils";
 
@@ -98,12 +98,30 @@ function formatCurrency(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+// SpacetimeDB timestamps arrive as { microsSinceUnixEpoch: bigint } objects;
+// String(...) on those yields "[object Object]" which Date can't parse, so
+// every payment would silently get dropped. Normalize to epoch ms here.
+function timestampToMs(v: unknown): number {
+  if (v == null) return NaN;
+  if (typeof v === "number") return v;
+  if (typeof v === "string") return new Date(v).getTime();
+  if (typeof v === "object") {
+    const obj = v as { microsSinceUnixEpoch?: bigint | number; toDate?: () => Date };
+    if (typeof obj.toDate === "function") return obj.toDate().getTime();
+    const micros = obj.microsSinceUnixEpoch;
+    if (typeof micros === "bigint") return Number(micros / 1000n);
+    if (typeof micros === "number") return micros / 1000;
+  }
+  return NaN;
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function SalesForecast() {
   const { organizationId } = usePermissions();
   const [rawSales] = useSalesRecords();
   const [rawShifts] = useShifts();
+  const [rawPayments] = usePayments();
 
   const [weather, setWeather] = useState<WeatherForecast[] | null>(null);
   const [popularTimes, setPopularTimes] = useState<PopularTimesData[] | null>(null);
@@ -116,7 +134,8 @@ export function SalesForecast() {
   // Filter data by organization
   const salesHistory = useMemo(() => {
     if (!organizationId) return [];
-    return (rawSales as unknown as Array<Record<string, unknown>>)
+
+    const fromSalesRecord = (rawSales as unknown as Array<Record<string, unknown>>)
       .filter((r) => r.organizationId === organizationId)
       .map((r) => ({
         date: String(r.date ?? ""),
@@ -127,7 +146,37 @@ export function SalesForecast() {
         footTraffic: Number(r.footTraffic ?? 0),
         isHoliday: Boolean(r.isHoliday),
       }));
-  }, [rawSales, organizationId]);
+
+    // Aggregate built-in POS payments by date so they feed the same baseline.
+    // `payment` rows are per-transaction; `sales_record` is per-day (or per-hour),
+    // so we collapse payments to one synthetic daily record per date. Refunded
+    // payments are excluded; partial refunds subtract refundAmount from amount.
+    const posByDate = new Map<string, number>();
+    for (const r of rawPayments as unknown as Array<Record<string, unknown>>) {
+      if (r.organizationId !== organizationId) continue;
+      if (r.status === "refunded") continue;
+      const ts = timestampToMs(r.createdAt);
+      if (!Number.isFinite(ts)) continue;
+      const date = new Date(ts).toISOString().slice(0, 10);
+      const amount = Number(r.amount ?? 0);
+      const refund = Number(r.refundAmount ?? 0);
+      const net = amount - refund;
+      if (net <= 0) continue;
+      posByDate.set(date, (posByDate.get(date) ?? 0) + net);
+    }
+
+    const fromPayments = Array.from(posByDate, ([date, actual]) => ({
+      date,
+      hour: undefined as number | undefined,
+      actual,
+      predicted: 0,
+      weather: "",
+      footTraffic: 0,
+      isHoliday: false,
+    }));
+
+    return [...fromSalesRecord, ...fromPayments];
+  }, [rawSales, rawPayments, organizationId]);
 
   const shifts = useMemo(() => {
     if (!organizationId) return [];
