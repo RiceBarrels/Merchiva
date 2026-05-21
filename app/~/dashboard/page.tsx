@@ -27,11 +27,13 @@ export default function DashboardPage() {
       {/* Mobile: Mr. Merchiva dashboard */}
       <div className="lg:hidden">
         <PageHeader title="Dashboard" subtitle={subtitle} />
-        <div className="px-4 pt-3 space-y-3">
+        <div className="px-4 pt-4 space-y-4 empty:hidden">
           <MorningBriefingCard />
           <MyTasksCard />
         </div>
-        <MobileMerchivaDashboard />
+        <div className="pt-4">
+          <MobileMerchivaDashboard />
+        </div>
       </div>
     </>
   );

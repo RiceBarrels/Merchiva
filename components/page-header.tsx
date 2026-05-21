@@ -58,29 +58,29 @@ export function PageHeader({
       {/* Mobile */}
       <div
         className={cn(
-          "flex lg:hidden items-center justify-between bg-background border-b border-border px-4 py-3 gap-3",
+          "flex lg:hidden items-center justify-between bg-background border-b border-border px-4 pb-3.5 gap-3",
           sticky && "sticky top-0 z-20"
         )}
-        style={{ paddingTop: `calc(${SafeArea.top}px + 0.75rem)` }}
+        style={{ paddingTop: `calc(${SafeArea.top}px + 0.875rem)` }}
       >
         <div className={cn("pl-14 min-w-0 flex-1", !isSideBarMode && "pl-0")}>
-          <h1 className="text-xl font-semibold text-foreground leading-tight">{title}</h1>
+          <h1 className="text-[22px] font-semibold text-foreground leading-[1.15] tracking-tight">{title}</h1>
           {subtitle && (
-            <p className="text-xs text-muted-foreground leading-tight mt-0.5">{subtitle}</p>
+            <p className="text-[12px] text-muted-foreground leading-tight mt-1">{subtitle}</p>
           )}
         </div>
         {(actions?.length || right) && (
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {right}
             {actions?.map((action, i) => (
               <button
                 key={i}
                 onClick={action.onClick}
-                className="h-8 w-8 flex items-center justify-center rounded-[0.3rem] border border-border text-foreground hover:bg-muted transition-colors relative"
+                className="h-10 w-10 flex items-center justify-center rounded-[0.4rem] border border-border text-foreground active:bg-muted transition-colors relative"
               >
                 {action.icon}
                 {action.badge != null && action.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 flex items-center justify-center bg-foreground text-background text-[9px] font-bold rounded-full">
+                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 flex items-center justify-center bg-foreground text-background text-[9.5px] font-bold rounded-full">
                     {action.badge}
                   </span>
                 )}

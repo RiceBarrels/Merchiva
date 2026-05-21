@@ -3828,16 +3828,16 @@ function MobileKpiRow() {
   }, [invItems, invReady]);
 
   return (
-    <div className="grid grid-cols-2 gap-3 px-4 py-3">
-      <div className="rounded-[0.3rem] border border-border bg-background p-3">
+    <div className="grid grid-cols-2 gap-3 px-4">
+      <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">
         <MonoCap>Revenue · today</MonoCap>
-        <div className="text-[22px] font-semibold leading-none mt-1.5 tracking-tight">
+        <div className="text-[26px] font-semibold leading-none tracking-tight tabular-nums">
           {todayRevenue != null ? `$${todayRevenue.toLocaleString()}` : "—"}
         </div>
       </div>
-      <div className="rounded-[0.3rem] border border-border bg-background p-3">
+      <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">
         <MonoCap>SKUs at risk</MonoCap>
-        <div className={cn("text-[22px] font-semibold leading-none mt-1.5 tracking-tight", atRisk && atRisk > 0 ? "text-amber-600" : "")}>
+        <div className={cn("text-[26px] font-semibold leading-none tracking-tight tabular-nums", atRisk && atRisk > 0 ? "text-amber-600" : "")}>
           {atRisk != null ? String(atRisk) : "—"}
         </div>
       </div>
@@ -3864,6 +3864,11 @@ function MobileMerchivaChat() {
     [insights.length],
   );
 
+  const nowTime = useMemo(() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }, []);
+
   const quickChips = [
     t("merchiva.quickSchedule"),
     t("merchiva.quickSales"),
@@ -3881,16 +3886,16 @@ function MobileMerchivaChat() {
     <section className="mx-4 rounded-lg border border-border bg-background overflow-hidden flex flex-col">
       {/* Header */}
       <header className="px-4 py-3 border-b border-border flex items-center gap-3 shrink-0" style={{ background: M_ACC_SOFT }}>
-        <NotchM size={32} fg={M_ACC_SOFT} bg="#1c1917" />
+        <NotchM size={34} fg={M_ACC_SOFT} bg="#1c1917" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[14px] font-semibold tracking-tight">{t("merchiva.name")}</span>
+            <span className="text-[14.5px] font-semibold tracking-tight">{t("merchiva.name")}</span>
             <span className="inline-flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <MonoCap color="#059669">{t("merchiva.online")}</MonoCap>
             </span>
           </div>
-          <div className="text-[10.5px] text-stone-600 dark:text-stone-300 mt-0.5">{t("merchiva.trainedOn").replace("{orgName}", orgName)}</div>
+          <div className="text-[11px] text-stone-600 dark:text-stone-300 mt-0.5 truncate">{t("merchiva.trainedOn").replace("{orgName}", orgName)}</div>
         </div>
       </header>
 
@@ -3898,11 +3903,11 @@ function MobileMerchivaChat() {
       <div className="px-4 py-4 flex items-start gap-3">
         <NotchM size={28} fg="#fff" bg="#1c1917" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[12px] font-semibold">{t("merchiva.name")}</span>
-            <MonoCap color="#a8a29e">06:14</MonoCap>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[12.5px] font-semibold">{t("merchiva.name")}</span>
+            <MonoCap color="#a8a29e">{nowTime}</MonoCap>
           </div>
-          <p className="text-[13px] text-stone-800 dark:text-stone-200 leading-[1.5]">{headline}</p>
+          <p className="text-[13.5px] text-stone-800 dark:text-stone-200 leading-[1.55]">{headline}</p>
         </div>
       </div>
 
@@ -3919,17 +3924,17 @@ function MobileMerchivaChat() {
           />
         ))}
         {insights.length === 0 && (
-          <div className="rounded-[0.3rem] border border-border bg-background p-3 text-center text-[12px] text-muted-foreground">
+          <div className="rounded-[0.3rem] border border-border bg-background p-3 text-center text-[12.5px] text-muted-foreground">
             {t("merchiva.allClear")}
           </div>
         )}
       </div>
 
       {/* Quick chips */}
-      <div className="px-4 pb-3 flex items-center gap-1.5 overflow-x-auto">
+      <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto -mx-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {quickChips.map((s) => (
-          <button key={s} className="h-7 px-2.5 rounded-full border border-border bg-background text-[11px] text-muted-foreground hover:bg-muted inline-flex items-center gap-1 whitespace-nowrap shrink-0">
-            <Sparkles className="h-[10px] w-[10px]" style={{ color: M_ACC }} />
+          <button key={s} className="h-9 px-3 rounded-full border border-border bg-background text-[12px] text-muted-foreground active:bg-muted inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors">
+            <Sparkles className="h-[11px] w-[11px]" style={{ color: M_ACC }} />
             {s}
           </button>
         ))}
@@ -3937,14 +3942,18 @@ function MobileMerchivaChat() {
 
       {/* Simple input */}
       <div className="px-4 pb-4">
-        <div className="flex items-center gap-2 rounded-[0.3rem] border border-border bg-background px-3 py-2">
+        <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-4 pr-1.5 py-1.5">
           <input
             type="text"
             placeholder={t("merchiva.composerPlaceholder")}
-            className="flex-1 bg-transparent outline-none text-[13px] placeholder:text-muted-foreground/60"
+            className="flex-1 bg-transparent outline-none text-[13.5px] placeholder:text-muted-foreground/60 h-9"
           />
-          <button className="h-7 w-7 rounded-[0.3rem] bg-foreground text-background inline-flex items-center justify-center">
-            <ArrowUp className="h-3.5 w-3.5" />
+          <button
+            type="button"
+            aria-label="Send"
+            className="h-9 w-9 rounded-full bg-foreground text-background inline-flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+          >
+            <ArrowUp className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -3978,11 +3987,11 @@ function MobileInsight({ pill, icon, title, sub, confidence }: {
 
 export function MobileMerchivaDashboard() {
   return (
-    <div className="pb-4 space-y-3">
+    <div className="pb-8 space-y-4">
       <style>{`@keyframes ddBlink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }`}</style>
       <MobileKpiRow />
       <MobileMerchivaChat />
-      <div className="px-4 space-y-3">
+      <div className="px-4 space-y-4">
         <TodayScheduleCard />
         <NotificationsCard />
       </div>

@@ -116,16 +116,16 @@ export function MyTasksCard() {
   const top = pending.slice(0, 4);
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden">
-      <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-        <span className="text-[11.5px] font-semibold text-foreground">Today&rsquo;s tasks</span>
-        <span className="font-mono text-[10px] text-muted-foreground">
+    <div className="rounded-lg border border-border bg-background overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+        <span className="text-[13px] font-semibold text-foreground">Today&rsquo;s tasks</span>
+        <span className="font-mono text-[10.5px] text-muted-foreground">
           {totalTasks - pending.length} / {totalTasks} done
         </span>
         <Link
           href="/~/personnel"
-          className="ml-auto text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5"
+          className="ml-auto h-8 px-2 -mr-2 text-[12px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 rounded-[0.3rem]"
         >
           All
           <ArrowRight className="h-3 w-3" />
@@ -133,27 +133,27 @@ export function MyTasksCard() {
       </div>
 
       {pending.length === 0 ? (
-        <div className="px-3 py-6 text-center">
-          <div className="text-[12px] text-muted-foreground">All tasks completed today.</div>
+        <div className="px-4 py-8 text-center">
+          <div className="text-[13px] text-muted-foreground">All tasks completed today.</div>
         </div>
       ) : (
         <div className="divide-y divide-border">
           {top.map((t) => (
-            <div key={t.id} className="px-3 py-2 flex items-center gap-2">
-              <div className="h-4 w-4 rounded-full border-2 border-stone-300 dark:border-stone-600 shrink-0" />
+            <div key={t.id} className="px-4 py-3 flex items-center gap-3 min-h-[56px]">
+              <div className="h-[18px] w-[18px] rounded-full border-2 border-stone-300 dark:border-stone-600 shrink-0" />
               <div className="min-w-0 flex-1">
-                <div className="text-[12.5px] font-medium text-foreground truncate">{t.title}</div>
-                <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="text-[13.5px] font-medium text-foreground truncate leading-tight">{t.title}</div>
+                <div className="flex items-center gap-1.5 mt-1">
                   {t.startTime && (
-                    <span className="inline-flex items-center gap-1 h-3.5 px-1 rounded-[0.2rem] bg-muted text-muted-foreground text-[9.5px] font-mono">
-                      <Clock className="h-2 w-2" />
+                    <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-muted text-muted-foreground text-[10px] font-mono">
+                      <Clock className="h-2.5 w-2.5" />
                       {t.startTime}
                       {t.endTime ? `–${t.endTime}` : ""}
                     </span>
                   )}
                   {t.requiresEvidence && (
-                    <span className="inline-flex items-center gap-1 h-3.5 px-1 rounded-[0.2rem] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[9.5px] font-mono">
-                      <ImageIcon className="h-2 w-2" />
+                    <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-mono">
+                      <ImageIcon className="h-2.5 w-2.5" />
                       evidence
                     </span>
                   )}
@@ -162,16 +162,16 @@ export function MyTasksCard() {
               <Button
                 size="sm"
                 variant="outline"
-                className={cn("h-7 text-[11px] shrink-0")}
+                className={cn("h-9 px-3 text-[12px] shrink-0")}
                 onClick={() => setCompleteFor(t)}
               >
-                <Camera className="h-3 w-3 mr-1" />
+                <Camera className="h-3.5 w-3.5 mr-1" />
                 Done
               </Button>
             </div>
           ))}
           {pending.length > top.length && (
-            <div className="px-3 py-2 text-[11px] text-muted-foreground text-center">
+            <div className="px-4 py-2.5 text-[11.5px] text-muted-foreground text-center bg-muted/30">
               + {pending.length - top.length} more
             </div>
           )}

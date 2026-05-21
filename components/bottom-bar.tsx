@@ -101,7 +101,7 @@ export function BottomBar() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-4 gap-1 px-3 pb-3">
+              <div className="grid grid-cols-4 gap-1.5 px-3 pb-4">
                 {overflowTabs.map((item) => {
                   const Icon = item.icon;
                   const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -111,12 +111,12 @@ export function BottomBar() {
                       href={item.href}
                       onClick={() => { hapticLight(); setMoreOpen(false); }}
                       className={cn(
-                        "flex flex-col items-center gap-1.5 py-2.5 rounded-[0.3rem] transition-colors",
+                        "flex flex-col items-center justify-center gap-1.5 min-h-[68px] py-2.5 rounded-[0.4rem] transition-colors active:bg-muted",
                         active ? "bg-foreground/5 text-foreground" : "text-muted-foreground"
                       )}
                     >
-                      <Icon className="h-5 w-5" />
-                      <span className={cn("text-[10px] leading-tight text-center", active ? "font-semibold" : "font-normal")}>
+                      <Icon className="h-[20px] w-[20px]" />
+                      <span className={cn("text-[10.5px] leading-tight text-center tracking-tight", active ? "font-semibold" : "font-medium")}>
                         {t(item.labelKey)}
                       </span>
                     </Link>
@@ -130,27 +130,34 @@ export function BottomBar() {
 
       {/* Bottom bar */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md"
         style={{ paddingBottom: safeArea.bottom }}
       >
-        <div className="flex items-stretch justify-around pt-2 pb-1.5">
+        <div className="flex items-stretch justify-around pt-1.5 pb-1.5">
           {primaryTabs.map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
-              <motion.div key={item.href} className="flex flex-1" whileTap={{ scale: 0.85 }} transition={{ type: "spring", damping: 15, stiffness: 400 }}>
+              <motion.div key={item.href} className="flex flex-1" whileTap={{ scale: 0.9 }} transition={{ type: "spring", damping: 18, stiffness: 450 }}>
                 <Link
                   href={item.href}
                   onClick={() => hapticLight()}
                   className={cn(
-                    "flex flex-1 flex-col items-center justify-center gap-1 transition-colors",
+                    "relative flex flex-1 flex-col items-center justify-center gap-1 min-h-[52px] transition-colors",
                     active ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
-                  <div className={cn("h-7 w-12 justify-center items-center flex rounded-full transition-colors", active && "bg-foreground/8")}>
-                    <Icon className="w-[18px] h-[18px]" />
+                  {active && (
+                    <motion.span
+                      layoutId="bottomBarActiveDot"
+                      className="absolute top-0 h-[2px] w-7 rounded-full bg-foreground"
+                      transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                    />
+                  )}
+                  <div className={cn("h-8 w-14 flex justify-center items-center rounded-full transition-colors", active && "bg-foreground/8")}>
+                    <Icon className="w-[19px] h-[19px]" />
                   </div>
-                  <span className={cn("text-[10px] leading-tight", active ? "font-semibold" : "font-normal")}>{t(item.labelKey)}</span>
+                  <span className={cn("text-[10.5px] leading-none tracking-tight", active ? "font-semibold" : "font-medium")}>{t(item.labelKey)}</span>
                 </Link>
               </motion.div>
             );
@@ -159,17 +166,24 @@ export function BottomBar() {
           {hasOverflow && (
             <motion.button
               onClick={() => { hapticMedium(); setMoreOpen((v) => !v); }}
-              whileTap={{ scale: 0.85 }}
-              transition={{ type: "spring", damping: 15, stiffness: 400 }}
+              whileTap={{ scale: 0.9 }}
+              transition={{ type: "spring", damping: 18, stiffness: 450 }}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 transition-colors",
+                "relative flex flex-1 flex-col items-center justify-center gap-1 min-h-[52px] transition-colors",
                 moreOpen || isOverflowActive ? "text-foreground" : "text-muted-foreground"
               )}
             >
-              <div className={cn("h-7 w-12 justify-center items-center flex rounded-full transition-colors", (moreOpen || isOverflowActive) && "bg-foreground/8")}>
-                <MoreHorizontal className="w-[18px] h-[18px]" />
+              {(moreOpen || isOverflowActive) && (
+                <motion.span
+                  layoutId="bottomBarActiveDot"
+                  className="absolute top-0 h-[2px] w-7 rounded-full bg-foreground"
+                  transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                />
+              )}
+              <div className={cn("h-8 w-14 flex justify-center items-center rounded-full transition-colors", (moreOpen || isOverflowActive) && "bg-foreground/8")}>
+                <MoreHorizontal className="w-[19px] h-[19px]" />
               </div>
-              <span className={cn("text-[10px] leading-tight", (moreOpen || isOverflowActive) ? "font-semibold" : "font-normal")}>
+              <span className={cn("text-[10.5px] leading-none tracking-tight", (moreOpen || isOverflowActive) ? "font-semibold" : "font-medium")}>
                 {t("common.more")}
               </span>
             </motion.button>
