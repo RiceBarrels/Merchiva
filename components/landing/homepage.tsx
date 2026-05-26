@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { SiteShell } from "@/components/landing/site-shell";
 
@@ -1633,6 +1633,1021 @@ function LiveDashboard() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// 03b · MR. MERCHIVA AUTO-SCHEDULER
+// ═══════════════════════════════════════════════════════════
+
+type DemoShift = {
+  day: number;
+  dh: string;
+  s: number;
+  e: number;
+  name: string;
+  initials: string;
+  color: string;
+  reason: string;
+};
+
+const SCHEDULE_SHIFTS: DemoShift[] = [
+  { day: 0, dh: "Mon", s: 7,  e: 13, name: "Sarah",  initials: "SK", color: "#fbbf24", reason: "Sarah opens Mon — she's flagged \"early-bird\" in availability." },
+  { day: 0, dh: "Mon", s: 13, e: 19, name: "Mateo",  initials: "MR", color: "#60a5fa", reason: "Mateo on close — 1h overlap with Sarah for handover." },
+  { day: 1, dh: "Tue", s: 7,  e: 13, name: "Priya",  initials: "PS", color: "#34d399", reason: "Priya leads Tue AM — payday lift forecast +14%." },
+  { day: 1, dh: "Tue", s: 13, e: 19, name: "Sarah",  initials: "SK", color: "#fbbf24", reason: "Sarah doubles Tue PM — Mateo unavailable after 1 pm." },
+  { day: 2, dh: "Wed", s: 8,  e: 14, name: "Mateo",  initials: "MR", color: "#60a5fa", reason: "Mateo opens Wed — Sarah requested mid-week PM." },
+  { day: 2, dh: "Wed", s: 14, e: 20, name: "Devon",  initials: "DP", color: "#a78bfa", reason: "Devon trains Wed PM — first solo close (Priya nearby)." },
+  { day: 3, dh: "Thu", s: 7,  e: 13, name: "Priya",  initials: "PS", color: "#34d399", reason: "Thursday rush — senior on bar opens cleaner." },
+  { day: 3, dh: "Thu", s: 13, e: 19, name: "Sarah",  initials: "SK", color: "#fbbf24", reason: "Sarah closes Thu — coverage gap solved without OT." },
+  { day: 4, dh: "Fri", s: 7,  e: 13, name: "Mateo",  initials: "MR", color: "#60a5fa", reason: "Mateo Fri AM — weather says +22% iced drinks." },
+  { day: 4, dh: "Fri", s: 13, e: 20, name: "Priya",  initials: "PS", color: "#34d399", reason: "Priya extended close — payday + Friday happy hour." },
+  { day: 5, dh: "Sat", s: 8,  e: 14, name: "Devon",  initials: "DP", color: "#a78bfa", reason: "Devon Sat AM — soft demand, good day to keep training." },
+  { day: 5, dh: "Sat", s: 14, e: 20, name: "Sarah",  initials: "SK", color: "#fbbf24", reason: "Sarah Sat close — Mateo flagged Sat PTO last month." },
+  { day: 6, dh: "Sun", s: 9,  e: 15, name: "Priya",  initials: "PS", color: "#34d399", reason: "Priya solo Sun AM — brunch crowd, predictable mix." },
+  { day: 6, dh: "Sun", s: 15, e: 19, name: "Mateo",  initials: "MR", color: "#60a5fa", reason: "Mateo wraps the week — Sun close keeps payroll under cap." },
+];
+
+function MiniSpinner({ size = 12, color = "#fafaf9" }: { size?: number; color?: string }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        border: "1.5px solid rgba(255,255,255,0.18)",
+        borderTopColor: color,
+        borderRadius: "50%",
+        animation: "mv-spin 0.8s linear infinite",
+      }}
+    />
+  );
+}
+
+function SchedulingDemo() {
+  const total = SCHEDULE_SHIFTS.length;
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (step >= total) {
+      const t = setTimeout(() => setStep(0), 3500);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setStep((s) => s + 1), step === 0 ? 700 : 560);
+    return () => clearTimeout(t);
+  }, [step, total]);
+
+  const placed = SCHEDULE_SHIFTS.slice(0, step);
+  const recent = placed.slice(-3);
+  const isComplete = step >= total;
+
+  const HOUR_START = 6;
+  const HOUR_END = 22;
+  const ROW_H = 18;
+  const HOURS = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+  const totalHours = placed.reduce((sum, s) => sum + (s.e - s.s), 0);
+
+  return (
+    <section id="scheduling" data-mv-section style={{ padding: "60px 32px 100px", background: C.bg, position: "relative" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 24 }}>
+          <MonoTag border={false}>02b · auto-scheduler</MonoTag>
+          <DotLeader />
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>writing next week · auto-cycle</span>
+        </div>
+        <h2
+          className="mv-reveal"
+          data-d="1"
+          style={{
+            margin: "0 0 14px",
+            fontSize: "clamp(28px, 5vw, 56px)",
+            fontWeight: 600,
+            letterSpacing: -1.4,
+            lineHeight: 1.04,
+            color: C.ink,
+            maxWidth: 900,
+            textWrap: "balance" as never,
+          }}
+        >
+          Mr. Merchiva writes <span style={{ color: C.ter }}>next week&apos;s schedule</span>.
+        </h2>
+        <p
+          className="mv-reveal"
+          data-d="2"
+          style={{
+            margin: "0 0 36px",
+            fontSize: 17,
+            color: C.text3,
+            lineHeight: 1.5,
+            maxWidth: 680,
+            textWrap: "pretty" as never,
+          }}
+        >
+          He reads availability, payroll caps, last week&apos;s trades, and the weather — then drops a full week of shifts in under a minute. Approve in one tap, or let it auto-commit.
+        </p>
+
+        <div
+          className="mv-reveal"
+          data-d="3"
+          data-mv-stack-lg
+          style={{
+            display: "grid",
+            gridTemplateColumns: "360px 1fr",
+            gap: 16,
+            alignItems: "stretch",
+          }}
+        >
+          {/* Mr. Merchiva chat panel */}
+          <div
+            style={{
+              background: C.paper,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 460,
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 16px",
+                borderBottom: `1px solid ${C.border}`,
+                background: C.surface,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div
+                style={{
+                  position: "relative",
+                  width: 32,
+                  height: 32,
+                  borderRadius: 7,
+                  background: C.ink,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <NotchM size={20} fg="#fafaf9" />
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    bottom: -2,
+                    right: -2,
+                    width: 10,
+                    height: 10,
+                    borderRadius: 99,
+                    background: isComplete ? C.good : C.accent,
+                    border: `2px solid ${C.surface}`,
+                    animation: "mv-pulse 1.6s ease-in-out infinite",
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: C.ink, letterSpacing: -0.2 }}>
+                  Mr. Merchiva
+                </div>
+                <div style={{ fontFamily: C.mono, fontSize: 10, color: C.sec, marginTop: 2, letterSpacing: 0.3 }}>
+                  {isComplete ? `done · ${total} shifts placed` : `scheduling · ${step}/${total}`}
+                </div>
+              </div>
+              {!isComplete && <MiniSpinner size={12} color={C.ink} />}
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                padding: 14,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                justifyContent: "flex-end",
+                overflow: "hidden",
+              }}
+            >
+              {recent.map((shift, i) => {
+                const globalIdx = placed.length - recent.length + i;
+                return (
+                  <div
+                    key={globalIdx}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      animation: "mv-msg-in 380ms cubic-bezier(.2,.85,.25,1) both",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 5,
+                        background: C.ink,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        marginTop: 2,
+                      }}
+                    >
+                      <NotchM size={14} fg="#fafaf9" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          background: C.surface,
+                          border: `1px solid ${C.border}`,
+                          borderRadius: 8,
+                          padding: "8px 11px",
+                          fontSize: 12.5,
+                          lineHeight: 1.45,
+                          color: C.text,
+                          textWrap: "pretty" as never,
+                        }}
+                      >
+                        {shift.reason}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: C.mono,
+                          fontSize: 9.5,
+                          color: C.ter,
+                          marginTop: 4,
+                          paddingLeft: 2,
+                          letterSpacing: 0.2,
+                        }}
+                      >
+                        <span style={{ color: shift.color }}>●</span>{" "}
+                        {shift.dh.toLowerCase()} · {shift.s.toString().padStart(2, "0")}:00–{shift.e.toString().padStart(2, "0")}:00 · {shift.name}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {isComplete && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 12px",
+                    background: "rgba(5,150,105,0.06)",
+                    border: "1px solid rgba(5,150,105,0.22)",
+                    borderRadius: 8,
+                    animation: "mv-fade-up 380ms cubic-bezier(.2,.85,.25,1) both",
+                    marginTop: 2,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                    <path d="M3 8 L7 12 L13 4" stroke={C.good} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: C.good }}>
+                    Week ready · {total} shifts · {totalHours}h
+                  </div>
+                  <div style={{ flex: 1 }} />
+                  <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>under budget</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Week grid */}
+          <div
+            style={{
+              background: C.paper,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 16px",
+                borderBottom: `1px solid ${C.border}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: C.mono,
+                  fontSize: 10.5,
+                  color: C.sec,
+                  letterSpacing: 0.4,
+                  textTransform: "uppercase",
+                }}
+              >
+                week of may 13 · 2026
+              </span>
+              <DotLeader />
+              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>
+                {step} / {total} shifts · {totalHours}h
+              </span>
+            </div>
+
+            <div style={{ flex: 1, padding: "10px 14px 14px" }}>
+              {/* Day headers */}
+              <div style={{ display: "grid", gridTemplateColumns: "36px repeat(7, 1fr)", marginBottom: 6 }}>
+                <div />
+                {DAYS.map((d) => (
+                  <div
+                    key={d}
+                    style={{
+                      fontFamily: C.mono,
+                      fontSize: 10,
+                      color: C.sec,
+                      textTransform: "uppercase",
+                      letterSpacing: 0.4,
+                      paddingLeft: 4,
+                    }}
+                  >
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "36px 1fr", gap: 0 }}>
+                {/* Hour labels */}
+                <div style={{ position: "relative", height: ROW_H * HOURS.length }}>
+                  {HOURS.filter((h) => h % 2 === 0).map((h) => (
+                    <div
+                      key={h}
+                      style={{
+                        position: "absolute",
+                        top: (h - HOUR_START) * ROW_H - 5,
+                        right: 8,
+                        fontFamily: C.mono,
+                        fontSize: 9,
+                        color: C.ter,
+                        letterSpacing: 0.2,
+                      }}
+                    >
+                      {h.toString().padStart(2, "0")}:00
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar body */}
+                <div style={{ position: "relative", height: ROW_H * HOURS.length, borderLeft: `1px solid ${C.border}` }}>
+                  {/* horizontal hour lines */}
+                  {HOURS.filter((h) => h % 2 === 0).map((h) => (
+                    <div
+                      key={h}
+                      style={{
+                        position: "absolute",
+                        top: (h - HOUR_START) * ROW_H,
+                        left: 0,
+                        right: 0,
+                        height: 1,
+                        background: C.border,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  ))}
+                  {/* vertical day dividers */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "grid",
+                      gridTemplateColumns: "repeat(7, 1fr)",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          borderRight: i < 6 ? `1px dashed ${C.border}` : "none",
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* shift cards */}
+                  {placed.map((s, i) => {
+                    const top = (s.s - HOUR_START) * ROW_H;
+                    const height = (s.e - s.s) * ROW_H - 2;
+                    const left = `calc(${s.day} * (100% / 7) + 2px)`;
+                    const width = `calc((100% / 7) - 4px)`;
+                    const isLatest = i === placed.length - 1;
+                    return (
+                      <div
+                        key={`${s.day}-${s.s}-${s.name}-${i}`}
+                        style={{
+                          position: "absolute",
+                          top,
+                          left,
+                          width,
+                          height,
+                          background: s.color,
+                          borderRadius: 4,
+                          padding: "3px 5px 3px 6px",
+                          color: "#0c0a09",
+                          letterSpacing: -0.1,
+                          lineHeight: 1.12,
+                          boxShadow: isLatest
+                            ? "0 8px 14px -6px rgba(28,25,23,0.32), inset 0 0 0 1px rgba(12,10,9,0.06)"
+                            : "inset 0 0 0 1px rgba(12,10,9,0.06)",
+                          animation: "mv-shift-in 420ms cubic-bezier(.2,1,.35,1) both",
+                          overflow: "hidden",
+                          fontFamily: C.sans,
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span
+                            style={{
+                              width: 13,
+                              height: 13,
+                              borderRadius: 99,
+                              background: "rgba(12,10,9,0.18)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 7.5,
+                              fontWeight: 700,
+                              fontFamily: C.mono,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {s.initials}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 600,
+                              flex: 1,
+                              minWidth: 0,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {s.name}
+                          </span>
+                        </div>
+                        {height > 28 && (
+                          <div
+                            style={{
+                              fontFamily: C.mono,
+                              fontSize: 8.5,
+                              color: "rgba(12,10,9,0.62)",
+                              marginTop: 1,
+                              letterSpacing: 0.2,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {s.s.toString().padStart(2, "0")}:00–{s.e.toString().padStart(2, "0")}:00
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* "Mr. Merchiva is here" cursor — points at the latest column being filled */}
+                  {!isComplete && (() => {
+                    const next = SCHEDULE_SHIFTS[step];
+                    if (!next) return null;
+                    return (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: (next.s - HOUR_START) * ROW_H - 4,
+                          left: `calc(${next.day} * (100% / 7) + 2px)`,
+                          width: `calc((100% / 7) - 4px)`,
+                          height: (next.e - next.s) * ROW_H,
+                          border: `1.5px dashed ${C.accent}`,
+                          borderRadius: 4,
+                          opacity: 0.55,
+                          animation: "mv-pulse 1.1s ease-in-out infinite",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 03c · MERCHIVA POS — SCAN TO RECEIPT
+// ═══════════════════════════════════════════════════════════
+
+type POSProduct = { id: number; name: string; price: number; tag: string };
+
+const POS_PRODUCTS: POSProduct[] = [
+  { id: 1, name: "Iced Latte",       price: 6.5,  tag: "drinks" },
+  { id: 2, name: "Almond Croissant", price: 4.25, tag: "bakery" },
+  { id: 3, name: "Double Espresso",  price: 3.0,  tag: "drinks" },
+  { id: 4, name: "Avocado Toast",    price: 8.5,  tag: "food"   },
+  { id: 5, name: "Matcha Latte",     price: 5.75, tag: "drinks" },
+  { id: 6, name: "Cold Brew",        price: 4.75, tag: "drinks" },
+];
+
+// Indices into POS_PRODUCTS — order in which items are scanned each cycle.
+const POS_SEQUENCE = [0, 1, 2, 0, 4];
+
+function POSDemo() {
+  // Phases per cycle:
+  //   0..N-1   → scan item N
+  //   N        → charging
+  //   N+1      → done (receipt printed)
+  //   N+2      → reset
+  const totalSteps = POS_SEQUENCE.length + 2;
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    let delay = 900;
+    if (step === POS_SEQUENCE.length) delay = 1300; // charging spinner
+    if (step === POS_SEQUENCE.length + 1) delay = 2000; // hold "Charged" state
+    if (step >= totalSteps) {
+      const t = setTimeout(() => setStep(0), 1200);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setStep((s) => s + 1), delay);
+    return () => clearTimeout(t);
+  }, [step, totalSteps]);
+
+  const phase: "scanning" | "charge" | "done" =
+    step < POS_SEQUENCE.length ? "scanning" : step === POS_SEQUENCE.length ? "charge" : "done";
+
+  const pickedIndices = POS_SEQUENCE.slice(0, Math.min(step, POS_SEQUENCE.length));
+  const highlightedIdx = phase === "scanning" ? POS_SEQUENCE[step] : -1;
+
+  const cartItems = useMemo(() => {
+    const counts: Record<number, number> = {};
+    pickedIndices.forEach((idx) => {
+      counts[idx] = (counts[idx] ?? 0) + 1;
+    });
+    return Object.entries(counts).map(([idx, qty]) => ({ p: POS_PRODUCTS[parseInt(idx, 10)], qty }));
+    // intentionally key by joined indices so equal cart shape memoizes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickedIndices.join(",")]);
+
+  const subtotal = cartItems.reduce((sum, x) => sum + x.p.price * x.qty, 0);
+  const tax = subtotal * 0.08;
+  const grand = subtotal + tax;
+  const itemCount = cartItems.reduce((a, b) => a + b.qty, 0);
+
+  return (
+    <section id="pos" data-mv-section style={{ padding: "60px 32px 100px", background: C.bg }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 24 }}>
+          <MonoTag border={false}>02c · merchiva POS</MonoTag>
+          <DotLeader />
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>scan · cart · charge</span>
+        </div>
+        <h2
+          className="mv-reveal"
+          data-d="1"
+          style={{
+            margin: "0 0 14px",
+            fontSize: "clamp(28px, 5vw, 56px)",
+            fontWeight: 600,
+            letterSpacing: -1.4,
+            lineHeight: 1.04,
+            color: C.ink,
+            maxWidth: 820,
+            textWrap: "balance" as never,
+          }}
+        >
+          From scan to receipt <span style={{ color: C.ter }}>in four taps</span>.
+        </h2>
+        <p
+          className="mv-reveal"
+          data-d="2"
+          style={{
+            margin: "0 0 36px",
+            fontSize: 17,
+            color: C.text3,
+            lineHeight: 1.5,
+            maxWidth: 640,
+            textWrap: "pretty" as never,
+          }}
+        >
+          The Merchiva register shares the same catalog and stock counts as your dashboard. Every sale updates the forecast in the same second — no overnight sync.
+        </p>
+
+        <div
+          className="mv-reveal"
+          data-d="3"
+          data-mv-stack-lg
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 340px",
+            gap: 16,
+            alignItems: "stretch",
+          }}
+        >
+          {/* Product grid */}
+          <div
+            style={{
+              background: C.paper,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 16px",
+                borderBottom: `1px solid ${C.border}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: C.mono,
+                  fontSize: 10.5,
+                  color: C.sec,
+                  letterSpacing: 0.4,
+                  textTransform: "uppercase",
+                }}
+              >
+                catalog · {POS_PRODUCTS.length} items
+              </span>
+              <DotLeader />
+              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>terminal · 03</span>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                padding: 12,
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gridAutoRows: "minmax(96px, 1fr)",
+                gap: 10,
+              }}
+            >
+              {POS_PRODUCTS.map((p, i) => {
+                const isHighlighted = i === highlightedIdx;
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      position: "relative",
+                      border: `1px solid ${isHighlighted ? C.ink : C.border}`,
+                      borderRadius: 6,
+                      padding: 12,
+                      background: isHighlighted ? C.ink : C.paper,
+                      color: isHighlighted ? "#fafaf9" : C.ink,
+                      transition: "background 220ms, color 220ms, border-color 220ms, transform 220ms, box-shadow 220ms",
+                      transform: isHighlighted ? "scale(1.025)" : "scale(1)",
+                      boxShadow: isHighlighted
+                        ? "0 14px 26px -12px rgba(28,25,23,0.45)"
+                        : "0 1px 0 rgba(28,25,23,0.02)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: C.mono,
+                        fontSize: 9,
+                        color: isHighlighted ? "#a8a29e" : C.sec,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {p.tag}
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, lineHeight: 1.2 }}>
+                      {p.name}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: "auto",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "baseline",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: C.mono,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          letterSpacing: -0.4,
+                        }}
+                      >
+                        ${p.price.toFixed(2)}
+                      </span>
+                      {isHighlighted && (
+                        <span
+                          style={{
+                            fontFamily: C.mono,
+                            fontSize: 9,
+                            padding: "1px 6px",
+                            background: "rgba(250,250,249,0.18)",
+                            borderRadius: 3,
+                            letterSpacing: 0.4,
+                            color: "#fafaf9",
+                          }}
+                        >
+                          scan
+                        </span>
+                      )}
+                    </div>
+                    {isHighlighted && (
+                      <span
+                        aria-hidden
+                        style={{
+                          position: "absolute",
+                          inset: -4,
+                          pointerEvents: "none",
+                          borderRadius: 9,
+                          border: `2px solid ${C.accent}`,
+                          animation: "mv-ring-in 360ms cubic-bezier(.2,.85,.25,1) both",
+                          opacity: 0.55,
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Cart panel */}
+          <div
+            style={{
+              background: C.paper,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 420,
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 16px",
+                borderBottom: `1px solid ${C.border}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: C.mono,
+                  fontSize: 10.5,
+                  color: C.sec,
+                  letterSpacing: 0.4,
+                  textTransform: "uppercase",
+                }}
+              >
+                cart · {itemCount} {itemCount === 1 ? "item" : "items"}
+              </span>
+              <DotLeader />
+              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>queue #4218</span>
+            </div>
+
+            <div style={{ flex: 1, padding: "4px 0", overflow: "hidden" }}>
+              {cartItems.length === 0 ? (
+                <div
+                  style={{
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12.5,
+                    color: C.ter,
+                    padding: 24,
+                    textAlign: "center",
+                  }}
+                >
+                  Scan an item to begin
+                </div>
+              ) : (
+                cartItems.map((it, i) => (
+                  <div
+                    key={it.p.id}
+                    style={{
+                      padding: "11px 16px",
+                      display: "grid",
+                      gridTemplateColumns: "auto 1fr auto",
+                      gap: 10,
+                      alignItems: "center",
+                      borderBottom: i < cartItems.length - 1 ? `1px solid ${C.border}` : "none",
+                      animation:
+                        i === cartItems.length - 1 && phase === "scanning"
+                          ? "mv-line-in 360ms cubic-bezier(.2,.85,.25,1) both"
+                          : undefined,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: C.mono,
+                        fontSize: 10.5,
+                        fontWeight: 600,
+                        color: C.text,
+                        background: C.surface,
+                        padding: "2px 6px",
+                        borderRadius: 3,
+                        border: `1px solid ${C.border}`,
+                        letterSpacing: 0.3,
+                      }}
+                    >
+                      ×{it.qty}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12.5,
+                        color: C.text,
+                        fontWeight: 500,
+                        lineHeight: 1.2,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {it.p.name}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: C.mono,
+                        fontSize: 12,
+                        color: C.text,
+                        fontWeight: 600,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      ${(it.p.price * it.qty).toFixed(2)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Totals + charge */}
+            <div style={{ borderTop: `1px solid ${C.border}`, padding: "12px 16px 16px", background: C.surface }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                  color: C.text3,
+                  marginBottom: 4,
+                  fontFamily: C.mono,
+                }}
+              >
+                <span>Subtotal</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>${subtotal.toFixed(2)}</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 12,
+                  color: C.text3,
+                  marginBottom: 10,
+                  fontFamily: C.mono,
+                }}
+              >
+                <span>Tax · 8%</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>${tax.toFixed(2)}</span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 15.5,
+                  color: C.ink,
+                  fontWeight: 600,
+                  marginBottom: 12,
+                  letterSpacing: -0.2,
+                }}
+              >
+                <span>Total</span>
+                <span
+                  style={{
+                    fontFamily: C.mono,
+                    fontVariantNumeric: "tabular-nums",
+                    letterSpacing: -0.4,
+                  }}
+                >
+                  ${grand.toFixed(2)}
+                </span>
+              </div>
+              <div
+                role="button"
+                aria-disabled
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  borderRadius: 4,
+                  background:
+                    phase === "done" ? C.good : phase === "charge" ? C.ink : itemCount === 0 ? C.ter : C.ink,
+                  color: "#fafaf9",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  letterSpacing: -0.1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  transition: "background 320ms",
+                  animation:
+                    phase === "scanning" && itemCount > 0
+                      ? "mv-glow 2.4s ease-in-out infinite"
+                      : undefined,
+                }}
+              >
+                {phase === "scanning" && itemCount === 0 && "Tap to charge"}
+                {phase === "scanning" && itemCount > 0 && (
+                  <>
+                    Tap to charge{" "}
+                    <span
+                      style={{
+                        fontFamily: C.mono,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      ${grand.toFixed(2)}
+                    </span>
+                  </>
+                )}
+                {phase === "charge" && (
+                  <>
+                    <MiniSpinner size={12} color="#fafaf9" />
+                    Processing…
+                  </>
+                )}
+                {phase === "done" && (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+                      <path
+                        d="M3 8 L7 12 L13 4"
+                        stroke="#fff"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    Charged{" "}
+                    <span
+                      style={{
+                        fontFamily: C.mono,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      ${grand.toFixed(2)}
+                    </span>
+                  </>
+                )}
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  fontFamily: C.mono,
+                  fontSize: 10,
+                  color: C.sec,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  letterSpacing: 0.2,
+                }}
+              >
+                <span>
+                  {phase === "done" ? (
+                    <>
+                      receipt #4218 · printed ·{" "}
+                      <span style={{ color: C.good }}>stock + forecast updated</span>
+                    </>
+                  ) : (
+                    "tap · swipe · contactless · gift card"
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // 04 · MARQUEE
 // ═══════════════════════════════════════════════════════════
 
@@ -2522,6 +3537,8 @@ export function Homepage() {
       <Hero />
       <TrustedBy />
       <LiveDashboard />
+      <SchedulingDemo />
+      <POSDemo />
       <Marquee />
       <FeatureGrid />
       <Metrics />

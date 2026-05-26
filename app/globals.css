@@ -439,6 +439,34 @@ html.mobile-device label {
   50% { transform: scale(1.35); opacity: 0.55; }
 }
 
+/* Auto-scheduler shift card entrance */
+@keyframes mv-shift-in {
+  0%   { opacity: 0; transform: translateY(-6px) scale(0.92); filter: blur(2px); }
+  60%  { opacity: 1; transform: translateY(1px) scale(1.02); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Mr. Merchiva chat message entrance */
+@keyframes mv-msg-in {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* POS: cart line slides in from the right */
+@keyframes mv-line-in {
+  0%   { opacity: 0; transform: translateX(18px); background: rgba(217,119,6,0.06); }
+  100% { opacity: 1; transform: translateX(0); background: transparent; }
+}
+/* POS: scan ring expanding around a highlighted product */
+@keyframes mv-ring-in {
+  0%   { opacity: 0; transform: scale(0.94); }
+  60%  { opacity: 0.7; transform: scale(1.04); }
+  100% { opacity: 0.55; transform: scale(1); }
+}
+/* Generic spinner — homepage uses inline elements instead of lucide */
+@keyframes mv-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* Quill editor — custom UI; only the editor surface is styled, toolbar is React */
 .merchiva-quill .ql-container {
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
