@@ -275,6 +275,7 @@ function HeroTicker() {
   ];
   return (
     <div
+      data-mv-stack-2
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(4, 1fr)",
@@ -291,8 +292,9 @@ function HeroTicker() {
           <div
             key={i}
             style={{
-              padding: "14px 18px",
+              padding: "14px 16px",
               borderRight: i < stats.length - 1 ? `1px solid ${C.border}` : "none",
+              borderBottom: `1px solid ${C.border}`,
               background: i % 2 === 0 ? C.paper : C.surface,
             }}
           >
@@ -378,11 +380,12 @@ function Hero() {
   return (
     <section
       id="top"
+      data-mv-section
       style={{
         position: "relative",
         minHeight: "100vh",
         paddingTop: 120,
-        paddingBottom: 80,
+        paddingBottom: 64,
         paddingLeft: 32,
         paddingRight: 32,
         overflow: "hidden",
@@ -408,14 +411,15 @@ function Hero() {
           </span>
         </div>
 
-        <HeroWordmark />
+        <div data-mv-hero-h1><HeroWordmark /></div>
 
         <div
+          data-mv-stack
           style={{
-            marginTop: 44,
+            marginTop: 36,
             display: "grid",
             gridTemplateColumns: "1.4fr 1fr",
-            gap: 48,
+            gap: 36,
             alignItems: "end",
             animation: "mv-fade-up 800ms 700ms both",
           }}
@@ -423,10 +427,10 @@ function Hero() {
           <p
             style={{
               margin: 0,
-              fontSize: 22,
-              lineHeight: 1.4,
+              fontSize: 18,
+              lineHeight: 1.45,
               color: C.text2,
-              letterSpacing: -0.3,
+              letterSpacing: -0.2,
               maxWidth: 640,
               fontWeight: 400,
               textWrap: "pretty" as never,
@@ -441,7 +445,7 @@ function Hero() {
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: "flex-start" }}>
             <TypingLine />
-            <div style={{ display: "flex", gap: 10 }}>
+            <div data-mv-cta-row style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <MagneticButton primary href="/signup">
                 Start free · 30 days
               </MagneticButton>
@@ -646,6 +650,7 @@ function TrustedBy() {
 
   return (
     <section
+      data-mv-section
       style={{
         padding: "80px 32px 40px",
         position: "relative",
@@ -684,7 +689,7 @@ function TrustedBy() {
         </h3>
 
         {/* Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
+        <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }}>
           {SPONSORS.map((s, i) => (
             <SponsorCard
               key={s.slug}
@@ -1182,7 +1187,7 @@ function LiveDashboard() {
   const ty = (tilt.y - 0.5) * -4;
 
   return (
-    <section id="product" style={{ padding: "120px 32px 80px", position: "relative" }}>
+    <section id="product" data-mv-section style={{ padding: "120px 32px 80px", position: "relative" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 32 }}>
           <MonoTag border={false}>02 · the product</MonoTag>
@@ -1194,10 +1199,10 @@ function LiveDashboard() {
           <h2
             style={{
               margin: 0,
-              fontSize: "clamp(36px, 5vw, 64px)",
+              fontSize: "clamp(28px, 5vw, 64px)",
               fontWeight: 600,
-              letterSpacing: -2,
-              lineHeight: 1.02,
+              letterSpacing: -1.4,
+              lineHeight: 1.05,
               color: C.ink,
               maxWidth: 1100,
               textWrap: "balance" as never,
@@ -1333,8 +1338,8 @@ function LiveDashboard() {
               </div>
               <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>{VIEWS[active].sub}</span>
             </div>
-            <div style={{ height: 460, background: C.paper, position: "relative", overflow: "hidden" }}>
-              <div key={active} style={{ animation: "mv-fade-up 480ms cubic-bezier(.2,.8,.2,1) both", height: "100%" }}>
+            <div className="mv-dashboard-window" style={{ height: 460, background: C.paper, position: "relative", overflow: "hidden" }}>
+              <div key={active} className="mv-dashboard-inner" style={{ animation: "mv-fade-up 480ms cubic-bezier(.2,.8,.2,1) both", height: "100%" }}>
                 {active === 0 && <ViewForecast />}
                 {active === 1 && <ViewReorder />}
                 {active === 2 && <ViewInventory />}
@@ -1646,7 +1651,7 @@ function FeatureCard({ f, idx }: { f: Feature; idx: number }) {
 
 function FeatureGrid() {
   return (
-    <section id="modules" style={{ padding: "120px 32px", background: C.bg }}>
+    <section id="modules" data-mv-section style={{ padding: "120px 32px", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 16 }}>
           <MonoTag border={false}>03 · modules</MonoTag>
@@ -1657,10 +1662,10 @@ function FeatureGrid() {
           className="mv-reveal"
           data-d="1"
           style={{
-            margin: "0 0 64px",
-            fontSize: "clamp(36px, 5vw, 56px)",
+            margin: "0 0 40px",
+            fontSize: "clamp(28px, 5vw, 56px)",
             fontWeight: 600,
-            letterSpacing: -1.6,
+            letterSpacing: -1.4,
             lineHeight: 1.04,
             color: C.ink,
             maxWidth: 1000,
@@ -1669,7 +1674,7 @@ function FeatureGrid() {
         >
           Six things our forecast does that <span style={{ color: C.ter }}>your spreadsheet can&apos;t</span>.
         </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {FEATURES.map((f, i) => (
             <FeatureCard key={f.tag} f={f} idx={i} />
           ))}
@@ -1823,6 +1828,7 @@ function DrawingChart() {
 function Metrics() {
   return (
     <section
+      data-mv-section
       style={{
         padding: "120px 32px",
         background: C.ink,
@@ -1869,8 +1875,8 @@ function Metrics() {
           Operators don&apos;t write reviews. They <span style={{ color: C.ter }}>renew</span>.
         </h2>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 64, alignItems: "center" }}>
-          <div className="mv-reveal" data-d="2" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 32 }}>
+        <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 48, alignItems: "center" }}>
+          <div className="mv-reveal" data-d="2" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}>
             {[
               { k: "businesses live", v: 2841, fmt: {} },
               { k: "avg setup time", v: 14, fmt: { suffix: " min" } },
@@ -1965,14 +1971,14 @@ function Testimonials() {
     },
   ];
   return (
-    <section id="customers" style={{ padding: "120px 32px", background: C.bg }}>
+    <section id="customers" data-mv-section style={{ padding: "120px 32px", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-        <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 48 }}>
+        <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 32 }}>
           <MonoTag border={false}>05 · in their words</MonoTag>
           <DotLeader />
           <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>read all 318 →</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {quotes.map((t, i) => (
             <figure
               key={i}
@@ -2081,7 +2087,7 @@ function Pricing() {
     },
   ];
   return (
-    <section id="pricing" style={{ padding: "120px 32px", background: C.bg, borderTop: `1px solid ${C.border}` }}>
+    <section id="pricing" data-mv-section style={{ padding: "120px 32px", background: C.bg, borderTop: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 16 }}>
           <MonoTag border={false}>06 · pricing</MonoTag>
@@ -2092,10 +2098,10 @@ function Pricing() {
           className="mv-reveal"
           data-d="1"
           style={{
-            margin: "0 0 56px",
-            fontSize: "clamp(36px, 5vw, 56px)",
+            margin: "0 0 36px",
+            fontSize: "clamp(28px, 5vw, 56px)",
             fontWeight: 600,
-            letterSpacing: -1.6,
+            letterSpacing: -1.4,
             lineHeight: 1.04,
             color: C.ink,
             maxWidth: 760,
@@ -2104,7 +2110,7 @@ function Pricing() {
         >
           Two plans. <span style={{ color: C.ter }}>No &ldquo;contact sales&rdquo;.</span>
         </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, maxWidth: 880 }}>
+        <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, maxWidth: 880 }}>
           {plans.map((p, i) => (
             <div
               key={p.tag}
@@ -2185,7 +2191,7 @@ function Pricing() {
 
 function CTAFooter() {
   return (
-    <section id="start" style={{ padding: "120px 32px 80px", background: C.bg, position: "relative", overflow: "hidden" }}>
+    <section id="start" data-mv-section style={{ padding: "120px 32px 80px", background: C.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative" }}>
         <div style={{ position: "relative", textAlign: "center" }}>
           <div className="mv-reveal" style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
@@ -2194,6 +2200,7 @@ function CTAFooter() {
           <h2
             className="mv-reveal"
             data-d="1"
+            data-mv-hero-h1
             style={{
               margin: 0,
               fontSize: "clamp(56px, 12vw, 180px)",
@@ -2212,9 +2219,9 @@ function CTAFooter() {
             className="mv-reveal"
             data-d="2"
             style={{
-              margin: "32px auto 0",
+              margin: "28px auto 0",
               maxWidth: 600,
-              fontSize: 18,
+              fontSize: 17,
               color: C.text3,
               lineHeight: 1.5,
               textWrap: "pretty" as never,
@@ -2223,7 +2230,7 @@ function CTAFooter() {
             Connect your POS. We learn your sales for seven days, then start telling you what to order — to the case, by
             the day. Median forecast error: 7.2%.
           </p>
-          <div className="mv-reveal" data-d="3" style={{ marginTop: 40, display: "flex", justifyContent: "center", gap: 12 }}>
+          <div className="mv-reveal" data-d="3" data-mv-cta-row style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
             <MagneticButton primary href="/signup">
               Start free · 30 days
             </MagneticButton>

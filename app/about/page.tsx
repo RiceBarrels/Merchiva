@@ -73,25 +73,25 @@ export default function AboutPage() {
       <OrgJsonLd />
       <SiteShell active="about" background={C.bg}>
         {/* Hero */}
-        <section style={{ padding: "100px 32px 80px" }}>
+        <section data-mv-section style={{ padding: "100px 32px 64px" }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
             <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec, letterSpacing: 0.4, textTransform: "uppercase" }}>about merchiva</span>
-            <h1 style={{ margin: "16px 0 0", fontSize: "clamp(48px, 8vw, 96px)", fontWeight: 600, letterSpacing: "-0.05em", lineHeight: 0.96, color: C.ink, maxWidth: 900 }}>
+            <h1 data-mv-hero-h1 style={{ margin: "16px 0 0", fontSize: "clamp(40px, 8vw, 96px)", fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1, color: C.ink, maxWidth: 900 }}>
               Built for operators,{" "}
               <span style={{ color: C.ter }}>by operators</span>.
             </h1>
-            <p style={{ margin: "32px 0 0", fontSize: 20, lineHeight: 1.5, color: C.text2, maxWidth: 680 }}>
+            <p style={{ margin: "24px 0 0", fontSize: 18, lineHeight: 1.5, color: C.text2, maxWidth: 680 }}>
               Merchiva started because we ran a coffee shop and got tired of guessing how much oat milk to order. We built the forecasting engine we wished we had — then realized every small business has the same problem.
             </p>
           </div>
         </section>
 
         {/* Stats */}
-        <section style={{ padding: "0 32px 80px" }}>
-          <div style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <section data-mv-section style={{ padding: "0 32px 72px" }}>
+          <div data-mv-stack-2 style={{ maxWidth: 1280, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
             {stats.map((s) => (
-              <div key={s.k} style={{ padding: 24, background: C.paper, border: `1px solid ${C.border}`, borderRadius: 4 }}>
-                <div style={{ fontFamily: C.mono, fontSize: "clamp(28px, 3vw, 40px)", fontWeight: 600, color: C.ink, letterSpacing: -1 }}>{s.v}</div>
+              <div key={s.k} style={{ padding: 20, background: C.paper, border: `1px solid ${C.border}`, borderRadius: 4 }}>
+                <div style={{ fontFamily: C.mono, fontSize: "clamp(24px, 4.5vw, 40px)", fontWeight: 600, color: C.ink, letterSpacing: -1 }}>{s.v}</div>
                 <div style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 6 }}>{s.k}</div>
               </div>
             ))}
@@ -99,17 +99,17 @@ export default function AboutPage() {
         </section>
 
         {/* Values */}
-        <section style={{ padding: "100px 32px", background: C.ink, color: "#fafaf9" }}>
+        <section data-mv-section style={{ padding: "100px 32px", background: C.ink, color: "#fafaf9" }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
             <span style={{ fontFamily: C.mono, fontSize: 10.5, color: "#a8a29e", letterSpacing: 0.4, textTransform: "uppercase" }}>how we build</span>
-            <h2 style={{ margin: "16px 0 56px", fontSize: "clamp(36px, 5vw, 56px)", fontWeight: 600, letterSpacing: -1.6, lineHeight: 1.04 }}>
+            <h2 style={{ margin: "16px 0 40px", fontSize: "clamp(28px, 5vw, 56px)", fontWeight: 600, letterSpacing: -1.4, lineHeight: 1.04 }}>
               Four principles.
             </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+            <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
               {values.map((v, i) => (
-                <div key={i} style={{ padding: 32, background: "#17120f", border: "1px solid #292524", borderRadius: 6 }}>
+                <div key={i} data-mv-pad-md style={{ padding: 28, background: "#17120f", border: "1px solid #292524", borderRadius: 6 }}>
                   <div style={{ fontFamily: C.mono, fontSize: 10.5, color: "#a8a29e", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 }}>0{i + 1}</div>
-                  <h3 style={{ margin: "0 0 10px", fontSize: 22, fontWeight: 600, letterSpacing: -0.6 }}>{v.title}</h3>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 600, letterSpacing: -0.5 }}>{v.title}</h3>
                   <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#a8a29e" }}>{v.body}</p>
                 </div>
               ))}
@@ -118,17 +118,19 @@ export default function AboutPage() {
         </section>
 
         {/* Team */}
-        <section style={{ padding: "100px 32px" }}>
+        <section data-mv-section style={{ padding: "100px 32px" }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
-            <h2 style={{ margin: "0 0 16px", fontSize: "clamp(36px, 5vw, 56px)", fontWeight: 600, letterSpacing: -1.6, lineHeight: 1.04 }}>
+            <h2 style={{ margin: "0 0 16px", fontSize: "clamp(26px, 5vw, 56px)", fontWeight: 600, letterSpacing: -1.4, lineHeight: 1.05 }}>
               Oakland · Brooklyn · remote-first.
             </h2>
-            <p style={{ margin: "0 0 40px", fontSize: 18, color: C.text2, lineHeight: 1.5, maxWidth: 640 }}>
+            <p style={{ margin: "0 0 28px", fontSize: 17, color: C.text2, lineHeight: 1.5, maxWidth: 640 }}>
               18 people. Engineers, data scientists, and two former baristas. We&apos;re hiring — 4 open roles in engineering and data.
             </p>
-            <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 22px", borderRadius: 4, background: C.ink, color: "#fff", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
-              Try Merchiva free <span style={{ fontFamily: C.mono, fontSize: 12, opacity: 0.7 }}>→</span>
-            </Link>
+            <div data-mv-cta-row style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <Link href="/signup" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 22px", borderRadius: 4, background: C.ink, color: "#fff", textDecoration: "none", fontSize: 14, fontWeight: 500 }}>
+                Try Merchiva free <span style={{ fontFamily: C.mono, fontSize: 12, opacity: 0.7 }}>→</span>
+              </Link>
+            </div>
           </div>
         </section>
 

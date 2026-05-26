@@ -157,10 +157,10 @@ function HeroHeadline() {
 
 function Hero() {
   return (
-    <section style={{ position: "relative", paddingTop: 140, paddingBottom: 80, paddingLeft: 32, paddingRight: 32, overflow: "hidden" }}>
+    <section data-mv-section style={{ position: "relative", paddingTop: 140, paddingBottom: 80, paddingLeft: 32, paddingRight: 32, overflow: "hidden" }}>
       <HeroBackdrop />
       <div style={{ position: "relative", maxWidth: 1280, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 36, animation: "mv-fade-up 700ms 60ms both" }}>
+        <div data-mv-stack style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 36, animation: "mv-fade-up 700ms 60ms both", flexWrap: "wrap" }}>
           <MonoTag>
             <span style={{ width: 6, height: 6, background: P.good, borderRadius: "50%" }} />
             01 · pricing · effective may 2026
@@ -169,8 +169,8 @@ function Hero() {
             Per-location, flat. No per-seat. No per-SKU. No &ldquo;contact sales&rdquo;.
           </span>
         </div>
-        <HeroHeadline />
-        <div style={{ marginTop: 48, display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 48, alignItems: "end", animation: "mv-fade-up 800ms 700ms both" }}>
+        <div data-mv-hero-h1><HeroHeadline /></div>
+        <div data-mv-stack style={{ marginTop: 40, display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 32, alignItems: "end", animation: "mv-fade-up 800ms 700ms both" }}>
           <p style={{ margin: 0, fontSize: 22, lineHeight: 1.4, color: P.text2, letterSpacing: -0.3, maxWidth: 640, fontWeight: 400, textWrap: "pretty" as never }}>
             One forecast engine, three plans. Start free for 30 days, then pay per location — your forecasts, your reorder POs, your data, all included. <em style={{ color: P.ink, fontStyle: "normal", fontWeight: 600 }}>Cancel any time.</em>
           </p>
@@ -363,12 +363,12 @@ function PlanCard({ plan, idx, yearly }: { plan: typeof PLAN_DATA[number]; idx: 
 
 function PlansSection({ yearly, setYearly }: { yearly: boolean; setYearly: (v: boolean) => void }) {
   return (
-    <section style={{ padding: "40px 32px 100px", background: P.bg, position: "relative" }}>
+    <section data-mv-section style={{ padding: "40px 32px 100px", background: P.bg, position: "relative" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="p-reveal" style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
           <BillingToggle yearly={yearly} setYearly={setYearly} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+        <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {PLAN_DATA.map((p, i) => <PlanCard key={p.id} plan={p} idx={i} yearly={yearly} />)}
         </div>
         <div className="p-reveal" data-d="3" style={{
@@ -406,7 +406,7 @@ function ROICalculator() {
   const months = Array.from({ length: 12 }, (_, i) => i);
 
   return (
-    <section style={{ padding: "120px 32px", background: P.ink, color: P.bg, position: "relative", overflow: "hidden" }}>
+    <section data-mv-section style={{ padding: "120px 32px", background: P.ink, color: P.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)", backgroundSize: "24px 24px", maskImage: "radial-gradient(ellipse at 30% 30%, black 30%, transparent 75%)" }} />
       <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative" }}>
         <div className="p-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 24, color: "#a8a29e" }}>
@@ -415,13 +415,13 @@ function ROICalculator() {
           <span style={{ fontFamily: P.mono, fontSize: 10.5 }}>drag · live update</span>
         </div>
         <h2 className="p-reveal" data-d="1" style={{
-          margin: "0 0 56px", fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 600,
-          letterSpacing: -1.8, lineHeight: 1.04, color: "#fafaf9", maxWidth: 900, textWrap: "balance" as never,
+          margin: "0 0 40px", fontSize: "clamp(32px, 5vw, 60px)", fontWeight: 600,
+          letterSpacing: -1.6, lineHeight: 1.04, color: "#fafaf9", maxWidth: 900, textWrap: "balance" as never,
         }}>
           Pays back in <span style={{ color: P.accent }}><CountUpInline to={Math.max(1, Math.round(payback))} duration={420} /></span> days. <span style={{ color: "#78716c" }}>For your shop, today.</span>
         </h2>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 64, alignItems: "start" }}>
+        <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 48, alignItems: "start" }}>
           <div className="p-reveal" data-d="2" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
             {[
               { l: "SKUs you stock", v: skus, set: setSkus, min: 30, max: 1200, step: 10, fmt: (x: number) => x.toString() },
@@ -508,7 +508,7 @@ function CompareTable() {
   const t = Math.floor((performance.now() / 900) % rows.length);
 
   return (
-    <section style={{ padding: "120px 32px", background: P.bg }}>
+    <section data-mv-section style={{ padding: "120px 32px", background: P.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="p-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 16 }}>
           <MonoTag border={false}>03 · the full table</MonoTag>
@@ -516,44 +516,48 @@ function CompareTable() {
           <span style={{ fontFamily: P.mono, fontSize: 10.5, color: P.sec }}>everything · in writing</span>
         </div>
         <h2 className="p-reveal" data-d="1" style={{
-          margin: "0 0 48px", fontSize: "clamp(36px, 5vw, 56px)", fontWeight: 600,
-          letterSpacing: -1.6, lineHeight: 1.04, color: P.ink, maxWidth: 800, textWrap: "balance" as never,
+          margin: "0 0 40px", fontSize: "clamp(30px, 5vw, 56px)", fontWeight: 600,
+          letterSpacing: -1.4, lineHeight: 1.04, color: P.ink, maxWidth: 800, textWrap: "balance" as never,
         }}>
           What&apos;s in. <span style={{ color: P.ter }}>What&apos;s not.</span>
         </h2>
         <div className="p-reveal" data-d="2" style={{ background: P.paper, border: `1px solid ${P.border}`, borderRadius: 6, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr", background: P.surface, borderBottom: `1px solid ${P.border}` }}>
-            {cols.map((c, i) => (
-              <div key={c} style={{
-                padding: "16px 20px", fontFamily: P.mono, fontSize: 10.5,
-                textTransform: "uppercase", letterSpacing: 0.5,
-                background: i === 2 ? P.panel : "transparent",
-                fontWeight: i === 2 ? 600 : 500,
-                color: i === 2 ? P.ink : P.sec,
-              }}>{c}</div>
-            ))}
-          </div>
-          {rows.map((r, ri) => {
-            const isHighlight = ri === t;
-            return (
-              <div key={r.label} style={{
-                display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr",
-                borderBottom: ri < rows.length - 1 ? `1px solid ${P.border}` : "none",
-                background: isHighlight ? "rgba(217,119,6,0.05)" : "transparent",
-                transition: "background 600ms ease",
-              }}>
-                <div style={{ padding: "14px 20px", fontSize: 13, fontWeight: 500, color: P.text }}>{r.label}</div>
-                {r.vals.map((v, ci) => (
-                  <div key={ci} style={{
-                    padding: "14px 20px", fontFamily: v === "—" ? P.sans : P.mono, fontSize: 13,
-                    color: v === "—" ? P.ter : P.text,
-                    background: ci === 1 ? (isHighlight ? "rgba(217,119,6,0.08)" : P.surface) : "transparent",
-                    fontWeight: ci === 1 ? 600 : 400,
-                  }}>{v}</div>
+          <div data-mv-scroll-x>
+            <div style={{ minWidth: 560 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr", background: P.surface, borderBottom: `1px solid ${P.border}` }}>
+                {cols.map((c, i) => (
+                  <div key={c} style={{
+                    padding: "14px 16px", fontFamily: P.mono, fontSize: 10.5,
+                    textTransform: "uppercase", letterSpacing: 0.5,
+                    background: i === 2 ? P.panel : "transparent",
+                    fontWeight: i === 2 ? 600 : 500,
+                    color: i === 2 ? P.ink : P.sec,
+                  }}>{c}</div>
                 ))}
               </div>
-            );
-          })}
+              {rows.map((r, ri) => {
+                const isHighlight = ri === t;
+                return (
+                  <div key={r.label} style={{
+                    display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr 1fr",
+                    borderBottom: ri < rows.length - 1 ? `1px solid ${P.border}` : "none",
+                    background: isHighlight ? "rgba(217,119,6,0.05)" : "transparent",
+                    transition: "background 600ms ease",
+                  }}>
+                    <div style={{ padding: "12px 16px", fontSize: 13, fontWeight: 500, color: P.text }}>{r.label}</div>
+                    {r.vals.map((v, ci) => (
+                      <div key={ci} style={{
+                        padding: "12px 16px", fontFamily: v === "—" ? P.sans : P.mono, fontSize: 13,
+                        color: v === "—" ? P.ter : P.text,
+                        background: ci === 1 ? (isHighlight ? "rgba(217,119,6,0.08)" : P.surface) : "transparent",
+                        fontWeight: ci === 1 ? 600 : 400,
+                      }}>{v}</div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -577,7 +581,7 @@ const FAQS = [
 function FAQ() {
   const [open, setOpen] = useState(0);
   return (
-    <section style={{ padding: "120px 32px", background: P.bg }}>
+    <section data-mv-section style={{ padding: "120px 32px", background: P.bg }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <div className="p-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 16 }}>
           <MonoTag border={false}>05 · faq</MonoTag>
@@ -585,8 +589,8 @@ function FAQ() {
           <span style={{ fontFamily: P.mono, fontSize: 10.5, color: P.sec }}>still have a q? → hi@merchiva.app</span>
         </div>
         <h2 className="p-reveal" data-d="1" style={{
-          margin: "0 0 48px", fontSize: "clamp(36px, 5vw, 56px)", fontWeight: 600,
-          letterSpacing: -1.6, lineHeight: 1.04, color: P.ink, textWrap: "balance" as never,
+          margin: "0 0 40px", fontSize: "clamp(30px, 5vw, 56px)", fontWeight: 600,
+          letterSpacing: -1.4, lineHeight: 1.04, color: P.ink, textWrap: "balance" as never,
         }}>The honest answers.</h2>
         <div className="p-reveal" data-d="2" style={{ borderTop: `1px solid ${P.border}` }}>
           {FAQS.map((f, i) => {
@@ -609,7 +613,7 @@ function FAQ() {
                 </button>
                 <div style={{ display: "grid", gridTemplateRows: isOpen ? "1fr" : "0fr", transition: "grid-template-rows 380ms cubic-bezier(.2,.8,.2,1)" }}>
                   <div style={{ overflow: "hidden" }}>
-                    <div style={{ paddingLeft: 52, paddingRight: 46, paddingBottom: 22, fontSize: 15, lineHeight: 1.6, color: P.text2, textWrap: "pretty" as never }}>
+                    <div className="mv-faq-body" style={{ paddingLeft: 52, paddingRight: 46, paddingBottom: 22, fontSize: 15, lineHeight: 1.6, color: P.text2, textWrap: "pretty" as never }}>
                       {f.a}
                     </div>
                   </div>
@@ -635,7 +639,7 @@ function Trust() {
     { tag: "G4", title: "Data portability", body: "CSV + JSON export, every day, every plan." },
   ];
   return (
-    <section style={{ padding: "100px 32px", background: P.bg, borderTop: `1px solid ${P.border}` }}>
+    <section data-mv-section style={{ padding: "100px 32px", background: P.bg, borderTop: `1px solid ${P.border}` }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="p-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 16 }}>
           <MonoTag border={false}>06 · guarantees</MonoTag>
@@ -643,10 +647,10 @@ function Trust() {
           <span style={{ fontFamily: P.mono, fontSize: 10.5, color: P.sec }}>in writing · every contract</span>
         </div>
         <h2 className="p-reveal" data-d="1" style={{
-          margin: "0 0 56px", fontSize: "clamp(32px, 4.5vw, 52px)", fontWeight: 600,
-          letterSpacing: -1.4, lineHeight: 1.06, color: P.ink, maxWidth: 760, textWrap: "balance" as never,
+          margin: "0 0 40px", fontSize: "clamp(28px, 4.5vw, 52px)", fontWeight: 600,
+          letterSpacing: -1.2, lineHeight: 1.06, color: P.ink, maxWidth: 760, textWrap: "balance" as never,
         }}>Four promises. <span style={{ color: P.ter }}>Real ones.</span></h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+        <div data-mv-stack-2 style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
           {guarantees.map((g, i) => (
             <div key={g.tag} className="p-reveal" data-d={String((i % 4) + 1)} style={{
               padding: 24, background: P.paper, border: `1px solid ${P.border}`, borderRadius: 4,
@@ -673,20 +677,20 @@ function Trust() {
 
 function CTAFooter() {
   return (
-    <section id="start" style={{ padding: "120px 32px 80px", background: P.bg, position: "relative", overflow: "hidden" }}>
+    <section id="start" data-mv-section style={{ padding: "120px 32px 80px", background: P.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative" }}>
         <div style={{ position: "relative", textAlign: "center" }}>
           <div className="p-reveal" style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
             <NotchM size={48} fg={P.ink} />
           </div>
-          <h2 className="p-reveal" data-d="1" style={{
+          <h2 className="p-reveal" data-d="1" data-mv-hero-h1 style={{
             margin: 0, fontSize: "clamp(56px, 12vw, 180px)", fontWeight: 600,
             letterSpacing: "-0.06em", lineHeight: 0.94, color: P.ink, textWrap: "balance" as never,
           }}>try it<br />for thirty days.</h2>
-          <p className="p-reveal" data-d="2" style={{ margin: "32px auto 0", maxWidth: 600, fontSize: 18, color: P.text3, lineHeight: 1.5, textWrap: "pretty" as never }}>
+          <p className="p-reveal" data-d="2" style={{ margin: "28px auto 0", maxWidth: 600, fontSize: 17, color: P.text3, lineHeight: 1.5, textWrap: "pretty" as never }}>
             Connect your POS in two minutes. Get your first forecast in seven days. Cancel any time, full refund.
           </p>
-          <div className="p-reveal" data-d="3" style={{ marginTop: 40, display: "flex", justifyContent: "center", gap: 12 }}>
+          <div className="p-reveal" data-d="3" data-mv-cta-row style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
             <Link href="/signup" style={{
               display: "inline-flex", alignItems: "center", gap: 10,
               padding: "14px 22px", borderRadius: 4,
