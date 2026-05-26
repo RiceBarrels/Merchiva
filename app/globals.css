@@ -466,6 +466,28 @@ html.mobile-device label {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+/* Vertical progress fill for the product-demo tab rail */
+@keyframes mv-fill-v {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+/* Product demo vertical tab rail: turns into a horizontal scroller below the
+   lg breakpoint so it sits above the phone instead of consuming half the
+   screen as a tall column. */
+@media (max-width: 1023px) {
+  .mv-landing .mv-product-tabs {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .mv-landing .mv-product-tabs::-webkit-scrollbar { display: none; }
+  .mv-landing .mv-product-tabs .mv-product-tab {
+    min-width: 150px;
+    flex-shrink: 0;
+  }
+}
 
 /* Quill editor — custom UI; only the editor surface is styled, toolbar is React */
 .merchiva-quill .ql-container {

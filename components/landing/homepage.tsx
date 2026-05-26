@@ -1546,86 +1546,142 @@ function LiveDashboard() {
           </h2>
         </div>
 
-        {/* Tabs */}
+        {/* Vertical tabs + iPhone */}
         <div
           className="mv-reveal"
           data-d="2"
+          data-mv-stack-lg
           style={{
-            display: "flex",
-            gap: 0,
+            display: "grid",
+            gridTemplateColumns: "240px 1fr",
+            gap: 32,
             marginTop: 40,
-            borderTop: `1px solid ${C.border}`,
-            borderBottom: `1px solid ${C.border}`,
+            alignItems: "start",
           }}
         >
-          {VIEWS.map((v, i) => {
-            const on = i === active;
-            return (
-              <button
-                key={v.id}
-                onClick={() => {
-                  setActive(i);
-                  setPaused(true);
-                }}
-                onMouseEnter={() => setPaused(true)}
-                onMouseLeave={() => setPaused(false)}
-                style={{
-                  flex: 1,
-                  padding: "16px 18px",
-                  textAlign: "left",
-                  background: on ? C.paper : "transparent",
-                  border: "none",
-                  borderRight: i < VIEWS.length - 1 ? `1px solid ${C.border}` : "none",
-                  cursor: "pointer",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: C.mono, fontSize: 14, color: on ? C.ink : C.ter }}>{v.icon}</span>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: on ? C.ink : C.text3, letterSpacing: -0.2 }}>
-                    {v.label}
-                  </span>
-                </div>
-                <div style={{ fontFamily: C.mono, fontSize: 10, color: C.sec, marginTop: 4 }}>{v.tag}</div>
-                {on && (
-                  <div style={{ position: "absolute", left: 0, right: 0, bottom: -1, height: 2, background: C.ink }} />
-                )}
-                {on && !paused && (
+          {/* Vertical tab rail */}
+          <div
+            className="mv-product-tabs"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              padding: 6,
+              background: C.paper,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+            }}
+          >
+            {VIEWS.map((v, i) => {
+              const on = i === active;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => {
+                    setActive(i);
+                    setPaused(true);
+                  }}
+                  onMouseEnter={() => setPaused(true)}
+                  onMouseLeave={() => setPaused(false)}
+                  className="mv-product-tab"
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    gap: 4,
+                    padding: "11px 12px 11px 18px",
+                    textAlign: "left",
+                    background: on ? C.surface : "transparent",
+                    border: "none",
+                    borderRadius: 5,
+                    cursor: "pointer",
+                    transition: "background 200ms",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Active indicator (left bar) */}
+                  {on && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 6,
+                        bottom: 6,
+                        width: 3,
+                        borderRadius: 99,
+                        background: C.ink,
+                      }}
+                    />
+                  )}
+                  {/* Auto-cycle progress fill — top→bottom, restarts on tab change */}
+                  {on && !paused && (
+                    <span
+                      aria-hidden
+                      key={`fill-${i}`}
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 6,
+                        width: 3,
+                        height: "calc(100% - 12px)",
+                        borderRadius: 99,
+                        background: C.accent,
+                        transformOrigin: "top",
+                        animation: "mv-fill-v 4.5s linear",
+                      }}
+                    />
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontFamily: C.mono, fontSize: 14, color: on ? C.ink : C.ter, lineHeight: 1 }}>
+                      {v.icon}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 13.5,
+                        fontWeight: 600,
+                        color: on ? C.ink : C.text3,
+                        letterSpacing: -0.2,
+                      }}
+                    >
+                      {v.label}
+                    </span>
+                  </div>
                   <div
                     style={{
-                      position: "absolute",
-                      left: 0,
-                      top: 0,
-                      height: 2,
-                      background: C.accent,
-                      width: "100%",
-                      transformOrigin: "left",
-                      animation: "mv-shimmer 4.5s linear",
+                      fontFamily: C.mono,
+                      fontSize: 10,
+                      color: on ? C.text3 : C.sec,
+                      paddingLeft: 22,
+                      letterSpacing: 0.2,
                     }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
+                  >
+                    {v.tag}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
-        {/* iPhone */}
-        <div className="mv-reveal" data-d="3" style={{ marginTop: 32, position: "relative" }}>
-          <IPhoneShell activeView={active} tx={tx} ty={ty}>
-            <div
-              key={active}
-              style={{
-                animation: "mv-fade-up 480ms cubic-bezier(.2,.8,.2,1) both",
-                height: "100%",
-              }}
-            >
-              {active === 0 && <ViewForecast />}
-              {active === 1 && <ViewReorder />}
-              {active === 2 && <ViewInventory />}
-              {active === 3 && <ViewSales />}
-            </div>
-          </IPhoneShell>
+          {/* iPhone */}
+          <div className="mv-reveal" data-d="3" style={{ position: "relative" }}>
+            <IPhoneShell activeView={active} tx={tx} ty={ty}>
+              <div
+                key={active}
+                style={{
+                  animation: "mv-fade-up 480ms cubic-bezier(.2,.8,.2,1) both",
+                  height: "100%",
+                }}
+              >
+                {active === 0 && <ViewForecast />}
+                {active === 1 && <ViewReorder />}
+                {active === 2 && <ViewInventory />}
+                {active === 3 && <ViewSales />}
+              </div>
+            </IPhoneShell>
+          </div>
         </div>
       </div>
     </section>
