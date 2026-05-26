@@ -420,15 +420,23 @@ html.mobile-device label {
     padding-right: 4px !important;
     font-size: 14px !important;
   }
-  /* Homepage product demo window: let the inner mockup scroll horizontally
-     instead of clipping its fixed-pixel tables on mobile. */
-  .mv-landing .mv-dashboard-window {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
-  }
-  .mv-landing .mv-dashboard-inner {
-    min-width: 640px;
-  }
+}
+
+/* iPhone product demo: hide the horizontal scrollbar inside the phone screen
+   (the dashboard mockup is wider than the phone viewport, so it scrolls). */
+.mv-landing .mv-phone-screen {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.mv-landing .mv-phone-screen::-webkit-scrollbar { display: none; }
+
+@keyframes mv-island-in {
+  0% { opacity: 0; transform: translateY(4px) scale(0.96); filter: blur(2px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes mv-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.55; }
 }
 
 /* Quill editor — custom UI; only the editor surface is styled, toolbar is React */

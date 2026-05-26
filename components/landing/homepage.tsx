@@ -1174,6 +1174,339 @@ function ViewSales() {
   );
 }
 
+// ─── iPhone shell + Dynamic Island ──────────────────────────
+
+function PhoneIcon({ kind }: { kind: "trend" | "cloud" | "box" | "check" | "bar" | "dot" }) {
+  const stroke = "currentColor";
+  switch (kind) {
+    case "trend":
+      return (
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M2 12 L7 7 L10 9 L14 4" stroke={stroke} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M10 4 H14 V8" stroke={stroke} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "cloud":
+      return (
+        <svg width="13" height="11" viewBox="0 0 18 14" fill="none" aria-hidden>
+          <path d="M5 11 a3 3 0 0 1 -0.5 -6 a4.5 4.5 0 0 1 8.5 -0.5 a3 3 0 0 1 0 6.5 z" stroke={stroke} strokeWidth="1.4" strokeLinejoin="round" />
+          <path d="M6 12.5 V13.5 M9.5 12.5 V13.5 M13 12.5 V13.5" stroke={stroke} strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      );
+    case "box":
+      return (
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <rect x="2.5" y="3" width="11" height="10" rx="1" stroke={stroke} strokeWidth="1.4" />
+          <path d="M2.5 6 H13.5 M8 3 V13" stroke={stroke} strokeWidth="1.4" />
+        </svg>
+      );
+    case "check":
+      return (
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M3 8 L7 12 L13 4" stroke={stroke} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      );
+    case "bar":
+      return (
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden>
+          <path d="M3 13 V8 M7.5 13 V5 M12 13 V10" stroke={stroke} strokeWidth="1.9" strokeLinecap="round" />
+        </svg>
+      );
+    case "dot":
+      return <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: 99, background: "currentColor" }} />;
+  }
+}
+
+const ISLAND_MESSAGES: { icon: "trend" | "cloud" | "box" | "check" | "bar" | "dot"; title: string; sub: string; accent: string }[][] = [
+  // forecast
+  [
+    { icon: "trend", title: "628L predicted", sub: "next 14d · 87% conf", accent: "#34d399" },
+    { icon: "cloud", title: "Rain → +18%", sub: "iced drinks · Wed", accent: "#60a5fa" },
+  ],
+  // reorder
+  [
+    { icon: "box", title: "Reorder by May 14", sub: "12 SKUs · oat milk", accent: "#fbbf24" },
+    { icon: "check", title: "PO #4812 sent", sub: "Pacific · 23 cases", accent: "#34d399" },
+  ],
+  // inventory
+  [
+    { icon: "box", title: "Cups: 2.1 days left", sub: "ETA Thu · 4 cases", accent: "#fbbf24" },
+    { icon: "dot", title: "Stock OK · 92 SKUs", sub: "8 below threshold", accent: "#34d399" },
+  ],
+  // sales
+  [
+    { icon: "trend", title: "+12% vs last week", sub: "Today · $4,820", accent: "#34d399" },
+    { icon: "bar", title: "Peak: 10–11 AM", sub: "84 orders / hr", accent: "#60a5fa" },
+  ],
+];
+
+function DynamicIsland({ activeView }: { activeView: number }) {
+  const messages = ISLAND_MESSAGES[activeView] ?? [];
+  const [idx, setIdx] = useState(0);
+  const [phase, setPhase] = useState<"collapsed" | "open">("collapsed");
+
+  // Open shortly after mount / view change, then cycle messages
+  useEffect(() => {
+    if (messages.length === 0) return;
+    setIdx(0);
+    setPhase("collapsed");
+    const openTo = setTimeout(() => setPhase("open"), 380);
+
+    const cycle = setInterval(() => {
+      // collapse → swap content → reopen
+      setPhase("collapsed");
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % messages.length);
+        setPhase("open");
+      }, 380);
+    }, 3600);
+
+    return () => {
+      clearTimeout(openTo);
+      clearInterval(cycle);
+    };
+  }, [activeView, messages.length]);
+
+  const m = messages[idx];
+  const open = phase === "open" && !!m;
+
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: 9,
+        left: "50%",
+        transform: "translateX(-50%)",
+        height: open ? 36 : 28,
+        width: open ? 224 : 104,
+        background: "#000",
+        borderRadius: 999,
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        paddingInline: open ? 10 : 0,
+        overflow: "hidden",
+        color: "#fafaf9",
+        boxShadow: "inset 0 0 0 0.5px rgba(255,255,255,0.05)",
+        transition:
+          "width 520ms cubic-bezier(.22,.9,.22,1), height 520ms cubic-bezier(.22,.9,.22,1), padding-inline 520ms cubic-bezier(.22,.9,.22,1)",
+        willChange: "width, height",
+        zIndex: 6,
+      }}
+    >
+      {open && m && (
+        <div
+          key={idx}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            width: "100%",
+            animation: "mv-island-in 460ms cubic-bezier(.2,.8,.25,1) both",
+          }}
+        >
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 99,
+              background: m.accent,
+              color: "#0c0a09",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <PhoneIcon kind={m.icon} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: -0.15,
+                lineHeight: 1.05,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {m.title}
+            </div>
+            <div
+              style={{
+                fontSize: 9,
+                color: "rgba(255,255,255,0.55)",
+                fontFamily: C.mono,
+                letterSpacing: 0.2,
+                lineHeight: 1.05,
+                marginTop: 2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {m.sub}
+            </div>
+          </div>
+          <span
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: 99,
+              background: m.accent,
+              flexShrink: 0,
+              boxShadow: `0 0 8px ${m.accent}`,
+              animation: "mv-pulse 1.6s ease-in-out infinite",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IPhoneShell({
+  children,
+  activeView,
+  tx,
+  ty,
+}: {
+  children: React.ReactNode;
+  activeView: number;
+  tx: number;
+  ty: number;
+}) {
+  return (
+    <div
+      className="mv-phone"
+      style={{
+        width: "100%",
+        maxWidth: 400,
+        margin: "0 auto",
+        position: "relative",
+        transform: `perspective(1400px) rotateY(${tx * 0.3}deg) rotateX(${ty * 0.3}deg)`,
+        transformStyle: "preserve-3d",
+        transition: "transform 220ms cubic-bezier(.2,.8,.2,1)",
+      }}
+    >
+      {/* outer titanium body */}
+      <div
+        style={{
+          padding: 10,
+          borderRadius: 52,
+          background:
+            "linear-gradient(160deg, #1c1917 0%, #0c0a09 55%, #1c1917 100%)",
+          boxShadow:
+            "0 40px 80px -30px rgba(28,25,23,0.45), 0 14px 30px -16px rgba(28,25,23,0.28), inset 0 1px 0 rgba(255,255,255,0.04), inset 0 0 0 1px #1c1917",
+          position: "relative",
+        }}
+      >
+        {/* side buttons */}
+        <span style={{ position: "absolute", left: -2, top: 96, width: 3, height: 26, borderRadius: 2, background: "#0c0a09" }} />
+        <span style={{ position: "absolute", left: -2, top: 138, width: 3, height: 48, borderRadius: 2, background: "#0c0a09" }} />
+        <span style={{ position: "absolute", left: -2, top: 196, width: 3, height: 48, borderRadius: 2, background: "#0c0a09" }} />
+        <span style={{ position: "absolute", right: -2, top: 138, width: 3, height: 72, borderRadius: 2, background: "#0c0a09" }} />
+
+        {/* screen */}
+        <div
+          style={{
+            borderRadius: 42,
+            overflow: "hidden",
+            background: C.paper,
+            position: "relative",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)",
+          }}
+        >
+          {/* status bar */}
+          <div
+            style={{
+              position: "relative",
+              height: 52,
+              padding: "14px 26px 0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontFamily: C.sans,
+              fontSize: 13,
+              fontWeight: 600,
+              color: C.ink,
+              zIndex: 5,
+            }}
+          >
+            <span style={{ letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>9:41</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              {/* signal */}
+              <svg width="16" height="11" viewBox="0 0 16 11" aria-hidden>
+                <rect x="0" y="7" width="3" height="4" rx="0.5" fill="currentColor" />
+                <rect x="4.5" y="5" width="3" height="6" rx="0.5" fill="currentColor" />
+                <rect x="9" y="3" width="3" height="8" rx="0.5" fill="currentColor" />
+                <rect x="13.5" y="1" width="3" height="10" rx="0.5" fill="currentColor" />
+              </svg>
+              {/* wifi */}
+              <svg width="14" height="11" viewBox="0 0 16 12" fill="none" aria-hidden>
+                <path d="M1 4.3 a10 10 0 0 1 14 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M3.5 6.8 a6.4 6.4 0 0 1 9 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M6 9.3 a3 3 0 0 1 4 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <circle cx="8" cy="10.7" r="0.9" fill="currentColor" />
+              </svg>
+              {/* battery */}
+              <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                <span style={{ width: 22, height: 11, border: "1.2px solid currentColor", borderRadius: 3, padding: 1.5, display: "flex" }}>
+                  <span style={{ background: "currentColor", height: "100%", width: "80%", borderRadius: 1 }} />
+                </span>
+                <span style={{ width: 1.5, height: 4, background: "currentColor", borderRadius: 0.5, marginLeft: 1 }} />
+              </span>
+            </span>
+          </div>
+
+          {/* Dynamic Island — sits on top of the status bar */}
+          <DynamicIsland activeView={activeView} />
+
+          {/* content viewport — overlay is sibling so it doesn't scroll with content */}
+          <div style={{ position: "relative", height: 520, background: C.paper, overflow: "hidden" }}>
+            <div
+              className="mv-phone-screen"
+              style={{ height: "100%", overflowX: "auto", overflowY: "hidden" }}
+            >
+              <div className="mv-phone-screen-inner" style={{ minWidth: 640, height: "100%" }}>
+                {children}
+              </div>
+            </div>
+            {/* scan-line overlay */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
+                background: "linear-gradient(to bottom, transparent 0%, rgba(217,119,6,0.06) 50%, transparent 100%)",
+                height: 60,
+                animation: "mv-scan-y 6s ease-in-out infinite",
+              }}
+            />
+          </div>
+
+          {/* home indicator */}
+          <div
+            style={{
+              height: 26,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: C.paper,
+            }}
+          >
+            <span style={{ width: 124, height: 4, borderRadius: 99, background: C.ink, opacity: 0.85 }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LiveDashboard() {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -1277,86 +1610,22 @@ function LiveDashboard() {
           })}
         </div>
 
-        {/* Window */}
-        <div
-          className="mv-reveal"
-          data-d="3"
-          style={{
-            marginTop: 24,
-            position: "relative",
-            transform: `perspective(1400px) rotateY(${tx * 0.3}deg) rotateX(${ty * 0.3}deg)`,
-            transformStyle: "preserve-3d",
-            transition: "transform 220ms cubic-bezier(.2,.8,.2,1)",
-          }}
-        >
-          <div
-            style={{
-              background: C.paper,
-              border: `1px solid ${C.border}`,
-              borderRadius: 6,
-              boxShadow: "0 30px 80px -30px rgba(28,25,23,0.18), 0 8px 22px -12px rgba(28,25,23,0.08)",
-              overflow: "hidden",
-            }}
-          >
+        {/* iPhone */}
+        <div className="mv-reveal" data-d="3" style={{ marginTop: 32, position: "relative" }}>
+          <IPhoneShell activeView={active} tx={tx} ty={ty}>
             <div
+              key={active}
               style={{
-                height: 36,
-                borderBottom: `1px solid ${C.border}`,
-                background: C.surface,
-                display: "flex",
-                alignItems: "center",
-                padding: "0 12px",
-                gap: 6,
+                animation: "mv-fade-up 480ms cubic-bezier(.2,.8,.2,1) both",
+                height: "100%",
               }}
             >
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  style={{ width: 9, height: 9, borderRadius: 99, background: C.panel, border: `1px solid ${C.border}` }}
-                />
-              ))}
-              <div
-                style={{
-                  flex: 1,
-                  maxWidth: 360,
-                  marginLeft: 14,
-                  height: 22,
-                  borderRadius: 3,
-                  background: C.paper,
-                  border: `1px solid ${C.border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0 10px",
-                  gap: 8,
-                  fontFamily: C.mono,
-                  fontSize: 10.5,
-                  color: C.sec,
-                }}
-              >
-                <span style={{ color: C.ter }}>maple-coffee.merchiva.app</span>
-                <span style={{ color: C.text3 }}>{VIEWS[active].tag}</span>
-              </div>
-              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>{VIEWS[active].sub}</span>
+              {active === 0 && <ViewForecast />}
+              {active === 1 && <ViewReorder />}
+              {active === 2 && <ViewInventory />}
+              {active === 3 && <ViewSales />}
             </div>
-            <div className="mv-dashboard-window" style={{ height: 460, background: C.paper, position: "relative", overflow: "hidden" }}>
-              <div key={active} className="mv-dashboard-inner" style={{ animation: "mv-fade-up 480ms cubic-bezier(.2,.8,.2,1) both", height: "100%" }}>
-                {active === 0 && <ViewForecast />}
-                {active === 1 && <ViewReorder />}
-                {active === 2 && <ViewInventory />}
-                {active === 3 && <ViewSales />}
-              </div>
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  pointerEvents: "none",
-                  background: "linear-gradient(to bottom, transparent 0%, rgba(217,119,6,0.05) 50%, transparent 100%)",
-                  height: 60,
-                  animation: "mv-scan-y 6s ease-in-out infinite",
-                }}
-              />
-            </div>
-          </div>
+          </IPhoneShell>
         </div>
       </div>
     </section>
