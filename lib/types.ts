@@ -45,6 +45,7 @@ export interface OrgMember {
   email: string;
   permissions: Permissions;
   status: MemberStatus;
+  punchInCode?: string | null;
 }
 
 export interface OrgInvitation {

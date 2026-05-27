@@ -2251,7 +2251,14 @@ export function MerchivaChat({
       upcomingShifts: shifts.filter((s) => s.date > today).slice(0, 30).map((s) => ({
         id: s.id, name: s.staffName, date: s.date, start: s.startTime, end: s.endTime, type: s.shiftType,
       })),
-      team: team.map((m) => ({ id: m.id, name: m.displayName, role: m.role })),
+      team: team.map((m) => ({
+        id: m.id,
+        name: m.displayName,
+        role: m.role,
+        // `hasPunchInCode` lets Mr. Merchiva know whether to prompt the user
+        // for a code before scheduling shifts for this member.
+        hasPunchInCode: !!m.punchInCode,
+      })),
       recentSales: salesHistory.slice(-7).map((s) => ({ date: s.date, revenue: s.actual })),
       todaySales: salesHourly.map((s) => ({ hour: s.hour, revenue: s.actual })),
       products: products.slice(0, 30).map((p) => ({ id: p.id, name: p.name, price: p.price, category: p.category })),

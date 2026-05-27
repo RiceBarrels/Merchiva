@@ -269,11 +269,12 @@ export default function SetupPage() {
           try { await r.addLocation({ organizationId: orgId, name: storeName.trim() || "Main", address: address.trim(), phone: null, isDefault: true, sortOrder: 0 }); } catch {}
         }
       }
-      localStorage.setItem("isStoreSetUp", "1");
       toast.success("Setup complete!");
       router.replace("/~/dashboard");
     } catch {
-      localStorage.setItem("isStoreSetUp", "1");
+      // The setup signal lives in SpacetimeDB (settings.updatedAt > createdAt
+      // after updateSettings runs). If we got here, that reducer either
+      // succeeded or threw — the layout will retry the gate on next mount.
       toast.error("Something went wrong, but your workspace is ready.");
       router.replace("/~/dashboard");
     }

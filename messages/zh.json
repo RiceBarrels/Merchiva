@@ -1253,6 +1253,7 @@
     "weekStartsOn": "每周起始日",
     "monday": "星期一",
     "storeMachineMode": "门店专用模式",
+    "storeMachineNeedsPin": "请先设置你的 4 位打卡密码 —— 解锁本设备时会用到。",
     "restrictToStoreApps": "仅限收银、库存、打卡功能",
     "deviceName": "设备名称",
     "punchInCode": "打卡密码",

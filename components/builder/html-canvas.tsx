@@ -42,6 +42,11 @@ interface HtmlCanvasProps {
   // Selectors for which the parent wants to trigger inline text editing.
   // When this changes to a non-empty string, the iframe enters edit mode.
   editTextSelector?: string | null;
+  // Hide the Preview/Split/Code switcher (and Format/Reload buttons next to it).
+  // Used by surfaces like the design editor where the canvas lives inside a
+  // scaled fixed-size stage — Split/Code wouldn't render correctly and editing
+  // raw HTML isn't part of the design workflow.
+  hideViewToolbar?: boolean;
 }
 
 // Wrap the user's HTML body into a full document with theme CSS, a click
@@ -636,9 +641,12 @@ export function HtmlCanvas({
   customValues,
   onContextMenu,
   editTextSelector,
+  hideViewToolbar = false,
 }: HtmlCanvasProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [view, setView] = useState<"split" | "preview" | "code">("split");
+  const [view, setView] = useState<"split" | "preview" | "code">(
+    hideViewToolbar ? "preview" : "split",
+  );
   const [draftHtml, setDraftHtml] = useState(html);
   // When the iframe itself mutated the DOM (drag drop / inline text edit),
   // it already shows the new state — we MUST NOT rebuild srcDoc, or the user
@@ -801,36 +809,38 @@ export function HtmlCanvas({
   return (
     <div className="flex h-full w-full flex-col bg-muted">
       {/* View switcher */}
-      <div className="flex items-center gap-1 border-b border-border bg-background px-2 py-1.5 shrink-0">
-        <ViewButton active={view === "preview"} onClick={() => setView("preview")} icon={<Eye className="h-3.5 w-3.5" />} label="Preview" />
-        <ViewButton active={view === "split"} onClick={() => setView("split")} icon={<MousePointer2 className="h-3.5 w-3.5" />} label="Split" />
-        <ViewButton active={view === "code"} onClick={() => setView("code")} icon={<Code2 className="h-3.5 w-3.5" />} label="Code" />
-        <div className="flex-1" />
-        {selectedSelector && (
-          <span className="font-mono text-[10.5px] text-muted-foreground truncate max-w-[280px]" title={selectedSelector}>
-            {selectedSelector}
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            const formatted = prettyPrintHtml(draftHtml);
-            if (formatted !== draftHtml) setDraftHtml(formatted);
-          }}
-          className="h-6 w-6 rounded-[0.3rem] hover:bg-muted inline-flex items-center justify-center text-muted-foreground"
-          title="Format HTML"
-        >
-          <AlignLeft className="h-3 w-3" />
-        </button>
-        <button
-          type="button"
-          onClick={reload}
-          className="h-6 w-6 rounded-[0.3rem] hover:bg-muted inline-flex items-center justify-center text-muted-foreground"
-          title="Reload preview"
-        >
-          <RefreshCw className="h-3 w-3" />
-        </button>
-      </div>
+      {!hideViewToolbar && (
+        <div className="flex items-center gap-1 border-b border-border bg-background px-2 py-1.5 shrink-0">
+          <ViewButton active={view === "preview"} onClick={() => setView("preview")} icon={<Eye className="h-3.5 w-3.5" />} label="Preview" />
+          <ViewButton active={view === "split"} onClick={() => setView("split")} icon={<MousePointer2 className="h-3.5 w-3.5" />} label="Split" />
+          <ViewButton active={view === "code"} onClick={() => setView("code")} icon={<Code2 className="h-3.5 w-3.5" />} label="Code" />
+          <div className="flex-1" />
+          {selectedSelector && (
+            <span className="font-mono text-[10.5px] text-muted-foreground truncate max-w-[280px]" title={selectedSelector}>
+              {selectedSelector}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const formatted = prettyPrintHtml(draftHtml);
+              if (formatted !== draftHtml) setDraftHtml(formatted);
+            }}
+            className="h-6 w-6 rounded-[0.3rem] hover:bg-muted inline-flex items-center justify-center text-muted-foreground"
+            title="Format HTML"
+          >
+            <AlignLeft className="h-3 w-3" />
+          </button>
+          <button
+            type="button"
+            onClick={reload}
+            className="h-6 w-6 rounded-[0.3rem] hover:bg-muted inline-flex items-center justify-center text-muted-foreground"
+            title="Reload preview"
+          >
+            <RefreshCw className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {/* Split body: preview + code (resizable when in split mode) */}
       <div className="flex-1 min-h-0">

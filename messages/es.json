@@ -1253,6 +1253,7 @@
     "weekStartsOn": "La semana empieza el",
     "monday": "Lunes",
     "storeMachineMode": "Modo de máquina de tienda",
+    "storeMachineNeedsPin": "Configura primero tu código de fichaje de 4 dígitos — lo necesitarás para desbloquear el dispositivo.",
     "restrictToStoreApps": "Limitar a TPV, Inventario, Fichaje",
     "deviceName": "Nombre del dispositivo",
     "punchInCode": "Código de fichaje",

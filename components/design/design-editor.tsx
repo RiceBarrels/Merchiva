@@ -10,7 +10,6 @@ import {
   Maximize2,
   Palette,
   Redo2,
-  Sparkles,
   Undo2,
   ZoomIn,
   ZoomOut,
@@ -21,15 +20,12 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   HtmlCanvas,
   type HtmlSelectionInfo,
 } from "@/components/builder/html-canvas";
 import { HtmlElementPalette } from "@/components/builder/html-element-palette";
 import { HtmlPropertiesPanel } from "@/components/builder/html-properties-panel";
-import { DomTree } from "@/components/builder/dom-tree";
 import { prettyPrintHtml } from "@/lib/builder/html-format";
 import { updateDesign } from "@/lib/spacetimedb/actions";
 import { DESIGN_PRESETS, findPreset, type DesignPreset } from "@/lib/design/presets";
@@ -37,6 +33,7 @@ import { hapticLight } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
 import type { Design } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { DesignMerchivaChat } from "./design-merchiva-chat";
 
 interface DesignEditorProps {
   design: Design;
@@ -124,12 +121,6 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
   const [presetMenu, setPresetMenu] = useState(false);
   const [nameEditing, setNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(design.name);
-
-  // ── AI state ──────────────────────────────────────────────────────────────
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiHistory, setAiHistory] = useState<{ prompt: string; ok: boolean }[]>([]);
 
   // Reset when a different design loads (e.g. route param change).
   useEffect(() => {
@@ -389,42 +380,64 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [undo, redo]);
 
-  // ── AI generation ─────────────────────────────────────────────────────────
-  const generateWithAi = useCallback(async () => {
-    const prompt = aiPrompt.trim();
-    if (!prompt) return;
-    setAiBusy(true);
-    setAiError(null);
-    try {
-      const res = await fetch("/api/design/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          width: design.width,
-          height: design.height,
-          existingHtml: html,
-          designName: design.name,
-        }),
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || `HTTP ${res.status}`);
+  // ── Mr. Merchiva chat → canvas action dispatch ────────────────────────────
+  // The chat component sends one of: set | replace | append | delete actions.
+  // We mutate the html state in place; this respects undo/redo because setHtml
+  // pushes onto the undo stack.
+  const htmlRef = useRef(html);
+  htmlRef.current = html;
+
+  const applyChatAction = useCallback(
+    (action: { action: string; html?: string; selector?: string }) => {
+      const kind = action.action;
+      if (kind === "set" && typeof action.html === "string") {
+        setHtml(prettyPrintHtml(action.html));
+        return;
       }
-      const data = await res.json();
-      if (typeof data.html !== "string") throw new Error("Invalid response — no html field");
-      const cleaned = data.html.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, "$1");
-      setHtml(prettyPrintHtml(cleaned));
-      setAiHistory((prev) => [...prev, { prompt, ok: true }]);
-      setAiPrompt("");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setAiError(msg);
-      setAiHistory((prev) => [...prev, { prompt, ok: false }]);
-    } finally {
-      setAiBusy(false);
-    }
-  }, [aiPrompt, design.width, design.height, design.name, html, setHtml]);
+      if (kind === "append" && typeof action.html === "string") {
+        setHtml((cur) => prettyPrintHtml(`${cur}\n${action.html}`));
+        return;
+      }
+      if (kind === "replace" && action.selector && typeof action.html === "string") {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(
+            `<!DOCTYPE html><html><body><div id="__merchiva_root">${htmlRef.current}</div></body></html>`,
+            "text/html",
+          );
+          const root = doc.getElementById("__merchiva_root");
+          const target = root?.querySelector(action.selector);
+          if (root && target) {
+            const wrapper = doc.createElement("div");
+            wrapper.innerHTML = action.html;
+            while (wrapper.firstChild) target.parentNode?.insertBefore(wrapper.firstChild, target);
+            target.remove();
+            setHtml(prettyPrintHtml(root.innerHTML));
+          }
+        } catch (err) {
+          console.error("[design chat] replace failed:", err);
+        }
+        return;
+      }
+      if (kind === "delete" && action.selector) {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(
+            `<!DOCTYPE html><html><body><div id="__merchiva_root">${htmlRef.current}</div></body></html>`,
+            "text/html",
+          );
+          const root = doc.getElementById("__merchiva_root");
+          root?.querySelectorAll(action.selector).forEach((el) => el.remove());
+          if (root) setHtml(prettyPrintHtml(root.innerHTML));
+        } catch (err) {
+          console.error("[design chat] delete failed:", err);
+        }
+        return;
+      }
+      console.warn("[design chat] unknown action:", kind);
+    },
+    [setHtml],
+  );
 
   // ── Preset / size handling ────────────────────────────────────────────────
   const applyPreset = useCallback((p: DesignPreset) => {
@@ -478,9 +491,11 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
   const currentPreset = findPreset(design.preset);
 
   // Persist 3-panel layout across reloads
+  // Bumped suffix when the 3-panel layout became a 2-panel layout — old
+  // stored layouts would misapply size constraints across the wrong ids.
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
-    id: "merchiva-design-layout",
-    panelIds: ["design-left", "design-canvas", "design-right"],
+    id: "merchiva-design-layout-v2",
+    panelIds: ["design-canvas", "design-right"],
   });
 
   function formatSavedAt(ts: number): string {
@@ -591,47 +606,6 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
     </div>
   );
 
-  // ── Left panel: design header + DOM tree (layers) ─────────────────────────
-  const leftPanel = (
-    <div className="flex h-full w-full flex-col border-r border-border bg-background text-foreground">
-      <div className="space-y-2 p-3">
-        <div className="flex items-center gap-2">
-          <Palette className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <span className="truncate text-sm font-medium text-foreground">{design.name}</span>
-        </div>
-        <p className="text-xs text-muted-foreground font-mono">
-          {currentPreset ? t(`design.preset.${currentPreset.labelKey}`) : t("design.preset.custom")} · {design.width} × {design.height}
-        </p>
-        <Button
-          onClick={() => setRightPanel("ai")}
-          size="sm"
-          variant="secondary"
-          className="w-full text-xs font-medium"
-        >
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-          {t("design.editor.generate")}
-        </Button>
-      </div>
-
-      <Separator />
-
-      <div className="flex-1 overflow-auto">
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t("design.editor.layers")}
-          </span>
-        </div>
-        <div className="px-2 pb-2">
-          <DomTree
-            html={html}
-            selectedSelector={selected?.selector ?? null}
-            onSelect={setSelected}
-          />
-        </div>
-      </div>
-    </div>
-  );
-
   // ── Canvas panel: palette + scaled fixed-size stage ───────────────────────
   const canvasPanel = (
     <div className="relative flex h-full w-full flex-col overflow-hidden">
@@ -687,6 +661,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
               selectedSelector={selected?.selector ?? null}
               onChange={setHtml}
               onSelect={setSelected}
+              hideViewToolbar
             />
           </div>
         </div>
@@ -694,7 +669,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
     </div>
   );
 
-  // ── Right panel: Properties / AI tabs ─────────────────────────────────────
+  // ── Right panel: Properties / Mr. Merchiva tabs ───────────────────────────
   const rightSide = (
     <div className="flex h-full w-full flex-col border-l border-border bg-background">
       <div className="flex border-b border-border">
@@ -714,23 +689,20 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
           )}
           onClick={() => setRightPanel("ai")}
         >
-          {t("design.ai.title")}
+          Mr. Merchiva
         </button>
       </div>
       <div className="flex-1 overflow-hidden">
         {rightPanel === "properties" ? (
           <HtmlPropertiesPanel selected={selected} html={html} onHtmlChange={setHtml} />
         ) : (
-          <AiPanel
-            prompt={aiPrompt}
-            setPrompt={setAiPrompt}
-            busy={aiBusy}
-            error={aiError}
-            history={aiHistory}
-            onGenerate={generateWithAi}
+          <DesignMerchivaChat
+            designId={design.id}
+            designName={design.name}
             width={design.width}
             height={design.height}
-            t={t}
+            getHtml={() => htmlRef.current}
+            onApply={applyChatAction}
           />
         )}
       </div>
@@ -746,103 +718,14 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
         onLayoutChanged={onLayoutChanged}
         className="flex-1 overflow-hidden"
       >
-        <ResizablePanel id="design-left" defaultSize="17%" minSize="10%" maxSize="35%">
-          {leftPanel}
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel id="design-canvas" defaultSize="58%" minSize="30%">
+        <ResizablePanel id="design-canvas" defaultSize="72%" minSize="40%">
           {canvasPanel}
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel id="design-right" defaultSize="25%" minSize="16%" maxSize="50%">
+        <ResizablePanel id="design-right" defaultSize="28%" minSize="18%" maxSize="55%">
           {rightSide}
         </ResizablePanel>
       </ResizablePanelGroup>
-    </div>
-  );
-}
-
-// ─── Right-panel AI tab ─────────────────────────────────────────────────────
-
-function AiPanel({
-  prompt,
-  setPrompt,
-  busy,
-  error,
-  history,
-  onGenerate,
-  width,
-  height,
-  t,
-}: {
-  prompt: string;
-  setPrompt: (v: string) => void;
-  busy: boolean;
-  error: string | null;
-  history: { prompt: string; ok: boolean }[];
-  onGenerate: () => void;
-  width: number;
-  height: number;
-  t: (k: string) => string;
-}) {
-  return (
-    <div className="flex h-full w-full flex-col">
-      <div className="border-b border-border px-3 py-2.5">
-        <div className="flex items-center gap-1.5 text-xs font-medium">
-          <Sparkles className="h-3.5 w-3.5" /> {t("design.ai.title")}
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-0.5">
-          {t("design.ai.subtitle")} <span className="font-mono">{width} × {height}</span>
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-        {history.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground italic">{t("design.ai.empty")}</p>
-        ) : (
-          history.map((h, i) => (
-            <div
-              key={i}
-              className={cn(
-                "rounded-[0.3rem] border px-2 py-1.5 text-[11px]",
-                h.ok ? "border-border bg-muted/30" : "border-destructive/40 bg-destructive/5",
-              )}
-            >
-              <div className="text-muted-foreground line-clamp-3">{h.prompt}</div>
-              {!h.ok && <div className="text-destructive mt-0.5">{t("design.ai.failed")}</div>}
-            </div>
-          ))
-        )}
-        {error && (
-          <p className="text-[11px] text-destructive rounded-[0.3rem] bg-destructive/10 px-2 py-1.5">{error}</p>
-        )}
-      </div>
-
-      <div className="border-t border-border p-2 space-y-2 shrink-0">
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
-          placeholder={t("design.ai.placeholder")}
-          className="w-full rounded-[0.3rem] border border-border bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring resize-y"
-          disabled={busy}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !busy && prompt.trim()) {
-              e.preventDefault();
-              onGenerate();
-            }
-          }}
-        />
-        <Button
-          onClick={onGenerate}
-          disabled={busy || !prompt.trim()}
-          size="sm"
-          className="w-full text-xs"
-        >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
-          {busy ? t("design.ai.generating") : t("design.ai.generate")}
-        </Button>
-      </div>
     </div>
   );
 }

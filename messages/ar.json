@@ -1253,6 +1253,7 @@
     "weekStartsOn": "بداية الأسبوع",
     "monday": "الاثنين",
     "storeMachineMode": "وضع جهاز المتجر",
+    "storeMachineNeedsPin": "اضبط رمز الحضور المكوّن من 4 أرقام أولًا — ستحتاجه لفتح الجهاز.",
     "restrictToStoreApps": "تقييد على نقطة البيع والمخزون وتسجيل الحضور",
     "deviceName": "اسم الجهاز",
     "punchInCode": "رمز تسجيل الحضور",

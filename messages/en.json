@@ -1253,6 +1253,7 @@
     "weekStartsOn": "Week starts on",
     "monday": "Monday",
     "storeMachineMode": "Store machine mode",
+    "storeMachineNeedsPin": "Set your 4-digit punch-in code first — you'll need it to unlock the device.",
     "restrictToStoreApps": "Restrict to POS, Inventory, Punch-in",
     "deviceName": "Device name",
     "punchInCode": "Punch-in code",

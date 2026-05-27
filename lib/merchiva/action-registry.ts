@@ -34,6 +34,7 @@ import {
   addTrainingObjective,
   updateTrainingObjective,
   deleteTrainingObjective,
+  setPunchInCode,
 } from "@/lib/spacetimedb/actions";
 import { getConnection } from "@/lib/spacetimedb/client";
 
@@ -349,6 +350,39 @@ register({
     await deleteStaffMember(String(p.staffMemberId));
   },
   toastMessage: () => "Staff member removed",
+});
+
+// Set a 4-digit punch-in code for an org member. Required before that person
+// can clock in at the store on the punch-in screen. If a team member shows
+// `hasPunchInCode: false` in LIVE STORE DATA, ASK THE USER what code to set —
+// don't pick one yourself.
+register({
+  name: "setPunchInCode",
+  description:
+    "Set or change a team member's 4-digit punch-in code (clock-in PIN). If the user hasn't picked one yet, ASK what code they want before calling this — don't invent one. Codes must be unique within the org.",
+  category: "staffing",
+  parameters: {
+    memberId: {
+      type: "string",
+      required: true,
+      description: "org_member id from LIVE STORE DATA team[].id",
+    },
+    code: {
+      type: "string",
+      required: true,
+      description: "Exactly 4 digits, e.g. \"1234\". Must be unique at this store.",
+    },
+  },
+  requiredPermission: { section: "team", action: "edit" },
+  riskLevel: "medium",
+  execute: async (p) => {
+    const code = String(p.code ?? "").trim();
+    if (!/^[0-9]{4}$/.test(code)) {
+      throw new Error("Punch-in code must be exactly 4 digits.");
+    }
+    await setPunchInCode(String(p.memberId ?? ""), code);
+  },
+  toastMessage: (p) => `Punch-in code set for member ${String(p.memberId ?? "")}`,
 });
 
 // ─── Roles ─────────────────────────────────────────────────────────────────────
@@ -1630,6 +1664,10 @@ export function generateActionsPrompt(): string {
 
   return `ACTIONS:
 When you want to perform an action, output a JSON block wrapped in \`\`\`action tags. The user will see an "Approve" button for medium/high risk actions.
+
+Scheduling rules:
+- Every shift you create needs at least one role in \`staffRoles\` — pick from the active \`roles\` in LIVE STORE DATA (use the exact name).
+- Before scheduling shifts for any team member whose \`hasPunchInCode\` is false in LIVE STORE DATA, STOP and ASK the user what 4-digit punch-in code they want to set for that person. Don't invent one. Once the user tells you, call \`setPunchInCode\` first, then add the shifts.
 
 Available actions:
 ${sections.join("\n\n")}

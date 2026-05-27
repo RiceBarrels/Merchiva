@@ -2175,6 +2175,15 @@ export default function SettingsPage() {
                   setExitPinDialog(true);
                   return;
                 }
+                // Enabling store-machine mode without a personal punch-in code
+                // would lock the current user out of their own device — the
+                // unlock screen only accepts a member's PIN. Ask for it first.
+                if (!myCode) {
+                  toast.info(t("settings.storeMachineNeedsPin"));
+                  setMyCodeInput("");
+                  setMyCodeDialog(true);
+                  return;
+                }
                 if (!deviceName) {
                   setDeviceNameInput("");
                   setDeviceNameDialog(true);

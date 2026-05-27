@@ -154,6 +154,12 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const stdb = useSpacetimeDB();
   const [orgMembers, membersReady] = useTable(tables.orgMember);
   const [organizations, orgsReady] = useTable(tables.organization);
+  // Settings drives the "has the user finished setup?" check below. `createOrg`
+  // seeds a settings row with createdAt === updatedAt; the setup wizard's
+  // `updateSettings` deletes+reinserts the row with a fresh `updatedAt`. Any
+  // measurable divergence between the two timestamps means the user has gone
+  // past the setup form (either via the wizard or via /~/settings later).
+  const [settingsRows, settingsReady] = useTable(tables.settings);
   const [timedOut, setTimedOut] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -262,13 +268,39 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const setupRouter = useRouter();
   const needsName = effectiveAuth ? (!effectiveAuth.memberDisplayName || !effectiveAuth.memberDisplayName.trim()) : false;
 
+  // True once the user has touched settings (setup wizard's updateSettings or
+  // any later /~/settings edit). Null while the settings table is still
+  // syncing — we hold off on the redirect until we have a definitive answer
+  // so users aren't bounced to /~/setup just because rows haven't streamed in
+  // yet. eslint-disable: ToDate exists on the SpacetimeDB Timestamp wrapper
+  // but isn't in our shared row typing.
+  const setupComplete = useMemo<boolean | null>(() => {
+    if (!effectiveAuth) return null;
+    if (!settingsReady) return null;
+    const row = settingsRows.find(
+      (r: { organizationId: string }) => r.organizationId === effectiveAuth.organizationId,
+    );
+    if (!row) return false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = row as any;
+      const createdMs = r.createdAt?.toDate?.()?.getTime?.() ?? 0;
+      const updatedMs = r.updatedAt?.toDate?.()?.getTime?.() ?? 0;
+      // 1 second tolerance — `createOrg` writes both timestamps in the same
+      // reducer call, but they can differ by sub-millisecond ticks.
+      return updatedMs - createdMs > 1000;
+    } catch {
+      return false;
+    }
+  }, [effectiveAuth, settingsReady, settingsRows]);
+
   useEffect(() => {
     if (!effectiveAuth || needsName) return;
-    if (typeof window === "undefined") return;
-    if (localStorage.getItem("isStoreSetUp") !== "1") {
+    if (setupComplete === null) return; // still loading the signal
+    if (!setupComplete) {
       setupRouter.replace("/~/setup");
     }
-  }, [effectiveAuth, needsName, setupRouter]);
+  }, [effectiveAuth, needsName, setupComplete, setupRouter]);
 
   // Still waiting for SpacetimeDB tables to sync and no cached data available
   if (!isReady && !effectiveAuth) {

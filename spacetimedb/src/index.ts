@@ -2522,21 +2522,52 @@ export const addShift = spacetimedb.reducer(
 
     // Every shift must be tied to at least one role — otherwise it can't be
     // staffed against the day's role checklist or surfaced under a role view.
+    // We also verify each role NAME exists in staff_role for this org so the
+    // AI (or a misbehaving client) can't write phantom roles that won't render
+    // on the personnel page.
     let rolesParsed: unknown[];
     try { rolesParsed = JSON.parse(args.staffRoles); } catch { rolesParsed = []; }
-    if (!Array.isArray(rolesParsed) || rolesParsed.filter((r) => typeof r === 'string' && r.trim() !== '').length === 0) {
+    const rolesRequested = (Array.isArray(rolesParsed) ? rolesParsed : [])
+      .filter((r): r is string => typeof r === 'string')
+      .map((r) => r.trim())
+      .filter((r) => r !== '');
+    if (rolesRequested.length === 0) {
       throw new Error('At least one role is required for a shift (pass staffRoles, e.g. ["barista"]).');
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orgRoles = [...ctx.db.staffRole.byOrganizationId.filter(args.organizationId)] as any[];
+    const orgRoleByLower = new Map<string, string>(
+      orgRoles.map((r) => [String(r.name).trim().toLowerCase(), String(r.name)]),
+    );
+    const canonicalRoles: string[] = [];
+    const missing: string[] = [];
+    for (const rn of rolesRequested) {
+      const canonical = orgRoleByLower.get(rn.toLowerCase());
+      if (canonical) canonicalRoles.push(canonical);
+      else missing.push(rn);
+    }
+    if (missing.length > 0) {
+      const valid = orgRoles.map((r) => String(r.name)).join(', ') || '(no roles defined yet)';
+      throw new Error(
+        `Unknown role(s) ${JSON.stringify(missing)} — use one of: ${valid}. Create the role first via addRole if it should exist.`,
+      );
     }
 
     const resolved = resolveStaffForShift(ctx, args.organizationId, args.staffName, args.memberId);
+
+    // Store the canonical (case-correct) role names so the personnel page's
+    // name match always succeeds. Also default the legacy single `staffRole`
+    // column to the first canonical role if the caller didn't pass one.
+    const canonicalRolesJson = JSON.stringify(canonicalRoles);
+    const legacyStaffRole = args.staffRole ?? canonicalRoles[0];
 
     ctx.db.shift.insert({
       id: ctx.newUuidV4(),
       organizationId: args.organizationId,
       memberId: resolved.memberId,
       staffName: resolved.name,
-      staffRole: args.staffRole,
-      staffRoles: args.staffRoles,
+      staffRole: legacyStaffRole,
+      staffRoles: canonicalRolesJson,
       date: args.date,
       shiftType: args.shiftType,
       startTime: args.startTime,

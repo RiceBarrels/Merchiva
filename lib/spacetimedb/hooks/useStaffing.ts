@@ -47,6 +47,7 @@ export function useStaffing(
           catch { return {} as Permissions; }
         })(),
         status:         r.status as OrgMember["status"],
+        punchInCode:    r.punchInCode ?? null,
       }));
   }, [rawMembers, organizationId]);
 

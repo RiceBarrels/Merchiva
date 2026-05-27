@@ -1253,6 +1253,7 @@
     "weekStartsOn": "La semaine commence le",
     "monday": "Lundi",
     "storeMachineMode": "Mode machine en magasin",
+    "storeMachineNeedsPin": "Définissez d'abord votre code de pointage à 4 chiffres — vous en aurez besoin pour déverrouiller l'appareil.",
     "restrictToStoreApps": "Limiter à Caisse, Inventaire, Pointage",
     "deviceName": "Nom de l'appareil",
     "punchInCode": "Code de pointage",

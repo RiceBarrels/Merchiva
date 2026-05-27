@@ -1253,6 +1253,7 @@
     "weekStartsOn": "सप्ताह शुरू होता है",
     "monday": "सोमवार",
     "storeMachineMode": "स्टोर मशीन मोड",
+    "storeMachineNeedsPin": "पहले अपना 4-अंकीय पंच-इन कोड सेट करें — डिवाइस अनलॉक करने के लिए इसकी ज़रूरत होगी।",
     "restrictToStoreApps": "केवल POS, इन्वेंटरी, पंच-इन तक सीमित",
     "deviceName": "डिवाइस का नाम",
     "punchInCode": "पंच-इन कोड",
