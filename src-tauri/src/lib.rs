@@ -78,7 +78,7 @@ pub fn run() {
             {
                 builder = builder
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
-                    .traffic_light_position(LogicalPosition::new(16.0, 14.0));
+                    .traffic_light_position(LogicalPosition::new(16.0, 21.0));
             }
 
             // Linux/Windows: drop decorations entirely so the React-rendered
