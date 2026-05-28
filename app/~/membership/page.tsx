@@ -2,21 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Plus,
-  Trash2,
-  Loader2,
-  ChevronDown,
-  ChevronRight,
-  Users,
-  Star,
-  Gift,
-  ShoppingBag,
-  CalendarDays,
-  X,
-  Edit2,
-  Globe,
-} from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Users, Star, Gift, ShoppingBag, CalendarDays, X, Edit2, Globe } from "lucide-react";
 import { cn, uuid } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
@@ -38,6 +24,7 @@ import type {
   SiteOrder,
   SiteBooking,
 } from "@/lib/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -369,7 +356,7 @@ function TiersTab({ siteId }: { siteId: string }) {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+    return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
   }
 
   return (
@@ -521,7 +508,7 @@ function CustomersTab({ siteId }: { siteId: string }) {
       .finally(() => setLoading(false));
   }, [siteId]);
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
 
   return (
     <div>
@@ -582,7 +569,7 @@ function OrdersTab({ siteId }: { siteId: string }) {
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
 
   return (
     <div>
@@ -647,7 +634,7 @@ function BookingsTab({ siteId }: { siteId: string }) {
     setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b));
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
 
   return (
     <div>
@@ -723,7 +710,7 @@ export default function MembershipPage() {
         <PageHeader title={t("membership.header.title")} />
         <PageTabs tabs={websiteTabs} />
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Spinner size={16} className="text-muted-foreground" />
         </div>
       </div>
     );

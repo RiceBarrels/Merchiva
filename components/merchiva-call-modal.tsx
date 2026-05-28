@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Mic, MicOff, PhoneOff, Loader2, Volume2, AlertTriangle } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Volume2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { NotchM } from "@/components/merchiva-chat-dashboard";
 import { MerchivaLogo } from "./logo";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 type CallState =
   | "idle"
@@ -654,7 +655,7 @@ export function MerchivaCallModal({
         )}
 
         {(state === "transcribing" || state === "thinking") && (
-          <Loader2 className="h-5 w-5 animate-spin text-stone-400" />
+          <Spinner size={20} className="text-stone-400" />
         )}
 
         {state === "speaking" && (

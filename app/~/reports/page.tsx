@@ -1,22 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  FileText,
-  Download,
-  Loader2,
-  DollarSign,
-  Users,
-  Package,
-  ShoppingBag,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  Target,
-  Clock,
-  BarChart3,
-  Minus,
-} from "lucide-react";
+import { FileText, Download, DollarSign, Users, Package, ShoppingBag, TrendingUp, TrendingDown, AlertTriangle, Target, Clock, BarChart3, Minus } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -53,6 +38,7 @@ import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import type { InventoryItem } from "@/lib/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Date Range Helpers ─────────────────────────────────────────────────────
 
@@ -482,7 +468,7 @@ export default function ReportsPage() {
             { label: t("nav.finances"), href: "/~/finances" },
           ]} />
           <div className="flex h-[50vh] items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Spinner size={20} className="text-muted-foreground" />
           </div>
         </div>
       </PermissionGuard>

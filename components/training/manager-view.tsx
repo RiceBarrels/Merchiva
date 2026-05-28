@@ -1,23 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowUpRight,
-  Clock,
-  Eye,
-  FileText,
-  History,
-  Link2,
-  Loader2,
-  Pencil,
-  Play,
-  Settings2,
-  ShieldCheck,
-  Upload,
-  UploadCloud,
-  Users,
-  X,
-} from "lucide-react";
+import { ArrowUpRight, Clock, Eye, FileText, History, Link2, Pencil, Play, Settings2, ShieldCheck, Upload, UploadCloud, Users, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTrainingDays, useTrainingObjectives } from "@/lib/spacetimedb/hooks";
 import {
@@ -29,6 +13,7 @@ import {
 import { useUploadThing } from "@/lib/uploadthing";
 import { QuillEditor } from "./quill-editor";
 import { DayRail, type DayRailItem } from "./day-rail";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -329,7 +314,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                 className="h-8 px-3.5 rounded-[0.3rem] bg-foreground text-background text-[12.5px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
               >
                 {busy ? (
-                  <Loader2 className="h-[13px] w-[13px] animate-spin" />
+                  <Spinner size={16} />
                 ) : (
                   <>
                     <span>Publish</span>
@@ -557,7 +542,7 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
           title="Remove"
           aria-label="Remove"
         >
-          {busy ? <Loader2 className="h-[11px] w-[11px] animate-spin" /> : <X className="h-[11px] w-[11px]" />}
+          {busy ? <Spinner size={16} /> : <X className="h-[11px] w-[11px]" />}
         </button>
       </div>
       <div className="px-2 py-1.5 border-t border-border">
@@ -666,7 +651,7 @@ function AttachmentUploadButton({
         className="h-7 px-2.5 rounded-[0.3rem] border border-border bg-background text-[11.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50"
       >
         {showBusy ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
+          <Spinner size={12} />
         ) : (
           <Upload className="h-3 w-3" strokeWidth={1.75} />
         )}{" "}

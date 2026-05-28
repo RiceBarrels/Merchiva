@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Send, Sparkles, RotateCcw } from "lucide-react";
+import { Send, Sparkles, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { prettyPrintHtml } from "@/lib/builder/html-format";
+import { Spinner } from "@/components/ui/loaders/geometric";
+import { useT } from "@/lib/i18n/context";
 
 // One conversation turn shown in the chat. `applied` is set true once the
 // returned action has been dispatched to the canvas — used to dim the bubble
@@ -42,6 +44,7 @@ export function DesignMerchivaChat({
   getHtml,
   onApply,
 }: DesignMerchivaChatProps) {
+  const t = useT();
   const storageKey = `merchiva_design_chat_${designId}`;
 
   const [messages, setMessages] = useState<DesignChatMessage[]>([]);
@@ -148,10 +151,10 @@ export function DesignMerchivaChat({
 
   const clearConversation = useCallback(() => {
     if (messages.length === 0) return;
-    if (!confirm("清空与 Mr. Merchiva 的对话？")) return;
+    if (!confirm(t("design.chat.confirmClear"))) return;
     setMessages([]);
     try { localStorage.removeItem(storageKey); } catch {}
-  }, [messages.length, storageKey]);
+  }, [messages.length, storageKey, t]);
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -170,7 +173,7 @@ export function DesignMerchivaChat({
           <button
             type="button"
             onClick={clearConversation}
-            title="清空对话"
+            title={t("design.chat.clearTitle")}
             className="h-6 w-6 rounded-[0.3rem] text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -182,11 +185,11 @@ export function DesignMerchivaChat({
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5">
         {messages.length === 0 && !sending && (
           <div className="text-[11.5px] text-muted-foreground italic px-1 leading-relaxed">
-            描述你想要的设计，或让我修改现有内容。例如：
+            {t("design.chat.intro")}
             <ul className="mt-1.5 ml-3 list-disc text-muted-foreground/80 space-y-0.5">
-              <li>做一张夏季促销海报，五折优惠</li>
-              <li>把标题改成「春季新品」</li>
-              <li>加一个底部联系方式区域</li>
+              <li>{t("design.chat.example1")}</li>
+              <li>{t("design.chat.example2")}</li>
+              <li>{t("design.chat.example3")}</li>
             </ul>
           </div>
         )}
@@ -195,8 +198,8 @@ export function DesignMerchivaChat({
         ))}
         {sending && (
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground px-1">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span>Mr. Merchiva 正在思考…</span>
+            <Spinner size={12} />
+            <span>{t("design.chat.thinking")}</span>
           </div>
         )}
       </div>
@@ -213,7 +216,7 @@ export function DesignMerchivaChat({
                 send();
               }
             }}
-            placeholder="告诉 Mr. Merchiva 怎么改…"
+            placeholder={t("design.chat.placeholder")}
             rows={2}
             disabled={sending}
             className="flex-1 resize-none rounded-[0.3rem] border border-border bg-background px-2 py-1.5 text-[12.5px] outline-none focus:ring-1 focus:ring-ring min-h-[44px] max-h-[120px]"
@@ -223,13 +226,13 @@ export function DesignMerchivaChat({
             onClick={send}
             disabled={sending || !draft.trim()}
             className="h-[44px] w-9 rounded-[0.3rem] bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 inline-flex items-center justify-center shrink-0"
-            title="发送 (Enter)"
+            title={t("design.chat.sendTitle")}
           >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {sending ? <Spinner size={16} /> : <Send className="h-4 w-4" />}
           </button>
         </div>
         <div className="text-[10px] text-muted-foreground mt-1 ml-1">
-          Enter 发送 · Shift+Enter 换行
+          {t("design.chat.sendHint")}
         </div>
       </div>
     </div>
@@ -237,6 +240,9 @@ export function DesignMerchivaChat({
 }
 
 function MessageBubble({ msg }: { msg: DesignChatMessage }) {
+  const t = useT();
+  const canvasUpdatedLabel = t("design.chat.canvasUpdated");
+  const emptyReplyLabel = t("design.chat.emptyReply");
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -261,7 +267,7 @@ function MessageBubble({ msg }: { msg: DesignChatMessage }) {
           !msg.applied && msg.action && "opacity-60",
         )}
       >
-        {msg.content || (msg.action ? "已更新画布。" : "(空回复)")}
+        {msg.content || (msg.action ? canvasUpdatedLabel : emptyReplyLabel)}
       </div>
       {msg.action && (
         <div className="text-[10px] font-mono text-muted-foreground ml-1">

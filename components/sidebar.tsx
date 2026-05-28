@@ -27,44 +27,8 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
   );
 }
 
-function useSidebarCollapseState(): [boolean, () => void] {
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => {
-    try { setCollapsed(localStorage.getItem("sidebar_collapsed") === "1"); } catch {}
-  }, []);
-  const toggle = () => {
-    setCollapsed(c => {
-      const next = !c;
-      try { if (next) localStorage.setItem("sidebar_collapsed", "1"); else localStorage.removeItem("sidebar_collapsed"); } catch {}
-      return next;
-    });
-  };
-  return [collapsed, toggle];
-}
 import type { StoredAccount } from "@/lib/auth/context";
-import {
-  LayoutDashboard,
-  Package,
-  TrendingUp,
-  Users,
-  ShoppingBag,
-  Globe,
-  Settings,
-  LogOut,
-  UserCog,
-  ChevronDown,
-  ChevronsUpDown,
-  Plus,
-  Check,
-  Loader2,
-  MessageSquare,
-  MonitorSmartphone,
-  KeyRound,
-  Bell,
-  UserRoundSearch,
-  UserPlus,
-  Palette,
-} from "lucide-react";
+import { LayoutDashboard, Package, TrendingUp, Users, ShoppingBag, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
@@ -91,19 +55,16 @@ import { createOrg } from "@/lib/spacetimedb/actions";
 import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
 import { StoreDeviceLock } from "@/components/store-device-lock";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
-import {
-  Moon,
-  Sun,
-  Monitor,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
+import { Moon, Sun, Monitor, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { RightPanel, MobileRightPanel, RightPanelMobileProvider, useRightPanelMobile } from "@/components/right-panel";
 import { PageTransition } from "@/components/page-transition";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 40;
@@ -239,7 +200,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                     disabled={loading || !newStoreName.trim()}
                     className="flex flex-1 items-center justify-center gap-1.5 rounded bg-foreground px-2 py-1 text-xs font-medium text-background disabled:opacity-50"
                   >
-                    {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : t("nav.create")}
+                    {loading ? <Spinner size={12} /> : t("nav.create")}
                   </button>
                   <button
                     type="button"
@@ -631,7 +592,36 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   }, [isCapacitor, pathname, router]);
 
   const [smDeviceName] = useDeviceName();
-  const [sidebarCollapsed, toggleSidebarCollapse] = useSidebarCollapseState();
+
+  // ── Resizable shell layout ────────────────────────────────────────────
+  // The desktop layout is a ResizablePanelGroup (react-resizable-panels v4).
+  // - Each side panel is `collapsible` — dragging the handle below `minSize`
+  //   automatically snaps the panel to `collapsedSize`.
+  // - We mirror that collapsed state into React via `onResize` so the inner
+  //   SidebarContent / RightPanel can switch between expanded and icon-only
+  //   layouts.
+  // - `useDefaultLayout` persists pane sizes (and collapsed state) across
+  //   reloads via localStorage.
+  const leftPanelRef = usePanelRef();
+  const rightPanelRef = usePanelRef();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: "merchiva-shell-layout-v1",
+    panelIds: ["shell-left", "shell-main", "shell-right"],
+  });
+  const toggleSidebarCollapse = () => {
+    const p = leftPanelRef.current;
+    if (!p) return;
+    if (p.isCollapsed()) p.expand();
+    else p.collapse();
+  };
+  const toggleRightPanel = () => {
+    const p = rightPanelRef.current;
+    if (!p) return;
+    if (p.isCollapsed()) p.expand();
+    else p.collapse();
+  };
   const [navMode] = useNavMode();
   const useBottomBar = navMode === "bottombar" && !storeMachineMode;
   // Builder subpages (/builder/[siteId]/...) need full viewport — force drawer mode
@@ -950,19 +940,62 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* ── Desktop layout (non-touch): permanent sidebar — not shown on builder pages ── */}
+      {/* ── Desktop layout (non-touch): resizable shell — not shown on builder pages ── */}
       {!isBuilderPage && (
-        <div className={cn("overflow-hidden bg-background", isMobile === false ? "flex flex-1 h-[calc(100dvh)]" : "hidden")}>
-          <div className="h-full shrink-0 transition-[width] duration-200 border-r border-border bg-background" style={{ width: sidebarCollapsed ? 64 : 220 }}>
-            <SidebarContent collapsed={sidebarCollapsed} onToggleCollapse={toggleSidebarCollapse} />
-          </div>
-          <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-            {storeMachineMode && <StoreTopBar deviceName={smDeviceName} />}
-            <main className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden"><PageTransition>{(isMobile === null || !isMobile) && children}</PageTransition></main>
-            {storeMachineMode && <StoreFooter />}
-          </div>
-          <RightPanel />
-        </div>
+        <ResizablePanelGroup
+          orientation="horizontal"
+          defaultLayout={defaultLayout}
+          onLayoutChanged={onLayoutChanged}
+          className={cn(
+            "overflow-hidden bg-background",
+            isMobile === false ? "flex flex-1 h-[calc(100dvh)]" : "hidden",
+          )}
+        >
+          <ResizablePanel
+            id="shell-left"
+            panelRef={leftPanelRef}
+            defaultSize={220}
+            minSize={140}
+            maxSize={360}
+            collapsible
+            collapsedSize={64}
+            className="border-r border-border bg-background"
+            onResize={(size) => setSidebarCollapsed(size.inPixels <= 70)}
+          >
+            <SidebarContent
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={toggleSidebarCollapse}
+            />
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel id="shell-main" minSize={360}>
+            <div className="flex h-full flex-col overflow-hidden">
+              {storeMachineMode && <StoreTopBar deviceName={smDeviceName} />}
+              <main className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+                <PageTransition>
+                  {(isMobile === null || !isMobile) && children}
+                </PageTransition>
+              </main>
+              {storeMachineMode && <StoreFooter />}
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel
+            id="shell-right"
+            panelRef={rightPanelRef}
+            defaultSize={420}
+            minSize={220}
+            maxSize={680}
+            collapsible
+            collapsedSize={44}
+            onResize={(size) => setRightCollapsed(size.inPixels <= 50)}
+          >
+            <RightPanel
+              collapsed={rightCollapsed}
+              onToggleCollapsed={toggleRightPanel}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
       )}
       <StoreDeviceLock />
     </>

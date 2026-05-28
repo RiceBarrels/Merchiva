@@ -1,18 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import {
-  Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp,
-  Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Loader2,
-  Calendar, History, Sparkles,
-  ArrowLeftRight, CalendarX, Truck, Trash2, Plus, MessageSquare,
-  User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones,
-  Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog,
-  Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase,
-  Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter,
-  Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X,
-  CheckCircle2, AlertTriangle, MousePointer2,
-} from "lucide-react";
+import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, History, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, MessageSquare, User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones, Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, MousePointer2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -641,84 +630,64 @@ function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
 
 // ── Action approval UI ─────────────────────────────────────────────────────
 
-const ACTION_META: Record<string, { label: string; icon: React.ReactNode; fields: string[]; risk?: "low" | "medium" | "high" }> = {
+// Action-meta entries reference a translation key under `merchiva.actions.*` —
+// the visible label is resolved at render time via useT().
+const ACTION_META: Record<string, { icon: React.ReactNode; fields: string[]; risk?: "low" | "medium" | "high" }> = {
   // Scheduling
-  addShift:            { label: "排班", icon: <Calendar className="h-3 w-3" />, fields: ["staffName", "date", "startTime", "endTime", "shiftType", "staffRoles"] },
-  updateShift:         { label: "修改班次", icon: <Pencil className="h-3 w-3" />, fields: ["shiftId", "date", "startTime", "endTime", "shiftType"] },
-  deleteShift:         { label: "删除班次", icon: <CalendarX className="h-3 w-3" />, fields: ["shiftId"], risk: "high" },
-  approveTimeOff:      { label: "审批请假", icon: <CheckCircle2 className="h-3 w-3" />, fields: ["requestId", "approved", "reason"] },
-  approveShiftTrade:   { label: "审批换班", icon: <ArrowLeftRight className="h-3 w-3" />, fields: ["tradeId", "approved"] },
+  addShift:            { icon: <Calendar className="h-3 w-3" />, fields: ["staffName", "date", "startTime", "endTime", "shiftType", "staffRoles"] },
+  updateShift:         { icon: <Pencil className="h-3 w-3" />, fields: ["shiftId", "date", "startTime", "endTime", "shiftType"] },
+  deleteShift:         { icon: <CalendarX className="h-3 w-3" />, fields: ["shiftId"], risk: "high" },
+  approveTimeOff:      { icon: <CheckCircle2 className="h-3 w-3" />, fields: ["requestId", "approved", "reason"] },
+  approveShiftTrade:   { icon: <ArrowLeftRight className="h-3 w-3" />, fields: ["tradeId", "approved"] },
   // Staff
-  addStaffMember:      { label: "添加员工", icon: <UserPlus className="h-3 w-3" />, fields: ["name", "role", "hourlyRate"] },
-  inviteTeamMember:    { label: "邀请加入团队", icon: <Mail className="h-3 w-3" />, fields: ["email", "role", "orgName"] },
-  updateStaffMember:   { label: "修改员工", icon: <Pencil className="h-3 w-3" />, fields: ["staffMemberId", "name", "role", "hourlyRate"] },
-  deleteStaffMember:   { label: "删除员工", icon: <UserMinus className="h-3 w-3" />, fields: ["staffMemberId"], risk: "high" },
+  addStaffMember:      { icon: <UserPlus className="h-3 w-3" />, fields: ["name", "role", "hourlyRate"] },
+  inviteTeamMember:    { icon: <Mail className="h-3 w-3" />, fields: ["email", "role", "orgName"] },
+  updateStaffMember:   { icon: <Pencil className="h-3 w-3" />, fields: ["staffMemberId", "name", "role", "hourlyRate"] },
+  deleteStaffMember:   { icon: <UserMinus className="h-3 w-3" />, fields: ["staffMemberId"], risk: "high" },
   // Roles
-  addRole:             { label: "新建岗位", icon: <Plus className="h-3 w-3" />, fields: ["name", "description", "icon", "color"] },
-  updateRole:          { label: "修改岗位", icon: <Pencil className="h-3 w-3" />, fields: ["roleId", "name", "description", "icon", "color"] },
-  deleteRole:          { label: "删除岗位", icon: <Trash2 className="h-3 w-3" />, fields: ["roleId"], risk: "high" },
+  addRole:             { icon: <Plus className="h-3 w-3" />, fields: ["name", "description", "icon", "color"] },
+  updateRole:          { icon: <Pencil className="h-3 w-3" />, fields: ["roleId", "name", "description", "icon", "color"] },
+  deleteRole:          { icon: <Trash2 className="h-3 w-3" />, fields: ["roleId"], risk: "high" },
   // Role Tasks
-  addRoleTask:         { label: "添加任务", icon: <ListChecks className="h-3 w-3" />, fields: ["roleId", "title", "description", "startTime", "endTime", "requiresEvidence"] },
-  updateRoleTask:      { label: "修改任务", icon: <Pencil className="h-3 w-3" />, fields: ["taskId", "title", "description"] },
-  deleteRoleTask:      { label: "删除任务", icon: <Trash2 className="h-3 w-3" />, fields: ["taskId"], risk: "high" },
+  addRoleTask:         { icon: <ListChecks className="h-3 w-3" />, fields: ["roleId", "title", "description", "startTime", "endTime", "requiresEvidence"] },
+  updateRoleTask:      { icon: <Pencil className="h-3 w-3" />, fields: ["taskId", "title", "description"] },
+  deleteRoleTask:      { icon: <Trash2 className="h-3 w-3" />, fields: ["taskId"], risk: "high" },
   // Products
-  addProduct:          { label: "添加商品", icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
-  createProduct:       { label: "添加商品", icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
-  updateProduct:       { label: "修改商品", icon: <Pencil className="h-3 w-3" />, fields: ["productId", "name", "category", "price"] },
-  deleteProduct:       { label: "删除商品", icon: <Trash2 className="h-3 w-3" />, fields: ["productId"], risk: "high" },
+  addProduct:          { icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
+  createProduct:       { icon: <Plus className="h-3 w-3" />, fields: ["name", "category", "price", "cost", "description"] },
+  updateProduct:       { icon: <Pencil className="h-3 w-3" />, fields: ["productId", "name", "category", "price"] },
+  deleteProduct:       { icon: <Trash2 className="h-3 w-3" />, fields: ["productId"], risk: "high" },
   // Inventory
-  addInventoryItem:    { label: "添加库存", icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
-  createInventoryItem: { label: "添加库存", icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
-  updateInventory:     { label: "更新库存", icon: <Package className="h-3 w-3" />, fields: ["itemName", "quantity", "type"] },
-  updateInventoryItem: { label: "修改库存", icon: <Pencil className="h-3 w-3" />, fields: ["itemId", "name", "minStock", "maxStock"] },
-  deleteInventoryItem: { label: "删除库存", icon: <Trash2 className="h-3 w-3" />, fields: ["itemId"], risk: "high" },
+  addInventoryItem:    { icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
+  createInventoryItem: { icon: <Package className="h-3 w-3" />, fields: ["name", "category", "currentStock", "unit", "supplier"] },
+  updateInventory:     { icon: <Package className="h-3 w-3" />, fields: ["itemName", "quantity", "type"] },
+  updateInventoryItem: { icon: <Pencil className="h-3 w-3" />, fields: ["itemId", "name", "minStock", "maxStock"] },
+  deleteInventoryItem: { icon: <Trash2 className="h-3 w-3" />, fields: ["itemId"], risk: "high" },
   // Pricing
-  updatePrice:         { label: "修改价格", icon: <Tag className="h-3 w-3" />, fields: ["productName", "newPrice"] },
-  addCoupon:           { label: "创建优惠券", icon: <Ticket className="h-3 w-3" />, fields: ["code", "discountType", "discountValue", "expiresAt"] },
-  updateCoupon:        { label: "修改优惠券", icon: <Pencil className="h-3 w-3" />, fields: ["couponId", "code", "discountValue"] },
-  deleteCoupon:        { label: "删除优惠券", icon: <Trash2 className="h-3 w-3" />, fields: ["couponId"], risk: "high" },
+  updatePrice:         { icon: <Tag className="h-3 w-3" />, fields: ["productName", "newPrice"] },
+  addCoupon:           { icon: <Ticket className="h-3 w-3" />, fields: ["code", "discountType", "discountValue", "expiresAt"] },
+  updateCoupon:        { icon: <Pencil className="h-3 w-3" />, fields: ["couponId", "code", "discountValue"] },
+  deleteCoupon:        { icon: <Trash2 className="h-3 w-3" />, fields: ["couponId"], risk: "high" },
   // Suppliers
-  addSupplier:         { label: "添加供应商", icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
-  createSupplier:      { label: "添加供应商", icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
-  updateSupplier:      { label: "修改供应商", icon: <Pencil className="h-3 w-3" />, fields: ["supplierId", "name", "contactName"] },
-  deleteSupplier:      { label: "删除供应商", icon: <Trash2 className="h-3 w-3" />, fields: ["supplierId"], risk: "high" },
-  createPurchaseOrder: { label: "创建采购单", icon: <Truck className="h-3 w-3" />, fields: ["supplierId", "items", "total"] },
+  addSupplier:         { icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
+  createSupplier:      { icon: <Truck className="h-3 w-3" />, fields: ["name", "contactName", "email", "phone"] },
+  updateSupplier:      { icon: <Pencil className="h-3 w-3" />, fields: ["supplierId", "name", "contactName"] },
+  deleteSupplier:      { icon: <Trash2 className="h-3 w-3" />, fields: ["supplierId"], risk: "high" },
+  createPurchaseOrder: { icon: <Truck className="h-3 w-3" />, fields: ["supplierId", "items", "total"] },
   // Notifications
-  createNotification:  { label: "发送通知", icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
-  sendNotification:    { label: "发送通知", icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
+  createNotification:  { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
+  sendNotification:    { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
   // Builder
-  addBuilderElement:    { label: "添加组件", icon: <Plus className="h-3 w-3" />, fields: ["elements"] },
-  deleteBuilderElement: { label: "删除组件", icon: <Trash2 className="h-3 w-3" />, fields: ["targets"], risk: "medium" },
-  addBuilderFunction:   { label: "添加函数", icon: <Sparkles className="h-3 w-3" />, fields: ["name"] },
-  editBuilderHtml:      { label: "编辑HTML", icon: <Pencil className="h-3 w-3" />, fields: ["old_string", "new_string", "replace_all"], risk: "medium" },
-  setBuilderHtml:       { label: "替换页面HTML", icon: <Pencil className="h-3 w-3" />, fields: ["html"], risk: "medium" },
-  appendBuilderHtml:    { label: "追加HTML", icon: <Plus className="h-3 w-3" />, fields: ["html"] },
-  replaceBuilderHtml:   { label: "替换元素", icon: <Pencil className="h-3 w-3" />, fields: ["selector", "html"], risk: "medium" },
-  deleteBuilderHtml:    { label: "删除元素", icon: <Trash2 className="h-3 w-3" />, fields: ["selector"], risk: "medium" },
-  updateBuilderPage:    { label: "更新页面属性", icon: <Pencil className="h-3 w-3" />, fields: ["pageId", "name", "slug", "title", "description", "keywords", "ogImage", "ogTitle", "ogDescription", "canonicalUrl", "robots"] },
-  updateBuilderSite:    { label: "更新站点属性", icon: <Pencil className="h-3 w-3" />, fields: ["name", "slug", "customDomain", "published", "plugins"], risk: "medium" },
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  staffName: "员工", date: "日期", startTime: "开始", endTime: "结束",
-  shiftType: "班次", staffRoles: "岗位", itemName: "商品", quantity: "数量",
-  type: "类型", supplier: "供应商", supplierId: "供应商", items: "商品",
-  title: "标题", body: "内容", name: "名称", role: "角色", hourlyRate: "时薪",
-  productName: "商品", productId: "商品ID", newPrice: "新价格", price: "价格", cost: "成本",
-  category: "分类", description: "描述", icon: "图标", color: "颜色",
-  roleId: "岗位", taskId: "任务", shiftId: "班次", staffMemberId: "员工",
-  currentStock: "当前库存", minStock: "最低库存", maxStock: "最高库存", unit: "单位",
-  costPerUnit: "单价", contactName: "联系人", email: "邮箱", phone: "电话",
-  code: "优惠码", discountType: "折扣类型", discountValue: "折扣值", expiresAt: "过期日",
-  maxUses: "最大使用次数", minPurchase: "最低消费", total: "总计",
-  requestId: "请求", tradeId: "换班", approved: "批准", reason: "原因",
-  requiresEvidence: "需要证据", itemId: "物品", couponId: "优惠券", active: "启用",
-  variants: "规格", notes: "备注", address: "地址", paymentTerms: "付款条件",
-  old_string: "查找", new_string: "替换为", replace_all: "全部替换",
-  html: "HTML", selector: "选择器", targets: "目标", elements: "元素",
-  pageId: "页面", slug: "Slug", keywords: "关键词", ogImage: "OG 图",
-  ogTitle: "OG 标题", ogDescription: "OG 描述", canonicalUrl: "Canonical",
-  robots: "Robots", customDomain: "自定义域名", published: "已发布", plugins: "插件",
+  addBuilderElement:    { icon: <Plus className="h-3 w-3" />, fields: ["elements"] },
+  deleteBuilderElement: { icon: <Trash2 className="h-3 w-3" />, fields: ["targets"], risk: "medium" },
+  addBuilderFunction:   { icon: <Sparkles className="h-3 w-3" />, fields: ["name"] },
+  editBuilderHtml:      { icon: <Pencil className="h-3 w-3" />, fields: ["old_string", "new_string", "replace_all"], risk: "medium" },
+  setBuilderHtml:       { icon: <Pencil className="h-3 w-3" />, fields: ["html"], risk: "medium" },
+  appendBuilderHtml:    { icon: <Plus className="h-3 w-3" />, fields: ["html"] },
+  replaceBuilderHtml:   { icon: <Pencil className="h-3 w-3" />, fields: ["selector", "html"], risk: "medium" },
+  deleteBuilderHtml:    { icon: <Trash2 className="h-3 w-3" />, fields: ["selector"], risk: "medium" },
+  updateBuilderPage:    { icon: <Pencil className="h-3 w-3" />, fields: ["pageId", "name", "slug", "title", "description", "keywords", "ogImage", "ogTitle", "ogDescription", "canonicalUrl", "robots"] },
+  updateBuilderSite:    { icon: <Pencil className="h-3 w-3" />, fields: ["name", "slug", "customDomain", "published", "plugins"], risk: "medium" },
 };
 
 function formatActionValue(val: unknown, depth = 0): string {
@@ -859,8 +828,13 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   status: "pending" | "approved" | "rejected";
   alreadyExecuted?: boolean;
 }) {
+  const t = useT();
   const actionName = String(action.action ?? "unknown");
   const meta = ACTION_META[actionName];
+  const actionLabel = t(`merchiva.actions.${actionName}`);
+  // When the lookup returns the path itself (missing key), fall back to the
+  // raw action identifier so users see something readable.
+  const displayLabel = actionLabel.startsWith("merchiva.actions.") ? actionName : actionLabel;
   const [executing, setExecuting] = useState(false);
   const autoRan = useRef(!!alreadyExecuted);
   const isHighRisk = meta?.risk === "high";
@@ -901,27 +875,27 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
         )}>
           {meta?.icon ?? <ArrowRight className="h-3 w-3" />}
           <span className="font-mono text-[10px] tracking-[0.06em] uppercase font-semibold">
-            {meta?.label ?? actionName}
+            {displayLabel}
           </span>
         </span>
         {isHighRisk && status === "pending" && (
           <span className="text-[10px] font-mono text-amber-600 inline-flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" /> 需要确认
+            <AlertTriangle className="h-3 w-3" /> {t("merchiva.ui.needsConfirmation")}
           </span>
         )}
         {executing && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Loader2 className="h-3 w-3 animate-spin" /> 执行中...
+            <Spinner size={12} /> {t("merchiva.ui.executing")}
           </span>
         )}
         {status === "approved" && !executing && (
           <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> 已执行
+            <Check className="h-3 w-3" /> {t("merchiva.ui.executed")}
           </span>
         )}
         {status === "rejected" && (
           <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
-            <X className="h-3 w-3" /> 已撤销
+            <X className="h-3 w-3" /> {t("merchiva.ui.undone")}
           </span>
         )}
       </div>
@@ -942,7 +916,10 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
             return (
               <div key={key} className={cn("flex items-baseline gap-1.5", Array.isArray(val) && typeof val[0] === "object" && "col-span-2")}>
                 <span className="text-[10.5px] text-muted-foreground font-mono shrink-0">
-                  {FIELD_LABELS[key] ?? key}
+                  {(() => {
+                    const fl = t(`merchiva.fields.${key}`);
+                    return fl.startsWith("merchiva.fields.") ? key : fl;
+                  })()}
                 </span>
                 <span className="text-[12.5px] font-medium truncate">{display}</span>
               </div>
@@ -958,36 +935,28 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
             onClick={() => { setExecuting(true); Promise.resolve(onApprove()).finally(() => setExecuting(false)); }}
             className="h-7 px-3 rounded-[0.3rem] border border-emerald-200 bg-emerald-50 text-emerald-700 text-[11px] font-semibold hover:bg-emerald-100 inline-flex items-center gap-1.5"
           >
-            <Check className="h-3 w-3" /> 确认执行
+            <Check className="h-3 w-3" /> {t("merchiva.ui.confirmExecute")}
           </button>
           <button
             onClick={onReject}
             className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5"
           >
-            <X className="h-3 w-3" /> 取消
+            <X className="h-3 w-3" /> {t("merchiva.ui.cancel")}
           </button>
         </div>
       )}
       {status === "approved" && !executing && (
         <button onClick={onReject}
           className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 mt-1">
-          撤销
+          {t("merchiva.ui.undo")}
         </button>
       )}
     </div>
   );
 }
 
-const ACTION_CATEGORY_LABELS: Record<string, string> = {
-  scheduling: "排班",
-  roles: "岗位与任务",
-  inventory: "库存",
-  products: "商品",
-  pricing: "价格与优惠券",
-  suppliers: "供应商与采购",
-  staffing: "员工",
-  notifications: "通知",
-};
+// Category and risk labels are now resolved via i18n at the use site
+// (see `merchiva.categories.*` and `merchiva.risk.*`).
 
 const ACTION_CATEGORY_ICONS: Record<string, React.ReactNode> = {
   scheduling: <Calendar className="h-[10px] w-[10px]" />,
@@ -1000,11 +969,6 @@ const ACTION_CATEGORY_ICONS: Record<string, React.ReactNode> = {
   notifications: <Bell className="h-[10px] w-[10px]" />,
 };
 
-const ACTION_RISK_LABELS: Record<string, string> = {
-  low: "低",
-  medium: "中",
-  high: "高",
-};
 
 const ACTION_RISK_CLASS: Record<string, string> = {
   low: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -1013,6 +977,7 @@ const ACTION_RISK_CLASS: Record<string, string> = {
 };
 
 function ActionsListCard() {
+  const t = useT();
   const catalog = getActionCatalog();
   const categoryOrder = ["scheduling", "staffing", "roles", "products", "inventory", "pricing", "suppliers", "notifications"];
   const grouped = categoryOrder
@@ -1026,7 +991,7 @@ function ActionsListCard() {
           <Sparkles className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">ACTIONS</span>
         </span>
-        <span className="text-[11px] text-muted-foreground font-mono">{catalog.length} 个可用动作</span>
+        <span className="text-[11px] text-muted-foreground font-mono">{catalog.length}</span>
       </div>
       <div className="max-h-[460px] overflow-y-auto">
         {grouped.map(({ category, actions }) => (
@@ -1035,7 +1000,10 @@ function ActionsListCard() {
               <span className="h-5 w-5 rounded-[0.2rem] border border-stone-200 dark:border-stone-700 bg-background text-stone-600 dark:text-stone-300 inline-flex items-center justify-center">
                 {ACTION_CATEGORY_ICONS[category] ?? <ArrowRight className="h-[10px] w-[10px]" />}
               </span>
-              <span className="text-[12px] font-semibold">{ACTION_CATEGORY_LABELS[category] ?? category}</span>
+              <span className="text-[12px] font-semibold">{(() => {
+                const cl = t(`merchiva.categories.${category}`);
+                return cl.startsWith("merchiva.categories.") ? category : cl;
+              })()}</span>
               <span className="text-[10px] text-muted-foreground font-mono ml-auto">{actions.length}</span>
             </div>
             <div className="divide-y divide-border">
@@ -1053,7 +1021,7 @@ function ActionsListCard() {
                         "h-5 px-1.5 rounded-[0.2rem] border text-[9px] font-mono uppercase shrink-0",
                         ACTION_RISK_CLASS[action.riskLevel]
                       )}>
-                        {ACTION_RISK_LABELS[action.riskLevel]}风险
+                        {t(`merchiva.risk.${action.riskLevel}`)}
                       </span>
                     </div>
                     <div className="text-[11.5px] text-muted-foreground leading-snug mt-1">
@@ -1139,7 +1107,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
         </span>
         {!submitted && (
           <span className="text-[10.5px] text-muted-foreground font-mono">
-            可多选 · 已选 {totalSelected} 项
+            Multi-select · {totalSelected} selected
           </span>
         )}
       </div>
@@ -1191,7 +1159,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
                 value={otherText[qi] ?? ""}
                 onChange={(e) => setOtherText((prev) => ({ ...prev, [qi]: e.target.value }))}
                 onKeyDown={(e) => { if (e.key === "Enter") handleOtherConfirm(qi); }}
-                placeholder="输入自定义回复..."
+                placeholder="Type a custom reply..."
                 className="flex-1 h-8 px-2.5 rounded-[0.3rem] border border-border bg-background text-[12px] outline-none focus:border-stone-400"
               />
               <button
@@ -1217,12 +1185,12 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
           )}
         >
           <Check className="h-3.5 w-3.5" />
-          {allAnswered ? "提交" : "每题至少选择一项"}
+          {allAnswered ? "Submit" : "Pick at least one for each question"}
         </button>
       )}
       {submitted && (
         <div className="text-[11px] font-mono text-emerald-600 inline-flex items-center gap-1">
-          <Check className="h-3 w-3" /> 已提交
+          <Check className="h-3 w-3" /> Submitted
         </div>
       )}
     </div>
@@ -1232,6 +1200,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
 // ── Roles & Tasks UI ──────────────────────────────────────────────────────
 
 import type { QAItem, RoleAddCmd, TaskAddCmd } from "@/lib/merchiva/skills/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
   return (
@@ -1241,10 +1210,10 @@ function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; col
           <Users className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">ROLES</span>
         </span>
-        <span className="text-[11px] text-muted-foreground font-mono">{roles.length} 个岗位</span>
+        <span className="text-[11px] text-muted-foreground font-mono">{roles.length} roles</span>
       </div>
       {roles.length === 0 ? (
-        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">暂无岗位</div>
+        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No roles yet</div>
       ) : (
         <div className="divide-y divide-border">
           {roles.map((role) => (
@@ -1288,21 +1257,21 @@ function RoleAddCard({ role, status, onDelete }: {
         </span>
         {status === "adding" && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Loader2 className="h-3 w-3 animate-spin" /> 添加中...
+            <Spinner size={12} /> Adding...
           </span>
         )}
         {status === "deleting" && (
           <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
-            <Loader2 className="h-3 w-3 animate-spin" /> 删除中...
+            <Spinner size={12} /> Deleting...
           </span>
         )}
         {status === "added" && (
           <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> 已添加
+            <Check className="h-3 w-3" /> Added
           </span>
         )}
         {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-red-500 ml-auto">已删除</span>
+          <span className="text-[10.5px] font-mono text-red-500 ml-auto">Deleted</span>
         )}
       </div>
       <div className="flex items-center gap-3 mb-2">
@@ -1317,7 +1286,7 @@ function RoleAddCard({ role, status, onDelete }: {
       </div>
       {role.tasks && (
         <div className="mb-2.5">
-          <MonoCap>职责</MonoCap>
+          <MonoCap>Responsibilities</MonoCap>
           <div className="flex flex-wrap gap-1 mt-1">
             {role.tasks.split(",").map((t) => t.trim()).filter(Boolean).map((task) => (
               <span key={task} className="inline-flex items-center px-2 py-0.5 rounded-[0.2rem] border border-border bg-background text-[11px]">
@@ -1334,7 +1303,7 @@ function RoleAddCard({ role, status, onDelete }: {
       {status === "added" && (
         <button onClick={onDelete}
           className="h-7 px-3 mt-2.5 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
-          <Trash2 className="h-3 w-3" /> 删除
+          <Trash2 className="h-3 w-3" /> Delete
         </button>
       )}
     </div>
@@ -1361,7 +1330,7 @@ function TasksListInline({ roleId, roleName }: { roleId: string; roleName: strin
   if (loading) {
     return (
       <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
-        <Loader2 className="h-3 w-3 animate-spin" /> 加载任务...
+        <Spinner size={12} /> Loading tasks...
       </div>
     );
   }
@@ -1383,7 +1352,7 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
       setTasks((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
       console.error(`[TasksListCard] Failed to delete task:`, err);
-      toast.error("删除任务失败");
+      toast.error("Failed to delete task");
     } finally {
       setDeleting((prev) => { const s = new Set(prev); s.delete(id); return s; });
     }
@@ -1397,10 +1366,10 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">TASKS</span>
         </span>
         <span className="text-[12px] font-medium">{roleName}</span>
-        <span className="text-[10.5px] text-muted-foreground font-mono ml-auto">{tasks.length} 项</span>
+        <span className="text-[10.5px] text-muted-foreground font-mono ml-auto">{tasks.length}</span>
       </div>
       {tasks.length === 0 ? (
-        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">该岗位暂无任务</div>
+        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No tasks for this role</div>
       ) : (
         <div className="divide-y divide-border">
           {tasks.map((task) => (
@@ -1410,7 +1379,7 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
                   <div className="text-[12.5px] font-medium leading-tight">{task.title}</div>
                   {task.requiresEvidence && (
                     <span className="h-4 px-1 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-mono uppercase inline-flex items-center">
-                      证明
+                      Evidence
                     </span>
                   )}
                 </div>
@@ -1428,7 +1397,7 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
                 disabled={deleting.has(task.id)}
                 className="h-6 w-6 shrink-0 rounded-[0.2rem] flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
               >
-                {deleting.has(task.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                {deleting.has(task.id) ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" />}
               </button>
             </div>
           ))}
@@ -1438,10 +1407,14 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
   );
 }
 
-function TaskAddCard({ task, roleColor, status, onDelete }: {
+function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onToggleChat, onConfirm, onDelete }: {
   task: TaskAddCmd;
   roleColor: string;
-  status: "pending" | "adding" | "added" | "rejected" | "deleting";
+  status: "pending" | "adding" | "added" | "rejected" | "deleting" | "needs-chat";
+  groupChats: Array<{ id: string; name: string }>;
+  selectedChats: string[];
+  onToggleChat: (chatId: string) => void;
+  onConfirm: () => void;
   onDelete: () => void;
 }) {
 
@@ -1450,6 +1423,7 @@ function TaskAddCard({ task, roleColor, status, onDelete }: {
       "rounded-[0.3rem] border p-3 mt-2",
       status === "added" ? "border-emerald-200 bg-emerald-50/50" :
       status === "rejected" ? "border-red-200 bg-red-50/50" :
+      status === "needs-chat" ? "border-amber-300 bg-amber-50/40 dark:bg-amber-950/20" :
       "border-border bg-stone-50/60 dark:bg-stone-950/60"
     )}>
       <div className="flex items-center gap-2 mb-2.5">
@@ -1460,21 +1434,24 @@ function TaskAddCard({ task, roleColor, status, onDelete }: {
         <span className="text-[11px] text-muted-foreground">→ {task.role}</span>
         {status === "adding" && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Loader2 className="h-3 w-3 animate-spin" /> 添加中...
+            <Spinner size={12} /> Adding...
           </span>
         )}
         {status === "deleting" && (
           <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
-            <Loader2 className="h-3 w-3 animate-spin" /> 删除中...
+            <Spinner size={12} /> Deleting...
           </span>
         )}
         {status === "added" && (
           <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> 已添加
+            <Check className="h-3 w-3" /> Added
           </span>
         )}
         {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-red-500 ml-auto">已删除</span>
+          <span className="text-[10.5px] font-mono text-red-500 ml-auto">Deleted</span>
+        )}
+        {status === "needs-chat" && (
+          <span className="text-[10.5px] font-mono text-amber-700 ml-auto">Choose group chat</span>
         )}
       </div>
       <div className="flex items-start gap-3 mb-2">
@@ -1493,24 +1470,72 @@ function TaskAddCard({ task, roleColor, status, onDelete }: {
         )}
         {task.requiresEvidence && (
           <span className="h-5 px-1.5 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-mono uppercase inline-flex items-center gap-1">
-            <Camera className="h-[10px] w-[10px]" /> 需要证明
+            <Camera className="h-[10px] w-[10px]" /> Evidence required
           </span>
         )}
       </div>
+      {status === "needs-chat" && (
+        <div className="mt-2 pt-2.5 border-t border-amber-200/60 dark:border-amber-800/60">
+          <div className="text-[10.5px] text-amber-800 dark:text-amber-200 mb-1.5">
+            This task requires evidence — pick the group chat where it should be uploaded:
+          </div>
+          {groupChats.length === 0 ? (
+            <div className="text-[10.5px] text-muted-foreground italic">
+              No group chats yet — create one from the Chat page first.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {groupChats.map((c) => {
+                const isSel = selectedChats.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => onToggleChat(c.id)}
+                    className={cn(
+                      "h-6 px-2 rounded-[0.2rem] text-[10.5px] font-medium border transition-colors",
+                      isSel
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex items-center gap-2 mt-2.5">
+            <button
+              onClick={onConfirm}
+              disabled={selectedChats.length === 0}
+              className="h-7 px-3 rounded-[0.3rem] border border-foreground bg-foreground text-background text-[11px] font-medium inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Check className="h-3 w-3" /> Add
+            </button>
+            <button
+              onClick={onDelete}
+              className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5"
+            >
+              <Trash2 className="h-3 w-3" /> Skip
+            </button>
+          </div>
+        </div>
+      )}
       {status === "added" && (
         <button onClick={onDelete}
           className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
-          <Trash2 className="h-3 w-3" /> 删除
+          <Trash2 className="h-3 w-3" /> Delete
         </button>
       )}
     </div>
   );
 }
 
-function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRoles, rejectedTasks, onRejectRole, onRejectTask }: {
+function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted, rejectedRoles, rejectedTasks, onRejectRole, onRejectTask }: {
   roles?: RoleAddCmd[];
   tasks?: TaskAddCmd[];
   staffRolesRef: React.RefObject<Array<{ id: unknown; name: string; color: string; icon: string; description: string }>>;
+  groupChats: Array<{ id: string; name: string }>;
   alreadyExecuted?: boolean;
   rejectedRoles?: number[];
   rejectedTasks?: number[];
@@ -1522,13 +1547,15 @@ function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRo
   const safeRoles = roles ?? [];
   const safeTasks = tasks ?? [];
 
-  type Status = "pending" | "adding" | "added" | "rejected" | "deleting";
-  const [roleStatuses, setRoleStatuses] = useState<Record<number, Status>>(
+  type RoleStatus = "pending" | "adding" | "added" | "rejected" | "deleting";
+  type TaskStatus = RoleStatus | "needs-chat";
+  const [roleStatuses, setRoleStatuses] = useState<Record<number, RoleStatus>>(
     () => Object.fromEntries(safeRoles.map((_, i) => [i, rejRoles.has(i) ? "rejected" : alreadyExecuted ? "added" : "pending"]))
   );
-  const [taskStatuses, setTaskStatuses] = useState<Record<number, Status>>(
+  const [taskStatuses, setTaskStatuses] = useState<Record<number, TaskStatus>>(
     () => Object.fromEntries(safeTasks.map((_, i) => [i, rejTasks.has(i) ? "rejected" : alreadyExecuted ? "added" : "pending"]))
   );
+  const [taskChats, setTaskChats] = useState<Record<number, string[]>>({});
   const autoRan = useRef(!!alreadyExecuted);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1566,7 +1593,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRo
       onRejectRole?.(i);
     } catch (err) {
       console.error(`[CommandGroup] Failed to delete role "${role.title}":`, err);
-      toast.error(`删除岗位失败`);
+      toast.error("Failed to delete role");
       setRoleStatuses((prev) => ({ ...prev, [i]: "added" }));
     }
   }, [safeRoles, findRoleByName, onRejectRole]);
@@ -1587,7 +1614,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRo
       onRejectTask?.(i);
     } catch (err) {
       console.error(`[CommandGroup] Failed to delete task "${task.title}":`, err);
-      toast.error(`删除任务失败`);
+      toast.error("Failed to delete task");
       setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
     }
   }, [safeTasks, findRoleByName, getDbTasks, onRejectTask]);
@@ -1623,10 +1650,17 @@ function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRo
         }
       }
 
-      // Step 2: add tasks — resolve role by exact name, skip duplicates
+      // Step 2: add tasks — resolve role by exact name, skip duplicates.
+      // Tasks that require evidence are gated on a group-chat selection
+      // (parked in "needs-chat") and committed via handleConfirmTask once
+      // the user picks at least one chat.
       for (let i = 0; i < safeTasks.length; i++) {
         if (rejTasks.has(i)) continue;
         const task = safeTasks[i];
+        if (task.requiresEvidence) {
+          setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
+          continue;
+        }
         setTaskStatuses((prev) => ({ ...prev, [i]: "adding" }));
         try {
           let found = findRoleByName(task.role);
@@ -1639,7 +1673,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRo
           }
           if (!found) {
             console.error(`[CommandGroup] Role not found for task "${task.title}": "${task.role}"`);
-            toast.error(`找不到岗位「${task.role}」`);
+            toast.error(`Role not found: ${task.role}`);
             setTaskStatuses((prev) => ({ ...prev, [i]: "pending" }));
             continue;
           }
@@ -1673,6 +1707,64 @@ function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleConfirmTask = useCallback(async (i: number) => {
+    const task = safeTasks[i];
+    if (!task) return;
+    const selected = taskChats[i] ?? [];
+    if (task.requiresEvidence && selected.length === 0) return;
+    setTaskStatuses((prev) => ({ ...prev, [i]: "adding" }));
+    try {
+      let found = findRoleByName(task.role);
+      if (!found) {
+        for (let attempt = 0; attempt < 15; attempt++) {
+          await new Promise((r) => setTimeout(r, 400));
+          found = findRoleByName(task.role);
+          if (found) break;
+        }
+      }
+      if (!found) {
+        toast.error(`Role not found: ${task.role}`);
+        setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
+        return;
+      }
+      const roleId = String(found.id);
+      const titleLower = task.title.toLowerCase();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const duplicate = getDbTasks().find((t: any) =>
+        t?.title?.toLowerCase() === titleLower && String(t?.roleId) === roleId
+      );
+      if (duplicate) {
+        setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
+        return;
+      }
+      await execAddRoleTask({
+        roleId,
+        title: task.title,
+        description: task.des,
+        startTime: task.startTime,
+        endTime: task.endTime,
+        sortOrder: i,
+        requiresEvidence: task.requiresEvidence,
+        notifyChats: selected,
+      });
+      setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
+    } catch (err) {
+      console.error(`[CommandGroup] Failed to confirm task "${task.title}":`, err);
+      toast.error("Failed to add task");
+      setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
+    }
+  }, [safeTasks, taskChats, findRoleByName, getDbTasks]);
+
+  const toggleTaskChat = useCallback((i: number, chatId: string) => {
+    setTaskChats((prev) => {
+      const current = prev[i] ?? [];
+      const next = current.includes(chatId)
+        ? current.filter((id) => id !== chatId)
+        : [...current, chatId];
+      return { ...prev, [i]: next };
+    });
+  }, []);
+
   return (
     <>
       {safeRoles.map((role, i) => (
@@ -1691,6 +1783,10 @@ function CommandGroup({ roles, tasks, staffRolesRef, alreadyExecuted, rejectedRo
             task={task}
             roleColor={matchedRole?.color ?? "#44403c"}
             status={taskStatuses[i] ?? "pending"}
+            groupChats={groupChats}
+            selectedChats={taskChats[i] ?? []}
+            onToggleChat={(chatId) => toggleTaskChat(i, chatId)}
+            onConfirm={() => handleConfirmTask(i)}
             onDelete={() => handleDeleteTask(i)}
           />
         );
@@ -1781,16 +1877,16 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
             <span className="text-[11px] text-muted-foreground">← {del.role}</span>
             {statuses[i] === "deleting" && (
               <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-                <Loader2 className="h-3 w-3 animate-spin" /> 删除中...
+                <Spinner size={12} /> Deleting...
               </span>
             )}
             {statuses[i] === "deleted" && (
               <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
-                <Check className="h-3 w-3" /> 已删除
+                <Check className="h-3 w-3" /> Deleted
               </span>
             )}
             {statuses[i] === "failed" && (
-              <span className="text-[10.5px] font-mono text-amber-600 ml-auto">删除失败</span>
+              <span className="text-[10.5px] font-mono text-amber-600 ml-auto">Delete failed</span>
             )}
           </div>
         </div>
@@ -2151,7 +2247,11 @@ export function MerchivaChat({
 
   const { items: invItems } = useInventory(organizationId);
   const { history: salesHistory, hourly: salesHourly } = useSales();
-  const { shifts, team, presets: shiftPresets, allAvailability, myTimeOffRequests: timeOffRequests, orgShiftTrades: shiftTrades } = useStaffing(organizationId, null, false);
+  const { shifts, team, presets: shiftPresets, allAvailability, myTimeOffRequests: timeOffRequests, orgShiftTrades: shiftTrades, chatOptions } = useStaffing(organizationId, null, false);
+  const groupChats = useMemo(
+    () => chatOptions.filter((c) => c.type === "group").map((c) => ({ id: c.id, name: c.name ?? "Untitled group" })),
+    [chatOptions]
+  );
   const { products } = useProducts(organizationId);
   const [rawNotifs] = useNotifications();
   // Settings row for this org — opening hours + country code for holiday lookup.
@@ -2549,7 +2649,7 @@ export function MerchivaChat({
         parsed.tasksAdd.length > 0 || parsed.tasksDelete.length > 0 || parsed.questions.length > 0 || parsed.actionsList;
       const displayText = parsed.cleanText || (
         parsed.actionsList && parsed.actions.length === 0
-          ? "这是当前可用的全部 AI actions："
+          ? "Here are all AI actions currently available:"
           : hasStructured ? "" : finalText.trim()
       );
       setMessages((prev) => prev.map((m) => (
@@ -2593,7 +2693,7 @@ export function MerchivaChat({
       const aiMsg: ChatMessage = {
         id: `a-${Date.now()}`,
         from: "system",
-        text: parsed.cleanText || "这是当前可用的全部 AI actions：",
+        text: parsed.cleanText || "Here are all AI actions currently available:",
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
         actionsList: true,
       };
@@ -2886,7 +2986,7 @@ export function MerchivaChat({
         parsed.actionsList;
       const displayText = parsed.cleanText || (
         parsed.actionsList && parsed.actions.length === 0
-          ? "这是当前可用的全部 AI actions："
+          ? "Here are all AI actions currently available:"
           : hasStructured ? "" : reply.trim()
       );
 
@@ -3231,7 +3331,7 @@ export function MerchivaChat({
                     <TasksListInline roleId={matchedRole.id} roleName={matchedRole.name} />
                   ) : (
                     <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 text-[12px] text-muted-foreground">
-                      未找到岗位「{msg.tasksList}」
+                      Role not found: {msg.tasksList}
                     </div>
                   );
                 })()}
@@ -3240,6 +3340,7 @@ export function MerchivaChat({
                     roles={msg.rolesAdd}
                     tasks={msg.tasksAdd}
                     staffRolesRef={staffRolesRef}
+                    groupChats={groupChats}
                     alreadyExecuted={msg.executed}
                     rejectedRoles={msg.rejectedRoles}
                     rejectedTasks={msg.rejectedTasks}
@@ -3269,7 +3370,7 @@ export function MerchivaChat({
         {sending && (
           <ChatRow time="">
             <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: M_ACC }} />
+              <Spinner size={14} />
               <span className="animate-pulse">{thinkingPhase || t("merchiva.thinking.defaultFetch")}</span>
             </div>
           </ChatRow>
@@ -3426,7 +3527,7 @@ export function MerchivaChat({
               onClick={() => sendMessage(draft)}
               className="h-9 px-4 rounded-[0.3rem] bg-foreground text-background text-[13px] font-medium hover:bg-foreground/90 inline-flex items-center gap-2 disabled:opacity-30"
             >
-              {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("merchiva.send")}
+              {sending ? <Spinner size={14} /> : t("merchiva.send")}
               {!sending && <ArrowUp className="h-3.5 w-3.5" />}
             </button>
           </div>

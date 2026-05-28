@@ -2,12 +2,13 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, ShoppingBag, CalendarDays, Star, Gift, LogOut } from "lucide-react";
+import { ArrowLeft, ShoppingBag, CalendarDays, Star, Gift, LogOut } from "lucide-react";
 import { claimPerk } from "@/lib/spacetimedb/actions";
 import { getCustomer, getCustomerOrders, getCustomerBookings, getCustomerMembership, canClaimPerk } from "@/lib/db/membership";
 import type { SiteCustomer, SiteOrder, SiteBooking, MembershipTier, MembershipPerk } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Session helpers ──────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ function OrdersTab({ customerId }: { customerId: string }) {
       .finally(() => setLoading(false));
   }, [customerId]);
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-gray-400 dark:text-gray-500" /></div>;
 
   if (!orders.length) {
     return <p className="text-center py-10 text-sm text-gray-500 dark:text-gray-400">{t("storefront.account.noOrders")}</p>;
@@ -100,7 +101,7 @@ function BookingsTab({ customerId }: { customerId: string }) {
       .finally(() => setLoading(false));
   }, [customerId]);
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-gray-400 dark:text-gray-500" /></div>;
 
   if (!bookings.length) {
     return <p className="text-center py-10 text-sm text-gray-500 dark:text-gray-400">{t("storefront.account.noBookings")}</p>;
@@ -165,7 +166,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
     }
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-gray-400 dark:text-gray-500" /></div>;
 
   if (!tier) {
     return (
@@ -222,7 +223,7 @@ function MembershipTab({ customerId, siteId }: { customerId: string; siteId: str
                       className="flex-shrink-0 px-3 py-1.5 rounded text-xs font-semibold text-white disabled:opacity-40"
                       style={{ background: tier.color }}
                     >
-                      {claiming === perk.id ? <Loader2 className="h-3 w-3 animate-spin" /> : t("storefront.account.claim")}
+                      {claiming === perk.id ? <Spinner size={12} /> : t("storefront.account.claim")}
                     </button>
                   )}
                 </div>
@@ -263,7 +264,7 @@ export default function CustomerAccountPage({ params }: { params: Promise<{ slug
   };
 
   if (customer === "loading") {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-gray-500" /></div>;
+    return <div className="min-h-screen flex items-center justify-center"><Spinner size={20} className="text-gray-400 dark:text-gray-500" /></div>;
   }
 
   if (!customer) {
@@ -314,7 +315,7 @@ export default function CustomerAccountPage({ params }: { params: Promise<{ slug
       {/* Content */}
       <main className="max-w-2xl mx-auto px-4 py-6">
         {tab === "membership" && siteId && <MembershipTab customerId={customer.id} siteId={siteId} />}
-        {tab === "membership" && !siteId && <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-gray-400 dark:text-gray-500" /></div>}
+        {tab === "membership" && !siteId && <div className="flex justify-center py-8"><Spinner size={16} className="text-gray-400 dark:text-gray-500" /></div>}
         {tab === "orders"     && <OrdersTab customerId={customer.id} />}
         {tab === "bookings"   && <BookingsTab customerId={customer.id} />}
       </main>

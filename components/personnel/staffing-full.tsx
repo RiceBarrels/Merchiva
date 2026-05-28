@@ -3,16 +3,7 @@
 import { uuid } from "@/lib/utils";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import {
-  Plus, Loader2, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2,
-  ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban,
-  ChevronDown, ChevronUp, User, Coffee, Utensils, ChefHat, Truck, Package,
-  Clipboard, Wrench, Headphones, Store, Banknote, Sparkles, Box,
-  ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera,
-  Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, ArrowLeft,
-  ClipboardList, Pencil, Download, Wine, Bubbles, MoonStar, Sun, ReceiptText, HandPlatter,
-  RefreshCw, Inbox, PanelRightOpen, PanelRightClose, Bell,
-} from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Coffee, Utensils, ChefHat, Truck, Package, Clipboard, Wrench, Headphones, Store, Banknote, Sparkles, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, ArrowLeft, ClipboardList, Pencil, Download, Wine, Bubbles, MoonStar, Sun, ReceiptText, HandPlatter, RefreshCw, Inbox, PanelRightOpen, PanelRightClose, Bell } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -804,7 +795,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
               {loadingTasks ? (
                 <div className="flex justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <Spinner size={20} className="text-muted-foreground" />
                 </div>
               ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
                 <div className="text-center py-10">
@@ -957,6 +948,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 // Needs React import for Fragment usage in desktop grid
 // ─────────────────────────────────────────────────────────────────────────────
 import React from "react";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
@@ -2390,7 +2382,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             </div>
             <div className="px-4 py-4 border-t border-border mt-auto">
               <Button onClick={handleAddShift} disabled={saving || (!editingShift && !shiftForm.memberId)} className="w-full h-12 text-sm font-semibold">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? t("staffing.shiftDialog.saveCta") : t("staffing.shiftDialog.createCta")}
+                {saving ? <Spinner size={16} /> : editingShift ? t("staffing.shiftDialog.saveCta") : t("staffing.shiftDialog.createCta")}
               </Button>
             </div>
           </div>
@@ -2464,7 +2456,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setRoleDialog(false)}>{t("common.cancel")}</Button>
-            <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}</Button>
+            <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>{saving ? <Spinner size={16} /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}</Button>
           </div>
         </DynamicUIElementContent>
       </DynamicUIElement>
@@ -2516,10 +2508,48 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 }`} />
               </button>
             </div>
+            <div className="space-y-1.5">
+              <Label>
+                {t("staffing.taskDialog.notifyChat")}
+                {taskForm.requiresEvidence && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {taskForm.requiresEvidence
+                  ? t("staffing.taskDialog.notifyChatRequired")
+                  : t("staffing.taskDialog.notifyChatHint")}
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {chatOptions.filter((c) => c.type === "group").map((c) => {
+                  const selected = taskForm.notifyChats.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setTaskForm((f) => ({
+                        ...f,
+                        notifyChats: selected
+                          ? f.notifyChats.filter((id) => id !== c.id)
+                          : [...f.notifyChats, c.id],
+                      }))}
+                      className={`px-2.5 py-1 text-xs font-medium border rounded transition-colors ${
+                        selected
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {c.name ?? t("staffing.unnamed")}
+                    </button>
+                  );
+                })}
+                {chatOptions.filter((c) => c.type === "group").length === 0 && (
+                  <p className="text-xs text-muted-foreground">{t("staffing.taskDialog.noGroupChats")}</p>
+                )}
+              </div>
+            </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>{t("common.cancel")}</Button>
-            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>{savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}</Button>
+            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title || (taskForm.requiresEvidence && taskForm.notifyChats.length === 0)}>{savingTask ? <Spinner size={16} /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}</Button>
           </div>
         </DynamicUIElementContent>
       </DynamicUIElement>
@@ -3294,7 +3324,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                   </div>
                   {loadingTasks ? (
                     <div className="flex justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <Spinner size={20} className="text-muted-foreground" />
                     </div>
                   ) : (roleTasksCache[selectedRole.id] ?? []).length === 0 ? (
                     <div className="text-center py-10">
@@ -3529,7 +3559,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 disabled={saving || (!editingShift && !shiftForm.memberId)}
                 className="w-full h-12 text-sm font-semibold"
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingShift ? t("staffing.shiftDialog.saveCta") : t("staffing.shiftDialog.createCta")}
+                {saving ? <Spinner size={16} /> : editingShift ? t("staffing.shiftDialog.saveCta") : t("staffing.shiftDialog.createCta")}
               </Button>
             </div>
           </div>
@@ -3636,7 +3666,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setRoleDialog(false)}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}
+              {saving ? <Spinner size={16} /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}
             </Button>
           </div>
         </DynamicUIElementContent>
@@ -3720,8 +3750,15 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               </button>
             </div>
             <div className="space-y-1.5">
-              <Label>{t("staffing.taskDialog.notifyChat")}</Label>
-              <p className="text-xs text-muted-foreground">{t("staffing.taskDialog.notifyChatHint")}</p>
+              <Label>
+                {t("staffing.taskDialog.notifyChat")}
+                {taskForm.requiresEvidence && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {taskForm.requiresEvidence
+                  ? t("staffing.taskDialog.notifyChatRequired")
+                  : t("staffing.taskDialog.notifyChatHint")}
+              </p>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {chatOptions.filter((c) => c.type === "group").map((c) => {
                   const selected = taskForm.notifyChats.includes(c.id);
@@ -3752,8 +3789,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>{t("common.cancel")}</Button>
-            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title}>
-              {savingTask ? <Loader2 className="h-4 w-4 animate-spin" /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}
+            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title || (taskForm.requiresEvidence && taskForm.notifyChats.length === 0)}>
+              {savingTask ? <Spinner size={16} /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}
             </Button>
           </div>
         </DynamicUIElementContent>
@@ -3933,7 +3970,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setTradeDialog({ open: false, shift: null })}>{t("common.cancel")}</Button>
             <Button onClick={handleTradeRequest} disabled={savingTrade || (tradeMode === "specific" && !selectedTradeTarget)}>
-              {savingTrade ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.tradeDialog.sendRequest")}
+              {savingTrade ? <Spinner size={16} /> : t("staffing.tradeDialog.sendRequest")}
             </Button>
           </div>
         </DynamicUIElementContent>
@@ -3998,7 +4035,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setCoverDialog({ open: false, shift: null })}>{t("common.cancel")}</Button>
             <Button onClick={handleCoverRequest} disabled={savingCover || !selectedCover}>
-              {savingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.coverDialog.sendRequest")}
+              {savingCover ? <Spinner size={16} /> : t("staffing.coverDialog.sendRequest")}
             </Button>
           </div>
         </DynamicUIElementContent>
@@ -4152,7 +4189,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" onClick={() => setAvailDialog(false)}>{t("common.cancel")}</Button>
             <Button onClick={handleSaveAvailability} disabled={savingAvail}>
-              {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.availDialog.saveCta")}
+              {savingAvail ? <Spinner size={16} /> : t("staffing.availDialog.saveCta")}
             </Button>
           </div>
         </DynamicUIElementContent>
@@ -4242,7 +4279,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             disabled={savingTimeOff || !timeOffForm.startDate || !timeOffForm.endDate}
             className="w-full mt-1 bg-foreground hover:bg-foreground/90 text-background"
           >
-            {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : t("staffing.timeOffDialog.submitCta")}
+            {savingTimeOff ? <Spinner size={16} /> : t("staffing.timeOffDialog.submitCta")}
           </Button>
         </DynamicUIElementContent>
       </DynamicUIElement>

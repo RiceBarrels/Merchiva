@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import {
-  Trash2,
-  Plus,
-  Search,
-  Download,
-  Loader2,
-  X,
-} from "lucide-react";
+import { Trash2, Plus, Search, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -54,6 +47,7 @@ import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
 import { toast } from "sonner";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -393,7 +387,7 @@ function WasteLogPage() {
   if (!ready) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner size={20} className="text-muted-foreground" />
       </div>
     );
   }
@@ -582,7 +576,7 @@ function WasteLogPage() {
                             disabled={deleting === log.id}
                           >
                             {deleting === log.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              <Spinner size={14} />
                             ) : (
                               <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                             )}
@@ -783,7 +777,7 @@ function WasteLogPage() {
               disabled={submitting || !formItemName.trim()}
             >
               {submitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size={16} />
               ) : (
                 <Plus className="h-4 w-4" />
               )}

@@ -2,21 +2,12 @@
 
 import Link from "next/link";
 import { useEditor } from "@craftjs/core";
-import {
-  ArrowLeft,
-  Globe,
-  Loader2,
-  Redo2,
-  Undo2,
-  Check,
-  X,
-  Workflow,
-  Plus,
-} from "lucide-react";
+import { ArrowLeft, Globe, Redo2, Undo2, Check, X, Workflow, Plus } from "lucide-react";
 import { hapticLight } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import type { Site, SitePage } from "@/lib/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 export type BuilderTab =
   | { kind: "page"; pageId: string }
@@ -157,7 +148,7 @@ export function BuilderToolbar({
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           {saving ? (
             <>
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Spinner size={12} />
               <span>{t("builder.toolbar.saving")}</span>
             </>
           ) : savedAt ? (

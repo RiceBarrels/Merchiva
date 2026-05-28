@@ -1,21 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import {
-  BadgeDollarSign,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  ArrowUpRight,
-  ArrowDownRight,
-  Check,
-  Clock,
-  Search,
-  ShoppingBag,
-  Loader2,
-  Sparkles,
-  Eye,
-} from "lucide-react";
+import { BadgeDollarSign, TrendingUp, TrendingDown, Minus, ArrowUpRight, ArrowDownRight, Check, Clock, Search, ShoppingBag, Sparkles, Eye } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -58,6 +44,7 @@ import { toast } from "sonner";
 import { hapticSuccess } from "@/lib/haptics";
 import { PageTabs } from "@/components/page-tabs";
 import type { Product } from "@/lib/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -304,7 +291,7 @@ function PriceOverviewTab({
                 className="gap-1.5"
               >
                 {bulkApplying ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Spinner size={14} />
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
                 )}
@@ -435,7 +422,7 @@ function PriceOverviewTab({
                                 }
                               >
                                 {applying === product.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  <Spinner size={12} />
                                 ) : (
                                   t("pricing.apply")
                                 )}
@@ -505,7 +492,7 @@ function PriceOverviewTab({
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleBulkApply}>
               {bulkApplying ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                <Spinner size={14} className="mr-1" />
               ) : null}
               {t("pricing.bulkConfirm.apply")}
             </AlertDialogAction>
@@ -822,7 +809,7 @@ export default function PricingPage() {
           { label: t("nav.pricing"), href: "/~/pricing" },
         ]} />
         <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Spinner size={24} className="text-muted-foreground" />
         </div>
       </PermissionGuard>
     );

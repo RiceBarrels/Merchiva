@@ -1,18 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  CalendarCheck,
-  Users,
-  Clock,
-  Plus,
-  Check,
-  X,
-  UserX,
-  Armchair,
-  Loader2,
-  Phone,
-} from "lucide-react";
+import { CalendarCheck, Users, Clock, Plus, Check, X, UserX, Armchair, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +39,7 @@ import { useSiteBookings, useSites } from "@/lib/spacetimedb/hooks";
 import { updateBookingStatus } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -225,7 +215,7 @@ export default function BookingsPage() {
   if (!organizationId) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner size={20} className="text-muted-foreground" />
       </div>
     );
   }

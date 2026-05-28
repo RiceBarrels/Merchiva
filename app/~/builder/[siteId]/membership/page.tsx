@@ -2,21 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Plus,
-  Trash2,
-  Loader2,
-  ChevronDown,
-  ChevronRight,
-  Users,
-  Star,
-  Gift,
-  ShoppingBag,
-  CalendarDays,
-  X,
-  Edit2,
-} from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronRight, Users, Star, Gift, ShoppingBag, CalendarDays, X, Edit2 } from "lucide-react";
 import { cn, uuid } from "@/lib/utils";
 import { createTier, updateTier, deleteTier, createPerk, updatePerk, deletePerk, updateOrderStatus, updateBookingStatus } from "@/lib/spacetimedb/actions";
 import {
@@ -34,6 +20,7 @@ import type {
   SiteBooking,
 } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -373,7 +360,7 @@ function TiersTab({ siteId }: { siteId: string }) {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+    return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
   }
 
   return (
@@ -529,7 +516,7 @@ function CustomersTab({ siteId }: { siteId: string }) {
       .finally(() => setLoading(false));
   }, [siteId]);
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
 
   return (
     <div>
@@ -590,7 +577,7 @@ function OrdersTab({ siteId }: { siteId: string }) {
     setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
 
   return (
     <div>
@@ -655,7 +642,7 @@ function BookingsTab({ siteId }: { siteId: string }) {
     setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status } : b));
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <div className="flex justify-center py-8"><Spinner size={16} className="text-muted-foreground" /></div>;
 
   return (
     <div>

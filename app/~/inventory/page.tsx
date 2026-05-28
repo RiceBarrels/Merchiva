@@ -1,28 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import {
-  Package,
-  Plus,
-  Search,
-  TrendingDown,
-  ArrowUpDown,
-  Pencil,
-  Trash2,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  History,
-  Loader2,
-  RefreshCw,
-  Sparkles,
-  ShoppingCart,
-  AlertCircle,
-  ArrowUp,
-  ArrowDown,
-  Minus as MinusIcon,
-  Download,
-} from "lucide-react";
+import { Package, Plus, Search, TrendingDown, ArrowUpDown, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle, History, RefreshCw, Sparkles, ShoppingCart, AlertCircle, ArrowUp, ArrowDown, Minus as MinusIcon, Download } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -76,6 +55,7 @@ import { generateRestockSuggestions, formatPurchaseOrder, type RestockSuggestion
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 type StatusCfg = { label: string; icon: React.ElementType; color: string };
 
@@ -714,7 +694,7 @@ export default function InventoryPage() {
               </Button>
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("inventory.dialog.saving")}</>
+                  <><Spinner size={16} className="mr-2" />{t("inventory.dialog.saving")}</>
                 ) : editItem ? (
                   t("inventory.dialog.save")
                 ) : (

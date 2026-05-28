@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Lock, Loader2 } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/store-device-lock";
 import { useT } from "@/lib/i18n/context";
 import { hapticSuccess, hapticMedium } from "@/lib/haptics";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface MemberRow {
   id: { toString(): string };
@@ -179,7 +180,7 @@ export function StoreDeviceLock() {
           )}
           {pin.length === 4 && !error && (
             <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Spinner size={12} />
               {t("lock.verifying")}
             </p>
           )}

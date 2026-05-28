@@ -1,19 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Sun,
-  Cloud,
-  CloudRain,
-  Snowflake,
-  CloudLightning,
-  TrendingUp,
-  Users,
-  BarChart3,
-  MapPin,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
+import { Sun, Cloud, CloudRain, Snowflake, CloudLightning, TrendingUp, Users, BarChart3, MapPin, AlertCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -41,6 +29,7 @@ import {
 import { useSalesRecords, useShifts, usePayments } from "@/lib/spacetimedb/hooks";
 import { usePermissions } from "@/lib/context/permissions";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -286,7 +275,7 @@ export function SalesForecast() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Spinner size={16} className="text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
             Loading forecast data...
           </span>

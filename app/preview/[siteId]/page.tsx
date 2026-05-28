@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { Loader2 } from "lucide-react";
+
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSiteById, getPages } from "@/lib/db/sites";
@@ -9,6 +9,7 @@ import { getProducts } from "@/lib/db/products";
 import { SiteRenderer, buildGoogleFontsUrl } from "@/components/site-renderer";
 import { SiteHtmlRenderer } from "@/components/site-html-renderer";
 import type { Site, SitePage, Product } from "@/lib/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 export default function PreviewPage({
   params,
@@ -40,7 +41,7 @@ export default function PreviewPage({
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner size={24} className="text-muted-foreground" />
       </div>
     );
   }

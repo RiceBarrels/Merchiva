@@ -7,7 +7,6 @@ import {
   Zap,
   CheckCircle2,
   AlertTriangle,
-  Loader2,
   RefreshCw,
   Unlink,
   ExternalLink,
@@ -57,6 +56,9 @@ import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSettings, type UserSettings } from "@/lib/db/settings";
 import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
+import { usePushNotifications } from "@/lib/spacetimedb/hooks/usePushNotifications";
+import { tauriNotificationsPref, requestTauriNotificationPermission } from "@/lib/spacetimedb/hooks/useTauriNotifications";
+import { useIsNativeShell } from "@/lib/native-shell";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DynamicUIElement, DynamicUIElementContent, DynamicUIElementHeader, DynamicUIElementTitle, DynamicUIElementDescription,
@@ -93,6 +95,7 @@ import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { LocationManager } from "@/components/location-manager";
 import { useLocations } from "@/lib/spacetimedb/hooks";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface SquareLocation {
   id: string;
@@ -771,6 +774,12 @@ export default function SettingsPage() {
   const [shiftReminders, setShiftReminders] = useState(true);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(false);
+  const push = usePushNotifications();
+  const isTauri = useIsNativeShell();
+  const [tauriPushEnabled, setTauriPushEnabled] = useState(false);
+  useEffect(() => {
+    if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
+  }, [isTauri]);
   const [themeMode, applyThemeMode] = useThemeMode();
   type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
@@ -851,7 +860,7 @@ export default function SettingsPage() {
                 );
               })}
               <Button onClick={handleSaveHours} disabled={savingHours || !organizationId} className="w-full">
-                {savingHours ? <Loader2 className="h-4 w-4 animate-spin" /> : t("hours.save")}
+                {savingHours ? <Spinner size={16} /> : t("hours.save")}
               </Button>
             </div>
           </DynamicUIElementContent>
@@ -945,7 +954,7 @@ export default function SettingsPage() {
                 <Textarea value={availForm.comments} onChange={(e) => setAvailForm((f) => ({ ...f, comments: e.target.value }))} placeholder={t("availability.anyNotes")} rows={2} className="resize-none text-sm" />
               </div>
               <Button onClick={handleSaveAvailability} disabled={savingAvail} className="w-full">
-                {savingAvail ? <Loader2 className="h-4 w-4 animate-spin" /> : t("availability.saveAvailability")}
+                {savingAvail ? <Spinner size={16} /> : t("availability.saveAvailability")}
               </Button>
             </div>
           </DynamicUIElementContent>
@@ -981,7 +990,7 @@ export default function SettingsPage() {
                 <Textarea value={timeOffForm.comments} onChange={(e) => setTimeOffForm((f) => ({ ...f, comments: e.target.value }))} placeholder={t("settings.timeOffReasonPlaceholder")} rows={3} className="resize-none text-sm" />
               </div>
               <Button onClick={handleTimeOffRequest} disabled={savingTimeOff || !timeOffForm.startDate || !timeOffForm.endDate} className="w-full">
-                {savingTimeOff ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.createTimeOffRequest")}
+                {savingTimeOff ? <Spinner size={16} /> : t("settings.createTimeOffRequest")}
               </Button>
             </div>
           </DynamicUIElementContent>
@@ -997,7 +1006,7 @@ export default function SettingsPage() {
             <div className="flex flex-col h-full">
               {teamLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <Spinner size={24} className="text-muted-foreground" />
                 </div>
               ) : (
                 <div className="flex-1 overflow-y-auto">
@@ -1243,7 +1252,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="w-full">
-                {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.sendInvitation")}
+                {inviting ? <Spinner size={16} /> : t("settings.sendInvitation")}
               </Button>
             </div>
           </DynamicUIElementContent>
@@ -1449,7 +1458,7 @@ export default function SettingsPage() {
                   disabled={savingMyCode || myCodeInput.length < 4}
                   className="flex-1"
                 >
-                  {savingMyCode ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.save")}
+                  {savingMyCode ? <Spinner size={16} /> : t("settings.save")}
                 </Button>
                 {myCode && (
                   <Button
@@ -1534,7 +1543,7 @@ export default function SettingsPage() {
                   disabled={resettingCode || resetCodeInput.length < 4}
                   className="flex-1"
                 >
-                  {resettingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : t("settings.save")}
+                  {resettingCode ? <Spinner size={16} /> : t("settings.save")}
                 </Button>
                 <Button
                   variant="outline"
@@ -1731,7 +1740,7 @@ export default function SettingsPage() {
             className="absolute -bottom-1 -right-1 p-0.5 rounded bg-muted border border-border cursor-pointer"
             onClick={(e) => e.stopPropagation()}
           >
-            {uploadingAvatar ? <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground" /> : <Camera className="h-2.5 w-2.5 text-muted-foreground" />}
+            {uploadingAvatar ? <Spinner size={10} className="text-muted-foreground" /> : <Camera className="h-2.5 w-2.5 text-muted-foreground" />}
             <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
           </label>
         </div>
@@ -2055,12 +2064,48 @@ export default function SettingsPage() {
           </DynamicUIElementHeader>
           <div>
             <SToggleRow
+              icon={<Bell className="h-4 w-4 text-foreground" />}
+              title={t("settings.desktopNotifications") || "Desktop notifications"}
+              meta={
+                isTauri
+                  ? (tauriPushEnabled
+                      ? (t("settings.desktopEnabled") || "Enabled on this device")
+                      : (t("settings.desktopDisabled") || "Push alerts when the app is closed"))
+                  : !push.supported
+                  ? (t("settings.desktopUnsupported") || "Not supported in this browser")
+                  : push.permission === "denied"
+                  ? (t("settings.desktopBlocked") || "Blocked in browser settings")
+                  : push.isSubscribed
+                  ? (t("settings.desktopEnabled") || "Enabled on this device")
+                  : (t("settings.desktopDisabled") || "Push alerts when the app is closed")
+              }
+              checked={isTauri ? tauriPushEnabled : push.isSubscribed}
+              onChange={() => {
+                if (isTauri) {
+                  const next = !tauriPushEnabled;
+                  if (next) {
+                    void requestTauriNotificationPermission().then((ok) => {
+                      tauriNotificationsPref.setEnabled(ok);
+                      setTauriPushEnabled(ok);
+                    });
+                  } else {
+                    tauriNotificationsPref.setEnabled(false);
+                    setTauriPushEnabled(false);
+                  }
+                  return;
+                }
+                if (push.busy) return;
+                if (push.isSubscribed) push.disable().catch(() => {});
+                else push.enable().catch(() => {});
+              }}
+              isFirst
+            />
+            <SToggleRow
               icon={<Clock className="h-4 w-4 text-foreground" />}
               title={t("settings.shiftReminders")}
               meta={t("settings.beforeShift")}
               checked={shiftReminders}
               onChange={() => setShiftReminders(!shiftReminders)}
-              isFirst
             />
             <SToggleRow
               icon={<Package className="h-4 w-4 text-foreground" />}

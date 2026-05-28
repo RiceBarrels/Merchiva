@@ -367,6 +367,18 @@ export const PurchaseOrder = __t.object("PurchaseOrder", {
 });
 export type PurchaseOrder = __Infer<typeof PurchaseOrder>;
 
+export const PushSubscription = __t.object("PushSubscription", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  targetId: __t.identity(),
+  endpoint: __t.string(),
+  p256Dh: __t.string(),
+  auth: __t.string(),
+  userAgent: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+});
+export type PushSubscription = __Infer<typeof PushSubscription>;
+
 export const QueueEntry = __t.object("QueueEntry", {
   id: __t.uuid(),
   organizationId: __t.string(),

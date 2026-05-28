@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Check, ChevronDown, Loader2 } from "lucide-react";
+import { Search, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Google Fonts API ───────────────────────────────────────────────────────
 
@@ -172,7 +173,7 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            {loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+            {loading && <Spinner size={12} className="text-muted-foreground" />}
           </div>
 
           <div ref={listRef} className="max-h-[280px] overflow-y-auto py-1">

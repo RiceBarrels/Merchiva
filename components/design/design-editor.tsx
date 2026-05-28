@@ -2,18 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Check,
-  ChevronDown,
-  Loader2,
-  Maximize2,
-  Palette,
-  Redo2,
-  Undo2,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Maximize2, Palette, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { useDefaultLayout } from "react-resizable-panels";
 import {
   ResizableHandle,
@@ -34,6 +23,7 @@ import { useT } from "@/lib/i18n/context";
 import type { Design } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DesignMerchivaChat } from "./design-merchiva-chat";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface DesignEditorProps {
   design: Design;
@@ -578,7 +568,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
       <div className="flex h-full shrink-0 items-center gap-1 border-l border-border px-2">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           {saving ? (
-            <><Loader2 className="h-3 w-3 animate-spin" /><span>{t("design.editor.saving")}</span></>
+            <><Spinner size={12} /><span>{t("design.editor.saving")}</span></>
           ) : savedAt ? (
             <><Check className="h-3 w-3 text-green-600" /><span>{t("design.editor.saved")} {formatSavedAt(savedAt)}</span></>
           ) : null}

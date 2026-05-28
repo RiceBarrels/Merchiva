@@ -1421,6 +1421,31 @@ const designTable = table(
   }
 );
 
+// ─── Push Subscriptions ──────────────────────────────────────────────────────
+// Web Push subscriptions for the browser Notifications API. One row per
+// (user identity, browser/device). Stored at end of schema per migration rules.
+
+const pushSubscriptionTable = table(
+  {
+    name: 'push_subscription',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byTargetId', algorithm: 'btree', columns: ['targetId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    targetId: t.identity(),
+    endpoint: t.string(),     // unique per subscription, used as dedup key on client
+    p256dh: t.string(),       // public key from subscription.keys.p256dh
+    auth: t.string(),         // auth secret from subscription.keys.auth
+    userAgent: t.option(t.string()),
+    createdAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1480,6 +1505,7 @@ const spacetimedb = schema({
   scheduleProposal: scheduleProposalTable,
   roleTaskAssignment: roleTaskAssignmentTable,
   design: designTable,
+  pushSubscription: pushSubscriptionTable,
 });
 
 export default spacetimedb;
@@ -3104,6 +3130,32 @@ export const sendMessage = spacetimedb.reducer(
     if (conv) {
       ctx.db.chatConversation.delete(conv);
       ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
+    }
+
+    // Fan out notification rows for every other member of the conversation.
+    // The client (web push) and Tauri bridge both subscribe to this table and
+    // surface OS-level alerts when a row arrives for the local identity.
+    if (conv) {
+      const senderName = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
+        .find(m => m.organizationId === conv.organizationId)?.displayName ?? 'New message';
+      const preview = content.length > 140 ? content.slice(0, 137) + '...' : content;
+      const body = (attachmentUrl && !content) ? '[attachment]' : preview;
+
+      const members = [...ctx.db.chatMember.byConversationId.filter(conversationId)];
+      for (const m of members) {
+        if (m.userId.toString() === ctx.sender.toString()) continue;
+        ctx.db.notification.insert({
+          id: ctx.newUuidV4(),
+          organizationId: conv.organizationId,
+          targetId: m.userId,
+          type: 'team',
+          title: senderName,
+          body,
+          link: '/~/chat',
+          read: false,
+          createdAt: ctx.timestamp,
+        });
+      }
     }
   }
 );
@@ -5507,5 +5559,62 @@ export const recordTaskCompletion = spacetimedb.reducer(
       createdAt: ctx.timestamp,
       createdBy: ctx.sender,
     });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PUSH SUBSCRIPTION REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Upsert the calling identity's subscription for a given endpoint. The endpoint
+// is the unique identifier the browser hands us — if it changes (different
+// device/browser), we insert a new row; if it matches, we update the keys.
+export const savePushSubscription = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    endpoint: t.string(),
+    p256dh: t.string(),
+    auth: t.string(),
+    userAgent: t.option(t.string()),
+  },
+  (ctx, { organizationId, endpoint, p256dh, auth, userAgent }) => {
+    findActiveMember(ctx, organizationId);
+
+    const existing = [...ctx.db.pushSubscription.byTargetId.filter(ctx.sender)]
+      .find((row) => row.endpoint === endpoint && row.organizationId === organizationId);
+
+    if (existing) {
+      ctx.db.pushSubscription.delete(existing);
+    }
+
+    ctx.db.pushSubscription.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      targetId: ctx.sender,
+      endpoint,
+      p256dh,
+      auth,
+      userAgent,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+// Remove a subscription by endpoint. Used when the user disables notifications,
+// or when the server reports a 404/410 indicating the subscription has expired.
+export const deletePushSubscription = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    endpoint: t.string(),
+  },
+  (ctx, { organizationId, endpoint }) => {
+    findActiveMember(ctx, organizationId);
+
+    const existing = [...ctx.db.pushSubscription.byTargetId.filter(ctx.sender)]
+      .find((row) => row.endpoint === endpoint && row.organizationId === organizationId);
+
+    if (existing) {
+      ctx.db.pushSubscription.delete(existing);
+    }
   }
 );

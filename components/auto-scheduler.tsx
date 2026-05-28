@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import {
-  Sparkles, Check, AlertTriangle, Loader2, X, RotateCcw, Calendar,
-} from "lucide-react";
+import { Sparkles, Check, AlertTriangle, X, RotateCcw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +26,7 @@ import type {
   ShiftPreset, StaffRole, SalesRecord,
 } from "@/lib/types";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -327,7 +326,7 @@ export function AutoScheduler({
                   className="w-full h-10 text-sm font-semibold"
                 >
                   {generating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Spinner size={16} />
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-1.5" />
@@ -549,7 +548,7 @@ export function AutoScheduler({
                   className="text-xs gap-1 font-semibold"
                 >
                   {applying ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Spinner size={14} />
                   ) : (
                     <>
                       <Check className="h-3.5 w-3.5" />

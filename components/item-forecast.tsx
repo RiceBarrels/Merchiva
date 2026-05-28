@@ -1,16 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Brain,
-  Loader2,
-  RefreshCw,
-  Package,
-  TrendingUp,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Brain, RefreshCw, Package, TrendingUp, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -40,6 +31,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { usePayments } from "@/lib/spacetimedb/hooks";
 import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -216,7 +208,7 @@ export function ItemForecast() {
               className="gap-2"
             >
               {training ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Spinner size={14} />
               ) : (
                 <Brain className="h-3.5 w-3.5" />
               )}
@@ -253,7 +245,7 @@ export function ItemForecast() {
             className="h-7 text-xs gap-1.5"
           >
             {training ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Spinner size={12} />
             ) : (
               <RefreshCw className="h-3 w-3" />
             )}
@@ -267,7 +259,7 @@ export function ItemForecast() {
             className="h-7 text-xs gap-1.5"
           >
             {loading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Spinner size={12} />
             ) : (
               <TrendingUp className="h-3 w-3" />
             )}
@@ -285,7 +277,7 @@ export function ItemForecast() {
 
       {loading && !predictions && (
         <div className="flex items-center gap-2 py-8 justify-center">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Spinner size={16} className="text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Loading predictions...</span>
         </div>
       )}

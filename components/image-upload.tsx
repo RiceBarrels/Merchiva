@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState, DragEvent } from "react";
-import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"];
 const MAX_BYTES = 4 * 1024 * 1024; // 4 MB (siteImage endpoint limit)
@@ -106,7 +107,7 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
 
         {isUploading && (
           <div className="absolute inset-0 flex items-center justify-center rounded bg-background/70">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Spinner size={16} className="text-muted-foreground" />
           </div>
         )}
       </div>
@@ -119,7 +120,7 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
         className="flex w-full items-center justify-center gap-1.5 rounded border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
       >
         {isUploading ? (
-          <><Loader2 className="h-3 w-3 animate-spin" /> {t("components.imageUpload.uploading")}</>
+          <><Spinner size={12} /> {t("components.imageUpload.uploading")}</>
         ) : (
           <><Upload className="h-3 w-3" /> {t("components.imageUpload.uploadImage")}</>
         )}

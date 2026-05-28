@@ -94,6 +94,7 @@ import DeleteMessageReducer from "./delete_message_reducer";
 import DeletePageReducer from "./delete_page_reducer";
 import DeletePerkReducer from "./delete_perk_reducer";
 import DeleteProductReducer from "./delete_product_reducer";
+import DeletePushSubscriptionReducer from "./delete_push_subscription_reducer";
 import DeleteQueueEntryReducer from "./delete_queue_entry_reducer";
 import DeleteRoleTaskReducer from "./delete_role_task_reducer";
 import DeleteRoleTaskAssignmentReducer from "./delete_role_task_assignment_reducer";
@@ -131,6 +132,7 @@ import SaveAiChatHistoryReducer from "./save_ai_chat_history_reducer";
 import SaveAiChatSessionReducer from "./save_ai_chat_session_reducer";
 import SaveComponentReducer from "./save_component_reducer";
 import SaveDailyBriefingReducer from "./save_daily_briefing_reducer";
+import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
 import SaveScheduleProposalReducer from "./save_schedule_proposal_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import SetAutoCommitSchedulesReducer from "./set_auto_commit_schedules_reducer";
@@ -201,6 +203,7 @@ import PerkClaimRow from "./perk_claim_table";
 import ProductRow from "./product_table";
 import PunchEventRow from "./punch_event_table";
 import PurchaseOrderRow from "./purchase_order_table";
+import PushSubscriptionRow from "./push_subscription_table";
 import QueueEntryRow from "./queue_entry_table";
 import RoleTaskRow from "./role_task_table";
 import RoleTaskAssignmentRow from "./role_task_assignment_table";
@@ -634,6 +637,23 @@ const tablesSchema = __schema({
       { name: 'purchase_order_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PurchaseOrderRow),
+  pushSubscription: __table({
+    name: 'push_subscription',
+    indexes: [
+      { accessor: 'id', name: 'push_subscription_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'push_subscription_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byTargetId', name: 'push_subscription_target_id_idx_btree', algorithm: 'btree', columns: [
+        'targetId',
+      ] },
+    ],
+    constraints: [
+      { name: 'push_subscription_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, PushSubscriptionRow),
   queueEntry: __table({
     name: 'queue_entry',
     indexes: [
@@ -1196,6 +1216,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_page", DeletePageReducer),
   __reducerSchema("delete_perk", DeletePerkReducer),
   __reducerSchema("delete_product", DeleteProductReducer),
+  __reducerSchema("delete_push_subscription", DeletePushSubscriptionReducer),
   __reducerSchema("delete_queue_entry", DeleteQueueEntryReducer),
   __reducerSchema("delete_role_task", DeleteRoleTaskReducer),
   __reducerSchema("delete_role_task_assignment", DeleteRoleTaskAssignmentReducer),
@@ -1233,6 +1254,7 @@ const reducersSchema = __reducers(
   __reducerSchema("save_ai_chat_session", SaveAiChatSessionReducer),
   __reducerSchema("save_component", SaveComponentReducer),
   __reducerSchema("save_daily_briefing", SaveDailyBriefingReducer),
+  __reducerSchema("save_push_subscription", SavePushSubscriptionReducer),
   __reducerSchema("save_schedule_proposal", SaveScheduleProposalReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("set_auto_commit_schedules", SetAutoCommitSchedulesReducer),

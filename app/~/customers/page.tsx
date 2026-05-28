@@ -1,22 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Loader2,
-  Search,
-  Download,
-  FileText,
-  Users,
-  UserPlus,
-  DollarSign,
-  TrendingUp,
-  ArrowUpDown,
-  Mail,
-  Phone,
-  Calendar,
-  ShoppingBag,
-  X,
-} from "lucide-react";
+import { Search, Download, FileText, Users, UserPlus, DollarSign, TrendingUp, ArrowUpDown, Mail, Phone, Calendar, ShoppingBag, X } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -54,6 +39,7 @@ import { useSiteCustomers, useSiteOrders, useSites } from "@/lib/spacetimedb/hoo
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -402,7 +388,7 @@ function CustomersContent() {
           { label: t("nav.marketing"), href: "/~/marketing" },
         ]} />
         <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <Spinner size={20} className="text-muted-foreground" />
         </div>
       </div>
     );

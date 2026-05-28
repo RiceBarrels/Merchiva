@@ -1,23 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import {
-  ShoppingBag,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  AlertTriangle,
-  XCircle,
-  CheckCircle2,
-  Star,
-  Zap,
-  ArrowUpRight,
-  Search,
-  Plus,
-  Loader2,
-  RefreshCw,
-  ChevronDown,
-} from "lucide-react";
+import { ShoppingBag, TrendingUp, TrendingDown, Minus, AlertTriangle, XCircle, CheckCircle2, Star, Zap, ArrowUpRight, Search, Plus, RefreshCw, ChevronDown } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -75,6 +59,7 @@ import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/image-upload";
 import { PageTabs } from "@/components/page-tabs";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 const alertConfig = {
   none:           { labelKey: "products.alerts.healthy",          icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -532,7 +517,7 @@ export default function ProductsPage() {
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("products.dialog.cancel")}</Button>
             <Button onClick={handleAdd} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("products.dialog.submit")}
+              {saving ? <Spinner size={16} /> : t("products.dialog.submit")}
             </Button>
           </div>
         </DynamicUIElementContent>

@@ -2,9 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Loader2, Check, CreditCard, ExternalLink, Sparkles,
-} from "lucide-react";
+import { Check, CreditCard, ExternalLink, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +14,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface OrgRow {
   id: { toString(): string };
@@ -199,7 +198,7 @@ function BillingInner() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm">Current plan</CardTitle>
-              {syncing && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              {syncing && <Spinner size={14} className="text-muted-foreground" />}
             </div>
           </CardHeader>
           <CardContent>
@@ -249,7 +248,7 @@ function BillingInner() {
               </div>
               <Button onClick={handlePortal} disabled={busy === "portal"}>
                 {busy === "portal" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Spinner size={16} />
                 ) : (
                   <>
                     Open portal
@@ -336,7 +335,7 @@ function PlanRow({
           <div className="text-[15px] font-bold tabular-nums">{price}</div>
           <div className="text-[10px] text-muted-foreground">{period}</div>
         </div>
-        {busy && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        {busy && <Spinner size={14} className="text-muted-foreground" />}
       </div>
     </button>
   );
@@ -344,7 +343,7 @@ function PlanRow({
 
 export default function BillingPage() {
   return (
-    <Suspense fallback={<div className="p-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+    <Suspense fallback={<div className="p-6"><Spinner size={20} className="text-muted-foreground" /></div>}>
       <BillingInner />
     </Suspense>
   );

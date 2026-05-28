@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { MobileDetector } from "@/components/mobile-detector";
-import { ElectronTitleBar } from "@/components/electron-title-bar";
+import { NativeTitleBar } from "@/components/native-title-bar";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
 
@@ -71,16 +71,54 @@ export default async function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Merchiva" />
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{if(window.electron&&window.electron.isElectron){document.documentElement.classList.add("electron")}var d=document.documentElement,t=localStorage.getItem("merchiva_theme");if(!t){var old=localStorage.getItem("merchiva_dark");t=old==="true"?"dark":old==="false"?"light":"system"}var dk=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme:dark)").matches);if(dk){d.classList.add("dark");var m=document.getElementById("theme-color-meta");if(m)m.content="#1a1a1a"}else{d.classList.remove("dark");var m2=document.getElementById("theme-color-meta");if(m2)m2.content="#ffffff"}document.cookie="merchiva_theme="+t+";path=/;max-age=31536000;SameSite=Lax";document.cookie="merchiva_dark="+(dk?"true":"false")+";path=/;max-age=31536000;SameSite=Lax";if(t==="system"){var mq=window.matchMedia("(prefers-color-scheme:dark)");var apply=function(e){var nx=!!e.matches;d.classList.toggle("dark",nx);var mm=document.getElementById("theme-color-meta");if(mm)mm.content=nx?"#1a1a1a":"#ffffff";document.cookie="merchiva_dark="+(nx?"true":"false")+";path=/;max-age=31536000;SameSite=Lax"};if(mq.addEventListener)mq.addEventListener("change",apply);else if(mq.addListener)mq.addListener(apply)}}catch(e){}}())` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{if(window.__TAURI_INTERNALS__){document.documentElement.classList.add("native-shell")}var d=document.documentElement,t=localStorage.getItem("merchiva_theme");if(!t){var old=localStorage.getItem("merchiva_dark");t=old==="true"?"dark":old==="false"?"light":"system"}var dk=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme:dark)").matches);if(dk){d.classList.add("dark");var m=document.getElementById("theme-color-meta");if(m)m.content="#1a1a1a"}else{d.classList.remove("dark");var m2=document.getElementById("theme-color-meta");if(m2)m2.content="#ffffff"}document.cookie="merchiva_theme="+t+";path=/;max-age=31536000;SameSite=Lax";document.cookie="merchiva_dark="+(dk?"true":"false")+";path=/;max-age=31536000;SameSite=Lax";if(t==="system"){var mq=window.matchMedia("(prefers-color-scheme:dark)");var apply=function(e){var nx=!!e.matches;d.classList.toggle("dark",nx);var mm=document.getElementById("theme-color-meta");if(mm)mm.content=nx?"#1a1a1a":"#ffffff";document.cookie="merchiva_dark="+(nx?"true":"false")+";path=/;max-age=31536000;SameSite=Lax"};if(mq.addEventListener)mq.addEventListener("change",apply);else if(mq.addListener)mq.addListener(apply)}}catch(e){}}())` }} />
       </head>
-      <body className="h-screen bg-background text-foreground overflow-hidden flex flex-col">
+      <body className="bg-background text-foreground overflow-hidden flex flex-col">
+        {/*
+          Tauri boot splash — server-rendered so it's visible the instant the
+          webview paints (before React JS even downloads). The pre-paint inline
+          script in <head> adds `native-shell` to <html> when running inside
+          Tauri, which is the only CSS condition that reveals this layer.
+          `<Providers>` flips `body.app-ready` once React has mounted, which
+          fades the splash out so the real <SplashLoader> (or login page) can
+          take over with no visible flash.
+        */}
+        <div id="tauri-boot-splash" aria-hidden="true">
+          <div className="tbs-topbar">
+            <span className="tbs-brand">MERCHIVA</span>
+            <span className="tbs-sep">·</span>
+            <span>booting workspace</span>
+            <div className="tbs-status">
+              <span className="tbs-dot" />
+              <span>CONNECTING</span>
+            </div>
+          </div>
+          <div className="tbs-center">
+            <svg className="tbs-logo" viewBox="0 0 200 200" width={200} height={200}>
+              <rect x={30} y={30} width={140} height={140} fill="#fafaf9" />
+              <polygon points="80,29 120,29 100,85" fill="#0c0a09" />
+            </svg>
+            <div className="tbs-meta">
+              <div className="tbs-status-text">assembling workspace</div>
+              <div className="tbs-progress"><span className="tbs-progress-fill" /></div>
+              <div className="tbs-meta-row">
+                <span>STEP 02 / 04</span>
+                <span>·</span>
+                <span>cold start</span>
+              </div>
+            </div>
+          </div>
+          <div className="tbs-footer">
+            <span>merchiva</span><span>·</span><span>booting</span>
+          </div>
+        </div>
         <div id="vaul-wrapper" data-vaul-drawer-wrapper="" className="h-full">
-          <ElectronTitleBar />
+          <NativeTitleBar />
           <MobileDetector />
           <ServiceWorkerRegistrar />
-          {/* <div className="flex-1"> */}
+          <div className="h-[calc(100vh-40px)] overflow-hidden">
             <Providers>{children}</Providers>
-          {/* </div> */}
+          </div>
           <Toaster position="top-center" richColors />
         </div>
       </body>

@@ -2,14 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { toast } from "sonner";
-import {
-  Search, Plus, Minus, X, Loader2, CreditCard, Banknote,
-  MoreHorizontal, Printer, Check, User, AlertCircle, History,
-  ShoppingCart, CornerDownLeft, Smartphone, Gift, ScanLine,
-  Percent, Pencil, Trash2, MessageSquare, ArrowLeft,
-  CheckCircle, ChevronRight, Mail, ShoppingBag, Coffee, Leaf,
-  Snowflake, Sandwich, Package as PackageIcon, Star, WifiOff,
-} from "lucide-react";
+import { Search, Plus, Minus, X, CreditCard, Banknote, MoreHorizontal, Printer, Check, User, AlertCircle, History, ShoppingCart, CornerDownLeft, Smartphone, Gift, ScanLine, Percent, Pencil, Trash2, MessageSquare, ArrowLeft, CheckCircle, ChevronRight, Mail, ShoppingBag, Coffee, Leaf, Snowflake, Sandwich, Package as PackageIcon, Star, WifiOff } from "lucide-react";
 import { cn, uuid } from "@/lib/utils";
 import { getProducts } from "@/lib/db/products";
 import { createPayment, refundPayment } from "@/lib/spacetimedb/actions";
@@ -32,6 +25,7 @@ import {
   DynamicUIElementDescription,
 } from "@/components/ui/dynamic-ui-element";
 import type { Product, CartItem, Payment } from "@/lib/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Local types ─────────────────────────────────────────────────────────────
 
@@ -884,7 +878,7 @@ function PayOverlay({
                 className="w-full h-11 rounded-[0.3rem] bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[13px] font-semibold inline-flex items-center justify-center gap-2 transition-colors"
               >
                 {processing ? (
-                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                  <Spinner size={16} />
                 ) : (
                   <CheckCircle className="h-[18px] w-[18px]" />
                 )}
@@ -925,7 +919,7 @@ function PayOverlay({
             className="h-12 bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[13px] font-semibold inline-flex items-center justify-center gap-2 transition-colors"
           >
             {processing ? (
-              <Loader2 className="h-[18px] w-[18px] animate-spin" />
+              <Spinner size={16} />
             ) : (
               <CheckCircle className="h-[18px] w-[18px]" />
             )}
@@ -1196,7 +1190,7 @@ function MobileCheckoutPanel({
         className="w-full h-11 rounded-[0.3rem] bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[13px] font-semibold inline-flex items-center justify-center gap-2 transition-colors"
       >
         {processing ? (
-          <Loader2 className="h-[18px] w-[18px] animate-spin" />
+          <Spinner size={16} />
         ) : (
           <CheckCircle className="h-[18px] w-[18px]" />
         )}
@@ -1418,7 +1412,7 @@ function OrdersTab({
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex flex-1 items-center justify-center py-16">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Spinner size={20} className="text-muted-foreground" />
           </div>
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
@@ -1435,7 +1429,7 @@ function OrdersTab({
             ))}
             <div className="py-4 text-center">
               {loadingMore ? (
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
+                <Spinner size={16} className="text-muted-foreground mx-auto" />
               ) : !hasMore ? (
                 <p className="text-xs text-muted-foreground">{t("pos.orders.noMore")}</p>
               ) : null}
@@ -1628,7 +1622,7 @@ function RefundPanel({
           disabled={processing || !canSubmit}
           className="w-full flex items-center justify-center gap-2 rounded bg-destructive py-3 text-sm font-bold text-white hover:bg-destructive/90 disabled:opacity-50 transition-colors"
         >
-          {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CornerDownLeft className="h-4 w-4" />}
+          {processing ? <Spinner size={16} /> : <CornerDownLeft className="h-4 w-4" />}
           {processing ? t("pos.refund.processing") : `${t("pos.refund.refundButton")} ${money(refundAmt)}`}
         </button>
       </div>
@@ -2003,7 +1997,7 @@ export default function POSPage() {
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner size={24} className="text-muted-foreground" />
       </div>
     );
   }

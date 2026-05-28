@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useEditor } from "@craftjs/core";
-import { Send, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Send, Sparkles, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface Message {
   role: "user" | "assistant";
@@ -199,7 +200,7 @@ export function AiPanel({ siteName, siteId, siteTheme }: AiPanelProps = {}) {
         {loading && (
           <div className="flex justify-start">
             <div className="bg-muted rounded-lg px-2.5 py-1.5">
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              <Spinner size={12} className="text-muted-foreground" />
             </div>
           </div>
         )}

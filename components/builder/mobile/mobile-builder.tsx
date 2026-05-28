@@ -3,23 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useEditor, Frame, Element } from "@craftjs/core";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Undo2,
-  Redo2,
-  Loader2,
-  Check,
-  ChevronDown,
-  Plus,
-  Type,
-  Image as ImageIcon,
-  LayoutDashboard,
-  Trash2,
-  X,
-  ArrowUpFromLine,
-  ArrowDownToLine,
-  GripVertical,
-} from "lucide-react";
+import { ArrowLeft, Undo2, Redo2, Check, ChevronDown, Plus, Type, Image as ImageIcon, LayoutDashboard, Trash2, X, ArrowUpFromLine, ArrowDownToLine, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +19,7 @@ import { themeVars } from "@/components/site-renderer";
 import { siteElementsToCraftState } from "@/lib/builder/craft-bridge";
 import type { Site, SitePage } from "@/lib/types";
 import React from "react";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Mobile Toolbar ─────────────────────────────────────────────────────────
 
@@ -64,7 +49,7 @@ function MobileToolbar({
       <div className="flex-1" />
       <div className="flex items-center gap-1 text-xs text-muted-foreground">
         {saving ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
+          <Spinner size={12} />
         ) : savedAt ? (
           <Check className="h-3 w-3 text-green-600" />
         ) : null}

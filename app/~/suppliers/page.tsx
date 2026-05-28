@@ -1,21 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import {
-  Truck,
-  Plus,
-  Search,
-  Star,
-  Pencil,
-  Trash2,
-  ShoppingCart,
-  Loader2,
-  Send,
-  CheckCircle2,
-  XCircle,
-  FileText,
-  Download,
-} from "lucide-react";
+import { Truck, Plus, Search, Star, Pencil, Trash2, ShoppingCart, Send, CheckCircle2, XCircle, FileText, Download } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -56,6 +42,7 @@ import { toast } from "sonner";
 import { downloadCSV } from "@/lib/export";
 import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -467,7 +454,7 @@ export default function SuppliersPage() {
           { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
         ]} />
         <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Spinner size={24} className="text-muted-foreground" />
         </div>
       </PermissionGuard>
     );
@@ -938,7 +925,7 @@ export default function SuppliersPage() {
                   disabled={saving}
                   className="gap-1.5"
                 >
-                  {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {saving && <Spinner size={12} />}
                   {editingSupplier ? "Update" : "Add Supplier"}
                 </Button>
               </div>
@@ -1120,7 +1107,7 @@ export default function SuppliersPage() {
                   disabled={saving}
                   className="gap-1.5"
                 >
-                  {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {saving && <Spinner size={12} />}
                   Create Draft
                 </Button>
               </div>

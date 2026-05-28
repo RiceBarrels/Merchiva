@@ -9,8 +9,9 @@ import { getProducts } from "@/lib/db/products";
 import { loginCustomer, registerCustomer } from "@/lib/spacetimedb/actions";
 import type { Site, SitePage, SiteCustomer } from "@/lib/types";
 import type { Product } from "@/lib/types";
-import { Loader2, ShoppingCart, X, User, LogOut } from "lucide-react";
+import { ShoppingCart, X, User, LogOut } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Cart types ───────────────────────────────────────────────────────────────
 
@@ -171,7 +172,7 @@ function AuthModal({
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("storefront.auth.passwordPlaceholder")} className={inputCls} required />
           {error && <p className="text-red-600 text-xs">{error}</p>}
           <button type="submit" disabled={loading} className="w-full py-2.5 rounded bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : (mode === "login" ? t("storefront.auth.signInButton") : t("storefront.auth.createAccountButton"))}
+            {loading ? <Spinner size={16} className="mx-auto" /> : (mode === "login" ? t("storefront.auth.signInButton") : t("storefront.auth.createAccountButton"))}
           </button>
         </form>
         <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-3">
@@ -274,7 +275,7 @@ export default function PublicSitePage({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner size={24} className="text-muted-foreground" />
       </div>
     );
   }

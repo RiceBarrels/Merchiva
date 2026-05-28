@@ -1,9 +1,18 @@
 "use client";
 
+import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/context";
 import { I18nProvider } from "@/lib/i18n/context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // Flag the document as React-ready so the Tauri boot splash
+  // (server-rendered in app/layout.tsx, only visible when
+  // `html.native-shell` is set) can fade itself out via CSS once the
+  // live React tree — and any <SplashLoader> inside it — has mounted.
+  useEffect(() => {
+    document.body.classList.add("app-ready");
+  }, []);
+
   return (
     <I18nProvider>
       <AuthProvider>{children}</AuthProvider>

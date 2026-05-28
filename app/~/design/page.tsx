@@ -3,13 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Loader2,
-  Pencil,
-  Trash2,
-  Image as ImageIcon,
-} from "lucide-react";
+import { Plus, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -27,6 +21,7 @@ import { DESIGN_PRESETS, findPreset, type DesignPreset } from "@/lib/design/pres
 import type { Design } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 function blankHtmlFor(name: string, w: number, h: number): string {
   return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#fafaf9;color:#1c1917;font-family:Inter,sans-serif">
@@ -180,7 +175,7 @@ export default function DesignListPage() {
                 {t("design.list.cancel")}
               </button>
               <button type="submit" disabled={creating || !newName.trim()} className="flex-1 rounded-[0.3rem] bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50 flex items-center justify-center gap-1.5">
-                {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("design.list.create")}
+                {creating ? <Spinner size={14} /> : t("design.list.create")}
               </button>
             </div>
           </form>
@@ -189,7 +184,7 @@ export default function DesignListPage() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
-          <Loader2 className="h-4 w-4 animate-spin" /> {t("design.list.loading")}
+          <Spinner size={16} /> {t("design.list.loading")}
         </div>
       ) : designs.length === 0 ? (
         <div className="rounded-[0.3rem] border border-dashed border-border px-6 py-12 text-center">
@@ -304,7 +299,7 @@ function DesignCard({
           title={t("design.list.delete")}
           className="p-1.5 rounded-[0.3rem] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
         >
-          {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          {deleting ? <Spinner size={14} /> : <Trash2 className="h-3.5 w-3.5" />}
         </button>
       </div>
     </div>

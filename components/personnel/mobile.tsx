@@ -2,30 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  ArrowRight,
-  Award,
-  Ban,
-  BookOpen,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardCheck,
-  FileEdit,
-  HelpCircle,
-  Inbox,
-  Loader2,
-  Mail,
-  MoreVertical,
-  Pencil,
-  Play,
-  Plus,
-  Search,
-  Shield,
-  Trash2,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { ArrowRight, Award, Ban, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardCheck, FileEdit, HelpCircle, Inbox, Mail, MoreVertical, Pencil, Play, Plus, Search, Shield, Trash2, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
@@ -52,6 +29,8 @@ import {
   managerApproveShiftTrade,
   updateTimeOffStatus,
 } from "@/lib/spacetimedb/actions";
+import { Spinner } from "@/components/ui/loaders/geometric";
+import { useT } from "@/lib/i18n/context";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -279,6 +258,7 @@ export function MobileSchedule({
   myMemberId: string | null;
   onOpenRequests: () => void;
 }) {
+  const t = useT();
   const [rawShifts] = useShifts() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [rawTimeOff] = useTimeOffRequests() as [unknown[], boolean];
@@ -396,10 +376,10 @@ export function MobileSchedule({
     <div>
       {/* KPI row */}
       <div className="grid grid-cols-3 border-b border-border bg-background">
-        <Kpi label="在岗" value={onShiftNow.length} suffix={`/ ${members.length}`} />
-        <Kpi label="今日时长" value={dayHours.toFixed(1)} suffix="h" mono border />
+        <Kpi label={t("personnel.m.onShift")} value={onShiftNow.length} suffix={`/ ${members.length}`} />
+        <Kpi label={t("personnel.m.todayHours")} value={dayHours.toFixed(1)} suffix="h" mono border />
         <Kpi
-          label="待处理"
+          label={t("personnel.m.pending")}
           value={pending}
           tone={pending > 0 ? "warn" : "default"}
           border
@@ -411,7 +391,7 @@ export function MobileSchedule({
       <div className="border-b border-border bg-muted/30">
         <div className="flex items-center justify-between px-4 pt-3 pb-1.5">
           <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-            本周 · {weekLabel}
+            {t("personnel.m.thisWeek")} · {weekLabel}
           </span>
           <div className="flex items-center gap-1">
             <IconBtn icon={ChevronLeft} onClick={() => navigateWeek(-1)} />
@@ -478,23 +458,24 @@ export function MobileSchedule({
             })}
           </div>
           <div className="text-[11.5px] text-muted-foreground mt-0.5">
-            <span className="font-mono tabular-nums">{dayShifts.length}</span> 班次
+            <span className="font-mono tabular-nums">{dayShifts.length}</span>{" "}
+            {t("personnel.m.shifts").replace("{n} ", "").replace("{n}", "")}
             {" · "}
             <span className="font-mono tabular-nums">{dayHours.toFixed(1)}h</span>
           </div>
         </div>
         <span
           className="h-7 px-2.5 rounded-[0.3rem] border border-dashed border-border text-[11.5px] text-muted-foreground italic inline-flex items-center gap-1 shrink-0"
-          title="使用桌面端或问 Merchiva 添加班次"
+          title={t("personnel.m.addHint")}
         >
-          <Plus className="h-3 w-3" strokeWidth={1.75} /> 添加
+          <Plus className="h-3 w-3" strokeWidth={1.75} /> {t("personnel.m.add")}
         </span>
       </div>
 
       {/* Day shift list */}
       {dayShifts.length === 0 ? (
         <div className="px-4 py-10 text-center text-muted-foreground text-[12.5px]">
-          当日无排班
+          {t("personnel.m.noShifts")}
         </div>
       ) : (
         dayShifts.map((s, i) => {
@@ -525,7 +506,7 @@ export function MobileSchedule({
                   {name}
                   {isOnNow && (
                     <span className="ml-1.5 text-[9.5px] font-bold tracking-wider text-emerald-600">
-                      ● 在岗
+                      ● {t("personnel.m.onShift")}
                     </span>
                   )}
                 </div>
@@ -632,6 +613,7 @@ function IconBtn({
 // ─── Mobile Team ────────────────────────────────────────────────────────────
 
 export function MobileTeam({ orgId }: { orgId: string }) {
+  const t = useT();
   const { currentOrg, can } = usePermissions();
   const { user } = useAuth();
   const orgName = currentOrg?.name ?? null;
@@ -676,13 +658,13 @@ export function MobileTeam({ orgId }: { orgId: string }) {
   }
 
   async function doRemove(id: string, name: string) {
-    if (!confirm(`确认移除 ${name}？`)) return;
+    if (!confirm(t("personnel.team.confirmRemove").replace("{name}", name))) return;
     setBusyId(id);
     try {
       await removeMember(id);
-      toast.success("已移除成员");
+      toast.success(t("personnel.toast.memberRemoved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "移除失败");
+      toast.error(err instanceof Error ? err.message : t("personnel.toast.memberRemoveFailed"));
     } finally {
       setBusyId(null);
       setActionsFor(null);
@@ -697,17 +679,17 @@ export function MobileTeam({ orgId }: { orgId: string }) {
     const ok = await resendInviteEmail({
       email: inv.email, token: inv.token, role: inv.role, orgName, inviterEmail,
     });
-    if (ok) toast.success("邀请邮件已重发");
-    else toast.error("邮件发送失败");
+    if (ok) toast.success(t("personnel.toast.resendSent"));
+    else toast.error(t("personnel.toast.resendFailed"));
     setBusyId(null);
     setActionsFor(null);
   }
 
   async function doCancel(invId: string, email: string) {
-    if (!confirm(`撤回对 ${email} 的邀请？`)) return;
+    if (!confirm(t("personnel.team.confirmCancelInvite").replace("{email}", email))) return;
     setBusyId(invId);
     const ok = await cancelPendingInvite(invId);
-    if (ok) toast.success("已撤回邀请");
+    if (ok) toast.success(t("personnel.toast.inviteCancelled"));
     setBusyId(null);
     setActionsFor(null);
   }
@@ -790,7 +772,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="搜索成员"
+            placeholder={t("personnel.m.search")}
             className="flex-1 bg-transparent border-0 outline-none text-[12.5px] text-foreground"
           />
         </div>
@@ -800,7 +782,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
             onClick={() => setInviteOpen(true)}
             className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1"
           >
-            <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} /> 邀请
+            <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} /> {t("personnel.m.invite")}
           </button>
         )}
       </div>
@@ -809,9 +791,9 @@ export function MobileTeam({ orgId }: { orgId: string }) {
       <div className="flex gap-1.5 px-3.5 py-2.5 border-b border-border bg-background overflow-x-auto no-scrollbar">
         {(
           [
-            { id: "all", label: `全部 ${counts.all}` },
-            { id: "active", label: `在职 ${counts.active}` },
-            { id: "invited", label: `待入职 ${counts.invited}` },
+            { id: "all", label: t("personnel.m.filterAll").replace("{n}", String(counts.all)) },
+            { id: "active", label: t("personnel.m.filterActive").replace("{n}", String(counts.active)) },
+            { id: "invited", label: t("personnel.m.filterInvited").replace("{n}", String(counts.invited)) },
           ] as const
         ).map((f) => {
           const active = f.id === filter;
@@ -836,7 +818,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
       {/* Member list */}
       {list.length === 0 ? (
         <div className="px-4 py-10 text-center text-muted-foreground text-[12.5px]">
-          没有符合条件的成员
+          {t("personnel.m.noMatches")}
         </div>
       ) : (
         list.map((m, i) => {
@@ -885,7 +867,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {isInvite && <Badge tone="warn">待入职</Badge>}
+                  {isInvite && <Badge tone="warn">{t("personnel.m.invitedBadge")}</Badge>}
                   {canAction && (
                     isInvite
                       ? <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
@@ -903,8 +885,8 @@ export function MobileTeam({ orgId }: { orgId: string }) {
                     onClick={() => doResend(invId)}
                     className="flex-1 h-8 rounded-[0.3rem] border border-border text-[12px] inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
-                    {busyId === invId ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" strokeWidth={1.75} />}
-                    重发邮件
+                    {busyId === invId ? <Spinner size={12} /> : <Mail className="h-3 w-3" strokeWidth={1.75} />}
+                    {t("personnel.m.resend")}
                   </button>
                   <button
                     type="button"
@@ -912,8 +894,8 @@ export function MobileTeam({ orgId }: { orgId: string }) {
                     onClick={() => doCancel(invId, m.email)}
                     className="flex-1 h-8 rounded-[0.3rem] border border-destructive/40 text-destructive text-[12px] inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
-                    {busyId === invId ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
-                    撤回
+                    {busyId === invId ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
+                    {t("personnel.m.cancel")}
                   </button>
                 </div>
               )}
@@ -937,6 +919,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
 // ─── Mobile Roles (list → drill into detail) ────────────────────────────────
 
 export function MobileRoles({ orgId }: { orgId: string }) {
+  const tt = useT();
   const [rawRoles] = useStaffRoles() as [unknown[], boolean];
   const [rawTasks] = useRoleTasks() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
@@ -1021,8 +1004,9 @@ export function MobileRoles({ orgId }: { orgId: string }) {
               {role.name}
             </div>
             <div className="text-[11px] text-muted-foreground mt-0.5">
-              <span className="font-mono tabular-nums">{members.length}</span> 名成员 ·{" "}
-              <span className="font-mono tabular-nums">{tasks.length}</span> 项任务
+              {tt("personnel.m.membersTasks")
+                .replace("{m}", String(members.length))
+                .replace("{t}", String(tasks.length))}
             </div>
           </div>
           <Pencil className="h-[14px] w-[14px] text-muted-foreground" strokeWidth={1.75} />
@@ -1031,10 +1015,10 @@ export function MobileRoles({ orgId }: { orgId: string }) {
         {/* Members */}
         <div className="px-3.5 pt-3 pb-3 bg-background border-b border-border">
           <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            成员 · {members.length}
+            {tt("personnel.m.members").replace("{n}", String(members.length))}
           </div>
           {members.length === 0 ? (
-            <div className="text-[12px] text-muted-foreground py-1">暂无成员</div>
+            <div className="text-[12px] text-muted-foreground py-1">{tt("personnel.m.noMembers")}</div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {members.map((m) => (
@@ -1053,10 +1037,10 @@ export function MobileRoles({ orgId }: { orgId: string }) {
         </div>
 
         {/* Tasks */}
-        <Section title={`任务清单 · ${tasks.length}`}>
+        <Section title={tt("personnel.m.taskList").replace("{n}", String(tasks.length))}>
           {tasks.length === 0 ? (
             <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-              该岗位暂无任务
+              {tt("personnel.m.noTasks")}
             </div>
           ) : (
             tasks.map((t, i) => (
@@ -1076,7 +1060,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                 <span className="font-mono tabular-nums text-[11px] text-muted-foreground shrink-0">
                   {t.startTime && t.endTime
                     ? `${t.startTime.slice(0, 5)}–${t.endTime.slice(0, 5)}`
-                    : "随时"}
+                    : tt("personnel.m.anytime")}
                 </span>
                 <MoreVertical
                   className="h-3 w-3 text-muted-foreground shrink-0"
@@ -1094,12 +1078,12 @@ export function MobileRoles({ orgId }: { orgId: string }) {
   return (
     <div>
       <Section
-        title={`角色 · ${roles.length}`}
-        kicker="点击角色查看其任务清单与成员分配"
+        title={tt("personnel.m.rolesTitle").replace("{n}", String(roles.length))}
+        kicker={tt("personnel.m.rolesKicker")}
       >
         {roles.length === 0 ? (
           <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-            暂无岗位
+            {tt("personnel.m.noRoles")}
           </div>
         ) : (
           roles.map((r, i) => {
@@ -1128,8 +1112,9 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                     {r.name}
                   </div>
                   <div className="text-[11.5px] text-muted-foreground mt-0.5">
-                    <span className="font-mono tabular-nums">{members.length}</span> 名成员 ·{" "}
-                    <span className="font-mono tabular-nums">{tasks}</span> 项任务
+                    {tt("personnel.m.membersTasks")
+                      .replace("{m}", String(members.length))
+                      .replace("{t}", String(tasks))}
                   </div>
                 </div>
                 <ChevronRight className="h-[14px] w-[14px] text-muted-foreground" strokeWidth={1.75} />
@@ -1159,6 +1144,7 @@ export function MobileRequestsSheet({
   onClose: () => void;
   orgId: string;
 }) {
+  const tt = useT();
   const [rawTimeOff] = useTimeOffRequests() as [unknown[], boolean];
   const [rawTrades] = useShiftTrades() as [unknown[], boolean];
   const [rawShifts] = useShifts() as [unknown[], boolean];
@@ -1298,9 +1284,9 @@ export function MobileRequestsSheet({
         </div>
         <div className="px-4 py-3 flex items-center border-b border-border gap-2">
           <Inbox className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
-          <div className="text-[16px] font-semibold tracking-[-0.015em]">请求</div>
+          <div className="text-[16px] font-semibold tracking-[-0.015em]">{tt("personnel.m.requestsTitle")}</div>
           <span className="ml-auto font-mono tabular-nums text-[11px] text-muted-foreground">
-            待处理 · {total}
+            {tt("personnel.m.pendingCount").replace("{n}", String(total))}
           </span>
           <button
             type="button"
@@ -1314,12 +1300,12 @@ export function MobileRequestsSheet({
         <div className="flex-1 overflow-y-auto no-scrollbar">
           {total === 0 && (
             <div className="px-4 py-14 text-center text-[12.5px] text-muted-foreground">
-              全部处理完毕 · 暂无待办
+              {tt("personnel.m.allHandled")}
             </div>
           )}
 
           {pendingTO.length > 0 && (
-            <Section title="请假">
+            <Section title={tt("personnel.m.timeOff")}>
               {pendingTO.map((r) => {
                 const isBusy = busy.has(r.id);
                 return (
@@ -1358,7 +1344,7 @@ export function MobileRequestsSheet({
                         className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-emerald-700 disabled:opacity-50"
                       >
                         <Check className="h-3 w-3" strokeWidth={1.75} />
-                        批准
+                        {tt("personnel.m.approve")}
                       </button>
                       <button
                         type="button"
@@ -1367,7 +1353,7 @@ export function MobileRequestsSheet({
                         className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-rose-700 disabled:opacity-50"
                       >
                         <Ban className="h-3 w-3" strokeWidth={1.75} />
-                        拒绝
+                        {tt("personnel.m.reject")}
                       </button>
                     </div>
                   </div>
@@ -1377,7 +1363,7 @@ export function MobileRequestsSheet({
           )}
 
           {pendingTD.length > 0 && (
-            <Section title="换班 / 代班">
+            <Section title={tt("personnel.m.tradeOrCover")}>
               {pendingTD.map((t) => {
                 const shift = shifts.get(t.shiftId);
                 const reqName = members.get(t.requesterId);
@@ -1390,7 +1376,7 @@ export function MobileRequestsSheet({
                   >
                     <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                       <Badge tone={t.type === "trade" ? "default" : "warn"}>
-                        {t.type === "trade" ? "换班" : "代班"}
+                        {t.type === "trade" ? tt("personnel.m.trade") : tt("personnel.m.cover")}
                       </Badge>
                       {shift && (
                         <span className="font-mono tabular-nums text-[11px] text-muted-foreground">
@@ -1417,7 +1403,7 @@ export function MobileRequestsSheet({
                         </>
                       ) : (
                         <span className="text-[11.5px] text-muted-foreground italic">
-                          任意可用人员
+                          {tt("personnel.m.anyAvailable")}
                         </span>
                       )}
                     </div>
@@ -1429,7 +1415,7 @@ export function MobileRequestsSheet({
                         className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-emerald-700 disabled:opacity-50"
                       >
                         <Check className="h-3 w-3" strokeWidth={1.75} />
-                        接受
+                        {tt("personnel.m.accept")}
                       </button>
                       <button
                         type="button"
@@ -1438,7 +1424,7 @@ export function MobileRequestsSheet({
                         className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-rose-700 disabled:opacity-50"
                       >
                         <Ban className="h-3 w-3" strokeWidth={1.75} />
-                        拒绝
+                        {tt("personnel.m.reject")}
                       </button>
                     </div>
                   </div>

@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { MerchivaLogo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Check, ArrowRight, ArrowLeft, Clock, MapPin, Store, UserPlus,
-  Link2, SkipForward, Send, Loader2, Plus, X, Mail, CreditCard,
-} from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Clock, MapPin, Store, UserPlus, Link2, SkipForward, Send, Plus, X, Mail, CreditCard } from "lucide-react";
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface InviteRow { email: string; role: string; }
 
@@ -223,7 +221,7 @@ function PosStep({ onFinish, onBack, onSkip, finishing }: {
           <Button variant="ghost" size="lg" className="gap-1.5 text-muted-foreground" onClick={onSkip}><SkipForward className="h-[13px] w-[13px]" /> Skip</Button>
         </div>
         <Button size="lg" className="gap-2" onClick={onFinish} disabled={finishing}>
-          {finishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-3.5 w-3.5" /> Finish setup</>}
+          {finishing ? <Spinner size={16} /> : <><Send className="h-3.5 w-3.5" /> Finish setup</>}
         </Button>
       </div>
     </div>
@@ -284,7 +282,7 @@ export default function SetupPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <Spinner size={20} className="text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Setting up your workspace...</p>
         </div>
       </div>

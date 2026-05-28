@@ -4,9 +4,7 @@ import { uuid } from "@/lib/utils";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  MessageSquare, Plus, Loader2, Users, ArrowLeft, Search, X, UserPlus, AlertTriangle, CheckCircle2, Paperclip, AtSign, ArrowUp,
-} from "lucide-react";
+import { MessageSquare, Plus, Users, ArrowLeft, Search, X, UserPlus, AlertTriangle, CheckCircle2, Paperclip, AtSign, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +30,7 @@ import { useT } from "@/lib/i18n/context";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { MerchivaChat } from "@/components/merchiva-chat-dashboard";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 function MerchivaChatEmbed({ compact = false, header = true }: { compact?: boolean; header?: boolean } = {}) {
   return (
@@ -297,7 +296,7 @@ export default function ChatPage() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Spinner size={32} className="text-muted-foreground" />
       </div>
     );
   }
@@ -1085,7 +1084,7 @@ function ChatView({
                 disabled={sending || !input.trim()}
                 className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5 disabled:opacity-30 transition-colors"
               >
-                {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Send"}
+                {sending ? <Spinner size={14} /> : "Send"}
                 {!sending && <ArrowUp className="h-3.5 w-3.5" />}
               </button>
             </div>

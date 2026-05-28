@@ -1,15 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import {
-  MapPin,
-  Plus,
-  Pencil,
-  Trash2,
-  Star,
-  Loader2,
-  X,
-} from "lucide-react";
+import { MapPin, Plus, Pencil, Trash2, Star, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +17,7 @@ import {
 } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface LocationManagerProps {
   organizationId: string;
@@ -265,7 +258,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                               disabled={deletingId === locId}
                             >
                               {deletingId === locId ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <Spinner size={12} />
                               ) : (
                                 t("locations.confirmYes")
                               )}
@@ -367,7 +360,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                   onClick={handleSave}
                   disabled={saving}
                 >
-                  {saving && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                  {saving && <Spinner size={12} className="mr-1" />}
                   {editingId
                     ? t("locations.save")
                     : t("locations.add")}

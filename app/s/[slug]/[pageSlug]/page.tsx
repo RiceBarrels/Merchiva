@@ -5,8 +5,9 @@ import { getSiteBySlug, getPages, getPageBySlug } from "@/lib/db/sites";
 import { SiteRenderer } from "@/components/site-renderer";
 import { SiteHtmlRenderer } from "@/components/site-html-renderer";
 import type { Site, SitePage } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface Props {
   params: Promise<{ slug: string; pageSlug: string }>;
@@ -37,7 +38,7 @@ export default function PublishedSiteSubPage({ params }: Props) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner size={24} className="text-muted-foreground" />
       </div>
     );
   }

@@ -3,16 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Loader2,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ArrowRight,
-  ArrowLeft,
-  ShieldCheck,
-} from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { BrandPanel } from "@/components/brand-panel";
 import { Button } from "@/components/ui/button";
@@ -24,6 +15,7 @@ import { useT } from "@/lib/i18n/context";
 import { useAuth, addAccountToStorage } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
 import { getElectron, isElectron } from "@/lib/electron";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 function LoginForm() {
   const t = useT();
@@ -263,7 +255,7 @@ function LoginForm() {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" disabled={loading} className="h-11 w-full rounded bg-stone-900 text-white text-[14px] font-medium gap-2 hover:bg-stone-800">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>{t("login.verify")} <ArrowRight className="h-4 w-4" /></>}
+                {loading ? <Spinner size={16} /> : <>{t("login.verify")} <ArrowRight className="h-4 w-4" /></>}
               </Button>
             </form>
             <Button type="button" variant="ghost" onClick={() => { setNeedsVerification(false); setError(""); setCode(""); }} className="mt-4 h-auto p-0 text-[12px] text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:text-stone-300 hover:bg-transparent gap-1.5 font-normal self-start">
@@ -336,7 +328,7 @@ function LoginForm() {
                 className="h-11 w-full rounded bg-stone-900 text-white text-[14px] font-medium gap-2 hover:bg-stone-800"
               >
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Spinner size={16} />
                 ) : (
                   <>
                     {t("login.verify")}
@@ -484,7 +476,7 @@ function LoginForm() {
               className="h-11 w-full rounded bg-stone-900 text-white text-[14px] font-medium gap-2 hover:bg-stone-800"
             >
               {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size={16} />
               ) : (
                 <>
                   {t("common.signIn")}

@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react";
+import { Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { BrandPanel } from "@/components/brand-panel";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n/context";
 import { useAuth, addAccountToStorage } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
 import { getElectron, isElectron } from "@/lib/electron";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 /* ── Password strength ─────────────────────────────── */
 
@@ -251,7 +252,7 @@ function SignupForm() {
                 className="h-11 w-full rounded bg-stone-900 text-white text-[14px] font-medium gap-2 hover:bg-stone-800"
               >
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Spinner size={16} />
                 ) : (
                   <>
                     {t("signup.verifyAndContinue")}
@@ -423,7 +424,7 @@ function SignupForm() {
               className="h-11 w-full rounded bg-stone-900 text-white text-[14px] font-medium gap-2 hover:bg-stone-800"
             >
               {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size={16} />
               ) : (
                 <>
                   {t("common.continue")}

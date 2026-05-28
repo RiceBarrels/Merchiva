@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { MobileShell } from "@/components/sidebar";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
+import { PushNotificationPrompt } from "@/components/push-notification-prompt";
+import { TauriNotificationBridge } from "@/components/tauri-notification-bridge";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { OfflineModeProvider, useOfflineMode } from "@/lib/offline-mode";
@@ -13,6 +15,8 @@ import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { useAuth } from "@/lib/auth/context";
 import { useOfflineSync } from "@/lib/offline-sync";
 import { Loader2 } from "lucide-react";
+import { SplashLoader, Spinner } from "@/components/ui/loaders/geometric";
+import { useThemeMode } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -91,7 +95,7 @@ function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSig
             disabled={loading || !displayName.trim() || !storeName.trim()}
             className="w-full h-11"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("layout.newUser.getStarted")}
+            {loading ? <Spinner size={16} /> : t("layout.newUser.getStarted")}
           </Button>
         </div>
         <button onClick={onSignOut} className="block text-sm text-muted-foreground underline underline-offset-4">
@@ -141,7 +145,7 @@ function NamePrompt({ memberId, onComplete }: { memberId: string; onComplete: ()
           onKeyDown={(e) => e.key === "Enter" && !saving && handleSave()}
         />
         <Button onClick={handleSave} disabled={saving || !name.trim()} className="w-full h-11">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("layout.namePrompt.continue")}
+          {saving ? <Spinner size={16} /> : t("layout.namePrompt.continue")}
         </Button>
       </div>
     </div>
@@ -302,56 +306,108 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     }
   }, [effectiveAuth, needsName, setupComplete, setupRouter]);
 
-  // Still waiting for SpacetimeDB tables to sync and no cached data available
-  if (!isReady && !effectiveAuth) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-muted">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
-        <p className="text-xs text-muted-foreground">{t("layout.connecting")}</p>
-        {timedOut && (
-          <div className="flex flex-col items-center gap-2 mt-2">
-            <p className="text-xs text-red-500">{t("layout.connectionTimedOut")}</p>
-            <button
-              onClick={handleSignOut}
-              className="rounded border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-            >
-              {t("layout.signOutAndRetry")}
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
+  // ── Splash flow ───────────────────────────────────────────────────────
+  // Cold load: SpacetimeDB tables aren't ready AND we have no cached auth.
+  // Show the splash, loop the loading orbit, and once data lands play the
+  // end animation (snap → ready → welcome) before unmounting the splash and
+  // revealing the dashboard.
+  //
+  // Warm caches (auth restored from localStorage snapshot) skip the splash
+  // entirely — there's nothing to wait for and flashing brand chrome on
+  // every navigation is annoying.
+  const [splashStarted, setSplashStarted] = useState(false);
+  const [splashFinished, setSplashFinished] = useState(false);
+  useEffect(() => {
+    if (!isReady && !effectiveAuth && !splashStarted) {
+      setSplashStarted(true);
+    }
+  }, [isReady, effectiveAuth, splashStarted]);
 
-  // Tables loaded but no org membership — new user needs onboarding
+  // Pick light vs dark splash based on the user's resolved theme — `dark`
+  // class on <html> is the source of truth (applyThemeMode keeps it in sync).
+  const [themeMode] = useThemeMode();
+  const [splashDark, setSplashDark] = useState(true);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const resolve = () =>
+      setSplashDark(document.documentElement.classList.contains("dark"));
+    resolve();
+    // Respond to system theme changes too (only matters when mode === "system").
+    if (typeof window !== "undefined" && window.matchMedia) {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const onChange = () => resolve();
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
+  }, [themeMode]);
+
+  // ── Underlying content ─────────────────────────────────────────────────
+  // Compute the "real" content first so it can mount underneath the splash
+  // overlay. Once auth is ready, this renders the dashboard (or NewUserSetup
+  // / NamePrompt as appropriate). The splash sits on top and blurs out via
+  // its hideWelcome path — the dashboard is already painted underneath, so
+  // the transition is seamless.
+  let realContent: React.ReactNode = null;
   if (isReady && !authState) {
-    return (
+    realContent = (
       <NewUserSetup
         onComplete={() => window.location.reload()}
         onSignOut={handleSignOut}
       />
     );
+  } else if (effectiveAuth) {
+    setActiveOrgId(effectiveAuth.organizationId);
+    realContent = (
+      <PermissionsProvider
+        role={effectiveAuth.role}
+        permissions={effectiveAuth.permissions}
+        organizationId={effectiveAuth.organizationId}
+        organizations={effectiveAuth.organizations}
+        currentOrg={effectiveAuth.currentOrg}
+      >
+        {needsName ? (
+          <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
+        ) : (
+          <>
+            <MobileShell>{children}</MobileShell>
+            <PushNotificationPrompt />
+            <TauriNotificationBridge />
+          </>
+        )}
+      </PermissionsProvider>
+    );
   }
 
-  if (!effectiveAuth) return null;
-
-  // Make organizationId available to non-React write helpers.
-  setActiveOrgId(effectiveAuth.organizationId);
+  const showSplash = splashStarted && !splashFinished;
+  const dataReady = isReady && !!authState;
 
   return (
-    <PermissionsProvider
-      role={effectiveAuth.role}
-      permissions={effectiveAuth.permissions}
-      organizationId={effectiveAuth.organizationId}
-      organizations={effectiveAuth.organizations}
-      currentOrg={effectiveAuth.currentOrg}
-    >
-      {needsName ? (
-        <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
-      ) : (
-        <MobileShell>{children}</MobileShell>
+    <>
+      {realContent}
+      {showSplash && (
+        <div className="fixed inset-0 z-[100]">
+          <SplashLoader
+            dark={splashDark}
+            ready={dataReady}
+            hideWelcome
+            onFinish={() => setSplashFinished(true)}
+            tagline={t("layout.connecting")}
+            status={t("layout.connecting")}
+          />
+          {timedOut && !dataReady && (
+            <div className="absolute inset-x-0 bottom-12 flex flex-col items-center gap-2 z-10">
+              <p className="text-xs text-red-400">{t("layout.connectionTimedOut")}</p>
+              <button
+                onClick={handleSignOut}
+                className={`rounded border px-3 py-1.5 text-xs ${splashDark ? "border-stone-700 bg-stone-900 text-stone-300 hover:bg-stone-800" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}
+              >
+                {t("layout.signOutAndRetry")}
+              </button>
+            </div>
+          )}
+        </div>
       )}
-    </PermissionsProvider>
+    </>
   );
 }
 

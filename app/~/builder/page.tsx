@@ -4,23 +4,14 @@ import { uuid } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Globe,
-  Plus,
-  Loader2,
-  ExternalLink,
-  Pencil,
-  Trash2,
-  Eye,
-  EyeOff,
-  X,
-} from "lucide-react";
+import { Globe, Plus, ExternalLink, Pencil, Trash2, Eye, EyeOff, X } from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
 import { PageHeader } from "@/components/page-header";
 import { createSite, updateSite, deleteSite } from "@/lib/spacetimedb/actions";
 import { getSites } from "@/lib/db/sites";
 import type { Site } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -159,7 +150,7 @@ export default function BuilderPage() {
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setShowCreate(false)} className="flex-1 rounded-[0.3rem] border border-border px-3 py-1.5 text-sm hover:bg-muted">{t("builder.list.cancel")}</button>
                 <button type="submit" disabled={creating || !newName.trim() || !newSlug.trim()} className="flex-1 rounded-[0.3rem] bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50 flex items-center justify-center gap-1.5">
-                  {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("builder.list.create")}
+                  {creating ? <Spinner size={14} /> : t("builder.list.create")}
                 </button>
               </div>
             </form>
@@ -170,7 +161,7 @@ export default function BuilderPage() {
       {/* Sites list */}
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
-          <Loader2 className="h-4 w-4 animate-spin" /> {t("builder.list.loadingSites")}
+          <Spinner size={16} /> {t("builder.list.loadingSites")}
         </div>
       ) : sites.length === 0 ? (
         <div className="rounded-[0.3rem] border border-dashed border-border px-6 py-12 text-center">
@@ -212,7 +203,7 @@ export default function BuilderPage() {
                   className="p-1.5 rounded-[0.3rem] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   {togglingId === site.id
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ? <Spinner size={14} />
                     : site.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
                 <Link
@@ -229,7 +220,7 @@ export default function BuilderPage() {
                   className="p-1.5 rounded-[0.3rem] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   {deletingId === site.id
-                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ? <Spinner size={14} />
                     : <Trash2 className="h-3.5 w-3.5" />}
                 </button>
               </div>

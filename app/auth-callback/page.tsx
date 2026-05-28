@@ -3,8 +3,9 @@
 import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addAccountToStorage } from "@/lib/auth/context";
-import { Loader2 } from "lucide-react";
+
 import { Suspense } from "react";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -36,7 +37,7 @@ function AuthCallbackInner() {
 
   return (
     <div className="flex h-screen items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-stone-400 dark:text-stone-500" />
+      <Spinner size={24} className="text-stone-400 dark:text-stone-500" />
     </div>
   );
 }

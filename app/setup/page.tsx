@@ -8,44 +8,9 @@ import { Input } from "@/components/ui/input";
 import { MerchivaLogo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Check,
-  ArrowRight,
-  ArrowLeft,
-  Monitor,
-  Package,
-  Users,
-  TrendingUp,
-  ShoppingBag,
-  Layout,
-  Heart,
-  Coffee,
-  Wrench,
-  SlidersHorizontal,
-  UserPlus,
-  Rocket,
-  Link2,
-  Copy,
-  Mail,
-  X,
-  Plus,
-  Upload,
-  Contact,
-  Shield,
-  Info,
-  SkipForward,
-  Send,
-  ChefHat,
-  ShieldCheck,
-  Database,
-  CreditCard,
-  MailCheck,
-  UserCog,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-} from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Monitor, Package, Users, TrendingUp, ShoppingBag, Layout, Heart, Coffee, Wrench, SlidersHorizontal, UserPlus, Rocket, Link2, Copy, Mail, X, Plus, Upload, Contact, Shield, Info, SkipForward, Send, ChefHat, ShieldCheck, Database, CreditCard, MailCheck, UserCog, ChevronDown, ChevronUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Feature / preset data ─────────────────────────────────
 
@@ -404,7 +369,7 @@ export default function SetupPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <Spinner size={20} className="text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Setting up your workspace...</p>
         </div>
       </div>

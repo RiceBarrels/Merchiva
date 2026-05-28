@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useEditor } from "@craftjs/core";
-import { Type, Image, LayoutDashboard, Sparkles, Send, X, Loader2 } from "lucide-react";
+import { Type, Image, LayoutDashboard, Sparkles, Send, X } from "lucide-react";
 import { CraftText } from "./craft-components/craft-text";
 import { CraftImage } from "./craft-components/craft-image";
 import { CraftLayout } from "./craft-components/craft-layout";
 import React from "react";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 export function ToolBar() {
   const t = useT();
@@ -102,7 +103,7 @@ export function ToolBar() {
             disabled={aiLoading}
           />
           {aiLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <Spinner size={16} className="text-muted-foreground" />
           ) : (
             <>
               <button

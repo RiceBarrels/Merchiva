@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, CheckCircle2, AlertTriangle, Users } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Users } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { useAuth } from "@/lib/auth/context";
 import {
@@ -21,6 +21,7 @@ import { acceptInvitation } from "@/lib/spacetimedb/actions";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import type { OrgInvitation } from "@/lib/types";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 export default function InvitePage({
   params,
@@ -33,7 +34,7 @@ export default function InvitePage({
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner size={24} className="text-muted-foreground" />
       </div>
     );
   }
@@ -144,7 +145,7 @@ function InviteInner({ token }: { token: string }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner size={24} className="text-muted-foreground" />
       </div>
     );
   }
@@ -240,7 +241,7 @@ function InviteInner({ token }: { token: string }) {
             className="w-full gap-2"
           >
             {accepting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Spinner size={16} />
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}

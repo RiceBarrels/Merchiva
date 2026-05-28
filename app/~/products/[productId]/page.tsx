@@ -2,11 +2,7 @@
 
 import { useState, useEffect, useRef, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Save,
-  Loader2,
-} from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +28,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { useT } from "@/lib/i18n/context";
 import { LOCALES } from "@/lib/i18n/config";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Default theme for preview ────────────────────────────────────────────────
 
@@ -258,7 +255,7 @@ function DetailsTab({
       </div>
       <div className="flex justify-end pt-2">
         <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {saving ? <Spinner size={16} /> : <Save className="h-4 w-4" />}
           {t("products.detail.details.save")}
         </Button>
       </div>
@@ -345,7 +342,7 @@ export default function ProductDetailPage({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <Spinner size={20} className="text-muted-foreground" />
       </div>
     );
   }

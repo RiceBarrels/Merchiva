@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Camera, ImageIcon, ArrowRight, Loader2, X, Clock } from "lucide-react";
+import { CheckCircle2, Camera, ImageIcon, ArrowRight, X, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/dynamic-ui-element";
 import { UploadButton } from "@/lib/uploadthing";
 import { useRoleTasks, useRoleTaskAssignments, useStaffRoles } from "@/lib/spacetimedb/hooks";
-import { recordTaskCompletion } from "@/lib/spacetimedb/actions";
+import { recordTaskCompletion, sendMessage } from "@/lib/spacetimedb/actions";
 import { usePermissions } from "@/lib/context/permissions";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawRow = any;
@@ -29,6 +30,18 @@ interface TaskRow {
   requiresEvidence: boolean;
   startTime: string | null;
   endTime: string | null;
+  notifyChats: string[];
+}
+
+function parseNotifyChats(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === "string");
+  if (typeof raw === "string" && raw.length > 0) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
+    } catch { /* fall through */ }
+  }
+  return [];
 }
 
 function tsToMs(ts: RawRow): number {
@@ -92,6 +105,7 @@ export function MyTasksCard() {
         requiresEvidence: Boolean(r.requiresEvidence),
         startTime: r.startTime ?? null,
         endTime: r.endTime ?? null,
+        notifyChats: parseNotifyChats(r.notifyChats),
       }));
   }, [taskRows, organizationId, liveRoleIds]);
 
@@ -217,6 +231,23 @@ function InlineComplete({
         evidenceUrl: evidenceUrl ?? undefined,
         note: note.trim() || undefined,
       });
+      // Fan-out to chats: best-effort. Don't roll back completion on failure.
+      if (task.notifyChats.length > 0) {
+        const trimmedNote = note.trim();
+        const lines = [`✅ Task completed: ${task.title}`];
+        if (trimmedNote) lines.push(trimmedNote);
+        const content = lines.join("\n");
+        const attachment = evidenceUrl
+          ? { url: evidenceUrl, type: "image", name: `${task.title}-evidence` }
+          : null;
+        const results = await Promise.allSettled(
+          task.notifyChats.map((chatId) => sendMessage(chatId, content, undefined, attachment))
+        );
+        const failed = results.filter((r) => r.status === "rejected").length;
+        if (failed > 0) {
+          toast.warning(`Task completed, but ${failed} chat notification(s) failed`);
+        }
+      }
       toast.success("Task completed");
       onClose();
     } catch (err) {
@@ -277,7 +308,7 @@ function InlineComplete({
                 />
                 {uploading && (
                   <div className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <Spinner size={12} />
                     Uploading…
                   </div>
                 )}
@@ -301,7 +332,7 @@ function InlineComplete({
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={submit} disabled={submitting || uploading}>
             {submitting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+              <Spinner size={14} className="mr-1" />
             ) : (
               <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
             )}

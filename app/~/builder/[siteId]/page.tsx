@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { Loader2 } from "lucide-react";
+
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSiteById, getPages } from "@/lib/db/sites";
@@ -12,6 +12,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { HtmlBuilderEditor } from "@/components/builder/html-editor";
 import type { Site, SitePage, Product } from "@/lib/types";
 import { useT } from "@/lib/i18n/context";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // Module-scope guard so concurrent effect runs (StrictMode dev double-mount or rapid
 // pageRows-driven re-renders before the first createPage round-trip lands) cannot
@@ -101,7 +102,7 @@ export default function BuilderPage({
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Spinner size={24} className="text-muted-foreground" />
       </div>
     );
   }

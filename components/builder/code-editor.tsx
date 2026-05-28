@@ -3,13 +3,14 @@
 import { useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { OnChange, OnMount } from "@monaco-editor/react";
-import { Loader2 } from "lucide-react";
+
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((m) => m.Editor), {
   ssr: false,
   loading: () => (
     <div className="flex h-full w-full items-center justify-center bg-stone-950 text-stone-400">
-      <Loader2 className="h-4 w-4 animate-spin" />
+      <Spinner size={16} />
     </div>
   ),
 });

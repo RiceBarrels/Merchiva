@@ -1,65 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Activity,
-  AlertCircle,
-  ArrowRight,
-  Bell,
-  Box,
-  Calendar,
-  Check,
-  ChevronRight,
-  Clock,
-  Cloud,
-  Code2,
-  Copy,
-  CreditCard,
-  Database,
-  Download,
-  Edit,
-  ExternalLink,
-  Eye,
-  File,
-  Filter,
-  Flag,
-  Folder,
-  Gift,
-  Globe,
-  Heart,
-  Home,
-  Image as ImageIcon,
-  Info,
-  Layers,
-  Link2,
-  Loader2,
-  Lock,
-  LogOut,
-  Mail,
-  Menu,
-  MessageSquare,
-  Minus,
-  MoreHorizontal,
-  MousePointer,
-  Package,
-  Pencil,
-  Phone,
-  Pin,
-  Play,
-  Plus,
-  Search,
-  Settings,
-  Share2,
-  ShoppingCart,
-  Sparkles,
-  Star,
-  Trash2,
-  TrendingUp,
-  Upload,
-  User,
-  X,
-  Zap,
-} from "lucide-react";
+import { Activity, AlertCircle, ArrowRight, Bell, Box, Calendar, Check, ChevronRight, Clock, Cloud, Code2, Copy, CreditCard, Database, Download, Edit, ExternalLink, Eye, File, Filter, Flag, Folder, Gift, Globe, Heart, Home, Image as ImageIcon, Info, Layers, Link2, Loader2, Lock, LogOut, Mail, Menu, MessageSquare, Minus, MoreHorizontal, MousePointer, Package, Pencil, Phone, Pin, Play, Plus, Search, Settings, Share2, ShoppingCart, Sparkles, Star, Trash2, TrendingUp, Upload, User, X, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -376,7 +319,7 @@ export default function DesignSystemPage() {
               <Button variant="secondary"><Settings />Configure</Button>
               <Button variant="ghost"><Eye />Preview</Button>
               <Button variant="destructive"><Trash2 />Delete</Button>
-              <Button variant="outline" disabled><Loader2 className="animate-spin" />Loading</Button>
+              <Button variant="outline" disabled><Spinner size={16} />Loading</Button>
             </div>
           </Block>
         </section>
