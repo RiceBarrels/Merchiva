@@ -1142,7 +1142,47 @@
       "reminderInvitesBody": "आमंत्रितों को इनबॉक्स देखने को कहें",
       "inviteCardTitle": "टीम बढ़ाएँ?",
       "inviteCardBody": "नीचे लिंक भेजें — नए सदस्य इसी से जुड़ेंगे।",
-      "inviteCardCta": "आमंत्रण लिंक बनाएँ"
+      "inviteCardCta": "आमंत्रण लिंक बनाएँ",
+      "dialogInviteTitle": "नया सदस्य आमंत्रित करें",
+      "dialogInviteMobileTitle": "आमंत्रित करें",
+      "dialogInviteDescription": "आमंत्रण लिंक भेजें। नए सदस्य ईमेल से आमंत्रण स्वीकार कर टीम में जुड़ते हैं।",
+      "dialogEditTitle": "सदस्य संपादित करें",
+      "dialogEditMobileTitle": "सदस्य संपादित करें",
+      "dialogEditDescription": "भूमिका और मॉड्यूल-वार अनुमतियाँ समायोजित करें",
+      "fieldEmail": "ईमेल",
+      "fieldRole": "भूमिका",
+      "fieldPermissions": "अनुमतियाँ",
+      "cancel": "रद्द करें",
+      "save": "सहेजें",
+      "remove": "हटाएँ",
+      "sendInvite": "आमंत्रण भेजें",
+      "toastInviteSent": "आमंत्रण भेजा गया",
+      "toastInviteEmailFailed": "आमंत्रण बना, लेकिन ईमेल भेजने में विफल",
+      "toastInviteNoToken": "आमंत्रण बना (टोकन नहीं मिला, ईमेल नहीं भेजा)",
+      "toastInviteCreateFailed": "आमंत्रण बनाने में विफल",
+      "toastUpdated": "सदस्य की अनुमतियाँ अपडेट हुईं",
+      "toastUpdateFailed": "अपडेट विफल",
+      "role": {
+        "staff": "स्टाफ",
+        "manager": "प्रबंधक"
+      },
+      "permissionSection": {
+        "dashboard": "डैशबोर्ड",
+        "inventory": "इन्वेंट्री",
+        "sales": "बिक्री",
+        "staffing": "स्टाफिंग",
+        "products": "उत्पाद",
+        "pos": "POS",
+        "settings": "सेटिंग्स",
+        "team": "टीम",
+        "website": "वेबसाइट",
+        "trainingGrading": "प्रशिक्षण मूल्यांकन"
+      },
+      "permissionAction": {
+        "view": "देखें",
+        "edit": "संपादित करें",
+        "invite": "आमंत्रित करें"
+      }
     }
   },
   "pos": {

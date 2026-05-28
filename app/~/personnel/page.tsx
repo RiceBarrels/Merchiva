@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Award,
   Cake,
   CalendarClock,
-  Check,
   Download,
   FileText,
   GraduationCap,
@@ -23,6 +22,20 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   removeMember,
 } from "@/lib/spacetimedb/actions";
@@ -225,47 +238,40 @@ function initials(name: string): string {
     .join("");
 }
 
-function Avatar({ name, size = 30 }: { name: string; size?: number }) {
+function Avatar({ name }: { name: string }) {
   return (
     <span
       className={cn(
-        "rounded-full inline-flex items-center justify-center font-semibold shrink-0",
+        "h-[30px] w-[30px] text-[11px] rounded-full inline-flex items-center justify-center font-semibold shrink-0",
         avatarBg(name),
       )}
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.max(9, Math.round(size * 0.36)),
-      }}
     >
       {initials(name)}
     </span>
   );
 }
 
-function Pill({
-  tone = "stone",
-  children,
-}: {
-  tone?: "stone" | "emerald" | "amber" | "rose" | "dark";
-  children: React.ReactNode;
-}) {
-  const tones: Record<string, string> = {
-    stone: "bg-muted text-muted-foreground border-border",
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50",
-    amber: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50",
-    rose: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900/50",
-    dark: "bg-foreground text-background border-foreground",
-  };
+type PillTone = "stone" | "emerald" | "amber" | "rose" | "dark";
+
+const PILL_TONES: Record<PillTone, string> = {
+  stone: "bg-muted text-muted-foreground border-border",
+  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50",
+  amber: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50",
+  rose: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900/50",
+  dark: "bg-foreground text-background border-foreground",
+};
+
+function StatusBadge({ tone, children }: { tone: PillTone; children: React.ReactNode }) {
   return (
-    <span
+    <Badge
+      variant="outline"
       className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[0.3rem] border text-[10px] font-medium",
-        tones[tone],
+        "h-5 rounded-[0.3rem] border px-1.5 py-0.5 text-[10px] font-medium",
+        PILL_TONES[tone],
       )}
     >
       {children}
-    </span>
+    </Badge>
   );
 }
 
@@ -306,8 +312,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<EditMemberInput | null>(null);
 
-  // Action menu / confirms keyed by member or invitation id.
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  // Per-row remove state (member id or invitation id).
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   // Resend feedback per-invitation (id → state)
@@ -433,7 +438,6 @@ function TeamPanel({ orgId }: { orgId: string }) {
       toast.error(err instanceof Error ? err.message : t("personnel.team.toastRemoveFailed"));
     } finally {
       setRemovingId(null);
-      setMenuOpen(null);
     }
   }
 
@@ -449,7 +453,6 @@ function TeamPanel({ orgId }: { orgId: string }) {
     if (ok) toast.success(t("personnel.team.toastInviteResent"));
     else toast.error(t("personnel.team.toastInviteFailed"));
     setResending((prev) => ({ ...prev, [inv.id]: false }));
-    setMenuOpen(null);
   }
 
   async function handleCancelInvite(id: string, email: string) {
@@ -458,21 +461,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
     const ok = await cancelPendingInvite(id);
     if (ok) toast.success(t("personnel.team.toastInviteCancelled"));
     setRemovingId(null);
-    setMenuOpen(null);
   }
-
-  // Close action menus when clicking outside
-  const menuContainerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onDocClick(e: MouseEvent) {
-      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target as Node)) {
-        setMenuOpen(null);
-      }
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [menuOpen]);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
@@ -492,14 +481,14 @@ function TeamPanel({ orgId }: { orgId: string }) {
         <div className="ml-auto flex items-center gap-2 flex-wrap">
           <div className="relative">
             <Search
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-[13px] w-[13px] text-muted-foreground"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 h-[13px] w-[13px] text-muted-foreground pointer-events-none"
               strokeWidth={1.75}
             />
-            <input
+            <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("personnel.team.searchPlaceholder")}
-              className="h-8 pl-7 pr-3 text-[12.5px] border border-border rounded-[0.3rem] bg-background w-[220px] outline-none focus:border-stone-400"
+              className="h-8 w-[220px] pl-7 pr-3 text-[12.5px] rounded-[0.3rem]"
             />
           </div>
           <Segmented
@@ -513,18 +502,23 @@ function TeamPanel({ orgId }: { orgId: string }) {
           />
           <Link
             href="/~/settings"
-            className="h-8 px-3 rounded-[0.3rem] border border-border bg-background text-[12px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "h-8 rounded-[0.3rem] text-[12px]",
+            )}
           >
-            <Download className="h-3 w-3" strokeWidth={1.75} /> {t("personnel.team.export")}
+            <Download className="h-3 w-3" strokeWidth={1.75} />
+            {t("personnel.team.export")}
           </Link>
           {canInviteTeam && (
-            <button
-              type="button"
+            <Button
+              size="sm"
               onClick={() => setInviteOpen(true)}
-              className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5"
+              className="h-8 rounded-[0.3rem] text-[12px]"
             >
-              <UserPlus className="h-3 w-3" strokeWidth={1.75} /> {t("personnel.team.invite")}
-            </button>
+              <UserPlus className="h-3 w-3" strokeWidth={1.75} />
+              {t("personnel.team.invite")}
+            </Button>
           )}
         </div>
       </div>
@@ -556,7 +550,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
                     i < list.length - 1 && "border-b border-border",
                   )}
                 >
-                  <Avatar name={m.displayName} size={30} />
+                  <Avatar name={m.displayName} />
                   <div className="min-w-0">
                     <div className="text-[13px] font-medium truncate">
                       {m.displayName}
@@ -579,85 +573,93 @@ function TeamPanel({ orgId }: { orgId: string }) {
                   <div className="text-[12px] text-muted-foreground truncate font-mono">
                     {m.email}
                   </div>
-                  <Pill tone={m.status === "active" ? "emerald" : "amber"}>
+                  <StatusBadge tone={m.status === "active" ? "emerald" : "amber"}>
                     {m.status === "active"
                       ? t("personnel.team.statusActive")
                       : t("personnel.team.statusInvited")}
-                  </Pill>
-                  <div className="flex items-center justify-end gap-0.5 relative">
+                  </StatusBadge>
+                  <div className="flex items-center justify-end gap-0.5">
                     {m.status === "invited" ? (
-                      <>
-                        {/* Pending invite — id is "inv-<uuid>" */}
-                        {(() => {
-                          const invId = m.id.replace(/^inv-/, "");
-                          const inv = (pendingInvitations as Array<{ id: { toString(): string }; email: string; token: string; role: string }>)
-                            .find((i) => i.id?.toString?.() === invId);
-                          const isResending = !!resending[invId];
-                          const isRemoving = removingId === invId;
-                          return (
-                            <>
-                              <button
-                                type="button"
-                                disabled={!inv || isResending}
-                                title={t("personnel.team.actionResend")}
-                                onClick={() => inv && handleResendInvite({
-                                  id: invId, email: inv.email, token: inv.token, role: inv.role,
-                                })}
-                                className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center disabled:opacity-40"
-                              >
-                                {isResending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" strokeWidth={1.75} />}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={!inv || isRemoving}
-                                title={t("personnel.team.actionCancelInvite")}
-                                onClick={() => inv && handleCancelInvite(invId, inv.email)}
-                                className="h-7 w-7 rounded-[0.3rem] hover:bg-destructive/10 text-muted-foreground hover:text-destructive inline-flex items-center justify-center disabled:opacity-40"
-                              >
-                                {isRemoving ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" strokeWidth={1.75} />}
-                              </button>
-                            </>
-                          );
-                        })()}
-                      </>
+                      (() => {
+                        const invId = m.id.replace(/^inv-/, "");
+                        const inv = (pendingInvitations as Array<{ id: { toString(): string }; email: string; token: string; role: string }>)
+                          .find((i) => i.id?.toString?.() === invId);
+                        const isResending = !!resending[invId];
+                        const isRemoving = removingId === invId;
+                        return (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              disabled={!inv || isResending}
+                              title={t("personnel.team.actionResend")}
+                              onClick={() => inv && handleResendInvite({
+                                id: invId, email: inv.email, token: inv.token, role: inv.role,
+                              })}
+                              className="rounded-[0.3rem]"
+                            >
+                              {isResending ? <Loader2 className="animate-spin" /> : <Mail strokeWidth={1.75} />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              disabled={!inv || isRemoving}
+                              title={t("personnel.team.actionCancelInvite")}
+                              onClick={() => inv && handleCancelInvite(invId, inv.email)}
+                              className="rounded-[0.3rem] hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              {isRemoving ? <Loader2 className="animate-spin" /> : <X strokeWidth={1.75} />}
+                            </Button>
+                          </>
+                        );
+                      })()
                     ) : (
-                      <>
-                        {canEditTeam && m.role.toLowerCase() !== "owner" && (
-                          <button
-                            type="button"
+                      canEditTeam && m.role.toLowerCase() !== "owner" && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
                             onClick={() => openEditMember(m)}
                             title={t("personnel.team.actionEdit")}
-                            className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
+                            className="rounded-[0.3rem]"
                           >
-                            <Pencil className="h-3 w-3" strokeWidth={1.75} />
-                          </button>
-                        )}
-                        {canEditTeam && m.role.toLowerCase() !== "owner" && (
-                          <div ref={menuOpen === m.id ? menuContainerRef : null}>
-                            <button
-                              type="button"
-                              title={t("personnel.team.actionMore")}
-                              onClick={() => setMenuOpen(menuOpen === m.id ? null : m.id)}
-                              className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
+                            <Pencil strokeWidth={1.75} />
+                          </Button>
+                          <Popover>
+                            <PopoverTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  title={t("personnel.team.actionMore")}
+                                  className="rounded-[0.3rem]"
+                                />
+                              }
                             >
-                              <MoreHorizontal className="h-3 w-3" strokeWidth={1.75} />
-                            </button>
-                            {menuOpen === m.id && (
-                              <div className="absolute right-0 top-8 z-20 w-40 rounded-[0.3rem] border border-border bg-background shadow-md p-1">
-                                <button
-                                  type="button"
-                                  disabled={removingId === m.id}
-                                  onClick={() => handleRemoveMember(m.id, m.displayName)}
-                                  className="w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-[0.3rem] text-[12px] text-destructive hover:bg-destructive/10 disabled:opacity-40"
-                                >
-                                  {removingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
-                                  {t("personnel.team.actionRemove")}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </>
+                              <MoreHorizontal strokeWidth={1.75} />
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="end"
+                              className="w-40 rounded-[0.3rem] p-1"
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={removingId === m.id}
+                                onClick={() => handleRemoveMember(m.id, m.displayName)}
+                                className="w-full justify-start rounded-[0.3rem] text-[12px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                {removingId === m.id ? (
+                                  <Loader2 className="animate-spin" />
+                                ) : (
+                                  <Trash2 strokeWidth={1.75} />
+                                )}
+                                {t("personnel.team.actionRemove")}
+                              </Button>
+                            </PopoverContent>
+                          </Popover>
+                        </>
+                      )
                     )}
                   </div>
                 </div>
@@ -667,15 +669,17 @@ function TeamPanel({ orgId }: { orgId: string }) {
         </div>
 
         <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader title={t("personnel.team.byRoleTitle")} subtitle={t("personnel.team.byRoleSubtitle")} />
-            <div className="px-4 pt-3 pb-4 flex flex-col gap-2.5">
-              {byRole.length === 0 ? (
-                <div className="text-[12px] text-muted-foreground italic">
-                  {t("personnel.team.byRoleEmpty")}
-                </div>
-              ) : (
-                byRole.map((r) => {
+          <SidebarCard
+            title={t("personnel.team.byRoleTitle")}
+            subtitle={t("personnel.team.byRoleSubtitle")}
+          >
+            {byRole.length === 0 ? (
+              <div className="text-[12px] text-muted-foreground italic">
+                {t("personnel.team.byRoleEmpty")}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {byRole.map((r) => {
                   const pct =
                     counts.active === 0
                       ? 0
@@ -698,24 +702,22 @@ function TeamPanel({ orgId }: { orgId: string }) {
                       </div>
                       <div className="h-1.5 bg-muted rounded overflow-hidden">
                         <div
-                          className="h-full"
-                          style={{
-                            width: `${pct}%`,
-                            background: r.color,
-                            opacity: 0.7,
-                          }}
+                          className="h-full opacity-70"
+                          style={{ width: `${pct}%`, background: r.color }}
                         />
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
-          </Card>
+                })}
+              </div>
+            )}
+          </SidebarCard>
 
-          <Card>
-            <CardHeader title={t("personnel.team.remindersTitle")} subtitle={t("personnel.team.remindersSubtitle")} />
-            <div className="px-4 pt-3 pb-4 flex flex-col gap-2.5 text-[12px]">
+          <SidebarCard
+            title={t("personnel.team.remindersTitle")}
+            subtitle={t("personnel.team.remindersSubtitle")}
+          >
+            <div className="flex flex-col gap-2.5 text-[12px]">
               <Reminder
                 icon={Cake}
                 tint="text-pink-500"
@@ -737,7 +739,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
                 />
               )}
             </div>
-          </Card>
+          </SidebarCard>
 
           {canInviteTeam && (
             <div className="bg-foreground text-background rounded-[0.3rem] p-4">
@@ -748,13 +750,12 @@ function TeamPanel({ orgId }: { orgId: string }) {
               <div className="text-[11.5px] text-background/70 leading-relaxed mb-3">
                 {t("personnel.team.inviteCardBody")}
               </div>
-              <button
-                type="button"
+              <Button
                 onClick={() => setInviteOpen(true)}
-                className="w-full h-8 rounded-[0.3rem] bg-background text-foreground text-[12px] font-medium hover:bg-background/90 inline-flex items-center justify-center"
+                className="w-full h-8 rounded-[0.3rem] bg-background text-foreground text-[12px] hover:bg-background/90"
               >
                 {t("personnel.team.inviteCardCta")}
-              </button>
+              </Button>
             </div>
           )}
         </div>
@@ -846,48 +847,29 @@ function TrainingPanel({
 
 // ─── primitives ──────────────────────────────────────────────────────────────
 
-function Card({
-  className,
-  children,
-}: {
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        "bg-background border border-border rounded-[0.3rem] overflow-hidden",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CardHeader({
+function SidebarCard({
   title,
   subtitle,
-  right,
+  children,
 }: {
   title: string;
   subtitle?: string;
-  right?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="px-4 py-2.5 border-b border-border flex items-center gap-3 bg-muted/30">
-      <div className="min-w-0">
-        <div className="text-[12.5px] font-semibold tracking-[-0.005em] truncate">
+    <Card className="gap-0 py-0 rounded-[0.3rem]">
+      <CardHeader className="px-4 py-2.5 border-b border-border bg-muted/30">
+        <CardTitle className="text-[12.5px] font-semibold tracking-[-0.005em] truncate">
           {title}
-        </div>
+        </CardTitle>
         {subtitle && (
           <div className="text-[10.5px] text-muted-foreground font-mono uppercase tracking-wider truncate">
             {subtitle}
           </div>
         )}
-      </div>
-      {right && <div className="ml-auto shrink-0">{right}</div>}
-    </div>
+      </CardHeader>
+      <CardContent className="px-4 pt-3 pb-4">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -903,19 +885,19 @@ function Segmented({
   return (
     <div className="inline-flex rounded-[0.3rem] border border-border bg-background overflow-hidden h-8">
       {options.map((o) => (
-        <button
+        <Button
           key={o.value}
-          type="button"
+          variant="ghost"
           onClick={() => onChange(o.value)}
           className={cn(
-            "px-2.5 text-[11.5px] font-medium border-l border-border first:border-l-0",
+            "h-full rounded-none px-2.5 text-[11.5px] font-medium border-l border-border first:border-l-0",
             value === o.value
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:bg-muted",
+              ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+              : "text-muted-foreground",
           )}
         >
           {o.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

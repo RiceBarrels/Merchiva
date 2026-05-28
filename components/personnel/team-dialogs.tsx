@@ -14,6 +14,11 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import type { Permissions } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -26,19 +31,19 @@ import {
 
 const PERMISSION_SECTIONS: ReadonlyArray<{
   key: keyof Permissions;
-  label: string;
+  i18nKey: string;
   actions: ReadonlyArray<"view" | "edit" | "invite">;
 }> = [
-  { key: "dashboard",        label: "看板",       actions: ["view"] },
-  { key: "inventory",        label: "库存",       actions: ["view", "edit"] },
-  { key: "sales",            label: "销售",       actions: ["view"] },
-  { key: "staffing",         label: "人员",       actions: ["view", "edit"] },
-  { key: "products",         label: "产品",       actions: ["view", "edit"] },
-  { key: "pos",              label: "POS",        actions: ["view"] },
-  { key: "settings",         label: "设置",       actions: ["view"] },
-  { key: "team",             label: "团队",       actions: ["view", "invite", "edit"] },
-  { key: "website",          label: "网站",       actions: ["view", "edit"] },
-  { key: "training_grading", label: "培训评分",   actions: ["view", "edit"] },
+  { key: "dashboard",        i18nKey: "dashboard",       actions: ["view"] },
+  { key: "inventory",        i18nKey: "inventory",       actions: ["view", "edit"] },
+  { key: "sales",            i18nKey: "sales",           actions: ["view"] },
+  { key: "staffing",         i18nKey: "staffing",        actions: ["view", "edit"] },
+  { key: "products",         i18nKey: "products",        actions: ["view", "edit"] },
+  { key: "pos",              i18nKey: "pos",             actions: ["view"] },
+  { key: "settings",         i18nKey: "settings",        actions: ["view"] },
+  { key: "team",             i18nKey: "team",            actions: ["view", "invite", "edit"] },
+  { key: "website",          i18nKey: "website",         actions: ["view", "edit"] },
+  { key: "training_grading", i18nKey: "trainingGrading", actions: ["view", "edit"] },
 ];
 
 export function PermissionsEditor({
@@ -48,30 +53,39 @@ export function PermissionsEditor({
   value: Permissions;
   onChange: (next: Permissions) => void;
 }) {
+  const t = useT();
   return (
     <div className="mt-1 border border-border rounded-[0.3rem] divide-y divide-border max-h-[260px] overflow-y-auto">
-      {PERMISSION_SECTIONS.map(({ key, label, actions }) => {
+      {PERMISSION_SECTIONS.map(({ key, i18nKey, actions }) => {
         const sec = (value[key] ?? {}) as { view?: boolean; edit?: boolean; invite?: boolean };
         return (
           <div key={key} className="flex items-center gap-3 px-2.5 py-1.5">
-            <span className="text-[12px] flex-1 truncate">{label}</span>
-            {actions.map((action) => (
-              <label key={action} className="flex items-center gap-1 text-[11px] text-muted-foreground capitalize cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sec[action] === true}
-                  onChange={() => {
-                    const next: { view?: boolean; edit?: boolean; invite?: boolean } = { ...sec };
-                    next[action] = !next[action];
-                    if (action === "view" && !next.view) { next.edit = false; next.invite = false; }
-                    if ((action === "edit" || action === "invite") && next[action]) next.view = true;
-                    onChange({ ...value, [key]: next } as Permissions);
-                  }}
-                  className="h-3.5 w-3.5 accent-foreground"
-                />
-                {action === "view" ? "查看" : action === "edit" ? "编辑" : "邀请"}
-              </label>
-            ))}
+            <span className="text-[12px] flex-1 truncate">
+              {t(`personnel.team.permissionSection.${i18nKey}`)}
+            </span>
+            {actions.map((action) => {
+              const cbId = `perm-${key}-${action}`;
+              return (
+                <label
+                  key={action}
+                  htmlFor={cbId}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer"
+                >
+                  <Checkbox
+                    id={cbId}
+                    checked={sec[action] === true}
+                    onCheckedChange={() => {
+                      const next: { view?: boolean; edit?: boolean; invite?: boolean } = { ...sec };
+                      next[action] = !next[action];
+                      if (action === "view" && !next.view) { next.edit = false; next.invite = false; }
+                      if ((action === "edit" || action === "invite") && next[action]) next.view = true;
+                      onChange({ ...value, [key]: next } as Permissions);
+                    }}
+                  />
+                  {t(`personnel.team.permissionAction.${action}`)}
+                </label>
+              );
+            })}
           </div>
         );
       })}
@@ -90,6 +104,7 @@ export function InviteMemberDialog({
   onClose: () => void;
   orgId: string;
 }) {
+  const t = useT();
   const { currentOrg } = usePermissions();
   const { user } = useAuth();
   const orgName = currentOrg?.name ?? null;
@@ -142,17 +157,17 @@ export function InviteMemberDialog({
               role,
             }),
           });
-          if (res.ok) toast.success("邀请已发送");
-          else toast.warning("邀请已创建，但邮件发送失败");
+          if (res.ok) toast.success(t("personnel.team.toastInviteSent"));
+          else toast.warning(t("personnel.team.toastInviteEmailFailed"));
         } catch {
-          toast.warning("邀请已创建，但邮件发送失败");
+          toast.warning(t("personnel.team.toastInviteEmailFailed"));
         }
       } else {
-        toast.warning("邀请已创建（未取到令牌，无法发送邮件）");
+        toast.warning(t("personnel.team.toastInviteNoToken"));
       }
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "邀请失败");
+      toast.error(err instanceof Error ? err.message : t("personnel.team.toastInviteCreateFailed"));
     } finally {
       setBusy(false);
     }
@@ -162,61 +177,65 @@ export function InviteMemberDialog({
     <DynamicUIElement open={open} onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
       <DynamicUIElementContent>
         <DynamicUIElementHeader>
-          <DynamicUIElementTitle mobileTitle="邀请">邀请新成员</DynamicUIElementTitle>
-          <DynamicUIElementDescription>发送邀请链接，新成员通过邮件接受邀请加入团队。</DynamicUIElementDescription>
+          <DynamicUIElementTitle mobileTitle={t("personnel.team.dialogInviteMobileTitle")}>
+            {t("personnel.team.dialogInviteTitle")}
+          </DynamicUIElementTitle>
+          <DynamicUIElementDescription>
+            {t("personnel.team.dialogInviteDescription")}
+          </DynamicUIElementDescription>
         </DynamicUIElementHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">邮箱</label>
-            <input
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("personnel.team.fieldEmail")}
+            </Label>
+            <Input
               autoFocus
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="teammate@example.com"
-              className="w-full rounded-[0.3rem] border border-border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring"
+              className="rounded-[0.3rem]"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">角色</label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("personnel.team.fieldRole")}
+            </Label>
             <div className="flex gap-2">
               {(["staff", "manager"] as const).map((r) => (
-                <button
+                <Button
                   key={r}
-                  type="button"
+                  variant={role === r ? "default" : "outline"}
                   onClick={() => setRole(r)}
-                  className={cn(
-                    "flex-1 rounded-[0.3rem] border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
-                    role === r
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background text-foreground hover:bg-muted",
-                  )}
+                  className={cn("flex-1 rounded-[0.3rem]")}
                 >
-                  {r === "staff" ? "员工" : "管理员"}
-                </button>
+                  {t(`personnel.team.role.${r}`)}
+                </Button>
               ))}
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">权限</label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("personnel.team.fieldPermissions")}
+            </Label>
             <PermissionsEditor value={perms} onChange={setPerms} />
           </div>
           <div className="flex gap-2 pt-1">
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => !busy && onClose()}
-              className="flex-1 rounded-[0.3rem] border border-border px-3 py-1.5 text-sm hover:bg-muted"
+              className="flex-1 rounded-[0.3rem]"
             >
-              取消
-            </button>
-            <button
-              type="button"
+              {t("personnel.team.cancel")}
+            </Button>
+            <Button
               disabled={busy || !email.trim()}
               onClick={handleSubmit}
-              className="flex-1 rounded-[0.3rem] bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+              className="flex-1 rounded-[0.3rem]"
             >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "发送邀请"}
-            </button>
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("personnel.team.sendInvite")}
+            </Button>
           </div>
         </div>
       </DynamicUIElementContent>
@@ -241,6 +260,7 @@ export function EditMemberDialog({
   member: EditMemberInput | null;
   onClose: () => void;
 }) {
+  const t = useT();
   const [role, setRole] = useState<"staff" | "manager">(member?.role ?? "staff");
   const [perms, setPerms] = useState<Permissions>(member?.perms ?? defaultPermissions());
   const [busy, setBusy] = useState(false);
@@ -257,10 +277,10 @@ export function EditMemberDialog({
     setBusy(true);
     try {
       await updateMember(member.id, { role, permissions: JSON.stringify(perms) });
-      toast.success("已更新成员权限");
+      toast.success(t("personnel.team.toastUpdated"));
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新失败");
+      toast.error(err instanceof Error ? err.message : t("personnel.team.toastUpdateFailed"));
     } finally {
       setBusy(false);
     }
@@ -268,14 +288,14 @@ export function EditMemberDialog({
 
   async function handleRemove() {
     if (!member || busy) return;
-    if (!confirm(`确认移除 ${member.displayName}？`)) return;
+    if (!confirm(t("personnel.team.removeConfirm").replace("{name}", member.displayName))) return;
     setBusy(true);
     try {
       await removeMember(member.id);
-      toast.success("已移除成员");
+      toast.success(t("personnel.team.toastRemoved"));
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "移除失败");
+      toast.error(err instanceof Error ? err.message : t("personnel.team.toastRemoveFailed"));
     } finally {
       setBusy(false);
     }
@@ -285,62 +305,60 @@ export function EditMemberDialog({
     <DynamicUIElement open={!!member} onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
       <DynamicUIElementContent>
         <DynamicUIElementHeader>
-          <DynamicUIElementTitle mobileTitle="编辑成员">
-            编辑成员{member ? ` · ${member.displayName}` : ""}
+          <DynamicUIElementTitle mobileTitle={t("personnel.team.dialogEditMobileTitle")}>
+            {t("personnel.team.dialogEditTitle")}{member ? ` · ${member.displayName}` : ""}
           </DynamicUIElementTitle>
           <DynamicUIElementDescription>
-            {member?.email || "调整角色与各模块的权限"}
+            {member?.email || t("personnel.team.dialogEditDescription")}
           </DynamicUIElementDescription>
         </DynamicUIElementHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">角色</label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("personnel.team.fieldRole")}
+            </Label>
             <div className="flex gap-2">
               {(["staff", "manager"] as const).map((r) => (
-                <button
+                <Button
                   key={r}
-                  type="button"
+                  variant={role === r ? "default" : "outline"}
                   onClick={() => setRole(r)}
-                  className={cn(
-                    "flex-1 rounded-[0.3rem] border px-3 py-1.5 text-sm font-medium transition-colors",
-                    role === r
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background text-foreground hover:bg-muted",
-                  )}
+                  className="flex-1 rounded-[0.3rem]"
                 >
-                  {r === "staff" ? "员工" : "管理员"}
-                </button>
+                  {t(`personnel.team.role.${r}`)}
+                </Button>
               ))}
             </div>
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">权限</label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("personnel.team.fieldPermissions")}
+            </Label>
             <PermissionsEditor value={perms} onChange={setPerms} />
           </div>
           <div className="flex gap-2 pt-1">
-            <button
-              type="button"
+            <Button
+              variant="destructive"
               onClick={handleRemove}
               disabled={busy}
-              className="rounded-[0.3rem] border border-destructive/40 text-destructive px-3 py-1.5 text-sm hover:bg-destructive/10 disabled:opacity-40"
+              className="rounded-[0.3rem]"
             >
-              移除
-            </button>
-            <button
-              type="button"
+              {t("personnel.team.remove")}
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => !busy && onClose()}
-              className="flex-1 rounded-[0.3rem] border border-border px-3 py-1.5 text-sm hover:bg-muted"
+              className="flex-1 rounded-[0.3rem]"
             >
-              取消
-            </button>
-            <button
-              type="button"
+              {t("personnel.team.cancel")}
+            </Button>
+            <Button
               disabled={busy}
               onClick={handleSave}
-              className="flex-1 rounded-[0.3rem] bg-foreground px-3 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+              className="flex-1 rounded-[0.3rem]"
             >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "保存"}
-            </button>
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("personnel.team.save")}
+            </Button>
           </div>
         </div>
       </DynamicUIElementContent>
@@ -380,7 +398,7 @@ export async function cancelPendingInvite(id: string): Promise<boolean> {
     await cancelInvitation(id);
     return true;
   } catch (err) {
-    toast.error(err instanceof Error ? err.message : "撤回失败");
+    toast.error(err instanceof Error ? err.message : "Failed to cancel invitation");
     return false;
   }
 }

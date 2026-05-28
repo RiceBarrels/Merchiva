@@ -1142,7 +1142,47 @@
       "reminderInvitesBody": "Recuerda a los invitados que revisen su correo",
       "inviteCardTitle": "¿Crecer el equipo?",
       "inviteCardBody": "Envía un enlace de invitación; los nuevos miembros se incorporan a través de él.",
-      "inviteCardCta": "Generar enlace de invitación"
+      "inviteCardCta": "Generar enlace de invitación",
+      "dialogInviteTitle": "Invitar nuevo miembro",
+      "dialogInviteMobileTitle": "Invitar",
+      "dialogInviteDescription": "Envía un enlace de invitación. Los nuevos miembros aceptan la invitación por correo para unirse al equipo.",
+      "dialogEditTitle": "Editar miembro",
+      "dialogEditMobileTitle": "Editar miembro",
+      "dialogEditDescription": "Ajusta el rol y los permisos por módulo",
+      "fieldEmail": "Correo",
+      "fieldRole": "Rol",
+      "fieldPermissions": "Permisos",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "remove": "Eliminar",
+      "sendInvite": "Enviar invitación",
+      "toastInviteSent": "Invitación enviada",
+      "toastInviteEmailFailed": "Invitación creada, pero falló el envío del correo",
+      "toastInviteNoToken": "Invitación creada (token no obtenido, correo no enviado)",
+      "toastInviteCreateFailed": "No se pudo crear la invitación",
+      "toastUpdated": "Permisos del miembro actualizados",
+      "toastUpdateFailed": "Error al actualizar",
+      "role": {
+        "staff": "Empleado",
+        "manager": "Gerente"
+      },
+      "permissionSection": {
+        "dashboard": "Panel",
+        "inventory": "Inventario",
+        "sales": "Ventas",
+        "staffing": "Personal",
+        "products": "Productos",
+        "pos": "TPV",
+        "settings": "Ajustes",
+        "team": "Equipo",
+        "website": "Sitio web",
+        "trainingGrading": "Calificación de formación"
+      },
+      "permissionAction": {
+        "view": "Ver",
+        "edit": "Editar",
+        "invite": "Invitar"
+      }
     }
   },
   "pos": {

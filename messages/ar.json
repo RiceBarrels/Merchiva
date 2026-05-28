@@ -1142,7 +1142,47 @@
       "reminderInvitesBody": "ذكّر المدعوين بمراجعة البريد",
       "inviteCardTitle": "هل تريد توسيع الفريق؟",
       "inviteCardBody": "أرسل رابط الدعوة أدناه — ينضم الأعضاء الجدد عبره.",
-      "inviteCardCta": "إنشاء رابط الدعوة"
+      "inviteCardCta": "إنشاء رابط الدعوة",
+      "dialogInviteTitle": "دعوة عضو جديد",
+      "dialogInviteMobileTitle": "دعوة",
+      "dialogInviteDescription": "أرسل رابط الدعوة. يقبل الأعضاء الجدد الدعوة عبر البريد للانضمام إلى الفريق.",
+      "dialogEditTitle": "تعديل العضو",
+      "dialogEditMobileTitle": "تعديل العضو",
+      "dialogEditDescription": "اضبط الدور والصلاحيات لكل وحدة",
+      "fieldEmail": "البريد الإلكتروني",
+      "fieldRole": "الدور",
+      "fieldPermissions": "الصلاحيات",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "remove": "إزالة",
+      "sendInvite": "إرسال الدعوة",
+      "toastInviteSent": "تم إرسال الدعوة",
+      "toastInviteEmailFailed": "تم إنشاء الدعوة، لكن فشل إرسال البريد",
+      "toastInviteNoToken": "تم إنشاء الدعوة (تعذر الحصول على الرمز، لم يُرسل البريد)",
+      "toastInviteCreateFailed": "فشل إنشاء الدعوة",
+      "toastUpdated": "تم تحديث صلاحيات العضو",
+      "toastUpdateFailed": "فشل التحديث",
+      "role": {
+        "staff": "موظف",
+        "manager": "مدير"
+      },
+      "permissionSection": {
+        "dashboard": "لوحة التحكم",
+        "inventory": "المخزون",
+        "sales": "المبيعات",
+        "staffing": "الموظفون",
+        "products": "المنتجات",
+        "pos": "نقطة البيع",
+        "settings": "الإعدادات",
+        "team": "الفريق",
+        "website": "الموقع",
+        "trainingGrading": "تقييم التدريب"
+      },
+      "permissionAction": {
+        "view": "عرض",
+        "edit": "تعديل",
+        "invite": "دعوة"
+      }
     }
   },
   "pos": {

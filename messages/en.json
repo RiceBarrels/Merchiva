@@ -1142,7 +1142,47 @@
       "reminderInvitesBody": "Remind invitees to check their inbox",
       "inviteCardTitle": "Grow your team?",
       "inviteCardBody": "Send an invite link below — new members onboard through it.",
-      "inviteCardCta": "Generate invite link"
+      "inviteCardCta": "Generate invite link",
+      "dialogInviteTitle": "Invite new member",
+      "dialogInviteMobileTitle": "Invite",
+      "dialogInviteDescription": "Send an invite link. New members accept the invitation via email to join the team.",
+      "dialogEditTitle": "Edit member",
+      "dialogEditMobileTitle": "Edit member",
+      "dialogEditDescription": "Adjust role and per-module permissions",
+      "fieldEmail": "Email",
+      "fieldRole": "Role",
+      "fieldPermissions": "Permissions",
+      "cancel": "Cancel",
+      "save": "Save",
+      "remove": "Remove",
+      "sendInvite": "Send invite",
+      "toastInviteSent": "Invitation sent",
+      "toastInviteEmailFailed": "Invitation created, but email failed to send",
+      "toastInviteNoToken": "Invitation created (token not retrieved, email not sent)",
+      "toastInviteCreateFailed": "Failed to create invitation",
+      "toastUpdated": "Member permissions updated",
+      "toastUpdateFailed": "Failed to update member",
+      "role": {
+        "staff": "Staff",
+        "manager": "Manager"
+      },
+      "permissionSection": {
+        "dashboard": "Dashboard",
+        "inventory": "Inventory",
+        "sales": "Sales",
+        "staffing": "Staffing",
+        "products": "Products",
+        "pos": "POS",
+        "settings": "Settings",
+        "team": "Team",
+        "website": "Website",
+        "trainingGrading": "Training grading"
+      },
+      "permissionAction": {
+        "view": "View",
+        "edit": "Edit",
+        "invite": "Invite"
+      }
     }
   },
   "pos": {

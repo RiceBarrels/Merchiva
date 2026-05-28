@@ -1142,7 +1142,47 @@
       "reminderInvitesBody": "提醒受邀人查收邮箱",
       "inviteCardTitle": "扩充团队？",
       "inviteCardBody": "点击下方按钮发送邀请链接，新成员通过链接完成入职。",
-      "inviteCardCta": "生成邀请链接"
+      "inviteCardCta": "生成邀请链接",
+      "dialogInviteTitle": "邀请新成员",
+      "dialogInviteMobileTitle": "邀请",
+      "dialogInviteDescription": "发送邀请链接，新成员通过邮件接受邀请加入团队。",
+      "dialogEditTitle": "编辑成员",
+      "dialogEditMobileTitle": "编辑成员",
+      "dialogEditDescription": "调整角色与各模块的权限",
+      "fieldEmail": "邮箱",
+      "fieldRole": "角色",
+      "fieldPermissions": "权限",
+      "cancel": "取消",
+      "save": "保存",
+      "remove": "移除",
+      "sendInvite": "发送邀请",
+      "toastInviteSent": "邀请已发送",
+      "toastInviteEmailFailed": "邀请已创建，但邮件发送失败",
+      "toastInviteNoToken": "邀请已创建（未取到令牌，无法发送邮件）",
+      "toastInviteCreateFailed": "邀请创建失败",
+      "toastUpdated": "已更新成员权限",
+      "toastUpdateFailed": "更新失败",
+      "role": {
+        "staff": "员工",
+        "manager": "管理员"
+      },
+      "permissionSection": {
+        "dashboard": "看板",
+        "inventory": "库存",
+        "sales": "销售",
+        "staffing": "人员",
+        "products": "产品",
+        "pos": "POS",
+        "settings": "设置",
+        "team": "团队",
+        "website": "网站",
+        "trainingGrading": "培训评分"
+      },
+      "permissionAction": {
+        "view": "查看",
+        "edit": "编辑",
+        "invite": "邀请"
+      }
     }
   },
   "pos": {

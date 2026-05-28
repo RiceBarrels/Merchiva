@@ -1142,7 +1142,47 @@
       "reminderInvitesBody": "Rappelez aux invités de vérifier leurs e-mails",
       "inviteCardTitle": "Agrandir l'équipe ?",
       "inviteCardBody": "Envoyez le lien ci-dessous — les nouveaux membres rejoignent via ce lien.",
-      "inviteCardCta": "Générer un lien d'invitation"
+      "inviteCardCta": "Générer un lien d'invitation",
+      "dialogInviteTitle": "Inviter un nouveau membre",
+      "dialogInviteMobileTitle": "Inviter",
+      "dialogInviteDescription": "Envoyez un lien d'invitation. Les nouveaux membres acceptent l'invitation par e-mail pour rejoindre l'équipe.",
+      "dialogEditTitle": "Modifier le membre",
+      "dialogEditMobileTitle": "Modifier le membre",
+      "dialogEditDescription": "Ajustez le rôle et les autorisations par module",
+      "fieldEmail": "E-mail",
+      "fieldRole": "Rôle",
+      "fieldPermissions": "Autorisations",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "remove": "Supprimer",
+      "sendInvite": "Envoyer l'invitation",
+      "toastInviteSent": "Invitation envoyée",
+      "toastInviteEmailFailed": "Invitation créée, mais l'envoi de l'e-mail a échoué",
+      "toastInviteNoToken": "Invitation créée (jeton non récupéré, e-mail non envoyé)",
+      "toastInviteCreateFailed": "Échec de la création de l'invitation",
+      "toastUpdated": "Autorisations du membre mises à jour",
+      "toastUpdateFailed": "Échec de la mise à jour",
+      "role": {
+        "staff": "Employé",
+        "manager": "Responsable"
+      },
+      "permissionSection": {
+        "dashboard": "Tableau de bord",
+        "inventory": "Inventaire",
+        "sales": "Ventes",
+        "staffing": "Personnel",
+        "products": "Produits",
+        "pos": "Caisse",
+        "settings": "Paramètres",
+        "team": "Équipe",
+        "website": "Site web",
+        "trainingGrading": "Notation des formations"
+      },
+      "permissionAction": {
+        "view": "Voir",
+        "edit": "Modifier",
+        "invite": "Inviter"
+      }
     }
   },
   "pos": {
