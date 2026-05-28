@@ -3802,7 +3802,7 @@ export function DesktopMerchivaDashboard() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
       <style>{`@keyframes ddBlink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }`}</style>
       <KpiStrip />
-      <div className="flex-1 min-h-0 grid gap-4 p-4" style={{ gridTemplateColumns: "minmax(0,1fr) 360px" }}>
+      <div className="flex-1 min-h-0 grid gap-4 p-4 grid-cols-[minmax(0,1fr)_360px]">
         <MerchivaChat />
         <div className="flex flex-col gap-4 min-h-0 overflow-auto">
           <TodayScheduleCard />

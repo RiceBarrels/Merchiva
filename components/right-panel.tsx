@@ -51,7 +51,7 @@ export function RightPanel({ collapsible = true }: { collapsible?: boolean } = {
   const springTransition = { type: "spring" as const, stiffness: 500, damping: 38, mass: 0.6 };
 
   return (
-    <div className="h-full shrink-0 flex lg:border-l lg:border-border bg-background" style={{ position: "relative" }}>
+    <div className="relative h-full shrink-0 flex lg:border-l lg:border-border bg-background">
       <motion.div
         animate={{ width: open ? PANEL_WIDTH : COLLAPSED_WIDTH }}
         initial={loaded ? undefined : false}
@@ -70,7 +70,7 @@ export function RightPanel({ collapsible = true }: { collapsible?: boolean } = {
           }}
         >
           {/* Top bar — reserve space for the animated label + close button */}
-          <div className="flex items-center px-4 py-2.5 shrink-0" style={{ minHeight: 42 }}>
+          <div className="flex items-center px-4 py-2.5 shrink-0 min-h-[42px]">
             <div className="flex-1" />
             <button
               type="button"

@@ -763,7 +763,7 @@ function ChatView({
               {showTime && (
                 <div className="flex items-center gap-3 py-3">
                   <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
-                  <span className="font-mono uppercase text-stone-500 dark:text-stone-400" style={{ fontSize: 10, letterSpacing: 0.6 }}>
+                  <span className="font-mono uppercase text-stone-500 dark:text-stone-400 text-[10px] tracking-[0.6px]">
                     {formatTimeSeparator(new Date(msg.createdAt), t)}
                   </span>
                   <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
@@ -952,7 +952,7 @@ function ChatView({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08, type: "spring", damping: 22, stiffness: 350 }}
               >
-                <p className="px-3 pt-2 pb-1 font-mono uppercase text-stone-500 dark:text-stone-400" style={{ fontSize: 9, letterSpacing: 0.6 }}>
+                <p className="px-3 pt-2 pb-1 font-mono uppercase text-stone-500 dark:text-stone-400 text-[9px] tracking-[0.6px]">
                   {formatTimeSeparator(new Date(menuMsg.createdAt), t)}
                 </p>
                 <button
@@ -1008,7 +1008,7 @@ function ChatView({
       })()}
       </AnimatePresence>
 
-      <div className="border-t border-border" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      <div className="border-t border-border pb-[env(safe-area-inset-bottom,0px)]">
         {/* Reply preview bar */}
         <AnimatePresence>
           {replyTo && (

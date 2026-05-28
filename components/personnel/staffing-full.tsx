@@ -349,10 +349,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
         {/* Grid */}
         <div className="flex-1 overflow-auto">
-          <div
-            className="min-w-full"
-            style={{ display: "grid", gridTemplateColumns: "180px repeat(7, minmax(0, 1fr)) 68px" }}
-          >
+          <div className="min-w-full grid grid-cols-[180px_repeat(7,minmax(0,1fr))_68px]">
             {/* Header row */}
             <div className="sticky top-0 z-10 bg-muted border-b border-r border-border px-3 py-2.5 flex items-center">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.header.staff")}</span>
@@ -3923,10 +3920,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                               {formatDateShort(s.date)} &middot; {formatTime(s.startTime)}–{formatTime(s.endTime)}
                             </p>
                           </div>
-                          <span
-                            className="h-2 w-2 rounded-full shrink-0"
-                            style={{ backgroundColor: "#44403c" }}
-                          />
+                          <span className="h-2 w-2 rounded-full shrink-0 bg-stone-700" />
                         </label>
                       );
                     })
@@ -4122,8 +4116,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                           return { ...f, dayTimes };
                         })}
                           className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
-                          <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`}
-                            style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }} />
+                          <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white dark:bg-stone-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`} />
                         </button>
                       </div>
                     </div>
@@ -4183,10 +4176,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 }`}
               >
                 <span
-                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform ${
                     timeOffForm.fullDays ? "translate-x-4" : "translate-x-0.5"
                   }`}
-                  style={{ boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
                 />
               </button>
             </div>

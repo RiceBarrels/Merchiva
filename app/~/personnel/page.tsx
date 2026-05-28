@@ -73,17 +73,15 @@ const TRAINING_ROLE_STORAGE_KEY = "bz_personnel_training_role";
 
 interface TopTab {
   id: PersonnelTab;
-  cn: string;
-  en: string;
-  sub: string;
+  i18nKey: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 }
 
 const TABS: TopTab[] = [
-  { id: "schedule", cn: "排班",     en: "Schedule",  sub: "本周班次 · 时间表",   icon: CalendarClock },
-  { id: "team",     cn: "员工",     en: "Team",      sub: "团队成员 · 联系方式", icon: Users },
-  { id: "roles",    cn: "角色任务", en: "Roles",     sub: "岗位职责 · 任务清单", icon: Shield },
-  { id: "training", cn: "培训",     en: "Training",  sub: "课程 · 进度 · 考核",  icon: GraduationCap },
+  { id: "schedule", i18nKey: "schedule", icon: CalendarClock },
+  { id: "team",     i18nKey: "team",     icon: Users },
+  { id: "roles",    i18nKey: "roles",    icon: Shield },
+  { id: "training", i18nKey: "training", icon: GraduationCap },
 ];
 
 function TopTabs({
@@ -95,19 +93,21 @@ function TopTabs({
   onChange: (t: PersonnelTab) => void;
   pendingRequests: number;
 }) {
+  const t = useT();
   return (
     <>
       {/* Mobile — horizontally scrollable pill tabs */}
       <div className="md:hidden border-b border-border bg-background shrink-0">
         <div className="flex gap-1.5 px-3.5 py-2.5 overflow-x-auto no-scrollbar">
-          {TABS.map((t) => {
-            const active = t.id === tab;
-            const Icon = t.icon;
+          {TABS.map((tab2) => {
+            const active = tab2.id === tab;
+            const Icon = tab2.icon;
+            const label = t(`personnel.tabs.${tab2.i18nKey}`);
             return (
               <button
-                key={t.id}
+                key={tab2.id}
                 type="button"
-                onClick={() => onChange(t.id)}
+                onClick={() => onChange(tab2.id)}
                 className={cn(
                   "h-8 px-3 inline-flex items-center gap-1.5 rounded-full border text-[13px] transition-colors shrink-0 whitespace-nowrap",
                   active
@@ -116,16 +116,8 @@ function TopTabs({
                 )}
               >
                 <Icon className="h-[13px] w-[13px]" strokeWidth={1.75} />
-                {t.cn}
-                <span
-                  className={cn(
-                    "text-[10.5px] ml-0.5",
-                    active ? "text-background/60" : "text-muted-foreground/70",
-                  )}
-                >
-                  {t.en}
-                </span>
-                {t.id === "schedule" && pendingRequests > 0 && (
+                {label}
+                {tab2.id === "schedule" && pendingRequests > 0 && (
                   <span
                     className={cn(
                       "ml-1 min-w-[16px] h-[16px] px-1 rounded-full font-mono font-bold text-[9.5px] tabular-nums inline-flex items-center justify-center",
@@ -146,14 +138,16 @@ function TopTabs({
       {/* Desktop — card-style segmented tabs */}
       <div className="hidden md:flex border-b border-border bg-background items-stretch shrink-0">
         <div className="flex-1 flex overflow-x-auto">
-          {TABS.map((t) => {
-            const active = t.id === tab;
-            const Icon = t.icon;
+          {TABS.map((tab2) => {
+            const active = tab2.id === tab;
+            const Icon = tab2.icon;
+            const label = t(`personnel.tabs.${tab2.i18nKey}`);
+            const sub = t(`personnel.tabs.${tab2.i18nKey}Sub`);
             return (
               <button
-                key={t.id}
+                key={tab2.id}
                 type="button"
-                onClick={() => onChange(t.id)}
+                onClick={() => onChange(tab2.id)}
                 className={cn(
                   "flex-1 min-w-[170px] flex items-center gap-2.5 px-3 md:px-5 py-2.5 transition-colors border-r border-border last:border-r-0 relative",
                   active ? "bg-muted/50" : "bg-background hover:bg-muted/30",
@@ -175,10 +169,7 @@ function TopTabs({
                         active ? "text-foreground" : "text-stone-700 dark:text-stone-200",
                       )}
                     >
-                      {t.cn}
-                    </span>
-                    <span className="text-[10.5px] text-muted-foreground/80 hidden sm:inline">
-                      {t.en}
+                      {label}
                     </span>
                   </div>
                   <div
@@ -187,10 +178,10 @@ function TopTabs({
                       active ? "text-muted-foreground" : "text-muted-foreground/80",
                     )}
                   >
-                    {t.sub}
+                    {sub}
                   </div>
                 </div>
-                {t.id === "schedule" && pendingRequests > 0 && (
+                {tab2.id === "schedule" && pendingRequests > 0 && (
                   <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-mono font-bold inline-flex items-center justify-center">
                     {pendingRequests}
                   </span>
@@ -300,6 +291,7 @@ interface RoleRow {
 }
 
 function TeamPanel({ orgId }: { orgId: string }) {
+  const t = useT();
   const { currentOrg, can } = usePermissions();
   const orgName = currentOrg?.name ?? null;
   // userEmail is used by resend helper, pulled directly there from useAuth.
@@ -432,13 +424,13 @@ function TeamPanel({ orgId }: { orgId: string }) {
   }
 
   async function handleRemoveMember(id: string, name: string) {
-    if (!confirm(`确认移除 ${name}？`)) return;
+    if (!confirm(t("personnel.team.removeConfirm").replace("{name}", name))) return;
     setRemovingId(id);
     try {
       await removeMember(id);
-      toast.success("已移除成员");
+      toast.success(t("personnel.team.toastRemoved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "移除失败");
+      toast.error(err instanceof Error ? err.message : t("personnel.team.toastRemoveFailed"));
     } finally {
       setRemovingId(null);
       setMenuOpen(null);
@@ -454,17 +446,17 @@ function TeamPanel({ orgId }: { orgId: string }) {
       email: inv.email, token: inv.token, role: inv.role,
       orgName, inviterEmail,
     });
-    if (ok) toast.success("邀请邮件已重发");
-    else toast.error("邮件发送失败");
+    if (ok) toast.success(t("personnel.team.toastInviteResent"));
+    else toast.error(t("personnel.team.toastInviteFailed"));
     setResending((prev) => ({ ...prev, [inv.id]: false }));
     setMenuOpen(null);
   }
 
   async function handleCancelInvite(id: string, email: string) {
-    if (!confirm(`撤回对 ${email} 的邀请？`)) return;
+    if (!confirm(t("personnel.team.cancelInviteConfirm").replace("{email}", email))) return;
     setRemovingId(id);
     const ok = await cancelPendingInvite(id);
-    if (ok) toast.success("已撤回邀请");
+    if (ok) toast.success(t("personnel.team.toastInviteCancelled"));
     setRemovingId(null);
     setMenuOpen(null);
   }
@@ -487,10 +479,14 @@ function TeamPanel({ orgId }: { orgId: string }) {
       <div className="px-4 lg:px-6 pt-5 pb-4 bg-background border-b border-border flex items-center gap-3 flex-wrap">
         <div className="min-w-0">
           <h2 className="text-[18px] font-semibold tracking-[-0.01em]">
-            员工 · Team
+            {t("personnel.team.title")}
           </h2>
           <div className="text-[11.5px] text-muted-foreground mt-0.5">
-            {counts.active} 在职 · {counts.invited} 待入职 · 共 {counts.all} 人
+            {[
+              t("personnel.team.summaryActive").replace("{count}", String(counts.active)),
+              t("personnel.team.summaryInvited").replace("{count}", String(counts.invited)),
+              t("personnel.team.summaryTotal").replace("{count}", String(counts.all)),
+            ].join(t("personnel.team.summaryJoiner"))}
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap">
@@ -502,7 +498,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="搜索姓名或邮箱…"
+              placeholder={t("personnel.team.searchPlaceholder")}
               className="h-8 pl-7 pr-3 text-[12.5px] border border-border rounded-[0.3rem] bg-background w-[220px] outline-none focus:border-stone-400"
             />
           </div>
@@ -510,16 +506,16 @@ function TeamPanel({ orgId }: { orgId: string }) {
             value={filter}
             onChange={(v) => setFilter(v as typeof filter)}
             options={[
-              { value: "all", label: `全部 ${counts.all}` },
-              { value: "active", label: `在职 ${counts.active}` },
-              { value: "invited", label: `待入职 ${counts.invited}` },
+              { value: "all", label: t("personnel.team.filterAll").replace("{count}", String(counts.all)) },
+              { value: "active", label: t("personnel.team.filterActive").replace("{count}", String(counts.active)) },
+              { value: "invited", label: t("personnel.team.filterInvited").replace("{count}", String(counts.invited)) },
             ]}
           />
           <Link
             href="/~/settings"
             className="h-8 px-3 rounded-[0.3rem] border border-border bg-background text-[12px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5"
           >
-            <Download className="h-3 w-3" strokeWidth={1.75} /> 导出
+            <Download className="h-3 w-3" strokeWidth={1.75} /> {t("personnel.team.export")}
           </Link>
           {canInviteTeam && (
             <button
@@ -527,7 +523,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
               onClick={() => setInviteOpen(true)}
               className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5"
             >
-              <UserPlus className="h-3 w-3" strokeWidth={1.75} /> 邀请成员
+              <UserPlus className="h-3 w-3" strokeWidth={1.75} /> {t("personnel.team.invite")}
             </button>
           )}
         </div>
@@ -537,15 +533,15 @@ function TeamPanel({ orgId }: { orgId: string }) {
         <div className="bg-background border border-border rounded-[0.3rem] overflow-hidden">
           <div className="grid grid-cols-[auto_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_100px_60px] gap-3 items-center px-4 py-2.5 bg-muted/40 border-b border-border text-[10.5px] uppercase tracking-wide text-muted-foreground font-semibold">
             <div />
-            <div>姓名 · Name</div>
-            <div>岗位 · Role</div>
-            <div>联系方式</div>
-            <div>状态</div>
+            <div>{t("personnel.team.colName")}</div>
+            <div>{t("personnel.team.colRole")}</div>
+            <div>{t("personnel.team.colContact")}</div>
+            <div>{t("personnel.team.colStatus")}</div>
             <div />
           </div>
           {list.length === 0 ? (
             <div className="px-4 py-14 text-center text-[12.5px] text-muted-foreground">
-              没有符合条件的成员
+              {t("personnel.team.empty")}
             </div>
           ) : (
             list.map((m, i) => {
@@ -584,7 +580,9 @@ function TeamPanel({ orgId }: { orgId: string }) {
                     {m.email}
                   </div>
                   <Pill tone={m.status === "active" ? "emerald" : "amber"}>
-                    {m.status === "active" ? "在职" : "待入职"}
+                    {m.status === "active"
+                      ? t("personnel.team.statusActive")
+                      : t("personnel.team.statusInvited")}
                   </Pill>
                   <div className="flex items-center justify-end gap-0.5 relative">
                     {m.status === "invited" ? (
@@ -601,7 +599,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
                               <button
                                 type="button"
                                 disabled={!inv || isResending}
-                                title="重发邀请邮件"
+                                title={t("personnel.team.actionResend")}
                                 onClick={() => inv && handleResendInvite({
                                   id: invId, email: inv.email, token: inv.token, role: inv.role,
                                 })}
@@ -612,7 +610,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
                               <button
                                 type="button"
                                 disabled={!inv || isRemoving}
-                                title="撤回邀请"
+                                title={t("personnel.team.actionCancelInvite")}
                                 onClick={() => inv && handleCancelInvite(invId, inv.email)}
                                 className="h-7 w-7 rounded-[0.3rem] hover:bg-destructive/10 text-muted-foreground hover:text-destructive inline-flex items-center justify-center disabled:opacity-40"
                               >
@@ -628,7 +626,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
                           <button
                             type="button"
                             onClick={() => openEditMember(m)}
-                            title="编辑"
+                            title={t("personnel.team.actionEdit")}
                             className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
                           >
                             <Pencil className="h-3 w-3" strokeWidth={1.75} />
@@ -638,7 +636,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
                           <div ref={menuOpen === m.id ? menuContainerRef : null}>
                             <button
                               type="button"
-                              title="更多"
+                              title={t("personnel.team.actionMore")}
                               onClick={() => setMenuOpen(menuOpen === m.id ? null : m.id)}
                               className="h-7 w-7 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center"
                             >
@@ -653,7 +651,7 @@ function TeamPanel({ orgId }: { orgId: string }) {
                                   className="w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-[0.3rem] text-[12px] text-destructive hover:bg-destructive/10 disabled:opacity-40"
                                 >
                                   {removingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
-                                  移除成员
+                                  {t("personnel.team.actionRemove")}
                                 </button>
                               </div>
                             )}
@@ -670,11 +668,11 @@ function TeamPanel({ orgId }: { orgId: string }) {
 
         <div className="flex flex-col gap-4">
           <Card>
-            <CardHeader title="按岗位分布" subtitle="by role" />
+            <CardHeader title={t("personnel.team.byRoleTitle")} subtitle={t("personnel.team.byRoleSubtitle")} />
             <div className="px-4 pt-3 pb-4 flex flex-col gap-2.5">
               {byRole.length === 0 ? (
                 <div className="text-[12px] text-muted-foreground italic">
-                  暂无岗位 — 在「角色任务」标签中创建
+                  {t("personnel.team.byRoleEmpty")}
                 </div>
               ) : (
                 byRole.map((r) => {
@@ -716,26 +714,26 @@ function TeamPanel({ orgId }: { orgId: string }) {
           </Card>
 
           <Card>
-            <CardHeader title="本周提醒" subtitle="this week" />
+            <CardHeader title={t("personnel.team.remindersTitle")} subtitle={t("personnel.team.remindersSubtitle")} />
             <div className="px-4 pt-3 pb-4 flex flex-col gap-2.5 text-[12px]">
               <Reminder
                 icon={Cake}
                 tint="text-pink-500"
-                title="工作纪念 / 生日"
-                body="管理员设定后将自动出现在此处"
+                title={t("personnel.team.reminderBirthdaysTitle")}
+                body={t("personnel.team.reminderBirthdaysBody")}
               />
               <Reminder
                 icon={Award}
                 tint="text-amber-500"
-                title="入职满周年"
-                body="自动从入职日期计算"
+                title={t("personnel.team.reminderAnniversaryTitle")}
+                body={t("personnel.team.reminderAnniversaryBody")}
               />
               {pendingInvitations.length > 0 && (
                 <Reminder
                   icon={FileText}
                   tint="text-stone-500"
-                  title={`${pendingInvitations.length} 份邀请待接受`}
-                  body="提醒受邀人查收邮箱"
+                  title={t("personnel.team.reminderInvitesTitle").replace("{count}", String(pendingInvitations.length))}
+                  body={t("personnel.team.reminderInvitesBody")}
                 />
               )}
             </div>
@@ -745,17 +743,17 @@ function TeamPanel({ orgId }: { orgId: string }) {
             <div className="bg-foreground text-background rounded-[0.3rem] p-4">
               <div className="flex items-center gap-2 mb-1.5">
                 <UserPlus className="h-[13px] w-[13px]" strokeWidth={1.75} />
-                <div className="text-[12.5px] font-semibold">扩充团队？</div>
+                <div className="text-[12.5px] font-semibold">{t("personnel.team.inviteCardTitle")}</div>
               </div>
               <div className="text-[11.5px] text-background/70 leading-relaxed mb-3">
-                点击下方按钮发送邀请链接，新成员通过链接完成入职。
+                {t("personnel.team.inviteCardBody")}
               </div>
               <button
                 type="button"
                 onClick={() => setInviteOpen(true)}
                 className="w-full h-8 rounded-[0.3rem] bg-background text-foreground text-[12px] font-medium hover:bg-background/90 inline-flex items-center justify-center"
               >
-                生成邀请链接
+                {t("personnel.team.inviteCardCta")}
               </button>
             </div>
           )}
@@ -994,10 +992,10 @@ export default function PersonnelPage() {
         <div className="px-4 lg:px-6 py-3 border-b border-border bg-background flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <h1 className="text-[16px] font-semibold tracking-[-0.01em]">
-              人员管理 · Personnel
+              {t("personnel.title")}
             </h1>
             <div className="text-[11px] text-muted-foreground mt-0.5">
-              {t("nav.staffing")} · {t("nav.training")} · Roles · Team
+              {t("personnel.subtitle")}
             </div>
           </div>
           {/* Mobile-only inbox button — opens the requests bottom sheet */}
