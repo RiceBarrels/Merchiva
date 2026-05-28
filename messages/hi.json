@@ -1438,7 +1438,11 @@
     "activeMembersCount": "सक्रिय सदस्य",
     "pendingInvitationsLabel": "लंबित निमंत्रण",
     "inviteShort": "आमंत्रित",
-    "resend": "पुनः भेजें"
+    "resend": "पुनः भेजें",
+    "phoneOptional": "फ़ोन (वैकल्पिक)",
+    "phonePlaceholder": "+91 98765 43210",
+    "phoneInviteHint": "जुड़ने के बाद शिफ्ट रिमाइंडर के लिए हम इसे रिकॉर्ड में रखेंगे।",
+    "pendingAcceptance": "ज्वाइनिंग लंबित"
   },
   "lock": {
     "title": "डिवाइस लॉक",

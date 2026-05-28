@@ -1438,7 +1438,11 @@
     "activeMembersCount": "miembros activos",
     "pendingInvitationsLabel": "Invitaciones pendientes",
     "inviteShort": "Invitar",
-    "resend": "Reenviar"
+    "resend": "Reenviar",
+    "phoneOptional": "Teléfono (opcional)",
+    "phonePlaceholder": "+34 612 345 678",
+    "phoneInviteHint": "Lo guardaremos para recordatorios de turno cuando se una.",
+    "pendingAcceptance": "Pendiente de incorporación"
   },
   "lock": {
     "title": "Dispositivo bloqueado",

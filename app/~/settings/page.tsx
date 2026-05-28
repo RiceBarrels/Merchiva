@@ -24,6 +24,7 @@ import {
   CreditCard,
   MonitorSmartphone,
   KeyRound,
+  Phone,
   ArrowLeft,
   Building2,
   Calendar,
@@ -181,6 +182,7 @@ export default function SettingsPage() {
   const [teamLoading, setTeamLoading] = useState(false);
   const [inviteDialog, setInviteDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePhone, setInvitePhone] = useState("");
   const [inviteRole, setInviteRole] = useState<"staff" | "manager">("staff");
   const [invitePerms, setInvitePerms] = useState<Permissions>(defaultPermissions());
   const [inviting, setInviting] = useState(false);
@@ -653,6 +655,7 @@ export default function SettingsPage() {
               orgName: businessName || "your team",
               inviterEmail: userEmail || "a teammate",
               role: inviteRole,
+              phone: invitePhone.trim() || undefined,
             }),
           });
           if (!res.ok) {
@@ -671,6 +674,7 @@ export default function SettingsPage() {
 
       setInviteDialog(false);
       setInviteEmail("");
+      setInvitePhone("");
       setInviteRole("staff");
       setInvitePerms(defaultPermissions());
       loadTeam();
@@ -1071,12 +1075,23 @@ export default function SettingsPage() {
                       <div className="divide-y divide-border">
                         {teamInvitations.map((inv) => (
                           <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
-                            <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-sm text-muted-foreground shrink-0">
+                            <div className="relative h-9 w-9 rounded-full bg-muted flex items-center justify-center text-sm text-muted-foreground shrink-0">
                               @
+                              <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-amber-500 border-2 border-background flex items-center justify-center">
+                                <Clock className="h-2 w-2 text-white" strokeWidth={3} />
+                              </span>
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{inv.email}</p>
-                              <p className="text-xs text-muted-foreground">{t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-medium">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {t("settings.pendingAcceptance")}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground">
+                                  {t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}
+                                </span>
+                              </div>
                             </div>
                             <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{inv.role}</Badge>
                             <button
@@ -1154,6 +1169,24 @@ export default function SettingsPage() {
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder={t("settings.colleagueEmailPlaceholder")}
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("settings.phoneOptional")}</Label>
+                <div className="relative">
+                  <Phone className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={invitePhone}
+                    onChange={(e) => setInvitePhone(e.target.value)}
+                    placeholder={t("settings.phonePlaceholder")}
+                    className="pl-9"
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  {t("settings.phoneInviteHint")}
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>{t("settings.role")}</Label>

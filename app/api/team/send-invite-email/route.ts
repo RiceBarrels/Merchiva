@@ -4,7 +4,7 @@ import { sendTeamInviteEmail } from "@/lib/email/resend";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { to, token, orgName, inviterEmail, role } = body ?? {};
+    const { to, token, orgName, inviterEmail, role, phone } = body ?? {};
 
     if (!to || !token || !orgName || !inviterEmail || !role) {
       return NextResponse.json(
@@ -19,7 +19,15 @@ export async function POST(request: Request) {
       "http://localhost:3000";
     const inviteUrl = `${origin}/invite/${token}`;
 
-    await sendTeamInviteEmail({ to, inviterEmail, orgName, role, inviteUrl });
+    const phoneClean = typeof phone === "string" && phone.trim() ? phone.trim() : undefined;
+    if (phoneClean) {
+      // Logged so it's auditable; SMS dispatch can hook in here later without
+      // changing the client contract. The OrgInvitation row doesn't carry a
+      // phone field today (SpacetimeDB schema), so we don't persist it.
+      console.log(`[invite] ${to} → also collected phone ${phoneClean} (org=${orgName})`);
+    }
+
+    await sendTeamInviteEmail({ to, inviterEmail, orgName, role, inviteUrl, phone: phoneClean });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

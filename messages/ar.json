@@ -1438,7 +1438,11 @@
     "activeMembersCount": "أعضاء نشطون",
     "pendingInvitationsLabel": "الدعوات المعلقة",
     "inviteShort": "دعوة",
-    "resend": "إعادة إرسال"
+    "resend": "إعادة إرسال",
+    "phoneOptional": "الهاتف (اختياري)",
+    "phonePlaceholder": "+966 50 123 4567",
+    "phoneInviteHint": "سنحتفظ به لإرسال تذكيرات الورديات بعد انضمامه.",
+    "pendingAcceptance": "في انتظار الانضمام"
   },
   "lock": {
     "title": "الجهاز مقفل",

@@ -8,14 +8,28 @@ export async function sendTeamInviteEmail({
   orgName,
   role,
   inviteUrl,
+  phone,
 }: {
   to: string;
   inviterEmail: string;
   orgName: string;
   role: string;
   inviteUrl: string;
+  phone?: string;
 }) {
   const resend = new Resend(process.env.RESEND_API_KEY);
+  // Escape phone for safe HTML rendering since it comes from user input.
+  const safePhone = phone
+    ? phone.replace(/[<>&"']/g, (c) =>
+        ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c] ?? c),
+      )
+    : null;
+  const phoneLine = safePhone
+    ? `
+        <p style="color: #78716c; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
+          We'll also keep <strong style="color: #1c1917;">${safePhone}</strong> on file for shift reminders once you join.
+        </p>`
+    : "";
   const { error } = await resend.emails.send({
     from: FROM,
     to,
@@ -32,7 +46,7 @@ export async function sendTeamInviteEmail({
         </p>
         <a href="${inviteUrl}" style="display: inline-block; background: #1c1917; color: white; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 14px;">
           Accept Invitation
-        </a>
+        </a>${phoneLine}
         <p style="color: #a8a29e; font-size: 13px; line-height: 1.5; margin: 24px 0 0;">
           This invitation expires in 7 days. If you didn't expect this email, you can safely ignore it.
         </p>

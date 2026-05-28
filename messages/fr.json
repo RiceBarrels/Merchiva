@@ -1438,7 +1438,11 @@
     "activeMembersCount": "membres actifs",
     "pendingInvitationsLabel": "Invitations en attente",
     "inviteShort": "Inviter",
-    "resend": "Renvoyer"
+    "resend": "Renvoyer",
+    "phoneOptional": "Téléphone (facultatif)",
+    "phonePlaceholder": "+33 6 12 34 56 78",
+    "phoneInviteHint": "Nous le garderons pour les rappels de shift une fois qu'il aura rejoint.",
+    "pendingAcceptance": "En attente d'intégration"
   },
   "lock": {
     "title": "Appareil verrouillé",

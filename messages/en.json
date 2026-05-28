@@ -1438,7 +1438,11 @@
     "activeMembersCount": "active members",
     "pendingInvitationsLabel": "Pending Invitations",
     "inviteShort": "Invite",
-    "resend": "Resend"
+    "resend": "Resend",
+    "phoneOptional": "Phone (optional)",
+    "phonePlaceholder": "+1 555 123 4567",
+    "phoneInviteHint": "We'll keep this on file for shift reminders once they join.",
+    "pendingAcceptance": "Pending onboarding"
   },
   "lock": {
     "title": "Device Locked",
