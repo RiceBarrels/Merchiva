@@ -46,7 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
 import { useIsCapacitor, isCapacitorHiddenPath, CAPACITOR_HIDDEN_HREFS } from "@/lib/capacitor";
-import { useIsElectron } from "@/lib/electron";
+import { useIsNativeShell } from "@/lib/native-shell";
 import { Separator } from "@/components/ui/separator";
 import { usePermissions } from "@/lib/context/permissions";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -579,7 +579,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isCapacitor = useIsCapacitor();
-  const isElectron = useIsElectron();
+  const isElectron = useIsNativeShell();
   const [storeMachineMode] = useStoreMachineMode();
   const electronOffset = isElectron ? 40 : 0;
 

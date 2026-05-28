@@ -14,7 +14,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
 import { useAuth, addAccountToStorage } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
-import { getElectron, isElectron } from "@/lib/electron";
+import { getNativeShell, isNativeShell } from "@/lib/native-shell";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 /* ── Password strength ─────────────────────────────── */
@@ -129,14 +129,14 @@ function SignupForm() {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     try {
-      const electron = isElectron();
+      const native = isNativeShell();
       const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
           redirectTo: next,
-          client: electron ? "electron" : "web",
+          client: native ? "electron" : "web",
         }),
       });
       const data = await res.json();
@@ -144,8 +144,8 @@ function SignupForm() {
         setError(data.error ?? t("login.oauthFailed"));
         return;
       }
-      if (electron) {
-        await getElectron()?.openExternalAuth(data.url);
+      if (native) {
+        await getNativeShell()?.openExternalAuth(data.url);
       } else {
         window.location.href = data.url;
       }
@@ -157,7 +157,7 @@ function SignupForm() {
   // Receive the merchiva:// callback from the Electron main process and
   // complete the sign-in flow client-side, same as the web /auth-callback.
   useEffect(() => {
-    const bridge = getElectron();
+    const bridge = getNativeShell();
     if (!bridge) return;
     const unsubscribe = bridge.onAuthCallback((params) => {
       if (params.error) { setError(params.error); return; }

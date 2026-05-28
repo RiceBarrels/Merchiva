@@ -14,7 +14,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
 import { useAuth, addAccountToStorage } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
-import { getElectron, isElectron } from "@/lib/electron";
+import { getNativeShell, isNativeShell } from "@/lib/native-shell";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 function LoginForm() {
@@ -53,7 +53,7 @@ function LoginForm() {
   // process, which forwards the params here. We unpack and complete the
   // sign-in just like the web /auth-callback page.
   useEffect(() => {
-    const bridge = getElectron();
+    const bridge = getNativeShell();
     if (!bridge) return;
     const unsubscribe = bridge.onAuthCallback((params) => {
       if (params.error) {
@@ -180,16 +180,16 @@ function LoginForm() {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     try {
-      const electron = isElectron();
+      const native = isNativeShell();
       const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // `client: "electron"` tells the callback to bounce back via the
+        // The desktop client tells the callback to bounce back via the
         // merchiva:// custom protocol instead of staying inside the web app.
         body: JSON.stringify({
           provider,
           redirectTo: next,
-          client: electron ? "electron" : "web",
+          client: native ? "electron" : "web",
         }),
       });
       const data = await res.json();
@@ -197,10 +197,10 @@ function LoginForm() {
         setError(data.error ?? t("login.oauthFailed"));
         return;
       }
-      if (electron) {
+      if (native) {
         // Open the provider's auth page in the user's system browser; Google
         // and Apple reject embedded webviews. The result comes back via IPC.
-        await getElectron()?.openExternalAuth(data.url);
+        await getNativeShell()?.openExternalAuth(data.url);
       } else {
         window.location.href = data.url;
       }
