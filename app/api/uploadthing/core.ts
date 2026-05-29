@@ -24,6 +24,14 @@ export const ourFileRouter = {
   })
     .middleware(async () => auth())
     .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
+
+  // Task completion evidence — multiple images and/or videos per task.
+  taskEvidence: f({
+    image: { maxFileSize: "8MB", maxFileCount: 10 },
+    video: { maxFileSize: "64MB", maxFileCount: 10 },
+  })
+    .middleware(async () => auth())
+    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl, type: file.type })),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

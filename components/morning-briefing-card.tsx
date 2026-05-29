@@ -31,6 +31,7 @@ import {
   managerApproveShiftTrade,
   addInventoryTransaction,
 } from "@/lib/spacetimedb/actions";
+import { buildBriefingContext as buildBriefingContextShared } from "@/lib/insights/build-context";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -112,7 +113,7 @@ export function MorningBriefingCard() {
   const { organizationId, isOwner, role: orgRole } = usePermissions();
   const isAdmin = isOwner || orgRole === "manager";
 
-  const [rawBriefings] = useDailyBriefings() as [unknown[], boolean];
+  const [rawBriefings, briefingsReady] = useDailyBriefings() as [unknown[], boolean];
   const [shifts] = useShifts() as [unknown[], boolean];
   const [staffMembers] = useStaffMembers() as [unknown[], boolean];
   const [orgMembers] = useOrgMembers() as [unknown[], boolean];
@@ -244,41 +245,19 @@ export function MorningBriefingCard() {
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
   // ── Build briefing context for the AI ──────────────────────────────────
+  // Shared with the server-side cron via lib/insights/build-context.ts.
   const buildBriefingContext = useCallback(() => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    const team = (staffMembers as any[]).filter((m) => m.organizationId === organizationId);
-    const inv = (inventoryItems as any[])
-      .filter((i) => i.organizationId === organizationId)
-      .map((i) => ({
-        name: i.name,
-        category: i.category,
-        stock: i.currentStock,
-        min: i.minStock,
-        unit: i.unit,
-      }));
-    const todayShifts = (shifts as any[]).filter(
-      (s) => s.organizationId === organizationId && s.date === today,
+    return buildBriefingContextShared(
+      {
+        staffMembers: staffMembers as unknown[],
+        inventoryItems: inventoryItems as unknown[],
+        shifts: shifts as unknown[],
+        timeOff: timeOff as unknown[],
+        shiftTrades: shiftTrades as unknown[],
+      },
+      organizationId ?? "",
+      today,
     );
-    const pendingTimeOff = (timeOff as any[]).filter(
-      (r) => r.organizationId === organizationId && r.status === "pending",
-    );
-    const pendingTrades = (shiftTrades as any[]).filter(
-      (r) => r.organizationId === organizationId && r.status === "pending",
-    );
-    /* eslint-enable @typescript-eslint/no-explicit-any */
-    return {
-      date: today,
-      team: team.map((m) => ({ name: m.name, role: m.role })),
-      inventory: inv,
-      todayShifts: todayShifts.map((s) => ({
-        name: s.staffName,
-        start: s.startTime,
-        end: s.endTime,
-        type: s.shiftType,
-      })),
-      pendingTimeOff: pendingTimeOff.length,
-      pendingShiftTrades: pendingTrades.length,
-    };
   }, [staffMembers, inventoryItems, shifts, timeOff, shiftTrades, organizationId, today]);
 
   // ── Generate briefing — guarded to once per day per org ───────────────
@@ -320,14 +299,18 @@ export function MorningBriefingCard() {
   }, [organizationId, busyBriefing, buildBriefingContext, locale, today]);
 
   // Auto-generate once per mount, only when today's row is missing.
+  // Wait for the SpacetimeDB subscription to be ready first — otherwise the
+  // empty initial snapshot makes todaysBriefing look missing and we'd
+  // regenerate every time the page is opened.
   const briefingFiredRef = useRef(false);
   useEffect(() => {
     if (!isAdmin || !organizationId) return;
+    if (!briefingsReady) return;
     if (!todaysBriefing && !busyBriefing && !briefingFiredRef.current) {
       briefingFiredRef.current = true;
       void generateBriefing();
     }
-  }, [isAdmin, organizationId, todaysBriefing, busyBriefing, generateBriefing]);
+  }, [isAdmin, organizationId, briefingsReady, todaysBriefing, busyBriefing, generateBriefing]);
 
   // ── Quick-action dispatcher (re-uses Mr. Merchiva's reducer wrappers) ─
   const runAction = useCallback(

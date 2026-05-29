@@ -11,30 +11,18 @@ import { MerchivaChat, NotchM } from "@/components/merchiva-chat-dashboard";
 
 // ─── RightPanel Component ───────────────────────────────────────────────────
 
-const PANEL_WIDTH = 420;
+const COLLAPSED_WIDTH = 44;
 
-export function RightPanel({ collapsible = true }: { collapsible?: boolean } = {}) {
-  const [open, setOpen] = useState(true);
-  const [loaded, setLoaded] = useState(false);
+export function RightPanel({
+  collapsible = true,
+  collapsed = false,
+  onToggleCollapse,
+}: {
+  collapsible?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+} = {}) {
   const safeAreaInsets = getSafeAreaInsets();
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("right_panel_open");
-      if (stored === "false") setOpen(false);
-    } catch {}
-    setLoaded(true);
-  }, []);
-
-  const toggleOpen = () => {
-    setOpen((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("right_panel_open", String(next));
-      } catch {}
-      return next;
-    });
-  };
 
   if (!collapsible) {
     return (
@@ -46,63 +34,54 @@ export function RightPanel({ collapsible = true }: { collapsible?: boolean } = {
     );
   }
 
-  const COLLAPSED_WIDTH = 44;
-
+  const open = !collapsed;
   const springTransition = { type: "spring" as const, stiffness: 500, damping: 38, mass: 0.6 };
 
   return (
-    <div className="relative h-full shrink-0 flex lg:border-l lg:border-border bg-background">
-      <motion.div
-        animate={{ width: open ? PANEL_WIDTH : COLLAPSED_WIDTH }}
-        initial={loaded ? undefined : false}
-        transition={springTransition}
-        className="h-full relative overflow-hidden"
+    <div className="relative h-full w-full shrink-0 flex lg:border-l lg:border-border bg-background overflow-hidden">
+      {/* Expanded panel — fills the parent so the chat reflows when the ResizablePanel handle is dragged */}
+      <div
+        className="absolute inset-0 flex flex-col"
+        style={{
+          paddingTop: safeAreaInsets.top,
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 180ms ease",
+        }}
       >
-        {/* Expanded panel — always mounted */}
-        <div
-          className="absolute inset-0 flex flex-col"
-          style={{
-            width: PANEL_WIDTH,
-            paddingTop: safeAreaInsets.top,
-            opacity: open ? 1 : 0,
-            pointerEvents: open ? "auto" : "none",
-            transition: "opacity 180ms ease",
-          }}
-        >
-          {/* Top bar — reserve space for the animated label + close button */}
-          <div className="flex items-center px-4 py-2.5 shrink-0 min-h-[42px]">
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={toggleOpen}
-              className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
-              title="Collapse panel"
-            >
-              <PanelRightClose className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <MerchivaChat compact header={false} />
-          </div>
+        {/* Top bar — reserve space for the animated label + close button */}
+        <div className="flex items-center px-4 py-2.5 shrink-0 min-h-[42px]">
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
+            title="Collapse panel"
+          >
+            <PanelRightClose className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <MerchivaChat compact header={false} />
+        </div>
+      </div>
 
-        {/* Collapsed strip — icon only */}
-        <div
-          className="absolute inset-y-0 left-0 flex flex-col items-center cursor-pointer select-none"
-          style={{
-            width: COLLAPSED_WIDTH,
-            opacity: open ? 0 : 1,
-            pointerEvents: open ? "none" : "auto",
-            transition: "opacity 180ms ease",
-          }}
-          onClick={toggleOpen}
-          title="Open Mr. Merchiva"
-        >
-          <div className="pt-3">
-            <PanelRightOpen className="h-4 w-4 text-muted-foreground" />
-          </div>
+      {/* Collapsed strip — icon only */}
+      <div
+        className="absolute inset-y-0 left-0 flex flex-col items-center cursor-pointer select-none"
+        style={{
+          width: COLLAPSED_WIDTH,
+          opacity: open ? 0 : 1,
+          pointerEvents: open ? "none" : "auto",
+          transition: "opacity 180ms ease",
+        }}
+        onClick={onToggleCollapse}
+        title="Open Mr. Merchiva"
+      >
+        <div className="pt-3">
+          <PanelRightOpen className="h-4 w-4 text-muted-foreground" />
         </div>
-      </motion.div>
+      </div>
 
       {/* Floating animated label — lives outside overflow-hidden so it's never clipped */}
       <motion.div
@@ -128,7 +107,7 @@ export function RightPanel({ collapsible = true }: { collapsible?: boolean } = {
           pointerEvents: open ? "none" : "auto",
           cursor: open ? "default" : "pointer",
         }}
-        onClick={!open ? toggleOpen : undefined}
+        onClick={!open ? onToggleCollapse : undefined}
       >
         <NotchM size={20} />
         <span className="text-[13px] font-semibold tracking-tight text-foreground whitespace-nowrap">
@@ -266,7 +245,7 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
       let offset: number;
 
       if (isOpenRef.current) {
-        offset = Math.max(0, Math.min(RPANEL_WIDTH, RPANEL_WIDTH + dx));
+        offset = Math.max(0, Math.min(RPANEL_WIDTH, RPANEL_WIDTH - dx));
       } else {
         offset = Math.max(0, Math.min(RPANEL_WIDTH, -dx));
       }
@@ -294,7 +273,7 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
 
       let currentOffset: number;
       if (isOpenRef.current) {
-        currentOffset = Math.max(0, Math.min(RPANEL_WIDTH, RPANEL_WIDTH + dx));
+        currentOffset = Math.max(0, Math.min(RPANEL_WIDTH, RPANEL_WIDTH - dx));
       } else {
         currentOffset = Math.max(0, Math.min(RPANEL_WIDTH, -dx));
       }

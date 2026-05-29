@@ -18,11 +18,23 @@ function getOpenRouter() {
 }
 
 function getModel() {
-  return process.env.OPENROUTER_MODEL || "x-ai/grok-4.3";
+  // Standard escalation model — OSS (gpt-oss-120b). Handles the bulk of
+  // "complex" requests. Override with OPENROUTER_MODEL.
+  return process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b";
 }
 
 function getOpenRouterModel() {
   return getOpenRouter().chat(getModel());
+}
+
+function getThinkingModel() {
+  // Reserved for requests the triage layer flags as needing deep reasoning.
+  // Defaults to a proprietary thinking model; override with OPENROUTER_THINKING_MODEL.
+  return process.env.OPENROUTER_THINKING_MODEL || "x-ai/grok-4.3";
+}
+
+function getOpenRouterThinkingModel() {
+  return getOpenRouter().chat(getThinkingModel());
 }
 
 function getFastModel() {
@@ -34,7 +46,8 @@ function getOpenRouterFastModel() {
 }
 
 function getVoiceModel() {
-  return process.env.OPENROUTER_VOICE_MODEL || "openai/gpt-4o-mini";
+  // Voice replies also default to the OSS model; override via OPENROUTER_VOICE_MODEL.
+  return process.env.OPENROUTER_VOICE_MODEL || "openai/gpt-oss-120b";
 }
 
 function getOpenRouterVoiceModel() {
@@ -73,6 +86,11 @@ const triageSchema = z.object({
     .describe(
       "True for COMPLEX tasks: multi-step analysis, bulk writes, anything needing live store data lookup or ID resolution. False for SIMPLE tasks: greetings, chitchat, clarifications from history, AND simple writes where the user already provided the params (1-2 products with given name/price, single shift for a named person/day, single price edit, single role/task add, single approval).",
     ),
+  needsDeepThinking: z
+    .boolean()
+    .describe(
+      "Only set true for the RARE requests that genuinely need heavy step-by-step reasoning to get right: optimizing a whole week's schedule under multiple constraints (availability + time-off + coverage + fairness), root-cause analysis across several data sources, multi-variable forecasting/what-if planning, or untangling a complicated ambiguous request with many interacting parts. Leave false (the default) for ordinary complex tasks — single-domain data lookups, straightforward bulk writes, normal recommendations — those run fine on the standard model. When in doubt, false.",
+    ),
   message: z
     .string()
     .describe(
@@ -108,11 +126,12 @@ A) needsThinking=false — answer directly yourself (SIMPLE task):
    - When the user asks for ANY write/action (schedule, add product, edit price, etc.): briefly acknowledge AND tell them to switch to text chat to execute it — voice can't approve action blocks
    Put the COMPLETE spoken reply (1-3 short sentences, max ~50 words) in \`message\`.
 
-B) needsThinking=true — escalate to the slower thinking model (COMPLEX task):
+B) needsThinking=true — escalate to the standard model (COMPLEX task):
    - Needs live store data to answer ("how's revenue this week", "what's running low")
    - Multi-step analysis, anomaly detection, recommendations
    - Anything requiring inspection of actual numbers in the store
    Put a SHORT (1 sentence, max 15 words) spoken acknowledgment in \`message\` that names what you're about to check.
+   Also set needsDeepThinking=true ONLY if the request genuinely needs heavy multi-constraint reasoning (e.g. optimizing a full schedule, deep root-cause analysis). Otherwise leave it false.
 
 Spoken acknowledgment examples (adapt — never copy verbatim):
 - "好的，我先看一下你的排班，稍等。"
@@ -140,12 +159,20 @@ A) needsThinking=false — answer directly yourself (SIMPLE task):
      • Add 1-2 role tasks ("给收银员加个开店准备任务")
    For these, put the FULL reply in \`message\` — include the \`\`\`action\`\`\` blocks if needed, following the system's action format conventions.
 
-B) needsThinking=true — escalate to the slower thinking model (COMPLEX task):
+B) needsThinking=true — escalate to the standard model (COMPLEX task):
    - Multi-step analysis or anomaly detection ("销售怎么样", "哪些库存不够")
    - BULK writes that depend on data: scheduling a whole week, adding many products, swapping shifts based on availability
    - Anything where the AI has to look up IDs, cross-reference availability/conflicts, or compute totals
    - Anything ambiguous where you'd need to inspect live data to decide what to do
    Put a 1-2 sentence friendly acknowledgment in \`message\` that names specifically what you're about to check — be concrete, not generic.
+
+   needsDeepThinking — within case B, set this true ONLY for the rare requests that
+   genuinely need heavy step-by-step reasoning to get right: optimizing a whole
+   week's schedule under several competing constraints, root-cause analysis across
+   multiple data sources, multi-variable forecasting / what-if planning, or
+   untangling a very tangled multi-part request. For ordinary complex tasks (a
+   single data lookup, a straightforward bulk add, normal recommendations) leave
+   needsDeepThinking=false — the standard model handles those well. When unsure, false.
 
 Acknowledgment style (adapt to the request, never copy verbatim):
 - "好的，我先看一下你的排班和接下来几天可用的员工，再帮你安排。"
@@ -1041,10 +1068,8 @@ export async function POST(req: NextRequest) {
       const systemPrompt = `You are Mr. Merchiva generating a weekly summary. Store data:\n${JSON.stringify(context ?? {}, null, 2)}\n\nGenerate a concise weekly report with: Revenue, Top Products, Staffing, Inventory Alerts, Recommendations. Use real numbers. Respond in ${lang === "zh" ? "Chinese" : "English"}.`;
       const { text } = await generateText({
         model: getOpenRouterModel(),
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: systemPrompt },
-        ],
+        system: systemPrompt,
+        messages: [{ role: "user", content: "Generate this week's summary." }],
         maxOutputTokens: 2048,
         temperature: 0,
       });
@@ -1060,18 +1085,21 @@ export async function POST(req: NextRequest) {
     const systemPrompt = buildSystemPrompt(context ?? {}, lang ?? "en", memCtx, userPerms, callMode);
     const isBuilderMode = !!(context && (context as Record<string, unknown>).builder);
 
-    const msgs: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: systemPrompt },
+    // Conversation messages only — the system prompt is passed via the SDK's
+    // `system` option (not as a messages[] entry) to avoid the prompt-injection
+    // warning and keep the system instruction out of the user-controlled array.
+    const convoMsgs: Array<{ role: "user" | "assistant"; content: string }> = [
       ...(Array.isArray(history) ? history.slice(-10).map((m: { role: string; content: string }) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       })) : []),
-      { role: "user", content: message },
+      { role: "user" as const, content: message },
     ];
 
     const model = getModel();
-    const totalChars = msgs.reduce((s, m) => s + m.content.length, 0);
-    console.log(`[store-ai] Model: ${model}, messages: ${msgs.length}, total chars: ${totalChars}, builder=${isBuilderMode}`);
+    const totalChars =
+      systemPrompt.length + convoMsgs.reduce((s, m) => s + m.content.length, 0);
+    console.log(`[store-ai] Model: ${model}, messages: ${convoMsgs.length}, total chars: ${totalChars}, builder=${isBuilderMode}`);
 
     // Builder mode emits long structured JSON for many elements — give it more
     // headroom so multi-section page generations don't get truncated mid-block.
@@ -1093,7 +1121,7 @@ export async function POST(req: NextRequest) {
         { role: "user" as const, content: message },
       ];
 
-      let triage: { needsThinking: boolean; message: string; kaomoji?: string };
+      let triage: { needsThinking: boolean; needsDeepThinking?: boolean; message: string; kaomoji?: string };
       try {
         const triageResult = await generateObject({
           model: triageModel,
@@ -1114,7 +1142,7 @@ export async function POST(req: NextRequest) {
         });
         triage = triageResult.object;
         console.log(
-          `[store-ai] Triage (${callMode}/${triageModelName}): needsThinking=${triage.needsThinking}, kaomoji="${triage.kaomoji ?? ""}", msg="${triage.message.slice(0, 120)}"`,
+          `[store-ai] Triage (${callMode}/${triageModelName}): needsThinking=${triage.needsThinking}, deep=${triage.needsDeepThinking ?? false}, kaomoji="${triage.kaomoji ?? ""}", msg="${triage.message.slice(0, 120)}"`,
         );
       } catch (e) {
         console.error(
@@ -1149,28 +1177,32 @@ export async function POST(req: NextRequest) {
         return new Response(directStream, { headers: responseHeaders });
       }
 
-      // Escalate: send ack first, then stream thinking model.
-      const mainMsgs: typeof msgs = [
-        {
-          role: "system",
-          content:
-            systemPrompt +
-            (triage.message
-              ? `\n\nNOTE: An acknowledgment has ALREADY been sent to the user: "${triage.message}". Skip greetings/preamble — go straight to the substantive answer or action blocks.`
-              : `\n\nNOTE: Skip greetings/preamble — go straight to the substantive answer or action blocks.`),
-        },
-        ...msgs.slice(1),
-      ];
+      // Escalate: the short ack is streamed first, wrapped in a sentinel so the
+      // client peels it into its own bubble, separate from the substantive reply
+      // that follows. Kept in the body (not a header) because the dev proxy can
+      // strip custom response headers from a streaming Response.
+      const mainSystem =
+        systemPrompt +
+        (triage.message
+          ? `\n\nNOTE: An acknowledgment has ALREADY been sent to the user: "${triage.message}". Skip greetings/preamble — go straight to the substantive answer or action blocks.`
+          : `\n\nNOTE: Skip greetings/preamble — go straight to the substantive answer or action blocks.`);
 
       const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
+          // Emit the ack first, wrapped in the sentinel, so the client renders
+          // it as its own bubble before the main reply streams in.
           if (triage.message) {
-            controller.enqueue(encoder.encode(triage.message + "\n\n"));
+            controller.enqueue(encoder.encode(`[[MERCHIVA_ACK]]${triage.message}[[/MERCHIVA_ACK]]`));
           }
           try {
+            // Only genuinely deep-reasoning requests get the thinking model;
+            // ordinary complex tasks stay on the standard (OSS) model.
+            const useThinking = triage.needsDeepThinking === true;
+            console.log(`[store-ai] Escalating to ${useThinking ? getThinkingModel() + " (thinking)" : getModel()}`);
             const mainResult = streamText({
-              model: getOpenRouterModel(),
-              messages: mainMsgs,
+              model: useThinking ? getOpenRouterThinkingModel() : getOpenRouterModel(),
+              system: mainSystem,
+              messages: convoMsgs,
               maxOutputTokens: maxOutput,
               temperature: callMode === "voice" ? 0.4 : 0.2,
             });
@@ -1194,7 +1226,8 @@ export async function POST(req: NextRequest) {
     // Non-streaming fallback
     const { text } = await generateText({
       model: callMode === "voice" ? getOpenRouterVoiceModel() : getOpenRouterModel(),
-      messages: msgs,
+      system: systemPrompt,
+      messages: convoMsgs,
       maxOutputTokens: maxOutput,
       temperature: callMode === "voice" ? 0.4 : 0.2,
     });

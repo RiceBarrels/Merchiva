@@ -31,6 +31,7 @@ import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
 import { useAiJobs } from "@/lib/spacetimedb/hooks";
 import { consumeAiJob, deleteAiJob } from "@/lib/spacetimedb/actions";
 import { getStoredToken } from "@/lib/spacetimedb/client";
+import { useAuth } from "@/lib/auth/context";
 import type { ChatMessage, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
 import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
 import { useI18n, useT } from "@/lib/i18n/context";
@@ -42,6 +43,25 @@ import { MerchivaCallModal } from "@/components/merchiva-call-modal";
 const M_ACC = "var(--m-acc)";
 const M_ACC_SOFT = "var(--m-acc-soft)";
 const M_ACC_BD = "var(--m-acc-bd)";
+
+// Triage acks are wrapped in this sentinel so the client can peel them off the
+// front of a reply and render them as their own chat bubble. Both transports —
+// the streaming /api/store-ai body and the background ai_job row — use it, so
+// neither depends on a custom HTTP header (which the dev proxy can strip).
+const ACK_OPEN = "[[MERCHIVA_ACK]]";
+const ACK_CLOSE = "[[/MERCHIVA_ACK]]";
+function splitAck(raw: string): { ack: string; rest: string } {
+  if (!raw.startsWith(ACK_OPEN)) return { ack: "", rest: raw };
+  const closeIdx = raw.indexOf(ACK_CLOSE);
+  if (closeIdx === -1) {
+    // Closing tag hasn't streamed in yet — show what we have as the ack.
+    return { ack: raw.slice(ACK_OPEN.length), rest: "" };
+  }
+  return {
+    ack: raw.slice(ACK_OPEN.length, closeIdx),
+    rest: raw.slice(closeIdx + ACK_CLOSE.length),
+  };
+}
 
 // ── Role icon map (mirrors staffing page) ──────────────────────────────────
 
@@ -2058,6 +2078,7 @@ export function MerchivaChat({
   builderContext?: BuilderModeContext;
 } = {}) {
   const { currentOrg, organizationId, isOwner, role: orgRole, permissions: userPermissions } = usePermissions();
+  const { getToken } = useAuth();
   const { locale } = useI18n();
   const t = useT();
   const builderMode = !!builderContext;
@@ -2612,11 +2633,33 @@ export function MerchivaChat({
         });
       }
 
-      // 2) Live partial text — strip action JSON for display.
+      // 2) Live partial text — peel the ack into its own bubble, strip action
+      //    JSON from the remainder for display.
       if (!isDone) {
-        const visible = extractActionBlocks(String(job.partialText ?? "")).cleanText;
-        const display = visible || (job.partialText?.length > 0 ? "..." : "");
-        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, text: display } : m)));
+        const { ack, rest } = splitAck(String(job.partialText ?? ""));
+        const ackMsgId = `ack-${msgId}`;
+        const visible = extractActionBlocks(rest).cleanText;
+        const restLen = rest.length;
+        const display = visible || (restLen > 0 ? "..." : "");
+        setMessages((prev) => {
+          let next = prev;
+          // Insert the ack bubble right before the job bubble, once.
+          if (ack && !next.some((m) => m.id === ackMsgId)) {
+            const idx = next.findIndex((m) => m.id === msgId);
+            const ackMsg = {
+              id: ackMsgId,
+              from: "merchiva" as const,
+              text: ack,
+              time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
+            };
+            next = idx === -1
+              ? [...next, ackMsg]
+              : [...next.slice(0, idx), ackMsg, ...next.slice(idx)];
+          } else if (ack) {
+            next = next.map((m) => (m.id === ackMsgId ? { ...m, text: ack } : m));
+          }
+          return next.map((m) => (m.id === msgId ? { ...m, text: display } : m));
+        });
         continue;
       }
 
@@ -2634,9 +2677,30 @@ export function MerchivaChat({
         continue;
       }
 
-      const finalText = String(job.finalText ?? job.partialText ?? "");
+      const rawFinal = String(job.finalText ?? job.partialText ?? "");
+      const { ack: finalAck, rest: finalRest } = splitAck(rawFinal);
+      const finalText = finalRest;
+      // Pin the ack into its own bubble (insert if it wasn't already created
+      // during streaming).
+      if (finalAck) {
+        const ackMsgId = `ack-${msgId}`;
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === ackMsgId)) {
+            return prev.map((m) => (m.id === ackMsgId ? { ...m, text: finalAck } : m));
+          }
+          const idx = prev.findIndex((m) => m.id === msgId);
+          const ackMsg = {
+            id: ackMsgId,
+            from: "merchiva" as const,
+            text: finalAck,
+            time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
+          };
+          return idx === -1 ? [...prev, ackMsg] : [...prev.slice(0, idx), ackMsg, ...prev.slice(idx)];
+        });
+      }
       if (!finalText.trim()) {
-        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, text: t("merchiva.errorNoResponse") } : m)));
+        // No substantive body beyond the ack — drop the empty job bubble.
+        setMessages((prev) => prev.filter((m) => m.id !== msgId));
         consumeAiJob(jobId).catch(() => {});
         continue;
       }
@@ -2774,7 +2838,11 @@ export function MerchivaChat({
       // If the SpacetimeDB module hasn't been republished with the AI-job
       // reducers yet, the route returns 501 once and we stay on streaming for
       // the rest of the session — no need to keep hammering the endpoint.
-      const token = getStoredToken();
+      // Prefer the WorkOS access token (auto-refreshed via getToken) over the
+      // SpacetimeDB-issued stdb_token, which expires and can't be refreshed
+      // from the background HTTP RPC path — that caused "ExpiredSignature" 401s
+      // on createAiJob. Fall back to the stored token if WorkOS has none.
+      const token = (await getToken().catch(() => null)) || getStoredToken();
       if (token && organizationId && activeSessionId && !enqueueDisabledRef.current) {
         try {
           const enq = await fetch("/api/store-ai/enqueue", {
@@ -2877,7 +2945,14 @@ export function MerchivaChat({
         throw new Error("Stream unavailable");
       }
 
-      // Add a placeholder message for streaming
+      // The triage ack (if it escalated) arrives at the FRONT of the body
+      // wrapped in the [[MERCHIVA_ACK]] sentinel. It's peeled off in the stream
+      // loop below and rendered as its own bubble (ackMsgId), separate from the
+      // substantive reply that fills the placeholder (streamMsgId).
+      const ackMsgId = `ack-${streamMsgId}`;
+
+      // Add the streaming placeholder. The ack bubble is inserted lazily once
+      // the sentinel is detected in the stream.
       setMessages((prev) => [...prev, {
         id: streamMsgId,
         from: "merchiva" as const,
@@ -2900,6 +2975,7 @@ export function MerchivaChat({
         return cleanText.replace(cmdRe, "").trim();
       }
 
+      let ackInserted = false;
       try {
         for (;;) {
           const { done, value } = await reader.read();
@@ -2907,8 +2983,30 @@ export function MerchivaChat({
           const chunk = decoder.decode(value, { stream: true });
           if (chunk) {
             fullReply += chunk;
-            const visible = stripActionBlocks(fullReply);
-            const display = visible || (fullReply.length > 0 ? "..." : "");
+            // Peel the leading ack sentinel (if present) into its own bubble;
+            // the remainder fills the main streaming bubble.
+            const { ack, rest } = splitAck(fullReply);
+            if (ack) {
+              setMessages((prev) => {
+                if (ackInserted) {
+                  return prev.map((m) => (m.id === ackMsgId ? { ...m, text: ack } : m));
+                }
+                // Insert the ack bubble right before the streaming placeholder.
+                const idx = prev.findIndex((m) => m.id === streamMsgId);
+                const ackMsg = {
+                  id: ackMsgId,
+                  from: "merchiva" as const,
+                  text: ack,
+                  time: streamTime,
+                };
+                return idx === -1
+                  ? [...prev, ackMsg]
+                  : [...prev.slice(0, idx), ackMsg, ...prev.slice(idx)];
+              });
+              ackInserted = true;
+            }
+            const visible = stripActionBlocks(rest);
+            const display = visible || (rest.length > 0 ? "..." : "");
             setMessages((prev) => prev.map((m) =>
               m.id === streamMsgId ? { ...m, text: display } : m
             ));
@@ -2918,7 +3016,8 @@ export function MerchivaChat({
         console.warn("[Mr. Merchiva] Stream read error:", streamErr);
       }
 
-      let reply = fullReply;
+      // Strip the ack sentinel from the body used for action parsing + finalize.
+      let reply = splitAck(fullReply).rest;
 
       // Fallback: if stream returned nothing, retry non-streaming
       if (!reply.trim()) {
@@ -3133,7 +3232,7 @@ export function MerchivaChat({
 
   return (
     <section className={cn(
-      "bg-background overflow-hidden flex flex-col min-h-0 h-full flex-1",
+      "@container bg-background overflow-hidden flex flex-col min-h-0 h-full flex-1",
       compact ? "h-full" : "rounded-lg border border-border"
     )}>
       {/* Header */}
@@ -3484,7 +3583,7 @@ export function MerchivaChat({
             </button>
             {!builderMode && (
               <button onClick={() => setCallOpen(true)}
-                className="h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center"
+                className="hidden @[300px]:inline-flex h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted items-center justify-center"
                 title={t("merchiva.startCall")}>
                 <Phone className="h-[15px] w-[15px]" />
               </button>
@@ -3492,13 +3591,14 @@ export function MerchivaChat({
             {!builderMode && (
               <button onClick={() => setDataMentionOpen((v) => !v)}
                 className={cn(
-                  "h-8 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 transition-colors",
+                  "h-8 rounded-[0.3rem] inline-flex items-center gap-1.5 transition-colors",
+                  "w-8 justify-center @[340px]:w-auto @[340px]:px-2 @[340px]:justify-start",
                   dataMentionOpen || attachedData.length > 0
                     ? "text-foreground bg-muted"
                     : "text-muted-foreground hover:bg-muted"
                 )} title={t("merchiva.mentionData")}>
                 <AtSign className="h-[14px] w-[14px]" />
-                <span className="text-[11.5px]">{t("merchiva.dataLabel")}{attachedData.length > 0 ? ` · ${attachedData.length}` : ""}</span>
+                <span className="hidden @[340px]:inline text-[11.5px]">{t("merchiva.dataLabel")}{attachedData.length > 0 ? ` · ${attachedData.length}` : ""}</span>
               </button>
             )}
             {builderMode && (
@@ -3521,13 +3621,13 @@ export function MerchivaChat({
               </button>
             )}
             <div className="flex-1" />
-            <kbd className="font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ {t("merchiva.sendShortcut")}</kbd>
+            <kbd className="hidden @[420px]:inline-block font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ {t("merchiva.sendShortcut")}</kbd>
             <button
               disabled={(!draft.trim() && attachedFiles.length === 0 && attachedElements.length === 0) || sending}
               onClick={() => sendMessage(draft)}
-              className="h-9 px-4 rounded-[0.3rem] bg-foreground text-background text-[13px] font-medium hover:bg-foreground/90 inline-flex items-center gap-2 disabled:opacity-30"
+              className="h-9 w-9 @[300px]:w-auto @[300px]:px-4 rounded-[0.3rem] bg-foreground text-background text-[13px] font-medium hover:bg-foreground/90 inline-flex items-center justify-center gap-2 disabled:opacity-30 shrink-0"
             >
-              {sending ? <Spinner size={14} /> : t("merchiva.send")}
+              {sending ? <Spinner size={14} /> : <span className="hidden @[300px]:inline">{t("merchiva.send")}</span>}
               {!sending && <ArrowUp className="h-3.5 w-3.5" />}
             </button>
           </div>

@@ -20,7 +20,8 @@
     "description": "Description",
     "type": "Type",
     "more": "Plus",
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "switch": "Changer"
   },
   "nav": {
     "dailyManagement": "Gestion quotidienne",
@@ -88,7 +89,8 @@
     "addAccountSubtitle": "Connectez-vous avec un autre compte"
   },
   "accounts": {
-    "addAccount": "Ajouter un compte"
+    "addAccount": "Ajouter un compte",
+    "title": "Comptes"
   },
   "signup": {
     "title": "Créez votre espace de travail",
@@ -910,7 +912,8 @@
       "roleTasksTitle": "Tâches — {role}",
       "roleTasksDefaultDesc": "Tâches pour votre rôle du jour.",
       "addRole": "Ajouter un rôle",
-      "tasksLabel": "Tâches"
+      "tasksLabel": "Tâches",
+      "noTasks": "Aucune tâche pour l'instant"
     },
     "requests": {
       "title": "Demandes",
@@ -1135,7 +1138,51 @@
       "expandBody": "Envoyez des liens d'invitation — les nouveaux membres s'inscrivent via le lien.",
       "expandCta": "Générer un lien d'invitation",
       "confirmRemove": "Retirer {name} ?",
-      "confirmCancelInvite": "Annuler l'invitation à {email} ?"
+      "confirmCancelInvite": "Annuler l'invitation à {email} ?",
+      "dialogInviteTitle": "Inviter un membre",
+      "dialogInviteMobileTitle": "Inviter",
+      "dialogInviteDescription": "Envoyez une invitation par e-mail avec un lien d'inscription.",
+      "dialogEditTitle": "Modifier le membre",
+      "dialogEditMobileTitle": "Modifier",
+      "dialogEditDescription": "Mettez à jour le rôle et les autorisations de ce membre.",
+      "fieldEmail": "E-mail",
+      "fieldRole": "Rôle",
+      "fieldPermissions": "Autorisations",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "remove": "Retirer",
+      "sendInvite": "Envoyer l'invitation",
+      "role": {
+        "staff": "Personnel",
+        "manager": "Responsable",
+        "owner": "Propriétaire"
+      },
+      "permissionAction": {
+        "view": "Voir",
+        "edit": "Modifier",
+        "invite": "Inviter"
+      },
+      "permissionSection": {
+        "dashboard": "Tableau de bord",
+        "inventory": "Inventaire",
+        "sales": "Ventes",
+        "staffing": "Planning",
+        "products": "Produits",
+        "pos": "Caisse",
+        "settings": "Paramètres",
+        "team": "Équipe",
+        "website": "Site web",
+        "trainingGrading": "Formation et évaluation"
+      },
+      "toastInviteSent": "Invitation envoyée",
+      "toastInviteCreateFailed": "Impossible de créer l'invitation",
+      "toastInviteEmailFailed": "Invitation créée, mais l'envoi de l'e-mail a échoué",
+      "toastInviteNoToken": "Non connecté",
+      "toastUpdated": "Membre mis à jour",
+      "toastUpdateFailed": "Impossible de mettre à jour le membre",
+      "removeConfirm": "Retirer {name} ?",
+      "toastRemoved": "Membre retiré",
+      "toastRemoveFailed": "Impossible de retirer le membre"
     },
     "dialog": {
       "inviteTitle": "Inviter un membre",
@@ -1220,7 +1267,9 @@
       "resendFailed": "Échec de l'envoi du courriel",
       "inviteCancelled": "Invitation annulée",
       "inviteCancelFailed": "Échec de l'annulation"
-    }
+    },
+    "title": "Personnel",
+    "subtitle": "Planning, équipe, rôles et formation"
   },
   "pos": {
     "tabs": {
@@ -1584,7 +1633,22 @@
     "phoneOptional": "Téléphone (facultatif)",
     "phonePlaceholder": "+33 6 12 34 56 78",
     "phoneInviteHint": "Nous le garderons pour les rappels de shift une fois qu'il aura rejoint.",
-    "pendingAcceptance": "En attente d'intégration"
+    "pendingAcceptance": "En attente d'intégration",
+    "briefing": {
+      "title": "Briefing du matin",
+      "enableLabel": "Notification de briefing quotidien",
+      "enableHint": "Recevez une notification avec les points clés du jour à une heure fixe.",
+      "timeLabel": "Heure",
+      "timeHint": "Se déclenche à l'heure pile, dans le fuseau ci-dessous.",
+      "tzLabel": "Fuseau horaire",
+      "saveCta": "Enregistrer",
+      "clearCta": "Désactiver",
+      "saved": "Horaire du briefing enregistré",
+      "saveFailed": "Impossible d'enregistrer l'horaire"
+    },
+    "groupStoreAccount": "Magasin et compte",
+    "currentStore": "Magasin actuel",
+    "currentAccount": "Compte actuel"
   },
   "lock": {
     "title": "Appareil verrouillé",
@@ -1696,7 +1760,8 @@
     "unknown": "Inconnu",
     "fileFallback": "Fichier",
     "timeToday": "Aujourd'hui",
-    "timeYesterday": "Hier"
+    "timeYesterday": "Hier",
+    "attach": "Joindre"
   },
   "dashboard": {
     "greeting": {
@@ -2214,7 +2279,24 @@
       "intern": "Stagiaire",
       "internSub": "Apprendre et pratiquer aujourd'hui",
       "active": "actif"
-    }
+    },
+    "openingStep1": "Déverrouiller la porte d'entrée et désarmer l'alarme",
+    "openingStep2": "Allumer toutes les lumières et la climatisation",
+    "openingStep3": "Allumer les terminaux POS et les imprimantes",
+    "openingStep4": "Compter la caisse d'ouverture",
+    "openingStep5": "Vérifier et réapprovisionner les présentoirs",
+    "openingStep6": "Passer en revue le planning et les objectifs du jour",
+    "cashStep1": "Compter la caisse en début de service",
+    "cashStep2": "Garder les billets rangés et orientés dans le même sens",
+    "cashStep3": "Rendre la monnaie au client en comptant à voix haute",
+    "cashStep4": "Ne jamais laisser la caisse ouverte sans surveillance",
+    "cashStep5": "Effectuer un comptage en milieu de service si nécessaire",
+    "cashStep6": "Clôturer la caisse et préparer le dépôt",
+    "foodStep1": "Se laver les mains avant de manipuler les aliments",
+    "foodStep2": "Vérifier les températures et noter les relevés",
+    "foodStep3": "Inspecter le stockage pour repérer les produits périmés",
+    "foodStep4": "Nettoyer et désinfecter les surfaces de préparation",
+    "foodStep5": "Vérifier l'étiquetage et le datage corrects"
   },
   "display": {
     "kitchen": "Cuisine",
@@ -2562,7 +2644,8 @@
       "customDomain": "Domaine personnalisé",
       "published": "Publié",
       "plugins": "Plugins"
-    }
+    },
+    "brand": "Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2805,6 +2888,32 @@
         "promoted": "Utilisateur promu admin.",
         "demoted": "Rôle admin révoqué."
       }
+    }
+  },
+  "quickDialog": {
+    "title": "Mr. Merchiva",
+    "online": "en ligne",
+    "placeholder": "Demandez à Mr. Merchiva ou lancez une commande…",
+    "thinking": "réflexion…",
+    "askAgain": "Reposer la question",
+    "openAssistant": "Ouvrir Mr. Merchiva",
+    "askPrefix": "Appuyez sur Entrée pour demander",
+    "navigate": "naviguer",
+    "run": "lancer",
+    "footer": "MERCHIVA · PARTOUT",
+    "error": "Mr. Merchiva n'a pas pu joindre le serveur. Réessayez.",
+    "hintPrefix": "Appuyez sur",
+    "hintSuffix": "pour appeler Mr. Merchiva",
+    "groups": {
+      "suggested": "Suggestions",
+      "staffing": "Personnel"
+    },
+    "commands": {
+      "attention": "Qu'est-ce qui nécessite mon attention aujourd'hui ?",
+      "sales": "Résume les ventes d'aujourd'hui",
+      "lowStock": "Quels articles sont en rupture de stock ?",
+      "whosOn": "Qui travaille en ce moment ?",
+      "coverage": "Y a-t-il des trous dans le planning de cette semaine ?"
     }
   }
 }

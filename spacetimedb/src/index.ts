@@ -1387,15 +1387,17 @@ const roleTaskAssignmentTable = table(
     memberId: t.string(),                // StaffMember.id assigned to do the work
     dueAt: t.timestamp(),                // when it has to be done by
     status: t.string(),                  // 'pending' | 'completed' | 'skipped'
-    evidenceUrl: t.option(t.string()),   // UploadThing URL (image)
+    evidenceUrl: t.option(t.string()),   // legacy: first evidence URL (kept for back-compat)
     note: t.option(t.string()),          // free-text note from the staff member
     completedAt: t.option(t.timestamp()),
     completedBy: t.option(t.identity()),
     skipReason: t.option(t.string()),
     createdAt: t.timestamp(),
     createdBy: t.identity(),
-    // Legacy plural column kept to satisfy the deployed schema. Unused by app
-    // code; remove via a manual migration if/when we ship a destructive deploy.
+    // JSON-encoded array of { url, type } — supports multiple images/videos as
+    // evidence. `evidenceUrl` above stays populated with the first item so older
+    // readers keep working. Added at end of table per migration rules;
+    // .default(undefined) lets existing rows migrate without data loss.
     evidenceUrls: t.option(t.string()).default(undefined),
   }
 );
@@ -1482,6 +1484,44 @@ const blogPostTable = table(
   }
 );
 
+// ─── Service Identity ────────────────────────────────────────────────────────
+//
+// Approved identities allowed to call service-only reducers (cron, server-side
+// fan-out). Bootstrapped first-caller-wins by the registerServiceIdentity
+// reducer, then locked: only existing service identities can add more.
+//
+const serviceIdentityTable = table(
+  {
+    name: 'service_identity',
+    public: false,
+  },
+  {
+    identity: t.identity().primaryKey(),
+    label: t.string(),
+    registeredAt: t.timestamp(),
+  }
+);
+
+// ─── User Briefing Preference ────────────────────────────────────────────────
+//
+// Per-user setting controlling when the daily briefing notification fires.
+// One row per user (userId = ctx.sender at write time).
+//
+const userBriefingPrefTable = table(
+  {
+    name: 'user_briefing_pref',
+    public: true,
+  },
+  {
+    userId: t.identity().primaryKey(),
+    briefingTime: t.string(),   // "HH:mm" — hour-aligned in practice
+    timezone: t.string(),       // IANA, e.g. "Asia/Shanghai"
+    enabled: t.bool(),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1543,6 +1583,8 @@ const spacetimedb = schema({
   design: designTable,
   pushSubscription: pushSubscriptionTable,
   blogPost: blogPostTable,
+  serviceIdentity: serviceIdentityTable,
+  userBriefingPref: userBriefingPrefTable,
 });
 
 export default spacetimedb;
@@ -5499,8 +5541,9 @@ export const completeRoleTask = spacetimedb.reducer(
     assignmentId: t.string(),
     evidenceUrl: t.option(t.string()),
     note: t.option(t.string()),
+    evidenceUrls: t.option(t.string()),  // JSON array of { url, type }
   },
-  (ctx, { organizationId, assignmentId, evidenceUrl, note }) => {
+  (ctx, { organizationId, assignmentId, evidenceUrl, note, evidenceUrls }) => {
     findActiveMember(ctx, organizationId);
 
     const existing = [...ctx.db.roleTaskAssignment.byOrganizationId.filter(organizationId)]
@@ -5516,6 +5559,7 @@ export const completeRoleTask = spacetimedb.reducer(
       completedAt: ctx.timestamp,
       completedBy: ctx.sender,
       skipReason: undefined,
+      evidenceUrls: evidenceUrls ?? existing.evidenceUrls,
     });
   }
 );
@@ -5576,8 +5620,9 @@ export const recordTaskCompletion = spacetimedb.reducer(
     memberId: t.option(t.string()),
     evidenceUrl: t.option(t.string()),
     note: t.option(t.string()),
+    evidenceUrls: t.option(t.string()),  // JSON array of { url, type }
   },
-  (ctx, { organizationId, taskId, memberId, evidenceUrl, note }) => {
+  (ctx, { organizationId, taskId, memberId, evidenceUrl, note, evidenceUrls }) => {
     findActiveMember(ctx, organizationId);
 
     const task = [...ctx.db.roleTask.byOrganizationId.filter(organizationId)]
@@ -5598,7 +5643,7 @@ export const recordTaskCompletion = spacetimedb.reducer(
       skipReason: undefined,
       createdAt: ctx.timestamp,
       createdBy: ctx.sender,
-      evidenceUrls: undefined,
+      evidenceUrls,
     });
   }
 );
@@ -5768,6 +5813,45 @@ export const updateBlogPost = spacetimedb.reducer(
   }
 );
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVICE IDENTITY REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isServiceCaller(ctx: any): boolean {
+  return ctx.db.serviceIdentity.identity.find(ctx.sender) !== undefined;
+}
+
+/**
+ * Bootstrap the first service identity.
+ *
+ * - If the service_identity table is EMPTY, ctx.sender is added. The operator
+ *   runs scripts/bootstrap-service-identity.ts immediately after first deploy
+ *   to claim this slot.
+ * - If the table is non-empty, only an existing service identity may register
+ *   another.
+ *
+ * NOTE: deploy + bootstrap must happen back-to-back. Any caller hitting this
+ * before the operator races them and wins. The bootstrap script logs the
+ * resulting identity hex so the operator can verify it's the expected one.
+ */
+export const registerServiceIdentity = spacetimedb.reducer(
+  { label: t.string() },
+  (ctx, { label }) => {
+    const existingCount = [...ctx.db.serviceIdentity.iter()].length;
+    if (existingCount > 0 && !isServiceCaller(ctx)) {
+      unauthorized('Service identity already bootstrapped; only existing service may add more');
+    }
+    const already = ctx.db.serviceIdentity.identity.find(ctx.sender);
+    if (already) return;
+    ctx.db.serviceIdentity.insert({
+      identity: ctx.sender,
+      label,
+      registeredAt: ctx.timestamp,
+    });
+  }
+);
+
 export const deleteBlogPost = spacetimedb.reducer(
   { postId: t.string() },
   (ctx, { postId }) => {
@@ -5775,5 +5859,106 @@ export const deleteBlogPost = spacetimedb.reducer(
     const existing = [...ctx.db.blogPost.iter()].find((p) => p.id.toString() === postId);
     if (!existing) throw new Error('Post not found');
     ctx.db.blogPost.delete(existing);
+  }
+);
+
+/** Service-side: upsert today's daily briefing for an org. */
+export const serviceSaveDailyBriefing = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    date: t.string(),
+    content: t.string(),
+    summary: t.option(t.string()),
+    generatedBy: t.string(),
+  },
+  (ctx, args) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+
+    for (const row of [...ctx.db.dailyBriefing.iter()]) {
+      if (row.organizationId === args.organizationId && row.date === args.date) {
+        ctx.db.dailyBriefing.delete(row);
+      }
+    }
+
+    ctx.db.dailyBriefing.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      date: args.date,
+      content: args.content,
+      summary: args.summary,
+      generatedBy: args.generatedBy,
+      generatedAt: ctx.timestamp,
+    });
+  }
+);
+
+/** Service-side: insert a notification targeting an arbitrary user identity. */
+export const serviceCreateNotification = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    targetIdentity: t.identity(),
+    type: t.string(),
+    title: t.string(),
+    body: t.string(),
+    link: t.option(t.string()),
+  },
+  (ctx, { organizationId, targetIdentity, type, title, body, link }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    ctx.db.notification.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      targetId: targetIdentity,
+      type,
+      title,
+      body,
+      link: link ?? undefined,
+      read: false,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER BRIEFING PREFERENCE REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Upsert the caller's briefing preference (one row per user). */
+export const setBriefingPref = spacetimedb.reducer(
+  {
+    briefingTime: t.string(),
+    timezone: t.string(),
+    enabled: t.bool(),
+  },
+  (ctx, { briefingTime, timezone, enabled }) => {
+    const existing = ctx.db.userBriefingPref.userId.find(ctx.sender);
+    if (existing) {
+      ctx.db.userBriefingPref.userId.update({
+        ...existing,
+        briefingTime,
+        timezone,
+        enabled,
+        updatedAt: ctx.timestamp,
+      });
+    } else {
+      ctx.db.userBriefingPref.insert({
+        userId: ctx.sender,
+        briefingTime,
+        timezone,
+        enabled,
+        createdAt: ctx.timestamp,
+        updatedAt: ctx.timestamp,
+      });
+    }
+  }
+);
+
+/** Delete the caller's briefing preference. */
+export const deleteBriefingPref = spacetimedb.reducer(
+  {},
+  (ctx) => {
+    const existing = ctx.db.userBriefingPref.userId.find(ctx.sender);
+    if (existing) {
+      ctx.db.userBriefingPref.delete(existing);
+    }
   }
 );

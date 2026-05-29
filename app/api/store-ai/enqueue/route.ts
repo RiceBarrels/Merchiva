@@ -21,11 +21,15 @@ function getOpenRouter() {
   });
 }
 
-const MODEL = process.env.OPENROUTER_MODEL || "x-ai/grok-4.3";
+// Default to the OSS model (gpt-oss-120b); override with OPENROUTER_MODEL.
+const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b";
 const FAST_MODEL = process.env.OPENROUTER_FAST_MODEL || "openai/gpt-oss-120b";
+// Reserved for requests flagged as needing deep reasoning.
+const THINKING_MODEL = process.env.OPENROUTER_THINKING_MODEL || "x-ai/grok-4.3";
 
 const triageSchema = z.object({
   needsThinking: z.boolean(),
+  needsDeepThinking: z.boolean().optional(),
   message: z.string(),
 });
 
@@ -155,7 +159,7 @@ async function runJob(args: RunJobArgs): Promise<void> {
     const isBuilderMode = !!(args.context && (args.context as Record<string, unknown>).builder);
 
     // Triage: cheap classifier decides direct-answer vs. escalate.
-    let triage: { needsThinking: boolean; message: string };
+    let triage: { needsThinking: boolean; needsDeepThinking?: boolean; message: string };
     try {
       const triageRes = await generateObject({
         model: openrouter.chat(FAST_MODEL),
@@ -192,17 +196,22 @@ async function runJob(args: RunJobArgs): Promise<void> {
       return;
     }
 
-    if (triage.message) flusher.push(triage.message + "\n\n");
+    // Emit the short ack wrapped in a sentinel so the client can peel it off
+    // into its own chat bubble, separate from the substantive reply that
+    // follows. Kept inline (rather than a header) because the background job
+    // delivers everything through the single ai_job row.
+    if (triage.message) flusher.push("[[MERCHIVA_ACK]]" + triage.message + "[[/MERCHIVA_ACK]]");
 
     const systemPrompt = buildSystemPrompt(args.context, args.lang, args.memory, args.permissions);
     const ackNote = triage.message
       ? `\n\nNOTE: An acknowledgment has ALREADY been sent: "${triage.message}". Skip greetings.`
       : "\n\nNOTE: Skip greetings; go straight to substantive answer or action blocks.";
 
+    const useThinking = triage.needsDeepThinking === true;
     const stream = streamText({
-      model: openrouter.chat(MODEL),
+      model: openrouter.chat(useThinking ? THINKING_MODEL : MODEL),
+      system: systemPrompt + ackNote,
       messages: [
-        { role: "system", content: systemPrompt + ackNote },
         ...args.history.slice(-10).map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
@@ -221,7 +230,10 @@ async function runJob(args: RunJobArgs): Promise<void> {
     }
     await flusher.flush(true);
 
-    const finalText = (triage.message ? triage.message + "\n\n" : "") + fullReply;
+    // finalText mirrors the streamed partial: ack wrapped in the sentinel so
+    // the client splits it into its own bubble on the final render too.
+    const finalText =
+      (triage.message ? "[[MERCHIVA_ACK]]" + triage.message + "[[/MERCHIVA_ACK]]" : "") + fullReply;
     await callReducer({
       token: args.token,
       name: "finalizeAiJob",
@@ -337,7 +349,9 @@ function languageNameFor(lang: string): string {
 }
 
 function buildTriagePrompt(lang: string): string {
-  return `You are Mr. Merchiva's triage layer. Decide if the user's request is simple (you answer directly) or complex (escalate to the thinking model). Reply in ${languageNameFor(lang)}. Same rules as /api/store-ai's chat triage — keep ack messages short and concrete.`;
+  return `You are Mr. Merchiva's triage layer. Decide if the user's request is simple (needsThinking=false, you answer directly) or complex (needsThinking=true, escalate). Reply in ${languageNameFor(lang)}. Keep ack messages short and concrete.
+
+Also set needsDeepThinking=true ONLY for the rare requests that genuinely need heavy step-by-step reasoning — optimizing a whole week's schedule under competing constraints, root-cause analysis across multiple data sources, multi-variable forecasting, or untangling a very tangled multi-part request. For ordinary complex tasks (single data lookup, straightforward bulk write, normal recommendations) leave needsDeepThinking=false. When unsure, false.`;
 }
 
 function buildSystemPrompt(

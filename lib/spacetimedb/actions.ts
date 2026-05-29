@@ -229,15 +229,19 @@ export async function assignRoleTask(data: {
 export async function completeRoleTask(data: {
   assignmentId: string;
   evidenceUrl?: string | null;
+  evidenceUrls?: { url: string; type: string }[] | null;
   note?: string | null;
   organizationId?: string;
 }): Promise<void> {
+  const list = data.evidenceUrls ?? null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (conn().reducers as any).completeRoleTask({
     organizationId: data.organizationId ?? orgId(),
     assignmentId: data.assignmentId,
-    evidenceUrl: data.evidenceUrl ?? undefined,
+    // Keep legacy single-URL field populated with the first item.
+    evidenceUrl: data.evidenceUrl ?? list?.[0]?.url ?? undefined,
     note: data.note ?? undefined,
+    evidenceUrls: list && list.length > 0 ? JSON.stringify(list) : undefined,
   });
 }
 
@@ -268,16 +272,20 @@ export async function recordTaskCompletion(data: {
   taskId: string;
   memberId?: string;
   evidenceUrl?: string | null;
+  evidenceUrls?: { url: string; type: string }[] | null;
   note?: string | null;
   organizationId?: string;
 }): Promise<void> {
+  const list = data.evidenceUrls ?? null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (conn().reducers as any).recordTaskCompletion({
     organizationId: data.organizationId ?? orgId(),
     taskId: data.taskId,
     memberId: data.memberId ?? undefined,
-    evidenceUrl: data.evidenceUrl ?? undefined,
+    // Keep legacy single-URL field populated with the first item.
+    evidenceUrl: data.evidenceUrl ?? list?.[0]?.url ?? undefined,
     note: data.note ?? undefined,
+    evidenceUrls: list && list.length > 0 ? JSON.stringify(list) : undefined,
   });
 }
 
@@ -1428,4 +1436,20 @@ export async function updateOpeningHours(data: {
     openingHours: data.openingHours ?? undefined,
     countryCode: data.countryCode ?? undefined,
   });
+}
+
+// ─── Morning briefing preference ────────────────────────────────────────────
+
+/** Upsert the current user's morning-briefing schedule. */
+export async function setBriefingPref(
+  briefingTime: string,
+  timezone: string,
+  enabled: boolean,
+): Promise<void> {
+  return conn().reducers.setBriefingPref({ briefingTime, timezone, enabled });
+}
+
+/** Remove the current user's morning-briefing schedule. */
+export async function deleteBriefingPref(): Promise<void> {
+  return conn().reducers.deleteBriefingPref({});
 }

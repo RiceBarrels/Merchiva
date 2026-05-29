@@ -20,7 +20,8 @@
     "description": "描述",
     "type": "类型",
     "more": "更多",
-    "saving": "保存中..."
+    "saving": "保存中...",
+    "switch": "切换"
   },
   "nav": {
     "dailyManagement": "日常管理",
@@ -88,7 +89,8 @@
     "addAccountSubtitle": "使用其他账号登录"
   },
   "accounts": {
-    "addAccount": "添加账号"
+    "addAccount": "添加账号",
+    "title": "账户"
   },
   "signup": {
     "title": "创建您的工作区",
@@ -910,7 +912,8 @@
       "roleTasksTitle": "{role} 任务",
       "roleTasksDefaultDesc": "今日班次岗位任务。",
       "addRole": "添加岗位",
-      "tasksLabel": "任务"
+      "tasksLabel": "任务",
+      "noTasks": "暂无任务"
     },
     "requests": {
       "title": "申请",
@@ -1135,7 +1138,51 @@
       "expandBody": "点击下方按钮发送邀请链接，新成员通过链接完成入职。",
       "expandCta": "生成邀请链接",
       "confirmRemove": "确认移除 {name}？",
-      "confirmCancelInvite": "撤回对 {email} 的邀请？"
+      "confirmCancelInvite": "撤回对 {email} 的邀请？",
+      "dialogInviteTitle": "邀请成员",
+      "dialogInviteMobileTitle": "邀请",
+      "dialogInviteDescription": "发送带注册链接的邮件邀请。",
+      "dialogEditTitle": "编辑成员",
+      "dialogEditMobileTitle": "编辑",
+      "dialogEditDescription": "更新该成员的角色和权限。",
+      "fieldEmail": "邮箱",
+      "fieldRole": "角色",
+      "fieldPermissions": "权限",
+      "cancel": "取消",
+      "save": "保存",
+      "remove": "移除",
+      "sendInvite": "发送邀请",
+      "role": {
+        "staff": "员工",
+        "manager": "经理",
+        "owner": "所有者"
+      },
+      "permissionAction": {
+        "view": "查看",
+        "edit": "编辑",
+        "invite": "邀请"
+      },
+      "permissionSection": {
+        "dashboard": "仪表盘",
+        "inventory": "库存",
+        "sales": "销售",
+        "staffing": "排班",
+        "products": "商品",
+        "pos": "收银",
+        "settings": "设置",
+        "team": "团队",
+        "website": "网站",
+        "trainingGrading": "培训与评分"
+      },
+      "toastInviteSent": "邀请已发送",
+      "toastInviteCreateFailed": "无法创建邀请",
+      "toastInviteEmailFailed": "邀请已创建，但邮件发送失败",
+      "toastInviteNoToken": "未登录",
+      "toastUpdated": "成员已更新",
+      "toastUpdateFailed": "无法更新成员",
+      "removeConfirm": "移除 {name}？",
+      "toastRemoved": "成员已移除",
+      "toastRemoveFailed": "无法移除成员"
     },
     "dialog": {
       "inviteTitle": "邀请新成员",
@@ -1220,7 +1267,9 @@
       "resendFailed": "邮件发送失败",
       "inviteCancelled": "已撤回邀请",
       "inviteCancelFailed": "撤回失败"
-    }
+    },
+    "title": "人事",
+    "subtitle": "排班、团队、角色与培训"
   },
   "pos": {
     "tabs": {
@@ -1584,7 +1633,22 @@
     "phoneOptional": "电话（可选）",
     "phonePlaceholder": "+86 138 0013 8000",
     "phoneInviteHint": "对方加入后，我们会用这个号码发送排班提醒。",
-    "pendingAcceptance": "待接受入职"
+    "pendingAcceptance": "待接受入职",
+    "briefing": {
+      "title": "晨间简报",
+      "enableLabel": "每日简报通知",
+      "enableHint": "每天在设定的时间收到包含今日重点的通知。",
+      "timeLabel": "时间",
+      "timeHint": "按整点触发，使用下方时区。",
+      "tzLabel": "时区",
+      "saveCta": "保存",
+      "clearCta": "关闭",
+      "saved": "简报时间已保存",
+      "saveFailed": "无法保存简报时间"
+    },
+    "groupStoreAccount": "店铺与账户",
+    "currentStore": "当前店铺",
+    "currentAccount": "当前账户"
   },
   "lock": {
     "title": "设备已锁定",
@@ -1696,7 +1760,8 @@
     "unknown": "未知",
     "fileFallback": "文件",
     "timeToday": "今天",
-    "timeYesterday": "昨天"
+    "timeYesterday": "昨天",
+    "attach": "附件"
   },
   "dashboard": {
     "greeting": {
@@ -2579,7 +2644,8 @@
       "customDomain": "自定义域名",
       "published": "已发布",
       "plugins": "插件"
-    }
+    },
+    "brand": "Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2822,6 +2888,32 @@
         "promoted": "用户已设为管理员。",
         "demoted": "管理员权限已撤销。"
       }
+    }
+  },
+  "quickDialog": {
+    "title": "Mr. Merchiva",
+    "online": "在线",
+    "placeholder": "向 Mr. Merchiva 提问，或运行命令…",
+    "thinking": "思考中…",
+    "askAgain": "重新提问",
+    "openAssistant": "打开 Mr. Merchiva",
+    "askPrefix": "按回车键提问",
+    "navigate": "导航",
+    "run": "运行",
+    "footer": "MERCHIVA · 随时随地",
+    "error": "Mr. Merchiva 无法连接服务器，请重试。",
+    "hintPrefix": "按",
+    "hintSuffix": "随时唤起 Mr. Merchiva",
+    "groups": {
+      "suggested": "推荐",
+      "staffing": "排班"
+    },
+    "commands": {
+      "attention": "今天有什么需要我关注的？",
+      "sales": "总结今天的销售情况",
+      "lowStock": "哪些商品库存不足？",
+      "whosOn": "现在谁在上班？",
+      "coverage": "本周排班有空缺吗？"
     }
   }
 }

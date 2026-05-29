@@ -20,7 +20,8 @@
     "description": "Description",
     "type": "Type",
     "more": "More",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "switch": "Switch"
   },
   "nav": {
     "dailyManagement": "Daily Management",
@@ -88,7 +89,8 @@
     "addAccountSubtitle": "Sign in with another account"
   },
   "accounts": {
-    "addAccount": "Add account"
+    "addAccount": "Add account",
+    "title": "Accounts"
   },
   "signup": {
     "title": "Create your workspace",
@@ -910,7 +912,8 @@
       "roleTasksTitle": "{role} Tasks",
       "roleTasksDefaultDesc": "Tasks for your shift role today.",
       "addRole": "Add Role",
-      "tasksLabel": "Tasks"
+      "tasksLabel": "Tasks",
+      "noTasks": "No tasks yet"
     },
     "requests": {
       "title": "Requests",
@@ -1135,7 +1138,51 @@
       "expandBody": "Send invitation links — new members onboard via the link.",
       "expandCta": "Generate invitation link",
       "confirmRemove": "Remove {name}?",
-      "confirmCancelInvite": "Cancel invitation to {email}?"
+      "confirmCancelInvite": "Cancel invitation to {email}?",
+      "dialogInviteTitle": "Invite member",
+      "dialogInviteMobileTitle": "Invite",
+      "dialogInviteDescription": "Send an email invite with a sign-up link.",
+      "dialogEditTitle": "Edit member",
+      "dialogEditMobileTitle": "Edit",
+      "dialogEditDescription": "Update this member's role and permissions.",
+      "fieldEmail": "Email",
+      "fieldRole": "Role",
+      "fieldPermissions": "Permissions",
+      "cancel": "Cancel",
+      "save": "Save",
+      "remove": "Remove",
+      "sendInvite": "Send invite",
+      "role": {
+        "staff": "Staff",
+        "manager": "Manager",
+        "owner": "Owner"
+      },
+      "permissionAction": {
+        "view": "View",
+        "edit": "Edit",
+        "invite": "Invite"
+      },
+      "permissionSection": {
+        "dashboard": "Dashboard",
+        "inventory": "Inventory",
+        "sales": "Sales",
+        "staffing": "Staffing",
+        "products": "Products",
+        "pos": "POS",
+        "settings": "Settings",
+        "team": "Team",
+        "website": "Website",
+        "trainingGrading": "Training & grading"
+      },
+      "toastInviteSent": "Invitation sent",
+      "toastInviteCreateFailed": "Could not create invitation",
+      "toastInviteEmailFailed": "Invitation created but email failed to send",
+      "toastInviteNoToken": "Not signed in",
+      "toastUpdated": "Member updated",
+      "toastUpdateFailed": "Could not update member",
+      "removeConfirm": "Remove {name}?",
+      "toastRemoved": "Member removed",
+      "toastRemoveFailed": "Could not remove member"
     },
     "dialog": {
       "inviteTitle": "Invite member",
@@ -1220,7 +1267,9 @@
       "resendFailed": "Email failed to send",
       "inviteCancelled": "Invitation cancelled",
       "inviteCancelFailed": "Cancel failed"
-    }
+    },
+    "title": "Personnel",
+    "subtitle": "Schedule, team, roles, and training"
   },
   "pos": {
     "tabs": {
@@ -1584,7 +1633,22 @@
     "phoneOptional": "Phone (optional)",
     "phonePlaceholder": "+1 555 123 4567",
     "phoneInviteHint": "We'll keep this on file for shift reminders once they join.",
-    "pendingAcceptance": "Pending onboarding"
+    "pendingAcceptance": "Pending onboarding",
+    "briefing": {
+      "title": "Morning briefing",
+      "enableLabel": "Daily briefing notification",
+      "enableHint": "Get a notification with today's highlights at a set time each day.",
+      "timeLabel": "Time",
+      "timeHint": "Fires on the hour, in the timezone below.",
+      "tzLabel": "Timezone",
+      "saveCta": "Save",
+      "clearCta": "Turn off",
+      "saved": "Briefing schedule saved",
+      "saveFailed": "Could not save briefing schedule"
+    },
+    "groupStoreAccount": "Store & account",
+    "currentStore": "Current store",
+    "currentAccount": "Current account"
   },
   "lock": {
     "title": "Device Locked",
@@ -1696,7 +1760,8 @@
     "unknown": "Unknown",
     "fileFallback": "File",
     "timeToday": "Today",
-    "timeYesterday": "Yesterday"
+    "timeYesterday": "Yesterday",
+    "attach": "Attach"
   },
   "dashboard": {
     "greeting": {
@@ -2579,7 +2644,8 @@
       "customDomain": "Custom domain",
       "published": "Published",
       "plugins": "Plugins"
-    }
+    },
+    "brand": "Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2822,6 +2888,32 @@
         "promoted": "User promoted to admin.",
         "demoted": "Admin role revoked."
       }
+    }
+  },
+  "quickDialog": {
+    "title": "Mr. Merchiva",
+    "online": "online",
+    "placeholder": "Ask Mr. Merchiva, or run a command…",
+    "thinking": "thinking…",
+    "askAgain": "Ask again",
+    "openAssistant": "Open Mr. Merchiva",
+    "askPrefix": "Press Enter to ask",
+    "navigate": "navigate",
+    "run": "run",
+    "footer": "MERCHIVA · ANYWHERE",
+    "error": "Mr. Merchiva couldn't reach the server. Try again.",
+    "hintPrefix": "Press",
+    "hintSuffix": "to summon Mr. Merchiva",
+    "groups": {
+      "suggested": "Suggested",
+      "staffing": "Staffing"
+    },
+    "commands": {
+      "attention": "What needs my attention today?",
+      "sales": "Summarize today's sales",
+      "lowStock": "Which items are low on stock?",
+      "whosOn": "Who's working right now?",
+      "coverage": "Any gaps in this week's schedule?"
     }
   }
 }

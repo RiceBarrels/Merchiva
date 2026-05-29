@@ -990,7 +990,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             collapsedSize={44}
             onResize={(size) => setRightCollapsed(size.inPixels <= 50)}
           >
-            <RightPanel />
+            <RightPanel
+              collapsed={rightCollapsed}
+              onToggleCollapse={toggleRightPanel}
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
       )}

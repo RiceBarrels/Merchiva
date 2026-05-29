@@ -15,4 +15,5 @@ export default {
   assignmentId: __t.string(),
   evidenceUrl: __t.option(__t.string()),
   note: __t.option(__t.string()),
+  evidenceUrls: __t.option(__t.string()),
 };

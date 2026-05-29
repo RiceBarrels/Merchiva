@@ -20,7 +20,8 @@
     "description": "विवरण",
     "type": "प्रकार",
     "more": "और",
-    "saving": "सहेज रहे हैं..."
+    "saving": "सहेज रहे हैं...",
+    "switch": "बदलें"
   },
   "nav": {
     "dailyManagement": "दैनिक प्रबंधन",
@@ -88,7 +89,8 @@
     "addAccountSubtitle": "दूसरे खाते से साइन इन करें"
   },
   "accounts": {
-    "addAccount": "खाता जोड़ें"
+    "addAccount": "खाता जोड़ें",
+    "title": "खाते"
   },
   "signup": {
     "title": "अपना वर्कस्पेस बनाएं",
@@ -910,7 +912,8 @@
       "roleTasksTitle": "{role} कार्य",
       "roleTasksDefaultDesc": "आज की शिफ्ट भूमिका के कार्य।",
       "addRole": "भूमिका जोड़ें",
-      "tasksLabel": "कार्य"
+      "tasksLabel": "कार्य",
+      "noTasks": "अभी तक कोई कार्य नहीं"
     },
     "requests": {
       "title": "अनुरोध",
@@ -1135,7 +1138,51 @@
       "expandBody": "आमंत्रण लिंक भेजें — नए सदस्य लिंक से शामिल होंगे।",
       "expandCta": "आमंत्रण लिंक बनाएँ",
       "confirmRemove": "{name} को हटाएँ?",
-      "confirmCancelInvite": "{email} का आमंत्रण रद्द करें?"
+      "confirmCancelInvite": "{email} का आमंत्रण रद्द करें?",
+      "dialogInviteTitle": "सदस्य आमंत्रित करें",
+      "dialogInviteMobileTitle": "आमंत्रित करें",
+      "dialogInviteDescription": "साइन-अप लिंक के साथ ईमेल आमंत्रण भेजें।",
+      "dialogEditTitle": "सदस्य संपादित करें",
+      "dialogEditMobileTitle": "संपादित करें",
+      "dialogEditDescription": "इस सदस्य की भूमिका और अनुमतियाँ अपडेट करें।",
+      "fieldEmail": "ईमेल",
+      "fieldRole": "भूमिका",
+      "fieldPermissions": "अनुमतियाँ",
+      "cancel": "रद्द करें",
+      "save": "सहेजें",
+      "remove": "हटाएँ",
+      "sendInvite": "आमंत्रण भेजें",
+      "role": {
+        "staff": "स्टाफ",
+        "manager": "प्रबंधक",
+        "owner": "स्वामी"
+      },
+      "permissionAction": {
+        "view": "देखें",
+        "edit": "संपादित करें",
+        "invite": "आमंत्रित करें"
+      },
+      "permissionSection": {
+        "dashboard": "डैशबोर्ड",
+        "inventory": "इन्वेंट्री",
+        "sales": "बिक्री",
+        "staffing": "स्टाफिंग",
+        "products": "उत्पाद",
+        "pos": "POS",
+        "settings": "सेटिंग्स",
+        "team": "टीम",
+        "website": "वेबसाइट",
+        "trainingGrading": "प्रशिक्षण और ग्रेडिंग"
+      },
+      "toastInviteSent": "आमंत्रण भेजा गया",
+      "toastInviteCreateFailed": "आमंत्रण नहीं बनाया जा सका",
+      "toastInviteEmailFailed": "आमंत्रण बना पर ईमेल भेजना विफल रहा",
+      "toastInviteNoToken": "साइन इन नहीं हैं",
+      "toastUpdated": "सदस्य अपडेट हुआ",
+      "toastUpdateFailed": "सदस्य अपडेट नहीं हो सका",
+      "removeConfirm": "{name} को हटाएँ?",
+      "toastRemoved": "सदस्य हटाया गया",
+      "toastRemoveFailed": "सदस्य हटाया नहीं जा सका"
     },
     "dialog": {
       "inviteTitle": "नया सदस्य आमंत्रित करें",
@@ -1220,7 +1267,9 @@
       "resendFailed": "ईमेल भेजने में विफल",
       "inviteCancelled": "आमंत्रण रद्द किया",
       "inviteCancelFailed": "रद्द करना विफल"
-    }
+    },
+    "title": "कार्मिक",
+    "subtitle": "शेड्यूल, टीम, भूमिकाएँ और प्रशिक्षण"
   },
   "pos": {
     "tabs": {
@@ -1584,7 +1633,22 @@
     "phoneOptional": "फ़ोन (वैकल्पिक)",
     "phonePlaceholder": "+91 98765 43210",
     "phoneInviteHint": "जुड़ने के बाद शिफ्ट रिमाइंडर के लिए हम इसे रिकॉर्ड में रखेंगे।",
-    "pendingAcceptance": "ज्वाइनिंग लंबित"
+    "pendingAcceptance": "ज्वाइनिंग लंबित",
+    "briefing": {
+      "title": "सुबह की ब्रीफिंग",
+      "enableLabel": "दैनिक ब्रीफिंग सूचना",
+      "enableHint": "हर दिन तय समय पर आज की मुख्य बातों की सूचना पाएं।",
+      "timeLabel": "समय",
+      "timeHint": "तय घंटे पर, नीचे दिए समय-क्षेत्र के अनुसार चलती है।",
+      "tzLabel": "समय-क्षेत्र",
+      "saveCta": "सहेजें",
+      "clearCta": "बंद करें",
+      "saved": "ब्रीफिंग समय सहेजा गया",
+      "saveFailed": "ब्रीफिंग समय सहेजा नहीं जा सका"
+    },
+    "groupStoreAccount": "स्टोर और खाता",
+    "currentStore": "वर्तमान स्टोर",
+    "currentAccount": "वर्तमान खाता"
   },
   "lock": {
     "title": "डिवाइस लॉक",
@@ -1696,7 +1760,8 @@
     "unknown": "अज्ञात",
     "fileFallback": "फ़ाइल",
     "timeToday": "आज",
-    "timeYesterday": "कल"
+    "timeYesterday": "कल",
+    "attach": "संलग्न करें"
   },
   "dashboard": {
     "greeting": {
@@ -2214,7 +2279,24 @@
       "intern": "प्रशिक्षु",
       "internSub": "आज सीखें और अभ्यास करें",
       "active": "सक्रिय"
-    }
+    },
+    "openingStep1": "सामने का दरवाज़ा खोलें और अलार्म बंद करें",
+    "openingStep2": "सभी लाइटें और एचवीएसी चालू करें",
+    "openingStep3": "POS टर्मिनल और प्रिंटर चालू करें",
+    "openingStep4": "ओपनिंग कैश ड्रॉअर गिनें",
+    "openingStep5": "डिस्प्ले जाँचें और पुनः भरें",
+    "openingStep6": "दैनिक शेड्यूल और लक्ष्य देखें",
+    "cashStep1": "शिफ्ट की शुरुआत में नकद गिनें",
+    "cashStep2": "नोटों को व्यवस्थित और एक ही दिशा में रखें",
+    "cashStep3": "ग्राहक को गिनकर खुले पैसे लौटाएँ",
+    "cashStep4": "रजिस्टर को कभी खुला और बिना निगरानी न छोड़ें",
+    "cashStep5": "ज़रूरत हो तो मध्य-शिफ्ट गिनती करें",
+    "cashStep6": "रजिस्टर बंद करें और जमा तैयार करें",
+    "foodStep1": "भोजन संभालने से पहले हाथ धोएँ",
+    "foodStep2": "भोजन का तापमान जाँचें और रीडिंग दर्ज करें",
+    "foodStep3": "भंडारण क्षेत्रों में एक्सपायर्ड वस्तुएँ जाँचें",
+    "foodStep4": "तैयारी की सतहों को साफ़ और सैनिटाइज़ करें",
+    "foodStep5": "सही लेबलिंग और डेटिंग सत्यापित करें"
   },
   "display": {
     "kitchen": "रसोई",
@@ -2562,7 +2644,8 @@
       "customDomain": "कस्टम डोमेन",
       "published": "प्रकाशित",
       "plugins": "प्लगइन्स"
-    }
+    },
+    "brand": "Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2805,6 +2888,32 @@
         "promoted": "उपयोगकर्ता एडमिन बना.",
         "demoted": "एडमिन भूमिका हटी."
       }
+    }
+  },
+  "quickDialog": {
+    "title": "Mr. Merchiva",
+    "online": "ऑनलाइन",
+    "placeholder": "Mr. Merchiva से पूछें, या कोई कमांड चलाएँ…",
+    "thinking": "सोच रहे हैं…",
+    "askAgain": "फिर से पूछें",
+    "openAssistant": "Mr. Merchiva खोलें",
+    "askPrefix": "पूछने के लिए Enter दबाएँ",
+    "navigate": "नेविगेट",
+    "run": "चलाएँ",
+    "footer": "MERCHIVA · कहीं भी",
+    "error": "Mr. Merchiva सर्वर से कनेक्ट नहीं हो सका। पुनः प्रयास करें।",
+    "hintPrefix": "दबाएँ",
+    "hintSuffix": "Mr. Merchiva को बुलाने के लिए",
+    "groups": {
+      "suggested": "सुझाव",
+      "staffing": "स्टाफ़िंग"
+    },
+    "commands": {
+      "attention": "आज मुझे किस पर ध्यान देना चाहिए?",
+      "sales": "आज की बिक्री का सारांश दें",
+      "lowStock": "कौन-से आइटम का स्टॉक कम है?",
+      "whosOn": "अभी कौन काम कर रहा है?",
+      "coverage": "इस सप्ताह के शेड्यूल में कोई कमी है?"
     }
   }
 }

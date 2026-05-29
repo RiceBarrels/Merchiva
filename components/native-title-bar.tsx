@@ -8,6 +8,7 @@ import {
 import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight, DownloadIcon, XIcon } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MerchivaLogo } from "./logo";
@@ -18,6 +19,7 @@ import { MerchivaLogo } from "./logo";
 // forward button group opts out so its clicks register on the buttons.
 export function NativeTitleBar() {
   const isNative = useIsNativeShell();
+  const pathname = usePathname();
   const [isAppAsked, setIsAppAsked] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [canBack, setCanBack] = useState(false);
@@ -64,6 +66,10 @@ export function NativeTitleBar() {
     getNativeShell()?.navigateForward();
     setTimeout(refreshState, 200);
   }, [refreshState]);
+
+  // The Mr. Merchiva quick-dialog overlay window is chrome-less — never draw
+  // the title bar (or the desktop-app promo strip) inside it.
+  if (pathname === "/quick-overlay") return null;
 
   if (isMounted && !isNative && !isAppAsked) {
     return (

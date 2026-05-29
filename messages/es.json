@@ -20,7 +20,8 @@
     "description": "Descripción",
     "type": "Tipo",
     "more": "Más",
-    "saving": "Guardando..."
+    "saving": "Guardando...",
+    "switch": "Cambiar"
   },
   "nav": {
     "dailyManagement": "Gestión diaria",
@@ -88,7 +89,8 @@
     "addAccountSubtitle": "Inicia sesión con otra cuenta"
   },
   "accounts": {
-    "addAccount": "Agregar cuenta"
+    "addAccount": "Agregar cuenta",
+    "title": "Cuentas"
   },
   "signup": {
     "title": "Crea tu espacio de trabajo",
@@ -910,7 +912,8 @@
       "roleTasksTitle": "Tareas de {role}",
       "roleTasksDefaultDesc": "Tareas para el rol de tu turno hoy.",
       "addRole": "Agregar rol",
-      "tasksLabel": "Tareas"
+      "tasksLabel": "Tareas",
+      "noTasks": "Aún no hay tareas"
     },
     "requests": {
       "title": "Solicitudes",
@@ -1135,7 +1138,51 @@
       "expandBody": "Envía enlaces de invitación — los nuevos miembros se incorporan por correo.",
       "expandCta": "Generar enlace de invitación",
       "confirmRemove": "¿Eliminar a {name}?",
-      "confirmCancelInvite": "¿Cancelar la invitación a {email}?"
+      "confirmCancelInvite": "¿Cancelar la invitación a {email}?",
+      "dialogInviteTitle": "Invitar miembro",
+      "dialogInviteMobileTitle": "Invitar",
+      "dialogInviteDescription": "Envía una invitación por correo con un enlace de registro.",
+      "dialogEditTitle": "Editar miembro",
+      "dialogEditMobileTitle": "Editar",
+      "dialogEditDescription": "Actualiza el rol y los permisos de este miembro.",
+      "fieldEmail": "Correo electrónico",
+      "fieldRole": "Rol",
+      "fieldPermissions": "Permisos",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "remove": "Eliminar",
+      "sendInvite": "Enviar invitación",
+      "role": {
+        "staff": "Personal",
+        "manager": "Gerente",
+        "owner": "Propietario"
+      },
+      "permissionAction": {
+        "view": "Ver",
+        "edit": "Editar",
+        "invite": "Invitar"
+      },
+      "permissionSection": {
+        "dashboard": "Panel",
+        "inventory": "Inventario",
+        "sales": "Ventas",
+        "staffing": "Personal",
+        "products": "Productos",
+        "pos": "TPV",
+        "settings": "Ajustes",
+        "team": "Equipo",
+        "website": "Sitio web",
+        "trainingGrading": "Capacitación y evaluación"
+      },
+      "toastInviteSent": "Invitación enviada",
+      "toastInviteCreateFailed": "No se pudo crear la invitación",
+      "toastInviteEmailFailed": "Invitación creada, pero falló el envío del correo",
+      "toastInviteNoToken": "No has iniciado sesión",
+      "toastUpdated": "Miembro actualizado",
+      "toastUpdateFailed": "No se pudo actualizar el miembro",
+      "removeConfirm": "¿Eliminar a {name}?",
+      "toastRemoved": "Miembro eliminado",
+      "toastRemoveFailed": "No se pudo eliminar el miembro"
     },
     "dialog": {
       "inviteTitle": "Invitar miembro",
@@ -1220,7 +1267,9 @@
       "resendFailed": "El correo no se pudo enviar",
       "inviteCancelled": "Invitación cancelada",
       "inviteCancelFailed": "No se pudo cancelar"
-    }
+    },
+    "title": "Personal",
+    "subtitle": "Horario, equipo, roles y capacitación"
   },
   "pos": {
     "tabs": {
@@ -1584,7 +1633,22 @@
     "phoneOptional": "Teléfono (opcional)",
     "phonePlaceholder": "+34 612 345 678",
     "phoneInviteHint": "Lo guardaremos para recordatorios de turno cuando se una.",
-    "pendingAcceptance": "Pendiente de incorporación"
+    "pendingAcceptance": "Pendiente de incorporación",
+    "briefing": {
+      "title": "Informe matutino",
+      "enableLabel": "Notificación de informe diario",
+      "enableHint": "Recibe una notificación con lo más importante del día a una hora fija.",
+      "timeLabel": "Hora",
+      "timeHint": "Se activa en punto, en la zona horaria de abajo.",
+      "tzLabel": "Zona horaria",
+      "saveCta": "Guardar",
+      "clearCta": "Desactivar",
+      "saved": "Horario del informe guardado",
+      "saveFailed": "No se pudo guardar el horario"
+    },
+    "groupStoreAccount": "Tienda y cuenta",
+    "currentStore": "Tienda actual",
+    "currentAccount": "Cuenta actual"
   },
   "lock": {
     "title": "Dispositivo bloqueado",
@@ -1696,7 +1760,8 @@
     "unknown": "Desconocido",
     "fileFallback": "Archivo",
     "timeToday": "Hoy",
-    "timeYesterday": "Ayer"
+    "timeYesterday": "Ayer",
+    "attach": "Adjuntar"
   },
   "dashboard": {
     "greeting": {
@@ -2214,7 +2279,24 @@
       "intern": "Becario",
       "internSub": "Aprender y practicar hoy",
       "active": "activo"
-    }
+    },
+    "openingStep1": "Abrir la puerta principal y desactivar la alarma",
+    "openingStep2": "Encender todas las luces y la climatización",
+    "openingStep3": "Encender terminales POS e impresoras",
+    "openingStep4": "Contar el efectivo inicial de la caja",
+    "openingStep5": "Revisar y reponer los expositores",
+    "openingStep6": "Revisar el horario y los objetivos del día",
+    "cashStep1": "Contar el efectivo al inicio del turno",
+    "cashStep2": "Mantener los billetes ordenados y en la misma dirección",
+    "cashStep3": "Contar el cambio al cliente en voz alta",
+    "cashStep4": "Nunca dejar la caja abierta sin vigilancia",
+    "cashStep5": "Hacer un recuento a mitad de turno si corresponde",
+    "cashStep6": "Cerrar la caja y preparar el depósito",
+    "foodStep1": "Lavarse las manos antes de manipular alimentos",
+    "foodStep2": "Comprobar las temperaturas y registrar las lecturas",
+    "foodStep3": "Inspeccionar el almacén en busca de productos caducados",
+    "foodStep4": "Limpiar y desinfectar las superficies de preparación",
+    "foodStep5": "Verificar el etiquetado y las fechas correctas"
   },
   "display": {
     "kitchen": "Cocina",
@@ -2562,7 +2644,8 @@
       "customDomain": "Dominio personalizado",
       "published": "Publicado",
       "plugins": "Plugins"
-    }
+    },
+    "brand": "Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2805,6 +2888,32 @@
         "promoted": "Usuario promovido a admin.",
         "demoted": "Rol de admin revocado."
       }
+    }
+  },
+  "quickDialog": {
+    "title": "Mr. Merchiva",
+    "online": "en línea",
+    "placeholder": "Pregunta a Mr. Merchiva o ejecuta un comando…",
+    "thinking": "pensando…",
+    "askAgain": "Preguntar de nuevo",
+    "openAssistant": "Abrir Mr. Merchiva",
+    "askPrefix": "Pulsa Intro para preguntar",
+    "navigate": "navegar",
+    "run": "ejecutar",
+    "footer": "MERCHIVA · EN CUALQUIER LUGAR",
+    "error": "Mr. Merchiva no pudo conectar con el servidor. Inténtalo de nuevo.",
+    "hintPrefix": "Pulsa",
+    "hintSuffix": "para invocar a Mr. Merchiva",
+    "groups": {
+      "suggested": "Sugerencias",
+      "staffing": "Personal"
+    },
+    "commands": {
+      "attention": "¿Qué necesita mi atención hoy?",
+      "sales": "Resume las ventas de hoy",
+      "lowStock": "¿Qué artículos tienen poco stock?",
+      "whosOn": "¿Quién está trabajando ahora?",
+      "coverage": "¿Hay huecos en el horario de esta semana?"
     }
   }
 }

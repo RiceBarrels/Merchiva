@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Camera, ImageIcon, ArrowRight, X, Clock } from "lucide-react";
+import { CheckCircle2, Camera, ImageIcon, ArrowRight, X, Clock, Film } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -212,15 +212,19 @@ function InlineComplete({
   organizationId: string;
   onClose: () => void;
 }) {
-  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<{ url: string; type: string }[]>([]);
   const [note, setNote] = useState("");
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const evidenceRequired = task.requiresEvidence;
 
+  function removeEvidence(url: string) {
+    setEvidence((prev) => prev.filter((e) => e.url !== url));
+  }
+
   async function submit() {
-    if (evidenceRequired && !evidenceUrl) {
-      toast.error("This task requires a photo as evidence");
+    if (evidenceRequired && evidence.length === 0) {
+      toast.error("This task requires a photo or video as evidence");
       return;
     }
     setSubmitting(true);
@@ -228,24 +232,68 @@ function InlineComplete({
       await recordTaskCompletion({
         organizationId,
         taskId: task.id,
-        evidenceUrl: evidenceUrl ?? undefined,
+        evidenceUrls: evidence.length > 0 ? evidence : undefined,
         note: note.trim() || undefined,
       });
       // Fan-out to chats: best-effort. Don't roll back completion on failure.
+      // Send the note first (with a header), then one message per attachment.
       if (task.notifyChats.length > 0) {
         const trimmedNote = note.trim();
         const lines = [`✅ Task completed: ${task.title}`];
         if (trimmedNote) lines.push(trimmedNote);
-        const content = lines.join("\n");
-        const attachment = evidenceUrl
-          ? { url: evidenceUrl, type: "image", name: `${task.title}-evidence` }
-          : null;
-        const results = await Promise.allSettled(
-          task.notifyChats.map((chatId) => sendMessage(chatId, content, undefined, attachment))
+        if (evidence.length > 0) lines.push(`📎 ${evidence.length} attachment(s)`);
+        const header = lines.join("\n");
+
+        const sends: Promise<unknown>[] = [];
+        // First message carries the header (+ first attachment if any).
+        sends.push(
+          sendMessage(
+            task.notifyChats[0],
+            header,
+            undefined,
+            evidence[0]
+              ? { url: evidence[0].url, type: evidence[0].type, name: `${task.title}-evidence-1` }
+              : null,
+          ),
         );
+        // Remaining attachments to the first chat.
+        for (let i = 1; i < evidence.length; i++) {
+          sends.push(
+            sendMessage(task.notifyChats[0], "", undefined, {
+              url: evidence[i].url,
+              type: evidence[i].type,
+              name: `${task.title}-evidence-${i + 1}`,
+            }),
+          );
+        }
+        // Other chats get the header + all attachments too.
+        for (let c = 1; c < task.notifyChats.length; c++) {
+          const chatId = task.notifyChats[c];
+          sends.push(
+            sendMessage(
+              chatId,
+              header,
+              undefined,
+              evidence[0]
+                ? { url: evidence[0].url, type: evidence[0].type, name: `${task.title}-evidence-1` }
+                : null,
+            ),
+          );
+          for (let i = 1; i < evidence.length; i++) {
+            sends.push(
+              sendMessage(chatId, "", undefined, {
+                url: evidence[i].url,
+                type: evidence[i].type,
+                name: `${task.title}-evidence-${i + 1}`,
+              }),
+            );
+          }
+        }
+
+        const results = await Promise.allSettled(sends);
         const failed = results.filter((r) => r.status === "rejected").length;
         if (failed > 0) {
-          toast.warning(`Task completed, but ${failed} chat notification(s) failed`);
+          toast.warning(`Task completed, but ${failed} chat message(s) failed`);
         }
       }
       toast.success("Task completed");
@@ -266,34 +314,73 @@ function InlineComplete({
         <div className="space-y-3 p-4">
           <div>
             <Label className="text-[11px]">
-              Evidence photo
+              Evidence photos / videos
               {evidenceRequired && <span className="text-red-500 ml-1">*</span>}
+              {evidence.length > 0 && (
+                <span className="text-muted-foreground ml-1">({evidence.length})</span>
+              )}
             </Label>
-            {evidenceUrl ? (
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={evidenceUrl}
-                  alt="Evidence"
-                  className="w-full max-h-[200px] object-cover rounded-[0.2rem] border border-border"
-                />
-                <button
-                  type="button"
-                  onClick={() => setEvidenceUrl(null)}
-                  className="absolute top-1 right-1 h-6 w-6 rounded-full bg-black/60 text-white inline-flex items-center justify-center hover:bg-black/80"
-                  title="Remove"
-                >
-                  <X className="h-3 w-3" />
-                </button>
+            {evidence.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mt-1.5">
+                {evidence.map((item) => {
+                  const isVideo = item.type?.startsWith("video");
+                  return (
+                    <div key={item.url} className="relative aspect-square">
+                      {isVideo ? (
+                        <video
+                          src={item.url}
+                          className="w-full h-full object-cover rounded-[0.2rem] border border-border bg-black"
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.url}
+                          alt="Evidence"
+                          className="w-full h-full object-cover rounded-[0.2rem] border border-border"
+                        />
+                      )}
+                      {isVideo && (
+                        <span className="absolute bottom-1 left-1 h-4 w-4 rounded-[0.15rem] bg-black/60 text-white inline-flex items-center justify-center">
+                          <Film className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeEvidence(item.url)}
+                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white inline-flex items-center justify-center hover:bg-black/80"
+                        title="Remove"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-            ) : (
-              <div className="border border-dashed border-border rounded-[0.2rem] p-3">
+            )}
+            {evidence.length < 10 && (
+              <div className="border border-dashed border-border rounded-[0.2rem] p-3 mt-1.5">
                 <UploadButton
-                  endpoint="siteImage"
+                  endpoint="taskEvidence"
                   onUploadBegin={() => setUploading(true)}
                   onClientUploadComplete={(res) => {
-                    const url = res?.[0]?.serverData?.url ?? null;
-                    if (url) setEvidenceUrl(url);
+                    const uploaded = (res ?? [])
+                      .map((r) => ({
+                        url: r?.serverData?.url as string | undefined,
+                        type: (r?.serverData?.type as string | undefined) ?? r?.type ?? "image",
+                      }))
+                      .filter((x): x is { url: string; type: string } => !!x.url);
+                    if (uploaded.length > 0) {
+                      setEvidence((prev) => {
+                        const seen = new Set(prev.map((e) => e.url));
+                        const merged = [...prev];
+                        for (const u of uploaded) {
+                          if (!seen.has(u.url)) merged.push(u);
+                        }
+                        return merged.slice(0, 10);
+                      });
+                    }
                     setUploading(false);
                   }}
                   onUploadError={(err) => {

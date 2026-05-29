@@ -20,7 +20,8 @@
     "description": "الوصف",
     "type": "النوع",
     "more": "المزيد",
-    "saving": "جارٍ الحفظ..."
+    "saving": "جارٍ الحفظ...",
+    "switch": "تبديل"
   },
   "nav": {
     "dailyManagement": "الإدارة اليومية",
@@ -88,7 +89,8 @@
     "addAccountSubtitle": "تسجيل الدخول بحساب آخر"
   },
   "accounts": {
-    "addAccount": "إضافة حساب"
+    "addAccount": "إضافة حساب",
+    "title": "الحسابات"
   },
   "signup": {
     "title": "أنشئ مساحة العمل الخاصة بك",
@@ -910,7 +912,8 @@
       "roleTasksTitle": "مهام {role}",
       "roleTasksDefaultDesc": "مهام دور ورديتك اليوم.",
       "addRole": "إضافة دور",
-      "tasksLabel": "المهام"
+      "tasksLabel": "المهام",
+      "noTasks": "لا توجد مهام بعد"
     },
     "requests": {
       "title": "الطلبات",
@@ -1135,7 +1138,51 @@
       "expandBody": "أرسل روابط دعوة — ينضم الأعضاء الجدد عبر الرابط.",
       "expandCta": "إنشاء رابط دعوة",
       "confirmRemove": "إزالة {name}؟",
-      "confirmCancelInvite": "إلغاء الدعوة المرسلة إلى {email}؟"
+      "confirmCancelInvite": "إلغاء الدعوة المرسلة إلى {email}؟",
+      "dialogInviteTitle": "دعوة عضو",
+      "dialogInviteMobileTitle": "دعوة",
+      "dialogInviteDescription": "أرسل دعوة عبر البريد الإلكتروني مع رابط للتسجيل.",
+      "dialogEditTitle": "تعديل العضو",
+      "dialogEditMobileTitle": "تعديل",
+      "dialogEditDescription": "حدّث دور هذا العضو وصلاحياته.",
+      "fieldEmail": "البريد الإلكتروني",
+      "fieldRole": "الدور",
+      "fieldPermissions": "الصلاحيات",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "remove": "إزالة",
+      "sendInvite": "إرسال الدعوة",
+      "role": {
+        "staff": "موظف",
+        "manager": "مدير",
+        "owner": "المالك"
+      },
+      "permissionAction": {
+        "view": "عرض",
+        "edit": "تعديل",
+        "invite": "دعوة"
+      },
+      "permissionSection": {
+        "dashboard": "لوحة التحكم",
+        "inventory": "المخزون",
+        "sales": "المبيعات",
+        "staffing": "الجدولة",
+        "products": "المنتجات",
+        "pos": "نقطة البيع",
+        "settings": "الإعدادات",
+        "team": "الفريق",
+        "website": "الموقع",
+        "trainingGrading": "التدريب والتقييم"
+      },
+      "toastInviteSent": "تم إرسال الدعوة",
+      "toastInviteCreateFailed": "تعذّر إنشاء الدعوة",
+      "toastInviteEmailFailed": "تم إنشاء الدعوة لكن فشل إرسال البريد",
+      "toastInviteNoToken": "لم تسجّل الدخول",
+      "toastUpdated": "تم تحديث العضو",
+      "toastUpdateFailed": "تعذّر تحديث العضو",
+      "removeConfirm": "إزالة {name}؟",
+      "toastRemoved": "تمت إزالة العضو",
+      "toastRemoveFailed": "تعذّر إزالة العضو"
     },
     "dialog": {
       "inviteTitle": "دعوة عضو جديد",
@@ -1220,7 +1267,9 @@
       "resendFailed": "تعذّر إرسال البريد",
       "inviteCancelled": "تم إلغاء الدعوة",
       "inviteCancelFailed": "تعذّر الإلغاء"
-    }
+    },
+    "title": "الموظفون",
+    "subtitle": "الجدولة والفريق والأدوار والتدريب"
   },
   "pos": {
     "tabs": {
@@ -1584,7 +1633,22 @@
     "phoneOptional": "الهاتف (اختياري)",
     "phonePlaceholder": "+966 50 123 4567",
     "phoneInviteHint": "سنحتفظ به لإرسال تذكيرات الورديات بعد انضمامه.",
-    "pendingAcceptance": "في انتظار الانضمام"
+    "pendingAcceptance": "في انتظار الانضمام",
+    "briefing": {
+      "title": "ملخص الصباح",
+      "enableLabel": "إشعار الملخص اليومي",
+      "enableHint": "احصل على إشعار بأبرز أحداث اليوم في وقت محدد كل يوم.",
+      "timeLabel": "الوقت",
+      "timeHint": "يُطلق عند الساعة تماماً، حسب المنطقة الزمنية أدناه.",
+      "tzLabel": "المنطقة الزمنية",
+      "saveCta": "حفظ",
+      "clearCta": "إيقاف",
+      "saved": "تم حفظ موعد الملخص",
+      "saveFailed": "تعذر حفظ موعد الملخص"
+    },
+    "groupStoreAccount": "المتجر والحساب",
+    "currentStore": "المتجر الحالي",
+    "currentAccount": "الحساب الحالي"
   },
   "lock": {
     "title": "الجهاز مقفل",
@@ -1696,7 +1760,8 @@
     "unknown": "غير معروف",
     "fileFallback": "ملف",
     "timeToday": "اليوم",
-    "timeYesterday": "أمس"
+    "timeYesterday": "أمس",
+    "attach": "إرفاق"
   },
   "dashboard": {
     "greeting": {
@@ -2214,7 +2279,24 @@
       "intern": "متدرب",
       "internSub": "التعلم والتدريب اليوم",
       "active": "نشط"
-    }
+    },
+    "openingStep1": "فتح الباب الأمامي وإيقاف الإنذار",
+    "openingStep2": "تشغيل جميع الأضواء والتكييف",
+    "openingStep3": "تشغيل أجهزة نقاط البيع والطابعات",
+    "openingStep4": "عدّ النقود في درج الافتتاح",
+    "openingStep5": "فحص العروض وإعادة تعبئتها",
+    "openingStep6": "مراجعة جدول اليوم وأهدافه",
+    "cashStep1": "عدّ النقود في بداية الوردية",
+    "cashStep2": "إبقاء الأوراق النقدية مرتبة وباتجاه واحد",
+    "cashStep3": "عدّ الباقي للعميل بصوت مسموع",
+    "cashStep4": "عدم ترك الصندوق مفتوحاً دون مراقبة",
+    "cashStep5": "إجراء عدّ في منتصف الوردية عند الحاجة",
+    "cashStep6": "إغلاق الصندوق وتجهيز الإيداع",
+    "foodStep1": "غسل اليدين قبل التعامل مع الطعام",
+    "foodStep2": "فحص درجات حرارة الطعام وتسجيل القراءات",
+    "foodStep3": "فحص أماكن التخزين بحثاً عن المنتجات منتهية الصلاحية",
+    "foodStep4": "تنظيف وتعقيم أسطح التحضير",
+    "foodStep5": "التحقق من صحة التوسيم والتواريخ"
   },
   "display": {
     "kitchen": "المطبخ",
@@ -2562,7 +2644,8 @@
       "customDomain": "نطاق مخصص",
       "published": "منشور",
       "plugins": "الإضافات"
-    }
+    },
+    "brand": "Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2805,6 +2888,32 @@
         "promoted": "تمت ترقية المستخدم.",
         "demoted": "تم سحب صلاحية المسؤول."
       }
+    }
+  },
+  "quickDialog": {
+    "title": "Mr. Merchiva",
+    "online": "متصل",
+    "placeholder": "اسأل Mr. Merchiva أو شغّل أمرًا…",
+    "thinking": "يفكّر…",
+    "askAgain": "اسأل مجددًا",
+    "openAssistant": "فتح Mr. Merchiva",
+    "askPrefix": "اضغط Enter للسؤال",
+    "navigate": "تنقّل",
+    "run": "تشغيل",
+    "footer": "MERCHIVA · في أي مكان",
+    "error": "تعذّر على Mr. Merchiva الوصول إلى الخادم. حاول مرة أخرى.",
+    "hintPrefix": "اضغط",
+    "hintSuffix": "لاستدعاء Mr. Merchiva",
+    "groups": {
+      "suggested": "مقترحات",
+      "staffing": "التوظيف"
+    },
+    "commands": {
+      "attention": "ما الذي يحتاج إلى انتباهي اليوم؟",
+      "sales": "لخّص مبيعات اليوم",
+      "lowStock": "ما الأصناف منخفضة المخزون؟",
+      "whosOn": "من يعمل الآن؟",
+      "coverage": "هل توجد فجوات في جدول هذا الأسبوع؟"
     }
   }
 }

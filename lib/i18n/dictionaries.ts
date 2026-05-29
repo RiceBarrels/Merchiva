@@ -22,15 +22,24 @@ export function getDictionary(locale: Locale): Dictionary {
   return dictionaries[locale] ?? dictionaries.en;
 }
 
-export function lookup(dict: Dictionary, path: string): string {
+// Resolve a dotted path against a single dictionary. Returns the string value,
+// or null if the path is missing / not a leaf string.
+function resolve(dict: Dictionary, path: string): string | null {
   const parts = path.split(".");
   let cur: unknown = dict;
   for (const p of parts) {
     if (cur && typeof cur === "object" && p in (cur as Record<string, unknown>)) {
       cur = (cur as Record<string, unknown>)[p];
     } else {
-      return path;
+      return null;
     }
   }
-  return typeof cur === "string" ? cur : path;
+  return typeof cur === "string" ? cur : null;
+}
+
+export function lookup(dict: Dictionary, path: string): string {
+  // Try the requested locale first, then fall back to English so a key that's
+  // missing in a translation still renders real text instead of the raw path.
+  // Only as a last resort do we surface the path itself (genuinely unknown key).
+  return resolve(dict, path) ?? resolve(dictionaries.en, path) ?? path;
 }

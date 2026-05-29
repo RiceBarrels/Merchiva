@@ -470,6 +470,13 @@ export const ScheduleProposal = __t.object("ScheduleProposal", {
 });
 export type ScheduleProposal = __Infer<typeof ScheduleProposal>;
 
+export const ServiceIdentity = __t.object("ServiceIdentity", {
+  identity: __t.identity(),
+  label: __t.string(),
+  registeredAt: __t.timestamp(),
+});
+export type ServiceIdentity = __Infer<typeof ServiceIdentity>;
+
 export const Settings = __t.object("Settings", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -801,6 +808,16 @@ export const User = __t.object("User", {
   isAdmin: __t.option(__t.bool()),
 });
 export type User = __Infer<typeof User>;
+
+export const UserBriefingPref = __t.object("UserBriefingPref", {
+  userId: __t.identity(),
+  briefingTime: __t.string(),
+  timezone: __t.string(),
+  enabled: __t.bool(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type UserBriefingPref = __Infer<typeof UserBriefingPref>;
 
 export const WasteLog = __t.object("WasteLog", {
   id: __t.uuid(),

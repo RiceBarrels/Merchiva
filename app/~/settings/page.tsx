@@ -71,6 +71,7 @@ import {
 } from "@/components/ui/select";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
+import { MorningBriefingSettings } from "@/components/settings/morning-briefing-settings";
 import { getCached, setCache, clearCache } from "@/lib/cache";
 import { getMyAvailability, getTimeOffRequests } from "@/lib/db/availability";
 import { upsertAvailability, createTimeOffRequest, updateMember, removeMember, cancelInvitation, inviteToOrg } from "@/lib/spacetimedb/actions";
@@ -2122,7 +2123,10 @@ export default function SettingsPage() {
               onChange={() => setWeeklySummary(!weeklySummary)}
             />
           </div>
-        </DynamicUIElementContent>
+                    <div className="px-[18px] pb-4">
+              <MorningBriefingSettings />
+            </div>
+          </DynamicUIElementContent>
       </DynamicUIElement>
 
       {/* ─── Preferences Sub-Panel ───────────────────────────── */}
