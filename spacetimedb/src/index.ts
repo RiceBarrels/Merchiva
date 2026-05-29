@@ -43,6 +43,9 @@ const userTable = table(
     avatarUrl: t.option(t.string()),
     lastActiveOrgId: t.option(t.string()),
     createdAt: t.timestamp(),
+    // Site-wide admin flag (controls /admins access). Promoted via the
+    // claimFirstAdmin (bootstrap) and setUserAdmin (admin-only) reducers.
+    isAdmin: t.option(t.bool()).default(undefined),
   }
 );
 
@@ -1391,6 +1394,9 @@ const roleTaskAssignmentTable = table(
     skipReason: t.option(t.string()),
     createdAt: t.timestamp(),
     createdBy: t.identity(),
+    // Legacy plural column kept to satisfy the deployed schema. Unused by app
+    // code; remove via a manual migration if/when we ship a destructive deploy.
+    evidenceUrls: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1443,6 +1449,36 @@ const pushSubscriptionTable = table(
     auth: t.string(),         // auth secret from subscription.keys.auth
     userAgent: t.option(t.string()),
     createdAt: t.timestamp(),
+  }
+);
+
+// ─── Blog Posts ──────────────────────────────────────────────────────────────
+// Public marketing blog (rendered at /blogs, edited at /admins/blogs). Globally
+// scoped — no organizationId. Author is the WorkOS-authenticated admin who
+// wrote it; we mirror their SpacetimeDB identity here for attribution.
+
+const blogPostTable = table(
+  {
+    name: 'blog_post',
+    public: true,
+    indexes: [
+      { accessor: 'bySlug', algorithm: 'hash', columns: ['slug'] },
+      { accessor: 'byStatus', algorithm: 'btree', columns: ['status'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    slug: t.string(),
+    title: t.string(),
+    excerpt: t.string(),
+    contentMd: t.string(),
+    coverImage: t.option(t.string()),
+    status: t.string(),               // "draft" | "published"
+    authorIdentity: t.identity(),
+    authorName: t.option(t.string()),
+    publishedAt: t.option(t.timestamp()),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
   }
 );
 
@@ -1506,6 +1542,7 @@ const spacetimedb = schema({
   roleTaskAssignment: roleTaskAssignmentTable,
   design: designTable,
   pushSubscription: pushSubscriptionTable,
+  blogPost: blogPostTable,
 });
 
 export default spacetimedb;
@@ -1526,6 +1563,7 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
       avatarUrl: undefined,
       lastActiveOrgId: undefined,
       createdAt: ctx.timestamp,
+      isAdmin: undefined,
     });
   }
 });
@@ -1559,6 +1597,7 @@ export const createUser = spacetimedb.reducer(
         avatarUrl: undefined,
         lastActiveOrgId: undefined,
         createdAt: ctx.timestamp,
+        isAdmin: undefined,
       });
     }
   }
@@ -5445,6 +5484,7 @@ export const assignRoleTask = spacetimedb.reducer(
       skipReason: undefined,
       createdAt: ctx.timestamp,
       createdBy: ctx.sender,
+      evidenceUrls: undefined,
     });
   }
 );
@@ -5558,6 +5598,7 @@ export const recordTaskCompletion = spacetimedb.reducer(
       skipReason: undefined,
       createdAt: ctx.timestamp,
       createdBy: ctx.sender,
+      evidenceUrls: undefined,
     });
   }
 );
@@ -5616,5 +5657,123 @@ export const deletePushSubscription = spacetimedb.reducer(
     if (existing) {
       ctx.db.pushSubscription.delete(existing);
     }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function requireAdmin(ctx: any): void {
+  const me = ctx.db.user.identity.find(ctx.sender);
+  if (!me || me.isAdmin !== true) unauthorized('Admin only');
+}
+
+// First-time bootstrap. The very first admin claims the role by matching their
+// email against the one passed in. Only succeeds if no admins exist yet.
+export const claimFirstAdmin = spacetimedb.reducer(
+  { email: t.string() },
+  (ctx, { email }) => {
+    const anyAdmin = [...ctx.db.user.iter()].some((u) => u.isAdmin === true);
+    if (anyAdmin) unauthorized('Admin already claimed');
+
+    const me = ctx.db.user.identity.find(ctx.sender);
+    if (!me) unauthorized('No user record');
+    if (me.email !== email) unauthorized('Email mismatch');
+
+    ctx.db.user.identity.update({ ...me, isAdmin: true });
+  }
+);
+
+// Promote / demote another user. Caller must already be admin.
+export const setUserAdmin = spacetimedb.reducer(
+  { targetEmail: t.string(), isAdmin: t.bool() },
+  (ctx, { targetEmail, isAdmin }) => {
+    requireAdmin(ctx);
+    const target = [...ctx.db.user.byEmail.filter(targetEmail)][0];
+    if (!target) throw new Error('User not found');
+    ctx.db.user.identity.update({ ...target, isAdmin });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOG POST REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const createBlogPost = spacetimedb.reducer(
+  {
+    slug: t.string(),
+    title: t.string(),
+    excerpt: t.string(),
+    contentMd: t.string(),
+    coverImage: t.option(t.string()),
+    status: t.string(),
+    authorName: t.option(t.string()),
+  },
+  (ctx, { slug, title, excerpt, contentMd, coverImage, status, authorName }) => {
+    requireAdmin(ctx);
+    const dup = [...ctx.db.blogPost.bySlug.filter(slug)][0];
+    if (dup) throw new Error('Slug already in use');
+    const published = status === 'published' ? ctx.timestamp : undefined;
+    ctx.db.blogPost.insert({
+      id: ctx.newUuidV4(),
+      slug,
+      title,
+      excerpt,
+      contentMd,
+      coverImage,
+      status,
+      authorIdentity: ctx.sender,
+      authorName,
+      publishedAt: published,
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const updateBlogPost = spacetimedb.reducer(
+  {
+    postId: t.string(),
+    slug: t.string(),
+    title: t.string(),
+    excerpt: t.string(),
+    contentMd: t.string(),
+    coverImage: t.option(t.string()),
+    status: t.string(),
+  },
+  (ctx, { postId, slug, title, excerpt, contentMd, coverImage, status }) => {
+    requireAdmin(ctx);
+    const existing = [...ctx.db.blogPost.iter()].find((p) => p.id.toString() === postId);
+    if (!existing) throw new Error('Post not found');
+    if (existing.slug !== slug) {
+      const dup = [...ctx.db.blogPost.bySlug.filter(slug)][0];
+      if (dup) throw new Error('Slug already in use');
+    }
+    const wasPublished = existing.status === 'published';
+    const nowPublished = status === 'published';
+    ctx.db.blogPost.delete(existing);
+    ctx.db.blogPost.insert({
+      ...existing,
+      slug,
+      title,
+      excerpt,
+      contentMd,
+      coverImage,
+      status,
+      publishedAt: !wasPublished && nowPublished ? ctx.timestamp : existing.publishedAt,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const deleteBlogPost = spacetimedb.reducer(
+  { postId: t.string() },
+  (ctx, { postId }) => {
+    requireAdmin(ctx);
+    const existing = [...ctx.db.blogPost.iter()].find((p) => p.id.toString() === postId);
+    if (!existing) throw new Error('Post not found');
+    ctx.db.blogPost.delete(existing);
   }
 );

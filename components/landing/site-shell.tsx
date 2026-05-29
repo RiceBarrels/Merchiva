@@ -19,7 +19,7 @@ const C = {
   sans: "var(--font-sans), ui-sans-serif, system-ui, sans-serif",
 };
 
-export type SiteNavKey = "product" | "features" | "pricing" | "about" | "changelog" | "download";
+export type SiteNavKey = "product" | "features" | "pricing" | "about" | "changelog" | "download" | "blog";
 
 function NotchM({ size = 22, fg = C.ink }: { size?: number; fg?: string }) {
   return (
@@ -34,6 +34,7 @@ const NAV_LINKS: { key: SiteNavKey; label: string; href: string }[] = [
   { key: "pricing", label: "Pricing", href: "/pricing" },
   { key: "download", label: "Download", href: "/download" },
   { key: "about", label: "About", href: "/about" },
+  { key: "blog", label: "Blog", href: "/blogs" },
   { key: "changelog", label: "Changelog", href: "/changelog" },
 ];
 
@@ -267,6 +268,7 @@ const FOOTER_GROUPS: [string, { label: string; href: string }[]][] = [
     "Resources",
     [
       { label: "Docs", href: "#" },
+      { label: "Blog", href: "/blogs" },
       { label: "Changelog", href: "/changelog" },
       { label: "Status", href: "#" },
     ],

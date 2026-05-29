@@ -24,4 +24,5 @@ export default __t.row({
   skipReason: __t.option(__t.string()).name("skip_reason"),
   createdAt: __t.timestamp().name("created_at"),
   createdBy: __t.identity().name("created_by"),
+  evidenceUrls: __t.option(__t.string()).name("evidence_urls"),
 });

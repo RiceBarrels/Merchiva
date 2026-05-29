@@ -49,6 +49,22 @@ export const AiJob = __t.object("AiJob", {
 });
 export type AiJob = __Infer<typeof AiJob>;
 
+export const BlogPost = __t.object("BlogPost", {
+  id: __t.uuid(),
+  slug: __t.string(),
+  title: __t.string(),
+  excerpt: __t.string(),
+  contentMd: __t.string(),
+  coverImage: __t.option(__t.string()),
+  status: __t.string(),
+  authorIdentity: __t.identity(),
+  authorName: __t.option(__t.string()),
+  publishedAt: __t.option(__t.timestamp()),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type BlogPost = __Infer<typeof BlogPost>;
+
 export const ChatConversation = __t.object("ChatConversation", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -422,6 +438,7 @@ export const RoleTaskAssignment = __t.object("RoleTaskAssignment", {
   skipReason: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   createdBy: __t.identity(),
+  evidenceUrls: __t.option(__t.string()),
 });
 export type RoleTaskAssignment = __Infer<typeof RoleTaskAssignment>;
 
@@ -781,6 +798,7 @@ export const User = __t.object("User", {
   avatarUrl: __t.option(__t.string()),
   lastActiveOrgId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
+  isAdmin: __t.option(__t.bool()),
 });
 export type User = __Infer<typeof User>;
 

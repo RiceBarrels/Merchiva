@@ -143,6 +143,13 @@ export function useTrainingFinalGrades() {
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 
+// ── Blog Posts ─────────────────────────────────────────────────────────────
+export function useBlogPosts() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tbl = (tables as any).blogPost;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+
 // ── Daily Briefing + Schedule Proposal ──────────────────────────────────────
 export function useDailyBriefings() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

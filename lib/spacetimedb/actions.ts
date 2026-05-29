@@ -1354,6 +1354,66 @@ export async function setAutoCommitSchedules(autoCommit: boolean): Promise<void>
   });
 }
 
+// ─── Blog Posts ─────────────────────────────────────────────────────────────
+
+export async function createBlogPost(data: {
+  slug: string;
+  title: string;
+  excerpt: string;
+  contentMd: string;
+  coverImage?: string | null;
+  status: "draft" | "published";
+  authorName?: string | null;
+}): Promise<void> {
+  return conn().reducers.createBlogPost({
+    slug: data.slug,
+    title: data.title,
+    excerpt: data.excerpt,
+    contentMd: data.contentMd,
+    coverImage: data.coverImage ?? undefined,
+    status: data.status,
+    authorName: data.authorName ?? undefined,
+  });
+}
+
+export async function updateBlogPost(
+  postId: string,
+  data: {
+    slug: string;
+    title: string;
+    excerpt: string;
+    contentMd: string;
+    coverImage?: string | null;
+    status: "draft" | "published";
+  },
+): Promise<void> {
+  return conn().reducers.updateBlogPost({
+    postId,
+    slug: data.slug,
+    title: data.title,
+    excerpt: data.excerpt,
+    contentMd: data.contentMd,
+    coverImage: data.coverImage ?? undefined,
+    status: data.status,
+  });
+}
+
+export async function deleteBlogPost(postId: string): Promise<void> {
+  return conn().reducers.deleteBlogPost({ postId });
+}
+
+// ─── Admin role management ─────────────────────────────────────────────────
+
+export async function claimFirstAdmin(email: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).claimFirstAdmin({ email });
+}
+
+export async function setUserAdmin(targetEmail: string, isAdmin: boolean): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).setUserAdmin({ targetEmail, isAdmin });
+}
+
 // Weekly opening hours JSON. Shape (per day, mon..sun):
 //   { open: "HH:MM", close: "HH:MM", closed: boolean }
 // Null clears the value; otherwise the JSON string is stored verbatim.

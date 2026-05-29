@@ -18,4 +18,5 @@ export default __t.row({
   avatarUrl: __t.option(__t.string()).name("avatar_url"),
   lastActiveOrgId: __t.option(__t.string()).name("last_active_org_id"),
   createdAt: __t.timestamp().name("created_at"),
+  isAdmin: __t.option(__t.bool()).name("is_admin"),
 });
