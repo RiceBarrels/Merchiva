@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { SiteShell } from "@/components/landing/site-shell";
 import { fetchPublishedBlogPosts } from "@/lib/spacetimedb/sql";
+import { BlogHero, BlogCard } from "./_animations";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
@@ -37,7 +38,7 @@ export default async function BlogsPage() {
 
   return (
     <SiteShell active="blog">
-      <section className="mx-auto max-w-5xl px-5 pt-16 pb-12">
+      <BlogHero>
         <div className="font-mono text-[11px] uppercase tracking-wider text-stone-500 mb-3">
           / blog
         </div>
@@ -47,7 +48,7 @@ export default async function BlogsPage() {
         <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-stone-600">
           Deep dives, operator wisdom, and updates from the team. Written for the people running the floor.
         </p>
-      </section>
+      </BlogHero>
 
       <section className="mx-auto max-w-5xl px-5 pb-24">
         {posts.length === 0 ? (
@@ -57,8 +58,8 @@ export default async function BlogsPage() {
           </div>
         ) : (
           <ul className="divide-y divide-stone-200 border-y border-stone-200">
-            {posts.map((p) => (
-              <li key={p.id}>
+            {posts.map((p, i) => (
+              <BlogCard key={p.id} index={i}>
                 <Link
                   href={`/blogs/${p.slug}`}
                   className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-5 py-7 transition-opacity hover:opacity-80"
@@ -93,7 +94,7 @@ export default async function BlogsPage() {
                     </div>
                   </div>
                 </Link>
-              </li>
+              </BlogCard>
             ))}
           </ul>
         )}

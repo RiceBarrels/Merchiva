@@ -2724,7 +2724,9 @@
         "content": "Contenu (Markdown)",
         "status": "Statut",
         "cover": "Image de couverture",
-        "author": "Auteur"
+        "author": "Auteur",
+        "contentPlaceholder": "Commencez à écrire…",
+        "contentHint": "Éditeur de texte enrichi (Quill). Enregistré en Markdown pour /blogs."
       },
       "toast": {
         "missingFields": "Titre et slug requis.",

@@ -2741,7 +2741,9 @@
         "content": "正文 (Markdown)",
         "status": "状态",
         "cover": "封面图",
-        "author": "作者"
+        "author": "作者",
+        "contentPlaceholder": "开始写作…",
+        "contentHint": "富文本编辑器（Quill）。保存为 Markdown 用于 /blogs 渲染。"
       },
       "toast": {
         "missingFields": "标题和 slug 必填。",

@@ -12,14 +12,35 @@ import dynamic from "next/dynamic";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { UploadButton } from "@/lib/uploadthing";
 import { toast } from "sonner";
+import TurndownService from "turndown";
+import { markdownToQuillHtml } from "@/lib/blog/markdown";
+import "react-quill-new/dist/quill.snow.css";
 
-const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((m) => m.Editor), {
+// react-quill-new touches the DOM during module init — must be client-only.
+// The wrapper component handles its own loading skeleton.
+const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-stone-950 text-stone-400">
+    <div className="flex h-full w-full items-center justify-center bg-stone-50 text-stone-500">
       <Spinner size={16} />
     </div>
   ),
+});
+
+const QUILL_MODULES = {
+  toolbar: [
+    [{ header: [1, 2, 3, false] }],
+    ["bold", "italic", "underline", "strike"],
+    [{ list: "ordered" }, { list: "bullet" }, "blockquote", "code-block"],
+    ["link", "image"],
+    ["clean"],
+  ],
+};
+
+const turndown = new TurndownService({
+  headingStyle: "atx",
+  codeBlockStyle: "fenced",
+  bulletListMarker: "-",
 });
 
 interface BlogPostRow {
@@ -41,7 +62,7 @@ interface EditorState {
   slug: string;
   title: string;
   excerpt: string;
-  contentMd: string;
+  contentHtml: string;       // Quill works in HTML — we convert to Markdown on save
   coverImage: string | null;
   status: "draft" | "published";
   authorName: string;
@@ -52,7 +73,7 @@ const EMPTY: EditorState = {
   slug: "",
   title: "",
   excerpt: "",
-  contentMd: "# New post\n\nWrite something worth reading.",
+  contentHtml: "<h1>New post</h1><p>Write something worth reading.</p>",
   coverImage: null,
   status: "draft",
   authorName: "",
@@ -102,7 +123,7 @@ export default function AdminsBlogsPage() {
       slug: p.slug,
       title: p.title,
       excerpt: p.excerpt,
-      contentMd: p.contentMd,
+      contentHtml: markdownToQuillHtml(p.contentMd),
       coverImage: p.coverImage,
       status: (p.status as "draft" | "published") ?? "draft",
       authorName: p.authorName ?? "",
@@ -117,12 +138,13 @@ export default function AdminsBlogsPage() {
     }
     setSaving(true);
     try {
+      const contentMd = turndown.turndown(editor.contentHtml).trim();
       if (editor.id) {
         await updateBlogPost(editor.id, {
           slug: editor.slug.trim(),
           title: editor.title.trim(),
           excerpt: editor.excerpt.trim(),
-          contentMd: editor.contentMd,
+          contentMd,
           coverImage: editor.coverImage,
           status: editor.status,
         });
@@ -132,7 +154,7 @@ export default function AdminsBlogsPage() {
           slug: editor.slug.trim(),
           title: editor.title.trim(),
           excerpt: editor.excerpt.trim(),
-          contentMd: editor.contentMd,
+          contentMd,
           coverImage: editor.coverImage,
           status: editor.status,
           authorName: editor.authorName.trim() || null,
@@ -325,22 +347,18 @@ function BlogEditor({
             <label className="font-mono text-[10.5px] uppercase tracking-wider text-stone-500">
               {t("admins.blogs.field.content")}
             </label>
-            <div className="mt-2 h-[520px] overflow-hidden rounded border border-stone-300">
-              <MonacoEditor
-                height="100%"
-                language="markdown"
-                theme="vs-dark"
-                value={state.contentMd}
-                onChange={(v) => onChange({ ...state, contentMd: v ?? "" })}
-                options={{
-                  fontSize: 13,
-                  wordWrap: "on",
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  padding: { top: 12, bottom: 12 },
-                }}
+            <div className="mt-2 overflow-hidden rounded border border-stone-300 quill-merchiva">
+              <ReactQuill
+                theme="snow"
+                value={state.contentHtml}
+                onChange={(html) => onChange({ ...state, contentHtml: html })}
+                modules={QUILL_MODULES}
+                placeholder={t("admins.blogs.field.contentPlaceholder")}
               />
             </div>
+            <p className="mt-2 font-mono text-[10.5px] text-stone-500">
+              {t("admins.blogs.field.contentHint")}
+            </p>
           </div>
         </div>
 

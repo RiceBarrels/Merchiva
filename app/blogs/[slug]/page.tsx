@@ -6,6 +6,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { SiteShell } from "@/components/landing/site-shell";
 import { fetchBlogPostBySlug } from "@/lib/spacetimedb/sql";
+import {
+  BlogArticle,
+  BlogArticleHeader,
+  BlogArticleCover,
+  BlogArticleBody,
+} from "../_animations";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
@@ -51,38 +57,42 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <SiteShell active="blog">
-      <article className="mx-auto max-w-3xl px-5 pt-12 pb-24">
+      <BlogArticle>
         <div className="font-mono text-[11px] uppercase tracking-wider text-stone-500 mb-4">
           <Link href="/blogs" className="hover:text-stone-900 transition-colors">
             ← back to blog
           </Link>
         </div>
-        <div className="font-mono text-[11px] uppercase tracking-wider text-stone-500">
-          {formatDate(post.publishedAt, post.createdAt)}
-          {post.authorName ? ` · ${post.authorName}` : ""}
-        </div>
-        <h1 className="mt-3 font-sans text-[40px] sm:text-[48px] font-semibold tracking-tight leading-[1.1] text-stone-950">
-          {post.title}
-        </h1>
-        <p className="mt-5 text-[17px] leading-relaxed text-stone-700">
-          {post.excerpt}
-        </p>
+        <BlogArticleHeader>
+          <div className="font-mono text-[11px] uppercase tracking-wider text-stone-500">
+            {formatDate(post.publishedAt, post.createdAt)}
+            {post.authorName ? ` · ${post.authorName}` : ""}
+          </div>
+          <h1 className="mt-3 font-sans text-[40px] sm:text-[48px] font-semibold tracking-tight leading-[1.1] text-stone-950">
+            {post.title}
+          </h1>
+          <p className="mt-5 text-[17px] leading-relaxed text-stone-700">
+            {post.excerpt}
+          </p>
+        </BlogArticleHeader>
 
         {post.coverImage ? (
-          <div className="relative mt-10 aspect-[16/9] w-full overflow-hidden rounded border border-stone-200 bg-stone-100">
-            <Image
-              src={post.coverImage}
-              alt={post.title}
-              fill
-              sizes="(max-width: 768px) 100vw, 768px"
-              className="object-cover"
-              priority
-              unoptimized
-            />
-          </div>
+          <BlogArticleCover>
+            <div className="relative mt-10 aspect-[16/9] w-full overflow-hidden rounded border border-stone-200 bg-stone-100">
+              <Image
+                src={post.coverImage}
+                alt={post.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 768px"
+                className="object-cover"
+                priority
+                unoptimized
+              />
+            </div>
+          </BlogArticleCover>
         ) : null}
 
-        <div className="mt-12 prose-merchiva">
+        <BlogArticleBody>
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
@@ -109,8 +119,8 @@ export default async function BlogPostPage({ params }: PageProps) {
           >
             {post.contentMd}
           </ReactMarkdown>
-        </div>
-      </article>
+        </BlogArticleBody>
+      </BlogArticle>
     </SiteShell>
   );
 }

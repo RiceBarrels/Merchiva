@@ -2741,7 +2741,9 @@
         "content": "Content (Markdown)",
         "status": "Status",
         "cover": "Cover image",
-        "author": "Author"
+        "author": "Author",
+        "contentPlaceholder": "Start writing…",
+        "contentHint": "Rich-text editor (Quill). Saved as Markdown for display on /blogs."
       },
       "toast": {
         "missingFields": "Title and slug are required.",

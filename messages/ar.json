@@ -2724,7 +2724,9 @@
         "content": "المحتوى (Markdown)",
         "status": "الحالة",
         "cover": "صورة الغلاف",
-        "author": "المؤلف"
+        "author": "المؤلف",
+        "contentPlaceholder": "ابدأ الكتابة…",
+        "contentHint": "محرر نص غني (Quill). يُحفظ بصيغة Markdown لعرضه على /blogs."
       },
       "toast": {
         "missingFields": "العنوان والمعرف مطلوبان.",

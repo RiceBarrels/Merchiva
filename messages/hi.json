@@ -2724,7 +2724,9 @@
         "content": "सामग्री (Markdown)",
         "status": "स्थिति",
         "cover": "कवर इमेज",
-        "author": "लेखक"
+        "author": "लेखक",
+        "contentPlaceholder": "लिखना शुरू करें…",
+        "contentHint": "रिच-टेक्स्ट संपादक (Quill). /blogs पर दिखाने हेतु Markdown में सहेजा गया."
       },
       "toast": {
         "missingFields": "शीर्षक और slug आवश्यक.",
