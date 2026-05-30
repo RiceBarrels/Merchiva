@@ -1,6 +1,6 @@
 "use client";
 
-import { uuid } from "@/lib/utils";
+import { uuid, cn } from "@/lib/utils";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -14,9 +14,12 @@ import {
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@/components/ui/drawer";
+import { Popover, PopoverContent } from "@/components/ui/popover";
 import { usePermissions } from "@/lib/context/permissions";
 import { getCached, setCache } from "@/lib/cache";
-import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage, createConversation } from "@/lib/spacetimedb/actions";
+import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage, createConversation, setConversationMerchiva } from "@/lib/spacetimedb/actions";
+import { getStoredToken } from "@/lib/spacetimedb/client";
+import { useAuth } from "@/lib/auth/context";
 import {
   getConversations, getMessages, getReactions, uploadChatFile,
   type ChatReaction,
@@ -26,7 +29,7 @@ import { getAvatarMap } from "@/lib/db/avatars";
 import type { ChatConversation, ChatMessage, OrgMember } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
-import { useT } from "@/lib/i18n/context";
+import { useT, useI18n } from "@/lib/i18n/context";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { MerchivaChat } from "@/components/merchiva-chat-dashboard";
@@ -36,6 +39,19 @@ function MerchivaChatEmbed({ compact = false, header = true }: { compact?: boole
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <MerchivaChat compact={compact} header={header} />
+    </div>
+  );
+}
+
+// Single source of truth for Mr. Merchiva's avatar across the chat surface
+// (sidebar, group messages, @mention picker, member pickers): the brand "M"
+// mark on stone-900 — same as the pinned sidebar entry.
+function MerchivaAvatar({ className = "h-9 w-9", svg = 18 }: { className?: string; svg?: number }) {
+  return (
+    <div className={cn("shrink-0 flex items-center justify-center rounded-[0.3rem] bg-stone-900 text-white", className)} title="Mr. Merchiva">
+      <svg width={svg} height={svg} viewBox="0 0 100 100" aria-hidden>
+        <path d="M14 14 L40 14 L50 42 L60 14 L86 14 L86 86 L14 86 Z" fill="currentColor" />
+      </svg>
     </div>
   );
 }
@@ -67,7 +83,9 @@ function shouldShowTimeSeparator(msgs: ChatMessage[], i: number): boolean {
 
 export default function ChatPage() {
   const t = useT();
-  const { organizationId, role } = usePermissions();
+  const { locale } = useI18n();
+  const { getToken } = useAuth();
+  const { organizationId, role, currentOrg, isOwner } = usePermissions();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [team, setTeam] = useState<OrgMember[]>([]);
   const [activeConv, setActiveConv] = useState<ChatConversation | null>(null);
@@ -83,6 +101,10 @@ export default function ChatPage() {
   const [newGroupDialog, setNewGroupDialog] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  // Mr. Merchiva is invited like a teammate: picked in the New Group / Add
+  // Members lists. For a new group we stage the choice here; for an existing
+  // conversation we toggle merchivaEnabled directly.
+  const [includeMerchiva, setIncludeMerchiva] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
   const [addMemberDialog, setAddMemberDialog] = useState(false);
 
@@ -165,11 +187,71 @@ export default function ChatPage() {
     setSending(true);
     try {
       await sendMessage(activeConv.id, content || (attachment ? (attachment.type === "image" ? t("chat.sentPhoto") : attachment.type === "video" ? t("chat.sentVideo") : t("chat.sentFile")) : ""), replyId, attachment);
+      // If Mr. Merchiva is in this conversation, let the server decide whether
+      // to reply: always when @mentioned, otherwise after an OSS relevance
+      // check. Fire-and-forget — the bot's reply arrives via the subscription.
+      if (activeConv.merchivaEnabled && content) {
+        void triggerMerchivaReply(activeConv, content);
+      }
     } catch (err) {
       console.error("Send failed:", err);
       setInput(content);
     } finally {
       setSending(false);
+    }
+  };
+
+  const MERCHIVA_MENTION_RE = /@\s*mr\.?\s*merchiva|@merchiva\b/i;
+
+  // Kicks the group-chat Merchiva endpoint. Only the sender's client fires this,
+  // so exactly one reply is generated per triggering message.
+  const triggerMerchivaReply = async (conv: ChatConversation, content: string) => {
+    try {
+      const token = (await getToken().catch(() => null)) || getStoredToken();
+      if (!token || !organizationId) return;
+      const mentioned = MERCHIVA_MENTION_RE.test(content);
+      const history = messages.slice(-10).map((m) => ({
+        role: m.isMerchiva ? ("assistant" as const) : ("user" as const),
+        name: m.isMerchiva ? "Mr. Merchiva" : getMemberName(m.senderId),
+        content: m.content,
+      }));
+      await fetch("/api/chat/merchiva", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          organizationId,
+          conversationId: conv.id,
+          message: content,
+          senderName: userId ? getMemberName(userId) : undefined,
+          mentioned,
+          history,
+          lang: locale,
+          orgName: currentOrg?.name ?? undefined,
+          permissions: { isOwner, role },
+        }),
+      });
+    } catch (err) {
+      console.error("Merchiva reply trigger failed:", err);
+    }
+  };
+
+  const handleToggleMerchiva = async () => {
+    if (!activeConv) return;
+    const next = !activeConv.merchivaEnabled;
+    // Optimistic — reflect immediately, then persist + refetch.
+    setActiveConv({ ...activeConv, merchivaEnabled: next });
+    try {
+      await setConversationMerchiva(activeConv.id, next);
+      if (organizationId) {
+        const convs = await getConversations(organizationId);
+        setConversations(convs);
+        const updated = convs.find((c) => c.id === activeConv.id);
+        if (updated) setActiveConv(updated);
+      }
+    } catch (err) {
+      console.error("Toggle Merchiva failed:", err);
+      setActiveConv({ ...activeConv, merchivaEnabled: !next });
     }
   };
 
@@ -196,9 +278,21 @@ export default function ChatPage() {
   };
 
   const createConv = async (type: "direct" | "group", memberUserIds: string[], name?: string) => {
+    const prevIds = new Set(conversations.map((c) => c.id));
     await createConversation(organizationId!, type, memberUserIds, name);
-    // SpacetimeDB subscription will auto-update conversations list
-    // Return a placeholder — the real row arrives via subscription
+    // The reducer-inserted row arrives in the local SpacetimeDB cache over the
+    // same socket; refetch (with a short retry) and pick the conversation that's
+    // new to us so callers get the REAL id (needed to enable Mr. Merchiva on it).
+    for (let i = 0; i < 6; i++) {
+      const convs = await getConversations(organizationId!);
+      const fresh = convs.find((c) => !prevIds.has(c.id) && c.type === type);
+      if (fresh) {
+        setConversations(convs);
+        return fresh;
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    // Fallback: optimistic placeholder (the real row will arrive on next refresh).
     return {
       id: uuid(),
       organizationId: organizationId!,
@@ -226,11 +320,21 @@ export default function ChatPage() {
     try {
       const memberIds = [...new Set([userId, ...selectedMembers])];
       const conv = await createConv("group", memberIds, groupName.trim());
-      setConversations((prev) => [conv, ...prev]);
+      // Mr. Merchiva was picked in the member list like a teammate — turn him on.
+      if (includeMerchiva && conv.id) {
+        try {
+          await setConversationMerchiva(conv.id, true);
+          conv.merchivaEnabled = true;
+        } catch (e) {
+          console.error("Enable Merchiva on new group failed:", e);
+        }
+      }
+      setConversations((prev) => [conv, ...prev.filter((c) => c.id !== conv.id)]);
       setActiveConv(conv);
       setNewGroupDialog(false);
       setGroupName("");
       setSelectedMembers([]);
+      setIncludeMerchiva(false);
     } catch (err) {
       console.error("Create group failed:", err);
     }
@@ -318,7 +422,7 @@ export default function ChatPage() {
                   <MessageSquare className="h-3.5 w-3.5" /> {t("chat.dm")}
                 </Button>
                 {isManager && (
-                  <Button size="sm" onClick={() => setNewGroupDialog(true)} className="gap-1 h-8 text-xs">
+                  <Button size="sm" onClick={() => { setIncludeMerchiva(false); setSelectedMembers([]); setNewGroupDialog(true); }} className="gap-1 h-8 text-xs">
                     <Plus className="h-3.5 w-3.5" /> {t("chat.group")}
                   </Button>
                 )}
@@ -335,9 +439,7 @@ export default function ChatPage() {
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.3rem] bg-stone-900 text-white">
-                  <svg width={18} height={18} viewBox="0 0 100 100"><path d="M14 14 L40 14 L50 42 L60 14 L86 14 L86 86 L14 86 Z" fill="currentColor" /></svg>
-                </div>
+                <MerchivaAvatar />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Mr. Merchiva</p>
@@ -477,6 +579,7 @@ export default function ChatPage() {
                   onAddMembers={() => { setSelectedMembers([]); setAddMemberDialog(true); }}
                   messagesEndRef={messagesEndRef}
                   hideHeader
+                  isMobile
                 />
               </div>
             ) : null}
@@ -556,6 +659,19 @@ export default function ChatPage() {
                 </div>
               )}
               <div className="max-h-40 overflow-y-auto space-y-0.5 pt-1">
+                {/* Mr. Merchiva — invited like a teammate (pinned at the top). */}
+                {(memberSearch === "" || "mr. merchiva".includes(memberSearch.toLowerCase())) && (
+                  <button
+                    onClick={() => setIncludeMerchiva((v) => !v)}
+                    className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-[0.3rem] text-left transition-colors ${
+                      includeMerchiva ? "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700" : "hover:bg-muted"
+                    }`}
+                  >
+                    <MerchivaAvatar className="h-7 w-7" svg={14} />
+                    <span className="text-sm flex-1">Mr. Merchiva <span className="text-xs text-muted-foreground">· {t("chat.merchivaMentionHint")}</span></span>
+                    {includeMerchiva && <span className="text-xs font-mono text-stone-600 dark:text-stone-300">{t("chat.added")}</span>}
+                  </button>
+                )}
                 {filteredTeam
                   .filter((m) => m.userId !== userId)
                   .map((m) => {
@@ -584,7 +700,7 @@ export default function ChatPage() {
             </div>
             <Button
               onClick={handleCreateGroup}
-              disabled={!groupName.trim() || selectedMembers.length === 0}
+              disabled={!groupName.trim() || (selectedMembers.length === 0 && !includeMerchiva)}
               className="w-full rounded-[0.3rem]"
             >
               {t("chat.createGroup")} ({selectedMembers.length} {t("chat.memberPlural").toLowerCase()})
@@ -611,6 +727,21 @@ export default function ChatPage() {
               />
             </div>
             <div className="max-h-48 overflow-y-auto space-y-0.5">
+              {/* Mr. Merchiva — added/removed like a teammate; toggles instantly. */}
+              {(memberSearch === "" || "mr. merchiva".includes(memberSearch.toLowerCase())) && (
+                <button
+                  onClick={() => handleToggleMerchiva()}
+                  className={`w-full flex items-center gap-3 px-2 py-1.5 rounded-[0.3rem] text-left transition-colors ${
+                    activeConv?.merchivaEnabled ? "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700" : "hover:bg-muted"
+                  }`}
+                >
+                  <MerchivaAvatar className="h-7 w-7" svg={14} />
+                  <span className="text-sm flex-1">Mr. Merchiva <span className="text-xs text-muted-foreground">· {t("chat.merchivaMentionHint")}</span></span>
+                  <span className="text-xs font-mono text-stone-600 dark:text-stone-300">
+                    {activeConv?.merchivaEnabled ? t("chat.merchivaOn") : t("chat.add")}
+                  </span>
+                </button>
+              )}
               {filteredTeam
                 .filter((m) => {
                   const existingIds = activeConv?.members?.map((cm) => cm.userId) ?? [];
@@ -662,6 +793,7 @@ function ChatView({
   replyTo, onReply,
   onSend, onFileUpload, onKeyDown, onBack, onAddMembers, messagesEndRef,
   hideHeader = false,
+  isMobile = false,
 }: {
   conv: ChatConversation;
   messages: ChatMessage[];
@@ -686,15 +818,88 @@ function ChatView({
   onAddMembers: () => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   hideHeader?: boolean;
+  isMobile?: boolean;
 }) {
   const t = useT();
   const [menuMsg, setMenuMsg] = useState<ChatMessage | null>(null);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number; isMe: boolean }>({ x: 0, y: 0, isMe: false });
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchTarget = useRef<HTMLElement | null>(null);
+
+  // ── @mention picker (shared by mobile drawer + desktop popover) ──────────────
+  const closeMentionPicker = () => { setShowMentionPicker(false); setMentionSearch(""); };
+  const selectMention = (insert: string) => {
+    const lastAt = input.lastIndexOf("@");
+    const before = lastAt >= 0 ? input.slice(0, lastAt) : input;
+    setInput(`${before}@${insert} `);
+    closeMentionPicker();
+    inputRef.current?.focus();
+  };
+  const showEveryone = "everyone".includes(mentionSearch.toLowerCase());
+  const filteredMentions = team.filter(
+    (m) => m.userId !== userId && m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()),
+  );
+  const showMerchiva = conv.merchivaEnabled === true &&
+    ("merchiva".includes(mentionSearch.toLowerCase()) || "mr. merchiva".includes(mentionSearch.toLowerCase()));
+  const mentionOptions = (
+    <>
+      {showMerchiva && (
+        <button
+          onClick={() => selectMention("Mr. Merchiva")}
+          className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border text-left"
+        >
+          <MerchivaAvatar />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Mr. Merchiva</p>
+            <p className="text-xs text-muted-foreground truncate">{t("chat.merchivaMentionHint")}</p>
+          </div>
+        </button>
+      )}
+      {showEveryone && (
+        <button
+          onClick={() => selectMention("everyone")}
+          className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border text-left"
+        >
+          <div className="h-9 w-9 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center shrink-0">
+            <Users className="h-4 w-4 text-stone-600 dark:text-stone-300" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{t("chat.everyone")}</p>
+            <p className="text-xs text-muted-foreground truncate">{t("chat.notifyAll")}</p>
+          </div>
+        </button>
+      )}
+      {filteredMentions.map((m) => {
+        const av = getAvatar(m.userId);
+        return (
+          <button
+            key={m.id}
+            onClick={() => selectMention(m.displayName)}
+            className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border last:border-b-0 text-left"
+          >
+            {av ? (
+              <img src={av} alt={m.displayName} className="h-9 w-9 rounded-[0.3rem] object-cover shrink-0" />
+            ) : (
+              <div className="h-9 w-9 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-sm font-bold text-stone-600 dark:text-stone-300 shrink-0">
+                {m.displayName[0]?.toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{m.displayName}</p>
+              <p className="text-xs text-muted-foreground capitalize truncate">{m.role}</p>
+            </div>
+          </button>
+        );
+      })}
+      {!showEveryone && filteredMentions.length === 0 && (
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t("chat.noMatches") ?? "—"}</p>
+      )}
+    </>
+  );
 
   const handleTouchStart = useCallback((msg: ChatMessage, e: React.TouchEvent) => {
     touchTarget.current = e.currentTarget as HTMLElement;
@@ -731,6 +936,12 @@ function ChatView({
             {conv.type === "group" ? `${conv.members?.length ?? 0} ${t("chat.memberPlural").toLowerCase()}` : t("chat.directMessage")}
           </p>
         </div>
+        {conv.type === "group" && conv.merchivaEnabled && (
+          <span className="inline-flex items-center gap-1.5 h-8 px-2 text-xs text-muted-foreground" title={t("chat.merchivaOn")}>
+            <MerchivaAvatar className="h-5 w-5" svg={11} />
+            {t("chat.merchivaOn")}
+          </span>
+        )}
         {conv.type === "group" && isManager && (
           <Button size="sm" variant="outline" onClick={onAddMembers} className="gap-1 h-8 text-xs">
             <UserPlus className="h-3.5 w-3.5" /> {t("chat.add")}
@@ -742,13 +953,19 @@ function ChatView({
           <p className="text-center text-sm text-muted-foreground py-8">{t("chat.noMessagesHello")}</p>
         )}
         {messages.map((msg, i) => {
-          const isMe = msg.senderId === userId;
+          // Mr. Merchiva replies are inserted under the triggering user's
+          // identity but flagged isMerchiva — so they must never render as
+          // "me", and use the bot's name/avatar instead of the sender's.
+          const isMerchiva = msg.isMerchiva === true;
+          const senderKey = (m: ChatMessage) => (m.isMerchiva ? "__merchiva__" : m.senderId);
+          const myKey = senderKey(msg);
+          const isMe = !isMerchiva && msg.senderId === userId;
           const showTime = shouldShowTimeSeparator(messages, i);
-          const nextSame = i < messages.length - 1 && messages[i + 1].senderId === msg.senderId && !shouldShowTimeSeparator(messages, i + 1);
-          const prevSame = i > 0 && messages[i - 1].senderId === msg.senderId && !showTime;
+          const nextSame = i < messages.length - 1 && senderKey(messages[i + 1]) === myKey && !shouldShowTimeSeparator(messages, i + 1);
+          const prevSame = i > 0 && senderKey(messages[i - 1]) === myKey && !showTime;
           const isLast = !nextSame;
-          const av = getAvatar(msg.senderId);
-          const name = getMemberName(msg.senderId);
+          const av = isMerchiva ? null : getAvatar(msg.senderId);
+          const name = isMerchiva ? "Mr. Merchiva" : getMemberName(msg.senderId);
           const gap = prevSame ? "mt-0.5" : "mt-3";
           const msgReactions = reactions[msg.id] ?? [];
           // Group reactions by emoji
@@ -771,7 +988,9 @@ function ChatView({
               <div className={`flex items-end gap-2 ${gap} ${isMe ? "justify-end" : "justify-start"}`}>
                 {!isMe ? (
                   isLast ? (
-                    av ? (
+                    isMerchiva ? (
+                      <MerchivaAvatar className="h-7 w-7" svg={14} />
+                    ) : av ? (
                       <img src={av} alt={name} className="h-7 w-7 rounded-[0.3rem] object-cover shrink-0" />
                     ) : (
                       <div className="h-7 w-7 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-[10px] font-bold text-stone-600 dark:text-stone-300 shrink-0">
@@ -783,6 +1002,9 @@ function ChatView({
                   )
                 ) : null}
                 <div className="relative">
+                  {isMerchiva && !prevSame && (
+                    <p className="text-[10px] font-semibold text-stone-700 dark:text-stone-300 mb-0.5 ml-0.5">Mr. Merchiva</p>
+                  )}
                   <div
                     onTouchStart={(e) => handleTouchStart(msg, e)}
                     onTouchEnd={handleTouchEnd}
@@ -1033,7 +1255,7 @@ function ChatView({
           )}
         </AnimatePresence>
         <div className="p-3 pt-2">
-          <div className="rounded-[0.3rem] border border-border bg-background focus-within:border-stone-400 transition-colors">
+          <div ref={inputWrapRef} className="rounded-[0.3rem] border border-border bg-background focus-within:border-stone-400 transition-colors">
             <textarea
               ref={inputRef}
               rows={2}
@@ -1048,7 +1270,10 @@ function ChatView({
                   if (!query.includes(" ")) {
                     setMentionSearch(query);
                     setShowMentionPicker(true);
-                    inputRef.current?.blur();
+                    // On mobile the picker is a bottom drawer; blur so the
+                    // on-screen keyboard collapses. On desktop it's a popover
+                    // anchored to the input — keep focus so typing keeps filtering.
+                    if (isMobile) inputRef.current?.blur();
                     return;
                   }
                 }
@@ -1092,80 +1317,56 @@ function ChatView({
         </div>
       </div>
 
-      {/* @ Mention Picker Drawer */}
-      <Drawer open={showMentionPicker} onOpenChange={setShowMentionPicker}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{t("chat.selectMention")}</DrawerTitle>
-          </DrawerHeader>
-          <div className="px-4 pb-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={mentionSearch}
-                onChange={(e) => setMentionSearch(e.target.value)}
-                placeholder={t("chat.searchShort")}
-                className="pl-8 h-9"
-              />
+      {/* @ Mention Picker — mobile: bottom drawer; desktop: popover on the input */}
+      {isMobile ? (
+        <Drawer open={showMentionPicker} onOpenChange={(o) => { if (!o) closeMentionPicker(); else setShowMentionPicker(true); }}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>{t("chat.selectMention")}</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={mentionSearch}
+                  onChange={(e) => setMentionSearch(e.target.value)}
+                  placeholder={t("chat.searchShort")}
+                  className="pl-8 h-9"
+                />
+              </div>
             </div>
-          </div>
-          <div className="overflow-y-auto max-h-[50vh] pb-4">
-            {/* @everyone option */}
-            {"everyone".includes(mentionSearch.toLowerCase()) && (
-              <button
-                onClick={() => {
-                  const lastAt = input.lastIndexOf("@");
-                  const before = input.slice(0, lastAt);
-                  setInput(`${before}@everyone `);
-                  setShowMentionPicker(false);
-                  setMentionSearch("");
-                  inputRef.current?.focus();
-                }}
-                className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border"
-              >
-                <div className="h-9 w-9 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-stone-600 dark:text-stone-300" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium">{t("chat.everyone")}</p>
-                  <p className="text-xs text-muted-foreground">{t("chat.notifyAll")}</p>
-                </div>
-              </button>
-            )}
-            {team
-              .filter((m) => m.userId !== userId && m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()))
-              .map((m) => {
-                const av = getAvatar(m.userId);
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      const lastAt = input.lastIndexOf("@");
-                      const before = input.slice(0, lastAt);
-                      setInput(`${before}@${m.displayName} `);
-                      setShowMentionPicker(false);
-                      setMentionSearch("");
-                      inputRef.current?.focus();
-                    }}
-                    className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-muted transition-colors border-b border-border"
-                  >
-                    {av ? (
-                      <img src={av} alt={m.displayName} className="h-9 w-9 rounded-[0.3rem] object-cover" />
-                    ) : (
-                      <div className="h-9 w-9 rounded-[0.3rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center text-sm font-bold text-stone-600 dark:text-stone-300">
-                        {m.displayName[0]?.toUpperCase()}
-                      </div>
-                    )}
-                    <div className="text-left">
-                      <p className="text-sm font-medium">{m.displayName}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{m.role}</p>
-                    </div>
-                  </button>
-                );
-              })}
-          </div>
-        </DrawerContent>
-      </Drawer>
+            <div className="overflow-y-auto max-h-[50vh] pb-4">
+              {mentionOptions}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Popover open={showMentionPicker} onOpenChange={(o) => { if (!o) closeMentionPicker(); else setShowMentionPicker(true); }}>
+          <PopoverContent
+            anchor={inputWrapRef}
+            side="top"
+            align="start"
+            sideOffset={8}
+            className="w-[300px] p-0 overflow-hidden"
+            initialFocus={false}
+          >
+            <div className="px-2.5 pt-2.5 pb-2 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={mentionSearch}
+                  onChange={(e) => setMentionSearch(e.target.value)}
+                  placeholder={t("chat.searchShort")}
+                  className="pl-8 h-8 text-[13px]"
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto max-h-[260px] py-0.5">
+              {mentionOptions}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
     </>
   );
 }

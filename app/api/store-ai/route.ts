@@ -23,7 +23,7 @@ function getModel() {
   return process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b";
 }
 
-function getOpenRouterModel() {
+export function getOpenRouterModel() {
   return getOpenRouter().chat(getModel());
 }
 
@@ -41,7 +41,7 @@ function getFastModel() {
   return process.env.OPENROUTER_FAST_MODEL || "openai/gpt-oss-120b";
 }
 
-function getOpenRouterFastModel() {
+export function getOpenRouterFastModel() {
   return getOpenRouter().chat(getFastModel());
 }
 
@@ -193,7 +193,7 @@ FORMATTING for non-action-block content in \`message\`: plain conversational tex
 NO EMOJI: never use emoji (🌟 ✅ 👍 ❤️ 🎉 ✨ 🚀 etc.) in the \`message\` field. The mood expression slot is the \`kaomoji\` field — that's where the face goes. Plain text only in \`message\`, kaomoji is separate.`;
 }
 
-interface MemoryContext {
+export interface MemoryContext {
   summary?: string;
   storeOverview?: string;
   userPreferences?: string;
@@ -228,7 +228,7 @@ function stripActionBlocks(text: string): string {
   return result.trim();
 }
 
-interface UserPermissions {
+export interface UserPermissions {
   isOwner?: boolean;
   role?: string;
   sections?: Record<string, { view?: boolean; edit?: boolean }>;
@@ -777,12 +777,12 @@ Correct response (ONE block, all sections bundled):
 \`\`\``;
 }
 
-function buildSystemPrompt(
+export function buildSystemPrompt(
   context: Record<string, unknown>,
   lang: string,
   memory: MemoryContext,
   permissions?: UserPermissions,
-  mode: "chat" | "voice" = "chat",
+  mode: "chat" | "voice" | "group" = "chat",
 ): string {
   const skillPrompts = getAllPromptSegments();
   const currentDateAndTime = new Date().toLocaleString(lang);
@@ -812,10 +812,21 @@ function buildSystemPrompt(
 - Spell out numbers naturally ("twelve dollars" not "$12") when it would sound clearer, but keep currency/dates/SKUs readable.
 - Avoid filler phrases. Get to the point.\n` : "";
 
+  // GROUP CHAT MODE — same persona, knowledge, and LIVE STORE DATA as the
+  // dedicated assistant, but the reply is broadcast to a multi-person team
+  // chat. Placed early (like voiceModeBlock) so it overrides the action-heavy
+  // instructions further down: in group chat Mr. Merchiva ADVISES only and
+  // never emits action blocks (no one in the group can approve/execute them).
+  const groupModeBlock = mode === "group" ? `\n👥 TEAM GROUP CHAT MODE: You are a participant in a team group chat with several human coworkers. Whatever you write is posted to the whole group.
+- Keep replies SHORT and conversational — usually 1-4 sentences. This is a chat, not a report. A little markdown is fine, but avoid big tables/headers/long lists.
+- Messages are prefixed with the speaker's name ("Alice: ...") so you know who said what. Do NOT prefix your own reply with a name.
+- You are ADVISING here, not operating: do NOT output \`\`\`action\`\`\` blocks, JSON, or any machine-readable command syntax — nobody in the group can approve or run them. If something needs an actual change (add a product, schedule a shift, edit a price, approve time off, add a role/task, etc.), answer the question briefly and tell the person to open the dedicated Mr. Merchiva assistant (the AI chat pinned at the top of Messages) to make the change there.
+- Use the LIVE STORE DATA below to give concrete, accurate answers. Never invent numbers; if the data isn't there, say so in one line.\n` : "";
+
   return `You are Mr. Merchiva, an AI ops agent for a small business. You have full access to the store's real-time data. You are direct, data-driven, and concise.
 
 🌐 USER LANGUAGE: ${languageName} (locale code: "${lang}")
-ALL your replies, action explanations, error messages, and confirmations MUST be written in ${languageName}. Do not switch languages even if the LIVE STORE DATA contains other languages. The user's interface is set to "${lang}" — match it.${voiceModeBlock}${builderBlock}
+ALL your replies, action explanations, error messages, and confirmations MUST be written in ${languageName}. Do not switch languages even if the LIVE STORE DATA contains other languages. The user's interface is set to "${lang}" — match it.${voiceModeBlock}${groupModeBlock}${builderBlock}
 
 ${permBlock ? `${permBlock}\n\n` : ""}${memoryBlock ? `${memoryBlock}\n\n` : ""}LIVE STORE DATA:
 ${JSON.stringify(context, null, 2)}
@@ -1153,11 +1164,19 @@ export async function POST(req: NextRequest) {
       }
 
       const encoder = new TextEncoder();
-      // Triage's kaomoji is surfaced as a response header so the client
-      // can pin the chat watermark to that face before consuming the body.
-      // Headers must be ASCII-safe; we base64-encode the UTF-8 bytes.
+      // Triage's kaomoji + ack message are surfaced as response headers so the
+      // client can render the ack bubble and pin the watermark to the chosen
+      // face the instant the response status line arrives — well before any
+      // body bytes flush. Body streaming for short chunks was getting buffered
+      // by the Node.js HTTP layer in the App Router (small chunks accumulate
+      // until ~4-8KB or the stream closes), which made the in-body ack invisible
+      // until the whole reply was done. Headers bypass that buffering. Headers
+      // must be ASCII-safe; we base64-encode the UTF-8 bytes.
       const kaomojiHeader = triage.kaomoji
         ? Buffer.from(triage.kaomoji, "utf-8").toString("base64")
+        : "";
+      const ackHeader = triage.message
+        ? Buffer.from(triage.message, "utf-8").toString("base64")
         : "";
       const responseHeaders: Record<string, string> = {
         "Content-Type": "text/plain; charset=utf-8",
@@ -1165,9 +1184,13 @@ export async function POST(req: NextRequest) {
         "X-Accel-Buffering": "no",
       };
       if (kaomojiHeader) responseHeaders["X-Merchiva-Kaomoji"] = kaomojiHeader;
+      if (ackHeader) responseHeaders["X-Merchiva-Ack"] = ackHeader;
 
       // Direct answer — no thinking model needed.
       if (!triage.needsThinking) {
+        console.log(
+          `[store-ai] Reply (triage direct, ${triage.message.length} chars):\n${triage.message}`,
+        );
         const directStream = new ReadableStream<Uint8Array>({
           start(controller) {
             controller.enqueue(encoder.encode(triage.message));
@@ -1177,10 +1200,10 @@ export async function POST(req: NextRequest) {
         return new Response(directStream, { headers: responseHeaders });
       }
 
-      // Escalate: the short ack is streamed first, wrapped in a sentinel so the
-      // client peels it into its own bubble, separate from the substantive reply
-      // that follows. Kept in the body (not a header) because the dev proxy can
-      // strip custom response headers from a streaming Response.
+      // Escalate: ack is already on X-Merchiva-Ack (above). Body carries the
+      // substantive reply only. We keep emitting the [[MERCHIVA_ACK]] sentinel
+      // at the front of the body as a fallback for any environment that strips
+      // custom response headers (older proxies, some service workers).
       const mainSystem =
         systemPrompt +
         (triage.message
@@ -1189,8 +1212,9 @@ export async function POST(req: NextRequest) {
 
       const stream = new ReadableStream<Uint8Array>({
         async start(controller) {
-          // Emit the ack first, wrapped in the sentinel, so the client renders
-          // it as its own bubble before the main reply streams in.
+          // Fallback ack-in-body: client prefers the X-Merchiva-Ack header and
+          // ignores this sentinel if the header was present, but environments
+          // that strip the header still get the ack peeled out of the body.
           if (triage.message) {
             controller.enqueue(encoder.encode(`[[MERCHIVA_ACK]]${triage.message}[[/MERCHIVA_ACK]]`));
           }
@@ -1198,7 +1222,8 @@ export async function POST(req: NextRequest) {
             // Only genuinely deep-reasoning requests get the thinking model;
             // ordinary complex tasks stay on the standard (OSS) model.
             const useThinking = triage.needsDeepThinking === true;
-            console.log(`[store-ai] Escalating to ${useThinking ? getThinkingModel() + " (thinking)" : getModel()}`);
+            const escalationModelName = useThinking ? getThinkingModel() + " (thinking)" : getModel();
+            console.log(`[store-ai] Escalating to ${escalationModelName}`);
             const mainResult = streamText({
               model: useThinking ? getOpenRouterThinkingModel() : getOpenRouterModel(),
               system: mainSystem,
@@ -1206,10 +1231,20 @@ export async function POST(req: NextRequest) {
               maxOutputTokens: maxOutput,
               temperature: callMode === "voice" ? 0.4 : 0.2,
             });
+            // Mirror everything we send to the client into a server-side
+            // buffer so we can dump the full reply once the stream finishes —
+            // makes role names / action blocks visible in the dev console for
+            // debugging "why did the AI pick this?" without needing to wire up
+            // a separate trace.
+            let serverReply = "";
             for await (const chunk of mainResult.textStream) {
               controller.enqueue(encoder.encode(chunk));
+              serverReply += chunk;
             }
             controller.close();
+            console.log(
+              `[store-ai] Reply (${escalationModelName}, ${serverReply.length} chars):\n${serverReply}`,
+            );
           } catch (e) {
             console.error(
               "[store-ai] Main stage failed:",

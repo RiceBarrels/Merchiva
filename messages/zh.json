@@ -21,7 +21,11 @@
     "type": "类型",
     "more": "更多",
     "saving": "保存中...",
-    "switch": "切换"
+    "switch": "切换",
+    "collapse": "收起",
+    "expand": "展开",
+    "previous": "上一个",
+    "next": "下一个"
   },
   "nav": {
     "dailyManagement": "日常管理",
@@ -29,7 +33,7 @@
     "inventory": "库存",
     "wasteLog": "报损记录",
     "sales": "销售预测",
-    "personnel": "人员管理",
+    "personnel": "人事",
     "staffing": "排班",
     "products": "商品",
     "reports": "报表",
@@ -1644,7 +1648,13 @@
       "saveCta": "保存",
       "clearCta": "关闭",
       "saved": "简报时间已保存",
-      "saveFailed": "无法保存简报时间"
+      "saveFailed": "无法保存简报时间",
+      "hoursLabel": "简报时间",
+      "hoursHint": "选择刷新简报的整点。仅当出现新问题时才会通知你。",
+      "presetBusiness": "营业时间",
+      "presetAll": "每小时",
+      "presetClear": "清除",
+      "selectHoursWarn": "请至少选择一个整点"
     },
     "groupStoreAccount": "店铺与账户",
     "currentStore": "当前店铺",
@@ -1761,7 +1771,12 @@
     "fileFallback": "文件",
     "timeToday": "今天",
     "timeYesterday": "昨天",
-    "attach": "附件"
+    "attach": "附件",
+    "merchivaInvite": "邀请 Mr. Merchiva",
+    "merchivaRemove": "移除 Mr. Merchiva",
+    "merchivaOn": "Mr. Merchiva",
+    "merchivaMentionHint": "询问 AI 助手",
+    "noMatches": "无匹配"
   },
   "dashboard": {
     "greeting": {
@@ -1770,6 +1785,28 @@
       "evening": "晚上好"
     },
     "morningBriefing": "晨间简报",
+    "approveAll": "一键批准全部",
+    "suggestedActions": "建议操作",
+    "approve": "批准",
+    "dismiss": "忽略",
+    "hourlyBriefings": "每小时简报",
+    "backToNow": "回到当前",
+    "hourlyScan": "每小时巡检",
+    "scanning": "巡检中…",
+    "latest": "最近",
+    "todayScan": "今日巡检",
+    "perHour": "每小时",
+    "scans": "次",
+    "flagged": "异常",
+    "awaitingScan": "等待首次巡检",
+    "issueFlag": "异常",
+    "needsAttention": "需要处理",
+    "allClear": "本次巡检一切正常 — 暂无需要处理的事项。",
+    "nextScan": "下次巡检",
+    "pastBriefings": "过往简报",
+    "regenerate": "重新生成",
+    "generating": "正在生成今日简报…",
+    "noBriefing": "暂无简报，点击刷新生成。",
     "time": {
       "justNow": "刚刚",
       "minutesAgo": "{n} 分钟前",
@@ -2645,7 +2682,14 @@
       "published": "已发布",
       "plugins": "插件"
     },
-    "brand": "Mr. Merchiva"
+    "brand": "Mr. Merchiva",
+    "clearHistory": "清空记录",
+    "clearHistoryConfirm": "清空此对话？此操作无法撤销。",
+    "menuCopy": "复制文本",
+    "menuReAsk": "重新提问",
+    "menuRegenerate": "重新生成回复",
+    "menuDelete": "从记录中删除",
+    "menuCopied": "已复制到剪贴板"
   },
   "design": {
     "list": {

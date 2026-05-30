@@ -166,7 +166,7 @@ export default function ProductsPage() {
 
   return (
     <PermissionGuard section="products">
-    <div className="">
+    {/* <div className=""> */}
       <PageHeader
         title={t("products.title")}
         subtitle={t("products.subtitle")}
@@ -522,7 +522,7 @@ export default function ProductsPage() {
           </div>
         </DynamicUIElementContent>
       </DynamicUIElement>
-    </div>
+    {/* </div> */}
     </PermissionGuard>
   );
 }

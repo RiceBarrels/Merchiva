@@ -1,8 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Building, Map as MapIcon, Store, Users } from "lucide-react";
+import { Building, Copy, Map as MapIcon, Pencil, Plus, RefreshCw, Store, Trash2, UserMinus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import {
   CARD_W,
   CARD_H,
@@ -41,7 +48,7 @@ const GROUP_ICON_MAP: Record<string, React.ComponentType<{ className?: string; s
 
 function PersonCard({
   node, selected, dimmed, dragging, matchesSearch, roles,
-  onPointerDown, onClick, onHandlePointerDown,
+  onPointerDown, onClick, onHandlePointerDown, onContextMenu,
 }: {
   node: PersonNode;
   selected: boolean;
@@ -52,6 +59,7 @@ function PersonCard({
   onPointerDown: (e: React.PointerEvent, id: string) => void;
   onClick: (id: string) => void;
   onHandlePointerDown: (e: React.PointerEvent, id: string) => void;
+  onContextMenu: (e: React.MouseEvent, node: PersonNode) => void;
 }) {
   const role = roleForPerson(node, roles);
   return (
@@ -60,6 +68,7 @@ function PersonCard({
       data-node-kind="person"
       onPointerDown={(e) => onPointerDown(e, node.id)}
       onClick={(e) => { e.stopPropagation(); onClick(node.id); }}
+      onContextMenu={(e) => onContextMenu(e, node)}
       className={cn(
         "absolute select-none cursor-grab active:cursor-grabbing transition-opacity",
         dimmed && "opacity-30",
@@ -118,7 +127,7 @@ function PersonCard({
 
 function GroupFrame({
   node, selected, dimmed, memberCount, dropTarget,
-  onHeaderPointerDown, onClick, onHandlePointerDown, onResizePointerDown,
+  onHeaderPointerDown, onClick, onHandlePointerDown, onResizePointerDown, onContextMenu,
 }: {
   node: GroupNode;
   selected: boolean;
@@ -129,6 +138,7 @@ function GroupFrame({
   onClick: (id: string) => void;
   onHandlePointerDown: (e: React.PointerEvent, id: string) => void;
   onResizePointerDown: (e: React.PointerEvent, id: string) => void;
+  onContextMenu: (e: React.MouseEvent, node: GroupNode) => void;
 }) {
   const preset = ORG_GROUP_PRESETS[node.groupKind] || ORG_GROUP_PRESETS.custom;
   const Icon = GROUP_ICON_MAP[preset.icon] || Users;
@@ -141,6 +151,7 @@ function GroupFrame({
       className={cn("absolute transition-opacity z-10", dimmed && "opacity-30")}
       style={{ transform: `translate(${node.x}px, ${node.y}px)`, width: node.w, height: node.h }}
       onClick={(e) => { e.stopPropagation(); onClick(node.id); }}
+      onContextMenu={(e) => onContextMenu(e, node)}
     >
       <div
         className="absolute inset-0 rounded-[0.7rem] pointer-events-none"
@@ -211,7 +222,7 @@ function GroupFrame({
 // ─── Edges layer ───────────────────────────────────────────────────────────
 
 function EdgesLayer({
-  nodes, edges, hoverEdgeId, onHoverEdge, onDeleteEdge, tempEdge, dimEdgeIds,
+  nodes, edges, hoverEdgeId, onHoverEdge, onDeleteEdge, tempEdge, dimEdgeIds, onContextMenuEdge,
 }: {
   nodes: OrgNode[];
   edges: EdgeLayout[];
@@ -220,6 +231,7 @@ function EdgesLayer({
   onDeleteEdge: (id: string) => void;
   tempEdge: { x1: number; y1: number; x2: number; y2: number } | null;
   dimEdgeIds: Set<string> | null;
+  onContextMenuEdge: (e: React.MouseEvent, id: string) => void;
 }) {
   const nodeById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes]);
   return (
@@ -254,6 +266,7 @@ function EdgesLayer({
               style={{ pointerEvents: "stroke", cursor: "pointer" }}
               onMouseEnter={() => onHoverEdge(e.id)}
               onMouseLeave={() => onHoverEdge(null)}
+              onContextMenu={(ev) => onContextMenuEdge(ev, e.id)}
             />
             <path
               d={d}
@@ -303,6 +316,9 @@ interface OrgCanvasProps {
   onDropPersonInGroup: (personId: string, groupId: string | null) => void;
   onCreateEdge: (from: string, to: string) => void;
   onDeleteEdge: (id: string) => void;
+  onDeleteNode: (id: string) => void;
+  onAddGroup: () => string;
+  onDuplicateGroup: (id: string) => string | null;
   onBgClick: () => void;
   highlightIds: Set<string> | null;
   searchMatchIds: Set<string> | null;
@@ -316,6 +332,7 @@ export function OrgCanvas({
   selectedId, onSelectNode,
   onMoveNode, onMoveGroup, onResizeGroup, onDropPersonInGroup,
   onCreateEdge, onDeleteEdge,
+  onDeleteNode, onAddGroup, onDuplicateGroup,
   onBgClick,
   highlightIds, searchMatchIds,
   roles,
@@ -329,6 +346,13 @@ export function OrgCanvas({
   const [pan, setPan] = useState<{ startX: number; startY: number; ox: number; oy: number } | null>(null);
   const [tempEdge, setTempEdge] = useState<{ fromId: string; x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [dropTargetGroupId, setDropTargetGroupId] = useState<string | null>(null);
+  const [menuTarget, setMenuTarget] = useState<
+    | { kind: "person"; id: string; groupId: string | null; x: number; y: number }
+    | { kind: "group"; id: string; x: number; y: number }
+    | { kind: "edge"; id: string; x: number; y: number }
+    | { kind: "bg"; x: number; y: number }
+    | null
+  >(null);
 
   const rolesMap = useMemo<RoleMap>(() => Object.fromEntries(roles.map((r) => [r.key, r])), [roles]);
   const groups = useMemo(() => nodes.filter((n): n is GroupNode => n.kind === "group"), [nodes]);
@@ -404,6 +428,75 @@ export function OrgCanvas({
       el.removeEventListener("touchend", onTouchEnd);
     };
   }, [view, onViewChange]);
+
+  // Zoom centered on the canvas viewport center (used by keyboard shortcuts)
+  const zoomAtCenter = useCallback((nextZoom: number) => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.width / 2;
+    const cy = r.height / 2;
+    const z = Math.min(2, Math.max(0.3, nextZoom));
+    const wx = (cx - view.tx) / view.zoom;
+    const wy = (cy - view.ty) / view.zoom;
+    onViewChange({ zoom: z, tx: cx - wx * z, ty: cy - wy * z });
+  }, [view, onViewChange]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function isTypingTarget(target: EventTarget | null): boolean {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+    }
+    function onKey(e: KeyboardEvent) {
+      if (isTypingTarget(e.target)) return;
+      const mod = e.metaKey || e.ctrlKey;
+
+      // Delete / Backspace — remove selected node
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId && !mod) {
+        e.preventDefault();
+        onDeleteNode(selectedId);
+        return;
+      }
+      // Escape — clear selection / close menu
+      if (e.key === "Escape") {
+        if (menuTarget) setMenuTarget(null);
+        else onBgClick();
+        return;
+      }
+      // Cmd/Ctrl + 0 — reset zoom to 1
+      if (mod && e.key === "0") {
+        e.preventDefault();
+        zoomAtCenter(1);
+        return;
+      }
+      // Cmd/Ctrl + +/= — zoom in
+      if (mod && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
+        zoomAtCenter(view.zoom * 1.15);
+        return;
+      }
+      // Cmd/Ctrl + - — zoom out
+      if (mod && e.key === "-") {
+        e.preventDefault();
+        zoomAtCenter(view.zoom / 1.15);
+        return;
+      }
+      // Cmd/Ctrl + D — duplicate selected group
+      if (mod && (e.key === "d" || e.key === "D")) {
+        if (!selectedId) return;
+        const isGroup = nodes.some((n) => n.id === selectedId && n.kind === "group");
+        if (!isGroup) return;
+        e.preventDefault();
+        const newId = onDuplicateGroup(selectedId);
+        if (newId) onSelectNode(newId);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedId, menuTarget, view.zoom, nodes, onDeleteNode, onBgClick, zoomAtCenter, onDuplicateGroup, onSelectNode]);
 
   const onPersonPointerDown = (e: React.PointerEvent, id: string) => {
     e.preventDefault();
@@ -509,6 +602,38 @@ export function OrgCanvas({
     return set;
   }, [highlightIds, edges]);
 
+  // ── Context menu handlers ────────────────────────────────────────────────
+  const onPersonContextMenu = useCallback((e: React.MouseEvent, n: PersonNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelectNode(n.id);
+    setMenuTarget({ kind: "person", id: n.id, groupId: n.groupId ?? null, x: e.clientX, y: e.clientY });
+  }, [onSelectNode]);
+
+  const onGroupContextMenu = useCallback((e: React.MouseEvent, n: GroupNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onSelectNode(n.id);
+    setMenuTarget({ kind: "group", id: n.id, x: e.clientX, y: e.clientY });
+  }, [onSelectNode]);
+
+  const onEdgeContextMenu = useCallback((e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuTarget({ kind: "edge", id, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const onBgContextMenu = useCallback((e: React.MouseEvent) => {
+    // Only when the click really lands on background (not bubbled from a card)
+    const target = e.target as HTMLElement;
+    const onBg = target === wrapRef.current || target.tagName === "svg" || target.classList.contains("__org-world");
+    if (!onBg) return;
+    e.preventDefault();
+    setMenuTarget({ kind: "bg", x: e.clientX, y: e.clientY });
+  }, []);
+
+  const closeMenu = useCallback(() => setMenuTarget(null), []);
+
   return (
     <div
       ref={wrapRef}
@@ -519,6 +644,7 @@ export function OrgCanvas({
         const target = e.target as HTMLElement;
         if (target === wrapRef.current || target.tagName === "svg" || target.classList.contains("__org-world")) onBgClick();
       }}
+      onContextMenu={onBgContextMenu}
       style={{
         backgroundImage: "radial-gradient(circle, rgba(120,113,108,.25) 1px, transparent 1px)",
         backgroundSize: `20px 20px`,
@@ -547,6 +673,7 @@ export function OrgCanvas({
               onClick={onSelectNode}
               onHandlePointerDown={onHandlePointerDown}
               onResizePointerDown={onResizePointerDown}
+              onContextMenu={onGroupContextMenu}
             />
           );
         })}
@@ -559,6 +686,7 @@ export function OrgCanvas({
           onDeleteEdge={onDeleteEdge}
           tempEdge={tempEdge}
           dimEdgeIds={focusEdgeIds}
+          onContextMenuEdge={onEdgeContextMenu}
         />
 
         {persons.map((p) => {
@@ -576,10 +704,90 @@ export function OrgCanvas({
               onPointerDown={onPersonPointerDown}
               onClick={onSelectNode}
               onHandlePointerDown={onHandlePointerDown}
+              onContextMenu={onPersonContextMenu}
             />
           );
         })}
       </div>
+
+      {/* ── Context menu ──────────────────────────────────────────────── */}
+      <ContextMenu open={menuTarget !== null} onOpenChange={(o) => { if (!o) closeMenu(); }}>
+        <ContextMenuTrigger
+          render={(props) => (
+            <span
+              {...props}
+              aria-hidden="true"
+              style={{
+                position: "fixed",
+                left: menuTarget?.x ?? -9999,
+                top: menuTarget?.y ?? -9999,
+                width: 1,
+                height: 1,
+                pointerEvents: "none",
+              }}
+            />
+          )}
+        />
+        <ContextMenuContent className="min-w-[180px]" align="start" side="right" sideOffset={2}>
+          {menuTarget?.kind === "person" && (
+            <>
+              {menuTarget.groupId && (
+                <ContextMenuItem onClick={() => { onDropPersonInGroup(menuTarget.id, null); closeMenu(); }}>
+                  <UserMinus />
+                  <span>移出分组</span>
+                </ContextMenuItem>
+              )}
+              <ContextMenuItem onClick={() => { onDeleteNode(menuTarget.id); closeMenu(); }}>
+                <Trash2 />
+                <span>从画布删除</span>
+              </ContextMenuItem>
+            </>
+          )}
+          {menuTarget?.kind === "group" && (
+            <>
+              <ContextMenuItem onClick={() => { onSelectNode(menuTarget.id); closeMenu(); }}>
+                <Pencil />
+                <span>重命名 (打开侧栏)</span>
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => {
+                const newId = onDuplicateGroup(menuTarget.id);
+                if (newId) onSelectNode(newId);
+                closeMenu();
+              }}>
+                <Copy />
+                <span>复制分组</span>
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => { onDeleteNode(menuTarget.id); closeMenu(); }}>
+                <Trash2 />
+                <span>删除分组</span>
+              </ContextMenuItem>
+            </>
+          )}
+          {menuTarget?.kind === "edge" && (
+            <ContextMenuItem onClick={() => { onDeleteEdge(menuTarget.id); closeMenu(); }}>
+              <Trash2 />
+              <span>删除连接</span>
+            </ContextMenuItem>
+          )}
+          {menuTarget?.kind === "bg" && (
+            <>
+              <ContextMenuItem onClick={() => {
+                const newId = onAddGroup();
+                if (newId) onSelectNode(newId);
+                closeMenu();
+              }}>
+                <Plus />
+                <span>新增分组</span>
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => { onViewChange({ zoom: 1, tx: 0, ty: 0 }); closeMenu(); }}>
+                <RefreshCw />
+                <span>重设视图</span>
+              </ContextMenuItem>
+            </>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
   );
 }

@@ -355,6 +355,8 @@ export interface ChatConversation {
   name: string | null;
   createdBy: string | null;
   createdAt: string;
+  // True when Mr. Merchiva participates in this conversation.
+  merchivaEnabled?: boolean;
   // Joined fields
   members?: ChatMember[];
   lastMessage?: ChatMessage | null;
@@ -379,6 +381,9 @@ export interface ChatMessage {
   attachmentUrl: string | null;
   attachmentType: string | null;
   attachmentName: string | null;
+  // True when this message was authored by Mr. Merchiva (rendered as the bot
+  // regardless of senderId).
+  isMerchiva?: boolean;
   // Joined
   senderName?: string;
 }

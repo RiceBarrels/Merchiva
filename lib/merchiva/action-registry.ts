@@ -102,7 +102,7 @@ register({
       type: "array",
       required: true,
       description:
-        "One or more role names for this shift, e.g. [\"barista\"]. Must be non-empty — pick from the active staff roles in LIVE STORE DATA. Required.",
+        "One or more JOB role names for this shift, e.g. [\"Morning Cashier\"]. Each name MUST exactly match a `name` from the top-level `roles[]` array in LIVE STORE DATA. NEVER use the team member's `permissionRole` (owner/manager/staff), NEVER use the shift type (morning/afternoon/evening/closing), and NEVER invent new role names. If no role in `roles[]` fits, ask the user to create one first via the addRole action — do not guess.",
     },
   },
   requiredPermission: { section: "staffing", action: "edit" },

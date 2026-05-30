@@ -21,7 +21,11 @@
     "type": "प्रकार",
     "more": "और",
     "saving": "सहेज रहे हैं...",
-    "switch": "बदलें"
+    "switch": "बदलें",
+    "collapse": "संक्षिप्त करें",
+    "expand": "विस्तृत करें",
+    "previous": "पिछला",
+    "next": "अगला"
   },
   "nav": {
     "dailyManagement": "दैनिक प्रबंधन",
@@ -1644,7 +1648,13 @@
       "saveCta": "सहेजें",
       "clearCta": "बंद करें",
       "saved": "ब्रीफिंग समय सहेजा गया",
-      "saveFailed": "ब्रीफिंग समय सहेजा नहीं जा सका"
+      "saveFailed": "ब्रीफिंग समय सहेजा नहीं जा सका",
+      "hoursLabel": "ब्रीफिंग के घंटे",
+      "hoursHint": "ब्रीफिंग रिफ्रेश करने के घंटे चुनें। नई समस्या आने पर ही आपको सूचित किया जाएगा।",
+      "presetBusiness": "व्यावसायिक घंटे",
+      "presetAll": "हर घंटे",
+      "presetClear": "साफ़ करें",
+      "selectHoursWarn": "कम से कम एक घंटा चुनें"
     },
     "groupStoreAccount": "स्टोर और खाता",
     "currentStore": "वर्तमान स्टोर",
@@ -1761,7 +1771,12 @@
     "fileFallback": "फ़ाइल",
     "timeToday": "आज",
     "timeYesterday": "कल",
-    "attach": "संलग्न करें"
+    "attach": "संलग्न करें",
+    "merchivaInvite": "Mr. Merchiva को आमंत्रित करें",
+    "merchivaRemove": "Mr. Merchiva हटाएँ",
+    "merchivaOn": "Mr. Merchiva",
+    "merchivaMentionHint": "AI सहायक से पूछें",
+    "noMatches": "कोई मिलान नहीं"
   },
   "dashboard": {
     "greeting": {
@@ -1770,6 +1785,28 @@
       "evening": "शुभ संध्या"
     },
     "morningBriefing": "सुबह की ब्रीफिंग",
+    "approveAll": "सभी स्वीकृत करें",
+    "suggestedActions": "सुझाई गई कार्रवाइयाँ",
+    "approve": "स्वीकृत करें",
+    "dismiss": "खारिज करें",
+    "hourlyBriefings": "घंटेवार ब्रीफिंग",
+    "backToNow": "अभी पर लौटें",
+    "hourlyScan": "प्रति घंटा जाँच",
+    "scanning": "जाँच हो रही है…",
+    "latest": "नवीनतम",
+    "todayScan": "आज की जाँच",
+    "perHour": "हर घंटा",
+    "scans": "जाँचें",
+    "flagged": "चिह्नित",
+    "awaitingScan": "पहली जाँच की प्रतीक्षा में",
+    "issueFlag": "समस्या",
+    "needsAttention": "ध्यान देने की आवश्यकता",
+    "allClear": "इस जाँच में सब ठीक रहा — अभी आपके ध्यान की ज़रूरत वाली कोई बात नहीं है।",
+    "nextScan": "अगली जाँच",
+    "pastBriefings": "पिछली ब्रीफिंग",
+    "regenerate": "पुनः जनरेट करें",
+    "generating": "आज की ब्रीफिंग बन रही है…",
+    "noBriefing": "अभी तक कोई ब्रीफिंग नहीं। जनरेट करने के लिए रिफ़्रेश दबाएँ।",
     "time": {
       "justNow": "अभी",
       "minutesAgo": "{n} मिनट पहले",
@@ -2645,7 +2682,14 @@
       "published": "प्रकाशित",
       "plugins": "प्लगइन्स"
     },
-    "brand": "Mr. Merchiva"
+    "brand": "Mr. Merchiva",
+    "clearHistory": "इतिहास साफ़ करें",
+    "clearHistoryConfirm": "यह वार्तालाप साफ़ करें? इसे पूर्ववत नहीं किया जा सकता।",
+    "menuCopy": "टेक्स्ट कॉपी करें",
+    "menuReAsk": "फिर से पूछें",
+    "menuRegenerate": "उत्तर पुनः उत्पन्न करें",
+    "menuDelete": "इतिहास से हटाएं",
+    "menuCopied": "क्लिपबोर्ड पर कॉपी किया गया"
   },
   "design": {
     "list": {

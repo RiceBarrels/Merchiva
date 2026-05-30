@@ -28,7 +28,7 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 }
 
 import type { StoredAccount } from "@/lib/auth/context";
-import { LayoutDashboard, Package, TrendingUp, Users, ShoppingBag, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette } from "lucide-react";
+import { LayoutDashboard, Package, TrendingUp, Users, ShoppingBag, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
@@ -80,16 +80,40 @@ type NavItem = {
 
 // Punch-in is only shown in store-machine mode; see `visibleNavItems` below.
 // Account is only shown on mobile (sidebar hides store/account switchers on mobile).
-type NavItemExt = NavItem & { mobileOnly?: boolean };
+// `children` are the sub-pages of a section (mirrors the page's `PageTabs`).
+// On desktop the section can be expanded via the chevron button to pick a
+// sub-page; clicking the row itself always navigates to the main page.
+type SubNavItem = { labelKey: string; href: string };
+type NavItemExt = NavItem & { mobileOnly?: boolean; children?: SubNavItem[] };
 
 const navItems: NavItemExt[] = [
   { labelKey: "nav.home",      href: "/~/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
   { labelKey: "nav.pos",       href: "/~/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
-  { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory" },
-  { labelKey: "nav.products",  href: "/~/products",    icon: ShoppingBag,     permissionKey: "products"  },
-  { labelKey: "nav.sales",     href: "/~/sales",       icon: TrendingUp,      permissionKey: "sales"     },
-  { labelKey: "nav.personnel", href: "/~/personnel",   icon: Users,           permissionKey: "staffing"  },
-  { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales"     },
+  { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory",
+    children: [
+      { labelKey: "nav.suppliers", href: "/~/suppliers" },
+      { labelKey: "nav.wasteLog",  href: "/~/inventory/waste" },
+    ] },
+  { labelKey: "nav.products",  href: "/~/products",    icon: ShoppingBag,     permissionKey: "products",
+    children: [
+      { labelKey: "nav.pricing", href: "/~/pricing" },
+    ] },
+  { labelKey: "nav.sales",     href: "/~/sales",       icon: TrendingUp,      permissionKey: "sales",
+    children: [
+      { labelKey: "nav.reports",  href: "/~/reports" },
+      { labelKey: "nav.finances", href: "/~/finances" },
+    ] },
+  { labelKey: "nav.personnel", href: "/~/personnel",   icon: Users,           permissionKey: "staffing",
+    children: [
+      { labelKey: "personnel.tabs.schedule", href: "/~/personnel/schedule" },
+      { labelKey: "personnel.tabs.team",     href: "/~/personnel/team" },
+      { labelKey: "personnel.tabs.roles",    href: "/~/personnel/roles" },
+      { labelKey: "personnel.tabs.training", href: "/~/personnel/training" },
+    ] },
+  { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales",
+    children: [
+      { labelKey: "nav.marketing", href: "/~/marketing" },
+    ] },
   { labelKey: "nav.chat",      href: "/~/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website"   },
   { labelKey: "nav.design",    href: "/~/design",      icon: Palette,         permissionKey: "website"   },
@@ -349,9 +373,36 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const [themeOpen, setThemeOpen] = useState(false);
   const [themeMode, setThemeMode] = useThemeMode();
   const unreadCount = useUnreadCount();
+  // Which sections (keyed by parent href) are expanded to show sub-pages.
+  const [expandedHrefs, setExpandedHrefs] = useState<Set<string>>(() => new Set());
 
   // Paths allowed when the device is in store-machine mode.
   const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in"]);
+
+  // True when `pathname` sits inside the section (its main page or any sub-page).
+  const isInSection = (item: NavItemExt) =>
+    pathname === item.href ||
+    pathname.startsWith(item.href + "/") ||
+    (item.children ?? []).some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+
+  // Auto-expand the section that owns the current route so its sub-pages are
+  // visible right after navigating in. Never auto-collapses others.
+  useEffect(() => {
+    const active = navItems.find((it) => it.children && isInSection(it));
+    if (!active) return;
+    setExpandedHrefs((prev) => (prev.has(active.href) ? prev : new Set(prev).add(active.href)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  const toggleExpanded = (href: string) => {
+    hapticLight();
+    setExpandedHrefs((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
+  };
 
   const handleLogout = () => {
     clearCache();
@@ -401,26 +452,118 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         {visibleNavItems.map((item) => {
           const hasQuery = item.href.includes("?");
-          const isActive = !hasQuery &&
-            (pathname === item.href || pathname.startsWith(item.href + "/"));
           const label = t(item.labelKey);
+
+          // Sub-pages visible in the current context (store-machine / native shell
+          // hide some surfaces). Collapsible sub-nav is desktop-exclusive and only
+          // in the expanded (non-icon) sidebar.
+          const subItems = (item.children ?? []).filter((c) => {
+            if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(c.href)) return false;
+            if (storeMachine && !STORE_MACHINE_HREFS.has(c.href)) return false;
+            return true;
+          });
+          const showSubNav = isDesktop && !collapsed && subItems.length > 0;
+
+          if (!showSubNav) {
+            const isActive = !hasQuery &&
+              (pathname === item.href || pathname.startsWith(item.href + "/"));
+            return (
+              <SidebarTooltip key={item.href} label={label} show={!!collapsed}>
+                <Link
+                  href={item.href}
+                  onClick={handleNavClick}
+                  className={cn(
+                    "flex items-center rounded text-[13px] font-medium transition-colors",
+                    collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
+                    isActive
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <item.icon className="h-[15px] w-[15px] shrink-0" />
+                  {!collapsed && <span className="flex-1 truncate">{label}</span>}
+                </Link>
+              </SidebarTooltip>
+            );
+          }
+
+          // Section with sub-pages (desktop, expanded sidebar).
+          const childActive = subItems.some(
+            (c) => pathname === c.href || pathname.startsWith(c.href + "/"),
+          );
+          const parentActive =
+            (pathname === item.href || pathname.startsWith(item.href + "/")) && !childActive;
+          const expanded = expandedHrefs.has(item.href);
+
           return (
-            <SidebarTooltip key={item.href} label={label} show={!!collapsed}>
-              <Link
-                href={item.href}
-                onClick={handleNavClick}
-                className={cn(
-                  "flex items-center rounded text-[13px] font-medium transition-colors",
-                  collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
-                  isActive
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            <div key={item.href}>
+              <div className="flex items-center gap-0.5">
+                <Link
+                  href={item.href}
+                  onClick={handleNavClick}
+                  className={cn(
+                    "flex flex-1 items-center gap-2.5 rounded px-2.5 py-1.5 text-[13px] font-medium transition-colors min-w-0",
+                    parentActive
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                >
+                  <item.icon className="h-[15px] w-[15px] shrink-0" />
+                  <span className="flex-1 truncate">{label}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => toggleExpanded(item.href)}
+                  aria-label={expanded ? t("components.sidebar.collapse") : t("components.sidebar.expand")}
+                  aria-expanded={expanded}
+                  className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded transition-colors",
+                    "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
+                >
+                  <ChevronRight
+                    className={cn(
+                      "h-[14px] w-[14px] transition-transform duration-200",
+                      expanded && "rotate-90",
+                    )}
+                  />
+                </button>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {expanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="ml-[18px] mt-0.5 space-y-0.5 border-l border-border pl-2.5 py-0.5">
+                      {subItems.map((child) => {
+                        const cActive =
+                          pathname === child.href || pathname.startsWith(child.href + "/");
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={handleNavClick}
+                            className={cn(
+                              "block truncate rounded px-2.5 py-1.5 text-[12.5px] font-medium transition-colors",
+                              cActive
+                                ? "bg-foreground text-background"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                            )}
+                          >
+                            {t(child.labelKey)}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
                 )}
-              >
-                <item.icon className="h-[15px] w-[15px] shrink-0" />
-                {!collapsed && <span className="flex-1 truncate">{label}</span>}
-              </Link>
-            </SidebarTooltip>
+              </AnimatePresence>
+            </div>
           );
         })}
       </nav>
@@ -959,7 +1102,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             maxSize={360}
             collapsible
             collapsedSize={64}
-            className="border-r border-border bg-background"
+            className="bg-background"
             onResize={(size) => setSidebarCollapsed(size.inPixels <= 70)}
           >
             <SidebarContent

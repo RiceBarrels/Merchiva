@@ -21,7 +21,11 @@
     "type": "Tipo",
     "more": "Más",
     "saving": "Guardando...",
-    "switch": "Cambiar"
+    "switch": "Cambiar",
+    "collapse": "Contraer",
+    "expand": "Expandir",
+    "previous": "Anterior",
+    "next": "Siguiente"
   },
   "nav": {
     "dailyManagement": "Gestión diaria",
@@ -1644,7 +1648,13 @@
       "saveCta": "Guardar",
       "clearCta": "Desactivar",
       "saved": "Horario del informe guardado",
-      "saveFailed": "No se pudo guardar el horario"
+      "saveFailed": "No se pudo guardar el horario",
+      "hoursLabel": "Horas del informe",
+      "hoursHint": "Elige las horas para actualizar el informe. Solo te avisaremos cuando aparezca un problema nuevo.",
+      "presetBusiness": "Horario laboral",
+      "presetAll": "Cada hora",
+      "presetClear": "Limpiar",
+      "selectHoursWarn": "Selecciona al menos una hora"
     },
     "groupStoreAccount": "Tienda y cuenta",
     "currentStore": "Tienda actual",
@@ -1761,7 +1771,12 @@
     "fileFallback": "Archivo",
     "timeToday": "Hoy",
     "timeYesterday": "Ayer",
-    "attach": "Adjuntar"
+    "attach": "Adjuntar",
+    "merchivaInvite": "Invitar a Mr. Merchiva",
+    "merchivaRemove": "Quitar a Mr. Merchiva",
+    "merchivaOn": "Mr. Merchiva",
+    "merchivaMentionHint": "Pregunta al asistente IA",
+    "noMatches": "Sin coincidencias"
   },
   "dashboard": {
     "greeting": {
@@ -1770,6 +1785,28 @@
       "evening": "Buenas noches"
     },
     "morningBriefing": "Informe matutino",
+    "approveAll": "Aprobar todo",
+    "suggestedActions": "Acciones sugeridas",
+    "approve": "Aprobar",
+    "dismiss": "Descartar",
+    "hourlyBriefings": "Informes por hora",
+    "backToNow": "Volver al actual",
+    "hourlyScan": "Inspección por hora",
+    "scanning": "inspeccionando…",
+    "latest": "último",
+    "todayScan": "Inspección de hoy",
+    "perHour": "cada hora",
+    "scans": "inspecciones",
+    "flagged": "marcadas",
+    "awaitingScan": "Esperando la primera inspección",
+    "issueFlag": "problema",
+    "needsAttention": "Requiere atención",
+    "allClear": "Esta inspección no detectó problemas: por ahora no hay nada que requiera tu atención.",
+    "nextScan": "Próxima inspección",
+    "pastBriefings": "Informes anteriores",
+    "regenerate": "Regenerar",
+    "generating": "Generando el informe de hoy…",
+    "noBriefing": "Aún no hay informe. Toca actualizar para generar uno.",
     "time": {
       "justNow": "justo ahora",
       "minutesAgo": "hace {n} min",
@@ -2645,7 +2682,14 @@
       "published": "Publicado",
       "plugins": "Plugins"
     },
-    "brand": "Mr. Merchiva"
+    "brand": "Mr. Merchiva",
+    "clearHistory": "Borrar historial",
+    "clearHistoryConfirm": "¿Borrar esta conversación? No se puede deshacer.",
+    "menuCopy": "Copiar texto",
+    "menuReAsk": "Volver a preguntar",
+    "menuRegenerate": "Regenerar respuesta",
+    "menuDelete": "Eliminar del historial",
+    "menuCopied": "Copiado al portapapeles"
   },
   "design": {
     "list": {

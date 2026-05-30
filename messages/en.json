@@ -21,7 +21,11 @@
     "type": "Type",
     "more": "More",
     "saving": "Saving...",
-    "switch": "Switch"
+    "switch": "Switch",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "previous": "Previous",
+    "next": "Next"
   },
   "nav": {
     "dailyManagement": "Daily Management",
@@ -1644,7 +1648,13 @@
       "saveCta": "Save",
       "clearCta": "Turn off",
       "saved": "Briefing schedule saved",
-      "saveFailed": "Could not save briefing schedule"
+      "saveFailed": "Could not save briefing schedule",
+      "hoursLabel": "Briefing hours",
+      "hoursHint": "Pick the hours to refresh the briefing. You'll be alerted only when a new problem appears.",
+      "presetBusiness": "Business hours",
+      "presetAll": "Every hour",
+      "presetClear": "Clear",
+      "selectHoursWarn": "Select at least one hour"
     },
     "groupStoreAccount": "Store & account",
     "currentStore": "Current store",
@@ -1761,7 +1771,12 @@
     "fileFallback": "File",
     "timeToday": "Today",
     "timeYesterday": "Yesterday",
-    "attach": "Attach"
+    "attach": "Attach",
+    "merchivaInvite": "Invite Mr. Merchiva",
+    "merchivaRemove": "Remove Mr. Merchiva",
+    "merchivaOn": "Mr. Merchiva",
+    "merchivaMentionHint": "Ask the AI assistant",
+    "noMatches": "No matches"
   },
   "dashboard": {
     "greeting": {
@@ -1770,6 +1785,28 @@
       "evening": "Good evening"
     },
     "morningBriefing": "Morning Briefing",
+    "approveAll": "Approve all",
+    "suggestedActions": "Suggested actions",
+    "approve": "Approve",
+    "dismiss": "Dismiss",
+    "hourlyBriefings": "Hourly briefings",
+    "backToNow": "Back to now",
+    "hourlyScan": "Hourly scan",
+    "scanning": "scanning…",
+    "latest": "latest",
+    "todayScan": "Today's scan",
+    "perHour": "hourly",
+    "scans": "scans",
+    "flagged": "flagged",
+    "awaitingScan": "Awaiting first scan",
+    "issueFlag": "issue",
+    "needsAttention": "Needs attention",
+    "allClear": "This scan came back clean — nothing needs your attention right now.",
+    "nextScan": "Next scan",
+    "pastBriefings": "Past briefings",
+    "regenerate": "Regenerate",
+    "generating": "Generating today's briefing…",
+    "noBriefing": "No briefing yet. Tap refresh to generate one.",
     "time": {
       "justNow": "just now",
       "minutesAgo": "{n}m ago",
@@ -2645,7 +2682,14 @@
       "published": "Published",
       "plugins": "Plugins"
     },
-    "brand": "Mr. Merchiva"
+    "brand": "Mr. Merchiva",
+    "clearHistory": "Clear history",
+    "clearHistoryConfirm": "Clear this conversation? This cannot be undone.",
+    "menuCopy": "Copy text",
+    "menuReAsk": "Re-ask",
+    "menuRegenerate": "Regenerate reply",
+    "menuDelete": "Delete from history",
+    "menuCopied": "Copied to clipboard"
   },
   "design": {
     "list": {

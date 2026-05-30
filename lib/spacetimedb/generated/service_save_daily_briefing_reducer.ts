@@ -16,4 +16,7 @@ export default {
   content: __t.string(),
   summary: __t.option(__t.string()),
   generatedBy: __t.string(),
+  actions: __t.option(__t.string()),
+  problemKeys: __t.option(__t.string()),
+  hour: __t.option(__t.i32()),
 };

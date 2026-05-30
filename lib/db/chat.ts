@@ -105,6 +105,7 @@ export async function getConversations(
       name: r.name ?? null,
       createdBy: r.createdBy ?? null,
       createdAt: toIsoString(r.createdAt),
+      merchivaEnabled: r.merchivaEnabled === true,
       members,
       lastMessage: lastMsg
         ? {
@@ -117,6 +118,7 @@ export async function getConversations(
             attachmentUrl: null,
             attachmentType: null,
             attachmentName: null,
+            isMerchiva: lastMsg.isMerchiva === true,
           }
         : null,
     };
@@ -173,6 +175,7 @@ async function findDirectConversation(
         name: conv.name ?? null,
         createdBy: conv.createdBy ?? null,
         createdAt: toIsoString(conv.createdAt),
+        merchivaEnabled: conv.merchivaEnabled === true,
       };
     }
   }
@@ -212,6 +215,7 @@ export async function getMessages(
     attachmentUrl: null,
     attachmentType: null,
     attachmentName: null,
+    isMerchiva: r.isMerchiva === true,
   }));
 }
 

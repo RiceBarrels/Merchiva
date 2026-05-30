@@ -139,11 +139,13 @@ import SaveComponentReducer from "./save_component_reducer";
 import SaveDailyBriefingReducer from "./save_daily_briefing_reducer";
 import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
 import SaveScheduleProposalReducer from "./save_schedule_proposal_reducer";
+import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
 import ServiceSaveDailyBriefingReducer from "./service_save_daily_briefing_reducer";
 import SetAutoCommitSchedulesReducer from "./set_auto_commit_schedules_reducer";
 import SetBriefingPrefReducer from "./set_briefing_pref_reducer";
+import SetConversationMerchivaReducer from "./set_conversation_merchiva_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
 import SetTrainingFinalGradeReducer from "./set_training_final_grade_reducer";
@@ -1301,11 +1303,13 @@ const reducersSchema = __reducers(
   __reducerSchema("save_daily_briefing", SaveDailyBriefingReducer),
   __reducerSchema("save_push_subscription", SavePushSubscriptionReducer),
   __reducerSchema("save_schedule_proposal", SaveScheduleProposalReducer),
+  __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
   __reducerSchema("service_save_daily_briefing", ServiceSaveDailyBriefingReducer),
   __reducerSchema("set_auto_commit_schedules", SetAutoCommitSchedulesReducer),
   __reducerSchema("set_briefing_pref", SetBriefingPrefReducer),
+  __reducerSchema("set_conversation_merchiva", SetConversationMerchivaReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
   __reducerSchema("set_training_final_grade", SetTrainingFinalGradeReducer),

@@ -26,6 +26,8 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useI18n } from "@/lib/i18n/context";
 import { usePermissions } from "@/lib/context/permissions";
 import { useIsNativeShell } from "@/lib/native-shell";
@@ -37,6 +39,14 @@ export const CURSOR_GAP = 14;
 export const EDGE = 16;
 export const EST_H = 460;
 const HINT_STORAGE_KEY = "merchiva:qd-hint-seen";
+
+// /api/store-ai prefixes a triage "ok, let me check…" line wrapped in this
+// sentinel before the main reply. We split it off and render it as its OWN
+// Mr. Merchiva bubble (stacked above the body bubble) — same shape the in-app
+// chat uses, so users see the same two-message flow here. See splitAck() in
+// merchiva-chat-dashboard.tsx.
+const ACK_OPEN = "[[MERCHIVA_ACK]]";
+const ACK_CLOSE = "[[/MERCHIVA_ACK]]";
 
 // ─── Brand accent (warm-stone — the Mr. Merchiva material) ───────────────────
 export const ACCENT = {
@@ -124,6 +134,77 @@ export function NotchM({ size = 15, fill = "#fff" }: { size?: number; fill?: str
   );
 }
 
+/** Notch-M wrapped in its dark square — matches the avatar in the in-app chat. */
+function MerchivaAvatar({ size = 26 }: { size?: number }) {
+  return (
+    <span
+      style={{ width: size, height: size, borderRadius: 4, background: "#1c1917" }}
+      className="inline-flex items-center justify-center shrink-0"
+    >
+      <NotchM size={Math.round(size * 0.58)} />
+    </span>
+  );
+}
+
+// Markdown renderer + components. Mirrors `mdComponents` in
+// merchiva-chat-dashboard.tsx so the panel renders prose the exact same way as
+// the in-app chat. Kept inline (not imported) so the quick-overlay route
+// doesn't have to pull in the full chat dashboard bundle.
+const mdComponents: Record<
+  string,
+  React.ComponentType<React.HTMLAttributes<HTMLElement> & { href?: string; children?: React.ReactNode }>
+> = {
+  p: ({ children, ...props }) => <p className="mb-1.5 last:mb-0" {...props}>{children}</p>,
+  strong: ({ children, ...props }) => <strong className="font-semibold" {...props}>{children}</strong>,
+  em: ({ children, ...props }) => <em {...props}>{children}</em>,
+  ul: ({ children, ...props }) => <ul className="list-disc pl-4 mb-1.5 last:mb-0 space-y-0.5" {...props}>{children}</ul>,
+  ol: ({ children, ...props }) => <ol className="list-decimal pl-4 mb-1.5 last:mb-0 space-y-0.5" {...props}>{children}</ol>,
+  li: ({ children, ...props }) => <li className="text-[13px]" {...props}>{children}</li>,
+  code: ({ children, className, ...props }) => {
+    if (className?.includes("language-")) {
+      return <code className="block bg-stone-100 dark:bg-stone-800 rounded-[0.3rem] p-2 text-[11px] font-mono text-stone-700 dark:text-stone-300 overflow-x-auto my-1.5" {...props}>{children}</code>;
+    }
+    return <code className="bg-stone-100 dark:bg-stone-800 rounded-[0.2rem] px-1 py-0.5 text-[12px] font-mono text-stone-700 dark:text-stone-300" {...props}>{children}</code>;
+  },
+  pre: ({ children, ...props }) => <pre className="mb-1.5 last:mb-0" {...props}>{children}</pre>,
+  h1: ({ children, ...props }) => <h1 className="text-[15px] font-semibold mb-1" {...props}>{children}</h1>,
+  h2: ({ children, ...props }) => <h2 className="text-[14.5px] font-semibold mb-1" {...props}>{children}</h2>,
+  h3: ({ children, ...props }) => <h3 className="text-[13.5px] font-semibold mb-1" {...props}>{children}</h3>,
+  blockquote: ({ children, ...props }) => <blockquote className="border-l-2 border-stone-300 dark:border-stone-700 pl-3 text-stone-600 dark:text-stone-300 my-1.5" {...props}>{children}</blockquote>,
+  a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-stone-700 dark:text-stone-300 hover:text-stone-900" {...props}>{children}</a>,
+  hr: (props) => <hr className="border-stone-200 dark:border-stone-700 my-2" {...props} />,
+};
+
+function MerchivaMarkdown({ content }: { content: string }) {
+  return (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+/** Mr. Merchiva chat row — NotchM avatar + name + bordered Bubble. Compact
+ *  copy of ChatRow/Bubble from merchiva-chat-dashboard.tsx so the panel reads
+ *  the same way visually. */
+function MerchivaRow({ time, children }: { time?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 mb-2.5">
+      <MerchivaAvatar size={26} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[12px] font-semibold tracking-tight text-stone-900 dark:text-stone-100">Mr. Merchiva</span>
+          {time && (
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-stone-400">{time}</span>
+          )}
+        </div>
+        <div className="rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 p-2.5 text-[13px] leading-[1.55] text-stone-800 dark:text-stone-200">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Edge-aware placement of a `w`×`h` panel around a cursor hotspot. */
 export function placeAt(
   cx: number,
@@ -143,6 +224,8 @@ export function placeAt(
 }
 
 // Strip machine-readable action blocks / slash-commands so only prose shows.
+// (ACK envelopes are NOT stripped here — splitAck() peels them off so the
+// caller can render the ack as its own bubble, mirroring the in-app chat.)
 function stripActions(text: string): string {
   let out = text.replace(/```action[\s\S]*?```/g, "");
   out = out.replace(/```action[\s\S]*$/g, "");
@@ -153,13 +236,34 @@ function stripActions(text: string): string {
   return out.trim();
 }
 
+// Peel the [[MERCHIVA_ACK]]…[[/MERCHIVA_ACK]] triage prelude that /api/store-ai
+// emits before the main reply, so the panel can render it as its own chat
+// bubble — same behaviour as splitAck() in merchiva-chat-dashboard.tsx.
+function splitAck(raw: string): { ack: string; body: string } {
+  if (!raw.startsWith(ACK_OPEN)) return { ack: "", body: raw };
+  const closeIdx = raw.indexOf(ACK_CLOSE);
+  if (closeIdx === -1) {
+    // Close tag hasn't streamed in yet — everything so far is the ack.
+    return { ack: raw.slice(ACK_OPEN.length), body: "" };
+  }
+  return {
+    ack: raw.slice(ACK_OPEN.length, closeIdx),
+    body: raw.slice(closeIdx + ACK_CLOSE.length),
+  };
+}
+
 // ─── Shared streaming "ask Mr. Merchiva" hook ────────────────────────────────
+// `ack` is the triage prelude bubble ("ok, let me check…") and `body` is the
+// real answer. Both are streamed independently so the UI can render them as
+// two stacked Mr. Merchiva bubbles, matching the in-app chat.
 export function useQuickAsk() {
   const { locale } = useI18n();
   const perms = usePermissions();
   const pathname = usePathname();
   const [asking, setAsking] = useState<string | null>(null);
-  const [answer, setAnswer] = useState("");
+  const [askedAt, setAskedAt] = useState("");
+  const [ack, setAck] = useState("");
+  const [body, setBody] = useState("");
   const [errored, setErrored] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -167,7 +271,9 @@ export function useQuickAsk() {
     abortRef.current?.abort();
     abortRef.current = null;
     setAsking(null);
-    setAnswer("");
+    setAskedAt("");
+    setAck("");
+    setBody("");
     setErrored(false);
   }, []);
 
@@ -179,7 +285,9 @@ export function useQuickAsk() {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       setAsking(q);
-      setAnswer("");
+      setAskedAt(new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }));
+      setAck("");
+      setBody("");
       setErrored(false);
       try {
         const sections: Record<string, { view?: boolean; edit?: boolean }> = {};
@@ -210,13 +318,17 @@ export function useQuickAsk() {
           const chunk = decoder.decode(value, { stream: true });
           if (chunk) {
             full += chunk;
-            const visible = stripActions(full);
-            if (visible) setAnswer(visible);
+            const split = splitAck(full);
+            setAck(split.ack.trim());
+            setBody(stripActions(split.body));
           }
         }
-        const finalText = stripActions(full);
-        setAnswer(finalText);
-        if (!finalText) setErrored(true);
+        const final = splitAck(full);
+        const finalAck = final.ack.trim();
+        const finalBody = stripActions(final.body);
+        setAck(finalAck);
+        setBody(finalBody);
+        if (!finalAck && !finalBody) setErrored(true);
       } catch (err) {
         if ((err as Error)?.name === "AbortError") return;
         console.warn("[Mr. Merchiva] quick dialog ask failed:", err);
@@ -226,7 +338,7 @@ export function useQuickAsk() {
     [perms.permissions, perms.isOwner, perms.role, pathname, locale],
   );
 
-  return { asking, answer, errored, ask, reset };
+  return { asking, askedAt, ack, body, errored, ask, reset };
 }
 
 const KBD: React.CSSProperties = {
@@ -248,7 +360,7 @@ export function QuickDialogPanel({
   onOpenAssistant: () => void;
 }) {
   const { t, dir } = useI18n();
-  const { asking, answer, errored, ask, reset } = useQuickAsk();
+  const { asking, askedAt, ack, body, errored, ask, reset } = useQuickAsk();
   const [query, setQuery] = useState("");
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -318,34 +430,82 @@ export function QuickDialogPanel({
       </div>
 
       {asking ? (
-        /* ── Result view ── */
-        <div style={{ padding: "6px 6px 8px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px 4px" }}>
-            <span style={{ fontSize: 13, color: "#a8a29e", fontFamily: FONT_MONO, marginTop: 2 }}>›</span>
-            <div style={{ fontSize: 13.5, color: "#57534e", fontWeight: 500 }}>{asking}</div>
+        /* ── Result view — mirrors the in-app Mr. Merchiva chat: user msg
+            (right-aligned dark bubble), then up to two Mr. Merchiva bubbles
+            (the [[MERCHIVA_ACK]] triage + the body), each with NotchM avatar
+            + name + bordered Bubble. The "two bubbles" matches the in-app
+            behaviour where Mr. Merchiva often replies twice. ── */
+        <div
+          className="px-3 pt-3 pb-2 overflow-y-auto"
+          style={{ maxHeight: 420, animation: "mqd-rise 0.4s cubic-bezier(0.2,0.8,0.2,1) both" }}
+        >
+          {/* User question */}
+          <div className="flex justify-end mb-3">
+            <div className="max-w-[280px] rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-3 py-2 text-[13px] leading-[1.5] whitespace-pre-wrap break-words">
+              {asking}
+              {askedAt && (
+                <div className="font-mono text-[9.5px] mt-1 text-right opacity-60">{askedAt}</div>
+              )}
+            </div>
           </div>
 
-          {!answer && !errored ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 14px 16px" }}>
+          {/* Thinking — only while nothing has streamed in yet */}
+          {!ack && !body && !errored && (
+            <div className="flex items-center gap-2 px-1 pb-2">
               {[0, 1, 2].map((i) => (
-                <span key={i} style={{ width: 6, height: 6, borderRadius: 99, background: ACCENT.acc, animation: `mqd-think 1s ${i * 0.16}s infinite ease-in-out` }} />
+                <span
+                  key={i}
+                  style={{
+                    width: 6, height: 6, borderRadius: 99,
+                    background: ACCENT.acc,
+                    animation: `mqd-think 1s ${i * 0.16}s infinite ease-in-out`,
+                  }}
+                />
               ))}
-              <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: "#a8a29e", letterSpacing: 0.5, marginLeft: 4 }}>{t("quickDialog.thinking")}</span>
+              <span style={{ fontFamily: FONT_MONO, fontSize: 11, color: "#a8a29e", letterSpacing: 0.5, marginLeft: 4 }}>
+                {t("quickDialog.thinking")}
+              </span>
             </div>
-          ) : (
-            <div style={{ animation: "mqd-rise 0.4s cubic-bezier(0.2,0.8,0.2,1) both", padding: "4px 14px 0" }}>
-              <p style={{ fontSize: 14, lineHeight: 1.55, color: errored ? "#b91c1c" : "#292524", margin: "4px 0 12px", whiteSpace: "pre-wrap", maxHeight: 280, overflowY: "auto" }}>
-                {errored ? t("quickDialog.error") : answer}
-              </p>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0 6px" }}>
-                <button onClick={onOpenAssistant} style={{ flex: 1, height: 38, borderRadius: 8, border: "none", cursor: "pointer", background: ACCENT.acc, color: "#fff", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontFamily: FONT_SANS }}>
-                  {t("quickDialog.openAssistant")}
-                  <ArrowRight style={{ width: 14, height: 14 }} />
-                </button>
-                <button onClick={reset} style={{ height: 38, padding: "0 14px", borderRadius: 8, cursor: "pointer", border: "1px solid #e7e5e4", background: "#fff", color: "#57534e", fontSize: 13, fontWeight: 500, fontFamily: FONT_SANS }}>
-                  {t("quickDialog.askAgain")}
-                </button>
-              </div>
+          )}
+
+          {/* ACK bubble — Mr. Merchiva's first message (triage). */}
+          {ack && (
+            <MerchivaRow time={askedAt}>
+              <MerchivaMarkdown content={ack} />
+            </MerchivaRow>
+          )}
+
+          {/* Body bubble — Mr. Merchiva's second message (the answer). */}
+          {body && (
+            <MerchivaRow time={askedAt}>
+              <MerchivaMarkdown content={body} />
+            </MerchivaRow>
+          )}
+
+          {/* Error bubble */}
+          {errored && !ack && !body && (
+            <MerchivaRow time={askedAt}>
+              <span className="text-red-600 dark:text-red-400">{t("quickDialog.error")}</span>
+            </MerchivaRow>
+          )}
+
+          {(ack || body || errored) && (
+            <div className="flex items-center gap-2 pt-1 pb-1">
+              <button
+                onClick={onOpenAssistant}
+                className="flex-1 h-9 rounded-lg inline-flex items-center justify-center gap-1.5 text-[13px] font-semibold text-white"
+                style={{ background: ACCENT.acc, fontFamily: FONT_SANS }}
+              >
+                {t("quickDialog.openAssistant")}
+                <ArrowRight style={{ width: 14, height: 14 }} />
+              </button>
+              <button
+                onClick={reset}
+                className="h-9 px-3.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-200 text-[13px] font-medium"
+                style={{ fontFamily: FONT_SANS }}
+              >
+                {t("quickDialog.askAgain")}
+              </button>
             </div>
           )}
         </div>

@@ -18,4 +18,5 @@ export default __t.row({
   createdBy: __t.option(__t.string()).name("created_by"),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),
+  merchivaEnabled: __t.option(__t.bool()).name("merchiva_enabled"),
 });

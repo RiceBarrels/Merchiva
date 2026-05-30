@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, History, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, MessageSquare, User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones, Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, MousePointer2 } from "lucide-react";
+import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones, Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, MousePointer2, Copy, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -37,6 +37,13 @@ import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { MerchivaLogo } from "@/components/logo";
 import { MerchivaCallModal } from "@/components/merchiva-call-modal";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
 
 // ── Brand colors ────────────────────────────────────────────────────────────
 
@@ -731,6 +738,22 @@ function ShiftPreviewStrip({ action }: { action: Record<string, unknown> }) {
   const start = String(action.startTime ?? "");
   const end = String(action.endTime ?? "");
   const type = String(action.shiftType ?? "");
+  // staffRoles can arrive as an array (registry-shaped) or a JSON string
+  // (raw reducer args), so accept both. Empty arrays are fine — the validator
+  // catches that path before this card ever fires the action.
+  const rawRoles: unknown = action.staffRoles;
+  let roles: string[] = [];
+  if (Array.isArray(rawRoles)) {
+    roles = rawRoles.map((r) => String(r ?? "").trim()).filter(Boolean);
+  } else if (typeof rawRoles === "string" && rawRoles.length > 0) {
+    try {
+      const parsed = JSON.parse(rawRoles);
+      if (Array.isArray(parsed)) roles = parsed.map((r) => String(r ?? "").trim()).filter(Boolean);
+      else roles = [rawRoles.trim()].filter(Boolean);
+    } catch {
+      roles = [rawRoles.trim()].filter(Boolean);
+    }
+  }
   const typeColors: Record<string, string> = {
     morning: "bg-amber-100 text-amber-700 border-amber-200",
     afternoon: "bg-sky-100 text-sky-700 border-sky-200",
@@ -740,7 +763,7 @@ function ShiftPreviewStrip({ action }: { action: Record<string, unknown> }) {
   const d = date ? new Date(date + "T00:00:00") : null;
   const dayLabel = d ? d.toLocaleDateString("zh-CN", { weekday: "short", month: "numeric", day: "numeric" }) : date;
   return (
-    <div className="flex items-center gap-2 mt-1 mb-1">
+    <div className="flex items-center gap-2 mt-1 mb-1 flex-wrap">
       <Calendar className="h-3.5 w-3.5 text-stone-400 dark:text-stone-500 shrink-0" />
       <span className="text-[12.5px] font-medium">{name}</span>
       <span className="text-[11px] text-muted-foreground font-mono">{dayLabel}</span>
@@ -750,6 +773,15 @@ function ShiftPreviewStrip({ action }: { action: Record<string, unknown> }) {
           {type}
         </span>
       )}
+      {roles.map((roleName) => (
+        <span
+          key={roleName}
+          className="text-[10px] px-1.5 py-0.5 rounded border bg-stone-50 dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700"
+          title="Job role"
+        >
+          {roleName}
+        </span>
+      ))}
     </div>
   );
 }
@@ -2106,7 +2138,6 @@ export function MerchivaChat({
       });
   }, [sessionRows, organizationId]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [sessionListOpen, setSessionListOpen] = useState(false);
   const sessionInitDone = useRef(false);
   // Session-level circuit breaker for the background-enqueue path. If the
   // server returns 501 "reducer_missing" once, we know the SpacetimeDB module
@@ -2173,32 +2204,21 @@ export function MerchivaChat({
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [messages, activeSessionId, organizationId, builderMode, builderStorageKey]);
 
-  const switchSession = useCallback((sessionId: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const session = mySessions.find((s: any) => {
-      const sid = s.id.toHexString ? s.id.toHexString() : String(s.id);
-      return sid === sessionId;
-    });
-    setActiveSessionId(sessionId);
-    setMessages(session ? parseSessionMessages(session.messages) : []);
-    setSessionListOpen(false);
-  }, [mySessions]);
-
-  const handleNewChat = useCallback(async () => {
+  // Each user keeps a single persistent Mr. Merchiva history. "Clear history"
+  // empties the current session in place (no new session is ever created), so
+  // there's exactly one conversation thread per user.
+  const handleClearHistory = useCallback(async () => {
     if (builderMode && builderStorageKey) {
       try { localStorage.removeItem(builderStorageKey); } catch {}
       setMessages([]);
       return;
     }
-    if (activeSessionId && messages.length > 0) {
-      const json = JSON.stringify(messages.slice(-50));
-      execSaveSession(activeSessionId, json).catch(() => {});
-    }
-    setActiveSessionId(null);
+    if (!confirm(t("merchiva.clearHistoryConfirm"))) return;
     setMessages([]);
-    execCreateSession("New conversation").catch(() => {});
-    setSessionListOpen(false);
-  }, [activeSessionId, messages, builderMode, builderStorageKey]);
+    if (activeSessionId) {
+      execSaveSession(activeSessionId, JSON.stringify([])).catch(() => {});
+    }
+  }, [activeSessionId, builderMode, builderStorageKey, t]);
 
   // @data mention
   const [dataMentionOpen, setDataMentionOpen] = useState(false);
@@ -2282,8 +2302,14 @@ export function MerchivaChat({
   const orgSettings = useMemo(() => (Array.isArray(settingsRows)
     ? settingsRows.find((s: any) => s?.organizationId === organizationId)
     : undefined), [settingsRows, organizationId]);
+  // useStaffRoles() returns the [rows, ready] tuple from useTable — destructure
+  // first, then filter. Treating the tuple as the row array (the prior code)
+  // silently made `staffRoles` always [], which (a) blanked the role list the
+  // AI sees in store context — making it guess "manager"/"morning" — and
+  // (b) broke any client-side role validation built on top of it.
+  const [rawStaffRoleRows] = useStaffRoles() as [unknown[], boolean];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const staffRoles = (useStaffRoles() as any[] || []).filter((r: any) => r && typeof r === "object" && r.name) as Array<{ id: any; name: string; color: string; icon: string; description: string; permissions: string }>;
+  const staffRoles = (rawStaffRoleRows ?? []).filter((r: any) => r && typeof r === "object" && r.name) as Array<{ id: any; name: string; color: string; icon: string; description: string; permissions: string }>;
   const staffRolesRef = useRef(staffRoles);
   staffRolesRef.current = staffRoles;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2375,7 +2401,11 @@ export function MerchivaChat({
       team: team.map((m) => ({
         id: m.id,
         name: m.displayName,
-        role: m.role,
+        // Permission level on the org (owner / manager / staff). Renamed from
+        // `role` because the AI kept picking this string when asked to fill
+        // `staffRoles` on addShift — it MUST use a name from the top-level
+        // `roles[]` array (job roles) instead, never this permission level.
+        permissionRole: m.role,
         // `hasPunchInCode` lets Mr. Merchiva know whether to prompt the user
         // for a code before scheduling shifts for this member.
         hasPunchInCode: !!m.punchInCode,
@@ -2916,28 +2946,46 @@ export function MerchivaChat({
         }),
       });
 
-      // Pull the kaomoji the OSS triage picked (header is base64 of the
-      // raw UTF-8 face) and surface it to the chat watermark.
-      const kaomojiB64 = res.headers.get("X-Merchiva-Kaomoji");
-      if (kaomojiB64) {
+      // Decode a base64-UTF8 response header (kaomoji + ack live there because
+      // the body stream gets buffered by the Node.js HTTP layer in dev, which
+      // hides any leading body sentinel until the whole reply finishes).
+      const decodeB64Header = (name: string): string => {
+        const b64 = res.headers.get(name);
+        if (!b64) return "";
         try {
-          const face = atob(kaomojiB64);
-          // atob returns a "binary string"; decode it back to UTF-8.
-          const bytes = new Uint8Array(face.length);
-          for (let i = 0; i < face.length; i++) bytes[i] = face.charCodeAt(i);
-          const decoded = new TextDecoder("utf-8").decode(bytes);
-          if (decoded) {
-            window.dispatchEvent(
-              new CustomEvent("merchiva:set-kaomoji", { detail: decoded }),
-            );
-          }
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return new TextDecoder("utf-8").decode(bytes);
         } catch (err) {
-          console.warn("[Mr. Merchiva] kaomoji header decode failed:", err);
+          console.warn(`[Mr. Merchiva] ${name} header decode failed:`, err);
+          return "";
         }
+      };
+
+      const kaomojiHeader = decodeB64Header("X-Merchiva-Kaomoji");
+      if (kaomojiHeader) {
+        window.dispatchEvent(
+          new CustomEvent("merchiva:set-kaomoji", { detail: kaomojiHeader }),
+        );
       }
 
       const streamMsgId = `a-${Date.now()}`;
       const streamTime = new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
+      const ackMsgIdEarly = `ack-${streamMsgId}`;
+
+      // Ack-from-header path: as soon as the response status line arrives we
+      // already know the triage message — render the bubble immediately so the
+      // user sees "好的，我先看一下…" without waiting on the body.
+      const ackFromHeader = decodeB64Header("X-Merchiva-Ack");
+      if (ackFromHeader) {
+        setMessages((prev) => [...prev, {
+          id: ackMsgIdEarly,
+          from: "merchiva" as const,
+          text: ackFromHeader,
+          time: streamTime,
+        }]);
+      }
 
       if (!res.ok || !res.body) {
         const errBody = !res.body ? "no body" : await res.text();
@@ -2945,11 +2993,12 @@ export function MerchivaChat({
         throw new Error("Stream unavailable");
       }
 
-      // The triage ack (if it escalated) arrives at the FRONT of the body
-      // wrapped in the [[MERCHIVA_ACK]] sentinel. It's peeled off in the stream
-      // loop below and rendered as its own bubble (ackMsgId), separate from the
-      // substantive reply that fills the placeholder (streamMsgId).
-      const ackMsgId = `ack-${streamMsgId}`;
+      // Body-sentinel fallback: if the X-Merchiva-Ack header didn't arrive
+      // (proxies that strip custom headers, future transport changes), the
+      // [[MERCHIVA_ACK]] sentinel at the front of the body still works.
+      // Reuses the same ack message id so we never end up with two bubbles.
+      const ackMsgId = ackMsgIdEarly;
+      let ackInserted = Boolean(ackFromHeader);
 
       // Add the streaming placeholder. The ack bubble is inserted lazily once
       // the sentinel is detected in the stream.
@@ -2975,7 +3024,13 @@ export function MerchivaChat({
         return cleanText.replace(cmdRe, "").trim();
       }
 
-      let ackInserted = false;
+      // We intentionally do NOT update the main streaming bubble per chunk —
+      // the user asked to drop the token-by-token flicker. The ack bubble
+      // (triage's "ok, I'll check…" preamble) is inserted from the header
+      // above (or peeled from the body sentinel here as a fallback), so they
+      // see Mr. Merchiva acknowledged them. The main reply stays hidden behind
+      // the bottom "thinking" spinner until the stream finishes, then drops
+      // in as one complete bubble below.
       try {
         for (;;) {
           const { done, value } = await reader.read();
@@ -2983,15 +3038,14 @@ export function MerchivaChat({
           const chunk = decoder.decode(value, { stream: true });
           if (chunk) {
             fullReply += chunk;
-            // Peel the leading ack sentinel (if present) into its own bubble;
-            // the remainder fills the main streaming bubble.
-            const { ack, rest } = splitAck(fullReply);
+            const { ack } = splitAck(fullReply);
             if (ack) {
               setMessages((prev) => {
                 if (ackInserted) {
                   return prev.map((m) => (m.id === ackMsgId ? { ...m, text: ack } : m));
                 }
-                // Insert the ack bubble right before the streaming placeholder.
+                // Insert the ack bubble right before the (still-empty) main
+                // placeholder so chronological order is preserved.
                 const idx = prev.findIndex((m) => m.id === streamMsgId);
                 const ackMsg = {
                   id: ackMsgId,
@@ -3005,11 +3059,6 @@ export function MerchivaChat({
               });
               ackInserted = true;
             }
-            const visible = stripActionBlocks(rest);
-            const display = visible || (rest.length > 0 ? "..." : "");
-            setMessages((prev) => prev.map((m) =>
-              m.id === streamMsgId ? { ...m, text: display } : m
-            ));
           }
         }
       } catch (streamErr) {
@@ -3140,13 +3189,45 @@ export function MerchivaChat({
     console.log("[Approve] Executing:", actionData);
 
     if (actionData.action === "addShift") {
-      const member = team.find((m) => m.displayName === actionData.staffName);
+      // Match by displayName case-insensitively — the AI sometimes mis-cases
+      // names ("muheng fan" vs "Muheng Fan") and the reducer requires an exact
+      // roster hit, so a strict === would needlessly reject valid proposals.
+      const wantedName = String(actionData.staffName ?? "").trim().toLowerCase();
+      const member = team.find((m) => (m.displayName ?? "").trim().toLowerCase() === wantedName);
       if (!member) {
         const validNames = team.map((m) => m.displayName);
         toast.error(`"${actionData.staffName}" is not a team member. Add them first or pick from: ${validNames.join(", ") || "(no team members yet)"}`);
         return;
       }
       actionData.memberId = member.id;
+      actionData.staffName = member.displayName;
+
+      // Validate staffRoles against the live staff_role table. The AI often
+      // emits the shift TYPE ("morning") or the permission role ("manager") in
+      // staffRoles, which the addShift reducer rejects — surfacing to the user
+      // as the opaque "InternalError: instance encountered a fatal error" from
+      // SpacetimeDB. Catch it here with a real message so the user knows what
+      // to fix, and snap any case-variant role names to their canonical form.
+      const rawRoles = Array.isArray(actionData.staffRoles)
+        ? (actionData.staffRoles as unknown[])
+        : typeof actionData.staffRoles === "string"
+          ? [actionData.staffRoles]
+          : [];
+      const roleNames = rawRoles.map((r) => String(r ?? "").trim()).filter(Boolean);
+      const validRoleByLower = new Map<string, string>(
+        staffRoles.map((r) => [String(r.name).trim().toLowerCase(), String(r.name)]),
+      );
+      const canonicalRoles = roleNames
+        .map((r) => validRoleByLower.get(r.toLowerCase()))
+        .filter((r): r is string => Boolean(r));
+      if (canonicalRoles.length === 0) {
+        const validList = [...validRoleByLower.values()].join(", ") || "(no roles defined yet)";
+        toast.error(
+          `No valid job role for shift. Got ${JSON.stringify(roleNames)} — pick one of: ${validList}.`,
+        );
+        return;
+      }
+      actionData.staffRoles = canonicalRoles;
     }
 
     // Mark as approved optimistically
@@ -3176,7 +3257,7 @@ export function MerchivaChat({
         };
       }));
     }
-  }, [messages, team]);
+  }, [messages, team, staffRoles]);
 
   const handleReject = useCallback((msgId: string, actionId: string) => {
     setMessages((prev) => prev.map((m) => {
@@ -3189,6 +3270,46 @@ export function MerchivaChat({
       };
     }));
   }, []);
+
+  // Context-menu actions on chat bubbles. We don't persist on copy because no
+  // state changes; delete/re-ask both mutate the message list and rely on the
+  // existing autosave effect (lines ~2190) to push the updated history to
+  // SpacetimeDB. Re-ask resends the original user prompt, which produces a
+  // fresh AI reply rather than mutating the old one in place.
+  const handleCopyMessage = useCallback((text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(
+      () => toast.success(t("merchiva.menuCopied")),
+      () => toast.error(t("merchiva.errorNoResponse")),
+    );
+  }, [t]);
+
+  const handleDeleteMessage = useCallback((msgId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== msgId));
+  }, []);
+
+  const handleReAsk = useCallback((msgId: string) => {
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === msgId);
+      if (idx === -1) return prev;
+      const target = prev[idx];
+      // For an AI message, walk back to the most recent user message — that's
+      // the prompt we want to re-run. For a user message, re-send it directly.
+      let userText = "";
+      if (target.from === "user") {
+        userText = target.text;
+      } else {
+        for (let i = idx - 1; i >= 0; i--) {
+          if (prev[i].from === "user") { userText = prev[i].text; break; }
+        }
+      }
+      if (!userText.trim()) return prev;
+      // Fire the resend after this state update so sendMessage sees a fresh
+      // ref to setMessages. queueMicrotask keeps us in the same paint frame.
+      queueMicrotask(() => { sendMessage(userText); });
+      return prev;
+    });
+  }, [sendMessage]);
 
   const quickChips = useMemo(() => {
     if (builderMode) {
@@ -3257,62 +3378,15 @@ export function MerchivaChat({
             )}
           </div>
           {!compact && (
-            <>
-              <button onClick={handleNewChat} title={t("merchiva.newChat")}
-                className="h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted" style={{ borderColor: M_ACC_BD }}>
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => setSessionListOpen((v) => !v)} title={t("merchiva.chatHistory")}
-                className={cn("h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted", sessionListOpen && "bg-muted")} style={{ borderColor: M_ACC_BD }}>
-                <History className="h-3.5 w-3.5" />
-              </button>
-            </>
+            <button onClick={handleClearHistory} title={t("merchiva.clearHistory")}
+              className="h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted" style={{ borderColor: M_ACC_BD }}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
           )}
         </header>
       )
 
       }
-
-      {/* Session history panel */}
-      {sessionListOpen && (
-        <div className="border-b border-border bg-stone-50/60 dark:bg-stone-950/60 max-h-[240px] overflow-auto shrink-0">
-          <div className="px-4 py-2 flex items-center justify-between">
-            <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold text-muted-foreground">{t("merchiva.history")}</span>
-            <span className="text-[10.5px] text-muted-foreground font-mono">{t("merchiva.conversations").replace("{n}", String(mySessions.length))}</span>
-          </div>
-          {mySessions.length === 0 ? (
-            <div className="px-4 py-3 text-[12px] text-muted-foreground text-center">{t("merchiva.noConversations")}</div>
-          ) : (
-            <div className="divide-y divide-border">
-              {mySessions.map((session) => {
-                const sid = session.id.toHexString ? session.id.toHexString() : String(session.id);
-                const isActive = sid === activeSessionId;
-                const ts = typeof session.updatedAt === "object" && "microsSinceUnixEpoch" in session.updatedAt
-                  ? new Date(Number(session.updatedAt.microsSinceUnixEpoch) / 1000)
-                  : new Date();
-                return (
-                  <button key={sid} onClick={() => switchSession(sid)}
-                    className={cn(
-                      "w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-stone-100/80 dark:bg-stone-800/80 transition-colors",
-                      isActive && "bg-stone-100 dark:bg-stone-800"
-                    )}>
-                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12px] font-medium truncate">{session.title || t("merchiva.untitled")}</div>
-                      <div className="text-[10.5px] text-muted-foreground font-mono">
-                        {ts.toLocaleDateString(locale, { month: "short", day: "numeric" })} · {ts.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" })}
-                      </div>
-                    </div>
-                    {session.archived && (
-                      <span className="h-4 px-1 rounded-[0.2rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 text-[8px] font-mono uppercase shrink-0">{t("merchiva.archived")}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Thread — wrapper provides positioning context for the watermark
           backdrop that sits behind the scroll area. */}
@@ -3364,22 +3438,54 @@ export function MerchivaChat({
 
         {/* User/AI conversation messages */}
         {messages.map((msg) => {
+          // Wrap any rendered bubble in a context menu so right-click on
+          // desktop and long-press on touch surface Copy / Re-ask / Delete.
+          // The menu items adapt to the role: user messages get "Re-ask",
+          // AI replies get "Regenerate", system rows skip both.
+          const renderMenu = (child: React.ReactNode) => (
+            <ContextMenu key={msg.id}>
+              <ContextMenuTrigger>{child}</ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => handleCopyMessage(msg.text)}>
+                  <Copy /> {t("merchiva.menuCopy")}
+                </ContextMenuItem>
+                {msg.from === "user" && (
+                  <ContextMenuItem onClick={() => handleReAsk(msg.id)}>
+                    <RotateCcw /> {t("merchiva.menuReAsk")}
+                  </ContextMenuItem>
+                )}
+                {msg.from === "merchiva" && (
+                  <ContextMenuItem onClick={() => handleReAsk(msg.id)}>
+                    <RotateCcw /> {t("merchiva.menuRegenerate")}
+                  </ContextMenuItem>
+                )}
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  variant="destructive"
+                  onClick={() => handleDeleteMessage(msg.id)}
+                >
+                  <Trash2 /> {t("merchiva.menuDelete")}
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          );
+
           if (msg.from === "voice-call") {
-            return <VoiceCallRow key={msg.id} message={msg} />;
+            return renderMenu(<VoiceCallRow message={msg} />);
           }
           if (msg.from === "system") {
-            return msg.actionsList ? (
-              <div key={msg.id} className="mx-auto w-full max-w-[680px]">
+            return renderMenu(msg.actionsList ? (
+              <div className="mx-auto w-full max-w-[680px]">
                 <ChatRow from="system">{msg.text}</ChatRow>
                 <ActionsListCard />
               </div>
             ) : (
-              <ChatRow key={msg.id} from="system">{msg.text}</ChatRow>
-            );
+              <ChatRow from="system">{msg.text}</ChatRow>
+            ));
           }
           if (msg.from === "user") {
-            return (
-              <div key={msg.id} className="flex justify-end">
+            return renderMenu(
+              <div className="flex justify-end">
                 <div className="max-w-[480px] rounded-lg bg-foreground text-background px-4 py-3">
                   <div className="text-[14px] leading-[1.5] whitespace-pre-wrap">{msg.text}</div>
                   <div className="text-[10px] text-background/50 mt-1 text-right font-mono">{msg.time}</div>
@@ -3387,8 +3493,23 @@ export function MerchivaChat({
               </div>
             );
           }
-          return (
-            <ChatRow key={msg.id} time={msg.time}>
+          // While the main reply is still streaming, the placeholder bubble
+          // has empty text and no actions/lists. Skip rendering it so the user
+          // only sees the ack bubble + the bottom "thinking" spinner — the
+          // full bubble appears once on finalize.
+          const isEmptyMerchivaPlaceholder =
+            !msg.text &&
+            !msg.actions?.length &&
+            !msg.actionsList &&
+            !msg.questions?.length &&
+            !msg.rolesAdd?.length &&
+            !msg.rolesList &&
+            !msg.tasksAdd?.length &&
+            !msg.tasksDelete?.length &&
+            !msg.tasksList;
+          if (isEmptyMerchivaPlaceholder) return null;
+          return renderMenu(
+            <ChatRow time={msg.time}>
               <Bubble>
                 <div className="text-[13.5px] text-stone-800 dark:text-stone-200 leading-[1.55]">
                   <MerchivaMarkdown content={msg.text} />
@@ -3465,6 +3586,7 @@ export function MerchivaChat({
             </ChatRow>
           );
         })}
+
 
         {sending && (
           <ChatRow time="">
@@ -4003,12 +4125,11 @@ export function DesktopMerchivaDashboard() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
       <style>{`@keyframes ddBlink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }`}</style>
       <KpiStrip />
-      <div className="flex-1 min-h-0 grid gap-4 p-4 grid-cols-[minmax(0,1fr)_360px]">
-        <MerchivaChat />
-        <div className="flex flex-col gap-4 min-h-0 overflow-auto">
+      <div className="flex-1 min-h-0 grid gap-4 p-4 grid-cols-2">
+        {/* <div className="flex flex-col gap-4 min-h-0 overflow-auto"> */}
           <TodayScheduleCard />
           <NotificationsCard />
-        </div>
+        {/* </div> */}
       </div>
     </div>
   );

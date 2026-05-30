@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Building, KeyRound, Map as MapIcon, Store, Trash2, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Building, ChevronRight, KeyRound, Map as MapIcon, Store, Trash2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export function OrgListView({
   roles,
   selectedId,
   searchMatchIds,
+  isMobile = false,
   onSelectNode,
   onUpdateNode,
   onDeleteNode,
@@ -47,6 +48,7 @@ export function OrgListView({
   roles: RoleRow[];
   selectedId: string | null;
   searchMatchIds: Set<string> | null;
+  isMobile?: boolean;
   onSelectNode: (id: string) => void;
   onUpdateNode: (id: string, patch: { groupId?: string | null; role?: string; perms?: string[] }) => void;
   onDeleteNode: (id: string) => void;
@@ -56,11 +58,13 @@ export function OrgListView({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [showGroupHeaders, setShowGroupHeaders] = useState(true);
 
-  const groupsById = useMemo(
-    () => Object.fromEntries(
-      nodes.filter((n): n is GroupNode => n.kind === "group").map((g) => [g.id, g]),
-    ),
+  const groupNodes = useMemo(
+    () => nodes.filter((n): n is GroupNode => n.kind === "group"),
     [nodes],
+  );
+  const groupsById = useMemo(
+    () => Object.fromEntries(groupNodes.map((g) => [g.id, g])),
+    [groupNodes],
   );
   const persons = useMemo(
     () => nodes.filter((n): n is PersonNode => n.kind === "person"),
@@ -118,6 +122,81 @@ export function OrgListView({
     return Array.from(map.entries());
   }, [visible, sortKey, showGroupHeaders]);
 
+  // ── Shared count line ──────────────────────────────────────────────────────
+  const countLine = (
+    <span className="text-stone-700 dark:text-stone-200">
+      <span className="font-mono tabular-nums font-semibold text-foreground">{visible.length}</span>
+      {searchMatchIds && <span className="text-muted-foreground"> / {persons.length}</span>}
+      <span className="text-muted-foreground"> 人</span>
+    </span>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Mobile — card list (tap a card to open the inspector sheet for editing).
+  // ─────────────────────────────────────────────────────────────────────────
+  if (isMobile) {
+    const renderCard = (p: PersonNode) => (
+      <PersonCard
+        key={p.id}
+        p={p}
+        group={p.groupId ? groupsById[p.groupId] ?? null : null}
+        role={rolesByKey[p.role] ?? roles[0]}
+        manageCount={manageCount}
+        isSelected={p.id === selectedId}
+        isMatch={!!searchMatchIds && searchMatchIds.has(p.id)}
+        onSelect={() => onSelectNode(p.id)}
+      />
+    );
+
+    return (
+      <div className="flex-1 min-h-0 overflow-auto bg-background">
+        <div className="sticky top-0 z-20 px-3.5 py-2.5 bg-background border-b border-border flex items-center gap-3 text-[11.5px]">
+          {countLine}
+          <label className="ml-auto text-[11px] text-stone-600 dark:text-stone-300 inline-flex items-center gap-1.5 cursor-pointer">
+            <Checkbox checked={showGroupHeaders} onCheckedChange={(v) => setShowGroupHeaders(!!v)} />
+            按分组
+          </label>
+        </div>
+
+        {visible.length === 0 ? (
+          <div className="px-4 py-12 text-center text-[12.5px] text-muted-foreground">
+            没有匹配的成员
+          </div>
+        ) : grouped ? (
+          grouped.map(([gid, rows]) => {
+            const g = gid === "__none" ? null : groupsById[gid];
+            const preset = g ? (ORG_GROUP_PRESETS[g.groupKind] || ORG_GROUP_PRESETS.custom) : null;
+            const Icon = preset ? (GROUP_ICON_MAP[preset.icon] || Users) : Users;
+            return (
+              <div key={gid}>
+                <div className="sticky top-[41px] z-10 flex items-center gap-2 px-3.5 py-1.5 bg-muted/60 border-y border-border backdrop-blur">
+                  {g ? (
+                    <>
+                      <span className="h-4 w-4 rounded-[0.25rem] inline-flex items-center justify-center text-white shrink-0" style={{ background: preset!.color }}>
+                        <Icon className="h-2.5 w-2.5" strokeWidth={1.75} />
+                      </span>
+                      <button onClick={() => onSelectNode(g.id)} className="text-[11.5px] font-semibold text-stone-800 dark:text-stone-100 truncate">{g.name}</button>
+                    </>
+                  ) : (
+                    <span className="text-[11.5px] font-semibold text-muted-foreground italic">未分组</span>
+                  )}
+                  <span className="ml-auto text-[10.5px] font-mono text-muted-foreground tabular-nums shrink-0">{rows.length} 人</span>
+                </div>
+                {rows.map(renderCard)}
+              </div>
+            );
+          })
+        ) : (
+          visible.map(renderCard)
+        )}
+        <div className="h-3" />
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Desktop — sortable table.
+  // ─────────────────────────────────────────────────────────────────────────
   const headerCell = (label: string, k: SortKey, className?: string) => (
     <th
       onClick={() => {
@@ -143,11 +222,7 @@ export function OrgListView({
   return (
     <div className="flex-1 min-h-0 overflow-auto bg-background">
       <div className="sticky top-0 z-20 px-4 py-2.5 bg-background border-b border-border flex items-center gap-3 sm:gap-4 text-[11.5px] flex-wrap">
-        <span className="text-stone-700 dark:text-stone-200">
-          <span className="font-mono tabular-nums font-semibold text-foreground">{visible.length}</span>
-          {searchMatchIds && <span className="text-muted-foreground"> / {persons.length}</span>}
-          <span className="text-muted-foreground"> 人</span>
-        </span>
+        {countLine}
         <div className="ml-auto flex items-center gap-2">
           <label className="text-[11px] text-stone-600 dark:text-stone-300 inline-flex items-center gap-1.5 cursor-pointer">
             <Checkbox checked={showGroupHeaders} onCheckedChange={(v) => setShowGroupHeaders(!!v)} />
@@ -172,7 +247,13 @@ export function OrgListView({
         </thead>
 
         <tbody>
-          {grouped ? grouped.flatMap(([gid, rows]) => {
+          {visible.length === 0 ? (
+            <tr>
+              <td colSpan={9} className="px-4 py-12 text-center text-[12.5px] text-muted-foreground">
+                没有匹配的成员
+              </td>
+            </tr>
+          ) : grouped ? grouped.flatMap(([gid, rows]) => {
             const g = gid === "__none" ? null : groupsById[gid];
             const preset = g ? (ORG_GROUP_PRESETS[g.groupKind] || ORG_GROUP_PRESETS.custom) : null;
             const Icon = preset ? (GROUP_ICON_MAP[preset.icon] || Users) : Users;
@@ -200,7 +281,7 @@ export function OrgListView({
                   key={p.id}
                   p={p}
                   roles={roles}
-                  groupNodes={nodes.filter((n): n is GroupNode => n.kind === "group")}
+                  groupNodes={groupNodes}
                   manageCount={manageCount}
                   isSelected={p.id === selectedId}
                   isMatch={!!searchMatchIds && searchMatchIds.has(p.id)}
@@ -215,7 +296,7 @@ export function OrgListView({
               key={p.id}
               p={p}
               roles={roles}
-              groupNodes={nodes.filter((n): n is GroupNode => n.kind === "group")}
+              groupNodes={groupNodes}
               manageCount={manageCount}
               isSelected={p.id === selectedId}
               isMatch={!!searchMatchIds && searchMatchIds.has(p.id)}
@@ -229,6 +310,77 @@ export function OrgListView({
     </div>
   );
 }
+
+// ─── Mobile card ──────────────────────────────────────────────────────────────
+
+function PersonCard({
+  p, group, role, manageCount, isSelected, isMatch, onSelect,
+}: {
+  p: PersonNode;
+  group: GroupNode | null;
+  role: RoleRow | undefined;
+  manageCount: { out: Record<string, number>; inc: Record<string, number> };
+  isSelected: boolean;
+  isMatch: boolean;
+  onSelect: () => void;
+}) {
+  const color = role?.color ?? "#78716c";
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "w-full flex items-stretch gap-0 text-left border-b border-border transition-colors active:bg-muted/60",
+        isSelected ? "bg-muted/50" : isMatch ? "bg-amber-50/60 dark:bg-amber-950/20" : "bg-background",
+      )}
+    >
+      <span className="w-1 shrink-0" style={{ background: color }} />
+      <span className="flex-1 min-w-0 flex items-center gap-3 px-3.5 py-3">
+        <span
+          className="h-9 w-9 rounded-full inline-flex items-center justify-center font-semibold text-[11.5px] shrink-0"
+          style={{ background: color + "20", color }}
+        >
+          {initials(p.name)}
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="flex items-center gap-1.5">
+            <span className="text-[14px] font-medium tracking-[-0.015em] text-foreground truncate">{p.name}</span>
+            {p.isMe && (
+              <Badge variant="outline" className="h-4 px-1 text-[9px] bg-foreground text-background border-foreground rounded-[0.2rem] shrink-0">
+                YOU
+              </Badge>
+            )}
+          </span>
+          <span className="mt-1 flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color }}>
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+              {role?.name ?? p.role}
+            </span>
+            {group && (
+              <span className="text-[11px] text-muted-foreground truncate">· {group.name}</span>
+            )}
+            <StatusPill status={p.status} />
+          </span>
+          {p.email && (
+            <span className="mt-1 block text-[11px] font-mono text-muted-foreground/80 truncate">{p.email}</span>
+          )}
+        </span>
+        <span className="shrink-0 flex flex-col items-end gap-1.5">
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground tabular-nums">
+            <span title="谁管它"><ArrowDown className="inline h-2.5 w-2.5 align-[-1px]" strokeWidth={1.75} />{manageCount.inc[p.id] || 0}</span>
+            <span title="它管谁"><ArrowUp className="inline h-2.5 w-2.5 align-[-1px]" strokeWidth={1.75} />{manageCount.out[p.id] || 0}</span>
+          </span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-muted-foreground tabular-nums">
+            <KeyRound className="h-2.5 w-2.5" strokeWidth={1.75} />{p.perms.length}
+            <ChevronRight className="h-3 w-3 text-muted-foreground/60" strokeWidth={1.75} />
+          </span>
+        </span>
+      </span>
+    </button>
+  );
+}
+
+// ─── Desktop row ──────────────────────────────────────────────────────────────
 
 function PersonRow({
   p, roles, groupNodes, manageCount, isSelected, isMatch,
@@ -388,4 +540,3 @@ function StatusPill({ status }: { status: string }) {
     </span>
   );
 }
-

@@ -18,4 +18,7 @@ export default __t.row({
   summary: __t.option(__t.string()),
   generatedBy: __t.string().name("generated_by"),
   generatedAt: __t.timestamp().name("generated_at"),
+  actions: __t.option(__t.string()),
+  problemKeys: __t.option(__t.string()).name("problem_keys"),
+  hour: __t.option(__t.i32()),
 });

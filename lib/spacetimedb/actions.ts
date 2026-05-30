@@ -620,6 +620,13 @@ export async function addMembersToConversation(convId: string, userIds: string[]
   return conn().reducers.addMembersToConversation({ conversationId: convId, userIds: JSON.stringify(userIds) });
 }
 
+// Invite / remove Mr. Merchiva from a conversation. The actual bot replies are
+// posted server-side (see /api/chat/merchiva via sendMerchivaMessage); this
+// only flips the conversation flag.
+export async function setConversationMerchiva(conversationId: string, enabled: boolean): Promise<void> {
+  return conn().reducers.setConversationMerchiva({ conversationId, enabled });
+}
+
 export async function addReaction(_messageId: string, _emoji: string): Promise<void> {
   console.warn("[SpacetimeDB] addReaction not yet implemented");
 }
@@ -1314,6 +1321,9 @@ export async function saveDailyBriefing(data: {
   content: string;
   summary?: string | null;
   generatedBy: string;
+  actions?: string | null;
+  problemKeys?: string | null;
+  hour?: number | null;
 }): Promise<void> {
   return insightsReducer("saveDailyBriefing")({
     organizationId: orgId(),
@@ -1321,6 +1331,9 @@ export async function saveDailyBriefing(data: {
     content: data.content,
     summary: data.summary ?? undefined,
     generatedBy: data.generatedBy,
+    actions: data.actions ?? undefined,
+    problemKeys: data.problemKeys ?? undefined,
+    hour: data.hour ?? undefined,
   });
 }
 
@@ -1445,8 +1458,14 @@ export async function setBriefingPref(
   briefingTime: string,
   timezone: string,
   enabled: boolean,
+  hours?: number[] | null,
 ): Promise<void> {
-  return conn().reducers.setBriefingPref({ briefingTime, timezone, enabled });
+  return conn().reducers.setBriefingPref({
+    briefingTime,
+    timezone,
+    enabled,
+    hours: hours && hours.length ? JSON.stringify(hours) : undefined,
+  });
 }
 
 /** Remove the current user's morning-briefing schedule. */

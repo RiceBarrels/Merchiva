@@ -73,6 +73,7 @@ export const ChatConversation = __t.object("ChatConversation", {
   createdBy: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
+  merchivaEnabled: __t.option(__t.bool()),
 });
 export type ChatConversation = __Infer<typeof ChatConversation>;
 
@@ -94,6 +95,7 @@ export const ChatMessage = __t.object("ChatMessage", {
   attachmentUrl: __t.option(__t.string()),
   attachmentType: __t.option(__t.string()),
   attachmentName: __t.option(__t.string()),
+  isMerchiva: __t.option(__t.bool()),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
 
@@ -132,6 +134,9 @@ export const DailyBriefing = __t.object("DailyBriefing", {
   summary: __t.option(__t.string()),
   generatedBy: __t.string(),
   generatedAt: __t.timestamp(),
+  actions: __t.option(__t.string()),
+  problemKeys: __t.option(__t.string()),
+  hour: __t.option(__t.i32()),
 });
 export type DailyBriefing = __Infer<typeof DailyBriefing>;
 
@@ -816,6 +821,7 @@ export const UserBriefingPref = __t.object("UserBriefingPref", {
   enabled: __t.bool(),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
+  hours: __t.option(__t.string()),
 });
 export type UserBriefingPref = __Infer<typeof UserBriefingPref>;
 

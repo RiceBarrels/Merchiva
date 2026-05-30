@@ -38,7 +38,7 @@ export function RightPanel({
   const springTransition = { type: "spring" as const, stiffness: 500, damping: 38, mass: 0.6 };
 
   return (
-    <div className="relative h-full w-full shrink-0 flex lg:border-l lg:border-border bg-background overflow-hidden">
+    <div className="relative h-full w-full shrink-0 flex bg-background overflow-hidden">
       {/* Expanded panel — fills the parent so the chat reflows when the ResizablePanel handle is dragged */}
       <div
         className="absolute inset-0 flex flex-col"

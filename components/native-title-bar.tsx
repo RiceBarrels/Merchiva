@@ -25,10 +25,12 @@ export function NativeTitleBar() {
   const [canBack, setCanBack] = useState(false);
   const [canFwd, setCanFwd] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isMac, setIsMac] = useState(false);
 
   useEffect(() => {
     setIsAppAsked(localStorage.getItem("isAppAsked") === "true");
     setIsMounted(true);
+    setIsMac(getNativeShellPlatform() === "macos");
   }, []);
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export function NativeTitleBar() {
     return (
       <div className="z-9999 h-12 select-none border-b border-border flex items-center gap-3 bg-foreground/95 text-background px-4">
         <div className="flex h-full items-center text-sm font-black pt-1">
-          Get Merchiva Desktop App
+          Get The Merchiva App.
         </div>
         <div className="flex-1" />
         <Link href="/download">
@@ -93,8 +95,6 @@ export function NativeTitleBar() {
     );
   }
 
-  const isMac = getNativeShellPlatform() === "macos";
-
   return (
     // Tauri 2.11+ walks the composed path: `data-tauri-drag-region="deep"`
     // makes the whole subtree draggable; bare `data-tauri-drag-region` only
@@ -104,9 +104,9 @@ export function NativeTitleBar() {
       <div
         data-tauri-drag-region="deep"
         
-        className="z-9999 select-none bg-background border-b border-border flex items-center justify-center gap-4 pt-1"
+        className="hidden lg:flex z-9999 select-none bg-background border-b border-border items-center justify-center gap-4 pt-1 px-2"
       >
-        <div className={cn("h-6 bg-foreground rounded-full duration-200 w-20 ml-2", isFullScreen && "opacity-0 -translate-x-24")} />
+        {isMac && <div className={cn("h-6 bg-foreground rounded-full duration-200 w-20", isFullScreen && "opacity-0 -translate-x-24")} />}
         <div
           data-tauri-drag-region="false"
           className={cn("flex items-center duration-300", isFullScreen && "-translate-x-24")}
@@ -123,13 +123,13 @@ export function NativeTitleBar() {
           <MerchivaLogo className="size-5 relative -left-21 duration-300" />
           {
             isNative ? (
-              <div className="relative -left-21 duration-300 flex gap-0.5">
+              <div className="flex relative -left-21 duration-300 lg:flex gap-0.5">
                 The Merchiva App
                 <div className="text-muted-foreground text-[9px]">beta</div>
               </div>
             ) : (
 
-              <div className="relative -left-21 duration-300 flex gap-0.5">
+              <div className="flex relative -left-21 duration-300 gap-0.5">
                 The Merchiva Web App
                 <div className="text-muted-foreground text-[9px]">beta</div>
               </div>

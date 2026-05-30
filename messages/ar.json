@@ -21,7 +21,11 @@
     "type": "النوع",
     "more": "المزيد",
     "saving": "جارٍ الحفظ...",
-    "switch": "تبديل"
+    "switch": "تبديل",
+    "collapse": "طيّ",
+    "expand": "توسيع",
+    "previous": "السابق",
+    "next": "التالي"
   },
   "nav": {
     "dailyManagement": "الإدارة اليومية",
@@ -1644,7 +1648,13 @@
       "saveCta": "حفظ",
       "clearCta": "إيقاف",
       "saved": "تم حفظ موعد الملخص",
-      "saveFailed": "تعذر حفظ موعد الملخص"
+      "saveFailed": "تعذر حفظ موعد الملخص",
+      "hoursLabel": "ساعات الملخص",
+      "hoursHint": "اختر الساعات لتحديث الملخص. سيتم تنبيهك فقط عند ظهور مشكلة جديدة.",
+      "presetBusiness": "ساعات العمل",
+      "presetAll": "كل ساعة",
+      "presetClear": "مسح",
+      "selectHoursWarn": "اختر ساعة واحدة على الأقل"
     },
     "groupStoreAccount": "المتجر والحساب",
     "currentStore": "المتجر الحالي",
@@ -1761,7 +1771,12 @@
     "fileFallback": "ملف",
     "timeToday": "اليوم",
     "timeYesterday": "أمس",
-    "attach": "إرفاق"
+    "attach": "إرفاق",
+    "merchivaInvite": "دعوة Mr. Merchiva",
+    "merchivaRemove": "إزالة Mr. Merchiva",
+    "merchivaOn": "Mr. Merchiva",
+    "merchivaMentionHint": "اسأل المساعد الذكي",
+    "noMatches": "لا توجد نتائج"
   },
   "dashboard": {
     "greeting": {
@@ -1770,6 +1785,28 @@
       "evening": "مساء الخير"
     },
     "morningBriefing": "إحاطة الصباح",
+    "approveAll": "الموافقة على الكل",
+    "suggestedActions": "إجراءات مقترحة",
+    "approve": "موافقة",
+    "dismiss": "تجاهل",
+    "hourlyBriefings": "ملخصات كل ساعة",
+    "backToNow": "العودة إلى الآن",
+    "hourlyScan": "فحص كل ساعة",
+    "scanning": "جارٍ الفحص…",
+    "latest": "الأحدث",
+    "todayScan": "فحص اليوم",
+    "perHour": "كل ساعة",
+    "scans": "فحوصات",
+    "flagged": "مُعلَّمة",
+    "awaitingScan": "بانتظار أول فحص",
+    "issueFlag": "مشكلة",
+    "needsAttention": "يتطلب الانتباه",
+    "allClear": "هذا الفحص لم يجد أي مشاكل — لا شيء يتطلب انتباهك في الوقت الحالي.",
+    "nextScan": "الفحص التالي",
+    "pastBriefings": "الإحاطات السابقة",
+    "regenerate": "إعادة الإنشاء",
+    "generating": "جارٍ إنشاء إحاطة اليوم…",
+    "noBriefing": "لا توجد إحاطة بعد. اضغط على تحديث لإنشاء واحدة.",
     "time": {
       "justNow": "الآن",
       "minutesAgo": "قبل {n} د",
@@ -2645,7 +2682,14 @@
       "published": "منشور",
       "plugins": "الإضافات"
     },
-    "brand": "Mr. Merchiva"
+    "brand": "Mr. Merchiva",
+    "clearHistory": "مسح السجل",
+    "clearHistoryConfirm": "مسح هذه المحادثة؟ لا يمكن التراجع عن ذلك.",
+    "menuCopy": "نسخ النص",
+    "menuReAsk": "إعادة السؤال",
+    "menuRegenerate": "إعادة توليد الرد",
+    "menuDelete": "حذف من السجل",
+    "menuCopied": "تم النسخ إلى الحافظة"
   },
   "design": {
     "list": {

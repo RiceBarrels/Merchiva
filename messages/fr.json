@@ -21,7 +21,11 @@
     "type": "Type",
     "more": "Plus",
     "saving": "Enregistrement...",
-    "switch": "Changer"
+    "switch": "Changer",
+    "collapse": "Réduire",
+    "expand": "Développer",
+    "previous": "Précédent",
+    "next": "Suivant"
   },
   "nav": {
     "dailyManagement": "Gestion quotidienne",
@@ -1644,7 +1648,13 @@
       "saveCta": "Enregistrer",
       "clearCta": "Désactiver",
       "saved": "Horaire du briefing enregistré",
-      "saveFailed": "Impossible d'enregistrer l'horaire"
+      "saveFailed": "Impossible d'enregistrer l'horaire",
+      "hoursLabel": "Heures du briefing",
+      "hoursHint": "Choisissez les heures de mise à jour du briefing. Vous serez alerté uniquement en cas de nouveau problème.",
+      "presetBusiness": "Heures d'ouverture",
+      "presetAll": "Chaque heure",
+      "presetClear": "Effacer",
+      "selectHoursWarn": "Sélectionnez au moins une heure"
     },
     "groupStoreAccount": "Magasin et compte",
     "currentStore": "Magasin actuel",
@@ -1761,7 +1771,12 @@
     "fileFallback": "Fichier",
     "timeToday": "Aujourd'hui",
     "timeYesterday": "Hier",
-    "attach": "Joindre"
+    "attach": "Joindre",
+    "merchivaInvite": "Inviter Mr. Merchiva",
+    "merchivaRemove": "Retirer Mr. Merchiva",
+    "merchivaOn": "Mr. Merchiva",
+    "merchivaMentionHint": "Demander à l'assistant IA",
+    "noMatches": "Aucun résultat"
   },
   "dashboard": {
     "greeting": {
@@ -1770,6 +1785,28 @@
       "evening": "Bonsoir"
     },
     "morningBriefing": "Briefing matinal",
+    "approveAll": "Tout approuver",
+    "suggestedActions": "Actions suggérées",
+    "approve": "Approuver",
+    "dismiss": "Ignorer",
+    "hourlyBriefings": "Briefings horaires",
+    "backToNow": "Revenir à maintenant",
+    "hourlyScan": "Inspection horaire",
+    "scanning": "inspection…",
+    "latest": "dernier",
+    "todayScan": "Inspection du jour",
+    "perHour": "horaire",
+    "scans": "inspections",
+    "flagged": "signalées",
+    "awaitingScan": "En attente de la première inspection",
+    "issueFlag": "problème",
+    "needsAttention": "Nécessite votre attention",
+    "allClear": "Cette inspection n'a rien détecté — rien ne requiert votre attention pour le moment.",
+    "nextScan": "Prochaine inspection",
+    "pastBriefings": "Briefings précédents",
+    "regenerate": "Régénérer",
+    "generating": "Génération du briefing du jour…",
+    "noBriefing": "Aucun briefing pour l'instant. Appuyez sur actualiser pour en générer un.",
     "time": {
       "justNow": "à l'instant",
       "minutesAgo": "il y a {n} min",
@@ -2645,7 +2682,14 @@
       "published": "Publié",
       "plugins": "Plugins"
     },
-    "brand": "Mr. Merchiva"
+    "brand": "Mr. Merchiva",
+    "clearHistory": "Effacer l'historique",
+    "clearHistoryConfirm": "Effacer cette conversation ? Action irréversible.",
+    "menuCopy": "Copier le texte",
+    "menuReAsk": "Reposer la question",
+    "menuRegenerate": "Régénérer la réponse",
+    "menuDelete": "Supprimer de l'historique",
+    "menuCopied": "Copié dans le presse-papiers"
   },
   "design": {
     "list": {

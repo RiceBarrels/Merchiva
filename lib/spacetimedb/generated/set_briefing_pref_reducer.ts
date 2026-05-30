@@ -14,4 +14,5 @@ export default {
   briefingTime: __t.string(),
   timezone: __t.string(),
   enabled: __t.bool(),
+  hours: __t.option(__t.string()),
 };

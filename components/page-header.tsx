@@ -35,7 +35,7 @@ export function PageHeader({
   return (
     <>
       {/* Desktop */}
-      <header className="hidden lg:flex h-14 border-b border-border bg-background items-center px-6 gap-3 shrink-0">
+      <header className="hidden lg:flex h-14 border-b border-border bg-background items-center px-6 gap-3 shrink-0 -mx-2">
         <div className="min-w-0 flex-1 flex items-center gap-3">
           {crumbs.length > 0 && (
             <div className="hidden xl:flex items-center gap-1.5 text-xs text-muted-foreground">

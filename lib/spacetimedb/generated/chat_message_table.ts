@@ -20,4 +20,5 @@ export default __t.row({
   attachmentUrl: __t.option(__t.string()).name("attachment_url"),
   attachmentType: __t.option(__t.string()).name("attachment_type"),
   attachmentName: __t.option(__t.string()).name("attachment_name"),
+  isMerchiva: __t.option(__t.bool()).name("is_merchiva"),
 });

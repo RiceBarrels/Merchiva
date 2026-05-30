@@ -4,6 +4,44 @@ use tauri::LogicalPosition;
 use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_opener::OpenerExt;
 
+// macOS: promote the quick-dialog overlay so it draws over fullscreen apps.
+//
+// By default tao's `set_always_on_top(true)` only raises the NSWindow to
+// `NSFloatingWindowLevel` (3), which sits over normal windows but NOT over a
+// fullscreen app — fullscreen apps own their own Space, and a floating window
+// without `FullScreenAuxiliary` in its collection behavior is excluded from it.
+//
+// We fix both halves:
+//   • add `NSWindowCollectionBehaviorFullScreenAuxiliary` (and CanJoinAllSpaces
+//     + Stationary) so the window is allowed into a fullscreen Space and stays
+//     put when switching Spaces;
+//   • raise the level to `NSPopUpMenuWindowLevel` (101) so it sits above the
+//     fullscreen app's own contents.
+#[cfg(target_os = "macos")]
+fn configure_overlay_for_fullscreen(window: &tauri::WebviewWindow) {
+    use objc2::msg_send;
+    use objc2::runtime::AnyObject;
+
+    let Ok(ns_window_ptr) = window.ns_window() else { return };
+    if ns_window_ptr.is_null() {
+        return;
+    }
+
+    // Constants from <AppKit/NSWindow.h>
+    const CAN_JOIN_ALL_SPACES: usize = 1 << 0;
+    const STATIONARY: usize = 1 << 4;
+    const FULLSCREEN_AUXILIARY: usize = 1 << 8;
+    const POPUP_MENU_LEVEL: isize = 101;
+
+    unsafe {
+        let obj: &AnyObject = &*(ns_window_ptr as *const AnyObject);
+        let current: usize = msg_send![obj, collectionBehavior];
+        let merged: usize = current | CAN_JOIN_ALL_SPACES | STATIONARY | FULLSCREEN_AUXILIARY;
+        let _: () = msg_send![obj, setCollectionBehavior: merged];
+        let _: () = msg_send![obj, setLevel: POPUP_MENU_LEVEL];
+    }
+}
+
 #[cfg(debug_assertions)]
 const APP_URL: &str = "http://localhost:3000/login";
 #[cfg(not(debug_assertions))]
@@ -146,6 +184,10 @@ fn show_quick_overlay(app: &tauri::AppHandle) {
     let _ = overlay.set_always_on_top(true);
     // Show over fullscreen apps / other Spaces (macOS) and every workspace.
     let _ = overlay.set_visible_on_all_workspaces(true);
+    // macOS: re-apply our higher window level + FullScreenAuxiliary AFTER
+    // set_always_on_top (which would otherwise pin the level back to floating).
+    #[cfg(target_os = "macos")]
+    configure_overlay_for_fullscreen(&overlay);
     let _ = overlay.show();
     let _ = overlay.set_focus();
 }
@@ -207,10 +249,10 @@ pub fn run() {
             let url = APP_URL.parse().expect("APP_URL must be a valid URL");
             #[allow(unused_mut)]
             let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
-                .title("Merchiva")
+                .title("")
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(1024.0, 600.0)
-                .background_color(tauri::webview::Color(255, 255, 255, 255));
+                .background_color(tauri::webview::Color(0, 0, 0, 255));
 
             #[cfg(target_os = "macos")]
             {
@@ -258,6 +300,10 @@ pub fn run() {
                         let _ = overlay_for_event.hide();
                     }
                 });
+
+                // macOS: allow the overlay into fullscreen Spaces + raise its level.
+                #[cfg(target_os = "macos")]
+                configure_overlay_for_fullscreen(&overlay);
 
                 // Summon with ⌘⇧M (macOS) / Ctrl+Shift+M (Windows/Linux), system-wide.
                 use tauri_plugin_global_shortcut::GlobalShortcutExt;

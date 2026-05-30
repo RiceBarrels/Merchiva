@@ -547,6 +547,11 @@ const chatConversationTable = table(
     createdBy: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
+    // When true, Mr. Merchiva is "in" this conversation: he must reply when
+    // @mentioned, and otherwise runs a cheap relevance check before chiming in.
+    // Added at end of table per migration rules; .default(undefined) lets
+    // existing rows migrate without data loss.
+    merchivaEnabled: t.option(t.bool()).default(undefined),
   }
 );
 
@@ -585,6 +590,11 @@ const chatMessageTable = table(
     attachmentUrl: t.option(t.string()).default(undefined),
     attachmentType: t.option(t.string()).default(undefined),
     attachmentName: t.option(t.string()).default(undefined),
+    // True for messages authored by Mr. Merchiva. The row is inserted by the
+    // triggering user's identity (no server identity yet), so the client uses
+    // this flag — not senderId — to render the bot's name/avatar. Added at end
+    // per migration rules; .default(undefined) migrates existing rows safely.
+    isMerchiva: t.option(t.bool()).default(undefined),
   }
 );
 
@@ -1336,6 +1346,20 @@ const dailyBriefingTable = table(
     summary: t.option(t.string()),     // one-line headline
     generatedBy: t.string(),           // model name
     generatedAt: t.timestamp(),
+    // JSON-encoded array of AI-proposed one-click actions:
+    // [{ label, action, params }] where `action` is a Mr. Merchiva action name
+    // and `params` is its argument object. Rendered as approval cards in the
+    // briefing. Added at end of table per migration rules; .default(undefined)
+    // lets existing rows migrate without data loss.
+    actions: t.option(t.string()).default(undefined),
+    // JSON-encoded array of stable problem-signature strings present in this
+    // briefing. Each hourly run diffs against the prior run's keys to decide
+    // whether a NEW problem appeared (→ notify the manager). Added at end.
+    problemKeys: t.option(t.string()).default(undefined),
+    // Hour (0–23, org-local) this snapshot was generated for. Lets the briefing
+    // keep one row per (org, date, hour) so the chat can browse the day's
+    // hourly history by time. null = legacy single daily row. Added at end.
+    hour: t.option(t.i32()).default(undefined),
   }
 );
 
@@ -1514,11 +1538,15 @@ const userBriefingPrefTable = table(
   },
   {
     userId: t.identity().primaryKey(),
-    briefingTime: t.string(),   // "HH:mm" — hour-aligned in practice
+    briefingTime: t.string(),   // "HH:mm" — legacy single time; still the fallback
     timezone: t.string(),       // IANA, e.g. "Asia/Shanghai"
     enabled: t.bool(),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
+    // JSON-encoded array of hours (0–23) at which the briefing regenerates and,
+    // if a NEW problem appears, notifies the manager. Empty/null → fall back to
+    // the single `briefingTime` hour. Added at end per migration rules.
+    hours: t.option(t.string()).default(undefined),
   }
 );
 
@@ -3161,6 +3189,7 @@ export const createConversation = spacetimedb.reducer(
       createdBy: member.id.toString(),
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
+      merchivaEnabled: undefined,
     });
 
     const senderHex = ctx.sender.toString();
@@ -3203,6 +3232,7 @@ export const sendMessage = spacetimedb.reducer(
       attachmentUrl,
       attachmentType,
       attachmentName,
+      isMerchiva: undefined,
     });
 
     // Bump conversation updatedAt
@@ -3237,6 +3267,88 @@ export const sendMessage = spacetimedb.reducer(
           createdAt: ctx.timestamp,
         });
       }
+    }
+  }
+);
+
+// Toggle whether Mr. Merchiva participates in a conversation. Any member of the
+// conversation may invite/remove him. Only meaningful for group chats.
+export const setConversationMerchiva = spacetimedb.reducer(
+  {
+    conversationId: t.string(),
+    enabled: t.bool(),
+  },
+  (ctx, { conversationId, enabled }) => {
+    const isMember = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
+      .some(m => m.conversationId === conversationId);
+    if (!isMember) unauthorized('Not a conversation member');
+
+    const conv = [...ctx.db.chatConversation.iter()]
+      .find(c => c.id.toString() === conversationId);
+    if (!conv) return;
+    ctx.db.chatConversation.delete(conv);
+    ctx.db.chatConversation.insert({
+      ...conv,
+      merchivaEnabled: enabled ? true : undefined,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+// Post a Mr. Merchiva reply into a conversation. There's no server identity
+// yet, so the Next.js API route calls this with the triggering user's token —
+// the row is therefore inserted under that user's identity but flagged
+// isMerchiva=true so clients render it as the bot. Requires the conversation to
+// have Merchiva enabled and the caller to be a member.
+export const sendMerchivaMessage = spacetimedb.reducer(
+  {
+    conversationId: t.string(),
+    content: t.string(),
+  },
+  (ctx, { conversationId, content }) => {
+    const isMember = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
+      .some(m => m.conversationId === conversationId);
+    if (!isMember) unauthorized('Not a conversation member');
+
+    const conv = [...ctx.db.chatConversation.iter()]
+      .find(c => c.id.toString() === conversationId);
+    if (!conv || conv.merchivaEnabled !== true) {
+      unauthorized('Mr. Merchiva is not in this conversation');
+      return;
+    }
+
+    ctx.db.chatMessage.insert({
+      id: ctx.newUuidV4(),
+      conversationId,
+      senderId: ctx.sender,
+      content,
+      createdAt: ctx.timestamp,
+      replyToId: undefined,
+      attachmentUrl: undefined,
+      attachmentType: undefined,
+      attachmentName: undefined,
+      isMerchiva: true,
+    });
+
+    ctx.db.chatConversation.delete(conv);
+    ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
+
+    // Notify every member except whoever triggered the reply.
+    const preview = content.length > 140 ? content.slice(0, 137) + '...' : content;
+    const members = [...ctx.db.chatMember.byConversationId.filter(conversationId)];
+    for (const m of members) {
+      if (m.userId.toString() === ctx.sender.toString()) continue;
+      ctx.db.notification.insert({
+        id: ctx.newUuidV4(),
+        organizationId: conv.organizationId,
+        targetId: m.userId,
+        type: 'team',
+        title: 'Mr. Merchiva',
+        body: preview,
+        link: '/~/chat',
+        read: false,
+        createdAt: ctx.timestamp,
+      });
     }
   }
 );
@@ -5343,13 +5455,22 @@ export const saveDailyBriefing = spacetimedb.reducer(
     content: t.string(),
     summary: t.option(t.string()),
     generatedBy: t.string(),
+    actions: t.option(t.string()),
+    problemKeys: t.option(t.string()),
+    hour: t.option(t.i32()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
+    // Upsert the (org, date, hour) snapshot — other hours of the day are kept
+    // so the chat can browse the day's hourly history.
     for (const row of [...ctx.db.dailyBriefing.iter()]) {
-      if (row.organizationId === args.organizationId && row.date === args.date) {
+      if (
+        row.organizationId === args.organizationId &&
+        row.date === args.date &&
+        row.hour === args.hour
+      ) {
         ctx.db.dailyBriefing.delete(row);
       }
     }
@@ -5362,6 +5483,9 @@ export const saveDailyBriefing = spacetimedb.reducer(
       summary: args.summary,
       generatedBy: args.generatedBy,
       generatedAt: ctx.timestamp,
+      actions: args.actions,
+      problemKeys: args.problemKeys,
+      hour: args.hour,
     });
   }
 );
@@ -5870,12 +5994,20 @@ export const serviceSaveDailyBriefing = spacetimedb.reducer(
     content: t.string(),
     summary: t.option(t.string()),
     generatedBy: t.string(),
+    actions: t.option(t.string()),
+    problemKeys: t.option(t.string()),
+    hour: t.option(t.i32()),
   },
   (ctx, args) => {
     if (!isServiceCaller(ctx)) unauthorized('Service identity required');
 
+    // Upsert the (org, date, hour) snapshot — keep the day's other hours.
     for (const row of [...ctx.db.dailyBriefing.iter()]) {
-      if (row.organizationId === args.organizationId && row.date === args.date) {
+      if (
+        row.organizationId === args.organizationId &&
+        row.date === args.date &&
+        row.hour === args.hour
+      ) {
         ctx.db.dailyBriefing.delete(row);
       }
     }
@@ -5888,6 +6020,9 @@ export const serviceSaveDailyBriefing = spacetimedb.reducer(
       summary: args.summary,
       generatedBy: args.generatedBy,
       generatedAt: ctx.timestamp,
+      actions: args.actions,
+      problemKeys: args.problemKeys,
+      hour: args.hour,
     });
   }
 );
@@ -5928,8 +6063,9 @@ export const setBriefingPref = spacetimedb.reducer(
     briefingTime: t.string(),
     timezone: t.string(),
     enabled: t.bool(),
+    hours: t.option(t.string()),
   },
-  (ctx, { briefingTime, timezone, enabled }) => {
+  (ctx, { briefingTime, timezone, enabled, hours }) => {
     const existing = ctx.db.userBriefingPref.userId.find(ctx.sender);
     if (existing) {
       ctx.db.userBriefingPref.userId.update({
@@ -5937,6 +6073,7 @@ export const setBriefingPref = spacetimedb.reducer(
         briefingTime,
         timezone,
         enabled,
+        hours,
         updatedAt: ctx.timestamp,
       });
     } else {
@@ -5947,6 +6084,7 @@ export const setBriefingPref = spacetimedb.reducer(
         enabled,
         createdAt: ctx.timestamp,
         updatedAt: ctx.timestamp,
+        hours,
       });
     }
   }

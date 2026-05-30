@@ -15,15 +15,19 @@ function PopoverTrigger(props: PopoverPrimitive.Trigger.Props) {
 function PopoverContent({
   className,
   align = "center",
+  side,
   sideOffset = 4,
+  anchor,
   ...props
 }: PopoverPrimitive.Popup.Props & {
   align?: "start" | "center" | "end";
+  side?: "top" | "bottom" | "left" | "right";
   sideOffset?: number;
+  anchor?: PopoverPrimitive.Positioner.Props["anchor"];
 }) {
   return (
     <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner align={align} sideOffset={sideOffset}>
+      <PopoverPrimitive.Positioner align={align} side={side} sideOffset={sideOffset} anchor={anchor}>
         <PopoverPrimitive.Popup
           className={cn(
             "z-50 rounded-[0.3rem] border border-border bg-popover p-3 text-popover-foreground shadow-md outline-none",

@@ -183,6 +183,9 @@ export function OrgPanel({ orgId }: { orgId: string }) {
               onDropPersonInGroup={graph.dropPersonInGroup}
               onCreateEdge={graph.createEdge}
               onDeleteEdge={graph.deleteEdge}
+              onDeleteNode={graph.deleteNode}
+              onAddGroup={graph.addGroup}
+              onDuplicateGroup={graph.duplicateGroup}
               onBgClick={() => setSelectedId(null)}
               highlightIds={highlightIds}
               searchMatchIds={searchMatchIds}
@@ -209,6 +212,7 @@ export function OrgPanel({ orgId }: { orgId: string }) {
             roles={graph.roles}
             selectedId={selectedId}
             searchMatchIds={searchMatchIds}
+            isMobile={isMobile}
             onSelectNode={setSelectedId}
             onUpdateNode={graph.updateNode}
             onDeleteNode={graph.deleteNode}

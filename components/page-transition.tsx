@@ -33,28 +33,22 @@ export function PageTransition({ children }: { children: ReactNode }) {
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={pathname}
-          initial={skip.current ? false : { y: "100%", scale: 0.95 }}
+          initial={skip.current ? false : { scale: 0.95, opacity: 0 }}
           animate={skip.current
-            ? { y: 0, scale: 1, transition: { duration: 0 } }
+            ? { scale: 1, opacity: 1, transition: { duration: 0 } }
             : {
-                y: 0,
                 scale: 1,
-                transition: {
-                  y: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-                  scale: { duration: 0.2, delay: 0.3, ease: "easeOut" },
-                },
+                opacity: 1,
+                transition: { duration: 0.2, ease: "easeOut" },
               }
           }
           exit={skip.current ? { transition: { duration: 0 } } : {
-            y: "-100%",
             scale: 0.95,
-            transition: {
-              scale: { duration: 0.15, ease: "easeIn" },
-              y: { duration: 0.3, delay: 0.15, ease: [0.4, 0, 0.2, 1] },
-            },
+            opacity: 0,
+            transition: { duration: 0.15, ease: "easeIn" },
           }}
           onAnimationComplete={onAnimComplete}
-          className="flex flex-col flex-1 min-h-0 gap-1 overflow-y-auto"
+          className="flex flex-col flex-1 min-h-0 gap-1 overflow-y-auto px-2"
         >
           <FrozenRouter>{children}</FrozenRouter>
         </motion.div>

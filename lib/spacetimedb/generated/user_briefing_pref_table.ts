@@ -17,4 +17,5 @@ export default __t.row({
   enabled: __t.bool(),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),
+  hours: __t.option(__t.string()),
 });
