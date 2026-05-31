@@ -3,9 +3,20 @@ import { Dashboard } from "./Dashboard.tsx";
 import { Inventory } from "./Inventory.tsx";
 import { Sales } from "./Sales.tsx";
 import { Products } from "./Products.tsx";
+import { Pricing } from "./Pricing.tsx";
 import { Personnel } from "./Personnel.tsx";
 import { Customers } from "./Customers.tsx";
 import { Chat } from "./Chat.tsx";
+import { Schedule } from "./Schedule.tsx";
+import { Suppliers } from "./Suppliers.tsx";
+import { Waste } from "./Waste.tsx";
+import { Finances } from "./Finances.tsx";
+import { Reports } from "./Reports.tsx";
+import { Roles } from "./Roles.tsx";
+import { Training } from "./Training.tsx";
+import { Marketing } from "./Marketing.tsx";
+import { Membership } from "./Membership.tsx";
+import { Settings } from "./Settings.tsx";
 import { Placeholder } from "./Placeholder.tsx";
 
 export interface PageProps {
@@ -18,16 +29,34 @@ export interface PageProps {
   setCapturing: (b: boolean) => void;
 }
 
+// Pages that take the standard interactive props (list + forms + selection).
+type FullPage = (p: { height: number; focused: boolean; setCapturing: (b: boolean) => void }) => React.ReactElement;
+const full =
+  (C: FullPage) =>
+  (p: PageProps): React.ReactElement =>
+    C({ height: p.height, focused: p.focused, setCapturing: p.setCapturing });
+
 // page key → renderer. Anything not listed falls back to <Placeholder>, which
 // keeps the same header/tabs frame so navigation always feels complete.
 const REGISTRY: Record<string, (p: PageProps) => React.ReactElement> = {
-  dashboard: () => <Dashboard />,
-  inventory: (p) => <Inventory height={p.height} focused={p.focused} setCapturing={p.setCapturing} />,
+  dashboard: (p) => <Dashboard focused={p.focused} />,
+  inventory: full(Inventory),
+  suppliers: full(Suppliers),
+  waste: full(Waste),
+  products: full(Products),
+  pricing: full(Pricing),
   sales: (p) => <Sales height={p.height} />,
-  products: (p) => <Products height={p.height} focused={p.focused} setCapturing={p.setCapturing} />,
+  reports: full(Reports),
+  finances: full(Finances),
   personnel: (p) => <Personnel height={p.height} />,
+  schedule: full(Schedule),
+  roles: full(Roles),
+  training: full(Training),
   customers: (p) => <Customers height={p.height} />,
+  marketing: full(Marketing),
   chat: (p) => <Chat focused={p.focused} height={p.height} />,
+  membership: () => <Membership />,
+  settings: () => <Settings />,
 };
 
 export function renderPage(props: PageProps): React.ReactElement {
