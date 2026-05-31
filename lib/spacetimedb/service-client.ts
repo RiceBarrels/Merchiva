@@ -257,6 +257,78 @@ export function getAdminOrgsForUser(
     .map((m: any) => m.organizationId as string);
 }
 
+// ─── Mr. Merchiva background-reply notification target ──────────────────────────
+//
+// When a backgrounded ai_job finalizes the user may have left the site, so the
+// enqueue worker can't notify from the client. This reads the job owner's
+// identity and push subscriptions straight from the service connection's cache
+// so the worker can fire an in-app notification + web push server-side.
+
+const aiNotifySubscribed = new WeakSet<object>();
+
+export interface AiReplyTarget {
+  targetIdentity: Identity;
+  pushSubs: Array<{ endpoint: string; p256dh: string; auth: string }>;
+}
+
+/**
+ * Resolve the owner (and their push subscriptions) of the most-recent ai_job
+ * for the given session. Returns null when no matching job is found or the
+ * connection isn't usable. Best-effort — never throws.
+ */
+export async function getAiReplyTarget(
+  conn: ServiceConn,
+  organizationId: string,
+  sessionId: string,
+): Promise<AiReplyTarget | null> {
+  try {
+    if (!aiNotifySubscribed.has(conn)) {
+      await subscribeAndWait(conn, [
+        "SELECT * FROM ai_job",
+        "SELECT * FROM push_subscription",
+      ]);
+      aiNotifySubscribed.add(conn);
+    }
+
+    // Newest job for this session — createAiJob stamps userId = the sender, and
+    // the client only enqueues one job per send, so this is unambiguous.
+    const jobs = [...conn.db.aiJob.iter()].filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (j: any) => j.organizationId === organizationId && j.sessionId === sessionId,
+    );
+    if (jobs.length === 0) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const toMs = (j: any) =>
+      typeof j.createdAt === "object" && j.createdAt && "microsSinceUnixEpoch" in j.createdAt
+        ? Number((j.createdAt as { microsSinceUnixEpoch: bigint }).microsSinceUnixEpoch)
+        : new Date(String(j.createdAt)).getTime();
+    jobs.sort((a, b) => toMs(b) - toMs(a));
+    const job = jobs[0];
+    const targetIdentity: Identity = job.userId;
+    if (!targetIdentity) return null;
+
+    const hex = targetIdentity.toHexString?.() ?? String(targetIdentity);
+    const pushSubs = [...conn.db.pushSubscription.iter()]
+      .filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (r: any) =>
+          r.organizationId === organizationId &&
+          (r.targetId?.toHexString?.() ?? String(r.targetId)) === hex,
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((r: any) => ({
+        endpoint: r.endpoint as string,
+        p256dh: r.p256Dh as string,
+        auth: r.auth as string,
+      }));
+
+    return { targetIdentity, pushSubs };
+  } catch (err) {
+    console.warn("[getAiReplyTarget] failed:", err);
+    return null;
+  }
+}
+
 // ─── Service reducer wrappers ──────────────────────────────────────────────────
 
 export async function serviceSaveDailyBriefing(

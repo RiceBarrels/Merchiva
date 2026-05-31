@@ -714,6 +714,20 @@ export const Supplier = __t.object("Supplier", {
 });
 export type Supplier = __Infer<typeof Supplier>;
 
+export const SupplierMessage = __t.object("SupplierMessage", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  supplierId: __t.string(),
+  poId: __t.option(__t.string()),
+  direction: __t.string(),
+  channel: __t.string(),
+  subject: __t.option(__t.string()),
+  body: __t.string(),
+  status: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+});
+export type SupplierMessage = __Infer<typeof SupplierMessage>;
+
 export const TimeOffRequest = __t.object("TimeOffRequest", {
   id: __t.uuid(),
   userId: __t.identity(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, cloneElement, Children, type ReactNode, type ReactElement } from "react";
 import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones, Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, MousePointer2, Copy, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/skills/registry";
 import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
 import { useAiJobs } from "@/lib/spacetimedb/hooks";
-import { consumeAiJob, deleteAiJob } from "@/lib/spacetimedb/actions";
+import { consumeAiJob, deleteAiJob, markNotificationRead } from "@/lib/spacetimedb/actions";
 import { getStoredToken } from "@/lib/spacetimedb/client";
 import { useAuth } from "@/lib/auth/context";
 import type { ChatMessage, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
@@ -701,6 +701,7 @@ const ACTION_META: Record<string, { icon: React.ReactNode; fields: string[]; ris
   updateSupplier:      { icon: <Pencil className="h-3 w-3" />, fields: ["supplierId", "name", "contactName"] },
   deleteSupplier:      { icon: <Trash2 className="h-3 w-3" />, fields: ["supplierId"], risk: "high" },
   createPurchaseOrder: { icon: <Truck className="h-3 w-3" />, fields: ["supplierId", "items", "total"] },
+  orderFromSupplier:   { icon: <Mail className="h-3 w-3" />, fields: ["supplierId", "items", "total", "notes"], risk: "high" },
   // Notifications
   createNotification:  { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
   sendNotification:    { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
@@ -732,7 +733,15 @@ function formatActionValue(val: unknown, depth = 0): string {
   return String(val);
 }
 
-function ShiftPreviewStrip({ action }: { action: Record<string, unknown> }) {
+function ShiftPreviewStrip({ action, validRoleNamesLower }: {
+  action: Record<string, unknown>;
+  // Lowercase set of role names that actually exist in staff_role for this org.
+  // When the AI proposes a name that's NOT in here we render the badge red so
+  // the user can spot the bad card without clicking approve and reading the
+  // toast. If undefined (caller didn't thread it through), we skip validation
+  // and render every role neutral — same as before.
+  validRoleNamesLower?: Set<string>;
+}) {
   const name = String(action.staffName ?? "");
   const date = String(action.date ?? "");
   const start = String(action.startTime ?? "");
@@ -773,15 +782,23 @@ function ShiftPreviewStrip({ action }: { action: Record<string, unknown> }) {
           {type}
         </span>
       )}
-      {roles.map((roleName) => (
-        <span
-          key={roleName}
-          className="text-[10px] px-1.5 py-0.5 rounded border bg-stone-50 dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700"
-          title="Job role"
-        >
-          {roleName}
-        </span>
-      ))}
+      {roles.map((roleName) => {
+        const isInvalid = validRoleNamesLower && !validRoleNamesLower.has(roleName.toLowerCase());
+        return (
+          <span
+            key={roleName}
+            className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded border",
+              isInvalid
+                ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900 line-through"
+                : "bg-stone-50 dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700",
+            )}
+            title={isInvalid ? "Not a job role in this org — approve will be rejected" : "Job role"}
+          >
+            {roleName}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -873,12 +890,15 @@ function BuilderEditPreview({ action }: { action: Record<string, unknown> }) {
   );
 }
 
-function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted }: {
+function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, validRoleNamesLower }: {
   action: Record<string, unknown>;
   onApprove: () => void;
   onReject: () => void;
   status: "pending" | "approved" | "rejected";
   alreadyExecuted?: boolean;
+  // Passed through to ShiftPreviewStrip so addShift cards can flag invalid
+  // staffRoles before the user clicks approve and trips the validator.
+  validRoleNamesLower?: Set<string>;
 }) {
   const t = useT();
   const actionName = String(action.action ?? "unknown");
@@ -953,7 +973,7 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
       </div>
 
       {/* Rich preview for specific action types */}
-      {isShiftAction && status !== "rejected" && <ShiftPreviewStrip action={action} />}
+      {isShiftAction && status !== "rejected" && <ShiftPreviewStrip action={action} validRoleNamesLower={validRoleNamesLower} />}
       {isRoleAction && status !== "rejected" && <RolePreviewStrip action={action} />}
       {isBuilderAdd && status !== "rejected" && <BuilderAddPreview action={action} />}
       {isBuilderDelete && status !== "rejected" && <BuilderDeletePreview action={action} />}
@@ -1949,13 +1969,69 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
 
 // ── Markdown renderer ──────────────────────────────────────────────────────
 
+// Extended icon map for the `:iconname:` inline syntax the AI can use in
+// chat replies (the prompt tells it to use these instead of emoji). Built
+// on top of ROLE_ICON_MAP and adds the icons most useful for chat prose.
+const INLINE_ICON_MAP: Record<string, LucideIcon> = {
+  ...ROLE_ICON_MAP,
+  check: Check, x: X, calendar: Calendar, "alert-triangle": AlertTriangle,
+  plus: Plus, "arrow-right": ArrowRight, "arrow-up": ArrowUp,
+  "arrow-left-right": ArrowLeftRight, sparkles: Sparkles, pencil: Pencil,
+  trash: Trash2, "trash-2": Trash2, "user-plus": UserPlus, "user-minus": UserMinus,
+  "check-circle": CheckCircle2, "check-circle-2": CheckCircle2,
+  "rotate-ccw": RotateCcw, copy: Copy, "list-checks": ListChecks,
+  tag: Tag, ticket: Ticket, "chevron-right": ChevronRight,
+  "chevron-down": ChevronDown, "chevron-up": ChevronUp, eye: Eye,
+  bell: Bell, mic: Mic, paperclip: Paperclip, "calendar-x": CalendarX,
+  package: Package, users: Users,
+};
+
+function InlineLucide({ name }: { name: string }) {
+  const Comp = INLINE_ICON_MAP[name];
+  // Unknown icon name → render the literal `:name:` so the user can see
+  // what the model tried to insert. Less surprising than silently dropping.
+  if (!Comp) return <span>:{name}:</span>;
+  return <Comp className="inline-block h-[1em] w-[1em] align-text-bottom mx-0.5" aria-hidden="true" />;
+}
+
+// Walk ReactMarkdown's rendered children and replace `:iconname:` substrings
+// inside text nodes with <InlineLucide />. Recurses into nested elements
+// (e.g. text inside <strong>), but skips code/pre blocks so the syntax can
+// still be referenced literally in docs.
+const ICON_RE = /:([a-z][a-z0-9-]*):/g;
+function replaceInlineIcons(children: ReactNode): ReactNode {
+  if (typeof children === "string") {
+    if (!children.includes(":")) return children;
+    const parts: ReactNode[] = [];
+    let lastIdx = 0;
+    let match: RegExpExecArray | null;
+    ICON_RE.lastIndex = 0;
+    while ((match = ICON_RE.exec(children)) !== null) {
+      if (match.index > lastIdx) parts.push(children.slice(lastIdx, match.index));
+      parts.push(<InlineLucide key={`${match.index}-${match[1]}`} name={match[1]} />);
+      lastIdx = match.index + match[0].length;
+    }
+    if (parts.length === 0) return children;
+    if (lastIdx < children.length) parts.push(children.slice(lastIdx));
+    return parts;
+  }
+  if (Array.isArray(children)) return Children.map(children, replaceInlineIcons);
+  if (isValidElement(children)) {
+    const el = children as ReactElement<{ children?: ReactNode }>;
+    if (el.type === "code" || el.type === "pre") return el;
+    if (el.props.children == null) return el;
+    return cloneElement(el, undefined, replaceInlineIcons(el.props.children));
+  }
+  return children;
+}
+
 const mdComponents: Record<string, React.ComponentType<React.HTMLAttributes<HTMLElement> & { href?: string; children?: React.ReactNode }>> = {
-  p: ({ children, ...props }) => <p className="mb-1.5 last:mb-0" {...props}>{children}</p>,
-  strong: ({ children, ...props }) => <strong className="font-semibold" {...props}>{children}</strong>,
-  em: ({ children, ...props }) => <em {...props}>{children}</em>,
+  p: ({ children, ...props }) => <p className="mb-1.5 last:mb-0" {...props}>{replaceInlineIcons(children)}</p>,
+  strong: ({ children, ...props }) => <strong className="font-semibold" {...props}>{replaceInlineIcons(children)}</strong>,
+  em: ({ children, ...props }) => <em {...props}>{replaceInlineIcons(children)}</em>,
   ul: ({ children, ...props }) => <ul className="list-disc pl-4 mb-1.5 last:mb-0 space-y-0.5" {...props}>{children}</ul>,
   ol: ({ children, ...props }) => <ol className="list-decimal pl-4 mb-1.5 last:mb-0 space-y-0.5" {...props}>{children}</ol>,
-  li: ({ children, ...props }) => <li className="text-[13.5px]" {...props}>{children}</li>,
+  li: ({ children, ...props }) => <li className="text-[13.5px]" {...props}>{replaceInlineIcons(children)}</li>,
   code: ({ children, className, ...props }) => {
     if (className?.includes("language-")) {
       return <code className="block bg-stone-100 dark:bg-stone-800 rounded-[0.3rem] p-2 text-[11px] font-mono text-stone-700 dark:text-stone-300 overflow-x-auto my-1.5" {...props}>{children}</code>;
@@ -1968,8 +2044,8 @@ const mdComponents: Record<string, React.ComponentType<React.HTMLAttributes<HTML
   h3: ({ children, ...props }) => <h3 className="text-[14px] font-semibold mb-1" {...props}>{children}</h3>,
   blockquote: ({ children, ...props }) => <blockquote className="border-l-2 border-stone-300 dark:border-stone-700 pl-3 text-stone-600 dark:text-stone-300 my-1.5" {...props}>{children}</blockquote>,
   table: ({ children, ...props }) => <div className="overflow-x-auto my-1.5"><table className="text-[12px] w-full border-collapse" {...props}>{children}</table></div>,
-  th: ({ children, ...props }) => <th className="text-left px-2 py-1 border-b border-border font-semibold text-[11px] font-mono uppercase text-stone-500 dark:text-stone-400" {...props}>{children}</th>,
-  td: ({ children, ...props }) => <td className="px-2 py-1 border-b border-border/50" {...props}>{children}</td>,
+  th: ({ children, ...props }) => <th className="text-left px-2 py-1 border-b border-border font-semibold text-[11px] font-mono uppercase text-stone-500 dark:text-stone-400" {...props}>{replaceInlineIcons(children)}</th>,
+  td: ({ children, ...props }) => <td className="px-2 py-1 border-b border-border/50" {...props}>{replaceInlineIcons(children)}</td>,
   hr: (props) => <hr className="border-border my-2" {...props} />,
   a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-stone-700 dark:text-stone-300 hover:text-foreground" {...props}>{children}</a>,
 };
@@ -2310,6 +2386,13 @@ export function MerchivaChat({
   const [rawStaffRoleRows] = useStaffRoles() as [unknown[], boolean];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const staffRoles = (rawStaffRoleRows ?? []).filter((r: any) => r && typeof r === "object" && r.name) as Array<{ id: any; name: string; color: string; icon: string; description: string; permissions: string }>;
+  // Lowercase set of role names — fed to ShiftPreviewStrip so it can flag
+  // invalid addShift.staffRoles in red the moment the card renders, instead
+  // of waiting for handleApprove to fail.
+  const validRoleNamesLower = useMemo(
+    () => new Set(staffRoles.map((r) => String(r.name).trim().toLowerCase())),
+    [staffRoles],
+  );
   const staffRolesRef = useRef(staffRoles);
   staffRolesRef.current = staffRoles;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2401,14 +2484,18 @@ export function MerchivaChat({
       team: team.map((m) => ({
         id: m.id,
         name: m.displayName,
-        // Permission level on the org (owner / manager / staff). Renamed from
-        // `role` because the AI kept picking this string when asked to fill
-        // `staffRoles` on addShift — it MUST use a name from the top-level
-        // `roles[]` array (job roles) instead, never this permission level.
-        permissionRole: m.role,
         // `hasPunchInCode` lets Mr. Merchiva know whether to prompt the user
         // for a code before scheduling shifts for this member.
         hasPunchInCode: !!m.punchInCode,
+        // NB: we intentionally do NOT expose the org permission level
+        // (owner/manager/staff) here. Repeatedly the AI was grabbing that
+        // string and stuffing it into addShift.staffRoles, even after we
+        // renamed the field and added explicit prompt instructions against
+        // it — OSS models keep latching onto any "role-shaped" value within
+        // reach. The permission level isn't useful for scheduling anyway
+        // (auth is enforced server-side), so the simplest fix is to remove
+        // the temptation entirely. Job roles live in the top-level roles[]
+        // array, which is what addShift.staffRoles must come from.
       })),
       recentSales: salesHistory.slice(-7).map((s) => ({ date: s.date, revenue: s.actual })),
       todaySales: salesHourly.map((s) => ({ hour: s.hour, revenue: s.actual })),
@@ -2633,6 +2720,16 @@ export function MerchivaChat({
     : (Array.isArray(aiJobsTuple) ? aiJobsTuple : []);
   const renderedJobIdsRef = useRef<Set<string>>(new Set());
   const finalizedJobIdsRef = useRef<Set<string>>(new Set());
+  // Bumped when the tab becomes visible again, so the notification-suppression
+  // effect re-runs on return (notification rows may not change at that moment).
+  const [visTick, setVisTick] = useState(0);
+  useEffect(() => {
+    function onVis() {
+      if (document.visibilityState === "visible") setVisTick((v) => v + 1);
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   useEffect(() => {
     if (!organizationId || !activeSessionId) return;
@@ -2654,12 +2751,20 @@ export function MerchivaChat({
         setThinkingPhase("");
         setMessages((prev) => {
           if (prev.some((m) => m.id === msgId)) return prev;
-          return [...prev, {
-            id: msgId,
-            from: "merchiva" as const,
-            text: "",
-            time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
-          }];
+          const now = new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
+          const additions: ChatMessage[] = [];
+          // If the user closed the tab before the message-save debounce fired,
+          // the session reloads without their question — but the job row still
+          // carries the original prompt. Re-seed it so the thread isn't an
+          // orphaned answer. Skip when the thread already ends with a user turn
+          // (the normal same-session flow, where sendMessage just appended it).
+          const last = prev[prev.length - 1];
+          const promptText = typeof job.prompt === "string" ? job.prompt.trim() : "";
+          if (promptText && (!last || last.from !== "user")) {
+            additions.push({ id: `jobq-${jobId}`, from: "user", text: promptText, time: now });
+          }
+          additions.push({ id: msgId, from: "merchiva", text: "", time: now });
+          return [...prev, ...additions];
         });
       }
 
@@ -2771,6 +2876,24 @@ export function MerchivaChat({
       setTimeout(() => { deleteAiJob(jobId).catch(() => {}); }, 60_000);
     }
   }, [aiJobRows, organizationId, activeSessionId, locale, t]);
+
+  // Suppress the "Mr. Merchiva replied" bell entry while the user is actively
+  // looking at this chat. Those notifications are fired server-side on every
+  // backgrounded reply so users who LEFT get pinged; if they're here watching
+  // the reply stream in, clear the matching unread one (keyed by session id in
+  // the link) so the bell doesn't show a redundant badge.
+  useEffect(() => {
+    if (!organizationId || !activeSessionId) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+    const marker = `mvsession=${encodeURIComponent(activeSessionId)}`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[] = Array.isArray(rawNotifs) ? rawNotifs : [];
+    for (const n of rows) {
+      if (n && !n.read && typeof n.link === "string" && n.link.includes(marker)) {
+        markNotificationRead(n.id.toString()).catch(() => {});
+      }
+    }
+  }, [rawNotifs, organizationId, activeSessionId, visTick]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || sending) return;
@@ -3524,6 +3647,7 @@ export function MerchivaChat({
                         alreadyExecuted={msg.executed}
                         onApprove={() => handleApprove(msg.id, act.id)}
                         onReject={() => handleReject(msg.id, act.id)}
+                        validRoleNamesLower={validRoleNamesLower}
                       />
                     ))}
                   </>

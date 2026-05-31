@@ -56,47 +56,27 @@ async function main() {
   const { conn, token, identityHex } = connected;
   console.log(`Connected. Anonymous identity: ${identityHex}`);
 
-  // Subscribe to the service_identity table so we can read back the result.
-  await new Promise<void>((resolve, reject) => {
-    conn
-      .subscriptionBuilder()
-      .onApplied(() => resolve())
-      .onError(() => reject(new Error("subscription to service_identity failed")))
-      .subscribe(["SELECT * FROM service_identity"]);
-  });
-
+  // NOTE: service_identity is a NON-PUBLIC table, so this client CANNOT
+  // subscribe to it to read the result back — only the database owner (the
+  // `spacetime` CLI) can read non-public tables. So we just fire the reducer,
+  // give it time to flush over the socket and commit server-side, print the
+  // token, and verify out-of-band with `spacetime sql` (see below).
   console.log(`Calling registerServiceIdentity(label="${LABEL}")…`);
   conn.reducers.registerServiceIdentity({ label: LABEL });
 
-  // Poll for the row to appear (reducer round-trip is async).
-  const ok = await new Promise<boolean>((resolve) => {
-    const deadline = Date.now() + 10_000;
-    const tick = () => {
-      const rows = [...conn.db.serviceIdentity.iter()];
-      const mine = rows.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (r: any) => r.identity?.toHexString?.() === identityHex,
-      );
-      if (mine) return resolve(true);
-      if (Date.now() > deadline) return resolve(false);
-      setTimeout(tick, 300);
-    };
-    tick();
-  });
+  // Let the call flush + commit. The reducer is fire-and-forget here; the
+  // authoritative confirmation is the `spacetime sql` check printed below.
+  await new Promise((r) => setTimeout(r, 5000));
 
-  if (!ok) {
-    fail(
-      "registerServiceIdentity did not land within 10s. The table may already " +
-        "be bootstrapped by a different identity — in that case this anonymous " +
-        "identity is NOT authorized. Check " +
-        '`spacetime sql merchiva "SELECT * FROM service_identity"`.',
-    );
-  }
-
-  console.log("\n✓ Service identity registered.\n");
+  console.log("\n✓ registerServiceIdentity sent.\n");
   console.log("Add this to .env.local AND your Vercel project env:\n");
   console.log(`SPACETIMEDB_SERVICE_TOKEN=${token}\n`);
-  console.log(`(identity: ${identityHex}, label: ${LABEL})`);
+  console.log(`(identity: ${identityHex}, label: ${LABEL})\n`);
+  console.log("Now VERIFY the row landed (owner-only read — empty result means");
+  console.log("the slot was already claimed by someone else, so this token is");
+  console.log("NOT authorized):\n");
+  console.log(`  spacetime sql merchiva --server maincloud "SELECT * FROM service_identity"\n`);
+  console.log("The identity column should match the hex printed above.");
 
   conn.disconnect?.();
   process.exit(0);

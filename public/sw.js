@@ -32,6 +32,26 @@ self.addEventListener("push", (event) => {
     requireInteraction: false,
   };
 
+  // Mr. Merchiva reply pings exist for when the user has LEFT the page. If a
+  // chat/dashboard tab is focused and visible, they're already watching the
+  // reply stream in — suppress the redundant OS notification.
+  if (payload.type === "merchiva_reply") {
+    event.waitUntil(
+      self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((clients) => {
+          const watching = clients.some((c) => {
+            if (c.visibilityState !== "visible" || !c.focused) return false;
+            const path = new URL(c.url).pathname;
+            return path.startsWith("/~/chat") || path.startsWith("/~/dashboard");
+          });
+          if (watching) return;
+          return self.registration.showNotification(title, options);
+        }),
+    );
+    return;
+  }
+
   event.waitUntil(self.registration.showNotification(title, options));
 });
 

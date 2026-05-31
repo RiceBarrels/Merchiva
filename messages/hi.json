@@ -2592,6 +2592,7 @@
       "updateSupplier": "आपूर्तिकर्ता संपादित करें",
       "deleteSupplier": "आपूर्तिकर्ता हटाएँ",
       "createPurchaseOrder": "नया खरीद आदेश",
+      "orderFromSupplier": "आपूर्तिकर्ता से ऑर्डर करें",
       "createNotification": "अधिसूचना भेजें",
       "sendNotification": "अधिसूचना भेजें",
       "addBuilderElement": "एलिमेंट जोड़ें",

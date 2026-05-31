@@ -2,6 +2,108 @@ import { Resend } from "resend";
 
 const FROM = "Merchiva <onboarding@depxtech.com>";
 
+// Escape user-supplied text before interpolating into email HTML.
+function esc(s: string): string {
+  return s.replace(/[<>&"']/g, (c) =>
+    ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c] ?? c),
+  );
+}
+
+export interface SupplierPOItem {
+  name: string;
+  quantity: number;
+  unit?: string;
+  unitCost?: number;
+}
+
+/**
+ * Send a purchase-order request to a supplier on behalf of the org. The
+ * supplier's reply goes to `replyTo` (the manager's address) — Phase 1 keeps a
+ * human in the loop for the conversation. Throws on send failure so the caller
+ * can fall back to saving a draft + escalating.
+ */
+export async function sendSupplierPOEmail({
+  to,
+  supplierName,
+  contactName,
+  orgName,
+  items,
+  total,
+  currency = "$",
+  notes,
+  replyTo,
+}: {
+  to: string;
+  supplierName: string;
+  contactName?: string | null;
+  orgName: string;
+  items: SupplierPOItem[];
+  total: number;
+  currency?: string;
+  notes?: string | null;
+  replyTo?: string | null;
+}) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const greeting = contactName ? `Hi ${esc(contactName)},` : `Hi ${esc(supplierName)},`;
+  const rows = items
+    .map((it) => {
+      const qty = `${it.quantity}${it.unit ? " " + esc(it.unit) : ""}`;
+      const line = it.unitCost != null ? `${currency}${(it.unitCost * it.quantity).toFixed(2)}` : "—";
+      return `
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;font-size:14px;color:#1c1917;">${esc(it.name)}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;font-size:14px;color:#57534e;text-align:right;">${esc(qty)}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;font-size:14px;color:#57534e;text-align:right;">${line}</td>
+        </tr>`;
+    })
+    .join("");
+  const notesBlock = notes
+    ? `<p style="color:#57534e;font-size:14px;line-height:1.6;margin:16px 0 0;"><strong style="color:#1c1917;">Notes:</strong> ${esc(notes)}</p>`
+    : "";
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to,
+    ...(replyTo ? { replyTo } : {}),
+    subject: `Purchase order from ${orgName}`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+        <div style="margin-bottom: 32px;">
+          <div style="display: inline-block; background: #1c1917; color: white; width: 32px; height: 32px; text-align: center; line-height: 32px; border-radius: 4px; font-size: 14px; font-weight: bold;">⚡</div>
+          <span style="margin-left: 8px; font-weight: 700; font-size: 16px; color: #1c1917;">${esc(orgName)}</span>
+        </div>
+        <h1 style="font-size: 20px; font-weight: 700; color: #1c1917; margin: 0 0 8px;">Purchase order</h1>
+        <p style="color: #57534e; font-size: 15px; line-height: 1.6; margin: 0 0 20px;">
+          ${greeting} we'd like to place the following order. Please confirm availability, pricing, and delivery time by replying to this email.
+        </p>
+        <table style="width:100%;border-collapse:collapse;border-top:1px solid #e7e5e4;">
+          <thead>
+            <tr>
+              <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;border-bottom:1px solid #e7e5e4;">Item</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;border-bottom:1px solid #e7e5e4;">Qty</th>
+              <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;border-bottom:1px solid #e7e5e4;">Est. cost</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="color:#1c1917;font-size:15px;font-weight:600;margin:16px 0 0;text-align:right;">
+          Estimated total: ${currency}${total.toFixed(2)}
+        </p>
+        ${notesBlock}
+        <p style="color: #a8a29e; font-size: 13px; line-height: 1.5; margin: 28px 0 0;">
+          Sent via Merchiva on behalf of ${esc(orgName)}. Reply to this email to confirm or discuss.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e7e5e4; margin: 28px 0 16px;" />
+        <p style="color: #a8a29e; font-size: 12px; margin: 0;">Merchiva — AI-powered business management</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error("[email/supplier-po] Resend error:", error);
+    throw new Error(`Failed to send supplier PO email: ${error.message}`);
+  }
+}
+
 export async function sendTeamInviteEmail({
   to,
   inviterEmail,
