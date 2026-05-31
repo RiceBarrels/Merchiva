@@ -16,7 +16,15 @@ import { getSafeAreaInsets } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
 import type { Permissions } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface NavItem {
   labelKey: string;
@@ -76,57 +84,41 @@ export function BottomBar() {
   return (
     <>
       {/* Overflow menu */}
-      <AnimatePresence>
-        {moreOpen && (
-          <>
-            <motion.div
-              className="fixed inset-0 z-30 bg-black/20 backdrop-blur-xs"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={() => setMoreOpen(false)}
-            />
-            <motion.div
-              className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border rounded-t-xl"
-              style={{ paddingBottom: safeArea.bottom + 56 }}
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 350 }}
-            >
-              <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("nav.account")}</span>
-                <button onClick={() => setMoreOpen(false)} className="p-1 text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5 px-3 pb-4">
-                {overflowTabs.map((item) => {
-                  const Icon = item.icon;
-                  const active = pathname === item.href || pathname.startsWith(item.href + "/");
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => { hapticLight(); setMoreOpen(false); }}
-                      className={cn(
-                        "flex flex-col items-center justify-center gap-1.5 min-h-[68px] py-2.5 rounded-[0.4rem] transition-colors active:bg-muted",
-                        active ? "bg-foreground/5 text-foreground" : "text-muted-foreground"
-                      )}
-                    >
-                      <Icon className="h-[20px] w-[20px]" />
-                      <span className={cn("text-[10.5px] leading-tight text-center tracking-tight", active ? "font-semibold" : "font-medium")}>
-                        {t(item.labelKey)}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <Drawer open={moreOpen} onOpenChange={setMoreOpen} direction="bottom">
+        <DrawerContent className="bg-background">
+          <DrawerHeader className="flex flex-row items-center justify-between px-4 pt-3 pb-2 text-left">
+            <DrawerTitle className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {t("nav.account")}
+            </DrawerTitle>
+            <DrawerDescription className="sr-only">{t("common.more")}</DrawerDescription>
+            <DrawerClose className="p-1 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </DrawerClose>
+          </DrawerHeader>
+          <div className="grid grid-cols-4 gap-1.5 px-3 pb-4">
+            {overflowTabs.map((item) => {
+              const Icon = item.icon;
+              const active = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => { hapticLight(); setMoreOpen(false); }}
+                  className={cn(
+                    "flex flex-col items-center justify-center gap-1.5 min-h-[68px] py-2.5 rounded-[0.4rem] transition-colors active:bg-muted",
+                    active ? "bg-foreground/5 text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  <Icon className="h-[20px] w-[20px]" />
+                  <span className={cn("text-[10.5px] leading-tight text-center tracking-tight", active ? "font-semibold" : "font-medium")}>
+                    {t(item.labelKey)}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Bottom bar */}
       <nav

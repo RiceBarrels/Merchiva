@@ -12,6 +12,14 @@ import type { Product } from "@/lib/types";
 import { ShoppingCart, X, User, LogOut } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 // ─── Cart types ───────────────────────────────────────────────────────────────
 
@@ -61,13 +69,15 @@ function saveCart(slug: string, cart: CartItem[]) {
 // ─── Mini cart drawer ─────────────────────────────────────────────────────────
 
 function CartDrawer({
+  open,
+  onOpenChange,
   cart,
-  onClose,
   onRemove,
   onQty,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   cart: CartItem[];
-  onClose: () => void;
   onRemove: (id: string) => void;
   onQty: (id: string, delta: number) => void;
 }) {
@@ -75,13 +85,16 @@ function CartDrawer({
   const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm bg-white dark:bg-stone-900 h-full flex flex-col shadow-xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <h2 className="font-semibold text-sm">{t("storefront.cart.title")} ({cart.reduce((s, i) => s + i.quantity, 0)})</h2>
-          <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300"><X className="h-4 w-4" /></button>
-        </div>
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+      <DrawerContent className="bg-white dark:bg-stone-900">
+        <DrawerHeader className="flex flex-row items-center justify-between border-b px-4 py-3">
+          <DrawerTitle className="font-semibold text-sm">
+            {t("storefront.cart.title")} ({cart.reduce((s, i) => s + i.quantity, 0)})
+          </DrawerTitle>
+          <DrawerClose className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:text-gray-300">
+            <X className="h-4 w-4" />
+          </DrawerClose>
+        </DrawerHeader>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">{t("storefront.cart.empty")}</p>}
           {cart.map((item) => (
@@ -99,7 +112,7 @@ function CartDrawer({
             </div>
           ))}
         </div>
-        <div className="border-t p-4 space-y-3">
+        <DrawerFooter className="border-t p-4 space-y-3">
           <div className="flex justify-between font-semibold">
             <span>{t("storefront.cart.total")}</span>
             <span>${total.toFixed(2)}</span>
@@ -110,9 +123,9 @@ function CartDrawer({
           >
             {t("storefront.cart.checkout")}
           </button>
-        </div>
-      </div>
-    </div>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -372,14 +385,13 @@ export default function PublicSitePage({
           onClose={() => setShowAuth(false)}
         />
       )}
-      {cartOpen && (
-        <CartDrawer
-          cart={cart}
-          onClose={() => setCartOpen(false)}
-          onRemove={removeFromCart}
-          onQty={updateQty}
-        />
-      )}
+      <CartDrawer
+        open={cartOpen}
+        onOpenChange={setCartOpen}
+        cart={cart}
+        onRemove={removeFromCart}
+        onQty={updateQty}
+      />
     </div>
   );
 }

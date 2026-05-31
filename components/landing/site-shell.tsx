@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/ui/drawer";
 
 const C = {
   bg: "#f0eee9",
@@ -49,14 +55,6 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
     onScroll();
     return () => el.removeEventListener("scroll", onScroll);
   }, [scrollRef]);
-
-  // Lock background scroll when the mobile menu is open
-  useEffect(() => {
-    if (!menuOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [menuOpen]);
 
   return (
     <nav
@@ -180,67 +178,68 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
       </div>
 
       {/* Mobile menu drawer */}
-      <div
-        className="mv-mobile-menu"
-        aria-hidden={!menuOpen}
-        style={{
-          position: "absolute", top: "100%", left: 0, right: 0,
-          background: "rgba(240,238,233,0.98)",
-          backdropFilter: "saturate(140%) blur(14px)",
-          WebkitBackdropFilter: "saturate(140%) blur(14px)",
-          borderBottom: `1px solid ${C.border}`,
-          overflow: "hidden",
-          maxHeight: menuOpen ? "70vh" : 0,
-          transition: "max-height 280ms cubic-bezier(.2,.8,.2,1)",
-          display: "none",
-        }}
-      >
-        <div style={{ padding: "8px 16px 16px", display: "flex", flexDirection: "column" }}>
-          {NAV_LINKS.map((x) => {
-            const isActive = active === x.key;
-            return (
-              <Link
-                key={x.key}
-                href={x.href}
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  fontSize: 16,
-                  color: isActive ? C.ink : C.text2,
-                  textDecoration: "none",
-                  fontWeight: isActive ? 600 : 500,
-                  letterSpacing: -0.2,
-                  padding: "14px 4px",
-                  borderBottom: `1px solid ${C.border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                {x.label}
-                <span style={{ fontFamily: C.mono, fontSize: 12, color: C.ter }}>→</span>
-              </Link>
-            );
-          })}
-          <Link
-            href="/login"
-            onClick={() => setMenuOpen(false)}
-            style={{
-              marginTop: 16,
-              fontSize: 14,
-              color: C.text,
-              textDecoration: "none",
-              fontWeight: 500,
-              padding: "12px 14px",
-              borderRadius: 4,
-              border: `1px solid ${C.border}`,
-              background: C.paper,
-              textAlign: "center",
-            }}
-          >
-            Sign in
-          </Link>
-        </div>
-      </div>
+      <Drawer open={menuOpen} onOpenChange={setMenuOpen} direction="top">
+        <DrawerContent
+          style={{
+            background: "rgba(240,238,233,0.98)",
+            backdropFilter: "saturate(140%) blur(14px)",
+            WebkitBackdropFilter: "saturate(140%) blur(14px)",
+            borderBottom: `1px solid ${C.border}`,
+            color: C.text,
+            fontFamily: C.sans,
+          }}
+        >
+          <DrawerTitle className="sr-only">Menu</DrawerTitle>
+          <DrawerDescription className="sr-only">
+            Site navigation links
+          </DrawerDescription>
+          <div style={{ padding: "16px", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+            {NAV_LINKS.map((x) => {
+              const isActive = active === x.key;
+              return (
+                <Link
+                  key={x.key}
+                  href={x.href}
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    fontSize: 16,
+                    color: isActive ? C.ink : C.text2,
+                    textDecoration: "none",
+                    fontWeight: isActive ? 600 : 500,
+                    letterSpacing: -0.2,
+                    padding: "14px 4px",
+                    borderBottom: `1px solid ${C.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  {x.label}
+                  <span style={{ fontFamily: C.mono, fontSize: 12, color: C.ter }}>→</span>
+                </Link>
+              );
+            })}
+            <Link
+              href="/login"
+              onClick={() => setMenuOpen(false)}
+              style={{
+                marginTop: 16,
+                fontSize: 14,
+                color: C.text,
+                textDecoration: "none",
+                fontWeight: 500,
+                padding: "12px 14px",
+                borderRadius: 4,
+                border: `1px solid ${C.border}`,
+                background: C.paper,
+                textAlign: "center",
+              }}
+            >
+              Sign in
+            </Link>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
     </nav>
   );
