@@ -190,7 +190,11 @@ When emitting \`\`\`action\`\`\` blocks (only for case A simple writes), follow 
 
 FORMATTING for non-action-block content in \`message\`: plain conversational text. Action blocks ARE allowed for simple writes (case A only).
 
-NO EMOJI: never use emoji (🌟 ✅ 👍 ❤️ 🎉 ✨ 🚀 etc.) in the \`message\` field. The mood expression slot is the \`kaomoji\` field — that's where the face goes. Plain text only in \`message\`, kaomoji is separate.`;
+NO EMOJI: never use emoji (🌟 ✅ 👍 ❤️ 🎉 ✨ 🚀 etc.) in the \`message\` field. The mood expression slot is the \`kaomoji\` field — that's where the face goes. Plain text only in \`message\`, kaomoji is separate.
+
+NO SERVICE-SPEAK in \`message\`: NEVER use "I'll help you…", "Let me…", "好的，我幫你…", "我这就帮你…", "我来为你…", "让我帮你…" or any other preamble that promises a future action. State the answer or do the thing. Examples — BAD: "好的，我幫你查一下排班…" GOOD: "未來7天的排班如下：…" / BAD: "Let me check inventory for you…" GOOD: "Inventory:" then the data. The user can see you're working from the chat spinner — don't narrate it.
+
+When escalating (needsThinking=true), the \`message\` field IS the brief ack the user sees while the thinking model works. Keep it 1 short sentence describing what's about to be checked, NOT a "幫你…" promise. BAD: "好的，我先帮你查看接下来7天的员工可用性…" GOOD: "查看接下来7天的员工可用性和已有排班。"`;
 }
 
 export interface MemoryContext {
@@ -226,6 +230,59 @@ function stripActionBlocks(text: string): string {
   // Bare JSON action objects on their own line
   result = result.replace(/^\s*\{\s*"action"\s*:[\s\S]*?\}\s*$/gm, "");
   return result.trim();
+}
+
+// Auto-batch helper: when a reply is truncated mid-action-block (the model
+// hit maxOutputTokens partway through a ```action ... ``` block), trim from
+// the last incomplete opener so the bytes we forward to the client still
+// parse cleanly. Returns the trimmed text plus a flag for logging.
+//
+// A trailing ```action block is "incomplete" if EITHER (a) it has no closing
+// ``` fence yet, OR (b) the JSON object inside hasn't reached balanced braces.
+// The client-side extractActionBlocks parser bails on the first unclosed
+// fence and drops everything after it, so without this trim a single truncated
+// block would wipe out any actions emitted later (e.g. from a continuation
+// batch we concatenate after it).
+function stripIncompleteTrailingAction(text: string): { trimmed: string; stripped: boolean } {
+  const lastOpener = text.lastIndexOf("```action");
+  if (lastOpener === -1) return { trimmed: text, stripped: false };
+
+  const afterTag = lastOpener + "```action".length;
+  const tail = text.slice(afterTag);
+
+  // No closing ``` fence at all — definitely truncated mid-block.
+  const closeFenceIdx = tail.indexOf("```");
+  if (closeFenceIdx === -1) {
+    return { trimmed: text.slice(0, lastOpener).trimEnd(), stripped: true };
+  }
+
+  // We have an opener and a closer. Verify the JSON between them is balanced.
+  const between = tail.slice(0, closeFenceIdx);
+  const openBrace = between.indexOf("{");
+  if (openBrace === -1) {
+    return { trimmed: text.slice(0, lastOpener).trimEnd(), stripped: true };
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let complete = false;
+  for (let j = openBrace; j < between.length; j++) {
+    const ch = between[j];
+    if (escape) { escape = false; continue; }
+    if (ch === "\\") { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) { complete = true; break; }
+    }
+  }
+
+  return complete
+    ? { trimmed: text, stripped: false }
+    : { trimmed: text.slice(0, lastOpener).trimEnd(), stripped: true };
 }
 
 export interface UserPermissions {
@@ -850,6 +907,14 @@ FORMATTING:
 - Use markdown formatting to make data clear: tables for comparisons, bullet lists for summaries, \`code\` for SKUs/IDs, **bold** for emphasis
 - Keep formatting clean and readable
 
+TONE (CRITICAL):
+- NEVER use service-speak / sycophantic preambles in any language. Forbidden examples: "好的，我幫你…", "我這就幫你…", "我来帮你…", "让我帮你…", "I'll help you…", "Let me help you…", "Sure, I'll…", "Of course, I can…", "我来为你…". Just do the thing or state the answer directly — no preamble that promises a future action.
+- BAD: "好的，我幫你查一下未來7天的排班需求…" → GOOD: "未來7天的排班需求：…" then the answer.
+- BAD: "Let me check the inventory for you…" → GOOD: "Inventory status:" then the data.
+- The user can see you're working from the spinner — don't narrate it.
+- NEVER use emoji. Not 🌟 ✅ 👍 ❤️ 🎉 ✨ 🚀 ⚡ 🎯 ☕ 🍔 📅 📊 nor any other. Plain text only.
+- If you genuinely need an inline icon (rare), write \`:lucide-name:\` and the UI will render a Lucide icon in place. Examples: \`:check:\` \`:x:\` \`:calendar:\` \`:alert-triangle:\` \`:user:\` \`:store:\` \`:clock:\` \`:sparkles:\`. Use sparingly — the chat is meant to be text-first, not decorated.
+
 RULES:
 - Always explain what an action will do before suggesting it
 - Use actual data from the store context — never invent numbers
@@ -1114,7 +1179,11 @@ export async function POST(req: NextRequest) {
 
     // Builder mode emits long structured JSON for many elements — give it more
     // headroom so multi-section page generations don't get truncated mid-block.
-    const maxOutput = callMode === "voice" ? 800 : isBuilderMode ? 3500 : 1500;
+    // Standard chat was 1500 originally, but batch operations (e.g. scheduling
+    // 14 shifts via 14 ```action``` blocks) trip that cap and end mid-JSON
+    // around action #7. 4000 fits ~25 shift blocks plus reasonable preamble
+    // and still stays well under what the OSS / mimo models can produce.
+    const maxOutput = callMode === "voice" ? 800 : isBuilderMode ? 3500 : 4000;
 
     if (body.stream) {
       // Both chat and voice triage through OSS — simple tasks get answered directly,
@@ -1223,27 +1292,73 @@ export async function POST(req: NextRequest) {
             // ordinary complex tasks stay on the standard (OSS) model.
             const useThinking = triage.needsDeepThinking === true;
             const escalationModelName = useThinking ? getThinkingModel() + " (thinking)" : getModel();
+            const escalationModel = useThinking ? getOpenRouterThinkingModel() : getOpenRouterModel();
             console.log(`[store-ai] Escalating to ${escalationModelName}`);
-            const mainResult = streamText({
-              model: useThinking ? getOpenRouterThinkingModel() : getOpenRouterModel(),
-              system: mainSystem,
-              messages: convoMsgs,
-              maxOutputTokens: maxOutput,
-              temperature: callMode === "voice" ? 0.4 : 0.2,
-            });
-            // Mirror everything we send to the client into a server-side
-            // buffer so we can dump the full reply once the stream finishes —
-            // makes role names / action blocks visible in the dev console for
-            // debugging "why did the AI pick this?" without needing to wire up
-            // a separate trace.
-            let serverReply = "";
-            for await (const chunk of mainResult.textStream) {
-              controller.enqueue(encoder.encode(chunk));
-              serverReply += chunk;
+
+            // Auto-batching: when a reply hits the maxOutput cap mid-stream
+            // (finishReason === "length"), the action-block parser bails at
+            // the first unclosed ```action fence and discards everything
+            // after it — so a single truncated block silently wipes out the
+            // rest of the response on the client. Instead we re-prompt the
+            // model to continue, stripping any incomplete trailing action
+            // first so concatenation stays parseable. Hard-capped at 3
+            // batches so a confused model can't drain credits.
+            const MAX_BATCHES = 3;
+            let cleanReply = "";
+            let lastFinishReason: string | undefined;
+
+            for (let batchN = 1; batchN <= MAX_BATCHES; batchN++) {
+              const continuationNote = batchN > 1
+                ? `\n\nCONTINUATION TURN ${batchN}: Your previous reply was cut off because it exceeded the response size cap. Pick up exactly where you stopped. Any incomplete trailing action block has already been removed — re-emit it from scratch if needed, then emit any remaining action blocks. DO NOT repeat the preamble or explanation. DO NOT repeat action blocks you already finished. Just emit the remaining \`\`\`action\`\`\` blocks.`
+                : "";
+              const turnMessages = batchN === 1
+                ? convoMsgs
+                : [...convoMsgs, { role: "assistant" as const, content: cleanReply }];
+
+              const mainResult = streamText({
+                model: escalationModel,
+                system: mainSystem + continuationNote,
+                messages: turnMessages,
+                maxOutputTokens: maxOutput,
+                temperature: callMode === "voice" ? 0.4 : 0.2,
+              });
+
+              // Buffer the batch server-side rather than streaming chunk by
+              // chunk — we need the full batch text to decide whether to
+              // strip an incomplete trailing action block before forwarding.
+              // (The client already renders the main bubble all-at-once on
+              // finalize, so per-chunk streaming wasn't being shown anyway.)
+              let batchText = "";
+              for await (const chunk of mainResult.textStream) {
+                batchText += chunk;
+              }
+              lastFinishReason = await mainResult.finishReason;
+
+              if (lastFinishReason === "length") {
+                const { trimmed, stripped } = stripIncompleteTrailingAction(batchText);
+                console.log(
+                  `[store-ai] Batch ${batchN}: ${batchText.length} chars, finishReason=length${
+                    stripped ? `, stripped ${batchText.length - trimmed.length} char incomplete trailing action` : ""
+                  }`,
+                );
+                controller.enqueue(encoder.encode(trimmed));
+                cleanReply += trimmed;
+                if (batchN === MAX_BATCHES) {
+                  console.log(`[store-ai] Hit MAX_BATCHES (${MAX_BATCHES}); stopping continuation`);
+                }
+              } else {
+                console.log(
+                  `[store-ai] Batch ${batchN}: ${batchText.length} chars, finishReason=${lastFinishReason}`,
+                );
+                controller.enqueue(encoder.encode(batchText));
+                cleanReply += batchText;
+                break;
+              }
             }
+
             controller.close();
             console.log(
-              `[store-ai] Reply (${escalationModelName}, ${serverReply.length} chars):\n${serverReply}`,
+              `[store-ai] Reply (${escalationModelName}, ${cleanReply.length} chars total):\n${cleanReply}`,
             );
           } catch (e) {
             console.error(
