@@ -166,6 +166,46 @@ export async function sendTeamInviteEmail({
   }
 }
 
+/**
+ * Free-form reply to a supplier in an ongoing thread (Phase 2 — Mr. Merchiva's
+ * answer to an inbound supplier email). `replyTo` keeps the thread routable
+ * back to the inbound webhook. Throws on send failure.
+ */
+export async function sendSupplierReplyEmail({
+  to,
+  orgName,
+  body,
+  subject,
+  replyTo,
+}: {
+  to: string;
+  orgName: string;
+  body: string;
+  subject?: string | null;
+  replyTo?: string | null;
+}) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const safeBody = esc(body).replace(/\n/g, "<br/>");
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to,
+    ...(replyTo ? { replyTo } : {}),
+    subject: subject || `Re: your message — ${orgName}`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 20px;">
+        <p style="color:#1c1917;font-size:15px;line-height:1.6;margin:0 0 16px;white-space:pre-wrap;">${safeBody}</p>
+        <p style="color:#a8a29e;font-size:12px;line-height:1.5;margin:24px 0 0;">
+          ${esc(orgName)} · sent via Merchiva. Reply to this email to continue.
+        </p>
+      </div>
+    `,
+  });
+  if (error) {
+    console.error("[email/supplier-reply] Resend error:", error);
+    throw new Error(`Failed to send supplier reply: ${error.message}`);
+  }
+}
+
 export async function sendMorningReminderEmail({
   to,
   ownerName,

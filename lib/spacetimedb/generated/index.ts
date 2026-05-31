@@ -144,6 +144,7 @@ import SaveScheduleProposalReducer from "./save_schedule_proposal_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
+import ServiceLogSupplierMessageReducer from "./service_log_supplier_message_reducer";
 import ServiceSaveDailyBriefingReducer from "./service_save_daily_briefing_reducer";
 import SetAutoCommitSchedulesReducer from "./set_auto_commit_schedules_reducer";
 import SetBriefingPrefReducer from "./set_briefing_pref_reducer";
@@ -1328,6 +1329,7 @@ const reducersSchema = __reducers(
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
+  __reducerSchema("service_log_supplier_message", ServiceLogSupplierMessageReducer),
   __reducerSchema("service_save_daily_briefing", ServiceSaveDailyBriefingReducer),
   __reducerSchema("set_auto_commit_schedules", SetAutoCommitSchedulesReducer),
   __reducerSchema("set_briefing_pref", SetBriefingPrefReducer),

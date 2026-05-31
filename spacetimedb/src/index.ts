@@ -4790,6 +4790,50 @@ export const logSupplierMessage = spacetimedb.reducer(
   }
 );
 
+// Service-identity variant of logSupplierMessage. Used by the inbound supplier
+// webhook (Phase 2), which receives supplier email replies and the AI's
+// responses server-side — there's no logged-in user to authorize the write, so
+// it runs as the service identity. Same insert + manager escalation.
+export const serviceLogSupplierMessage = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    supplierId: t.string(),
+    supplierName: t.string(),
+    poId: t.option(t.string()),
+    direction: t.string(),
+    channel: t.string(),
+    subject: t.option(t.string()),
+    body: t.string(),
+    status: t.option(t.string()),
+    escalate: t.bool(),
+  },
+  (ctx, args) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    ctx.db.supplierMessage.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      supplierId: args.supplierId,
+      poId: args.poId,
+      direction: args.direction,
+      channel: args.channel,
+      subject: args.subject,
+      body: args.body,
+      status: args.status,
+      createdAt: ctx.timestamp,
+    });
+    if (args.escalate) {
+      notifyManagers(
+        ctx,
+        args.organizationId,
+        'order',
+        `Supplier issue: ${args.supplierName}`,
+        args.body.length > 160 ? args.body.slice(0, 159) + '…' : args.body,
+        '/~/suppliers',
+      );
+    }
+  }
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPENSE REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════

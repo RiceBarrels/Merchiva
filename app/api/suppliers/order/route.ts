@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callReducer } from "@/lib/spacetimedb/server-rpc";
 import { sendSupplierPOEmail, type SupplierPOItem } from "@/lib/email/resend";
+import { encodeThreadToken, inboundDomain } from "@/lib/suppliers/thread-token";
 
 export const runtime = "nodejs";
 
@@ -75,6 +76,16 @@ export async function POST(req: NextRequest) {
   const total = Number(body.total ?? subtotal + tax);
   const summary = summarize(items, total, currency);
 
+  // Reply-to: when inbound email is configured (Phase 2), route the supplier's
+  // reply to the webhook via a signed thread token so Mr. Merchiva can carry on
+  // the conversation. Otherwise fall back to the manager's address (Phase 1).
+  let effectiveReplyTo = replyTo ?? null;
+  const domain = inboundDomain();
+  if (domain) {
+    const token = encodeThreadToken(organizationId, supplierId);
+    if (token) effectiveReplyTo = `${token}@${domain}`;
+  }
+
   // 1) Try to email the supplier. Best-effort: a failure (or missing address)
   //    just flips `emailed` to false so the order is saved as a draft.
   let emailed = false;
@@ -90,7 +101,7 @@ export async function POST(req: NextRequest) {
         total,
         currency,
         notes: notes ?? null,
-        replyTo: replyTo ?? null,
+        replyTo: effectiveReplyTo,
       });
       emailed = true;
     } catch (err) {

@@ -329,6 +329,86 @@ export async function getAiReplyTarget(
   }
 }
 
+// ─── Supplier thread context (Phase 2 inbound webhook) ──────────────────────────
+
+const supplierThreadSubscribed = new WeakSet<object>();
+
+export interface SupplierThreadContext {
+  supplier: { id: string; name: string; email: string | null; contactName: string | null };
+  orgName: string;
+  // Oldest → newest, so the model reads the conversation in order.
+  messages: Array<{ direction: string; body: string }>;
+  purchaseOrders: Array<{ status: string; items: string; total: number }>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowMs(r: any): number {
+  const c = r?.createdAt;
+  return c && typeof c === "object" && "microsSinceUnixEpoch" in c
+    ? Number((c as { microsSinceUnixEpoch: bigint }).microsSinceUnixEpoch)
+    : new Date(String(c)).getTime();
+}
+
+/**
+ * Build the context Mr. Merchiva needs to answer a supplier reply: the supplier
+ * record, the org name, the recent message thread, and this supplier's POs.
+ * Returns null when the supplier can't be found.
+ */
+export async function getSupplierThreadContext(
+  conn: ServiceConn,
+  organizationId: string,
+  supplierId: string,
+): Promise<SupplierThreadContext | null> {
+  if (!supplierThreadSubscribed.has(conn)) {
+    await subscribeAndWait(conn, [
+      "SELECT * FROM supplier",
+      "SELECT * FROM supplier_message",
+      "SELECT * FROM purchase_order",
+      "SELECT * FROM organization",
+    ]);
+    supplierThreadSubscribed.add(conn);
+  }
+
+  const supplier = [...conn.db.supplier.iter()].find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (s: any) => s.id?.toString?.() === supplierId && s.organizationId === organizationId,
+  );
+  if (!supplier) return null;
+
+  const org = [...conn.db.organization.iter()].find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (o: any) => o.id?.toString?.() === organizationId,
+  );
+
+  const messages = [...conn.db.supplierMessage.iter()]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((m: any) => m.organizationId === organizationId && m.supplierId === supplierId)
+    .sort((a, b) => rowMs(a) - rowMs(b))
+    .slice(-12)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((m: any) => ({ direction: String(m.direction), body: String(m.body) }));
+
+  const purchaseOrders = [...conn.db.purchaseOrder.iter()]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((p: any) => p.organizationId === organizationId && p.supplierId === supplierId)
+    .sort((a, b) => rowMs(b) - rowMs(a))
+    .slice(0, 5)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((p: any) => ({ status: String(p.status), items: String(p.items), total: Number(p.total) }));
+
+  return {
+    supplier: {
+      id: supplierId,
+      name: String(supplier.name ?? ""),
+      email: supplier.email ?? null,
+      contactName: supplier.contactName ?? null,
+    },
+    orgName: String(org?.name ?? "our store"),
+    messages,
+    purchaseOrders,
+  };
+}
+
 // ─── Service reducer wrappers ──────────────────────────────────────────────────
 
 export async function serviceSaveDailyBriefing(
@@ -374,5 +454,34 @@ export async function serviceCreateNotification(
     title: args.title,
     body: args.body,
     link: args.link ?? undefined,
+  });
+}
+
+export async function serviceLogSupplierMessage(
+  conn: ServiceConn,
+  args: {
+    organizationId: string;
+    supplierId: string;
+    supplierName: string;
+    poId?: string | null;
+    direction: "inbound" | "outbound" | "system";
+    channel: string;
+    subject?: string | null;
+    body: string;
+    status?: string | null;
+    escalate: boolean;
+  },
+): Promise<void> {
+  conn.reducers.serviceLogSupplierMessage({
+    organizationId: args.organizationId,
+    supplierId: args.supplierId,
+    supplierName: args.supplierName,
+    poId: args.poId ?? undefined,
+    direction: args.direction,
+    channel: args.channel,
+    subject: args.subject ?? undefined,
+    body: args.body,
+    status: args.status ?? undefined,
+    escalate: args.escalate,
   });
 }
