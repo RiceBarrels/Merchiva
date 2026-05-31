@@ -23,4 +23,6 @@ export default {
   supplier: __t.string(),
   lastRestocked: __t.string(),
   lossRate: __t.f64(),
+  minOrderQty: __t.option(__t.f64()),
+  unitsPerCase: __t.option(__t.f64()),
 };

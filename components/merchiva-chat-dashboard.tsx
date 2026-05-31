@@ -2474,6 +2474,8 @@ export function MerchivaChat({
         id: i.id, name: i.name, category: i.category, stock: i.currentStock,
         min: i.minStock, max: i.maxStock, unit: i.unit, supplier: i.supplier,
         status: i.status,
+        // Ordering specs so restock orders round to whole cases / respect a minimum.
+        minOrderQty: i.minOrderQty, unitsPerCase: i.unitsPerCase,
       })),
       todayShifts: shifts.filter((s) => s.date === today).map((s) => ({
         id: s.id, name: s.staffName, role: s.staffRoles.join(", "), start: s.startTime, end: s.endTime, type: s.shiftType,

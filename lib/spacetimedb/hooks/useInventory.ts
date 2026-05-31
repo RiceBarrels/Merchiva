@@ -30,6 +30,8 @@ export function useInventory(_organizationId: string | null) {
         supplier:     r.supplier,
         lastRestocked: r.lastRestocked,
         lossRate:     r.lossRate,
+        minOrderQty:  r.minOrderQty ?? undefined,
+        unitsPerCase: r.unitsPerCase ?? undefined,
         status: (
           r.currentStock <= 0 ? "out_of_stock" :
           r.currentStock <= r.minStock ? "low_stock" : "in_stock"

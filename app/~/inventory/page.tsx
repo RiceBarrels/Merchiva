@@ -164,6 +164,8 @@ export default function InventoryPage() {
           costPerUnit: form.costPerUnit ?? 0,
           supplier: form.supplier ?? "",
           lastRestocked: new Date().toISOString().split("T")[0],
+          minOrderQty: form.minOrderQty ?? null,
+          unitsPerCase: form.unitsPerCase ?? null,
         });
       }
       hapticSuccess();
@@ -702,6 +704,40 @@ export default function InventoryPage() {
                     step="0.1"
                     value={form.lossRate ?? 0}
                     onChange={(e) => setForm((f) => ({ ...f, lossRate: Number(e.target.value) }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.minOrderQty")}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={form.minOrderQty ?? ""}
+                    placeholder={t("inventory.dialog.minOrderQtyPlaceholder")}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        minOrderQty: e.target.value === "" ? undefined : Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.dialog.unitsPerCase")}</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={form.unitsPerCase ?? ""}
+                    placeholder={t("inventory.dialog.unitsPerCasePlaceholder")}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        unitsPerCase: e.target.value === "" ? undefined : Number(e.target.value),
+                      }))
+                    }
                   />
                 </div>
               </div>
