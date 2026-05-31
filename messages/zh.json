@@ -2592,6 +2592,7 @@
       "updateSupplier": "修改供应商",
       "deleteSupplier": "删除供应商",
       "createPurchaseOrder": "创建采购单",
+      "orderFromSupplier": "向供应商下单",
       "createNotification": "发送通知",
       "sendNotification": "发送通知",
       "addBuilderElement": "添加组件",

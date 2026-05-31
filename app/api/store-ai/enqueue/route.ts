@@ -5,6 +5,12 @@ import { streamText, generateObject } from "ai";
 import { z } from "zod";
 import { getAllPromptSegments } from "@/lib/merchiva/skills/registry";
 import { callReducer } from "@/lib/spacetimedb/server-rpc";
+import {
+  getServiceConn,
+  getAiReplyTarget,
+  serviceCreateNotification,
+} from "@/lib/spacetimedb/service-client";
+import { sendWebPush } from "@/lib/push/send";
 
 // ── OpenRouter setup (mirrors /api/store-ai) ─────────────────────────────────
 
@@ -239,6 +245,12 @@ async function runJob(args: RunJobArgs): Promise<void> {
       name: "finalizeAiJob",
       args: [args.organizationId, jobId, finalText, undefined],
     });
+
+    // The user may have closed the tab while this background reply ran. Ping
+    // them that it's ready: an in-app notification (the bell) plus a web push
+    // to any device they've registered, so they're reachable even off-site.
+    // Best-effort — never let notification failures fault the job.
+    await notifyReplyReady(args, jobId, fullReply);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[runJob] generation failed:", msg);
@@ -334,6 +346,84 @@ async function findLatestPendingJobId(token: string, organizationId: string, ses
   } catch (err) {
     console.warn("[findLatestPendingJobId] crashed:", err);
     return null;
+  }
+}
+
+// ── Completion notification (in-app + web push) ──────────────────────────────
+
+const REPLY_TITLE: Record<string, string> = {
+  en: "Mr. Merchiva replied",
+  zh: "Mr. Merchiva 回复了",
+  es: "Mr. Merchiva respondió",
+  fr: "Mr. Merchiva a répondu",
+  ar: "رد عليك السيد ميرشيفا",
+  hi: "Mr. Merchiva ने जवाब दिया",
+};
+
+const REPLY_FALLBACK_BODY: Record<string, string> = {
+  en: "Your reply is ready.",
+  zh: "你的回复已经准备好了。",
+  es: "Tu respuesta está lista.",
+  fr: "Votre réponse est prête.",
+  ar: "ردك جاهز.",
+  hi: "आपका जवाब तैयार है।",
+};
+
+// Strip ```action``` blocks / bare action JSON so the notification preview shows
+// the conversational reply, not machine instructions.
+function stripActionsForPreview(text: string): string {
+  return text
+    .replace(/```action\s*\n?[\s\S]*?```/g, "")
+    .replace(/```action\s*\n?[\s\S]*$/, "")
+    .replace(/^\s*\{\s*"action"\s*:[\s\S]*?\}\s*$/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function notifyReplyReady(
+  args: RunJobArgs,
+  jobId: string,
+  fullReply: string,
+): Promise<void> {
+  try {
+    const lang = args.lang || "en";
+    const title = REPLY_TITLE[lang] ?? REPLY_TITLE.en;
+    const preview = stripActionsForPreview(fullReply);
+    const body = preview
+      ? preview.length > 140
+        ? preview.slice(0, 139) + "…"
+        : preview
+      : REPLY_FALLBACK_BODY[lang] ?? REPLY_FALLBACK_BODY.en;
+    // Carries the session id so the client can suppress the bell entry when the
+    // user actually watched the reply stream in (see merchiva-chat-dashboard).
+    const link = `/~/chat?mvsession=${encodeURIComponent(args.sessionId)}`;
+
+    const conn = await getServiceConn();
+    const target = await getAiReplyTarget(conn, args.organizationId, args.sessionId);
+    if (!target) return;
+
+    await serviceCreateNotification(conn, {
+      organizationId: args.organizationId,
+      targetIdentity: target.targetIdentity,
+      type: "general",
+      title,
+      body,
+      link,
+    });
+
+    if (target.pushSubs.length > 0) {
+      await sendWebPush(target.pushSubs, {
+        title,
+        body,
+        link,
+        type: "merchiva_reply",
+        id: jobId,
+      });
+    }
+  } catch (err) {
+    // SPACETIMEDB_SERVICE_TOKEN may be unset in dev, or push may be
+    // unconfigured — the in-chat result still renders, so this is non-fatal.
+    console.warn("[notifyReplyReady] skipped:", err instanceof Error ? err.message : err);
   }
 }
 

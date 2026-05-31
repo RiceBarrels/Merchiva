@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, Fingerprint } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { BrandPanel } from "@/components/brand-panel";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,11 @@ function LoginForm() {
   // Email verification state (in case user signs in with unverified email)
   const [needsVerification, setNeedsVerification] = useState(false);
   const [verificationToken, setVerificationToken] = useState("");
+
+  // Magic auth state (passwordless email code)
+  const [magicMode, setMagicMode] = useState(false);
+  const [magicCodeSent, setMagicCodeSent] = useState(false);
+  const [magicCode, setMagicCode] = useState("");
 
   // Electron 3rd-party OAuth: the system browser hits our API and we redirect
   // to merchiva://auth-callback. The OS hands the URL to the Electron main
@@ -209,6 +214,100 @@ function LoginForm() {
     }
   };
 
+  const handlePasskey = async () => {
+    setError("");
+    try {
+      const native = isNativeShell();
+      const res = await fetch(apiUrl("/api/auth/oauth"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "passkey",
+          redirectTo: next,
+          client: native ? "electron" : "web",
+          ...(email ? { loginHint: email } : {}),
+          screenHint: "sign-in",
+        }),
+      });
+      const data = await res.json();
+      if (!data.url) {
+        setError(data.error ?? t("login.passkeyFailed"));
+        return;
+      }
+      if (native) {
+        await getNativeShell()?.openExternalAuth(data.url);
+      } else {
+        window.location.href = data.url;
+      }
+    } catch {
+      setError(t("login.passkeyFailed"));
+    }
+  };
+
+  const handleSendMagicCode = async () => {
+    setError("");
+    if (!email) {
+      setError(t("login.enterEmailFirst"));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(apiUrl("/api/auth/magic-auth/send"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? t("login.magicSendFailed"));
+        setLoading(false);
+        return;
+      }
+      setMagicCodeSent(true);
+      setLoading(false);
+    } catch {
+      setError(t("login.magicSendFailed"));
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyMagicCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch(apiUrl("/api/auth/magic-auth/verify"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: magicCode }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.mfaRequired) {
+          setPendingToken(data.pendingAuthenticationToken);
+          const factors = data.authenticationFactors ?? [];
+          const totp = factors.find(
+            (f: { type: string }) => f.type === "totp",
+          );
+          if (totp) setChallengeId(totp.id);
+          setNeeds2FA(true);
+          setLoading(false);
+          return;
+        }
+        setError(data.error ?? t("login.invalidCode"));
+        setLoading(false);
+        return;
+      }
+
+      signIn(data.accessToken, data.refreshToken, data.user);
+      router.push(next);
+    } catch {
+      setError(t("login.invalidCode"));
+      setLoading(false);
+    }
+  };
+
   /* ── Email verification screen ──────────────────── */
 
   if (needsVerification) {
@@ -259,6 +358,68 @@ function LoginForm() {
               </Button>
             </form>
             <Button type="button" variant="ghost" onClick={() => { setNeedsVerification(false); setError(""); setCode(""); }} className="mt-4 h-auto p-0 text-[12px] text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:text-stone-300 hover:bg-transparent gap-1.5 font-normal self-start">
+              <ArrowLeft className="h-3 w-3" /> {t("login.backToSignIn")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Magic Auth code entry screen ───────────────── */
+
+  if (magicMode && magicCodeSent) {
+    return (
+      <div className="flex h-screen w-full overflow-hidden">
+        <BrandPanel />
+        <div className="w-full lg:w-[480px] shrink-0 h-full bg-white dark:bg-stone-900 flex flex-col p-7 lg:p-10">
+          <div className="flex items-center justify-between gap-2.5 mb-8">
+            <div className="flex items-center gap-2.5 lg:hidden">
+              <MerchivaLogo size={24} fg="#1c1917" />
+              <span className="text-[14px] font-semibold tracking-tight text-stone-900 dark:text-stone-100">
+                Merchiva
+              </span>
+            </div>
+            <div className="hidden lg:block" />
+            <LanguageSwitcher variant="inline" />
+          </div>
+          <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
+            <h1 className="text-[22px] font-semibold tracking-tight text-stone-900 dark:text-stone-100 mb-1">
+              {t("login.magicCodeTitle")}
+            </h1>
+            <p className="text-[13px] text-stone-500 dark:text-stone-400 mb-7">
+              {t("login.magicCodeSubtitle")} <span className="font-medium text-stone-700 dark:text-stone-300">{email}</span>
+            </p>
+            <form onSubmit={handleVerifyMagicCode} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="magic-code" className="text-[11px] font-semibold text-stone-600 dark:text-stone-300 uppercase tracking-wider">
+                  {t("login.verificationCode")}
+                </Label>
+                <div className="flex items-center h-11 rounded border border-stone-200 dark:border-stone-700 px-3 gap-2 focus-within:border-stone-400 focus-within:ring-3 focus-within:ring-stone-200/60">
+                  <Sparkles className="h-4 w-4 text-stone-400 dark:text-stone-500 shrink-0" />
+                  <Input
+                    id="magic-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={magicCode}
+                    onChange={(e) => setMagicCode(e.target.value)}
+                    required
+                    autoFocus
+                    placeholder="000000"
+                    className="h-auto border-0 rounded-none bg-transparent p-0 text-[16px] text-stone-900 dark:text-stone-100 placeholder:text-stone-300 dark:text-stone-700 shadow-none focus-visible:ring-0 focus-visible:border-transparent font-mono text-center tracking-[0.3em]"
+                  />
+                </div>
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" disabled={loading} className="h-11 w-full rounded bg-stone-900 text-white text-[14px] font-medium gap-2 hover:bg-stone-800">
+                {loading ? <Spinner size={16} /> : <>{t("common.signIn")} <ArrowRight className="h-4 w-4" /></>}
+              </Button>
+              <Button type="button" variant="ghost" onClick={handleSendMagicCode} disabled={loading} className="h-auto p-0 text-[12px] text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-transparent font-normal">
+                {t("login.resendCode")}
+              </Button>
+            </form>
+            <Button type="button" variant="ghost" onClick={() => { setMagicMode(false); setMagicCodeSent(false); setMagicCode(""); setError(""); }} className="mt-4 h-auto p-0 text-[12px] text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:text-stone-300 hover:bg-transparent gap-1.5 font-normal self-start">
               <ArrowLeft className="h-3 w-3" /> {t("login.backToSignIn")}
             </Button>
           </div>
@@ -514,6 +675,29 @@ function LoginForm() {
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
               Apple
+            </Button>
+          </div>
+
+          {/* Passkey + Magic auth */}
+          <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePasskey}
+              className="h-11 rounded border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-[14px] font-medium hover:bg-stone-50 dark:bg-stone-950 gap-2"
+            >
+              <Fingerprint className="h-4 w-4" />
+              {t("login.passkey")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setMagicMode(true); setError(""); handleSendMagicCode(); }}
+              disabled={loading}
+              className="h-11 rounded border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 text-[14px] font-medium hover:bg-stone-50 dark:bg-stone-950 gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              {t("login.emailCode")}
             </Button>
           </div>
 

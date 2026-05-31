@@ -257,6 +257,158 @@ export function getAdminOrgsForUser(
     .map((m: any) => m.organizationId as string);
 }
 
+// ─── Mr. Merchiva background-reply notification target ──────────────────────────
+//
+// When a backgrounded ai_job finalizes the user may have left the site, so the
+// enqueue worker can't notify from the client. This reads the job owner's
+// identity and push subscriptions straight from the service connection's cache
+// so the worker can fire an in-app notification + web push server-side.
+
+const aiNotifySubscribed = new WeakSet<object>();
+
+export interface AiReplyTarget {
+  targetIdentity: Identity;
+  pushSubs: Array<{ endpoint: string; p256dh: string; auth: string }>;
+}
+
+/**
+ * Resolve the owner (and their push subscriptions) of the most-recent ai_job
+ * for the given session. Returns null when no matching job is found or the
+ * connection isn't usable. Best-effort — never throws.
+ */
+export async function getAiReplyTarget(
+  conn: ServiceConn,
+  organizationId: string,
+  sessionId: string,
+): Promise<AiReplyTarget | null> {
+  try {
+    if (!aiNotifySubscribed.has(conn)) {
+      await subscribeAndWait(conn, [
+        "SELECT * FROM ai_job",
+        "SELECT * FROM push_subscription",
+      ]);
+      aiNotifySubscribed.add(conn);
+    }
+
+    // Newest job for this session — createAiJob stamps userId = the sender, and
+    // the client only enqueues one job per send, so this is unambiguous.
+    const jobs = [...conn.db.aiJob.iter()].filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (j: any) => j.organizationId === organizationId && j.sessionId === sessionId,
+    );
+    if (jobs.length === 0) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const toMs = (j: any) =>
+      typeof j.createdAt === "object" && j.createdAt && "microsSinceUnixEpoch" in j.createdAt
+        ? Number((j.createdAt as { microsSinceUnixEpoch: bigint }).microsSinceUnixEpoch)
+        : new Date(String(j.createdAt)).getTime();
+    jobs.sort((a, b) => toMs(b) - toMs(a));
+    const job = jobs[0];
+    const targetIdentity: Identity = job.userId;
+    if (!targetIdentity) return null;
+
+    const hex = targetIdentity.toHexString?.() ?? String(targetIdentity);
+    const pushSubs = [...conn.db.pushSubscription.iter()]
+      .filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (r: any) =>
+          r.organizationId === organizationId &&
+          (r.targetId?.toHexString?.() ?? String(r.targetId)) === hex,
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((r: any) => ({
+        endpoint: r.endpoint as string,
+        p256dh: r.p256Dh as string,
+        auth: r.auth as string,
+      }));
+
+    return { targetIdentity, pushSubs };
+  } catch (err) {
+    console.warn("[getAiReplyTarget] failed:", err);
+    return null;
+  }
+}
+
+// ─── Supplier thread context (Phase 2 inbound webhook) ──────────────────────────
+
+const supplierThreadSubscribed = new WeakSet<object>();
+
+export interface SupplierThreadContext {
+  supplier: { id: string; name: string; email: string | null; contactName: string | null };
+  orgName: string;
+  // Oldest → newest, so the model reads the conversation in order.
+  messages: Array<{ direction: string; body: string }>;
+  purchaseOrders: Array<{ status: string; items: string; total: number }>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowMs(r: any): number {
+  const c = r?.createdAt;
+  return c && typeof c === "object" && "microsSinceUnixEpoch" in c
+    ? Number((c as { microsSinceUnixEpoch: bigint }).microsSinceUnixEpoch)
+    : new Date(String(c)).getTime();
+}
+
+/**
+ * Build the context Mr. Merchiva needs to answer a supplier reply: the supplier
+ * record, the org name, the recent message thread, and this supplier's POs.
+ * Returns null when the supplier can't be found.
+ */
+export async function getSupplierThreadContext(
+  conn: ServiceConn,
+  organizationId: string,
+  supplierId: string,
+): Promise<SupplierThreadContext | null> {
+  if (!supplierThreadSubscribed.has(conn)) {
+    await subscribeAndWait(conn, [
+      "SELECT * FROM supplier",
+      "SELECT * FROM supplier_message",
+      "SELECT * FROM purchase_order",
+      "SELECT * FROM organization",
+    ]);
+    supplierThreadSubscribed.add(conn);
+  }
+
+  const supplier = [...conn.db.supplier.iter()].find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (s: any) => s.id?.toString?.() === supplierId && s.organizationId === organizationId,
+  );
+  if (!supplier) return null;
+
+  const org = [...conn.db.organization.iter()].find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (o: any) => o.id?.toString?.() === organizationId,
+  );
+
+  const messages = [...conn.db.supplierMessage.iter()]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((m: any) => m.organizationId === organizationId && m.supplierId === supplierId)
+    .sort((a, b) => rowMs(a) - rowMs(b))
+    .slice(-12)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((m: any) => ({ direction: String(m.direction), body: String(m.body) }));
+
+  const purchaseOrders = [...conn.db.purchaseOrder.iter()]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((p: any) => p.organizationId === organizationId && p.supplierId === supplierId)
+    .sort((a, b) => rowMs(b) - rowMs(a))
+    .slice(0, 5)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((p: any) => ({ status: String(p.status), items: String(p.items), total: Number(p.total) }));
+
+  return {
+    supplier: {
+      id: supplierId,
+      name: String(supplier.name ?? ""),
+      email: supplier.email ?? null,
+      contactName: supplier.contactName ?? null,
+    },
+    orgName: String(org?.name ?? "our store"),
+    messages,
+    purchaseOrders,
+  };
+}
+
 // ─── Service reducer wrappers ──────────────────────────────────────────────────
 
 export async function serviceSaveDailyBriefing(
@@ -302,5 +454,34 @@ export async function serviceCreateNotification(
     title: args.title,
     body: args.body,
     link: args.link ?? undefined,
+  });
+}
+
+export async function serviceLogSupplierMessage(
+  conn: ServiceConn,
+  args: {
+    organizationId: string;
+    supplierId: string;
+    supplierName: string;
+    poId?: string | null;
+    direction: "inbound" | "outbound" | "system";
+    channel: string;
+    subject?: string | null;
+    body: string;
+    status?: string | null;
+    escalate: boolean;
+  },
+): Promise<void> {
+  conn.reducers.serviceLogSupplierMessage({
+    organizationId: args.organizationId,
+    supplierId: args.supplierId,
+    supplierName: args.supplierName,
+    poId: args.poId ?? undefined,
+    direction: args.direction,
+    channel: args.channel,
+    subject: args.subject ?? undefined,
+    body: args.body,
+    status: args.status ?? undefined,
+    escalate: args.escalate,
   });
 }

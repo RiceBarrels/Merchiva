@@ -36,7 +36,7 @@ import {
   deleteTrainingObjective,
   setPunchInCode,
 } from "@/lib/spacetimedb/actions";
-import { getConnection } from "@/lib/spacetimedb/client";
+import { getConnection, getActiveOrgId, getStoredToken } from "@/lib/spacetimedb/client";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -891,6 +891,99 @@ register({
     });
   },
   toastMessage: () => "Purchase order created",
+});
+
+register({
+  name: "orderFromSupplier",
+  description:
+    "Order inventory from a supplier: email them the purchase order AND record it. Use this (not createPurchaseOrder) when the user wants Mr. Merchiva to actually place/send a restock order. supplierId MUST match a supplier in LIVE STORE DATA; if the low-stock item's `supplier` name has no matching supplier record (no id), ask to add the supplier first via addSupplier. If the supplier has no email on file, the order is still saved as a draft and managers are notified.",
+  category: "suppliers",
+  parameters: {
+    supplierId: { type: "string", required: true, description: "Supplier ID from LIVE STORE DATA" },
+    items: { type: "array", required: true, description: "[{name, quantity, unit?, unitCost?}]" },
+    subtotal: { type: "number", required: false, description: "Subtotal (defaults to sum of unitCost*quantity)" },
+    tax: { type: "number", required: false, description: "Tax amount" },
+    total: { type: "number", required: false, description: "Total (defaults to subtotal+tax)" },
+    notes: { type: "string", required: false, description: "Notes to include in the email to the supplier" },
+  },
+  requiredPermission: { section: "inventory", action: "edit" },
+  riskLevel: "high",
+  execute: async (p) => {
+    const conn = getConnection();
+    if (!conn) throw new Error("Not connected to SpacetimeDB");
+    const token = getStoredToken();
+    if (!token) throw new Error("Not authenticated");
+    const organizationId = getActiveOrgId();
+
+    const supplierId = String(p.supplierId ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supplier = [...(conn.db as any).supplier.iter()].find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s: any) => s.id?.toString?.() === supplierId,
+    );
+    if (!supplier) throw new Error("Supplier not found — add the supplier first.");
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const org = [...(conn.db as any).organization.iter()].find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (o: any) => o.id?.toString?.() === organizationId,
+    );
+    const meHex = conn.identity?.toHexString?.();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const me = [...(conn.db as any).user.iter()].find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (u: any) => u.identity?.toHexString?.() === meHex,
+    );
+
+    const items = Array.isArray(p.items)
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (p.items as any[]).map((it) => ({
+          name: String(it.name ?? it.itemName ?? ""),
+          quantity: Number(it.quantity ?? it.qty ?? 0),
+          unit: it.unit ? String(it.unit) : undefined,
+          unitCost:
+            it.unitCost != null ? Number(it.unitCost) : it.cost != null ? Number(it.cost) : undefined,
+        }))
+      : [];
+    if (items.length === 0) throw new Error("No items to order");
+
+    const subtotal = Number(
+      p.subtotal ?? items.reduce((s, it) => s + (it.unitCost ?? 0) * it.quantity, 0),
+    );
+    const tax = Number(p.tax ?? 0);
+    const total = Number(p.total ?? subtotal + tax);
+
+    const res = await fetch("/api/suppliers/order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        organizationId,
+        supplierId,
+        supplierName: supplier.name ?? "",
+        supplierEmail: supplier.email ?? null,
+        contactName: supplier.contactName ?? null,
+        orgName: org?.name ?? null,
+        items,
+        subtotal,
+        tax,
+        total,
+        notes: p.notes ? String(p.notes) : null,
+        replyTo: me?.email ?? null,
+      }),
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error ?? `Order failed (${res.status})`);
+    }
+    const data = (await res.json()) as { emailed?: boolean };
+    // Stash for toastMessage (executeAction passes the same object to both).
+    (p as Record<string, unknown>).__emailed = !!data.emailed;
+  },
+  toastMessage: (p) =>
+    (p as Record<string, unknown>).__emailed
+      ? "Order emailed to supplier"
+      : "Order saved as draft — manager notified",
 });
 
 // ─── Notifications ─────────────────────────────────────────────────────────────

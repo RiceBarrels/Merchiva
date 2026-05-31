@@ -2592,6 +2592,7 @@
       "updateSupplier": "Editar proveedor",
       "deleteSupplier": "Eliminar proveedor",
       "createPurchaseOrder": "Nueva orden de compra",
+      "orderFromSupplier": "Pedir al proveedor",
       "createNotification": "Enviar notificación",
       "sendNotification": "Enviar notificación",
       "addBuilderElement": "Añadir elemento",

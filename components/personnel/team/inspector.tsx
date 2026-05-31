@@ -13,6 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import {
   ORG_GROUP_PRESETS,
@@ -457,15 +463,13 @@ export function Inspector({
 
   if (isMobile) {
     return (
-      <>
-        <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-[1px]" onClick={onClose} />
-        <aside className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] rounded-t-2xl border-t border-border bg-background flex flex-col shadow-2xl">
-          <div className="flex justify-center pt-2 pb-1 shrink-0" onClick={onClose}>
-            <span className="h-1 w-10 rounded-full bg-stone-300 dark:bg-stone-700" />
-          </div>
+      <Drawer open={!!node} onOpenChange={(o) => { if (!o) onClose(); }} direction="bottom">
+        <DrawerContent className="bg-background max-h-[85vh]">
+          <DrawerTitle className="sr-only">{node.name}</DrawerTitle>
+          <DrawerDescription className="sr-only">编辑节点权限与信息</DrawerDescription>
           {baseAside}
-        </aside>
-      </>
+        </DrawerContent>
+      </Drawer>
     );
   }
 

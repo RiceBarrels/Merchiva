@@ -30,6 +30,13 @@ import {
   updateTimeOffStatus,
 } from "@/lib/spacetimedb/actions";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -1268,33 +1275,34 @@ export function MobileRequestsSheet({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div
-      onClick={onClose}
-      className="md:hidden fixed inset-0 z-50 bg-black/40 flex items-end"
+    <Drawer
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+      direction="bottom"
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-h-[80%] bg-background rounded-t-[1rem] overflow-hidden flex flex-col animate-[mobile-sheet-up_220ms_ease-out]"
-      >
-        <div className="pt-2 pb-1 flex justify-center">
-          <div className="w-9 h-1 rounded-full bg-border" />
-        </div>
+      <DrawerContent className="md:hidden bg-background">
+        <DrawerDescription className="sr-only">
+          {tt("personnel.m.requestsTitle")}
+        </DrawerDescription>
         <div className="px-4 py-3 flex items-center border-b border-border gap-2">
           <Inbox className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
-          <div className="text-[16px] font-semibold tracking-[-0.015em]">{tt("personnel.m.requestsTitle")}</div>
+          <DrawerTitle className="text-[16px] font-semibold tracking-[-0.015em]">
+            {tt("personnel.m.requestsTitle")}
+          </DrawerTitle>
           <span className="ml-auto font-mono tabular-nums text-[11px] text-muted-foreground">
             {tt("personnel.m.pendingCount").replace("{n}", String(total))}
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-2 h-7 w-7 rounded-[0.3rem] inline-flex items-center justify-center hover:bg-muted"
-          >
-            <X className="h-3.5 w-3.5" strokeWidth={1.75} />
-          </button>
+          <DrawerClose asChild>
+            <button
+              type="button"
+              className="ml-2 h-7 w-7 rounded-[0.3rem] inline-flex items-center justify-center hover:bg-muted"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
+          </DrawerClose>
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar">
@@ -1433,8 +1441,8 @@ export function MobileRequestsSheet({
             </Section>
           )}
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

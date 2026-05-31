@@ -1027,6 +1027,34 @@ const purchaseOrderTable = table(
   }
 );
 
+// ─── Supplier Messages ─────────────────────────────────────────────────────────
+// Threaded log of communication between Mr. Merchiva (on behalf of the org) and
+// a supplier — outbound POs/follow-ups, inbound replies (Phase 2), and system
+// notes. One row per message. `poId` links it to the purchase order it concerns
+// (optional, since not every message is tied to a specific PO).
+const supplierMessageTable = table(
+  {
+    name: 'supplier_message',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'bySupplierId', algorithm: 'btree', columns: ['supplierId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    supplierId: t.string(),
+    poId: t.option(t.string()),       // linked purchase_order id, if any
+    direction: t.string(),            // 'outbound' | 'inbound' | 'system'
+    channel: t.string(),              // 'email' (Phase 1); 'sms' later
+    subject: t.option(t.string()),
+    body: t.string(),
+    status: t.option(t.string()),     // 'sent' | 'failed' | 'received'
+    createdAt: t.timestamp(),
+  }
+);
+
 // ─── Expenses ────────────────────────────────────────────────────────────────
 
 const expenseTable = table(
@@ -1594,6 +1622,7 @@ const spacetimedb = schema({
   location: locationTable,
   supplier: supplierTable,
   purchaseOrder: purchaseOrderTable,
+  supplierMessage: supplierMessageTable,
   expense: expenseTable,
   coupon: couponTable,
   queueEntry: queueEntryTable,
@@ -4627,6 +4656,181 @@ export const updatePurchaseOrderStatus = spacetimedb.reducer(
       ...(status === 'sent' ? { sentAt: ctx.timestamp } : {}),
       ...(status === 'received' ? { receivedAt: ctx.timestamp } : {}),
     });
+  }
+);
+
+// Notify only the org's active owners/managers (vs. notifyOrgMembers which hits
+// everyone). Used to escalate supplier-ordering problems to people who can act.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function notifyManagers(ctx: any, organizationId: string, type: string, title: string, body: string, link?: string) {
+  const managers = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+    .filter((m: { status: string; role: string }) =>
+      m.status === 'active' && (m.role === 'owner' || m.role === 'manager'));
+  for (const m of managers) {
+    ctx.db.notification.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      targetId: m.userId,
+      type,
+      title,
+      body,
+      link: link ?? undefined,
+      read: false,
+      createdAt: ctx.timestamp,
+    });
+  }
+}
+
+// Mr. Merchiva orders inventory from a supplier. Creates the purchase order and
+// logs the outbound message in one atomic step. The actual email is sent by the
+// Next route BEFORE calling this (Resend can't run inside a reducer); `emailed`
+// records whether that send succeeded. When it didn't (no supplier email, or a
+// send failure), the PO is kept as a `draft` and managers are notified so a
+// human can finish it.
+export const recordSupplierOrder = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    supplierId: t.string(),
+    supplierName: t.string(),
+    items: t.string(),
+    subtotal: t.number(),
+    tax: t.number(),
+    total: t.number(),
+    notes: t.option(t.string()),
+    summary: t.string(),
+    emailed: t.bool(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const poId = ctx.newUuidV4();
+    ctx.db.purchaseOrder.insert({
+      id: poId,
+      organizationId: args.organizationId,
+      supplierId: args.supplierId,
+      status: args.emailed ? 'sent' : 'draft',
+      items: args.items,
+      subtotal: args.subtotal,
+      tax: args.tax,
+      total: args.total,
+      notes: args.notes,
+      sentAt: args.emailed ? ctx.timestamp : undefined,
+      receivedAt: undefined,
+      createdAt: ctx.timestamp,
+    });
+
+    ctx.db.supplierMessage.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      supplierId: args.supplierId,
+      poId: poId.toString(),
+      direction: 'outbound',
+      channel: 'email',
+      subject: undefined,
+      body: args.summary,
+      status: args.emailed ? 'sent' : 'failed',
+      createdAt: ctx.timestamp,
+    });
+
+    if (!args.emailed) {
+      notifyManagers(
+        ctx,
+        args.organizationId,
+        'order',
+        'Purchase order needs your attention',
+        `Mr. Merchiva couldn't email ${args.supplierName} — the order was saved as a draft. Add a supplier email or send it manually.`,
+        '/~/suppliers',
+      );
+    }
+  }
+);
+
+// Append a message to a supplier thread. Used for follow-ups, inbound replies
+// (Phase 2), and system notes. `escalate=true` also pings managers (e.g. when a
+// supplier raises a problem that needs a human decision).
+export const logSupplierMessage = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    supplierId: t.string(),
+    supplierName: t.string(),
+    poId: t.option(t.string()),
+    direction: t.string(),
+    channel: t.string(),
+    subject: t.option(t.string()),
+    body: t.string(),
+    status: t.option(t.string()),
+    escalate: t.bool(),
+  },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+    ctx.db.supplierMessage.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      supplierId: args.supplierId,
+      poId: args.poId,
+      direction: args.direction,
+      channel: args.channel,
+      subject: args.subject,
+      body: args.body,
+      status: args.status,
+      createdAt: ctx.timestamp,
+    });
+    if (args.escalate) {
+      notifyManagers(
+        ctx,
+        args.organizationId,
+        'order',
+        `Supplier issue: ${args.supplierName}`,
+        args.body.length > 160 ? args.body.slice(0, 159) + '…' : args.body,
+        '/~/suppliers',
+      );
+    }
+  }
+);
+
+// Service-identity variant of logSupplierMessage. Used by the inbound supplier
+// webhook (Phase 2), which receives supplier email replies and the AI's
+// responses server-side — there's no logged-in user to authorize the write, so
+// it runs as the service identity. Same insert + manager escalation.
+export const serviceLogSupplierMessage = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    supplierId: t.string(),
+    supplierName: t.string(),
+    poId: t.option(t.string()),
+    direction: t.string(),
+    channel: t.string(),
+    subject: t.option(t.string()),
+    body: t.string(),
+    status: t.option(t.string()),
+    escalate: t.bool(),
+  },
+  (ctx, args) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    ctx.db.supplierMessage.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      supplierId: args.supplierId,
+      poId: args.poId,
+      direction: args.direction,
+      channel: args.channel,
+      subject: args.subject,
+      body: args.body,
+      status: args.status,
+      createdAt: ctx.timestamp,
+    });
+    if (args.escalate) {
+      notifyManagers(
+        ctx,
+        args.organizationId,
+        'order',
+        `Supplier issue: ${args.supplierName}`,
+        args.body.length > 160 ? args.body.slice(0, 159) + '…' : args.body,
+        '/~/suppliers',
+      );
+    }
   }
 );
 

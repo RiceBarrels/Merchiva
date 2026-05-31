@@ -3,7 +3,7 @@
 import { Suspense, useState, useMemo, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react";
+import { Mail, Lock, ArrowRight, ArrowLeft, Check, Minus } from "lucide-react";
 import { MerchivaLogo } from "@/components/logo";
 import { BrandPanel } from "@/components/brand-panel";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,18 @@ const strengthColors: Record<number, string> = {
   4: "bg-emerald-600",
 };
 
+// Mirrors the WorkOS dashboard rules: min 10 chars, 1 upper / 1 lower / 1 number,
+// complexity ≥ 3. Server-side WorkOS also rejects breached passwords and enforces
+// password history — those checks can't be replicated client-side.
+function getPasswordRules(pw: string) {
+  return {
+    length: pw.length >= 10,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    number: /\d/.test(pw),
+  };
+}
+
 /* ── Signup form ───────────────────────────────────── */
 
 function SignupForm() {
@@ -63,6 +75,8 @@ function SignupForm() {
 
   const strength = useMemo(() => getPasswordStrength(password), [password]);
   const strengthLabel = strength.key ? t(`signup.${strength.key}`) : "";
+  const rules = useMemo(() => getPasswordRules(password), [password]);
+  const rulesPass = rules.length && rules.upper && rules.lower && rules.number && strength.score >= 3;
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,6 +407,29 @@ function SignupForm() {
                   />
                 ))}
               </div>
+              {/* Rule checklist */}
+              <ul className="pt-1.5 grid grid-cols-2 gap-x-3 gap-y-1">
+                {([
+                  ["length", t("signup.rulePwLength")],
+                  ["upper", t("signup.rulePwUpper")],
+                  ["lower", t("signup.rulePwLower")],
+                  ["number", t("signup.rulePwNumber")],
+                ] as const).map(([key, label]) => {
+                  const ok = rules[key];
+                  return (
+                    <li key={key} className="flex items-center gap-1.5 text-[11px]">
+                      {ok ? (
+                        <Check className="h-3 w-3 text-emerald-600 shrink-0" />
+                      ) : (
+                        <Minus className="h-3 w-3 text-stone-300 dark:text-stone-600 shrink-0" />
+                      )}
+                      <span className={ok ? "text-stone-700 dark:text-stone-300" : "text-stone-400 dark:text-stone-500"}>
+                        {label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
 
             {/* Terms checkbox */}
@@ -420,7 +457,7 @@ function SignupForm() {
 
             <Button
               type="submit"
-              disabled={loading || !agreed}
+              disabled={loading || !agreed || !rulesPass}
               className="h-11 w-full rounded bg-stone-900 text-white text-[14px] font-medium gap-2 hover:bg-stone-800"
             >
               {loading ? (

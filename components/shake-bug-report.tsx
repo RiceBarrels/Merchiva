@@ -4,7 +4,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Bug, Send, X, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/context/permissions";
 import { hapticHeavy } from "@/lib/haptics";
@@ -137,31 +143,23 @@ export function ShakeBugReport() {
     setScreenshot(null);
   }, [title, description, screenshot, organizationId]);
 
-  if (!open) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-[200] bg-black/30"
-        onClick={() => setOpen(false)}
-      />
-      {/* Drawer from bottom */}
-      <div className="fixed inset-x-0 bottom-0 z-[201] bg-background border-t border-border rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-200">
-        {/* Handle */}
-        <div className="flex justify-center pt-2 pb-1">
-          <div className="w-8 h-1 rounded-full bg-muted-foreground/30" />
-        </div>
-
+    <Drawer open={open} onOpenChange={setOpen} direction="bottom">
+      <DrawerContent className="z-[201] max-h-[85vh] bg-background">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pb-3 border-b border-border">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-4 pb-3 pt-3 border-b border-border">
+          <DrawerTitle className="flex items-center gap-2 text-[14px] font-semibold">
             <Bug className="h-4 w-4 text-red-500" />
-            <span className="text-[14px] font-semibold">Report a Bug</span>
-          </div>
-          <button onClick={() => setOpen(false)} className="p-1 rounded-[0.3rem] hover:bg-muted">
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
+            Report a Bug
+          </DrawerTitle>
+          <DrawerDescription className="sr-only">
+            Describe the issue you ran into and optionally attach a screenshot.
+          </DrawerDescription>
+          <DrawerClose asChild>
+            <button className="p-1 rounded-[0.3rem] hover:bg-muted">
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </DrawerClose>
         </div>
 
         {/* Body */}
@@ -226,7 +224,7 @@ export function ShakeBugReport() {
             Submit Report
           </Button>
         </div>
-      </div>
-    </>
+      </DrawerContent>
+    </Drawer>
   );
 }

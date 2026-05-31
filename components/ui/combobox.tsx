@@ -16,6 +16,9 @@ interface ComboboxProps {
   placeholder?: string;
   searchPlaceholder?: string;
   className?: string;
+  // When true, the user can type a value that isn't in `options` and commit it
+  // (Enter or the "Use …" row). Good for free-text fields backed by suggestions.
+  allowCustom?: boolean;
 }
 
 export function Combobox({
@@ -25,6 +28,7 @@ export function Combobox({
   placeholder = "Select…",
   searchPlaceholder = "Search…",
   className,
+  allowCustom = false,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -32,10 +36,18 @@ export function Combobox({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selected = options.find((o) => o.value === value);
+  // Custom (typed) value not present in the options list.
+  const customValue = !selected && value ? value : "";
 
   const filtered = query
     ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
     : options;
+  // Offer to commit the typed text when allowCustom and it isn't an exact match.
+  const showCustomRow =
+    allowCustom &&
+    query.trim().length > 0 &&
+    !options.some((o) => o.label.toLowerCase() === query.trim().toLowerCase());
+  const showSearch = allowCustom || options.length > 6;
 
   // Close on outside click
   useEffect(() => {
@@ -68,15 +80,15 @@ export function Combobox({
         onClick={() => setOpen((p) => !p)}
         className="flex w-full items-center justify-between rounded border border-border bg-background px-2 py-1 text-xs outline-none hover:bg-muted focus:ring-1 focus:ring-ring"
       >
-        <span className={cn("truncate", !selected && "text-muted-foreground")}>
-          {selected ? selected.label : placeholder}
+        <span className={cn("truncate", !selected && !customValue && "text-muted-foreground")}>
+          {selected ? selected.label : customValue || placeholder}
         </span>
         <ChevronDown className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform ml-1", open && "rotate-180")} />
       </button>
 
       {open && (
         <div className="absolute z-50 mt-1 w-full min-w-[140px] rounded border border-border bg-background shadow-md">
-          {options.length > 6 && (
+          {showSearch && (
             <div className="flex items-center border-b border-border px-2 py-1.5">
               <Search className="h-3 w-3 shrink-0 text-muted-foreground mr-1.5" />
               <input
@@ -84,13 +96,30 @@ export function Combobox({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && allowCustom && query.trim()) {
+                    e.preventDefault();
+                    select(query.trim());
+                  }
+                }}
                 placeholder={searchPlaceholder}
                 className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
               />
             </div>
           )}
           <ul className="max-h-48 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
+            {showCustomRow && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => select(query.trim())}
+                  className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs hover:bg-muted"
+                >
+                  <span className="truncate">Use &quot;{query.trim()}&quot;</span>
+                </button>
+              </li>
+            )}
+            {filtered.length === 0 && !showCustomRow ? (
               <li className="px-3 py-2 text-xs text-muted-foreground">No results</li>
             ) : (
               filtered.map((o) => (

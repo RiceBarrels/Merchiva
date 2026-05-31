@@ -44,6 +44,8 @@ import {
   Info,
   SettingsIcon,
   UserCog,
+  Fingerprint,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -782,7 +784,7 @@ export default function SettingsPage() {
     if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
   }, [isTauri]);
   const [themeMode, applyThemeMode] = useThemeMode();
-  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | null;
+  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
 
   // Shared dialog rendering used by the main mobile-first layout
@@ -1916,6 +1918,13 @@ export default function SettingsPage() {
           card
         />
         <SRow
+          icon={<Shield className="h-4 w-4 text-foreground" />}
+          title={t("settings.groupSecurity")}
+          meta={t("settings.securityMeta")}
+          onClick={() => setSubPanel("security")}
+          card
+        />
+        <SRow
           icon={<SettingsIcon className="h-4 w-4 text-foreground" />}
           title={t("settings.groupPreferences")}
           meta={`${themeMode === "system" ? (t("settings.themeSystem") || "System") : themeMode === "light" ? (t("settings.themeLight") || "Light") : (t("settings.themeDark") || "Dark")} · ${LOCALE_LABELS[locale]}`}
@@ -2373,6 +2382,61 @@ export default function SettingsPage() {
               title={t("settings.helpSupport")}
             />
           </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
+      {/* ─── Security Sub-Panel ──────────────────────────────── */}
+      <DynamicUIElement open={subPanel === "security"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.groupSecurity")}>{t("settings.groupSecurity")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.groupSecurity")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SRow
+              icon={<Fingerprint className="h-4 w-4 text-foreground" />}
+              title={t("settings.passkeysTitle")}
+              meta={t("settings.passkeysMeta")}
+              isFirst
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/auth/oauth", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      provider: "passkey",
+                      redirectTo: "/~/settings",
+                      client: "web",
+                      ...(authUser?.email ? { loginHint: authUser.email } : {}),
+                      screenHint: "sign-in",
+                    }),
+                  });
+                  const data = await res.json();
+                  if (data.url) {
+                    window.location.href = data.url;
+                  } else {
+                    toast.error(data.error ?? t("settings.passkeysError"));
+                  }
+                } catch {
+                  toast.error(t("settings.passkeysError"));
+                }
+              }}
+              right={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
+            />
+            <SRow
+              icon={<Sparkles className="h-4 w-4 text-foreground" />}
+              title={t("settings.magicAuthTitle")}
+              meta={t("settings.magicAuthMeta")}
+            />
+            <SRow
+              icon={<KeyRound className="h-4 w-4 text-foreground" />}
+              title={t("settings.passwordRulesTitle")}
+              meta={t("settings.passwordRulesMeta")}
+            />
+          </div>
+          <p className="px-[18px] pt-3 pb-4 text-[11.5px] leading-relaxed text-muted-foreground">
+            {t("settings.passkeysNote")}
+          </p>
         </DynamicUIElementContent>
       </DynamicUIElement>
 

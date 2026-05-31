@@ -185,12 +185,6 @@
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* Bottom sheet entry animation — used by the Personnel mobile requests sheet */
-@keyframes mobile-sheet-up {
-  from { transform: translateY(20%); opacity: 0; }
-  to   { transform: translateY(0); opacity: 1; }
-}
-
 /* ─── Mobile / tablet touch-friendly sizing (.mobile-device set by JS UA detection) ── */
 html.mobile-device {
   font-size: 16px;
@@ -410,7 +404,6 @@ html.mobile-device label {
 /* Landing site nav: mobile cluster + menu visibility */
 @media (max-width: 1023px) {
   .mv-nav .mv-mobile-cluster { display: inline-flex !important; }
-  .mv-nav .mv-mobile-menu { display: block !important; }
 }
 @media (max-width: 767px) {
   .mv-landing .mv-footer-meta { text-align: left !important; }

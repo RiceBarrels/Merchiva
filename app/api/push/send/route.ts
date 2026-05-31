@@ -2,39 +2,21 @@
 //
 // The client (who already has push_subscription rows in its SpacetimeDB cache)
 // posts the target's subscriptions here along with the notification payload.
-// We sign and dispatch via web-push using the project's VAPID keys.
+// We sign and dispatch via the shared sendWebPush helper using the project's
+// VAPID keys.
 //
 // Expired endpoints (404/410) are returned so the caller can remove them from
 // the push_subscription table.
 
-import { NextRequest, NextResponse } from "next/server";
-import webpush from "web-push";
+import { NextRequest } from "next/server";
 import { handleOptions, jsonWithCors } from "@/lib/api-cors";
+import { sendWebPush, ensureVapid, type PushSubscriptionInput } from "@/lib/push/send";
 
 export const OPTIONS = handleOptions;
 export const runtime = "nodejs";
 
-const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:hello@merchiva.com";
-
-let vapidConfigured = false;
-function ensureVapid() {
-  if (vapidConfigured) return true;
-  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return false;
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-  vapidConfigured = true;
-  return true;
-}
-
-interface SubscriptionInput {
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-}
-
 interface Payload {
-  subscriptions: SubscriptionInput[];
+  subscriptions: PushSubscriptionInput[];
   title: string;
   body: string;
   link?: string | null;
@@ -47,7 +29,7 @@ export async function POST(req: NextRequest) {
     return jsonWithCors(
       req,
       { error: "Push not configured: missing VAPID keys" },
-      { status: 503 }
+      { status: 503 },
     );
   }
 
@@ -65,45 +47,13 @@ export async function POST(req: NextRequest) {
     return jsonWithCors(req, { sent: 0, failed: 0, expired: [] });
   }
 
-  const message = JSON.stringify({
+  const result = await sendWebPush(payload.subscriptions, {
     title: payload.title,
     body: payload.body,
     link: payload.link ?? null,
-    type: payload.type ?? "general",
-    id: payload.id ?? undefined,
-    tag: payload.id ?? payload.type ?? "merchiva",
+    type: payload.type,
+    id: payload.id,
   });
 
-  const expired: string[] = [];
-  let sent = 0;
-  let failed = 0;
-
-  await Promise.all(
-    payload.subscriptions.map(async (sub) => {
-      if (!sub.endpoint || !sub.p256dh || !sub.auth) {
-        failed++;
-        return;
-      }
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.p256dh, auth: sub.auth },
-          },
-          message,
-          { TTL: 60 * 60 * 24 }
-        );
-        sent++;
-      } catch (err) {
-        const e = err as { statusCode?: number };
-        if (e.statusCode === 404 || e.statusCode === 410) {
-          expired.push(sub.endpoint);
-        } else {
-          failed++;
-        }
-      }
-    })
-  );
-
-  return jsonWithCors(req, { sent, failed, expired });
+  return jsonWithCors(req, result);
 }

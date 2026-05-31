@@ -120,10 +120,12 @@ import GradeTrainingDayReducer from "./grade_training_day_reducer";
 import GradeTrainingObjectiveReducer from "./grade_training_objective_reducer";
 import InviteToOrgReducer from "./invite_to_org_reducer";
 import LeaveOrgReducer from "./leave_org_reducer";
+import LogSupplierMessageReducer from "./log_supplier_message_reducer";
 import LoginWithPasswordReducer from "./login_with_password_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
 import RecordPunchReducer from "./record_punch_reducer";
+import RecordSupplierOrderReducer from "./record_supplier_order_reducer";
 import RecordTaskCompletionReducer from "./record_task_completion_reducer";
 import RedeemCouponReducer from "./redeem_coupon_reducer";
 import RedeemPointsReducer from "./redeem_points_reducer";
@@ -142,6 +144,7 @@ import SaveScheduleProposalReducer from "./save_schedule_proposal_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
+import ServiceLogSupplierMessageReducer from "./service_log_supplier_message_reducer";
 import ServiceSaveDailyBriefingReducer from "./service_save_daily_briefing_reducer";
 import SetAutoCommitSchedulesReducer from "./set_auto_commit_schedules_reducer";
 import SetBriefingPrefReducer from "./set_briefing_pref_reducer";
@@ -238,6 +241,7 @@ import StaffMemberRow from "./staff_member_table";
 import StaffRoleRow from "./staff_role_table";
 import StoreDeviceRow from "./store_device_table";
 import SupplierRow from "./supplier_table";
+import SupplierMessageRow from "./supplier_message_table";
 import TimeOffRequestRow from "./time_off_request_table";
 import TodoRow from "./todo_table";
 import TrainingDayRow from "./training_day_table";
@@ -1030,6 +1034,23 @@ const tablesSchema = __schema({
       { name: 'supplier_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SupplierRow),
+  supplierMessage: __table({
+    name: 'supplier_message',
+    indexes: [
+      { accessor: 'id', name: 'supplier_message_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'supplier_message_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'bySupplierId', name: 'supplier_message_supplier_id_idx_btree', algorithm: 'btree', columns: [
+        'supplierId',
+      ] },
+    ],
+    constraints: [
+      { name: 'supplier_message_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SupplierMessageRow),
   timeOffRequest: __table({
     name: 'time_off_request',
     indexes: [
@@ -1284,10 +1305,12 @@ const reducersSchema = __reducers(
   __reducerSchema("grade_training_objective", GradeTrainingObjectiveReducer),
   __reducerSchema("invite_to_org", InviteToOrgReducer),
   __reducerSchema("leave_org", LeaveOrgReducer),
+  __reducerSchema("log_supplier_message", LogSupplierMessageReducer),
   __reducerSchema("login_with_password", LoginWithPasswordReducer),
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
   __reducerSchema("record_punch", RecordPunchReducer),
+  __reducerSchema("record_supplier_order", RecordSupplierOrderReducer),
   __reducerSchema("record_task_completion", RecordTaskCompletionReducer),
   __reducerSchema("redeem_coupon", RedeemCouponReducer),
   __reducerSchema("redeem_points", RedeemPointsReducer),
@@ -1306,6 +1329,7 @@ const reducersSchema = __reducers(
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
+  __reducerSchema("service_log_supplier_message", ServiceLogSupplierMessageReducer),
   __reducerSchema("service_save_daily_briefing", ServiceSaveDailyBriefingReducer),
   __reducerSchema("set_auto_commit_schedules", SetAutoCommitSchedulesReducer),
   __reducerSchema("set_briefing_pref", SetBriefingPrefReducer),

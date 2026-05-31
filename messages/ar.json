@@ -2592,6 +2592,7 @@
       "updateSupplier": "تعديل مورد",
       "deleteSupplier": "حذف مورد",
       "createPurchaseOrder": "أمر شراء جديد",
+      "orderFromSupplier": "اطلب من المورّد",
       "createNotification": "إرسال إشعار",
       "sendNotification": "إرسال إشعار",
       "addBuilderElement": "إضافة عنصر",
