@@ -49,6 +49,8 @@ import { PageHeader } from "@/components/page-header";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
+import { useSuppliers as useSupplierRows } from "@/lib/spacetimedb/hooks";
+import { Combobox } from "@/components/ui/combobox";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 import { generateRestockSuggestions, formatPurchaseOrder, type RestockSuggestion, type RestockPriority } from "@/lib/restock";
@@ -73,6 +75,18 @@ export default function InventoryPage() {
   const statusConfig = useStatusConfig(t);
   // Data via SpacetimeDB migration hook (backed by Supabase; swap useTable internals once generated client is ready)
   const { items, transactions, refreshing, userId, refresh: _refresh } = useInventory(organizationId);
+
+  // Existing suppliers (for the item dialog's supplier combobox). Free-text is
+  // still allowed, but suggesting saved suppliers keeps inventory items linked
+  // to real supplier records — which is what Mr. Merchiva's ordering uses.
+  const [supplierRows] = useSupplierRows() as [unknown[], boolean];
+  const supplierOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const r of (supplierRows ?? []) as Array<{ organizationId?: string; name?: string }>) {
+      if (r && r.organizationId === organizationId && r.name) names.add(r.name);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b)).map((n) => ({ value: n, label: n }));
+  }, [supplierRows, organizationId]);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -671,10 +685,14 @@ export default function InventoryPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>{t("inventory.dialog.supplier")}</Label>
-                  <Input
+                  <Combobox
+                    allowCustom
+                    options={supplierOptions}
                     value={form.supplier ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
+                    onValueChange={(v) => setForm((f) => ({ ...f, supplier: v }))}
                     placeholder={t("inventory.dialog.supplierPlaceholder")}
+                    searchPlaceholder={t("inventory.dialog.supplierPlaceholder")}
+                    className="w-full"
                   />
                 </div>
                 <div className="space-y-1.5">

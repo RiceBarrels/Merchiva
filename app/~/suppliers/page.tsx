@@ -37,6 +37,14 @@ import { Separator } from "@/components/ui/separator";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { usePermissions } from "@/lib/context/permissions";
+import { useSuppliers as useSupplierRows, usePurchaseOrders as usePORows } from "@/lib/spacetimedb/hooks";
+import {
+  addSupplier as stdbAddSupplier,
+  updateSupplier as stdbUpdateSupplier,
+  deleteSupplier as stdbDeleteSupplier,
+  createPurchaseOrder as stdbCreatePurchaseOrder,
+  updatePurchaseOrderStatus as stdbUpdatePurchaseOrderStatus,
+} from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 import { downloadCSV } from "@/lib/export";
@@ -86,43 +94,141 @@ interface PurchaseOrder {
   createdAt: string;
 }
 
-// ─── Mock data hooks (will be replaced with SpacetimeDB hooks) ──────────────
+// ─── SpacetimeDB-backed data + actions ──────────────────────────────────────
+
+// SpacetimeDB timestamps arrive as { microsSinceUnixEpoch: bigint }; normalize
+// to an ISO string (or null for absent optional timestamps).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function tsToIso(ts: any): string {
+  if (!ts) return "";
+  if (typeof ts === "object" && "microsSinceUnixEpoch" in ts) {
+    try {
+      return new Date(Number(BigInt(ts.microsSinceUnixEpoch) / 1000n)).toISOString();
+    } catch {
+      return "";
+    }
+  }
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? "" : d.toISOString();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSupplier(r: any): Supplier {
+  return {
+    id: r.id?.toString?.() ?? String(r.id),
+    organizationId: String(r.organizationId),
+    name: r.name ?? "",
+    contactName: r.contactName ?? "",
+    email: r.email ?? "",
+    phone: r.phone ?? "",
+    address: r.address ?? "",
+    paymentTerms: (r.paymentTerms ?? "net30") as PaymentTerms,
+    notes: r.notes ?? "",
+    rating: Number(r.rating ?? 0),
+    createdAt: tsToIso(r.createdAt),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapPurchaseOrder(r: any): PurchaseOrder {
+  return {
+    id: r.id?.toString?.() ?? String(r.id),
+    organizationId: String(r.organizationId),
+    supplierId: String(r.supplierId),
+    status: (r.status ?? "draft") as POStatus,
+    items: r.items ?? "[]",
+    subtotal: Number(r.subtotal ?? 0),
+    tax: Number(r.tax ?? 0),
+    total: Number(r.total ?? 0),
+    notes: r.notes ?? "",
+    sentAt: r.sentAt ? tsToIso(r.sentAt) : null,
+    receivedAt: r.receivedAt ? tsToIso(r.receivedAt) : null,
+    createdAt: tsToIso(r.createdAt),
+  };
+}
 
 function useSuppliers(organizationId: string | null): { suppliers: Supplier[]; loading: boolean } {
-  // TODO: Replace with useTable(tables.supplier) filtered by organizationId
-  return { suppliers: [], loading: false };
+  const [rows, ready] = useSupplierRows() as [unknown[], boolean];
+  const suppliers = useMemo(
+    () =>
+      (rows ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((r: any) => r && r.organizationId === organizationId)
+        .map(mapSupplier)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [rows, organizationId],
+  );
+  return { suppliers, loading: !ready };
 }
 
 function usePurchaseOrders(organizationId: string | null): { orders: PurchaseOrder[]; loading: boolean } {
-  // TODO: Replace with useTable(tables.purchaseOrder) filtered by organizationId
-  return { orders: [], loading: false };
+  const [rows, ready] = usePORows() as [unknown[], boolean];
+  const orders = useMemo(
+    () =>
+      (rows ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((r: any) => r && r.organizationId === organizationId)
+        .map(mapPurchaseOrder)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [rows, organizationId],
+  );
+  return { orders, loading: !ready };
 }
 
+// Thin wrappers over the real reducer actions. They normalize the form payload
+// to exactly the fields each reducer declares (extra keys like `rating` on add
+// or `status` on PO are NOT reducer args) and keep the success toasts the
+// handlers rely on.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function addSupplier(_data: any): Promise<void> {
-  // TODO: conn().reducers.addSupplier(...)
+async function addSupplier(data: any): Promise<void> {
+  await stdbAddSupplier({
+    name: data.name ?? "",
+    contactName: data.contactName ?? null,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    address: data.address ?? null,
+    paymentTerms: data.paymentTerms ?? null,
+    notes: data.notes ?? null,
+  });
   toast.success("Supplier added");
 }
 
+// updateSupplier requires name + rating, so callers must pass the full record.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateSupplier(_id: string, _data: any): Promise<void> {
-  // TODO: conn().reducers.updateSupplier(...)
+async function updateSupplier(id: string, data: any): Promise<void> {
+  await stdbUpdateSupplier(id, {
+    name: data.name ?? "",
+    contactName: data.contactName ?? null,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    address: data.address ?? null,
+    paymentTerms: data.paymentTerms ?? null,
+    notes: data.notes ?? null,
+    rating: Number(data.rating ?? 0),
+  });
   toast.success("Supplier updated");
 }
 
-async function deleteSupplier(_id: string): Promise<void> {
-  // TODO: conn().reducers.deleteSupplier(...)
+async function deleteSupplier(id: string): Promise<void> {
+  await stdbDeleteSupplier(id);
   toast.success("Supplier deleted");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createPurchaseOrder(_data: any): Promise<void> {
-  // TODO: conn().reducers.createPurchaseOrder(...)
+async function createPurchaseOrder(data: any): Promise<void> {
+  await stdbCreatePurchaseOrder({
+    supplierId: data.supplierId,
+    items: data.items, // already a JSON string of POItem[]
+    subtotal: Number(data.subtotal ?? 0),
+    tax: Number(data.tax ?? 0),
+    total: Number(data.total ?? 0),
+    notes: data.notes ?? null,
+  });
   toast.success("Purchase order created");
 }
 
-async function updatePurchaseOrderStatus(_id: string, _status: POStatus): Promise<void> {
-  // TODO: conn().reducers.updatePurchaseOrderStatus(...)
+async function updatePurchaseOrderStatus(id: string, status: POStatus): Promise<void> {
+  await stdbUpdatePurchaseOrderStatus(id, status);
   toast.success("Status updated");
 }
 
@@ -343,8 +449,12 @@ export default function SuppliersPage() {
   };
 
   const handleUpdateRating = async (supplierId: string, rating: number) => {
+    const current = suppliers.find((s) => s.id === supplierId);
+    if (!current) return;
     try {
-      await updateSupplier(supplierId, { rating });
+      // updateSupplier requires the full record (name + rating), so merge the
+      // new rating onto the existing supplier rather than sending it alone.
+      await updateSupplier(supplierId, { ...current, rating });
     } catch (err) {
       console.error("Failed to update rating:", err);
     }
@@ -685,12 +795,8 @@ export default function SuppliersPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {/* orders already arrive newest-first from usePurchaseOrders */}
                       {orders
-                        .sort(
-                          (a, b) =>
-                            new Date(b.createdAt).getTime() -
-                            new Date(a.createdAt).getTime()
-                        )
                         .map((order) => {
                           const supplier = suppliers.find(
                             (s) => s.id === order.supplierId
