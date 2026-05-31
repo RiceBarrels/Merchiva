@@ -26,4 +26,6 @@ export default __t.row({
   squareItemId: __t.option(__t.string()).name("square_item_id"),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),
+  minOrderQty: __t.option(__t.f64()).name("min_order_qty"),
+  unitsPerCase: __t.option(__t.f64()).name("units_per_case"),
 });

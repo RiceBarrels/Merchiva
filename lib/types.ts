@@ -76,6 +76,8 @@ export interface InventoryItem {
   lastRestocked: string; // ISO date string
   status: InventoryStatus;
   lossRate: number; // percentage
+  minOrderQty?: number; // supplier minimum order (units); undefined = unset
+  unitsPerCase?: number; // units per case/box; order in multiples of this
 }
 
 export interface InventoryTransaction {

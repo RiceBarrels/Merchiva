@@ -184,6 +184,8 @@ export const InventoryItem = __t.object("InventoryItem", {
   squareItemId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
+  minOrderQty: __t.option(__t.f64()),
+  unitsPerCase: __t.option(__t.f64()),
 });
 export type InventoryItem = __Infer<typeof InventoryItem>;
 

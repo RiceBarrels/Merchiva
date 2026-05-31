@@ -21,4 +21,6 @@ export default {
   costPerUnit: __t.f64(),
   supplier: __t.string(),
   lastRestocked: __t.string(),
+  minOrderQty: __t.option(__t.f64()),
+  unitsPerCase: __t.option(__t.f64()),
 };

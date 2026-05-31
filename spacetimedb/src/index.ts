@@ -199,6 +199,11 @@ const inventoryItemTable = table(
     squareItemId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
+    // Ordering specs (appended — keep at the END for safe migration). Used by
+    // Mr. Merchiva's restock ordering to round up to whole cases and respect a
+    // supplier minimum. null = unset (order in raw units, no minimum).
+    minOrderQty: t.option(t.number()).default(undefined),    // smallest quantity the supplier accepts (in units)
+    unitsPerCase: t.option(t.number()).default(undefined),   // units per case/box; order in multiples of this
   }
 );
 
@@ -2299,6 +2304,8 @@ export const addInventoryItem = spacetimedb.reducer(
     costPerUnit: t.number(),
     supplier: t.string(),
     lastRestocked: t.string(),
+    minOrderQty: t.option(t.number()),
+    unitsPerCase: t.option(t.number()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2321,6 +2328,8 @@ export const addInventoryItem = spacetimedb.reducer(
       squareItemId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
+      minOrderQty: args.minOrderQty,
+      unitsPerCase: args.unitsPerCase,
     });
   }
 );
@@ -2339,6 +2348,8 @@ export const updateInventoryItem = spacetimedb.reducer(
     supplier: t.string(),
     lastRestocked: t.string(),
     lossRate: t.number(),
+    minOrderQty: t.option(t.number()),
+    unitsPerCase: t.option(t.number()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2361,6 +2372,8 @@ export const updateInventoryItem = spacetimedb.reducer(
       lastRestocked: args.lastRestocked,
       lossRate: args.lossRate,
       updatedAt: ctx.timestamp,
+      minOrderQty: args.minOrderQty,
+      unitsPerCase: args.unitsPerCase,
     });
 
     if (wasAboveMin && args.currentStock <= args.minStock) {

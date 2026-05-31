@@ -896,7 +896,9 @@ register({
 register({
   name: "orderFromSupplier",
   description:
-    "Order inventory from a supplier: email them the purchase order AND record it. Use this (not createPurchaseOrder) when the user wants Mr. Merchiva to actually place/send a restock order. supplierId MUST match a supplier in LIVE STORE DATA; if the low-stock item's `supplier` name has no matching supplier record (no id), ask to add the supplier first via addSupplier. If the supplier has no email on file, the order is still saved as a draft and managers are notified.",
+    "Order inventory from a supplier: email them the purchase order AND record it. Use this (not createPurchaseOrder) when restocking. supplierId MUST match a supplier in LIVE STORE DATA; if the low-stock item's `supplier` name has no matching supplier record (no id), ask to add the supplier first via addSupplier. If the supplier has no email on file, the order is still saved as a draft and managers are notified. " +
+    "WHEN A STOCK ITEM IS LOW, don't just say 'tell me if you want me to order' — EMIT this action so the manager gets an Approve/Reject card to confirm contacting the supplier. " +
+    "QUANTITIES: order enough to reach the item's max stock, but if the item has `unitsPerCase` set, round the quantity UP to a whole multiple of it (order full cases), and never order below `minOrderQty` when set. Show case math in your text (e.g. 'need 80 → 7 cases × 12 = 84').",
   category: "suppliers",
   parameters: {
     supplierId: { type: "string", required: true, description: "Supplier ID from LIVE STORE DATA" },
