@@ -66,6 +66,60 @@ function pick(obj: Record<string, any>, keys: string[]): string | undefined {
   return undefined;
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Normalize the inbound payload to { to, subject, text } across providers.
+// Resend's `email.received` webhook carries METADATA ONLY, so we fetch the body
+// from the Received Emails API. Other providers (Cloudflare/Postmark/Mailgun/
+// SendGrid) post the body inline, so we read it directly.
+async function extractInboundEmail(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payload: Record<string, any>,
+): Promise<{ to?: string; subject: string | null; text: string }> {
+  if (payload?.type === "email.received" && payload?.data?.email_id && process.env.RESEND_API_KEY) {
+    try {
+      const res = await fetch(`https://api.resend.com/emails/receiving/${payload.data.email_id}`, {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+      });
+      if (res.ok) {
+        const full = await res.json();
+        const toArr = Array.isArray(full.to) ? full.to : full.to ? [full.to] : [];
+        const text =
+          typeof full.text === "string" && full.text.trim()
+            ? full.text
+            : typeof full.html === "string"
+              ? stripHtml(full.html)
+              : "";
+        return { to: toArr.join(","), subject: full.subject ?? null, text };
+      }
+      console.error("[suppliers/inbound] Resend received-email fetch failed:", res.status);
+    } catch (err) {
+      console.error("[suppliers/inbound] Resend received-email fetch error:", err);
+    }
+    // Fall back to metadata so we can at least route + escalate to a human.
+    const toArr = Array.isArray(payload.data?.to) ? payload.data.to : [];
+    return { to: toArr.join(","), subject: payload.data?.subject ?? null, text: "" };
+  }
+
+  // Generic provider — body posted inline.
+  const toRaw =
+    payload.to ?? payload.recipient ?? payload.To ?? payload.envelope_to ?? payload.Destination;
+  const to = Array.isArray(toRaw) ? toRaw.join(",") : typeof toRaw === "string" ? toRaw : undefined;
+  const subject = pick(payload, ["subject", "Subject"]) ?? null;
+  const text =
+    pick(payload, ["text", "body-plain", "stripped-text", "TextBody", "plain"]) ||
+    pick(payload, ["html", "HtmlBody", "body-html"]) ||
+    "";
+  return { to, subject, text };
+}
+
 function buildSystemPrompt(ctx: SupplierThreadContext): string {
   const pos = ctx.purchaseOrders.length
     ? ctx.purchaseOrders
@@ -133,11 +187,7 @@ export async function POST(req: NextRequest) {
     payload = {};
   }
 
-  const to = pick(payload, ["to", "recipient", "To", "envelope_to", "OriginalRecipient", "Destination"]);
-  const subject = pick(payload, ["subject", "Subject"]);
-  const text =
-    pick(payload, ["text", "body-plain", "stripped-text", "TextBody", "plain"]) ||
-    pick(payload, ["html", "HtmlBody", "body-html"]);
+  const { to, subject, text } = await extractInboundEmail(payload);
 
   // 3) Resolve the thread token from the recipient address. A bad/absent token
   //    is answered 200 so the provider doesn't retry an unroutable message.
