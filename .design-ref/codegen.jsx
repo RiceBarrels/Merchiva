@@ -1,0 +1,177 @@
+// Code generator: turns a graph into JavaScript source for one named function.
+// Also provides an `execute` helper that runs the function with given args
+// and captures console.log output via a __log shim.
+
+function generateCode(fn, allFns = []) {
+  // fn: { id, name, nodes, edges }
+  // Build adjacency: edges = [{from:{node,port}, to:{node,port}}]
+  const nodesById = {};
+  fn.nodes.forEach(n => nodesById[n.id] = n);
+
+  // Find return node
+  const returnNode = fn.nodes.find(n => n.type === 'return');
+  const params = fn.nodes
+    .filter(n => n.type === 'param')
+    .sort((a,b)=> (a.y - b.y) || (a.x - b.x));
+
+  // Map: edge target -> source expression generator
+  const incoming = {}; // key: node|port -> {fromNode, fromPort}
+  fn.edges.forEach(e => {
+    incoming[e.to.node + '|' + e.to.port] = e.from;
+  });
+
+  const memo = new Map(); // node id -> expr
+  const visiting = new Set();
+
+  // Detect: which output ports are connected (used downstream)?
+  const ctx = {
+    fnExists: (name) => allFns.some(f => f.name === name && f.id !== fn.id),
+    isConnected: (nodeId, port) => !!incoming[nodeId + '|' + port],
+    // For iterator-based nodes (map, filter): generate the inner expression,
+    // but rebind any reference to the source array's "item" port back to the iterator name.
+    exprWithIterator: (nodeId, portId, iterName, fallbackExpr) => {
+      // Find source connected to (nodeId, portId)
+      const src = incoming[nodeId + '|' + portId];
+      if (!src) return fallbackExpr;
+      // Temporarily inject iterName for any 'param'-like resolution in the subtree.
+      // Simple approach: any deeper resolution stays normal because subgraph references
+      // params/consts as before. The key is: the user's "expr" subgraph must have an iterator
+      // input; we expose `__iter` substitution by setting iterContext.
+      const prevIter = currentIterName;
+      currentIterName = iterName;
+      try {
+        return resolveOutput(src.node, src.port);
+      } finally {
+        currentIterName = prevIter;
+      }
+    },
+  };
+
+  let currentIterName = null;
+  // We expose an "iterator" pseudo-node by treating any const-str with value "__iter" as a stand-in.
+  // Simpler: we provide a virtual node type via a Param named iter, but to keep things tidy we
+  // just allow users to wire an array's item via an "iterator placeholder" — implemented as
+  // a Param node whose name matches the iter name. (Codegen for param emits ident(name).)
+
+  function resolveInput(nodeId, port) {
+    const src = incoming[nodeId + '|' + port];
+    if (!src) return undefined;
+    return resolveOutput(src.node, src.port);
+  }
+
+  function resolveOutput(nodeId, portId) {
+    const node = nodesById[nodeId];
+    if (!node) return 'undefined';
+    const def = NODE_LIB[node.type];
+    if (!def) return 'undefined';
+    const memoKey = node.id + '|' + portId + '|' + (currentIterName||'');
+    if (memo.has(memoKey)) return memo.get(memoKey);
+    if (visiting.has(memoKey)) return '/*cycle*/undefined';
+    visiting.add(memoKey);
+
+    const get = (port, fallback='undefined') => {
+      const v = resolveInput(node.id, port);
+      return v === undefined ? fallback : v;
+    };
+    let expr = 'undefined';
+    if (typeof def.expr === 'function') {
+      expr = def.expr(node, get, ctx);
+    }
+    visiting.delete(memoKey);
+    memo.set(memoKey, expr);
+    return expr;
+  }
+
+  // Determine if function needs to be async (any fetch in graph)
+  const isAsync = fn.nodes.some(n => NODE_LIB[n.type]?.async);
+
+  // Build params list
+  const paramList = params.map(p => safeIdent(p.data.name||'arg')).join(', ');
+
+  // Find any "side-effect" nodes whose results aren't connected to return.
+  // We still want them to execute. Collect them as statements before the return.
+  const used = new Set();
+  function markUsed(nodeId) {
+    if (used.has(nodeId)) return;
+    used.add(nodeId);
+    fn.edges.filter(e => e.to.node === nodeId).forEach(e => markUsed(e.from.node));
+  }
+  if (returnNode) markUsed(returnNode.id);
+
+  const sideStmts = [];
+  fn.nodes.forEach(n => {
+    const def = NODE_LIB[n.type];
+    if (def?.side && !used.has(n.id)) {
+      const exprStr = resolveOutput(n.id, def.outputs[0]?.id || 'out');
+      sideStmts.push(`  ${exprStr};`);
+    }
+  });
+
+  // Return expression
+  let returnExpr = 'undefined';
+  if (returnNode) {
+    const v = resolveInput(returnNode.id, 'value');
+    if (v !== undefined) returnExpr = v;
+  }
+
+  const asyncKw = isAsync ? 'async ' : '';
+  const fnName = safeIdent(fn.name || 'myFn');
+
+  const body = [
+    ...sideStmts,
+    `  return ${returnExpr};`,
+  ].join('\n');
+
+  const code = `${asyncKw}function ${fnName}(${paramList}) {\n${body}\n}`;
+  return { code, isAsync, fnName, paramList: params.map(p => ({
+    name: safeIdent(p.data.name||'arg'),
+    type: p.data.type || 'any',
+  })) };
+}
+
+function generateAllCode(fns) {
+  const head = `// Generated by FlowFn — ${new Date().toLocaleString()}\n// ${fns.length} function${fns.length===1?'':'s'}\n\n`;
+  return head + fns.map(f => generateCode(f, fns).code).join('\n\n');
+}
+
+// Execute a function with arguments. Captures logs.
+async function executeFunction(fn, args, allFns) {
+  const logs = [];
+  const __log = (label, value) => {
+    logs.push({ label: String(label||''), value });
+  };
+  // Inline ALL functions so call-fn nodes resolve.
+  const allCode = allFns.map(f => generateCode(f, allFns).code).join('\n');
+  const main = generateCode(fn, allFns);
+  const argsExpr = args.map(a => {
+    try { return JSON.stringify(JSON.parse(a)); }
+    catch { return JSON.stringify(a); }
+  }).join(', ');
+
+  const wrap = `
+${allCode}
+return (async () => { return await ${main.fnName}(${argsExpr}); })();
+`;
+  try {
+    const factory = new Function('__log', wrap);
+    const result = await factory(__log);
+    return { ok:true, result, logs };
+  } catch (err) {
+    return { ok:false, error: String(err && err.message || err), logs };
+  }
+}
+
+function highlightJs(code) {
+  // Very small syntax highlighter
+  const KW = /\b(function|return|const|let|var|if|else|for|while|async|await|true|false|null|undefined|new|of|in)\b/g;
+  const safe = code
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return safe
+    .replace(/\/\/[^\n]*/g, m => `<span class="com">${m}</span>`)
+    .replace(/(`[^`]*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g, m => `<span class="str">${m}</span>`)
+    .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="num">$1</span>')
+    .replace(KW, '<span class="kw">$1</span>')
+    .replace(/\b([a-zA-Z_$][\w$]*)\(/g, '<span class="fn">$1</span>(');
+}
+
+Object.assign(window, { generateCode, generateAllCode, executeFunction, highlightJs });
