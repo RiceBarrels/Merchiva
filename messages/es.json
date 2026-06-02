@@ -65,7 +65,8 @@
       "sales": "Sales & Finance",
       "growth": "Growth",
       "advanced": "Advanced"
-    }
+    },
+    "usage": "Uso de IA"
   },
   "login": {
     "title": "Inicia sesión en Merchiva",
@@ -2783,7 +2784,8 @@
       "database": "Base de datos",
       "blogs": "Blog",
       "coupons": "Cupones",
-      "users": "Usuarios"
+      "users": "Usuarios",
+      "usage": "Uso"
     },
     "home": {
       "title": "Panel de admin",
@@ -2810,6 +2812,11 @@
         "tag": "WorkOS",
         "title": "Usuarios y admins",
         "body": "Promueve nuevos administradores o revoca roles vía WorkOS."
+      },
+      "usage": {
+        "tag": "AI",
+        "title": "Uso de IA",
+        "body": "Ver uso de tokens y costo por organización y establecer cuotas mensuales."
       }
     },
     "database": {
@@ -2964,5 +2971,39 @@
       "whosOn": "¿Quién está trabajando ahora?",
       "coverage": "¿Hay huecos en el horario de esta semana?"
     }
+  },
+  "usage": {
+    "title": "Uso de IA",
+    "subtitle": "Uso de tokens y costo de todas las funciones de IA",
+    "inputTokens": "Tokens de entrada",
+    "outputTokens": "Tokens de salida",
+    "totalCost": "Costo total",
+    "thisMonth": "Este mes",
+    "calls": "Llamadas de IA",
+    "aiRequests": "Solicitudes",
+    "quota": "Cuota",
+    "costLimit": "Límite de costo",
+    "tokenLimit": "Límite de tokens",
+    "dailyCost": "Costo diario",
+    "empty": "Aún no hay uso de IA",
+    "cost": "Costo",
+    "byFeature": "Uso por función"
+  },
+  "adminsUsage": {
+    "title": "Uso de IA",
+    "subtitle": "Uso de tokens y costo de IA de todas las organizaciones. Establece cuotas mensuales por organización.",
+    "totalCost": "Costo total",
+    "orgs": "Organizaciones",
+    "loading": "Cargando uso…",
+    "empty": "No hay uso registrado este mes.",
+    "org": "Organización",
+    "cost": "Costo",
+    "tokenQuota": "Límite tokens/mes",
+    "costQuota": "Límite costo/mes",
+    "save": "Guardar",
+    "quotaNote": "Deja un campo vacío para ilimitado. Las cuotas son orientativas: se muestran en el panel de uso de cada organización.",
+    "invalidNumber": "Introduce un número válido",
+    "quotaSaved": "Cuota guardada",
+    "quotaFailed": "Error al guardar la cuota"
   }
 }

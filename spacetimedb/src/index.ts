@@ -1583,6 +1583,64 @@ const userBriefingPrefTable = table(
   }
 );
 
+// ─── AI Usage ────────────────────────────────────────────────────────────────
+//
+// One row per AI/LLM API call. Written server-side by the service identity via
+// serviceRecordAiUsage (the API routes have no logged-in connection). Public so
+// the per-org dashboard can subscribe and admins can aggregate via SQL.
+//
+// Cost is stored pre-computed so the dashboard never re-derives pricing:
+//   inputCost  = inputTokens  / 1_000_000 * 2
+//   outputCost = outputTokens / 1_000_000 * 10
+//   cost       = inputCost + outputCost
+//
+// `day` (YYYY-MM-DD) and `month` (YYYY-MM) are stamped UTC by the caller so the
+// client/SQL can group without timezone math.
+//
+const aiUsageTable = table(
+  {
+    name: 'ai_usage',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    userId: t.string(),        // hex identity of the caller, or "" when unknown
+    feature: t.string(),       // "mr_merchiva" | "design_chat" | "morning_briefing" | ...
+    model: t.string(),
+    inputTokens: t.number(),
+    outputTokens: t.number(),
+    inputCost: t.number(),
+    outputCost: t.number(),
+    cost: t.number(),
+    day: t.string(),           // YYYY-MM-DD (UTC)
+    month: t.string(),         // YYYY-MM (UTC)
+    createdAt: t.timestamp(),
+  }
+);
+
+// ─── AI Usage Quota ──────────────────────────────────────────────────────────
+//
+// Optional per-org monthly cap, set by a site admin. null limit = unlimited.
+// One row per organization. Enforcement is advisory (surfaced in the dashboard);
+// hard blocking would live in the API routes if/when desired.
+//
+const aiUsageQuotaTable = table(
+  {
+    name: 'ai_usage_quota',
+    public: true,
+  },
+  {
+    organizationId: t.string().primaryKey(),
+    monthlyTokenLimit: t.option(t.number()),
+    monthlyCostLimit: t.option(t.number()),
+    updatedAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1647,6 +1705,8 @@ const spacetimedb = schema({
   blogPost: blogPostTable,
   serviceIdentity: serviceIdentityTable,
   userBriefingPref: userBriefingPrefTable,
+  aiUsage: aiUsageTable,
+  aiUsageQuota: aiUsageQuotaTable,
 });
 
 export default spacetimedb;
@@ -6314,6 +6374,78 @@ export const deleteBriefingPref = spacetimedb.reducer(
     const existing = ctx.db.userBriefingPref.userId.find(ctx.sender);
     if (existing) {
       ctx.db.userBriefingPref.delete(existing);
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AI USAGE REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Service-side: record one AI/LLM call's token usage + pre-computed cost.
+ * Called by the API routes through the service identity (they have no
+ * logged-in user connection). Costs are computed by the caller so pricing
+ * stays in one place (lib/ai/usage.ts).
+ */
+export const serviceRecordAiUsage = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    userId: t.string(),
+    feature: t.string(),
+    model: t.string(),
+    inputTokens: t.number(),
+    outputTokens: t.number(),
+    inputCost: t.number(),
+    outputCost: t.number(),
+    cost: t.number(),
+    day: t.string(),
+    month: t.string(),
+  },
+  (ctx, args) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    ctx.db.aiUsage.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      userId: args.userId,
+      feature: args.feature,
+      model: args.model,
+      inputTokens: args.inputTokens,
+      outputTokens: args.outputTokens,
+      inputCost: args.inputCost,
+      outputCost: args.outputCost,
+      cost: args.cost,
+      day: args.day,
+      month: args.month,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+/** Admin-only: upsert an org's monthly AI usage quota (null = unlimited). */
+export const setAiUsageQuota = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    monthlyTokenLimit: t.option(t.number()),
+    monthlyCostLimit: t.option(t.number()),
+  },
+  (ctx, { organizationId, monthlyTokenLimit, monthlyCostLimit }) => {
+    requireAdmin(ctx);
+    const existing = ctx.db.aiUsageQuota.organizationId.find(organizationId);
+    if (existing) {
+      ctx.db.aiUsageQuota.organizationId.update({
+        ...existing,
+        monthlyTokenLimit,
+        monthlyCostLimit,
+        updatedAt: ctx.timestamp,
+      });
+    } else {
+      ctx.db.aiUsageQuota.insert({
+        organizationId,
+        monthlyTokenLimit,
+        monthlyCostLimit,
+        updatedAt: ctx.timestamp,
+      });
     }
   }
 );

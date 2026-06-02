@@ -302,6 +302,7 @@ export function useQuickAsk() {
             message: q,
             history: [],
             context: { surface: "quick-dialog", path: pathname },
+            organizationId: perms.organizationId,
             lang: locale,
             stream: true,
             permissions: { isOwner: perms.isOwner, role: perms.role, sections },

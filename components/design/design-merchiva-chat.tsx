@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { prettyPrintHtml } from "@/lib/builder/html-format";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { useT } from "@/lib/i18n/context";
+import { usePermissions } from "@/lib/context/permissions";
 
 // One conversation turn shown in the chat. `applied` is set true once the
 // returned action has been dispatched to the canvas — used to dim the bubble
@@ -45,6 +46,7 @@ export function DesignMerchivaChat({
   onApply,
 }: DesignMerchivaChatProps) {
   const t = useT();
+  const { organizationId } = usePermissions();
   const storageKey = `merchiva_design_chat_${designId}`;
 
   const [messages, setMessages] = useState<DesignChatMessage[]>([]);
@@ -93,6 +95,7 @@ export function DesignMerchivaChat({
         body: JSON.stringify({
           // Send only role/content to the server. Strip ids and metadata.
           messages: next.map((m) => ({ role: m.role, content: m.content })),
+          organizationId,
           width,
           height,
           designName,

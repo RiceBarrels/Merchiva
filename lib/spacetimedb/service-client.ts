@@ -485,3 +485,22 @@ export async function serviceLogSupplierMessage(
     escalate: args.escalate,
   });
 }
+
+export async function serviceRecordAiUsage(
+  conn: ServiceConn,
+  args: {
+    organizationId: string;
+    userId: string;
+    feature: string;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    inputCost: number;
+    outputCost: number;
+    cost: number;
+    day: string;
+    month: string;
+  },
+): Promise<void> {
+  conn.reducers.serviceRecordAiUsage(args);
+}

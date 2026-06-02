@@ -5,6 +5,7 @@ import { useEditor } from "@craftjs/core";
 import { Send, Sparkles, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { usePermissions } from "@/lib/context/permissions";
 
 interface Message {
   role: "user" | "assistant";
@@ -38,6 +39,7 @@ interface AiPanelProps {
 
 export function AiPanel({ siteName, siteId, siteTheme }: AiPanelProps = {}) {
   const { query } = useEditor();
+  const { organizationId } = usePermissions();
   const [messages, setMessages] = useState<Message[]>(() => {
     if (!siteId || typeof window === "undefined") return [];
     try {
@@ -88,7 +90,7 @@ export function AiPanel({ siteName, siteId, siteTheme }: AiPanelProps = {}) {
       const res = await fetch("/api/builder/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesWithContext, siteName, siteTheme }),
+        body: JSON.stringify({ messages: messagesWithContext, siteName, siteTheme, organizationId }),
       });
 
       const data = await res.json();

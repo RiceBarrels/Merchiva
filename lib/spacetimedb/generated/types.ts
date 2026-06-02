@@ -49,6 +49,31 @@ export const AiJob = __t.object("AiJob", {
 });
 export type AiJob = __Infer<typeof AiJob>;
 
+export const AiUsage = __t.object("AiUsage", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  userId: __t.string(),
+  feature: __t.string(),
+  model: __t.string(),
+  inputTokens: __t.f64(),
+  outputTokens: __t.f64(),
+  inputCost: __t.f64(),
+  outputCost: __t.f64(),
+  cost: __t.f64(),
+  day: __t.string(),
+  month: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type AiUsage = __Infer<typeof AiUsage>;
+
+export const AiUsageQuota = __t.object("AiUsageQuota", {
+  organizationId: __t.string(),
+  monthlyTokenLimit: __t.option(__t.f64()),
+  monthlyCostLimit: __t.option(__t.f64()),
+  updatedAt: __t.timestamp(),
+});
+export type AiUsageQuota = __Infer<typeof AiUsageQuota>;
+
 export const BlogPost = __t.object("BlogPost", {
   id: __t.uuid(),
   slug: __t.string(),

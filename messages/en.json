@@ -65,7 +65,8 @@
       "sales": "Sales & Finance",
       "growth": "Growth",
       "advanced": "Advanced"
-    }
+    },
+    "usage": "AI Usage"
   },
   "login": {
     "title": "Sign in to Merchiva",
@@ -2783,7 +2784,8 @@
       "database": "Database",
       "blogs": "Blog",
       "coupons": "Coupons",
-      "users": "Users"
+      "users": "Users",
+      "usage": "Usage"
     },
     "home": {
       "title": "Admin control",
@@ -2810,6 +2812,11 @@
         "tag": "WorkOS",
         "title": "Users & admins",
         "body": "Promote new admins or revoke existing roles via WorkOS metadata."
+      },
+      "usage": {
+        "tag": "AI",
+        "title": "AI Usage",
+        "body": "View token usage and cost per organization and set monthly quotas."
       }
     },
     "database": {
@@ -2964,5 +2971,39 @@
       "whosOn": "Who's working right now?",
       "coverage": "Any gaps in this week's schedule?"
     }
+  },
+  "usage": {
+    "title": "AI Usage",
+    "subtitle": "Token usage and cost across all AI features",
+    "inputTokens": "Input tokens",
+    "outputTokens": "Output tokens",
+    "totalCost": "Total cost",
+    "thisMonth": "This month",
+    "calls": "AI calls",
+    "aiRequests": "Requests",
+    "quota": "Quota",
+    "costLimit": "Cost limit",
+    "tokenLimit": "Token limit",
+    "dailyCost": "Daily cost",
+    "empty": "No AI usage yet",
+    "cost": "Cost",
+    "byFeature": "Usage by feature"
+  },
+  "adminsUsage": {
+    "title": "AI Usage",
+    "subtitle": "AI token usage and cost across all organizations. Set monthly quotas per org.",
+    "totalCost": "Total cost",
+    "orgs": "Organizations",
+    "loading": "Loading usage…",
+    "empty": "No usage recorded for this month.",
+    "org": "Organization",
+    "cost": "Cost",
+    "tokenQuota": "Token limit / mo",
+    "costQuota": "Cost limit / mo",
+    "save": "Save",
+    "quotaNote": "Leave a field empty for unlimited. Quotas are advisory — surfaced in each org's usage dashboard.",
+    "invalidNumber": "Enter a valid number",
+    "quotaSaved": "Quota saved",
+    "quotaFailed": "Failed to save quota"
   }
 }

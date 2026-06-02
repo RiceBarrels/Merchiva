@@ -724,7 +724,7 @@ export function MorningBriefingCard() {
       const res = await fetch("/api/insights/morning-briefing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context, lang: locale, dateStr: today }),
+        body: JSON.stringify({ context, lang: locale, dateStr: today, organizationId }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

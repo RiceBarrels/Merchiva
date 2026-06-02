@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${origin}/api/insights/morning-briefing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context, lang: locale, dateStr: date }),
+        body: JSON.stringify({ context, lang: locale, dateStr: date, organizationId: orgId }),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));

@@ -23,6 +23,7 @@ import {
   type SupplierThreadContext,
 } from "@/lib/spacetimedb/service-client";
 import { sendSupplierReplyEmail } from "@/lib/email/resend";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -236,6 +237,12 @@ export async function POST(req: NextRequest) {
       temperature: 0.3,
     });
     decision = res.object;
+    await recordAiUsage({
+      organizationId: decoded.orgId,
+      feature: "supplier_agent",
+      model: MODEL,
+      ...normalizeUsage(res.usage),
+    });
   } catch (err) {
     console.error("[suppliers/inbound] AI failed; escalating:", err);
     await serviceLogSupplierMessage(conn, {

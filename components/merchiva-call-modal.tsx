@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, MicOff, PhoneOff, Volume2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n, useT } from "@/lib/i18n/context";
+import { usePermissions } from "@/lib/context/permissions";
 import { NotchM } from "@/components/merchiva-chat-dashboard";
 import { MerchivaLogo } from "./logo";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -69,6 +70,7 @@ export function MerchivaCallModal({
 }: MerchivaCallModalProps) {
   const t = useT();
   const { locale } = useI18n();
+  const { organizationId } = usePermissions();
   const [state, setState] = useState<CallState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
@@ -245,6 +247,7 @@ export function MerchivaCallModal({
           message: userText,
           history,
           context: storeContext,
+          organizationId,
           lang: locale,
           stream: true,
           mode: "voice",

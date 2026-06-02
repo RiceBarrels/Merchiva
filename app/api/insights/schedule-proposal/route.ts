@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 
@@ -93,12 +94,17 @@ ${JSON.stringify(context, null, 2)}`;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { context, lang, weekStart, weekEnd } = body as {
+    const { context, lang, weekStart, weekEnd, organizationId } = body as {
       context?: Record<string, unknown>;
       lang?: string;
       weekStart?: string;
       weekEnd?: string;
+      organizationId?: string;
     };
+    const usageOrgId =
+      organizationId ||
+      (typeof context?.organizationId === "string" ? (context.organizationId as string) : "") ||
+      "";
 
     if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json(
@@ -114,13 +120,20 @@ export async function POST(req: NextRequest) {
     const modelName = getModel();
     const system = buildSystemPrompt(context ?? {}, lang ?? "en", weekStart, weekEnd);
 
-    const { object } = await generateObject({
+    const proposalResult = await generateObject({
       model: getOpenRouter().chat(modelName),
       schema: proposalSchema,
       system,
       messages: [{ role: "user", content: "Draft the 7-day schedule." }],
       maxOutputTokens: 3000,
       temperature: 0.3,
+    });
+    const { object } = proposalResult;
+    await recordAiUsage({
+      organizationId: usageOrgId,
+      feature: "schedule_proposal",
+      model: modelName,
+      ...normalizeUsage(proposalResult.usage),
     });
 
     // Normalize and clamp to the requested window in case the model drifts.

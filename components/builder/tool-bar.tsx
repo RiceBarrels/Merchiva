@@ -9,9 +9,11 @@ import { CraftLayout } from "./craft-components/craft-layout";
 import React from "react";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { usePermissions } from "@/lib/context/permissions";
 
 export function ToolBar() {
   const t = useT();
+  const { organizationId } = usePermissions();
   const { connectors } = useEditor();
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -47,7 +49,7 @@ export function ToolBar() {
       const res = await fetch("/api/builder/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: aiPrompt.trim() }),
+        body: JSON.stringify({ prompt: aiPrompt.trim(), organizationId }),
       });
       if (res.ok) {
         const data = await res.json();

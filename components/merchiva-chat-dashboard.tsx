@@ -2601,7 +2601,7 @@ export function MerchivaChat({
       const res = await fetch("/api/store-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summarize: { prevSummary: mem.summary, newMessages: buf } }),
+        body: JSON.stringify({ summarize: { prevSummary: mem.summary, newMessages: buf }, organizationId }),
       });
       const data = await res.json();
       if (data.summary) {
@@ -3054,6 +3054,7 @@ export function MerchivaChat({
           message: fullText,
           history: last10,
           context: storeContext,
+          organizationId,
           lang: locale,
           stream: true,
           memory: {
@@ -3207,6 +3208,7 @@ export function MerchivaChat({
               message: fullText,
               history: last10,
               context: storeContext,
+              organizationId,
               lang: locale,
               memory: {
                 summary: mem.summary || undefined,

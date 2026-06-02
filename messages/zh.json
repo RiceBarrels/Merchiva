@@ -65,7 +65,8 @@
       "sales": "销售与财务",
       "growth": "增长",
       "advanced": "高级"
-    }
+    },
+    "usage": "AI 用量"
   },
   "login": {
     "title": "登录 Merchiva",
@@ -2783,7 +2784,8 @@
       "database": "数据库",
       "blogs": "博客",
       "coupons": "优惠券",
-      "users": "用户"
+      "users": "用户",
+      "usage": "用量"
     },
     "home": {
       "title": "管理控制台",
@@ -2810,6 +2812,11 @@
         "tag": "WorkOS",
         "title": "用户与管理员",
         "body": "通过 WorkOS metadata 提升新管理员或撤销权限。"
+      },
+      "usage": {
+        "tag": "AI",
+        "title": "AI 用量",
+        "body": "查看各组织的 token 用量与费用，并设置每月配额。"
       }
     },
     "database": {
@@ -2964,5 +2971,39 @@
       "whosOn": "现在谁在上班？",
       "coverage": "本周排班有空缺吗？"
     }
+  },
+  "usage": {
+    "title": "AI 用量",
+    "subtitle": "所有 AI 功能的 token 用量与费用",
+    "inputTokens": "输入 tokens",
+    "outputTokens": "输出 tokens",
+    "totalCost": "总费用",
+    "thisMonth": "本月",
+    "calls": "AI 调用",
+    "aiRequests": "请求次数",
+    "quota": "配额",
+    "costLimit": "费用上限",
+    "tokenLimit": "Token 上限",
+    "dailyCost": "每日费用",
+    "empty": "暂无 AI 用量",
+    "cost": "费用",
+    "byFeature": "按功能分类"
+  },
+  "adminsUsage": {
+    "title": "AI 用量",
+    "subtitle": "所有组织的 AI token 用量与费用。可为每个组织设置每月配额。",
+    "totalCost": "总费用",
+    "orgs": "组织数",
+    "loading": "正在加载用量…",
+    "empty": "本月暂无用量记录。",
+    "org": "组织",
+    "cost": "费用",
+    "tokenQuota": "Token 上限/月",
+    "costQuota": "费用上限/月",
+    "save": "保存",
+    "quotaNote": "留空表示无限制。配额为提示性，显示在各组织的用量面板中。",
+    "invalidNumber": "请输入有效数字",
+    "quotaSaved": "配额已保存",
+    "quotaFailed": "保存配额失败"
   }
 }

@@ -11,6 +11,7 @@ import {
   serviceCreateNotification,
 } from "@/lib/spacetimedb/service-client";
 import { sendWebPush } from "@/lib/push/send";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 // ── OpenRouter setup (mirrors /api/store-ai) ─────────────────────────────────
 
@@ -182,6 +183,12 @@ async function runJob(args: RunJobArgs): Promise<void> {
         temperature: 0.3,
       });
       triage = triageRes.object;
+      await recordAiUsage({
+        organizationId: args.organizationId,
+        feature: "store_ai_bg_triage",
+        model: FAST_MODEL,
+        ...normalizeUsage(triageRes.usage),
+      });
     } catch (e) {
       console.warn("[runJob] triage failed; escalating:", e);
       triage = { needsThinking: true, message: "" };
@@ -235,6 +242,12 @@ async function runJob(args: RunJobArgs): Promise<void> {
       await flusher.maybeFlush();
     }
     await flusher.flush(true);
+    await recordAiUsage({
+      organizationId: args.organizationId,
+      feature: "store_ai_bg",
+      model: useThinking ? THINKING_MODEL : MODEL,
+      ...normalizeUsage(await stream.usage),
+    });
 
     // finalText mirrors the streamed partial: ack wrapped in the sentinel so
     // the client splits it into its own bubble on the final render too.

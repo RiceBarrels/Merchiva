@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "OPENROUTER_API_KEY not configured" }, { status: 500 });
   }
 
-  const { prompt, context } = await req.json();
+  const { prompt, context, organizationId } = await req.json();
   if (!prompt) {
     return NextResponse.json({ error: "prompt required" }, { status: 400 });
   }
@@ -65,6 +66,12 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
+    await recordAiUsage({
+      organizationId,
+      feature: "builder_generate",
+      model: MODEL,
+      ...normalizeUsage(data.usage),
+    });
     const choice = data.choices?.[0]?.message;
     const content = choice?.content || choice?.reasoning || "";
 

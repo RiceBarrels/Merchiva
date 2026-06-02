@@ -1472,3 +1472,21 @@ export async function setBriefingPref(
 export async function deleteBriefingPref(): Promise<void> {
   return conn().reducers.deleteBriefingPref({});
 }
+
+/**
+ * Admin-only: set an org's monthly AI usage quota. Pass null for a limit to
+ * leave it unlimited. Calls the setAiUsageQuota reducer (which enforces
+ * requireAdmin server-side) over the live connection — admins set this from
+ * the /admins area where a SpacetimeDB connection is present.
+ */
+export async function setAiUsageQuota(
+  organizationId: string,
+  monthlyTokenLimit: number | null,
+  monthlyCostLimit: number | null,
+): Promise<void> {
+  return conn().reducers.setAiUsageQuota({
+    organizationId,
+    monthlyTokenLimit: monthlyTokenLimit ?? undefined,
+    monthlyCostLimit: monthlyCostLimit ?? undefined,
+  });
+}

@@ -7,8 +7,11 @@ import {
   buildSystemPrompt,
   getOpenRouterModel,
   getOpenRouterFastModel,
+  getModel,
+  getFastModel,
   type UserPermissions,
 } from "@/app/api/store-ai/route";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -111,6 +114,12 @@ export async function POST(req: NextRequest) {
           maxOutputTokens: 200,
           temperature: 0,
         });
+        await recordAiUsage({
+          organizationId,
+          feature: "mr_merchiva",
+          model: getFastModel(),
+          ...normalizeUsage(gate.usage),
+        });
         if (!gate.object.respond) {
           return NextResponse.json({ skipped: true, reason: "not_relevant" });
         }
@@ -135,15 +144,21 @@ export async function POST(req: NextRequest) {
 
     // Same prompt + model as the dedicated assistant, in group mode.
     const systemPrompt = buildSystemPrompt(context, lang, {}, body.permissions, "group");
-    const { text } = await generateText({
+    const result = await generateText({
       model: getOpenRouterModel(),
       system: systemPrompt,
       messages: [...toModelMessages(history), latest],
       maxOutputTokens: 700,
       temperature: 0.3,
     });
+    await recordAiUsage({
+      organizationId,
+      feature: "mr_merchiva",
+      model: getModel(),
+      ...normalizeUsage(result.usage),
+    });
 
-    const reply = stripActionBlocks(text ?? "");
+    const reply = stripActionBlocks(result.text ?? "");
     if (!reply) return NextResponse.json({ skipped: true, reason: "empty" });
 
     await callReducer({

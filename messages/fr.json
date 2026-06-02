@@ -65,7 +65,8 @@
       "sales": "Sales & Finance",
       "growth": "Growth",
       "advanced": "Advanced"
-    }
+    },
+    "usage": "Utilisation IA"
   },
   "login": {
     "title": "Connexion à Merchiva",
@@ -2783,7 +2784,8 @@
       "database": "Base de données",
       "blogs": "Blog",
       "coupons": "Coupons",
-      "users": "Utilisateurs"
+      "users": "Utilisateurs",
+      "usage": "Utilisation"
     },
     "home": {
       "title": "Console admin",
@@ -2810,6 +2812,11 @@
         "tag": "WorkOS",
         "title": "Utilisateurs & admins",
         "body": "Promouvez ou révoquez des admins via les métadonnées WorkOS."
+      },
+      "usage": {
+        "tag": "IA",
+        "title": "Utilisation de l'IA",
+        "body": "Consultez l'utilisation des tokens et les coûts par organisation et définissez des quotas mensuels."
       }
     },
     "database": {
@@ -2964,5 +2971,39 @@
       "whosOn": "Qui travaille en ce moment ?",
       "coverage": "Y a-t-il des trous dans le planning de cette semaine ?"
     }
+  },
+  "usage": {
+    "title": "Utilisation de l'IA",
+    "subtitle": "Consommation de tokens et coût de toutes les fonctions IA",
+    "inputTokens": "Tokens d'entrée",
+    "outputTokens": "Tokens de sortie",
+    "totalCost": "Coût total",
+    "thisMonth": "Ce mois-ci",
+    "calls": "Appels IA",
+    "aiRequests": "Requêtes",
+    "quota": "Quota",
+    "costLimit": "Limite de coût",
+    "tokenLimit": "Limite de tokens",
+    "dailyCost": "Coût quotidien",
+    "empty": "Aucune utilisation d'IA pour le moment",
+    "cost": "Coût",
+    "byFeature": "Utilisation par fonction"
+  },
+  "adminsUsage": {
+    "title": "Utilisation de l'IA",
+    "subtitle": "Consommation de tokens IA et coûts de toutes les organisations. Définissez des quotas mensuels par organisation.",
+    "totalCost": "Coût total",
+    "orgs": "Organisations",
+    "loading": "Chargement…",
+    "empty": "Aucune utilisation enregistrée ce mois-ci.",
+    "org": "Organisation",
+    "cost": "Coût",
+    "tokenQuota": "Limite tokens/mois",
+    "costQuota": "Limite coût/mois",
+    "save": "Enregistrer",
+    "quotaNote": "Laissez un champ vide pour illimité. Les quotas sont indicatifs — affichés dans le tableau de bord d'utilisation de chaque organisation.",
+    "invalidNumber": "Saisissez un nombre valide",
+    "quotaSaved": "Quota enregistré",
+    "quotaFailed": "Échec de l'enregistrement du quota"
   }
 }

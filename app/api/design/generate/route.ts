@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
 
   let body: {
     prompt?: string;
+    organizationId?: string;
     width?: number;
     height?: number;
     existingHtml?: string;
@@ -111,6 +113,12 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
+    await recordAiUsage({
+      organizationId: body.organizationId,
+      feature: "design_generate",
+      model: MODEL,
+      ...normalizeUsage(data.usage),
+    });
     const choice = data.choices?.[0]?.message;
     const raw = choice?.content || choice?.reasoning || "";
     if (!raw) {

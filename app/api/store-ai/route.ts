@@ -3,6 +3,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { streamText, generateText, generateObject } from "ai";
 import { z } from "zod";
 import { getAllPromptSegments } from "@/lib/merchiva/skills/registry";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 function getOpenRouter() {
   const key = process.env.OPENROUTER_API_KEY;
@@ -17,7 +18,7 @@ function getOpenRouter() {
   });
 }
 
-function getModel() {
+export function getModel() {
   // Standard escalation model — OSS (gpt-oss-120b). Handles the bulk of
   // "complex" requests. Override with OPENROUTER_MODEL.
   return process.env.OPENROUTER_MODEL || "openai/gpt-oss-120b";
@@ -27,7 +28,7 @@ export function getOpenRouterModel() {
   return getOpenRouter().chat(getModel());
 }
 
-function getThinkingModel() {
+export function getThinkingModel() {
   // Reserved for requests the triage layer flags as needing deep reasoning.
   // Defaults to a proprietary thinking model; override with OPENROUTER_THINKING_MODEL.
   return process.env.OPENROUTER_THINKING_MODEL || "x-ai/grok-4.3";
@@ -37,7 +38,7 @@ function getOpenRouterThinkingModel() {
   return getOpenRouter().chat(getThinkingModel());
 }
 
-function getFastModel() {
+export function getFastModel() {
   return process.env.OPENROUTER_FAST_MODEL || "openai/gpt-oss-120b";
 }
 
@@ -45,7 +46,7 @@ export function getOpenRouterFastModel() {
   return getOpenRouter().chat(getFastModel());
 }
 
-function getVoiceModel() {
+export function getVoiceModel() {
   // Voice replies also default to the OSS model; override via OPENROUTER_VOICE_MODEL.
   return process.env.OPENROUTER_VOICE_MODEL || "openai/gpt-oss-120b";
 }
@@ -1120,6 +1121,15 @@ export async function POST(req: NextRequest) {
     const { message, history, context, type, lang, memory, summarize, permissions, mode } = body;
     const callMode: "chat" | "voice" = mode === "voice" ? "voice" : "chat";
 
+    // Org to attribute AI usage to. The client sends it explicitly; fall back to
+    // an organizationId embedded in the store context blob if present.
+    const usageOrgId: string =
+      (typeof body.organizationId === "string" && body.organizationId) ||
+      (typeof (context as Record<string, unknown> | undefined)?.organizationId === "string"
+        ? ((context as Record<string, unknown>).organizationId as string)
+        : "") ||
+      "";
+
     if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json({
         reply: "AI assistant is not configured. Set OPENROUTER_API_KEY in environment variables.",
@@ -1130,26 +1140,38 @@ export async function POST(req: NextRequest) {
     if (summarize) {
       const { prevSummary, newMessages } = summarize;
       const prompt = buildSummarizePrompt(prevSummary ?? "", newMessages ?? []);
-      const { text } = await generateText({
+      const summaryResult = await generateText({
         model: getOpenRouterModel(),
         messages: [{ role: "system", content: prompt }],
         maxOutputTokens: 800,
         temperature: 0,
       });
-      return NextResponse.json({ summary: text });
+      await recordAiUsage({
+        organizationId: usageOrgId,
+        feature: "store_ai_summarize",
+        model: getModel(),
+        ...normalizeUsage(summaryResult.usage),
+      });
+      return NextResponse.json({ summary: summaryResult.text });
     }
 
     // Weekly summary
     if (type === "weekly_summary") {
       const systemPrompt = `You are Mr. Merchiva generating a weekly summary. Store data:\n${JSON.stringify(context ?? {}, null, 2)}\n\nGenerate a concise weekly report with: Revenue, Top Products, Staffing, Inventory Alerts, Recommendations. Use real numbers. Respond in ${lang === "zh" ? "Chinese" : "English"}.`;
-      const { text } = await generateText({
+      const weeklyResult = await generateText({
         model: getOpenRouterModel(),
         system: systemPrompt,
         messages: [{ role: "user", content: "Generate this week's summary." }],
         maxOutputTokens: 2048,
         temperature: 0,
       });
-      return NextResponse.json({ reply: text });
+      await recordAiUsage({
+        organizationId: usageOrgId,
+        feature: "store_ai_weekly_summary",
+        model: getModel(),
+        ...normalizeUsage(weeklyResult.usage),
+      });
+      return NextResponse.json({ reply: weeklyResult.text });
     }
 
     if (!message || typeof message !== "string") {
@@ -1221,6 +1243,12 @@ export async function POST(req: NextRequest) {
           },
         });
         triage = triageResult.object;
+        await recordAiUsage({
+          organizationId: usageOrgId,
+          feature: "store_ai_triage",
+          model: triageModelName,
+          ...normalizeUsage(triageResult.usage),
+        });
         console.log(
           `[store-ai] Triage (${callMode}/${triageModelName}): needsThinking=${triage.needsThinking}, deep=${triage.needsDeepThinking ?? false}, kaomoji="${triage.kaomoji ?? ""}", msg="${triage.message.slice(0, 120)}"`,
         );
@@ -1306,6 +1334,8 @@ export async function POST(req: NextRequest) {
             const MAX_BATCHES = 3;
             let cleanReply = "";
             let lastFinishReason: string | undefined;
+            let usageInput = 0;
+            let usageOutput = 0;
 
             for (let batchN = 1; batchN <= MAX_BATCHES; batchN++) {
               const continuationNote = batchN > 1
@@ -1333,6 +1363,13 @@ export async function POST(req: NextRequest) {
                 batchText += chunk;
               }
               lastFinishReason = await mainResult.finishReason;
+              try {
+                const batchUsage = normalizeUsage(await mainResult.usage);
+                usageInput += batchUsage.inputTokens;
+                usageOutput += batchUsage.outputTokens;
+              } catch {
+                /* usage unavailable for this batch — skip */
+              }
 
               if (lastFinishReason === "length") {
                 const { trimmed, stripped } = stripIncompleteTrailingAction(batchText);
@@ -1357,6 +1394,13 @@ export async function POST(req: NextRequest) {
             }
 
             controller.close();
+            await recordAiUsage({
+              organizationId: usageOrgId,
+              feature: "store_ai",
+              model: useThinking ? getThinkingModel() : getModel(),
+              inputTokens: usageInput,
+              outputTokens: usageOutput,
+            });
             console.log(
               `[store-ai] Reply (${escalationModelName}, ${cleanReply.length} chars total):\n${cleanReply}`,
             );
@@ -1374,13 +1418,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Non-streaming fallback
-    const { text } = await generateText({
+    const fallbackResult = await generateText({
       model: callMode === "voice" ? getOpenRouterVoiceModel() : getOpenRouterModel(),
       system: systemPrompt,
       messages: convoMsgs,
       maxOutputTokens: maxOutput,
       temperature: callMode === "voice" ? 0.4 : 0.2,
     });
+    await recordAiUsage({
+      organizationId: usageOrgId,
+      feature: callMode === "voice" ? "store_ai_voice" : "store_ai",
+      model: callMode === "voice" ? getVoiceModel() : getModel(),
+      ...normalizeUsage(fallbackResult.usage),
+    });
+    const text = fallbackResult.text;
 
     const localeKey = (lang ?? "en") as keyof typeof CHAT_FALLBACK;
     if (callMode === "voice") {

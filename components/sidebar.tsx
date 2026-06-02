@@ -28,7 +28,7 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 }
 
 import type { StoredAccount } from "@/lib/auth/context";
-import { LayoutDashboard, Package, TrendingUp, Users, ShoppingBag, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette } from "lucide-react";
+import { LayoutDashboard, Package, TrendingUp, Users, ShoppingBag, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette, BarChart3 } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
@@ -117,6 +117,7 @@ const navItems: NavItemExt[] = [
   { labelKey: "nav.chat",      href: "/~/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
   { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website"   },
   { labelKey: "nav.design",    href: "/~/design",      icon: Palette,         permissionKey: "website"   },
+  { labelKey: "nav.usage",     href: "/~/usage",       icon: BarChart3,       permissionKey: "settings"  },
   { labelKey: "nav.punchIn",   href: "/~/punch-in",    icon: KeyRound },
 ];
 

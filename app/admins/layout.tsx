@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admins/blogs", key: "blogs" },
   { href: "/admins/coupons", key: "coupons" },
   { href: "/admins/users", key: "users" },
+  { href: "/admins/usage", key: "usage" },
 ] as const;
 
 export default function AdminsLayout({ children }: { children: React.ReactNode }) {

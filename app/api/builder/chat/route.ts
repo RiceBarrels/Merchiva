@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "OPENROUTER_API_KEY not configured" }, { status: 500 });
   }
 
-  const { messages, siteName, siteTheme } = await req.json();
+  const { messages, siteName, siteTheme, organizationId } = await req.json();
   if (!messages?.length) {
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
@@ -83,6 +84,12 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json();
+    await recordAiUsage({
+      organizationId,
+      feature: "builder_chat",
+      model: MODEL,
+      ...normalizeUsage(data.usage),
+    });
     const choice = data.choices?.[0]?.message;
 
     // Thinking models: actual answer in content, reasoning is internal chain-of-thought

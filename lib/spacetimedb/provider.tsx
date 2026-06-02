@@ -227,6 +227,16 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         } catch {
           console.warn("[SpacetimeDB] ai_job table not available on server");
         }
+        try {
+          // AI usage tracking + per-org quota. Separate try/catch so older
+          // servers without these tables don't break other subscriptions.
+          conn.subscriptionBuilder().subscribe([
+            "SELECT * FROM ai_usage",
+            "SELECT * FROM ai_usage_quota",
+          ]);
+        } catch {
+          console.warn("[SpacetimeDB] ai_usage tables not available on server");
+        }
       })
       .onDisconnect(() => {
         setConnected(false);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject, generateText, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
+import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
 
 export const runtime = "nodejs";
 
@@ -167,11 +168,16 @@ ${JSON.stringify(context, null, 2)}`;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { context, lang, dateStr } = body as {
+    const { context, lang, dateStr, organizationId } = body as {
       context?: Record<string, unknown>;
       lang?: string;
       dateStr?: string;
+      organizationId?: string;
     };
+    const usageOrgId =
+      organizationId ||
+      (typeof context?.organizationId === "string" ? (context.organizationId as string) : "") ||
+      "";
 
     if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json(
@@ -191,7 +197,7 @@ export async function POST(req: NextRequest) {
     // 1) Preferred path — generateObject with JSON mode. Works for any model
     //    that respects the JSON schema we hand it.
     try {
-      const { object } = await generateObject({
+      const objResult = await generateObject({
         model: openrouter.chat(modelName),
         schema: briefingSchema,
         system,
@@ -203,7 +209,13 @@ export async function POST(req: NextRequest) {
           openrouter: { reasoning: { effort: "minimal", exclude: true } },
         },
       });
-      briefing = object;
+      briefing = objResult.object;
+      await recordAiUsage({
+        organizationId: usageOrgId,
+        feature: "morning_briefing",
+        model: modelName,
+        ...normalizeUsage(objResult.usage),
+      });
     } catch (err) {
       // 2) Recover from the most common failure: the model returned JSON but
       //    wrapped it in code fences or prose, so the strict parser threw
@@ -230,7 +242,7 @@ export async function POST(req: NextRequest) {
         "[insights/morning-briefing] JSON recovery failed — falling back to generateText",
       );
       try {
-        const { text } = await generateText({
+        const textResult = await generateText({
           model: openrouter.chat(modelName),
           system: `${system}
 
@@ -240,7 +252,13 @@ OUTPUT FORMAT (CRITICAL): respond with ONLY a valid JSON object matching this sh
           maxOutputTokens: 2500,
           temperature: 0.4,
         });
-        briefing = recoverBriefingFromText(text);
+        await recordAiUsage({
+          organizationId: usageOrgId,
+          feature: "morning_briefing",
+          model: modelName,
+          ...normalizeUsage(textResult.usage),
+        });
+        briefing = recoverBriefingFromText(textResult.text);
       } catch (err) {
         console.error(
           "[insights/morning-briefing] generateText fallback also failed:",
