@@ -22,4 +22,5 @@ export default {
   cost: __t.f64(),
   day: __t.string(),
   month: __t.string(),
+  description: __t.option(__t.string()),
 };

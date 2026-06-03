@@ -2987,7 +2987,11 @@
     "dailyCost": "Daily cost",
     "empty": "No AI usage yet",
     "cost": "Cost",
-    "byFeature": "Usage by feature"
+    "byFeature": "Usage by feature",
+    "activityLog": "Activity Log",
+    "allFeatures": "All features",
+    "noRecords": "No usage records for this month",
+    "noDescription": "(no detail)"
   },
   "adminsUsage": {
     "title": "AI Usage",

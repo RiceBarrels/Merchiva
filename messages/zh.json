@@ -2987,7 +2987,11 @@
     "dailyCost": "每日费用",
     "empty": "暂无 AI 用量",
     "cost": "费用",
-    "byFeature": "按功能分类"
+    "byFeature": "按功能分类",
+    "activityLog": "活动记录",
+    "allFeatures": "全部功能",
+    "noRecords": "本月暂无使用记录",
+    "noDescription": "（无详情）"
   },
   "adminsUsage": {
     "title": "AI 用量",

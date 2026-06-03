@@ -2987,7 +2987,11 @@
     "dailyCost": "दैनिक लागत",
     "empty": "अभी तक कोई AI उपयोग नहीं",
     "cost": "लागत",
-    "byFeature": "सुविधा अनुसार उपयोग"
+    "byFeature": "सुविधा अनुसार उपयोग",
+    "activityLog": "गतिविधि लॉग",
+    "allFeatures": "सभी सुविधाएँ",
+    "noRecords": "इस माह कोई उपयोग रिकॉर्ड नहीं",
+    "noDescription": "(कोई विवरण नहीं)"
   },
   "adminsUsage": {
     "title": "AI उपयोग",

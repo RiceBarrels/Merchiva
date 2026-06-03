@@ -24,4 +24,5 @@ export default __t.row({
   day: __t.string(),
   month: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
+  description: __t.option(__t.string()),
 });

@@ -19,6 +19,7 @@ export interface AiUsageEntry {
   day: string; // YYYY-MM-DD
   month: string; // YYYY-MM
   createdAtMs: number;
+  description: string | null;
 }
 
 export interface AiUsageQuota {
@@ -65,6 +66,7 @@ export function useAiUsage(): { entries: AiUsageEntry[]; isReady: boolean } {
         day: String(r.day ?? ""),
         month: String(r.month ?? ""),
         createdAtMs: tsToMs(r.createdAt),
+        description: r.description ?? null,
       }))
       .sort((a, b) => b.createdAtMs - a.createdAtMs);
   }, [rawRows, organizationId]);

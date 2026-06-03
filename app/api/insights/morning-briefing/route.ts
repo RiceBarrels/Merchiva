@@ -214,6 +214,7 @@ export async function POST(req: NextRequest) {
         organizationId: usageOrgId,
         feature: "morning_briefing",
         model: modelName,
+        description: "Generated daily morning briefing",
         ...normalizeUsage(objResult.usage),
       });
     } catch (err) {
@@ -256,6 +257,7 @@ OUTPUT FORMAT (CRITICAL): respond with ONLY a valid JSON object matching this sh
           organizationId: usageOrgId,
           feature: "morning_briefing",
           model: modelName,
+          description: "Generated daily morning briefing",
           ...normalizeUsage(textResult.usage),
         });
         briefing = recoverBriefingFromText(textResult.text);

@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
       organizationId: usageOrgId,
       feature: "schedule_proposal",
       model: modelName,
+      description: `Drafted schedule for ${weekStart} – ${weekEnd}`,
       ...normalizeUsage(proposalResult.usage),
     });
 

@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
       organizationId,
       feature: "builder_chat",
       model: MODEL,
+      description: Array.isArray(messages) ? messages[messages.length - 1]?.content : undefined,
       ...normalizeUsage(data.usage),
     });
     const choice = data.choices?.[0]?.message;

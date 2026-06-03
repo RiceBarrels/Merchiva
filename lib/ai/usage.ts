@@ -92,8 +92,25 @@ export interface RecordAiUsageArgs {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  /**
+   * Short human-readable summary of what the call did — usually the user's
+   * prompt, or a fixed label for non-prompt calls. Truncated to 100 chars.
+   */
+  description?: string | null;
   /** Defaults to now (UTC); pass to control the day/month bucket. */
   at?: Date;
+}
+
+/**
+ * Build a clean ≤100-char preview from arbitrary prompt text: collapse
+ * whitespace, trim, and add an ellipsis if truncated. Returns undefined for
+ * empty input so the column stays null.
+ */
+export function previewText(input: string | null | undefined, max = 100): string | undefined {
+  if (!input) return undefined;
+  const clean = String(input).replace(/\s+/g, " ").trim();
+  if (!clean) return undefined;
+  return clean.length > max ? clean.slice(0, max - 1) + "…" : clean;
 }
 
 /**
@@ -127,6 +144,7 @@ export async function recordAiUsage(args: RecordAiUsageArgs): Promise<void> {
       cost,
       day,
       month,
+      description: previewText(args.description),
     });
   } catch (err) {
     console.warn("[recordAiUsage] failed (non-fatal):", err);

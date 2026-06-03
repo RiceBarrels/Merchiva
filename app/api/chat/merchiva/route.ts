@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
           organizationId,
           feature: "mr_merchiva",
           model: getFastModel(),
+          description: message,
           ...normalizeUsage(gate.usage),
         });
         if (!gate.object.respond) {
@@ -155,6 +156,7 @@ export async function POST(req: NextRequest) {
       organizationId,
       feature: "mr_merchiva",
       model: getModel(),
+      description: message,
       ...normalizeUsage(result.usage),
     });
 

@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       organizationId,
       feature: "builder_generate",
       model: MODEL,
+      description: prompt,
       ...normalizeUsage(data.usage),
     });
     const choice = data.choices?.[0]?.message;

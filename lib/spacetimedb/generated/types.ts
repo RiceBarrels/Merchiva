@@ -63,6 +63,7 @@ export const AiUsage = __t.object("AiUsage", {
   day: __t.string(),
   month: __t.string(),
   createdAt: __t.timestamp(),
+  description: __t.option(__t.string()),
 });
 export type AiUsage = __Infer<typeof AiUsage>;
 

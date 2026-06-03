@@ -500,7 +500,11 @@ export async function serviceRecordAiUsage(
     cost: number;
     day: string;
     month: string;
+    description?: string | null;
   },
 ): Promise<void> {
-  conn.reducers.serviceRecordAiUsage(args);
+  conn.reducers.serviceRecordAiUsage({
+    ...args,
+    description: args.description ?? undefined,
+  });
 }

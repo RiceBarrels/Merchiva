@@ -2987,7 +2987,11 @@
     "dailyCost": "Coût quotidien",
     "empty": "Aucune utilisation d'IA pour le moment",
     "cost": "Coût",
-    "byFeature": "Utilisation par fonction"
+    "byFeature": "Utilisation par fonction",
+    "activityLog": "Journal d'activité",
+    "allFeatures": "Toutes les fonctions",
+    "noRecords": "Aucun enregistrement ce mois-ci",
+    "noDescription": "(sans détail)"
   },
   "adminsUsage": {
     "title": "Utilisation de l'IA",

@@ -187,6 +187,7 @@ async function runJob(args: RunJobArgs): Promise<void> {
         organizationId: args.organizationId,
         feature: "store_ai_bg_triage",
         model: FAST_MODEL,
+        description: args.message,
         ...normalizeUsage(triageRes.usage),
       });
     } catch (e) {
@@ -246,6 +247,7 @@ async function runJob(args: RunJobArgs): Promise<void> {
       organizationId: args.organizationId,
       feature: "store_ai_bg",
       model: useThinking ? THINKING_MODEL : MODEL,
+      description: args.message,
       ...normalizeUsage(await stream.usage),
     });
 

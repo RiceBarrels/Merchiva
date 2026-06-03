@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
       organizationId: body.organizationId,
       feature: "design_chat",
       model: MODEL,
+      description: messages[messages.length - 1]?.content,
       ...normalizeUsage(data.usage),
     });
     const choice = data.choices?.[0]?.message;

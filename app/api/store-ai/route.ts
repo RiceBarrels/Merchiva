@@ -1150,6 +1150,7 @@ export async function POST(req: NextRequest) {
         organizationId: usageOrgId,
         feature: "store_ai_summarize",
         model: getModel(),
+        description: "Summarized conversation history",
         ...normalizeUsage(summaryResult.usage),
       });
       return NextResponse.json({ summary: summaryResult.text });
@@ -1169,6 +1170,7 @@ export async function POST(req: NextRequest) {
         organizationId: usageOrgId,
         feature: "store_ai_weekly_summary",
         model: getModel(),
+        description: "Generated weekly summary report",
         ...normalizeUsage(weeklyResult.usage),
       });
       return NextResponse.json({ reply: weeklyResult.text });
@@ -1247,6 +1249,7 @@ export async function POST(req: NextRequest) {
           organizationId: usageOrgId,
           feature: "store_ai_triage",
           model: triageModelName,
+          description: message,
           ...normalizeUsage(triageResult.usage),
         });
         console.log(
@@ -1398,6 +1401,7 @@ export async function POST(req: NextRequest) {
               organizationId: usageOrgId,
               feature: "store_ai",
               model: useThinking ? getThinkingModel() : getModel(),
+              description: message,
               inputTokens: usageInput,
               outputTokens: usageOutput,
             });
@@ -1429,6 +1433,7 @@ export async function POST(req: NextRequest) {
       organizationId: usageOrgId,
       feature: callMode === "voice" ? "store_ai_voice" : "store_ai",
       model: callMode === "voice" ? getVoiceModel() : getModel(),
+      description: message,
       ...normalizeUsage(fallbackResult.usage),
     });
     const text = fallbackResult.text;

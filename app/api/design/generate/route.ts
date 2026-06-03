@@ -117,6 +117,7 @@ export async function POST(req: NextRequest) {
       organizationId: body.organizationId,
       feature: "design_generate",
       model: MODEL,
+      description: body.prompt,
       ...normalizeUsage(data.usage),
     });
     const choice = data.choices?.[0]?.message;

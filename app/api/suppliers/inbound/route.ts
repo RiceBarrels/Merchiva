@@ -241,6 +241,7 @@ export async function POST(req: NextRequest) {
       organizationId: decoded.orgId,
       feature: "supplier_agent",
       model: MODEL,
+      description: `Replied to ${ctx.supplier.name}: ${supplierMsg}`,
       ...normalizeUsage(res.usage),
     });
   } catch (err) {

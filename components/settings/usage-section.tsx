@@ -58,6 +58,16 @@ function currentMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
+function fmtTime(ms: number): string {
+  if (!ms) return "";
+  return new Date(ms).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /**
  * AI usage dashboard, designed to drop into a settings sub-panel. Self-contained:
  * subscribes to the org's ai_usage / ai_usage_quota tables and renders monthly
@@ -69,6 +79,7 @@ export function UsageSection() {
   const { entries, isReady } = useAiUsage();
   const { quota } = useAiUsageQuota();
   const [month, setMonth] = useState<string>(currentMonth());
+  const [featureFilter, setFeatureFilter] = useState<string>("all");
 
   const months = useMemo(() => {
     const set = new Set<string>(entries.map((e) => e.month).filter(Boolean));
@@ -122,6 +133,20 @@ export function UsageSection() {
   }, [monthEntries]);
 
   const maxFeatureCost = Math.max(1e-9, ...byFeature.map((f) => f.cost));
+
+  // Distinct features present this month (for the activity-log filter).
+  const logFeatures = useMemo(
+    () => [...new Set(monthEntries.map((e) => e.feature))].sort(),
+    [monthEntries],
+  );
+  // monthEntries is already newest-first (the hook sorts by createdAt desc).
+  const logEntries = useMemo(
+    () =>
+      featureFilter === "all"
+        ? monthEntries
+        : monthEntries.filter((e) => e.feature === featureFilter),
+    [monthEntries, featureFilter],
+  );
 
   const tokenQuotaUsed = totals.inputTokens + totals.outputTokens;
   const tokenQuotaPct =
@@ -282,6 +307,68 @@ export function UsageSection() {
                       className="h-full bg-stone-700"
                       style={{ width: `${(f.cost / maxFeatureCost) * 100}%` }}
                     />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Activity log — every call, newest first, filterable by feature */}
+      <Card className="rounded-[0.3rem]">
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("usage.activityLog")}
+            </div>
+            <Select value={featureFilter} onValueChange={(v) => v && setFeatureFilter(v)}>
+              <SelectTrigger className="h-8 w-[160px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">
+                  {t("usage.allFeatures")}
+                </SelectItem>
+                {logFeatures.map((f) => (
+                  <SelectItem key={f} value={f} className="text-xs">
+                    {featureLabel(f)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {logEntries.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {t("usage.noRecords")}
+            </p>
+          ) : (
+            <div className="max-h-[360px] divide-y divide-border overflow-y-auto">
+              {logEntries.map((e) => (
+                <div key={e.id} className="flex items-start gap-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-[0.3rem] bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                        {featureLabel(e.feature)}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {fmtTime(e.createdAtMs)}
+                      </span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-[13px] text-foreground/90">
+                      {e.description || (
+                        <span className="text-muted-foreground">{t("usage.noDescription")}</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="font-mono text-[13px] font-semibold tabular-nums">
+                      {fmtCost(e.cost)}
+                    </div>
+                    <div className="font-mono text-[10px] text-muted-foreground tabular-nums">
+                      {fmtTokens(e.inputTokens)}↓ / {fmtTokens(e.outputTokens)}↑
+                    </div>
                   </div>
                 </div>
               ))}

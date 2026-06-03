@@ -2987,7 +2987,11 @@
     "dailyCost": "Costo diario",
     "empty": "Aún no hay uso de IA",
     "cost": "Costo",
-    "byFeature": "Uso por función"
+    "byFeature": "Uso por función",
+    "activityLog": "Registro de actividad",
+    "allFeatures": "Todas las funciones",
+    "noRecords": "Sin registros de uso este mes",
+    "noDescription": "(sin detalle)"
   },
   "adminsUsage": {
     "title": "Uso de IA",

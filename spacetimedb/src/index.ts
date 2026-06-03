@@ -1619,6 +1619,10 @@ const aiUsageTable = table(
     day: t.string(),           // YYYY-MM-DD (UTC)
     month: t.string(),         // YYYY-MM (UTC)
     createdAt: t.timestamp(),
+    // Short human-readable summary of what the call did — usually the first
+    // ~100 chars of the user's prompt, or a fixed label for non-prompt calls
+    // (e.g. "Generated morning briefing"). Added at end per migration rules.
+    description: t.option(t.string()).default(undefined),
   }
 );
 
@@ -6401,6 +6405,7 @@ export const serviceRecordAiUsage = spacetimedb.reducer(
     cost: t.number(),
     day: t.string(),
     month: t.string(),
+    description: t.option(t.string()),
   },
   (ctx, args) => {
     if (!isServiceCaller(ctx)) unauthorized('Service identity required');
@@ -6418,6 +6423,7 @@ export const serviceRecordAiUsage = spacetimedb.reducer(
       day: args.day,
       month: args.month,
       createdAt: ctx.timestamp,
+      description: args.description,
     });
   }
 );
