@@ -3016,6 +3016,7 @@
     "parentNone": "无（创建为独立店铺）",
     "parentHelpRoot": "创建一个独立店铺，拥有自己的库存和预测。",
     "parentHelpSub": "子店铺与母店共享人员、产品、聊天、设计和网站。库存和预测保持独立。",
+    "drawerAddHint": "创建新店铺或关联为子店铺",
     "products": {
       "filterShowingAll": "全部店铺",
       "filterShowingCurrent": "仅本店",

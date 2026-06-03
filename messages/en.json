@@ -3016,6 +3016,7 @@
     "parentNone": "None (create as root store)",
     "parentHelpRoot": "Creates a new independent store with its own inventory and forecasts.",
     "parentHelpSub": "Sub-stores share staff, products, chat, design, and sites with the parent. Inventory and forecasts stay separate.",
+    "drawerAddHint": "Create a new store or attach as a sub-store",
     "products": {
       "filterShowingAll": "All stores",
       "filterShowingCurrent": "This store only",

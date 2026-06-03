@@ -3016,6 +3016,7 @@
     "parentNone": "Aucun (créer comme magasin indépendant)",
     "parentHelpRoot": "Crée un magasin indépendant avec son propre inventaire et ses prévisions.",
     "parentHelpSub": "Les sous-magasins partagent personnel, produits, chat, design et sites avec le parent. L'inventaire et les prévisions restent séparés.",
+    "drawerAddHint": "Créer un magasin ou rattacher comme sous-magasin",
     "products": {
       "filterShowingAll": "Tous les magasins",
       "filterShowingCurrent": "Ce magasin uniquement",

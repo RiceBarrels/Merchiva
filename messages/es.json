@@ -3016,6 +3016,7 @@
     "parentNone": "Ninguna (crear como tienda independiente)",
     "parentHelpRoot": "Crea una tienda independiente con su propio inventario y previsiones.",
     "parentHelpSub": "Las subtiendas comparten personal, productos, chat, diseño y sitios con la tienda principal. El inventario y las previsiones son independientes.",
+    "drawerAddHint": "Crea una tienda nueva o vincúlala como subtienda",
     "products": {
       "filterShowingAll": "Todas las tiendas",
       "filterShowingCurrent": "Solo esta tienda",

@@ -46,13 +46,14 @@ import {
   UserCog,
   Fingerprint,
   Sparkles,
+  Plus,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { upsertSettings, disconnectSquare, disconnectClover, setPunchInCode, updateOpeningHours } from "@/lib/spacetimedb/actions";
+import { upsertSettings, disconnectSquare, disconnectClover, setPunchInCode, updateOpeningHours, createOrg } from "@/lib/spacetimedb/actions";
 import { parseOpeningHours, type WeeklyHours, type DayKey } from "@/lib/holidays";
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
@@ -140,6 +141,40 @@ export default function SettingsPage() {
 
   // Mobile drawer for switching store / account
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  // Inline "Add store" form inside the switcher drawer.
+  const [drawerCreating, setDrawerCreating] = useState(false);
+  const [drawerStoreName, setDrawerStoreName] = useState("");
+  const [drawerParentId, setDrawerParentId] = useState<string | null>(null);
+  const [drawerCreateLoading, setDrawerCreateLoading] = useState(false);
+  const [drawerCreateError, setDrawerCreateError] = useState<string | null>(null);
+  const closeSwitcherCreate = () => {
+    setDrawerCreating(false);
+    setDrawerStoreName("");
+    setDrawerParentId(null);
+    setDrawerCreateError(null);
+  };
+  const handleDrawerCreateStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = drawerStoreName.trim();
+    if (!name) return;
+    setDrawerCreateLoading(true);
+    setDrawerCreateError(null);
+    try {
+      await createOrg(name, drawerParentId);
+      hapticSuccess();
+      // Stay closed until the org list refreshes — reload picks up new
+      // membership and re-scopes SpacetimeDB subscriptions cleanly.
+      setSwitcherOpen(false);
+      closeSwitcherCreate();
+      window.location.reload();
+    } catch (err) {
+      setDrawerCreateError(
+        err instanceof Error ? err.message : t("components.sidebar.failedToCreateStore"),
+      );
+    } finally {
+      setDrawerCreateLoading(false);
+    }
+  };
 
   // Square OAuth feedback (replaced with toast)
 
@@ -1803,7 +1838,10 @@ export default function SettingsPage() {
                     </IconTile>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{org.name}</p>
-                      {isCurrent && (
+                      {org.parentOrgId && (
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{t("multiStore.subBadge")}</p>
+                      )}
+                      {isCurrent && !org.parentOrgId && (
                         <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentStore") || "Current"}</p>
                       )}
                     </div>
@@ -1813,6 +1851,88 @@ export default function SettingsPage() {
                   </button>
                 );
               })}
+              {/* Add-store: collapsed → button row; expanded → inline form
+                  inside the same surface so the drawer doesn't reflow. */}
+              {!drawerCreating ? (
+                <button
+                  type="button"
+                  onClick={() => { hapticMedium(); setDrawerCreating(true); }}
+                  className="flex items-center gap-3 px-[18px] py-3.5 w-full text-left border-t border-border"
+                >
+                  <IconTile>
+                    <Plus className="h-4 w-4 text-foreground" />
+                  </IconTile>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{t("nav.createNewStore")}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {organizations.some((o) => !o.parentOrgId)
+                        ? t("multiStore.drawerAddHint")
+                        : t("multiStore.parentHelpRoot")}
+                    </p>
+                  </div>
+                </button>
+              ) : (
+                <form
+                  onSubmit={handleDrawerCreateStore}
+                  className="px-[18px] py-3.5 border-t border-border space-y-2.5"
+                >
+                  <Input
+                    autoFocus
+                    value={drawerStoreName}
+                    onChange={(e) => setDrawerStoreName(e.target.value)}
+                    placeholder={t("nav.storeName")}
+                    className="h-9 text-sm"
+                  />
+                  {organizations.some((o) => !o.parentOrgId) && (
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t("multiStore.parentLabel")}
+                      </Label>
+                      <Select
+                        value={drawerParentId ?? "__none__"}
+                        onValueChange={(v) => setDrawerParentId(v && v !== "__none__" ? v : null)}
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">{t("multiStore.parentNone")}</SelectItem>
+                          {organizations
+                            .filter((o) => !o.parentOrgId)
+                            .map((p) => (
+                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {drawerParentId ? t("multiStore.parentHelpSub") : t("multiStore.parentHelpRoot")}
+                      </p>
+                    </div>
+                  )}
+                  {drawerCreateError && (
+                    <p className="text-xs text-destructive">{drawerCreateError}</p>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={drawerCreateLoading || !drawerStoreName.trim()}
+                      className="flex-1"
+                    >
+                      {drawerCreateLoading ? <Spinner size={14} /> : t("nav.create")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={closeSwitcherCreate}
+                      disabled={drawerCreateLoading}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                  </div>
+                </form>
+              )}
             </div>
 
             {/* Accounts */}

@@ -323,6 +323,424 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
   );
 }
 
+/**
+ * Combined store + account switcher for desktop. Replaces the separate
+ * StoreSwitcher (top) and AccountSwitcher (bottom) mounts so the desktop UI
+ * matches the mobile drawer: one trigger shows current org + signed-in email,
+ * and one dropdown lists both stores (as a parent/child tree) and accounts
+ * with the create flows + sign out.
+ */
+function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; collapsed?: boolean }) {
+  const t = useT();
+  const router = useRouter();
+  const { currentOrg, organizations, switchOrg } = usePermissions();
+  const { user, accounts, switchAccount, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newStoreName, setNewStoreName] = useState("");
+  const [newParentId, setNewParentId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as globalThis.Node)) {
+        setOpen(false);
+        setCreating(false);
+        setError(null);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  // Parent → children tree for the store list. Root orgs first, sub-stores
+  // indented underneath; an org whose parent isn't in the user's accessible
+  // list still renders at the root so it's reachable.
+  type TreeNode = { org: typeof organizations[number]; children: typeof organizations };
+  const tree: TreeNode[] = (() => {
+    const byId = new Map(organizations.map((o) => [o.id, o] as const));
+    const roots: TreeNode[] = [];
+    const childrenOf = new Map<string, typeof organizations>();
+    for (const org of organizations) {
+      const parent = org.parentOrgId && byId.has(org.parentOrgId) ? org.parentOrgId : null;
+      if (parent) {
+        const arr = childrenOf.get(parent) ?? [];
+        arr.push(org);
+        childrenOf.set(parent, arr);
+      }
+    }
+    for (const org of organizations) {
+      const isRoot = !org.parentOrgId || !byId.has(org.parentOrgId);
+      if (isRoot) {
+        roots.push({ org, children: childrenOf.get(org.id) ?? [] });
+      }
+    }
+    return roots.sort((a, b) => a.org.name.localeCompare(b.org.name));
+  })();
+
+  const eligibleParents = organizations.filter((o) => !o.parentOrgId);
+
+  const handleSwitchOrg = async (orgId: string) => {
+    if (orgId === currentOrg?.id) { setOpen(false); return; }
+    hapticMedium();
+    setOpen(false);
+    onClose?.();
+    await switchOrg(orgId);
+  };
+
+  const handleSwitchAccount = (userId: string) => {
+    if (userId === user?.id) { setOpen(false); return; }
+    hapticMedium();
+    setOpen(false);
+    onClose?.();
+    switchAccount(userId);
+  };
+
+  const handleCreateStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newStoreName.trim();
+    if (!name) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await createOrg(name, newParentId);
+      hapticSuccess();
+      setOpen(false);
+      setCreating(false);
+      setNewStoreName("");
+      setNewParentId(null);
+      onClose?.();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("components.sidebar.failedToCreateStore"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddAccount = () => {
+    setOpen(false);
+    onClose?.();
+    router.push("/login?addAccount=1");
+  };
+
+  const handleLogout = () => {
+    clearCache();
+    try { localStorage.removeItem("active_org_id"); } catch {}
+    onClose?.();
+    signOut();
+  };
+
+  const userInitial = user?.email?.[0]?.toUpperCase() ?? "?";
+  const orgInitial = currentOrg?.name?.[0]?.toUpperCase() ?? "M";
+
+  // Collapsed mode: single avatar tile, opens the same dropdown.
+  if (collapsed) {
+    return (
+      <div ref={dropdownRef} className="relative">
+        <SidebarTooltip label={`${currentOrg?.name ?? ""} · ${user?.email ?? ""}`} show>
+          <button
+            onClick={() => { hapticLight(); setOpen((v) => !v); setCreating(false); setError(null); }}
+            className="flex w-full items-center justify-center rounded px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <div className="h-6 w-6 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center text-[11px] font-semibold shrink-0">
+              {orgInitial}
+            </div>
+          </button>
+        </SidebarTooltip>
+        {open && (
+          <WorkspaceDropdown
+            currentOrg={currentOrg}
+            user={user}
+            tree={tree}
+            accounts={accounts}
+            eligibleParents={eligibleParents}
+            creating={creating}
+            setCreating={setCreating}
+            newStoreName={newStoreName}
+            setNewStoreName={setNewStoreName}
+            newParentId={newParentId}
+            setNewParentId={setNewParentId}
+            error={error}
+            loading={loading}
+            onSwitchOrg={handleSwitchOrg}
+            onSwitchAccount={handleSwitchAccount}
+            onCreateStore={handleCreateStore}
+            onAddAccount={handleAddAccount}
+            onLogout={handleLogout}
+            onCancelCreate={() => { setCreating(false); setError(null); setNewStoreName(""); setNewParentId(null); }}
+            // Anchored to a tile in the bottom rail, so position above-right.
+            placement="up-right"
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Expanded mode: full-width row showing org name + email; dropdown drops down.
+  return (
+    <div ref={dropdownRef} className="relative">
+      <button
+        onClick={() => { hapticLight(); setOpen((v) => !v); setCreating(false); setError(null); }}
+        className="flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 hover:bg-muted transition-colors text-left"
+      >
+        <div className="h-7 w-7 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center text-[12px] font-semibold shrink-0">
+          {orgInitial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-medium text-foreground truncate">
+              {currentOrg?.name ?? t("nav.selectStore")}
+            </span>
+            {currentOrg?.parentOrgId && (
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 leading-tight shrink-0">
+                {t("multiStore.subBadge")}
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground truncate font-mono">{user?.email ?? ""}</p>
+        </div>
+        <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      </button>
+      {open && (
+        <WorkspaceDropdown
+          currentOrg={currentOrg}
+          user={user}
+          tree={tree}
+          accounts={accounts}
+          eligibleParents={eligibleParents}
+          creating={creating}
+          setCreating={setCreating}
+          newStoreName={newStoreName}
+          setNewStoreName={setNewStoreName}
+          newParentId={newParentId}
+          setNewParentId={setNewParentId}
+          error={error}
+          loading={loading}
+          onSwitchOrg={handleSwitchOrg}
+          onSwitchAccount={handleSwitchAccount}
+          onCreateStore={handleCreateStore}
+          onAddAccount={handleAddAccount}
+          onLogout={handleLogout}
+          onCancelCreate={() => { setCreating(false); setError(null); setNewStoreName(""); setNewParentId(null); }}
+          placement="down"
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Shared dropdown panel for the workspace switcher — rendered the same way in
+ * both collapsed and expanded modes so we get one source of truth for the
+ * store tree, accounts list, and create-store form.
+ */
+function WorkspaceDropdown({
+  currentOrg,
+  user,
+  tree,
+  accounts,
+  eligibleParents,
+  creating,
+  setCreating,
+  newStoreName,
+  setNewStoreName,
+  newParentId,
+  setNewParentId,
+  error,
+  loading,
+  onSwitchOrg,
+  onSwitchAccount,
+  onCreateStore,
+  onAddAccount,
+  onLogout,
+  onCancelCreate,
+  placement,
+}: {
+  currentOrg: { id: string; name: string; parentOrgId?: string | null } | null;
+  user: { id: string; email: string } | null;
+  tree: { org: { id: string; name: string; parentOrgId?: string | null }; children: { id: string; name: string; parentOrgId?: string | null }[] }[];
+  accounts: StoredAccount[];
+  eligibleParents: { id: string; name: string }[];
+  creating: boolean;
+  setCreating: (v: boolean) => void;
+  newStoreName: string;
+  setNewStoreName: (v: string) => void;
+  newParentId: string | null;
+  setNewParentId: (v: string | null) => void;
+  error: string | null;
+  loading: boolean;
+  onSwitchOrg: (id: string) => void;
+  onSwitchAccount: (id: string) => void;
+  onCreateStore: (e: React.FormEvent) => void;
+  onAddAccount: () => void;
+  onLogout: () => void;
+  onCancelCreate: () => void;
+  placement: "down" | "up-right";
+}) {
+  const t = useT();
+  // "down" → drops below the trigger (expanded sidebar at top).
+  // "up-right" → opens upward and to the right of the collapsed tile.
+  const positionCls = placement === "down"
+    ? "left-0 right-0 top-full mt-1 origin-top"
+    : "left-full ml-1 bottom-0 w-64 origin-bottom-left";
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 4, scale: 0.97 }}
+      transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+      className={cn(
+        "absolute z-50 rounded-[0.3rem] border border-border bg-card shadow-md max-h-[70vh] overflow-y-auto",
+        positionCls,
+      )}
+    >
+      {/* Stores */}
+      <div className="px-3 pt-2 pb-1">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          {t("nav.selectStore")}
+        </p>
+      </div>
+      <div className="py-1">
+        {tree.map((node) => (
+          <div key={node.org.id}>
+            <button
+              onClick={() => onSwitchOrg(node.org.id)}
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
+            >
+              <span className="flex-1 truncate font-medium">{node.org.name}</span>
+              {node.children.length > 0 && (
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  {node.children.length}
+                </span>
+              )}
+              {node.org.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+            </button>
+            {node.children.map((child) => (
+              <button
+                key={child.id}
+                onClick={() => onSwitchOrg(child.id)}
+                className="flex w-full items-center gap-2 pl-7 pr-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
+              >
+                <span className="text-muted-foreground/70">↳</span>
+                <span className="flex-1 truncate">{child.name}</span>
+                <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 leading-tight shrink-0">
+                  {t("multiStore.subBadge")}
+                </span>
+                {child.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Create-store form (toggleable) */}
+      <div className="border-t border-border py-1">
+        {!creating ? (
+          <button
+            onClick={() => setCreating(true)}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            {t("nav.createNewStore")}
+          </button>
+        ) : (
+          <form onSubmit={onCreateStore} className="px-3 py-2 space-y-2">
+            <input
+              autoFocus
+              value={newStoreName}
+              onChange={(e) => setNewStoreName(e.target.value)}
+              placeholder={t("nav.storeName")}
+              className="w-full rounded border border-border bg-background px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-foreground/20"
+            />
+            {eligibleParents.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-[11px] text-muted-foreground">
+                  {t("multiStore.parentLabel")}
+                </label>
+                <select
+                  value={newParentId ?? ""}
+                  onChange={(e) => setNewParentId(e.target.value || null)}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-[13px] outline-none focus:ring-1 focus:ring-foreground/20"
+                >
+                  <option value="">{t("multiStore.parentNone")}</option>
+                  {eligibleParents.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  {newParentId ? t("multiStore.parentHelpSub") : t("multiStore.parentHelpRoot")}
+                </p>
+              </div>
+            )}
+            {error && <p className="text-[11px] text-destructive">{error}</p>}
+            <div className="flex gap-1.5">
+              <button
+                type="submit"
+                disabled={loading || !newStoreName.trim()}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded bg-foreground px-2 py-1 text-[11px] font-medium text-background disabled:opacity-50"
+              >
+                {loading ? <Spinner size={12} /> : t("nav.create")}
+              </button>
+              <button
+                type="button"
+                onClick={onCancelCreate}
+                className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* Accounts */}
+      <div className="border-t border-border px-3 pt-2 pb-1">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          {t("accounts.title")}
+        </p>
+      </div>
+      <div className="py-1">
+        {accounts.map((acct) => (
+          <button
+            key={acct.id}
+            onClick={() => onSwitchAccount(acct.id)}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
+          >
+            <div className="h-5 w-5 rounded-[0.3rem] bg-muted flex items-center justify-center text-[10px] font-semibold text-muted-foreground shrink-0">
+              {acct.email[0]?.toUpperCase() ?? "?"}
+            </div>
+            <span className="flex-1 truncate text-[12px]">{acct.email}</span>
+            {acct.id === user?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+          </button>
+        ))}
+      </div>
+
+      <div className="border-t border-border py-1">
+        <button
+          onClick={onAddAccount}
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <UserPlus className="h-3.5 w-3.5 shrink-0" />
+          {t("accounts.addAccount")}
+        </button>
+      </div>
+
+      <div className="border-t border-border py-1">
+        <button
+          onClick={onLogout}
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <LogOut className="h-3.5 w-3.5 shrink-0" />
+          {t("common.signOut")}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 function AccountSwitcher({ onClose, collapsed }: { onClose?: () => void; collapsed?: boolean }) {
   const t = useT();
   const router = useRouter();
@@ -523,8 +941,14 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
         )}
       </div>
 
-      {/* Store switcher (desktop only — on mobile, use /account page) */}
-      {!collapsed && onToggleCollapse && <StoreSwitcher onClose={onClose} />}
+      {/* Combined workspace switcher — shows current store + signed-in account,
+          dropdown lists both with create-store/add-account/sign-out actions.
+          Desktop only; mobile uses the Settings page switcher drawer. */}
+      {onToggleCollapse && (
+        <div className={cn("border-b border-border", collapsed ? "px-2 py-2" : "px-3 py-2")}>
+          <WorkspaceSwitcher onClose={onClose} collapsed={collapsed} />
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
@@ -696,8 +1120,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             {!collapsed && t("nav.settings")}
           </Link>
         </SidebarTooltip>
-        {/* Account switcher (desktop only — on mobile, use /account page) */}
-        {onToggleCollapse && <AccountSwitcher onClose={onClose} collapsed={collapsed} />}
+        {/* (Account switching now lives in the combined WorkspaceSwitcher at the
+            top of the sidebar — see above.) */}
         {onToggleCollapse && (
           <SidebarTooltip label={collapsed ? t("components.sidebar.expand") : t("components.sidebar.collapse")} show={!!collapsed}>
             <button
