@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
+import { DESIGN_SYSTEM_RULES } from "@/lib/ai/design-system-rules";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
@@ -25,7 +26,11 @@ Use nested layouts for structure. Example:
   ]
 }
 
-Only return valid JSON. No markdown wrapping.`;
+Only return valid JSON. No markdown wrapping.
+
+${DESIGN_SYSTEM_RULES}
+
+ROUTE-SPECIFIC NOTE: this builder serializes its elements with \`props.style\` (inline-style object), so element-level styles ARE expressed as a style object in this JSON shape — the inline-styles-not-allowed rule does NOT apply to the style field here. EVERY OTHER RULE STILL DOES — keep spacing on the 8dp rhythm, hit ≥4.5:1 contrast, animate within 150–300ms, use Lucide-equivalent SVGs (no emoji icons), keep button hover/active feedback in mind for any rendered control, and stay outline-only / consistent icon size if you include an icon.`;
 
 export async function POST(req: NextRequest) {
   if (!OPENROUTER_API_KEY) {

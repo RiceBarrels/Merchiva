@@ -1111,7 +1111,10 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
 
   return (
     <BuilderSiteProvider value={site}>
-    <div className="flex h-full flex-col">
+    {/* Builder owns the horizontal pan gesture (canvas pan, tab swipe,
+        sortable drags). Tagging the whole shell with data-no-sidebar-swipe
+        keeps the mobile shell from intercepting left/right swipes here. */}
+    <div className="flex h-full flex-col" data-no-sidebar-swipe>
       <BuilderToolbar
         site={site}
         pages={pages}

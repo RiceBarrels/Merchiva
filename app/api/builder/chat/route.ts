@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
+import { DESIGN_SYSTEM_RULES } from "@/lib/ai/design-system-rules";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
@@ -39,7 +40,11 @@ Rules:
 - Keep text SHORT — one sentence, then the JSON block
 - Respond in the same language as the user
 - For delete: match by the element's display name
-- IMPORTANT: You are a thinking model. Put your final answer (the text + JSON block the user sees) ONLY in the content field. Do NOT put JSON in reasoning.`;
+- IMPORTANT: You are a thinking model. Put your final answer (the text + JSON block the user sees) ONLY in the content field. Do NOT put JSON in reasoning.
+
+${DESIGN_SYSTEM_RULES}
+
+ROUTE-SPECIFIC NOTE: builder elements are serialized with a \`props.style\` object — that style field is the right place for inline-style values in this JSON shape, so the no-inline-style rule does NOT apply to that field. EVERY OTHER RULE STILL APPLIES — 8dp spacing, ≥4.5:1 contrast, 150–300ms motion, no emoji icons, no mixing outline/filled icons, consistent icon sizes, hover/active button feedback. When you emit color values for body text or backgrounds, use the site theme colors that were passed in (primary/background/text) rather than hard-coding unrelated hexes — that keeps the result coherent with the user's chosen palette and dark-mode-ready.`;
 
 export async function POST(req: NextRequest) {
   if (!OPENROUTER_API_KEY) {

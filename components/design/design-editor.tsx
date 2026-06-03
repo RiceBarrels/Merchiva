@@ -700,7 +700,9 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
   );
 
   return (
-    <div className="flex h-full flex-col">
+    // Design editor owns horizontal pan (canvas pan + zoom). data-no-sidebar-swipe
+    // keeps the mobile shell from intercepting left/right swipes inside it.
+    <div className="flex h-full flex-col" data-no-sidebar-swipe>
       {toolbar}
       <ResizablePanelGroup
         orientation="horizontal"

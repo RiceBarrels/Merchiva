@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
+import { DESIGN_SYSTEM_RULES } from "@/lib/ai/design-system-rules";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
@@ -24,7 +25,11 @@ The user's design is titled "${designName}" and the canvas is ${width} × ${heig
 
 If existing HTML is supplied, you may incorporate it or replace it entirely depending on the user's instruction.
 
-Return ONLY the HTML body content.`;
+Return ONLY the HTML body content.
+
+${DESIGN_SYSTEM_RULES}
+
+ROUTE-SPECIFIC NOTE — this surface is a fixed-size graphic canvas. Inline \`style\` attributes ARE the spec here (no Tailwind, no class names, no dark mode), so the "no inline styles / use Tailwind / use semantic tokens" rules DO NOT apply on this canvas. The remaining rules still do — keep spacing on the 8dp rhythm (4/8/12/16/24/32/48px), keep text contrast ≥4.5:1 against the chosen background, sustain a strong type hierarchy, and stay outline-only / consistent icon size whenever you compose vector icons. Touch-target / hover / focus / motion rules don't apply (this is static artwork).`;
 }
 
 // Strip anything that looks like a link or interactive control, even if the

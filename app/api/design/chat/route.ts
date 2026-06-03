@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordAiUsage, normalizeUsage } from "@/lib/ai/usage";
+import { DESIGN_SYSTEM_RULES } from "@/lib/ai/design-system-rules";
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const MODEL = process.env.OPENROUTER_MODEL || "tencent/hy3-preview:free";
@@ -52,7 +53,11 @@ CONVERSATION STYLE:
 - Reply in 1–2 short sentences explaining what you're doing, then the JSON block.
 - Respond in the same language as the user (中文 / English / etc.).
 - ALWAYS output a JSON action block when the user asks for an edit or generation. No action = no change happens.
-- If the user is just asking a question (no edit needed), reply in plain text without a JSON block.`;
+- If the user is just asking a question (no edit needed), reply in plain text without a JSON block.
+
+${DESIGN_SYSTEM_RULES}
+
+ROUTE-SPECIFIC NOTE — this surface is a fixed-size graphic canvas. Inline \`style\` attributes ARE the spec here (no Tailwind, no class names, no dark mode), so the "no inline styles / use Tailwind / use semantic tokens" rules DO NOT apply on this canvas. The remaining rules still do — keep spacing on the 8dp rhythm, hit ≥4.5:1 contrast, sustain a strong hierarchy, stay outline-only / consistent icon size for any vector icons. Touch-target / hover / focus / motion rules don't apply (static artwork).`;
 }
 
 interface ClientMessage {
