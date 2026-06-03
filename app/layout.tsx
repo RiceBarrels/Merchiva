@@ -7,6 +7,7 @@ import { MobileDetector } from "@/components/mobile-detector";
 import { NativeTitleBar } from "@/components/native-title-bar";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -121,6 +122,7 @@ export default async function RootLayout({
           </div>
           <Toaster position="top-center" richColors />
         </div>
+        <Analytics />
       </body>
     </html>
   );
