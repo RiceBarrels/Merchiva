@@ -74,6 +74,7 @@ import {
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { MorningBriefingSettings } from "@/components/settings/morning-briefing-settings";
+import { UsageSection } from "@/components/settings/usage-section";
 import { getCached, setCache, clearCache } from "@/lib/cache";
 import { getMyAvailability, getTimeOffRequests } from "@/lib/db/availability";
 import { upsertAvailability, createTimeOffRequest, updateMember, removeMember, cancelInvitation, inviteToOrg } from "@/lib/spacetimedb/actions";
@@ -784,7 +785,7 @@ export default function SettingsPage() {
     if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
   }, [isTauri]);
   const [themeMode, applyThemeMode] = useThemeMode();
-  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | null;
+  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
 
   // Shared dialog rendering used by the main mobile-first layout
@@ -1918,6 +1919,13 @@ export default function SettingsPage() {
           card
         />
         <SRow
+          icon={<Sparkles className="h-4 w-4 text-foreground" />}
+          title={t("usage.title")}
+          meta={t("usage.subtitle")}
+          onClick={() => setSubPanel("usage")}
+          card
+        />
+        <SRow
           icon={<Shield className="h-4 w-4 text-foreground" />}
           title={t("settings.groupSecurity")}
           meta={t("settings.securityMeta")}
@@ -2136,6 +2144,17 @@ export default function SettingsPage() {
               <MorningBriefingSettings />
             </div>
           </DynamicUIElementContent>
+      </DynamicUIElement>
+
+      {/* ─── AI Usage Sub-Panel ──────────────────────────────── */}
+      <DynamicUIElement open={subPanel === "usage"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md lg:max-w-2xl" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("usage.title")}>{t("usage.title")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("usage.subtitle")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <UsageSection />
+        </DynamicUIElementContent>
       </DynamicUIElement>
 
       {/* ─── Preferences Sub-Panel ───────────────────────────── */}
