@@ -120,7 +120,14 @@ export function RightPanel({
 
 // ─── Mobile Right Panel (swipe left to open, mirrors sidebar behavior) ──────
 
-const RPANEL_WIDTH = 280;
+// Mr. Merchiva's mobile panel spans 4/5 (80%) of the viewport width. Computed
+// at runtime so it tracks the actual device width / rotation; falls back to a
+// sane default during SSR when there's no window. Used for both the swipe math
+// and the rendered panel width so they stay in sync.
+function getRpanelWidth(): number {
+  if (typeof window === "undefined") return 320;
+  return Math.round(window.innerWidth * 0.8);
+}
 const RPANEL_VELOCITY_THRESHOLD = 0.3;
 const RPANEL_SNAP_THRESHOLD = 0.4;
 
@@ -201,8 +208,8 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
     function applyContentShift(offset: number, useTransition: boolean) {
       const el = document.getElementById("mobile-content");
       if (!el) return;
-      const progress = offset / RPANEL_WIDTH;
-      const shift = -progress * RPANEL_WIDTH;
+      const progress = offset / getRpanelWidth();
+      const shift = -progress * getRpanelWidth();
       const trans = useTransition ? "all 220ms cubic-bezier(0.4, 0, 0.2, 1)" : "none";
       el.style.transition = trans;
       const overlay = getOrCreateOverlay();
@@ -245,9 +252,9 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
       let offset: number;
 
       if (isOpenRef.current) {
-        offset = Math.max(0, Math.min(RPANEL_WIDTH, RPANEL_WIDTH - dx));
+        offset = Math.max(0, Math.min(getRpanelWidth(), getRpanelWidth() - dx));
       } else {
-        offset = Math.max(0, Math.min(RPANEL_WIDTH, -dx));
+        offset = Math.max(0, Math.min(getRpanelWidth(), -dx));
       }
 
       if (offset > 8) {
@@ -273,24 +280,24 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
 
       let currentOffset: number;
       if (isOpenRef.current) {
-        currentOffset = Math.max(0, Math.min(RPANEL_WIDTH, RPANEL_WIDTH - dx));
+        currentOffset = Math.max(0, Math.min(getRpanelWidth(), getRpanelWidth() - dx));
       } else {
-        currentOffset = Math.max(0, Math.min(RPANEL_WIDTH, -dx));
+        currentOffset = Math.max(0, Math.min(getRpanelWidth(), -dx));
       }
 
       let shouldOpen: boolean;
       if (isOpenRef.current) {
         shouldOpen = !(
-          currentOffset < RPANEL_WIDTH * (1 - RPANEL_SNAP_THRESHOLD) ||
+          currentOffset < getRpanelWidth() * (1 - RPANEL_SNAP_THRESHOLD) ||
           velocity > RPANEL_VELOCITY_THRESHOLD
         );
       } else {
         shouldOpen =
-          currentOffset > RPANEL_WIDTH * RPANEL_SNAP_THRESHOLD ||
+          currentOffset > getRpanelWidth() * RPANEL_SNAP_THRESHOLD ||
           velocity < -RPANEL_VELOCITY_THRESHOLD;
       }
 
-      applyContentShift(shouldOpen ? RPANEL_WIDTH : 0, true);
+      applyContentShift(shouldOpen ? getRpanelWidth() : 0, true);
       setIsOpen(shouldOpen);
       setDragging(false);
       setDragOffset(0);
@@ -307,8 +314,8 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
     };
   }, []);
 
-  const translateX = dragging ? dragOffset : isOpen ? RPANEL_WIDTH : 0;
-  const progress = Math.min(1, Math.max(0, translateX / RPANEL_WIDTH));
+  const translateX = dragging ? dragOffset : isOpen ? getRpanelWidth() : 0;
+  const progress = Math.min(1, Math.max(0, translateX / getRpanelWidth()));
   const transitionStyle = dragging ? "none" : "all 220ms cubic-bezier(0.4, 0, 0.2, 1)";
 
   return (
@@ -359,7 +366,7 @@ export function MobileRightPanel() {
 
     if (isOpen) {
       wasActiveRef.current = true;
-      el.style.transform = `translateX(${-RPANEL_WIDTH}px)`;
+      el.style.transform = `translateX(${-getRpanelWidth()}px)`;
       el.style.boxShadow = "4px 0 16px rgba(0, 0, 0, 0.15)";
       el.style.borderRadius = "0 38px 38px 0";
       overlay.style.opacity = "1";
@@ -388,7 +395,7 @@ export function MobileRightPanel() {
       aria-hidden={isHidden}
       className="fixed inset-y-0 right-0 z-10 flex flex-col overflow-hidden bg-background"
       style={{
-        width: RPANEL_WIDTH,
+        width: getRpanelWidth(),
         transform: `translateX(${panelTranslateX}px) scale(${panelScale})`,
         opacity: panelOpacity,
         transformOrigin: "right center",
