@@ -60,6 +60,7 @@
     "display": "العرض",
     "api": "API",
     "reviews": "المراجعات",
+    "notifications": "الإشعارات",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -1995,7 +1996,16 @@
     "justNow": "الآن",
     "minutesAgo": "منذ {n}د",
     "hoursAgo": "منذ {n}س",
-    "daysAgo": "منذ {n}ي"
+    "daysAgo": "منذ {n}ي",
+    "unreadCount": "{n} غير مقروء",
+    "dismiss": "تجاهل",
+    "filterAll": "الكل",
+    "filterShift": "المناوبات",
+    "filterTimeOff": "الإجازات",
+    "filterTeam": "الفريق",
+    "filterInventory": "المخزون",
+    "filterOrder": "الطلبات",
+    "filterGeneral": "النظام"
   },
   "push": {
     "promptTitle": "تلقّ تنبيهات على سطح المكتب",

@@ -7,9 +7,10 @@ import {
   LayoutDashboard, Package, TrendingUp, Users, ShoppingBag,
   MonitorSmartphone, KeyRound, MessageSquare, Globe, Crown,
   Settings, MoreHorizontal, X, Trash2, FileBarChart, UserRoundSearch,
-  Palette,
+  Palette, Bell,
 } from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
+import { useUnreadCount } from "@/components/notification-center";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { hapticLight, hapticMedium } from "@/lib/haptics";
 import { getSafeAreaInsets } from "@/lib/safe-area";
@@ -46,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.pos",       href: "/~/pos",             icon: MonitorSmartphone, permissionKey: "pos" },
   { labelKey: "nav.punchIn",   href: "/~/punch-in",        icon: KeyRound },
   { labelKey: "nav.chat",      href: "/~/chat",            icon: MessageSquare,   permissionKey: "staffing" },
+  { labelKey: "nav.notifications", href: "/~/notifications", icon: Bell },
   { labelKey: "nav.website",   href: "/~/builder",         icon: Globe,           permissionKey: "website" },
   { labelKey: "nav.design",    href: "/~/design",          icon: Palette,         permissionKey: "website" },
   { labelKey: "nav.membership", href: "/~/membership",     icon: Crown },
@@ -54,7 +56,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in"]);
 
-const PRIMARY_HREFS = ["/~/dashboard", "/~/personnel", "/~/chat"];
+const PRIMARY_HREFS = ["/~/dashboard", "/~/personnel", "/~/chat", "/~/notifications"];
 
 export function BottomBar() {
   const t = useT();
@@ -63,6 +65,9 @@ export function BottomBar() {
   const [storeMachine] = useStoreMachineMode();
   const safeArea = getSafeAreaInsets();
   const [moreOpen, setMoreOpen] = useState(false);
+  const unreadCount = useUnreadCount();
+  const badgeFor = (href: string) =>
+    href === "/~/notifications" && unreadCount > 0 ? unreadCount : 0;
 
   const permitted = NAV_ITEMS.filter((item) => {
     if (item.href === "/~/punch-in" && !storeMachine) return false;
@@ -146,8 +151,13 @@ export function BottomBar() {
                       transition={{ type: "spring", damping: 25, stiffness: 350 }}
                     />
                   )}
-                  <div className={cn("h-8 w-14 flex justify-center items-center rounded-full transition-colors", active && "bg-foreground/8")}>
+                  <div className={cn("relative h-8 w-14 flex justify-center items-center rounded-full transition-colors", active && "bg-foreground/8")}>
                     <Icon className="w-[19px] h-[19px]" />
+                    {badgeFor(item.href) > 0 && (
+                      <span className="absolute -top-0.5 right-2 h-4 min-w-[16px] px-1 flex items-center justify-center bg-foreground text-background text-[9.5px] font-bold rounded-full leading-none">
+                        {badgeFor(item.href) > 99 ? "99+" : badgeFor(item.href)}
+                      </span>
+                    )}
                   </div>
                   <span className={cn("text-[10.5px] leading-none tracking-tight", active ? "font-semibold" : "font-medium")}>{t(item.labelKey)}</span>
                 </Link>

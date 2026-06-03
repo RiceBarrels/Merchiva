@@ -35,14 +35,7 @@ import { FloatingNavButton } from "@/components/floating-nav-button";
 import { BottomBar } from "@/components/bottom-bar";
 import { MerchivaLogo } from "@/components/logo";
 import { useNavMode } from "@/lib/nav-mode";
-import { useUnreadCount, NotificationCenter } from "@/components/notification-center";
-import {
-  DynamicUIElement,
-  DynamicUIElementContent,
-  DynamicUIElementHeader,
-  DynamicUIElementTitle,
-  DynamicUIElementDescription,
-} from "@/components/ui/dynamic-ui-element";
+import { useUnreadCount } from "@/components/notification-center";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
 import { useIsCapacitor, isCapacitorHiddenPath, CAPACITOR_HIDDEN_HREFS } from "@/lib/capacitor";
@@ -867,7 +860,6 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const isCapacitor = useIsCapacitor();
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
-  const [notifOpen, setNotifOpen] = useState(false);
   const unreadCount = useUnreadCount();
   // Which sections (keyed by parent href) are expanded to show sub-pages.
   const [expandedHrefs, setExpandedHrefs] = useState<Set<string>>(() => new Set());
@@ -1075,35 +1067,30 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
       {/* Bottom links */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
         <SidebarTooltip label={t("notifications.title")} show={!!collapsed}>
-          <button
-            onClick={() => { hapticLight(); setNotifOpen(true); }}
+          <Link
+            href="/~/notifications"
+            onClick={handleNavClick}
             className={cn(
               "flex w-full items-center rounded text-[13px] font-medium transition-colors relative",
               collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
-              "text-muted-foreground hover:text-foreground hover:bg-muted"
+              pathname === "/~/notifications"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
             <Bell className="h-[15px] w-[15px] shrink-0" />
             {!collapsed && t("notifications.title")}
             {unreadCount > 0 && (
               <span className={cn(
-                "flex items-center justify-center rounded-full bg-foreground text-background text-[10px] font-bold leading-none",
+                "flex items-center justify-center rounded-full text-[10px] font-bold leading-none",
+                pathname === "/~/notifications" ? "bg-background text-foreground" : "bg-foreground text-background",
                 collapsed ? "absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1" : "ml-auto h-4 min-w-[16px] px-1"
               )}>
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
-          </button>
+          </Link>
         </SidebarTooltip>
-        <DynamicUIElement open={notifOpen} onOpenChange={setNotifOpen}>
-          <DynamicUIElementContent className="max-w-md" noPadding>
-            <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("notifications.title")}>{t("notifications.title")}</DynamicUIElementTitle>
-              <DynamicUIElementDescription className="hidden">{t("notifications.title")}</DynamicUIElementDescription>
-            </DynamicUIElementHeader>
-            <NotificationCenter />
-          </DynamicUIElementContent>
-        </DynamicUIElement>
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
             href="/~/settings"

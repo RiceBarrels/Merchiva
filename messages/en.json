@@ -60,6 +60,7 @@
     "display": "Display",
     "api": "API",
     "reviews": "Reviews",
+    "notifications": "Notifications",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -1995,7 +1996,16 @@
     "justNow": "Just now",
     "minutesAgo": "{n}m ago",
     "hoursAgo": "{n}h ago",
-    "daysAgo": "{n}d ago"
+    "daysAgo": "{n}d ago",
+    "unreadCount": "{n} unread",
+    "dismiss": "Dismiss",
+    "filterAll": "All",
+    "filterShift": "Shifts",
+    "filterTimeOff": "Time off",
+    "filterTeam": "Team",
+    "filterInventory": "Inventory",
+    "filterOrder": "Orders",
+    "filterGeneral": "System"
   },
   "push": {
     "promptTitle": "Get desktop alerts",

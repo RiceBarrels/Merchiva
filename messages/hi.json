@@ -60,6 +60,7 @@
     "display": "डिस्प्ले",
     "api": "API",
     "reviews": "समीक्षाएँ",
+    "notifications": "सूचनाएँ",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -1995,7 +1996,16 @@
     "justNow": "अभी",
     "minutesAgo": "{n}मि पहले",
     "hoursAgo": "{n}घं पहले",
-    "daysAgo": "{n}दि पहले"
+    "daysAgo": "{n}दि पहले",
+    "unreadCount": "{n} अपठित",
+    "dismiss": "खारिज",
+    "filterAll": "सभी",
+    "filterShift": "शिफ्ट",
+    "filterTimeOff": "छुट्टी",
+    "filterTeam": "टीम",
+    "filterInventory": "स्टॉक",
+    "filterOrder": "ऑर्डर",
+    "filterGeneral": "सिस्टम"
   },
   "push": {
     "promptTitle": "डेस्कटॉप अलर्ट प्राप्त करें",

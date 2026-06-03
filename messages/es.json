@@ -60,6 +60,7 @@
     "display": "Pantalla",
     "api": "API",
     "reviews": "Reseñas",
+    "notifications": "Notificaciones",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -1995,7 +1996,16 @@
     "justNow": "Ahora",
     "minutesAgo": "hace {n}m",
     "hoursAgo": "hace {n}h",
-    "daysAgo": "hace {n}d"
+    "daysAgo": "hace {n}d",
+    "unreadCount": "{n} sin leer",
+    "dismiss": "Descartar",
+    "filterAll": "Todas",
+    "filterShift": "Turnos",
+    "filterTimeOff": "Ausencias",
+    "filterTeam": "Equipo",
+    "filterInventory": "Inventario",
+    "filterOrder": "Pedidos",
+    "filterGeneral": "Sistema"
   },
   "push": {
     "promptTitle": "Recibe avisos de escritorio",

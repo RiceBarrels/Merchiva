@@ -60,6 +60,7 @@
     "display": "Affichage",
     "api": "API",
     "reviews": "Avis",
+    "notifications": "Notifications",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -1995,7 +1996,16 @@
     "justNow": "À l'instant",
     "minutesAgo": "il y a {n}m",
     "hoursAgo": "il y a {n}h",
-    "daysAgo": "il y a {n}j"
+    "daysAgo": "il y a {n}j",
+    "unreadCount": "{n} non lues",
+    "dismiss": "Ignorer",
+    "filterAll": "Toutes",
+    "filterShift": "Horaires",
+    "filterTimeOff": "Congés",
+    "filterTeam": "Équipe",
+    "filterInventory": "Stock",
+    "filterOrder": "Commandes",
+    "filterGeneral": "Système"
   },
   "push": {
     "promptTitle": "Recevez des alertes de bureau",

@@ -60,6 +60,7 @@
     "display": "显示屏",
     "api": "API",
     "reviews": "评价",
+    "notifications": "通知",
     "group": {
       "operations": "运营",
       "sales": "销售与财务",
@@ -1995,7 +1996,16 @@
     "justNow": "刚刚",
     "minutesAgo": "{n}分钟前",
     "hoursAgo": "{n}小时前",
-    "daysAgo": "{n}天前"
+    "daysAgo": "{n}天前",
+    "unreadCount": "{n} 条未读",
+    "dismiss": "忽略",
+    "filterAll": "全部",
+    "filterShift": "班次",
+    "filterTimeOff": "请假",
+    "filterTeam": "团队",
+    "filterInventory": "库存",
+    "filterOrder": "订单",
+    "filterGeneral": "系统"
   },
   "push": {
     "promptTitle": "接收桌面提醒",
