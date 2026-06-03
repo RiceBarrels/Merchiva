@@ -55,6 +55,7 @@ import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 import { generateRestockSuggestions, formatPurchaseOrder, type RestockSuggestion, type RestockPriority } from "@/lib/restock";
 import { downloadCSV, downloadPDF } from "@/lib/export";
+import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -72,6 +73,7 @@ function useStatusConfig(t: (path: string) => string): Record<InventoryStatus, S
 export default function InventoryPage() {
   const { organizationId } = usePermissions();
   const t = useT();
+  const { format } = useCurrency();
   const statusConfig = useStatusConfig(t);
   // Data via SpacetimeDB migration hook (backed by Supabase; swap useTable internals once generated client is ready)
   const { items, transactions, refreshing, userId, refresh: _refresh } = useInventory(organizationId);
@@ -229,7 +231,7 @@ export default function InventoryPage() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <SummaryCard icon={Package}      label={t("inventory.summary.totalItems")}  value={String(items.length)} />
-          <SummaryCard icon={CheckCircle2} label={t("inventory.summary.totalValue")}  value={`$${totalValue.toFixed(0)}`} />
+          <SummaryCard icon={CheckCircle2} label={t("inventory.summary.totalValue")}  value={format(totalValue, { decimals: 0 })} />
           <SummaryCard icon={AlertTriangle} label={t("inventory.summary.lowStock")}    value={String(lowStockCount)} urgent={lowStockCount > 0} />
           <SummaryCard icon={XCircle}       label={t("inventory.summary.outOfStock")} value={String(outCount)}      urgent={outCount > 0} />
         </div>
@@ -345,7 +347,7 @@ export default function InventoryPage() {
                               />
                               <span className="text-[10px] text-muted-foreground">{pct}%</span>
                             </TableCell>
-                            <TableCell>${item.costPerUnit.toFixed(2)}</TableCell>
+                            <TableCell>{format(item.costPerUnit)}</TableCell>
                             <TableCell>
                               <span
                                 className={item.lossRate > 8 ? "text-rose-600 font-medium" : "text-muted-foreground"}
@@ -547,7 +549,7 @@ export default function InventoryPage() {
                         <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
-                        <p className="text-lg font-bold font-mono">${totalOrderValue.toFixed(0)}</p>
+                        <p className="text-lg font-bold font-mono">{format(totalOrderValue, { decimals: 0 })}</p>
                         <p className="text-xs text-muted-foreground">Total Order Value</p>
                       </div>
                     </CardContent>
@@ -587,7 +589,7 @@ export default function InventoryPage() {
                     onClick={() => {
                       const { headers, rows } = formatPurchaseOrder(restockSuggestions);
                       downloadPDF("Purchase Order", headers, rows, {
-                        subtitle: `${restockSuggestions.length} items — Est. $${totalOrderValue.toFixed(2)}`,
+                        subtitle: `${restockSuggestions.length} items — Est. ${format(totalOrderValue)}`,
                         landscape: true,
                       });
                       toast.success("Purchase order PDF downloaded");
@@ -831,6 +833,7 @@ const PRIORITY_BAR_COLORS: Record<RestockPriority, string> = {
 };
 
 function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
+  const { format } = useCurrency();
   const stockPct = Math.min(100, Math.round((s.currentStock / s.maxStock) * 100));
   const daysSinceRestock = Math.round(
     (Date.now() - new Date(s.lastRestocked).getTime()) / 86_400_000
@@ -936,7 +939,7 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Estimated cost</span>
-            <span className="font-mono font-semibold">${s.estimatedCost.toFixed(2)}</span>
+            <span className="font-mono font-semibold">{format(s.estimatedCost)}</span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Supplier</span>

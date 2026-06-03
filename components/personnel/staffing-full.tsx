@@ -1507,6 +1507,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   };
 
   const [roleDetailOpen, setRoleDetailOpen] = useState(false);
+  // Mobile: nested task-detail panel opened on top of the role panel.
+  const [taskDetail, setTaskDetail] = useState<RoleTask | null>(null);
   const handleSelectRole = (r: StaffRole) => {
     setSelectedRole(r);
     setRoleDetailOpen(true);
@@ -3334,48 +3336,117 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                   ) : (
                     <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
                       {(roleTasksCache[selectedRole.id] ?? []).map((task) => (
-                        <div key={task.id} className="relative pl-4 pb-4 group">
-                          <div
+                        <button
+                          type="button"
+                          key={task.id}
+                          onClick={() => setTaskDetail(task)}
+                          className="relative w-full text-left pl-4 pb-4 flex items-start justify-between gap-2 active:opacity-70 transition-opacity"
+                        >
+                          <span
                             className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-background"
                             style={{ borderColor: selectedRole.color }}
                           />
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              {task.startTime && task.endTime && (
-                                <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5 tabular-nums">
-                                  {formatTime(task.startTime)} &ndash; {formatTime(task.endTime)}
-                                </p>
-                              )}
-                              <p className="text-[13px] font-semibold text-foreground leading-snug">{task.title}</p>
-                              {task.description && (
-                                <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
-                              )}
-                            </div>
-                            {canEdit && (
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                <button
-                                  onClick={() => {
-                                    setTaskForm({ title: task.title, description: task.description, hasTime: !!(task.startTime && task.endTime), startTime: task.startTime ?? "08:00", endTime: task.endTime ?? "10:00", requiresEvidence: task.requiresEvidence ?? false, notifyChats: task.notifyChats ?? [] });
-                                    setTaskDialog({ open: true, task });
-                                  }}
-                                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteTask(task.id)}
-                                  className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
+                          <span className="flex-1 min-w-0 block">
+                            {task.startTime && task.endTime && (
+                              <span className="block font-mono text-[11px] text-muted-foreground leading-none mb-0.5 tabular-nums">
+                                {formatTime(task.startTime)} &ndash; {formatTime(task.endTime)}
+                              </span>
                             )}
-                          </div>
-                        </div>
+                            <span className="block text-[13px] font-semibold text-foreground leading-snug">{task.title}</span>
+                            {task.description && (
+                              <span className="block text-[12px] text-muted-foreground mt-0.5 leading-relaxed line-clamp-1">{task.description}</span>
+                            )}
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 mt-0.5" />
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </DynamicUIElementContent>
+        </DynamicUIElement>
+
+        {/* ── Task detail panel (nested on top of the role panel) ── */}
+        <DynamicUIElement open={!!taskDetail} onOpenChange={(open) => { if (!open) setTaskDetail(null); }}>
+          <DynamicUIElementContent noPadding>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={taskDetail?.title ?? t("staffing.roles.taskPlaceholder")}>
+                {taskDetail?.title ?? t("staffing.roles.taskPlaceholder")}
+              </DynamicUIElementTitle>
+              <DynamicUIElementDescription className="hidden">{taskDetail?.title ?? ""}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            {taskDetail && (
+              <div className="space-y-5 px-4 pb-4 pt-2 overflow-y-auto">
+                <div className="flex items-start gap-2.5">
+                  {selectedRole && (
+                    <span
+                      className="h-9 w-9 shrink-0 flex items-center justify-center border rounded"
+                      style={{ borderColor: selectedRole.color, color: selectedRole.color }}
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                    </span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground leading-snug">{taskDetail.title}</p>
+                    {taskDetail.startTime && taskDetail.endTime ? (
+                      <p className="font-mono text-[12px] text-muted-foreground mt-0.5 tabular-nums">
+                        {formatTime(taskDetail.startTime)} &ndash; {formatTime(taskDetail.endTime)}
+                      </p>
+                    ) : (
+                      <p className="text-[12px] text-muted-foreground mt-0.5">{t("staffing.roles.anyTime")}</p>
+                    )}
+                  </div>
+                </div>
+
+                {taskDetail.description && (
+                  <div>
+                    <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t("staffing.roles.taskDescription")}</p>
+                    <p className="text-[13px] text-foreground leading-relaxed whitespace-pre-wrap">{taskDetail.description}</p>
+                  </div>
+                )}
+
+                {(taskDetail.requiresEvidence || (taskDetail.notifyChats?.length ?? 0) > 0) && (
+                  <div className="flex flex-wrap gap-2">
+                    {taskDetail.requiresEvidence && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium border border-border rounded text-foreground">
+                        <Camera className="h-3 w-3" /> {t("staffing.roles.requiresEvidence")}
+                      </span>
+                    )}
+                    {(taskDetail.notifyChats?.length ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium border border-border rounded text-foreground">
+                        <Bell className="h-3 w-3" /> {t("staffing.roles.notifiesChats").replace("{count}", String(taskDetail.notifyChats.length))}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {canEdit && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        const tsk = taskDetail;
+                        setTaskDetail(null);
+                        setTaskForm({ title: tsk.title, description: tsk.description, hasTime: !!(tsk.startTime && tsk.endTime), startTime: tsk.startTime ?? "08:00", endTime: tsk.endTime ?? "10:00", requiresEvidence: tsk.requiresEvidence ?? false, notifyChats: tsk.notifyChats ?? [] });
+                        setTaskDialog({ open: true, task: tsk });
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" /> {t("staffing.roles.editTask")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-600"
+                      onClick={async () => { const id = taskDetail.id; setTaskDetail(null); await handleDeleteTask(id); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </DynamicUIElementContent>

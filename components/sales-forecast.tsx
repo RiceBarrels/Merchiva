@@ -29,6 +29,7 @@ import {
 import { useSalesRecords, useShifts, usePayments } from "@/lib/spacetimedb/hooks";
 import { usePermissions } from "@/lib/context/permissions";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/lib/currency";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -83,10 +84,6 @@ function formatMultiplier(m: number): string {
   return pct > 0 ? `+${pct}%` : `${pct}%`;
 }
 
-function formatCurrency(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`;
-}
-
 // SpacetimeDB timestamps arrive as { microsSinceUnixEpoch: bigint } objects;
 // String(...) on those yields "[object Object]" which Date can't parse, so
 // every payment would silently get dropped. Normalize to epoch ms here.
@@ -107,6 +104,7 @@ function timestampToMs(v: unknown): number {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function SalesForecast() {
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const [rawSales] = useSalesRecords();
   const [rawShifts] = useShifts();
@@ -408,7 +406,7 @@ export function SalesForecast() {
 
               {/* Predicted revenue */}
               <p className="text-base font-bold font-mono leading-tight">
-                {formatCurrency(day.predicted)}
+                {format(day.predicted, { decimals: 0 })}
               </p>
 
               {/* Confidence bar */}
@@ -427,7 +425,7 @@ export function SalesForecast() {
                 <div className="flex items-center gap-1">
                   <span>Base:</span>
                   <span className="font-mono">
-                    {formatCurrency(day.factors.baseLine)}
+                    {format(day.factors.baseLine, { decimals: 0 })}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -485,7 +483,7 @@ export function SalesForecast() {
                 </CardDescription>
               </div>
               <span className="text-xs font-mono text-muted-foreground">
-                Total: {formatCurrency(selected.predicted)}
+                Total: {format(selected.predicted, { decimals: 0 })}
               </span>
             </div>
           </CardHeader>
@@ -511,7 +509,7 @@ export function SalesForecast() {
                   tick={{ fontSize: 10 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `$${v}`}
+                  tickFormatter={(v) => format(Number(v), { decimals: 0 })}
                 />
                 <Tooltip
                   contentStyle={{
@@ -519,7 +517,7 @@ export function SalesForecast() {
                     border: "1px solid #e7e5e4",
                     fontSize: "11px",
                   }}
-                  formatter={(v) => [`$${v}`, "Predicted"]}
+                  formatter={(v) => [format(Number(v), { decimals: 0 }), "Predicted"]}
                 />
                 <Bar
                   dataKey="predicted"
@@ -548,7 +546,7 @@ export function SalesForecast() {
               </span>{" "}
               at{" "}
               <span className="font-mono font-semibold text-foreground">
-                {formatCurrency(bestDay.predicted)}
+                {format(bestDay.predicted, { decimals: 0 })}
               </span>
             </p>
             <p className="text-xs text-muted-foreground">

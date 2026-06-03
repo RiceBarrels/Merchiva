@@ -42,6 +42,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useWasteLogs, useInventoryItems } from "@/lib/spacetimedb/hooks";
 import { addWasteLog, deleteWasteLog } from "@/lib/spacetimedb/actions";
 import { downloadCSV, downloadPDF } from "@/lib/export";
+import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
@@ -96,10 +97,6 @@ function startOfMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-function fmt(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
-
 const REASON_BADGE: Record<WasteReason, { label: string; className: string }> = {
   expired: { label: "Expired", className: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-900" },
   damaged: { label: "Damaged", className: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-400 dark:border-orange-900" },
@@ -111,6 +108,7 @@ const REASON_BADGE: Record<WasteReason, { label: string; className: string }> = 
 
 function WasteLogPage() {
   const t = useT();
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
 
   // SpacetimeDB subscriptions
@@ -373,14 +371,14 @@ function WasteLogPage() {
       l.quantity.toString(),
       l.unit,
       l.reason,
-      `$${l.costPerUnit.toFixed(2)}`,
-      `$${l.totalCost.toFixed(2)}`,
+      format(l.costPerUnit),
+      format(l.totalCost),
     ]);
     downloadPDF("Waste Log Report", headers, rows, {
       subtitle: `Filter: ${dateFilter}`,
       landscape: true,
     });
-  }, [filteredLogs, dateFilter]);
+  }, [filteredLogs, dateFilter, format]);
 
   // ── Loading state ──────────────────────────────────────────────────────────
 
@@ -426,7 +424,7 @@ function WasteLogPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-              <p className="text-xl font-semibold font-mono">{fmt(todayCost)}</p>
+              <p className="text-xl font-semibold font-mono">{format(todayCost)}</p>
             </CardContent>
           </Card>
 
@@ -437,7 +435,7 @@ function WasteLogPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-              <p className="text-xl font-semibold font-mono">{fmt(weekCost)}</p>
+              <p className="text-xl font-semibold font-mono">{format(weekCost)}</p>
             </CardContent>
           </Card>
 
@@ -448,7 +446,7 @@ function WasteLogPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-              <p className="text-xl font-semibold font-mono">{fmt(monthCost)}</p>
+              <p className="text-xl font-semibold font-mono">{format(monthCost)}</p>
             </CardContent>
           </Card>
 
@@ -560,7 +558,7 @@ function WasteLogPage() {
                             {badge.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-sm font-mono text-right">{fmt(log.totalCost)}</TableCell>
+                        <TableCell className="text-sm font-mono text-right">{format(log.totalCost)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground hidden lg:table-cell max-w-[200px] truncate">
                           {log.notes ?? "--"}
                         </TableCell>
@@ -591,7 +589,7 @@ function WasteLogPage() {
           </div>
           {filteredLogs.length > 0 && (
             <div className="border-t px-4 py-2 text-xs text-muted-foreground font-mono">
-              {filteredLogs.length} {t("wasteLog.entries")} &middot; {t("wasteLog.totalCostLabel")} {fmt(filteredLogs.reduce((s, l) => s + l.totalCost, 0))}
+              {filteredLogs.length} {t("wasteLog.entries")} &middot; {t("wasteLog.totalCostLabel")} {format(filteredLogs.reduce((s, l) => s + l.totalCost, 0))}
             </div>
           )}
         </Card>
@@ -612,7 +610,7 @@ function WasteLogPage() {
                       {badge.label}
                     </Badge>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-mono font-semibold">{fmt(data.cost)}</p>
+                      <p className="text-sm font-mono font-semibold">{format(data.cost)}</p>
                       <p className="text-[10px] text-muted-foreground">{data.count} {t("wasteLog.entries")}</p>
                     </div>
                   </div>
@@ -724,7 +722,7 @@ function WasteLogPage() {
               />
               {formQuantity && formCostPerUnit && (
                 <p className="text-[10px] text-muted-foreground font-mono">
-                  {t("wasteLog.formEstTotal")} {fmt(parseFloat(formQuantity || "0") * parseFloat(formCostPerUnit || "0"))}
+                  {t("wasteLog.formEstTotal")} {format(parseFloat(formQuantity || "0") * parseFloat(formCostPerUnit || "0"))}
                 </p>
               )}
             </div>

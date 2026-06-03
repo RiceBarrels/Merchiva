@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { useCurrency } from "@/lib/currency";
 import { usePermissions } from "@/lib/context/permissions";
 import {
   useSiteOrders,
@@ -247,6 +248,7 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
 
 function MenuBoard({ darkMode }: { darkMode: boolean }) {
   const t = useT();
+  const { format } = useCurrency();
   const products = useProducts();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -369,7 +371,7 @@ function MenuBoard({ darkMode }: { darkMode: boolean }) {
                       "text-3xl font-bold font-mono mt-3",
                       darkMode ? "text-stone-100" : "text-stone-900 dark:text-stone-100",
                     )}>
-                      ${Number(prod.price).toFixed(2)}
+                      {format(Number(prod.price))}
                     </p>
                   </div>
                 </div>
@@ -422,6 +424,7 @@ function KpiMetricCard({
 
 function KpiDashboard({ darkMode }: { darkMode: boolean }) {
   const t = useT();
+  const { format } = useCurrency();
   const payments = usePayments();
   const salesRecords = useSalesRecords();
   const shifts = useShifts();
@@ -518,7 +521,7 @@ function KpiDashboard({ darkMode }: { darkMode: boolean }) {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
         <KpiMetricCard
           label={t("display.todaysSales")}
-          value={`$${metrics.todaySales.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          value={format(metrics.todaySales, { decimals: 0 })}
           icon={DollarSign}
           darkMode={darkMode}
           accent="text-emerald-500"
@@ -532,7 +535,7 @@ function KpiDashboard({ darkMode }: { darkMode: boolean }) {
         />
         <KpiMetricCard
           label={t("display.avgOrderValue")}
-          value={`$${metrics.avgOrder.toFixed(0)}`}
+          value={format(metrics.avgOrder, { decimals: 0 })}
           icon={TrendingUp}
           darkMode={darkMode}
           accent="text-violet-500"

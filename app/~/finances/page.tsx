@@ -68,6 +68,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { useExpenses, usePayments, useSalesRecords, usePurchaseOrders, useShifts, useStaffMembers } from "@/lib/spacetimedb/hooks";
 import { addExpense, updateExpense, deleteExpense } from "@/lib/spacetimedb/actions";
 import { downloadCSV, downloadPDF } from "@/lib/export";
+import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -90,14 +91,6 @@ const RECURRING_PERIODS = ["Weekly", "Monthly", "Yearly"] as const;
 type DateRange = "this_month" | "last_month" | "this_quarter" | "this_year";
 
 // ─── Utilities ───────────────────────────────────────────────────────────────
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(value);
-}
 
 function getDateRange(range: DateRange): { start: Date; end: Date } {
   const now = new Date();
@@ -263,6 +256,7 @@ function OverviewTab({
   purchaseOrders: any[];
 }) {
   const t = useT();
+  const { format, symbol } = useCurrency();
   const [dateRange, setDateRange] = useState<DateRange>("this_month");
   const { start, end } = getDateRange(dateRange);
 
@@ -345,7 +339,7 @@ function OverviewTab({
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <p className="text-lg font-semibold font-mono text-emerald-600">{formatCurrency(revenue)}</p>
+            <p className="text-lg font-semibold font-mono text-emerald-600">{format(revenue)}</p>
           </CardContent>
         </Card>
 
@@ -357,7 +351,7 @@ function OverviewTab({
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <p className="text-lg font-semibold font-mono text-red-600">{formatCurrency(totalExpenses)}</p>
+            <p className="text-lg font-semibold font-mono text-red-600">{format(totalExpenses)}</p>
           </CardContent>
         </Card>
 
@@ -370,7 +364,7 @@ function OverviewTab({
           </CardHeader>
           <CardContent className="px-3 pb-3">
             <p className={`text-lg font-semibold font-mono ${netProfit >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-              {formatCurrency(netProfit)}
+              {format(netProfit)}
             </p>
           </CardContent>
         </Card>
@@ -405,7 +399,7 @@ function OverviewTab({
               <BarChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${symbol}${(v / 1000).toFixed(0)}k`} />
                 <RechartsTooltip
                   contentStyle={{
                     background: "hsl(var(--card))",
@@ -413,7 +407,7 @@ function OverviewTab({
                     borderRadius: "0.3rem",
                     fontSize: 12,
                   }}
-                  formatter={(v, name) => [formatCurrency(Number(v)), String(name)]}
+                  formatter={(v, name) => [format(Number(v)), String(name)]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="revenue" name={t("finances.overview.revenue")} fill="hsl(142, 71%, 45%)" radius={[2, 2, 0, 0]} />
@@ -432,6 +426,7 @@ function OverviewTab({
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ExpensesTab({ expenses }: { expenses: any[] }) {
   const t = useT();
+  const { format } = useCurrency();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ExpenseForm>(emptyForm);
@@ -528,7 +523,7 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
       e.date,
       e.category,
       e.description,
-      formatCurrency(e.amount ?? 0),
+      format(e.amount ?? 0),
       e.recurring ? "Yes" : "No",
       e.recurringPeriod ?? "",
     ]);
@@ -542,7 +537,7 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
       e.date,
       e.category,
       e.description,
-      formatCurrency(e.amount ?? 0),
+      format(e.amount ?? 0),
       e.recurring ? "Yes" : "No",
     ]);
     downloadPDF("Expenses Report", headers, rows, {
@@ -601,7 +596,7 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
           {categoryBreakdown.map(([cat, total]) => (
             <Card key={cat} className="p-2.5">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{cat}</p>
-              <p className="text-sm font-semibold font-mono text-red-600 mt-0.5">{formatCurrency(total)}</p>
+              <p className="text-sm font-semibold font-mono text-red-600 mt-0.5">{format(total)}</p>
             </Card>
           ))}
         </div>
@@ -638,7 +633,7 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
                     </TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{expense.description}</TableCell>
                     <TableCell className="text-xs text-right font-mono text-red-600">
-                      {formatCurrency(expense.amount ?? 0)}
+                      {format(expense.amount ?? 0)}
                     </TableCell>
                     <TableCell>
                       {expense.recurring ? (
@@ -808,6 +803,7 @@ function CashFlowTab({
   salesRecords: any[];
 }) {
   const t = useT();
+  const { format, symbol } = useCurrency();
 
   // Current balance: total all-time revenue - total all-time expenses
   const totalRevenue = useMemo(
@@ -934,10 +930,10 @@ function CashFlowTab({
         </CardHeader>
         <CardContent className="px-3 pb-3">
           <p className={`text-2xl font-bold font-mono ${currentBalance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-            {formatCurrency(currentBalance)}
+            {format(currentBalance)}
           </p>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {t("finances.cashFlow.avgDailyRevenue")}: {formatCurrency(avgDailyRevenue)}
+            {t("finances.cashFlow.avgDailyRevenue")}: {format(avgDailyRevenue)}
           </p>
         </CardContent>
       </Card>
@@ -957,7 +953,7 @@ function CashFlowTab({
               <AreaChart data={projectionData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={4} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${symbol}${(v / 1000).toFixed(0)}k`} />
                 <RechartsTooltip
                   contentStyle={{
                     background: "hsl(var(--card))",
@@ -965,7 +961,7 @@ function CashFlowTab({
                     borderRadius: "0.3rem",
                     fontSize: 12,
                   }}
-                  formatter={(v, name) => [formatCurrency(Number(v)), String(name)]}
+                  formatter={(v, name) => [format(Number(v)), String(name)]}
                 />
                 <Area
                   type="monotone"
@@ -1000,7 +996,7 @@ function CashFlowTab({
                     <p className="text-xs font-medium">{exp.name}</p>
                     <p className="text-[10px] text-muted-foreground">{exp.dueDate}</p>
                   </div>
-                  <p className="text-xs font-mono text-red-600">{formatCurrency(exp.amount)}</p>
+                  <p className="text-xs font-mono text-red-600">{format(exp.amount)}</p>
                 </div>
               ))}
             </div>
@@ -1023,6 +1019,7 @@ function PayrollTab({
   staffMembers: any[];
 }) {
   const t = useT();
+  const { format } = useCurrency();
   const [dateRange, setDateRange] = useState<"this_week" | "last_week" | "this_month">("this_week");
 
   // Date range calculation
@@ -1104,10 +1101,10 @@ function PayrollTab({
     const rows = payrollData.map((d) => [
       d.name,
       d.hours.toFixed(2),
-      formatCurrency(d.rate),
-      formatCurrency(d.grossPay),
+      format(d.rate),
+      format(d.grossPay),
     ]);
-    rows.push(["TOTAL", totalHours.toFixed(2), "", formatCurrency(totalPayroll)]);
+    rows.push(["TOTAL", totalHours.toFixed(2), "", format(totalPayroll)]);
     downloadCSV("payroll-report", headers, rows);
   };
 
@@ -1116,10 +1113,10 @@ function PayrollTab({
     const rows = payrollData.map((d) => [
       d.name,
       d.hours.toFixed(2),
-      formatCurrency(d.rate),
-      formatCurrency(d.grossPay),
+      format(d.rate),
+      format(d.grossPay),
     ]);
-    rows.push(["TOTAL", totalHours.toFixed(2), "", formatCurrency(totalPayroll)]);
+    rows.push(["TOTAL", totalHours.toFixed(2), "", format(totalPayroll)]);
     downloadPDF("Payroll Report", headers, rows, {
       subtitle: `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`,
     });
@@ -1161,7 +1158,7 @@ function PayrollTab({
             </CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <p className="text-lg font-semibold font-mono text-red-600">{formatCurrency(totalPayroll)}</p>
+            <p className="text-lg font-semibold font-mono text-red-600">{format(totalPayroll)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -1201,15 +1198,15 @@ function PayrollTab({
                 <TableRow key={row.id}>
                   <TableCell className="text-xs font-medium">{row.name}</TableCell>
                   <TableCell className="text-xs text-right font-mono">{row.hours.toFixed(2)}</TableCell>
-                  <TableCell className="text-xs text-right font-mono">{formatCurrency(row.rate)}</TableCell>
-                  <TableCell className="text-xs text-right font-mono text-red-600">{formatCurrency(row.grossPay)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono">{format(row.rate)}</TableCell>
+                  <TableCell className="text-xs text-right font-mono text-red-600">{format(row.grossPay)}</TableCell>
                 </TableRow>
               ))}
               <TableRow className="border-t-2 border-border bg-muted/30">
                 <TableCell className="text-xs font-semibold">{t("finances.payroll.total")}</TableCell>
                 <TableCell className="text-xs text-right font-mono font-semibold">{totalHours.toFixed(2)}</TableCell>
                 <TableCell className="text-xs text-right font-mono">-</TableCell>
-                <TableCell className="text-xs text-right font-mono font-semibold text-red-600">{formatCurrency(totalPayroll)}</TableCell>
+                <TableCell className="text-xs text-right font-mono font-semibold text-red-600">{format(totalPayroll)}</TableCell>
               </TableRow>
             </TableBody>
           </Table>

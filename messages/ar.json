@@ -919,7 +919,13 @@
       "roleTasksDefaultDesc": "مهام دور ورديتك اليوم.",
       "addRole": "إضافة دور",
       "tasksLabel": "المهام",
-      "noTasks": "لا توجد مهام بعد"
+      "noTasks": "لا توجد مهام بعد",
+      "taskPlaceholder": "مهمة",
+      "anyTime": "أي وقت",
+      "taskDescription": "الوصف",
+      "requiresEvidence": "يتطلب دليلاً مصوراً",
+      "notifiesChats": "يُخطر {count} محادثات",
+      "editTask": "تعديل المهمة"
     },
     "requests": {
       "title": "الطلبات",
@@ -1660,7 +1666,23 @@
     },
     "groupStoreAccount": "المتجر والحساب",
     "currentStore": "المتجر الحالي",
-    "currentAccount": "الحساب الحالي"
+    "currentAccount": "الحساب الحالي",
+    "toastCurrencySaved": "تم تحديث العملة",
+    "toastSaveFailed": "فشل الحفظ",
+    "currencyName": {
+      "USD": "دولار أمريكي",
+      "EUR": "يورو",
+      "GBP": "جنيه إسترليني",
+      "CNY": "يوان صيني",
+      "JPY": "ين ياباني",
+      "HKD": "دولار هونغ كونغ",
+      "TWD": "دولار تايواني جديد",
+      "CAD": "دولار كندي",
+      "AUD": "دولار أسترالي",
+      "KRW": "وون كوري جنوبي",
+      "INR": "روبية هندية",
+      "SAR": "ريال سعودي"
+    }
   },
   "lock": {
     "title": "الجهاز مقفل",

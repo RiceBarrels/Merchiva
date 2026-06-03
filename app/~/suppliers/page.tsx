@@ -48,6 +48,7 @@ import {
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 import { downloadCSV } from "@/lib/export";
+import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -248,10 +249,6 @@ const PO_STATUS_COLORS: Record<POStatus, string> = {
   cancelled: "bg-red-50 text-red-700 border-red-300",
 };
 
-function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
-}
-
 function parseDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
     year: "numeric",
@@ -331,6 +328,7 @@ function SummaryCard({
 export default function SuppliersPage() {
   const { organizationId, can } = usePermissions();
   const t = useT();
+  const { format } = useCurrency();
   const canEdit = can("inventory", "edit");
 
   // Data
@@ -617,7 +615,7 @@ export default function SuppliersPage() {
           <SummaryCard
             icon={FileText}
             label="PO Value This Month"
-            value={formatCurrency(thisMonthTotal)}
+            value={format(thisMonthTotal)}
           />
         </div>
 
@@ -822,7 +820,7 @@ export default function SuppliersPage() {
                                 {parsedItems.length}
                               </TableCell>
                               <TableCell className="text-xs text-right font-mono">
-                                {formatCurrency(order.total)}
+                                {format(order.total)}
                               </TableCell>
                               <TableCell>
                                 <Badge
@@ -1137,7 +1135,7 @@ export default function SuppliersPage() {
                             />
                           </TableCell>
                           <TableCell className="py-1 px-1 text-right font-mono text-xs">
-                            {formatCurrency(item.quantity * item.unitCost)}
+                            {format(item.quantity * item.unitCost)}
                           </TableCell>
                           <TableCell className="py-1 px-1">
                             {poForm.items.length > 1 && (
@@ -1170,16 +1168,16 @@ export default function SuppliersPage() {
               <div className="rounded-[0.3rem] bg-muted/50 border border-border p-3 space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-mono">{formatCurrency(poSubtotal)}</span>
+                  <span className="font-mono">{format(poSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">Tax (10%)</span>
-                  <span className="font-mono">{formatCurrency(poTax)}</span>
+                  <span className="font-mono">{format(poTax)}</span>
                 </div>
                 <Separator className="my-1" />
                 <div className="flex justify-between text-sm font-semibold">
                   <span>Total</span>
-                  <span className="font-mono">{formatCurrency(poTotal)}</span>
+                  <span className="font-mono">{format(poTotal)}</span>
                 </div>
               </div>
 

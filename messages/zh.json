@@ -919,7 +919,13 @@
       "roleTasksDefaultDesc": "今日班次岗位任务。",
       "addRole": "添加岗位",
       "tasksLabel": "任务",
-      "noTasks": "暂无任务"
+      "noTasks": "暂无任务",
+      "taskPlaceholder": "任务",
+      "anyTime": "任意时间",
+      "taskDescription": "描述",
+      "requiresEvidence": "需要照片证明",
+      "notifiesChats": "通知 {count} 个聊天",
+      "editTask": "编辑任务"
     },
     "requests": {
       "title": "申请",
@@ -1660,7 +1666,23 @@
     },
     "groupStoreAccount": "店铺与账户",
     "currentStore": "当前店铺",
-    "currentAccount": "当前账户"
+    "currentAccount": "当前账户",
+    "toastCurrencySaved": "货币已更新",
+    "toastSaveFailed": "保存失败",
+    "currencyName": {
+      "USD": "美元",
+      "EUR": "欧元",
+      "GBP": "英镑",
+      "CNY": "人民币",
+      "JPY": "日元",
+      "HKD": "港币",
+      "TWD": "新台币",
+      "CAD": "加元",
+      "AUD": "澳元",
+      "KRW": "韩元",
+      "INR": "印度卢比",
+      "SAR": "沙特里亚尔"
+    }
   },
   "lock": {
     "title": "设备已锁定",

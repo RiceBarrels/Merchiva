@@ -919,7 +919,13 @@
       "roleTasksDefaultDesc": "आज की शिफ्ट भूमिका के कार्य।",
       "addRole": "भूमिका जोड़ें",
       "tasksLabel": "कार्य",
-      "noTasks": "अभी तक कोई कार्य नहीं"
+      "noTasks": "अभी तक कोई कार्य नहीं",
+      "taskPlaceholder": "कार्य",
+      "anyTime": "कभी भी",
+      "taskDescription": "विवरण",
+      "requiresEvidence": "फ़ोटो प्रमाण आवश्यक",
+      "notifiesChats": "{count} चैट को सूचित करता है",
+      "editTask": "कार्य संपादित करें"
     },
     "requests": {
       "title": "अनुरोध",
@@ -1660,7 +1666,23 @@
     },
     "groupStoreAccount": "स्टोर और खाता",
     "currentStore": "वर्तमान स्टोर",
-    "currentAccount": "वर्तमान खाता"
+    "currentAccount": "वर्तमान खाता",
+    "toastCurrencySaved": "मुद्रा अपडेट की गई",
+    "toastSaveFailed": "सहेजने में विफल",
+    "currencyName": {
+      "USD": "अमेरिकी डॉलर",
+      "EUR": "यूरो",
+      "GBP": "ब्रिटिश पाउंड",
+      "CNY": "चीनी युआन",
+      "JPY": "जापानी येन",
+      "HKD": "हांगकांग डॉलर",
+      "TWD": "नया ताइवान डॉलर",
+      "CAD": "कनाडाई डॉलर",
+      "AUD": "ऑस्ट्रेलियाई डॉलर",
+      "KRW": "दक्षिण कोरियाई वॉन",
+      "INR": "भारतीय रुपया",
+      "SAR": "सऊदी रियाल"
+    }
   },
   "lock": {
     "title": "डिवाइस लॉक",

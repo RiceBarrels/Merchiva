@@ -919,7 +919,13 @@
       "roleTasksDefaultDesc": "Tasks for your shift role today.",
       "addRole": "Add Role",
       "tasksLabel": "Tasks",
-      "noTasks": "No tasks yet"
+      "noTasks": "No tasks yet",
+      "taskPlaceholder": "Task",
+      "anyTime": "Any time",
+      "taskDescription": "Description",
+      "requiresEvidence": "Requires photo evidence",
+      "notifiesChats": "Notifies {count} chats",
+      "editTask": "Edit task"
     },
     "requests": {
       "title": "Requests",
@@ -1660,7 +1666,23 @@
     },
     "groupStoreAccount": "Store & account",
     "currentStore": "Current store",
-    "currentAccount": "Current account"
+    "currentAccount": "Current account",
+    "toastCurrencySaved": "Currency updated",
+    "toastSaveFailed": "Failed to save",
+    "currencyName": {
+      "USD": "US Dollar",
+      "EUR": "Euro",
+      "GBP": "British Pound",
+      "CNY": "Chinese Yuan",
+      "JPY": "Japanese Yen",
+      "HKD": "Hong Kong Dollar",
+      "TWD": "New Taiwan Dollar",
+      "CAD": "Canadian Dollar",
+      "AUD": "Australian Dollar",
+      "KRW": "South Korean Won",
+      "INR": "Indian Rupee",
+      "SAR": "Saudi Riyal"
+    }
   },
   "lock": {
     "title": "Device Locked",

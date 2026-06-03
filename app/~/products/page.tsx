@@ -54,6 +54,7 @@ import { PageHeader } from "@/components/page-header";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
+import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,6 +89,7 @@ const BLANK: Partial<Product> = {
 
 export default function ProductsPage() {
   const t = useT();
+  const { format } = useCurrency();
   const { organizationId, shareGroupOrgs } = usePermissions();
   const router = useRouter();
   // Data via SpacetimeDB migration hook
@@ -290,7 +292,7 @@ export default function ProductsPage() {
 
       <><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryCard label={t("products.summary.products")}     value={String(products.length)} icon={ShoppingBag} />
-        <SummaryCard label={t("products.summary.revenueMonth")} value={`$${totalRevenue.toLocaleString()}`} icon={TrendingUp} />
+        <SummaryCard label={t("products.summary.revenueMonth")} value={format(totalRevenue, { decimals: 0 })} icon={TrendingUp} />
         <SummaryCard label={t("products.summary.avgMargin")}    value={`${avgMargin}%`}         icon={ArrowUpRight} />
         <SummaryCard label={t("products.summary.needReview")}   value={String(atRisk)}          icon={AlertTriangle} urgent={atRisk > 0} />
       </div>
@@ -320,9 +322,9 @@ export default function ProductsPage() {
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => format(Number(v), { decimals: 0 })} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
-                    <Tooltip contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }} formatter={(v) => [`$${v}`, t("products.chart.revenue")]} />
+                    <Tooltip contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }} formatter={(v) => [format(Number(v), { decimals: 0 }), t("products.chart.revenue")]} />
                     <Bar dataKey="revenue" radius={[0, 2, 2, 0]}>
                       {chartData.map((entry, i) => (
                         <Cell key={i} fill={entry.alert === "remove" ? "#dc2626" : entry.alert === "underperforming" ? "#78716c" : "#44403c"} />
@@ -357,7 +359,7 @@ export default function ProductsPage() {
                     <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">{t("products.top.label")}</p>
                     <p className="text-lg font-bold">{topProduct.name}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-muted-foreground">${topProduct.revenue.toLocaleString()} {t("products.top.revenueSuffix")}</span>
+                      <span className="text-sm text-muted-foreground">{format(topProduct.revenue, { decimals: 0 })} {t("products.top.revenueSuffix")}</span>
                       <span className="text-xs bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5 font-semibold">{topProduct.margin}% {t("products.top.marginSuffix")}</span>
                       {trendIcon(topProduct.trend)}
                     </div>
@@ -457,7 +459,7 @@ export default function ProductsPage() {
                           </div>
                         </TableCell>
                         <TableCell><Badge variant="outline" className="text-xs font-normal">{p.category}</Badge></TableCell>
-                        <TableCell className="font-medium">${p.price.toFixed(2)}</TableCell>
+                        <TableCell className="font-medium">{format(p.price)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <span className="font-medium">{p.unitsSoldThisMonth}</span>
@@ -468,7 +470,7 @@ export default function ProductsPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">${p.revenue.toLocaleString()}</TableCell>
+                        <TableCell className="font-medium">{format(p.revenue, { decimals: 0 })}</TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <Progress value={p.margin} className="h-1.5 w-16 [&>div]:bg-primary" />

@@ -39,6 +39,7 @@ import type { SalesRecord } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
+import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
 import { SalesForecast } from "@/components/sales-forecast";
 import { ItemForecast } from "@/components/item-forecast";
@@ -54,6 +55,7 @@ export default function SalesPage() {
   // Data via SpacetimeDB migration hook
   const { history, hourly, refreshing } = useSales();
   const t = useT();
+  const { format } = useCurrency();
 
   const histChartData = history.map((s) => ({
     date: new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
@@ -118,8 +120,8 @@ export default function SalesPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label={t("sales.summary.avgDaily")}   value={avgActual > 0 ? `$${avgActual}` : "—"} sub={t("sales.summarySub.last30")}    trend="up"    />
-        <StatCard label={t("sales.summary.today")}      value={todayTotal > 0 ? `$${todayTotal}` : "—"} sub={t("sales.summarySub.hourly")} trend="stable" />
+        <StatCard label={t("sales.summary.avgDaily")}   value={avgActual > 0 ? format(avgActual, { decimals: 0 }) : "—"} sub={t("sales.summarySub.last30")}    trend="up"    />
+        <StatCard label={t("sales.summary.today")}      value={todayTotal > 0 ? format(todayTotal, { decimals: 0 }) : "—"} sub={t("sales.summarySub.hourly")} trend="stable" />
         <StatCard label={t("sales.summary.accuracy")} value={accuracy > 0 ? `${accuracy}%` : "—"} sub={t("sales.summarySub.vsActual")} trend="up"   />
         <StatCard label={t("sales.summary.records")}   value={String(history.length)}  sub={t("sales.summarySub.daysTracked")} trend="stable" />
       </div>
@@ -160,10 +162,10 @@ export default function SalesPage() {
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={4} />
-                    <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                    <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v) => format(Number(v), { decimals: 0 })} />
                     <Tooltip
                       contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }}
-                      formatter={(v, name) => [`$${v}`, String(name)]}
+                      formatter={(v, name) => [format(Number(v), { decimals: 0 }), String(name)]}
                     />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
                     <Area type="monotone" dataKey="predicted" stroke="#a8a29e" strokeWidth={1.5} strokeDasharray="4 2" fill="none" name={t("sales.history.predicted")} />
@@ -215,7 +217,7 @@ export default function SalesPage() {
                       <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                       <Tooltip
                         contentStyle={{ borderRadius: "2px", border: "1px solid #e7e5e4", fontSize: "12px" }}
-                        formatter={(v) => [`$${v}`, ""]}
+                        formatter={(v) => [format(Number(v), { decimals: 0 }), ""]}
                       />
                       <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
                       <Bar dataKey="forecast" fill="#e7e5e4" name={t("sales.hourly.forecast")} radius={[2, 2, 0, 0]} />

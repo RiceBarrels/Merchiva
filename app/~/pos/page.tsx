@@ -11,6 +11,7 @@ import { getCached, setCache } from "@/lib/cache";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT, useI18n } from "@/lib/i18n/context";
+import { useCurrency } from "@/lib/currency";
 import {
   Drawer,
   DrawerContent,
@@ -92,7 +93,12 @@ const DISCOUNT_REASONS = [
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function uid() { return `l-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`; }
-function money(n: number) { return `$${(Number.isFinite(n) ? n : 0).toFixed(2)}`; }
+// Currency-aware money formatter. Call at the top level of a component (hook rules)
+// to get a `money(n)` function bound to the org's active currency.
+function useMoney() {
+  const { format } = useCurrency();
+  return (n: number) => format(Number.isFinite(n) ? n : 0);
+}
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
@@ -156,6 +162,7 @@ function loadPaymentScript(errorMsg: string): Promise<void> {
 // ─── Product Card ────────────────────────────────────────────────────────────
 
 function ProductCard({ product, onTap, locale }: { product: Product; onTap: () => void; locale: string }) {
+  const money = useMoney();
   const displayName = getLocalizedName(product, locale);
   const CatIcon = catIcon(product.category);
   const initial = displayName.charAt(0).toUpperCase();
@@ -228,6 +235,7 @@ function CartSidebar({
   onEditLine: (uid: string) => void;
   onCharge: () => void;
 }) {
+  const money = useMoney();
   return (
     <aside className="hidden md:flex w-72 lg:w-80 flex-col shrink-0 border-l border-border bg-card overflow-hidden">
       {/* Header */}
@@ -386,6 +394,8 @@ function LineEditorPanel({
   onSave: (patch: Partial<POSLine>) => void;
   onRemove: () => void;
 }) {
+  const money = useMoney();
+  const { symbol } = useCurrency();
   const [qty, setQty] = useState(line.qty);
   const [notes, setNotes] = useState(line.notes ?? "");
   const [discKind, setDiscKind] = useState<"none" | "pct" | "amount">(
@@ -479,7 +489,7 @@ function LineEditorPanel({
                       : "bg-card border-border hover:border-muted-foreground text-foreground"
                   )}
                 >
-                  {k === "none" ? "None" : k === "pct" ? "% off" : "$ off"}
+                  {k === "none" ? "None" : k === "pct" ? "% off" : `${symbol} off`}
                 </button>
               ))}
             </div>
@@ -488,7 +498,7 @@ function LineEditorPanel({
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <div className="flex-1 min-w-[100px] inline-flex items-center border border-border rounded h-8 overflow-hidden bg-card">
                     <span className="px-2 text-muted-foreground text-[12px] font-mono">
-                      {discKind === "pct" ? "%" : "$"}
+                      {discKind === "pct" ? "%" : symbol}
                     </span>
                     <input
                       type="number"
@@ -613,6 +623,8 @@ function PayOverlay({
   isOnline: boolean;
   onOfflineCard: (cardNumber: string) => void;
 }) {
+  const money = useMoney();
+  const { symbol } = useCurrency();
   const [cashTaken, setCashTaken] = useState<number | null>(null);
   const [customCash, setCustomCash] = useState("");
   const [showCustomCash, setShowCustomCash] = useState(false);
@@ -810,7 +822,7 @@ function PayOverlay({
                 </div>
                 {showCustomCash && (
                   <div className="mt-3 flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground font-mono">$</span>
+                    <span className="text-sm text-muted-foreground font-mono">{symbol}</span>
                     <input
                       type="number"
                       value={customCash}
@@ -972,6 +984,8 @@ function MobileCheckoutPanel({
   isOnline: boolean;
   onOfflineCard: (cardNumber: string) => void;
 }) {
+  const money = useMoney();
+  const { symbol } = useCurrency();
   const [cashTaken, setCashTaken] = useState<number | null>(null);
   const [customCash, setCustomCash] = useState("");
   const [showCustomCash, setShowCustomCash] = useState(false);
@@ -1145,7 +1159,7 @@ function MobileCheckoutPanel({
           </div>
           {showCustomCash && (
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-sm text-muted-foreground font-mono">$</span>
+              <span className="text-sm text-muted-foreground font-mono">{symbol}</span>
               <input
                 type="number"
                 value={customCash}
@@ -1203,6 +1217,7 @@ function MobileCheckoutPanel({
 // ─── Receipt Overlay ─────────────────────────────────────────────────────────
 
 function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: () => void }) {
+  const money = useMoney();
   const { payment, businessName, tipAmount, tipPct } = data;
   const now = new Date(payment.createdAt);
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -1454,6 +1469,7 @@ function OrdersTab({
 
 function OrderRow({ payment, onRefund }: { payment: Payment; onRefund: (p: Payment) => void }) {
   const t = useT();
+  const money = useMoney();
   const isRefunded = payment.status === "refunded";
   if (payment.amount < 0) return null;
 
@@ -1520,6 +1536,8 @@ function RefundPanel({
   onSuccess: (updated: Payment) => void;
 }) {
   const t = useT();
+  const money = useMoney();
+  const { symbol } = useCurrency();
   const [mode, setMode] = useState<"full" | "partial">("full");
   const [partialAmount, setPartialAmount] = useState("");
   const [reason, setReason] = useState("");
@@ -1592,7 +1610,7 @@ function RefundPanel({
           </div>
           {mode === "partial" && (
             <div className="mt-2 flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">$</span>
+              <span className="text-xs text-muted-foreground">{symbol}</span>
               <input
                 type="number"
                 value={partialAmount}
@@ -1637,6 +1655,7 @@ type ActiveTab = "register" | "orders";
 export default function POSPage() {
   const { locale } = useI18n();
   const t = useT();
+  const money = useMoney();
   const { organizationId } = usePermissions();
 
   // Data loading

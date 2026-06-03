@@ -919,7 +919,13 @@
       "roleTasksDefaultDesc": "Tareas para el rol de tu turno hoy.",
       "addRole": "Agregar rol",
       "tasksLabel": "Tareas",
-      "noTasks": "Aún no hay tareas"
+      "noTasks": "Aún no hay tareas",
+      "taskPlaceholder": "Tarea",
+      "anyTime": "Cualquier momento",
+      "taskDescription": "Descripción",
+      "requiresEvidence": "Requiere evidencia fotográfica",
+      "notifiesChats": "Notifica a {count} chats",
+      "editTask": "Editar tarea"
     },
     "requests": {
       "title": "Solicitudes",
@@ -1660,7 +1666,23 @@
     },
     "groupStoreAccount": "Tienda y cuenta",
     "currentStore": "Tienda actual",
-    "currentAccount": "Cuenta actual"
+    "currentAccount": "Cuenta actual",
+    "toastCurrencySaved": "Moneda actualizada",
+    "toastSaveFailed": "Error al guardar",
+    "currencyName": {
+      "USD": "Dólar estadounidense",
+      "EUR": "Euro",
+      "GBP": "Libra esterlina",
+      "CNY": "Yuan chino",
+      "JPY": "Yen japonés",
+      "HKD": "Dólar de Hong Kong",
+      "TWD": "Nuevo dólar taiwanés",
+      "CAD": "Dólar canadiense",
+      "AUD": "Dólar australiano",
+      "KRW": "Won surcoreano",
+      "INR": "Rupia india",
+      "SAR": "Riyal saudí"
+    }
   },
   "lock": {
     "title": "Dispositivo bloqueado",

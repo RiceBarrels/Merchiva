@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
+import { useCurrency } from "@/lib/currency";
 import { useNotifications } from "@/lib/spacetimedb/hooks";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
@@ -150,6 +151,7 @@ function Sparkline({
 // ── KPI Strip ───────────────────────────────────────────────────────────────
 
 function KpiStrip() {
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { history: salesHistory, hourly: salesHourly, isReady: salesReady } = useSales();
   const { items: invItems, isReady: invReady } = useInventory(organizationId);
@@ -197,7 +199,7 @@ function KpiStrip() {
   const kpis = [
     {
       label: "Revenue · today",
-      v: todayRevenue != null ? `$${todayRevenue.toLocaleString()}` : "—",
+      v: todayRevenue != null ? format(todayRevenue, { decimals: 0 }) : "—",
       sub: "vs avg",
       delta: todayRevenue != null && todayRevenue > 0 ? "live" : "—",
       good: todayRevenue != null && todayRevenue > 0,
@@ -4266,6 +4268,7 @@ export function DesktopMerchivaDashboard() {
 // ── Mobile Dashboard ────────────────────────────────────────────────────────
 
 function MobileKpiRow() {
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { history: salesHistory, hourly: salesHourly, isReady: salesReady } = useSales();
   const { items: invItems, isReady: invReady } = useInventory(organizationId);
@@ -4289,7 +4292,7 @@ function MobileKpiRow() {
       <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">
         <MonoCap>Revenue · today</MonoCap>
         <div className="text-[26px] font-semibold leading-none tracking-tight tabular-nums">
-          {todayRevenue != null ? `$${todayRevenue.toLocaleString()}` : "—"}
+          {todayRevenue != null ? format(todayRevenue, { decimals: 0 }) : "—"}
         </div>
       </div>
       <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">

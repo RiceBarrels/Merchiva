@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
+import { useCurrency } from "@/lib/currency";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
@@ -51,24 +52,6 @@ import type {
 } from "@/lib/types";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatCurrency(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
-function formatCurrencyDecimal(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
 
 function formatTime(t: string): string {
   const [h, m] = t.split(":");
@@ -153,6 +136,7 @@ export function WidgetCard({
 // ── 1. Sales Today Widget ────────────────────────────────────────────────────
 
 export function SalesTodayWidget() {
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { history, isReady } = useSales();
 
@@ -193,11 +177,11 @@ export function SalesTodayWidget() {
       <div className="space-y-2">
         <div className="flex items-baseline gap-3">
           <span className="text-2xl font-bold font-mono">
-            {formatCurrency(actual)}
+            {format(actual, { decimals: 0 })}
           </span>
           {predicted > 0 && (
             <span className="text-xs text-muted-foreground">
-              / {formatCurrency(predicted)} predicted
+              / {format(predicted, { decimals: 0 })} predicted
             </span>
           )}
         </div>
@@ -569,6 +553,7 @@ const REASON_LABELS: Record<WasteReason, string> = {
 };
 
 export function WasteCostWidget() {
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const [rawLogs] = useWasteLogs();
 
@@ -639,19 +624,19 @@ export function WasteCostWidget() {
           <div>
             <div className="text-[10px] text-muted-foreground">Today</div>
             <div className="text-sm font-bold font-mono">
-              {formatCurrencyDecimal(todayCost)}
+              {format(todayCost)}
             </div>
           </div>
           <div>
             <div className="text-[10px] text-muted-foreground">This week</div>
             <div className="text-sm font-bold font-mono">
-              {formatCurrencyDecimal(weekCost)}
+              {format(weekCost)}
             </div>
           </div>
           <div>
             <div className="text-[10px] text-muted-foreground">This month</div>
             <div className="text-sm font-bold font-mono">
-              {formatCurrencyDecimal(monthCost)}
+              {format(monthCost)}
             </div>
           </div>
         </div>
@@ -668,7 +653,7 @@ export function WasteCostWidget() {
                 <span className="text-muted-foreground">
                   {REASON_LABELS[reason as WasteReason] ?? reason}
                 </span>
-                <span className="font-mono">{formatCurrencyDecimal(cost)}</span>
+                <span className="font-mono">{format(cost)}</span>
               </div>
             ))}
           </div>
@@ -775,6 +760,7 @@ export function NotificationFeedWidget() {
 // ── 7. Product Performance Widget ────────────────────────────────────────────
 
 export function ProductPerformanceWidget() {
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { products } = useProducts(organizationId);
 
@@ -816,7 +802,7 @@ export function ProductPerformanceWidget() {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-xs font-mono">
-                    {formatCurrency(p.revenue)}
+                    {format(p.revenue, { decimals: 0 })}
                   </span>
                   {p.trend === "up" && (
                     <TrendingUp className="h-3 w-3 text-emerald-600" />

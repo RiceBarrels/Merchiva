@@ -66,6 +66,7 @@ import { useCoupons, useSiteCustomers, useSiteOrders } from "@/lib/spacetimedb/h
 import { addCoupon, updateCoupon, deleteCoupon } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
+import { useCurrency } from "@/lib/currency";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -91,14 +92,6 @@ function generateCode(): string {
   let code = "";
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-  }).format(value);
 }
 
 function formatDate(iso: string): string {
@@ -153,6 +146,7 @@ function getDefaultFormData(): CouponFormData {
 
 export default function MarketingPage() {
   const t = useT();
+  const { format } = useCurrency();
   const { currentOrg } = usePermissions();
   const organizationId = currentOrg?.id ?? "";
 
@@ -226,9 +220,9 @@ export default function MarketingPage() {
       .map((c: any) => ({
         code: c.code,
         redemptions: c.usedCount ?? 0,
-        discount: c.discountType === "percent" ? `${c.discountValue}%` : formatCurrency(c.discountValue),
+        discount: c.discountType === "percent" ? `${c.discountValue}%` : format(c.discountValue),
       }));
-  }, [coupons]);
+  }, [coupons, format]);
 
   // New customers this month
   const newCustomersThisMonth = useMemo(() => {
@@ -386,7 +380,7 @@ export default function MarketingPage() {
                   </div>
                   <div>
                     <p className="text-[11px] text-muted-foreground font-medium">{t("marketing.coupons.totalDiscountGiven")}</p>
-                    <p className="text-lg font-bold">{formatCurrency(stats.totalDiscountGiven)}</p>
+                    <p className="text-lg font-bold">{format(stats.totalDiscountGiven)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -464,11 +458,11 @@ export default function MarketingPage() {
                               >
                                 {coupon.discountType === "percent"
                                   ? `${coupon.discountValue}% ${t("marketing.coupons.percentOff")}`
-                                  : `${formatCurrency(coupon.discountValue)} ${t("marketing.coupons.percentOff")}`}
+                                  : `${format(coupon.discountValue)} ${t("marketing.coupons.percentOff")}`}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-xs">
-                              {coupon.minPurchase > 0 ? formatCurrency(coupon.minPurchase) : "-"}
+                              {coupon.minPurchase > 0 ? format(coupon.minPurchase) : "-"}
                             </TableCell>
                             <TableCell className="text-xs font-mono">
                               {coupon.usedCount}/{coupon.maxUses > 0 ? coupon.maxUses : t("marketing.coupons.unlimited")}
@@ -537,7 +531,7 @@ export default function MarketingPage() {
                             >
                               {coupon.discountType === "percent"
                                 ? `${coupon.discountValue}% ${t("marketing.coupons.percentOff")}`
-                                : `${formatCurrency(coupon.discountValue)} ${t("marketing.coupons.percentOff")}`}
+                                : `${format(coupon.discountValue)} ${t("marketing.coupons.percentOff")}`}
                             </Badge>
                             <span className="text-xs text-muted-foreground font-mono">
                               {coupon.usedCount}/{coupon.maxUses > 0 ? coupon.maxUses : t("marketing.coupons.unlimited")}
@@ -549,7 +543,7 @@ export default function MarketingPage() {
                           <div className="text-[11px] text-muted-foreground">
                             {formatDate(coupon.validFrom)} - {formatDate(coupon.validUntil)}
                             {coupon.minPurchase > 0 && (
-                              <span className="ml-2">{t("marketing.coupons.minPurchase")}: {formatCurrency(coupon.minPurchase)}</span>
+                              <span className="ml-2">{t("marketing.coupons.minPurchase")}: {format(coupon.minPurchase)}</span>
                             )}
                           </div>
                           <div className="flex items-center gap-1 pt-1 border-t border-border">
@@ -618,7 +612,7 @@ export default function MarketingPage() {
                   <Card>
                     <CardContent className="p-4">
                       <p className="text-[11px] text-muted-foreground font-medium">{t("marketing.analytics.totalDiscountMonth")}</p>
-                      <p className="text-xl font-bold mt-1">{formatCurrency(stats.totalDiscountGiven)}</p>
+                      <p className="text-xl font-bold mt-1">{format(stats.totalDiscountGiven)}</p>
                     </CardContent>
                   </Card>
                   <Card>

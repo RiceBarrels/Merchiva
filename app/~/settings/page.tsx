@@ -47,6 +47,8 @@ import {
   Fingerprint,
   Sparkles,
   Plus,
+  Coins,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { upsertSettings, disconnectSquare, disconnectClover, setPunchInCode, updateOpeningHours, createOrg } from "@/lib/spacetimedb/actions";
+import { CURRENCIES, getCurrencyInfo } from "@/lib/currency";
 import { parseOpeningHours, type WeeklyHours, type DayKey } from "@/lib/holidays";
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
@@ -244,6 +247,8 @@ export default function SettingsPage() {
   const [paymentCurrency, setPaymentCurrency] = useState("USD");
   const [savingPayment, setSavingPayment] = useState(false);
   const [paymentSaved, setPaymentSaved] = useState(false);
+  const [currencyDialog, setCurrencyDialog] = useState(false);
+  const [savingCurrency, setSavingCurrency] = useState<string | null>(null);
 
   // Navigation mode (sidebar or bottom bar — mobile only)
   const [navMode, setNavMode] = useNavMode();
@@ -336,6 +341,8 @@ export default function SettingsPage() {
       setLocationLatitude(settings.locationLatitude ?? "");
       setLocationLongitude(settings.locationLongitude ?? "");
       setGooglePlacesId(settings.googlePlacesId ?? "");
+      if (settings.paymentTaxRate != null) setPaymentTaxRate(String(settings.paymentTaxRate));
+      if (settings.paymentCurrency) setPaymentCurrency(settings.paymentCurrency);
       const parsed = parseOpeningHours(settings.openingHours ?? null);
       if (parsed) {
         setHoursForm((prev) => {
@@ -475,7 +482,10 @@ export default function SettingsPage() {
     try {
       await upsertSettings(userId, {
         businessName,
+        businessType: settings?.businessType || undefined,
         timezone,
+        paymentTaxRate: parseFloat(paymentTaxRate) || 0,
+        paymentCurrency: paymentCurrency || "USD",
         locationLatitude: locationLatitude || undefined,
         locationLongitude: locationLongitude || undefined,
         googlePlacesId: googlePlacesId || undefined,
@@ -516,20 +526,48 @@ export default function SettingsPage() {
     );
   };
 
+  // Persist payment-related settings (tax rate + currency) through the
+  // updateSettings reducer. All reducer-required fields are passed so the
+  // delete+insert in the reducer never clobbers existing values.
+  const persistPaymentSettings = async (next: { taxRate?: number; currency?: string }) => {
+    if (!userId) return;
+    await upsertSettings(userId, {
+      businessName: businessName || undefined,
+      businessType: settings?.businessType || undefined,
+      timezone,
+      paymentTaxRate: next.taxRate ?? (parseFloat(paymentTaxRate) || 0),
+      paymentCurrency: next.currency ?? paymentCurrency ?? "USD",
+      locationLatitude: locationLatitude || undefined,
+      locationLongitude: locationLongitude || undefined,
+      googlePlacesId: googlePlacesId || undefined,
+    });
+  };
+
   const handleSavePaymentSettings = async () => {
     if (!userId) return;
     setSavingPayment(true);
     try {
-      const { upsertPaymentConfig } = await import("@/lib/db/payments");
-      await upsertPaymentConfig(userId, {
-        taxRate: parseFloat(paymentTaxRate) || 0,
-        currency: paymentCurrency,
-      });
+      await persistPaymentSettings({ taxRate: parseFloat(paymentTaxRate) || 0 });
       toast.success(t("settings.toastPaymentSaved"));
       setPaymentSaved(true);
       setTimeout(() => setPaymentSaved(false), 2500);
     } finally {
       setSavingPayment(false);
+    }
+  };
+
+  const handleSelectCurrency = async (code: string) => {
+    setSavingCurrency(code);
+    setPaymentCurrency(code);
+    try {
+      await persistPaymentSettings({ currency: code });
+      hapticSuccess();
+      toast.success(t("settings.toastCurrencySaved"));
+      setCurrencyDialog(false);
+    } catch {
+      toast.error(t("settings.toastSaveFailed"));
+    } finally {
+      setSavingCurrency(null);
     }
   };
 
@@ -834,6 +872,43 @@ export default function SettingsPage() {
   function renderDialogs() {
     return (
       <>
+        {/* ─── Currency picker ──────────────────────────────────────── */}
+        <DynamicUIElement open={currencyDialog} onOpenChange={setCurrencyDialog}>
+          <DynamicUIElementContent>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.currency")}>{t("settings.currency")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("settings.currencyDesc")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+              {CURRENCIES.map((c) => {
+                const active = paymentCurrency === c.code;
+                return (
+                  <button
+                    key={c.code}
+                    type="button"
+                    disabled={savingCurrency !== null}
+                    onClick={() => handleSelectCurrency(c.code)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 border rounded text-sm transition-colors disabled:opacity-60 ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:bg-muted"}`}
+                  >
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className={`w-8 shrink-0 text-left font-mono ${active ? "text-background" : "text-muted-foreground"}`}>{c.symbol}</span>
+                      <span className="truncate">{t(c.labelKey)}</span>
+                    </span>
+                    <span className="flex items-center gap-2 shrink-0">
+                      <span className={`font-mono text-xs ${active ? "text-background/80" : "text-muted-foreground"}`}>{c.code}</span>
+                      {savingCurrency === c.code ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : active ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
+
         {/* ─── Auto-lock picker ─────────────────────────────────────── */}
         <DynamicUIElement open={autolockDialog} onOpenChange={setAutolockDialog}>
           <DynamicUIElementContent>
@@ -2151,6 +2226,13 @@ export default function SettingsPage() {
               title={t("settings.taxCompliance")}
               meta={`${t("settings.taxPrefix")} ${paymentTaxRate}% · ${paymentCurrency}`}
               right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{paymentTaxRate}%</span>}
+            />
+            <SRow
+              icon={<Coins className="h-4 w-4 text-foreground" />}
+              title={t("settings.currency")}
+              meta={t(getCurrencyInfo(paymentCurrency).labelKey)}
+              onClick={() => setCurrencyDialog(true)}
+              right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{getCurrencyInfo(paymentCurrency).symbol} {paymentCurrency}</span>}
             />
           </div>
         </DynamicUIElementContent>

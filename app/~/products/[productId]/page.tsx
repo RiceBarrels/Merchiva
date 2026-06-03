@@ -26,6 +26,7 @@ import { getProductById } from "@/lib/db/products";
 import type { Product, SiteElement, SiteTheme } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { useT } from "@/lib/i18n/context";
+import { useCurrency } from "@/lib/currency";
 import { LOCALES } from "@/lib/i18n/config";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -48,6 +49,7 @@ const PREVIEW_THEME: SiteTheme = {
 function buildDefaultTemplate(
   product: Product,
   t: (path: string) => string,
+  formatMoney: (amount: number | null | undefined) => string,
 ): SiteElement[] {
   const base = Date.now();
   return [
@@ -66,7 +68,7 @@ function buildDefaultTemplate(
       id: `pt-price-${base}`,
       type: "text",
       props: {
-        content: `$${product.price.toFixed(2)}`,
+        content: formatMoney(product.price),
         tag: "p",
         fontSize: "2rem",
         fontWeight: "800",
@@ -275,7 +277,8 @@ function TemplateTab({
   onSave: (updates: Partial<Product>) => Promise<void>;
 }) {
   const t = useT();
-  const elements = product.pageTemplate?.length ? product.pageTemplate : buildDefaultTemplate(product, t);
+  const { format } = useCurrency();
+  const elements = product.pageTemplate?.length ? product.pageTemplate : buildDefaultTemplate(product, t, format);
   const initialState = siteElementsToCraftState(elements);
 
   const handleAutoSave = useCallback(async (newElements: SiteElement[]) => {

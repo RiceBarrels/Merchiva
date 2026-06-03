@@ -35,6 +35,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
 import { usePermissions } from "@/lib/context/permissions";
+import { useCurrency } from "@/lib/currency";
 import { useSiteCustomers, useSiteOrders, useSites } from "@/lib/spacetimedb/hooks";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { cn } from "@/lib/utils";
@@ -64,10 +65,6 @@ interface EnrichedCustomer {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function formatCurrency(amount: number): string {
-  return `$${amount.toFixed(2)}`;
-}
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
@@ -144,6 +141,7 @@ export default function CustomersPage() {
 
 function CustomersContent() {
   const t = useT();
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const [allCustomers, customersReady] = useSiteCustomers();
   const [allOrders, ordersReady] = useSiteOrders();
@@ -341,8 +339,8 @@ function CustomersContent() {
       c.email,
       c.phone ?? "-",
       String(c.orderCount),
-      formatCurrency(c.totalSpent),
-      formatCurrency(c.avgOrderValue),
+      format(c.totalSpent),
+      format(c.avgOrderValue),
       c.lastOrderDate ? formatDate(c.lastOrderDate) : "-",
       c.tags.map((t) => TAG_LABELS[t]).join(", ") || "-",
       c.status,
@@ -366,8 +364,8 @@ function CustomersContent() {
       c.email,
       c.phone ?? "-",
       String(c.orderCount),
-      formatCurrency(c.totalSpent),
-      formatCurrency(c.avgOrderValue),
+      format(c.totalSpent),
+      format(c.avgOrderValue),
       c.lastOrderDate ? formatDate(c.lastOrderDate) : "-",
       c.tags.map((t) => TAG_LABELS[t]).join(", ") || "-",
     ]);
@@ -424,13 +422,13 @@ function CustomersContent() {
           />
           <SummaryCard
             label="Avg Order Value"
-            value={formatCurrency(metrics.avgOrderValue)}
+            value={format(metrics.avgOrderValue)}
             icon={<TrendingUp className="h-4 w-4" />}
             mono
           />
           <SummaryCard
             label="Total Revenue"
-            value={formatCurrency(metrics.totalRevenue)}
+            value={format(metrics.totalRevenue)}
             icon={<DollarSign className="h-4 w-4" />}
             mono
           />
@@ -550,8 +548,8 @@ function CustomersContent() {
                       {c.phone || "-"}
                     </TableCell>
                     <TableCell className="text-[13px] text-right font-mono">{c.orderCount}</TableCell>
-                    <TableCell className="text-[13px] text-right font-mono">{formatCurrency(c.totalSpent)}</TableCell>
-                    <TableCell className="text-[13px] text-right font-mono hidden md:table-cell">{formatCurrency(c.avgOrderValue)}</TableCell>
+                    <TableCell className="text-[13px] text-right font-mono">{format(c.totalSpent)}</TableCell>
+                    <TableCell className="text-[13px] text-right font-mono hidden md:table-cell">{format(c.avgOrderValue)}</TableCell>
                     <TableCell className="text-[13px] text-muted-foreground hidden lg:table-cell">
                       {c.lastOrderDate ? formatDate(c.lastOrderDate) : "-"}
                     </TableCell>
@@ -661,7 +659,7 @@ function CustomersContent() {
                     Total Spent
                   </p>
                   <p className="text-lg font-semibold font-mono leading-tight mt-0.5">
-                    {formatCurrency(selectedCustomer.totalSpent)}
+                    {format(selectedCustomer.totalSpent)}
                   </p>
                 </div>
                 <div className="border border-border rounded-[0.3rem] p-2.5">
@@ -669,7 +667,7 @@ function CustomersContent() {
                     Avg Order
                   </p>
                   <p className="text-lg font-semibold font-mono leading-tight mt-0.5">
-                    {formatCurrency(selectedCustomer.avgOrderValue)}
+                    {format(selectedCustomer.avgOrderValue)}
                   </p>
                 </div>
               </div>
@@ -724,7 +722,7 @@ function CustomersContent() {
                                 {itemsSummary}
                               </TableCell>
                               <TableCell className="text-[12px] text-right font-mono">
-                                {formatCurrency(order.total)}
+                                {format(order.total)}
                               </TableCell>
                               <TableCell>
                                 <span

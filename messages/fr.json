@@ -919,7 +919,13 @@
       "roleTasksDefaultDesc": "Tâches pour votre rôle du jour.",
       "addRole": "Ajouter un rôle",
       "tasksLabel": "Tâches",
-      "noTasks": "Aucune tâche pour l'instant"
+      "noTasks": "Aucune tâche pour l'instant",
+      "taskPlaceholder": "Tâche",
+      "anyTime": "À tout moment",
+      "taskDescription": "Description",
+      "requiresEvidence": "Preuve photo requise",
+      "notifiesChats": "Notifie {count} discussions",
+      "editTask": "Modifier la tâche"
     },
     "requests": {
       "title": "Demandes",
@@ -1660,7 +1666,23 @@
     },
     "groupStoreAccount": "Magasin et compte",
     "currentStore": "Magasin actuel",
-    "currentAccount": "Compte actuel"
+    "currentAccount": "Compte actuel",
+    "toastCurrencySaved": "Devise mise à jour",
+    "toastSaveFailed": "Échec de l'enregistrement",
+    "currencyName": {
+      "USD": "Dollar américain",
+      "EUR": "Euro",
+      "GBP": "Livre sterling",
+      "CNY": "Yuan chinois",
+      "JPY": "Yen japonais",
+      "HKD": "Dollar de Hong Kong",
+      "TWD": "Nouveau dollar taïwanais",
+      "CAD": "Dollar canadien",
+      "AUD": "Dollar australien",
+      "KRW": "Won sud-coréen",
+      "INR": "Roupie indienne",
+      "SAR": "Riyal saoudien"
+    }
   },
   "lock": {
     "title": "Appareil verrouillé",

@@ -41,6 +41,8 @@ export function useSettings() {
       googlePlacesId:      r.googlePlacesId ?? null,
       openingHours:        r.openingHours ?? null,
       countryCode:         r.countryCode ?? null,
+      paymentTaxRate:      r.paymentTaxRate != null ? Number(r.paymentTaxRate) : null,
+      paymentCurrency:     r.paymentCurrency ?? null,
     };
   }, [rawSettings, organizationId]);
 

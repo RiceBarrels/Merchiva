@@ -19,6 +19,8 @@ export interface UserSettings {
   googlePlacesId: string | null;
   openingHours: string | null;
   countryCode: string | null;
+  paymentTaxRate: number | null;
+  paymentCurrency: string | null;
 }
 
 export async function getSettings(): Promise<UserSettings | null> {
@@ -49,6 +51,8 @@ export async function getSettings(): Promise<UserSettings | null> {
         googlePlacesId: r.googlePlacesId ?? null,
         openingHours: r.openingHours ?? null,
         countryCode: r.countryCode ?? null,
+        paymentTaxRate: r.paymentTaxRate != null ? Number(r.paymentTaxRate) : null,
+        paymentCurrency: r.paymentCurrency ?? null,
       };
     }
   }
