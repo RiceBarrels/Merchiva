@@ -267,6 +267,119 @@ const MobileDynamicUIElementTitleContext = React.createContext<{
   exiting: boolean;
 }>({ title: "", setTitle: () => {}, exiting: false });
 
+/**
+ * Resolve the DOM element that should be pushed left when a dialog opens.
+ *
+ * - depth 0 dialogs push the app shell (id="mobile-content" on the mobile
+ *   layout, id="desktop-content" on the desktop layout; only one exists at a
+ *   time because the two shells are mutually-exclusive in the sidebar code).
+ * - depth > 0 dialogs push the dialog right below them (id="mobile-dialog-N").
+ *
+ * Returns null until React has committed an id to look up, so the caller
+ * skips work cleanly on the first render.
+ */
+function findBgTarget(depth: number): HTMLElement | null {
+  if (depth < 0) return null;
+  if (typeof document === "undefined") return null;
+  if (depth > 0) return document.getElementById(`mobile-dialog-${depth - 1}`);
+  return (
+    document.getElementById("mobile-content") ??
+    document.getElementById("desktop-content")
+  );
+}
+
+const DIALOG_BG_TRANSITION =
+  "transform 500ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 500ms cubic-bezier(0.32, 0.72, 0, 1)";
+
+/**
+ * Shared push-the-bg-left side effect.
+ *
+ * Used by every dialog mode (mobile full-screen sheet, desktop right-side
+ * panel, desktop centered modal). The effect is split into:
+ *
+ * 1. Style updates — useLayoutEffect that re-applies inline transform every
+ *    time bg geometry changes. Critically, it does NOT clear the styles when
+ *    the dep array changes — that was the previous bug (cleanup ran on every
+ *    re-render, briefly snapping the bg back to identity before re-applying
+ *    the same transform, which the eye reads as "no animation").
+ *
+ * 2. Unmount cleanup — a separate useEffect with [] deps that animates the
+ *    bg back to identity, then clears all inline styles once the slide-back
+ *    finishes. This runs ONLY when the dialog page unmounts, so opening more
+ *    or changing state never resets the bg in-flight.
+ */
+function useDialogBgPush({
+  depth,
+  shift,
+  scale,
+  radius,
+  active,
+}: {
+  depth: number;
+  shift: number;
+  scale: number;
+  radius: number;
+  active: boolean;
+}) {
+  const targetRef = React.useRef<HTMLElement | null>(null);
+  React.useLayoutEffect(() => {
+    targetRef.current = findBgTarget(depth);
+  }, [depth]);
+
+  React.useLayoutEffect(() => {
+    const el = targetRef.current;
+    if (!el) return;
+    el.style.transition = DIALOG_BG_TRANSITION;
+    el.style.transform = `translateX(${shift}px) scale(${scale})`;
+    el.style.borderRadius = `${radius}px`;
+    el.style.overflow = active ? "hidden" : "";
+  }, [shift, scale, radius, active, depth]);
+
+  React.useEffect(() => {
+    return () => {
+      const el = targetRef.current;
+      if (!el) return;
+      el.style.transition = DIALOG_BG_TRANSITION;
+      el.style.transform = "";
+      el.style.borderRadius = "";
+      window.setTimeout(() => {
+        if (!el) return;
+        el.style.overflow = "";
+        el.style.transition = "";
+      }, 520);
+    };
+  }, []);
+}
+
+/**
+ * Allocate a fresh dialog depth (0, 1, 2 …) and register / unregister the
+ * matching `mobile-dialog-N` id so nested dialogs can target each other.
+ *
+ * Returns the depth as state — the first render produces -1 (skip side
+ * effects), then the layout effect commits the real depth before paint. This
+ * is more reliable than the previous ref-based approach where depth lagged
+ * one render behind the actual mount order.
+ */
+function useDialogDepth(): number {
+  const [depth, setDepth] = React.useState<number>(-1);
+  const myIdRef = React.useRef<string>("");
+  React.useLayoutEffect(() => {
+    const d = globalDynamicUIElementCount;
+    myIdRef.current = `mobile-dialog-${d}`;
+    globalDynamicUIElementIds.push(myIdRef.current);
+    globalDynamicUIElementCount++;
+    setDepth(d);
+    notifyDynamicUIElementListeners();
+    return () => {
+      globalDynamicUIElementCount--;
+      const idx = globalDynamicUIElementIds.indexOf(myIdRef.current);
+      if (idx >= 0) globalDynamicUIElementIds.splice(idx, 1);
+      notifyDynamicUIElementListeners();
+    };
+  }, []);
+  return depth;
+}
+
 function MobileDynamicUIElementPage({
   children,
   className,
@@ -275,25 +388,33 @@ function MobileDynamicUIElementPage({
 }: DialogPrimitive.Popup.Props & { noPadding?: boolean }) {
   const [mobileTitle, setMobileTitle] = React.useState("");
   const ref = React.useRef<HTMLDivElement>(null);
-  const myDepth = React.useRef(0);
-  const myId = React.useRef("");
 
-  // Register on mount, unregister on unmount
-  React.useEffect(() => {
-    myDepth.current = globalDynamicUIElementCount;
-    myId.current = `mobile-dialog-${myDepth.current}`;
-    globalDynamicUIElementIds.push(myId.current);
+  // Allocate depth synchronously on first render so the background-push effect
+  // targets the correct underlying layer from the very first paint. Doing this
+  // in useEffect (post-render) meant `depth` was 0 for every nested dialog's
+  // first render, so they pushed `mobile-content` instead of the parent dialog,
+  // and the parent never slid left until a later re-render — by which point
+  // the entry animation had already played.
+  const initRef = React.useRef<{ depth: number; id: string } | null>(null);
+  if (initRef.current === null) {
+    const d = globalDynamicUIElementCount;
+    const id = `mobile-dialog-${d}`;
+    globalDynamicUIElementIds.push(id);
     globalDynamicUIElementCount++;
     notifyDynamicUIElementListeners();
+    initRef.current = { depth: d, id };
+  }
+  const depth = initRef.current.depth;
+  const myId = initRef.current.id;
+
+  React.useEffect(() => {
     return () => {
       globalDynamicUIElementCount--;
-      const idx = globalDynamicUIElementIds.indexOf(myId.current);
+      const idx = globalDynamicUIElementIds.indexOf(myId);
       if (idx >= 0) globalDynamicUIElementIds.splice(idx, 1);
       notifyDynamicUIElementListeners();
     };
-  }, []);
-
-  const depth = myDepth.current;
+  }, [myId]);
   const [offsetX, setOffsetX] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [entered, setEntered] = React.useState(false);
