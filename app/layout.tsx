@@ -65,7 +65,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content={isDark ? "#1a1a1a" : "#ffffff"} id="theme-color-meta" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
