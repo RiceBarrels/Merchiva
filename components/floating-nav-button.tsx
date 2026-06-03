@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { ArrowRight, ArrowLeft, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useT } from "@/lib/i18n/context";
+import { useRightPanelMobile, getRpanelWidth } from "@/components/right-panel";
 
 interface FloatingNavButtonProps {
   /** "back" = plain back arrow; "menu" = animated hamburger/X/ArrowRight */
@@ -61,6 +62,11 @@ export function FloatingNavButton({
   tabBarMode = false,
 }: FloatingNavButtonProps) {
   const t = useT();
+  // When the right-swipe Mr. Merchiva panel opens it pushes #mobile-content
+  // left by progress × panel-width. This button is fixed OUTSIDE that content,
+  // so mirror the same shift here to keep it glued to the content edge.
+  const { progress: rpProgress, dragging: rpDragging } = useRightPanelMobile();
+  const rpShift = -(rpProgress || 0) * getRpanelWidth();
   const handleClick = () => {
     if (mode === "back") {
       onBack?.();
@@ -95,8 +101,8 @@ export function FloatingNavButton({
     ...buttonBaseStyle,
     ...(mode === "menu" && !hasDialog
       ? {
-          transform: `translateX(${translateX}px)`,
-          transition: dragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: `translateX(${translateX + rpShift}px)`,
+          transition: dragging || rpDragging ? "none" : "transform 220ms cubic-bezier(0.4, 0, 0.2, 1)",
         }
       : {}),
   };

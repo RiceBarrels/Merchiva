@@ -124,7 +124,7 @@ export function RightPanel({
 // at runtime so it tracks the actual device width / rotation; falls back to a
 // sane default during SSR when there's no window. Used for both the swipe math
 // and the rendered panel width so they stay in sync.
-function getRpanelWidth(): number {
+export function getRpanelWidth(): number {
   if (typeof window === "undefined") return 320;
   return Math.round(window.innerWidth * 0.8);
 }
