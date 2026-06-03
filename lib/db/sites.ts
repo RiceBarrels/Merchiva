@@ -83,12 +83,13 @@ function componentFromRow(row: any): SiteComponent {
 
 // ─── Sites ────────────────────────────────────────────────────────────────────
 
-export async function getSites(organizationId: string): Promise<Site[]> {
+export async function getSites(orgIdOrIds: string | string[]): Promise<Site[]> {
   const c = getConnection();
   if (!c) return [];
+  const ids = Array.isArray(orgIdOrIds) ? orgIdOrIds : [orgIdOrIds];
   const rows = (c as any).db.site.iter();
   return Array.from(rows)
-    .filter((r: any) => r.organizationId === organizationId)
+    .filter((r: any) => ids.includes(r.organizationId))
     .map(siteFromRow)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }

@@ -20,4 +20,5 @@ export default __t.row({
   subscriptionPriceId: __t.option(__t.string()).name("subscription_price_id"),
   subscriptionInterval: __t.option(__t.string()).name("subscription_interval"),
   currentPeriodEnd: __t.option(__t.timestamp()).name("current_period_end"),
+  parentOrgId: __t.option(__t.string()).name("parent_org_id"),
 });

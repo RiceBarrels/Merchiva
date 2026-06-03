@@ -112,7 +112,7 @@ export default function SettingsPage() {
   const { locale, setLocale } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { role, organizationId, can, organizations, currentOrg, switchOrg } = usePermissions();
+  const { role, organizationId, can, organizations, currentOrg, switchOrg, shareGroupOrgs: msShareGroupOrgs, isSubStore: msIsSubStore } = usePermissions();
   const { signOut, user: authUser, accounts, switchAccount } = useAuth();
   const isAdmin = role === "owner" || role === "manager";
   const canEditTeam = can("team", "edit");
@@ -785,8 +785,15 @@ export default function SettingsPage() {
     if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
   }, [isTauri]);
   const [themeMode, applyThemeMode] = useThemeMode();
-  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | null;
+  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
+
+  // ─── Multi-store state ──────────────────────────────────────────────────
+  const rootOrg = msShareGroupOrgs.find((o) => !o.parentOrgId) ?? null;
+  const subStores = msShareGroupOrgs.filter((o) => !!o.parentOrgId);
+  const eligibleParentsForAttach = (orgRows ?? []).filter((o) => !o.parentOrgId && o.id.toString() !== organizationId);
+  const [msAttachingTo, setMsAttachingTo] = useState<string>("");
+  const [msSaving, setMsSaving] = useState(false);
 
   // Shared dialog rendering used by the main mobile-first layout
   function renderDialogs() {
@@ -1911,6 +1918,22 @@ export default function SettingsPage() {
             card
           />
         )}
+        {isAdmin && (
+          <SRow
+            icon={<Building2 className="h-4 w-4 text-foreground" />}
+            title={t("multiStore.settings.cardTitle")}
+            meta={
+              msIsSubStore
+                ? t("multiStore.settings.cardMetaSub").replace("{parent}", rootOrg?.name ?? "")
+                : subStores.length > 0
+                  ? t("multiStore.settings.cardMetaParent").replace("{count}", String(subStores.length))
+                  : t("multiStore.settings.cardMetaSolo")
+            }
+            onClick={() => setSubPanel("multistore")}
+            right={subStores.length > 0 ? <SBadge>{String(subStores.length)}</SBadge> : undefined}
+            card
+          />
+        )}
         <SRow
           icon={<Bell className="h-4 w-4 text-foreground" />}
           title={t("settings.groupNotifications")}
@@ -2400,6 +2423,184 @@ export default function SettingsPage() {
               icon={<HelpCircle className="h-4 w-4 text-foreground" />}
               title={t("settings.helpSupport")}
             />
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
+      {/* ─── Multi-Store Sub-Panel ───────────────────────────── */}
+      <DynamicUIElement open={subPanel === "multistore"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md lg:max-w-2xl" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("multiStore.settings.title")}>
+              {t("multiStore.settings.title")}
+            </DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">
+              {t("multiStore.settings.description")}
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div className="px-[18px] py-4 space-y-5">
+            {/* Current store role within the tree */}
+            <div className="rounded-[0.3rem] border border-border bg-muted/40 p-3">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
+                {t("multiStore.settings.currentRole")}
+              </p>
+              <p className="text-sm font-medium">
+                {msIsSubStore
+                  ? t("multiStore.settings.roleSub").replace("{parent}", rootOrg?.name ?? "")
+                  : subStores.length > 0
+                    ? t("multiStore.settings.roleParent").replace("{count}", String(subStores.length))
+                    : t("multiStore.settings.roleSolo")}
+              </p>
+            </div>
+
+            {/* Share group list */}
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t("multiStore.settings.groupHeader")}
+              </p>
+              <div className="rounded-[0.3rem] border border-border divide-y divide-border bg-card">
+                {msShareGroupOrgs.length === 0 && (
+                  <p className="px-3 py-2 text-sm text-muted-foreground">
+                    {t("multiStore.settings.groupEmpty")}
+                  </p>
+                )}
+                {msShareGroupOrgs.map((o) => {
+                  const isCurrent = o.id === organizationId;
+                  return (
+                    <button
+                      key={o.id}
+                      onClick={() => !isCurrent && switchOrg(o.id)}
+                      disabled={isCurrent}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
+                    >
+                      {o.parentOrgId && <span className="text-muted-foreground/70">↳</span>}
+                      <span className="flex-1 truncate text-sm font-medium">{o.name}</span>
+                      {!o.parentOrgId && (
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px">
+                          {t("multiStore.settings.parentBadge")}
+                        </span>
+                      )}
+                      {o.parentOrgId && (
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px">
+                          {t("multiStore.subBadge")}
+                        </span>
+                      )}
+                      {isCurrent && (
+                        <span className="text-[10px] uppercase tracking-wide text-foreground border border-foreground/30 rounded px-1 py-px">
+                          {t("multiStore.settings.thisStore")}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sharing policy summary — fixed, descriptive */}
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t("multiStore.settings.policyHeader")}
+              </p>
+              <div className="rounded-[0.3rem] border border-border bg-card divide-y divide-border text-sm">
+                <div className="px-3 py-2 flex items-start gap-2">
+                  <Check className="h-3.5 w-3.5 mt-1 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-medium">{t("multiStore.settings.policySharedTitle")}</p>
+                    <p className="text-xs text-muted-foreground">{t("multiStore.settings.policySharedList")}</p>
+                  </div>
+                </div>
+                <div className="px-3 py-2 flex items-start gap-2">
+                  <Unlink className="h-3.5 w-3.5 mt-1 text-amber-600 shrink-0" />
+                  <div>
+                    <p className="font-medium">{t("multiStore.settings.policyIsolatedTitle")}</p>
+                    <p className="text-xs text-muted-foreground">{t("multiStore.settings.policyIsolatedList")}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Detach (sub-store only, owner only) */}
+            {msIsSubStore && role === "owner" && (
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {t("multiStore.settings.detachHeader")}
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t("multiStore.settings.detachHelp")}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={msSaving || !organizationId}
+                  onClick={async () => {
+                    if (!organizationId) return;
+                    if (!confirm(t("multiStore.settings.detachConfirm"))) return;
+                    setMsSaving(true);
+                    try {
+                      const { updateOrgParent } = await import("@/lib/spacetimedb/actions");
+                      await updateOrgParent(organizationId, null);
+                      hapticSuccess();
+                      toast.success(t("multiStore.settings.detachSuccess"));
+                      window.location.reload();
+                    } catch (err) {
+                      console.error(err);
+                      toast.error(err instanceof Error ? err.message : t("multiStore.settings.detachFailed"));
+                    } finally {
+                      setMsSaving(false);
+                    }
+                  }}
+                >
+                  {msSaving ? <Spinner size={14} /> : t("multiStore.settings.detachButton")}
+                </Button>
+              </div>
+            )}
+
+            {/* Attach (root org with no children, owner only) */}
+            {!msIsSubStore && subStores.length === 0 && role === "owner" && eligibleParentsForAttach.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  {t("multiStore.settings.attachHeader")}
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t("multiStore.settings.attachHelp")}
+                </p>
+                <div className="flex gap-2">
+                  <Select value={msAttachingTo} onValueChange={(v) => setMsAttachingTo(v ?? "")}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder={t("multiStore.settings.attachPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleParentsForAttach.map((o) => (
+                        <SelectItem key={o.id.toString()} value={o.id.toString()}>{o.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    disabled={msSaving || !msAttachingTo || !organizationId}
+                    onClick={async () => {
+                      if (!organizationId || !msAttachingTo) return;
+                      if (!confirm(t("multiStore.settings.attachConfirm"))) return;
+                      setMsSaving(true);
+                      try {
+                        const { updateOrgParent } = await import("@/lib/spacetimedb/actions");
+                        await updateOrgParent(organizationId, msAttachingTo);
+                        hapticSuccess();
+                        toast.success(t("multiStore.settings.attachSuccess"));
+                        window.location.reload();
+                      } catch (err) {
+                        console.error(err);
+                        toast.error(err instanceof Error ? err.message : t("multiStore.settings.attachFailed"));
+                      } finally {
+                        setMsSaving(false);
+                      }
+                    }}
+                  >
+                    {msSaving ? <Spinner size={14} /> : t("multiStore.settings.attachButton")}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DynamicUIElementContent>
       </DynamicUIElement>

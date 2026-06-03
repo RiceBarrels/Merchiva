@@ -169,6 +169,7 @@ import UpdateMemberPermissionsReducer from "./update_member_permissions_reducer"
 import UpdateOpeningHoursReducer from "./update_opening_hours_reducer";
 import UpdateOrderStatusReducer from "./update_order_status_reducer";
 import UpdateOrgReducer from "./update_org_reducer";
+import UpdateOrgParentReducer from "./update_org_parent_reducer";
 import UpdateOrgSubscriptionReducer from "./update_org_subscription_reducer";
 import UpdatePageReducer from "./update_page_reducer";
 import UpdatePerkReducer from "./update_perk_reducer";
@@ -1383,6 +1384,7 @@ const reducersSchema = __reducers(
   __reducerSchema("update_opening_hours", UpdateOpeningHoursReducer),
   __reducerSchema("update_order_status", UpdateOrderStatusReducer),
   __reducerSchema("update_org", UpdateOrgReducer),
+  __reducerSchema("update_org_parent", UpdateOrgParentReducer),
   __reducerSchema("update_org_subscription", UpdateOrgSubscriptionReducer),
   __reducerSchema("update_page", UpdatePageReducer),
   __reducerSchema("update_perk", UpdatePerkReducer),

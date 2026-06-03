@@ -85,7 +85,8 @@ export default function ChatPage() {
   const t = useT();
   const { locale } = useI18n();
   const { getToken } = useAuth();
-  const { organizationId, role, currentOrg, isOwner } = usePermissions();
+  const { organizationId, role, currentOrg, isOwner, shareGroupOrgIds } = usePermissions();
+  const groupKey = shareGroupOrgIds.join("|");
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [team, setTeam] = useState<OrgMember[]>([]);
   const [activeConv, setActiveConv] = useState<ChatConversation | null>(null);
@@ -129,25 +130,42 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!organizationId) return;
-    // Show cached conversations immediately
-    const cachedConvs = getCached<ChatConversation[]>(`conversations_${organizationId}`);
+    // Chat conversations + teammates are shared across the share group, so
+    // load both from every org in the parent/child tree.
+    const ids = shareGroupOrgIds.length ? shareGroupOrgIds : [organizationId];
+    const cacheKey = `conversations_${ids.join("|")}`;
+    const cachedConvs = getCached<ChatConversation[]>(cacheKey);
     if (cachedConvs) setConversations(cachedConvs);
     setLoading(false);
 
     Promise.all([
-      getConversations(organizationId),
-      getTeamForScheduling(organizationId),
+      getConversations(ids),
+      Promise.all(ids.map((id) => getTeamForScheduling(id))).then((arrays) => {
+        // De-dupe team members by userId so the same person on multiple orgs
+        // appears once in the picker.
+        const seen = new Set<string>();
+        const merged: OrgMember[] = [];
+        for (const arr of arrays) {
+          for (const m of arr) {
+            if (seen.has(m.userId)) continue;
+            seen.add(m.userId);
+            merged.push(m);
+          }
+        }
+        return merged;
+      }),
     ])
       .then(async ([convs, t]) => {
         setConversations(convs);
-        setCache(`conversations_${organizationId}`, convs);
+        setCache(cacheKey, convs);
         setTeam(t);
         const userIds = t.map((m) => m.userId);
         const avMap = await getAvatarMap(userIds);
         setAvatars(avMap);
       })
       .catch((err) => console.error("Chat load failed:", err));
-  }, [organizationId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, groupKey]);
 
   // Subscribe to the chat_message table. The hook fires a re-render whenever
   // a row is inserted/updated/deleted in the local cache — covers our own

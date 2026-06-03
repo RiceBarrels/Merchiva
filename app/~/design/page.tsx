@@ -35,7 +35,7 @@ function blankHtmlFor(name: string, w: number, h: number): string {
 export default function DesignListPage() {
   const t = useT();
   const router = useRouter();
-  const { organizationId } = usePermissions();
+  const { organizationId, shareGroupOrgIds } = usePermissions();
 
   // Subscribe so updates land live.
   const [, designReady] = useTable(tables.design);
@@ -51,13 +51,18 @@ export default function DesignListPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Designs are shared across the parent/child share group — pull from every
+  // org in the group so child stores see parent's design library and vice versa.
+  const groupKey = shareGroupOrgIds.join("|");
   useEffect(() => {
     if (!organizationId || !designReady) return;
-    getDesigns(organizationId)
+    const ids = shareGroupOrgIds.length ? shareGroupOrgIds : [organizationId];
+    getDesigns(ids)
       .then(setDesigns)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [organizationId, designReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, designReady, groupKey]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +83,7 @@ export default function DesignListPage() {
       setShowCreate(false);
       setNewName("");
       // Refresh list — subscription will catch up too.
-      const next = await getDesigns(organizationId);
+      const next = await getDesigns(shareGroupOrgIds.length ? shareGroupOrgIds : [organizationId]);
       setDesigns(next);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create design");

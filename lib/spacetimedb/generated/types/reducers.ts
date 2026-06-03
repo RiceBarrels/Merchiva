@@ -141,6 +141,7 @@ import UpdateMemberPermissionsReducer from "../update_member_permissions_reducer
 import UpdateOpeningHoursReducer from "../update_opening_hours_reducer";
 import UpdateOrderStatusReducer from "../update_order_status_reducer";
 import UpdateOrgReducer from "../update_org_reducer";
+import UpdateOrgParentReducer from "../update_org_parent_reducer";
 import UpdateOrgSubscriptionReducer from "../update_org_subscription_reducer";
 import UpdatePageReducer from "../update_page_reducer";
 import UpdatePerkReducer from "../update_perk_reducer";
@@ -299,6 +300,7 @@ export type UpdateMemberPermissionsParams = __Infer<typeof UpdateMemberPermissio
 export type UpdateOpeningHoursParams = __Infer<typeof UpdateOpeningHoursReducer>;
 export type UpdateOrderStatusParams = __Infer<typeof UpdateOrderStatusReducer>;
 export type UpdateOrgParams = __Infer<typeof UpdateOrgReducer>;
+export type UpdateOrgParentParams = __Infer<typeof UpdateOrgParentReducer>;
 export type UpdateOrgSubscriptionParams = __Infer<typeof UpdateOrgSubscriptionReducer>;
 export type UpdatePageParams = __Infer<typeof UpdatePageReducer>;
 export type UpdatePerkParams = __Infer<typeof UpdatePerkReducer>;

@@ -19,7 +19,7 @@ function slugify(s: string) {
 
 export default function BuilderPage() {
   const t = useT();
-  const { organizationId } = usePermissions();
+  const { organizationId, shareGroupOrgIds } = usePermissions();
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -31,13 +31,18 @@ export default function BuilderPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  // Sites are shared across the share group — every sibling/parent site is
+  // visible from any store in the group.
+  const groupKey = shareGroupOrgIds.join("|");
   useEffect(() => {
     if (!organizationId) return;
-    getSites(organizationId)
+    const ids = shareGroupOrgIds.length ? shareGroupOrgIds : [organizationId];
+    getSites(ids)
       .then(setSites)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [organizationId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, groupKey]);
 
   // Auto-generate slug from name
   useEffect(() => {

@@ -32,4 +32,5 @@ export default __t.row({
   squareItemId: __t.option(__t.string()).name("square_item_id"),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),
+  availableStoreIds: __t.option(__t.string()).name("available_store_ids"),
 });

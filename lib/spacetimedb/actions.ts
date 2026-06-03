@@ -78,6 +78,9 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
     description: data.description ?? null,
     nameI18N: data.nameI18N ? JSON.stringify(data.nameI18N) : null,
     options: data.options ?? null,
+    availableStoreIds: Array.isArray(data.availableStoreIds)
+      ? JSON.stringify(data.availableStoreIds)
+      : (data.availableStoreIds ?? null),
   });
 }
 
@@ -86,6 +89,9 @@ export async function updateProduct(productId: string, data: any): Promise<void>
   const payload = { ...data };
   if (payload.nameI18N && typeof payload.nameI18N !== "string") {
     payload.nameI18N = JSON.stringify(payload.nameI18N);
+  }
+  if (Array.isArray(payload.availableStoreIds)) {
+    payload.availableStoreIds = JSON.stringify(payload.availableStoreIds);
   }
   return offlineAware("updateProduct", { organizationId: orgId(), productId, ...payload });
 }
@@ -762,8 +768,25 @@ export async function redeemPoints(data: any): Promise<void> {
 
 // ─── Team / Org ───────────────────────────────────────────────────────────────
 
-export async function createOrg(name: string): Promise<void> {
-  return conn().reducers.createOrg({ name });
+export async function createOrg(name: string, parentOrgId?: string | null): Promise<void> {
+  return conn().reducers.createOrg({
+    name,
+    parentOrgId: parentOrgId && parentOrgId.length > 0 ? parentOrgId : undefined,
+  });
+}
+
+/**
+ * Attach this org as a sub-store of `parentOrgId`, or detach it (pass null /
+ * undefined / "") to make it a root org again. Owner-only on the server side.
+ */
+export async function updateOrgParent(
+  organizationId: string,
+  parentOrgId: string | null,
+): Promise<void> {
+  return conn().reducers.updateOrgParent({
+    organizationId,
+    parentOrgId: parentOrgId && parentOrgId.length > 0 ? parentOrgId : undefined,
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

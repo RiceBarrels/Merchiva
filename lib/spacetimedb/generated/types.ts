@@ -325,6 +325,7 @@ export const Organization = __t.object("Organization", {
   subscriptionPriceId: __t.option(__t.string()),
   subscriptionInterval: __t.option(__t.string()),
   currentPeriodEnd: __t.option(__t.timestamp()),
+  parentOrgId: __t.option(__t.string()),
 });
 export type Organization = __Infer<typeof Organization>;
 
@@ -384,6 +385,7 @@ export const Product = __t.object("Product", {
   squareItemId: __t.option(__t.string()),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
+  availableStoreIds: __t.option(__t.string()),
 });
 export type Product = __Infer<typeof Product>;
 

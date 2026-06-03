@@ -73,6 +73,12 @@ const organizationTable = table(
     subscriptionPriceId: t.option(t.string()).default(undefined),     // Stripe price id, identifies plan + interval
     subscriptionInterval: t.option(t.string()).default(undefined),    // 'month' | 'year' (derived from price)
     currentPeriodEnd: t.option(t.timestamp()).default(undefined),
+    // Multi-store hierarchy — when set, this org is a sub-store of the given
+    // parent org id. Sub-stores share staff/products/chat/design/sites with
+    // their parent + sibling sub-stores. Inventory and sales forecasts stay
+    // strictly per-org. Two-level only — sub-stores cannot themselves have
+    // children.
+    parentOrgId: t.option(t.string()).default(undefined),
   }
 );
 
@@ -497,6 +503,12 @@ const productTable = table(
     squareItemId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
+    // Multi-store: JSON-encoded array of org ids where this product is sold.
+    // null/missing = sold at every store in the share group (default). When
+    // set, only the listed stores can sell it (the product still belongs to
+    // its originating organizationId). Empty array "[]" means "no store
+    // currently sells it" (hidden everywhere). Added at end per migration rules.
+    availableStoreIds: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1848,12 +1860,34 @@ export const updateProfile = spacetimedb.reducer(
 // ORG REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Create a new organization and make the caller its owner. */
+/**
+ * Create a new organization and make the caller its owner.
+ *
+ * Optional `parentOrgId` makes this a sub-store of an existing org. Validated:
+ * caller must own the parent, and the parent itself must be a root org (no
+ * grandparenting — sub-store hierarchy is one level deep on purpose to keep
+ * sharing semantics obvious).
+ */
 export const createOrg = spacetimedb.reducer(
-  { name: t.string() },
-  (ctx, { name }) => {
+  { name: t.string(), parentOrgId: t.option(t.string()) },
+  (ctx, { name, parentOrgId }) => {
     const user = ctx.db.user.identity.find(ctx.sender);
     if (!user) unauthorized('Must be logged in');
+
+    // Validate parent if provided.
+    let resolvedParentId: string | undefined = undefined;
+    if (parentOrgId && parentOrgId.length > 0) {
+      const parent = [...ctx.db.organization.iter()]
+        .find(o => o.id.toString() === parentOrgId);
+      if (!parent) throw new Error('Parent organization not found');
+      if (parent.ownerId.toString() !== ctx.sender.toString()) {
+        unauthorized('Only the parent organization owner can add a sub-store');
+      }
+      if (parent.parentOrgId) {
+        throw new Error('Sub-stores cannot themselves have sub-stores');
+      }
+      resolvedParentId = parentOrgId;
+    }
 
     const orgId = ctx.newUuidV4();
     ctx.db.organization.insert({
@@ -1866,6 +1900,7 @@ export const createOrg = spacetimedb.reducer(
       subscriptionPriceId: undefined,
       subscriptionInterval: undefined,
       currentPeriodEnd: undefined,
+      parentOrgId: resolvedParentId,
     });
 
     const defaultPermissions = JSON.stringify({
@@ -1934,6 +1969,54 @@ export const updateOrg = spacetimedb.reducer(
     // Note: update requires primaryKey index – rebuild with delete + insert
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({ ...org, name });
+  }
+);
+
+/**
+ * Change the parent-store relationship for an org. Owner only.
+ *
+ * Pass `parentOrgId = undefined` (or empty string) to detach an org from its
+ * parent and turn it into a root org. Pass an org id to attach as a sub-store.
+ * Same validation as createOrg: caller must own the parent, parent must itself
+ * be a root org, target cannot be its own parent.
+ */
+export const updateOrgParent = spacetimedb.reducer(
+  { organizationId: t.string(), parentOrgId: t.option(t.string()) },
+  (ctx, { organizationId, parentOrgId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role !== 'owner') unauthorized('Owner only');
+
+    const org = [...ctx.db.organization.iter()]
+      .find(o => o.id.toString() === organizationId);
+    if (!org) throw new Error('Organization not found');
+
+    // Detach branch — accept null/undefined/"" to clear parent.
+    if (!parentOrgId || parentOrgId.length === 0) {
+      ctx.db.organization.delete(org);
+      ctx.db.organization.insert({ ...org, parentOrgId: undefined });
+      return;
+    }
+
+    if (parentOrgId === organizationId) throw new Error('Org cannot be its own parent');
+
+    const parent = [...ctx.db.organization.iter()]
+      .find(o => o.id.toString() === parentOrgId);
+    if (!parent) throw new Error('Parent organization not found');
+    if (parent.ownerId.toString() !== ctx.sender.toString()) {
+      unauthorized('Only the parent organization owner can attach a sub-store');
+    }
+    if (parent.parentOrgId) {
+      throw new Error('Sub-stores cannot themselves have sub-stores');
+    }
+    // If this org is currently a parent of others, we can't make it a child too.
+    const hasChildren = [...ctx.db.organization.iter()]
+      .some(o => o.parentOrgId === organizationId);
+    if (hasChildren) {
+      throw new Error('Cannot attach an org that already has sub-stores');
+    }
+
+    ctx.db.organization.delete(org);
+    ctx.db.organization.insert({ ...org, parentOrgId });
   }
 );
 
@@ -2505,9 +2588,12 @@ export const addProduct = spacetimedb.reducer(
     description: t.option(t.string()),
     nameI18n: t.option(t.string()),
     options: t.option(t.string()),
+    availableStoreIds: t.option(t.string()),
   },
   (ctx, args) => {
-    const member = findActiveMember(ctx, args.organizationId);
+    // Products are shared across the parent/child share group — accept any
+    // active membership in that group as long as they have products.edit.
+    const member = findShareGroupMember(ctx, args.organizationId);
     const perms = JSON.parse(member.permissions);
     if (!perms.products?.edit) unauthorized('No products edit permission');
 
@@ -2533,6 +2619,7 @@ export const addProduct = spacetimedb.reducer(
       squareItemId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
+      availableStoreIds: args.availableStoreIds,
     });
   }
 );
@@ -2552,13 +2639,23 @@ export const updateProduct = spacetimedb.reducer(
     description: t.option(t.string()),
     nameI18n: t.option(t.string()),
     options: t.option(t.string()),
+    availableStoreIds: t.option(t.string()),
   },
   (ctx, args) => {
-    const member = findActiveMember(ctx, args.organizationId);
+    // organizationId is the caller's current store. The product itself might
+    // live on a sibling/parent store in the share group — so look it up
+    // anywhere in the group, not just under the caller's org.
+    const member = findShareGroupMember(ctx, args.organizationId);
     const perms = JSON.parse(member.permissions);
     if (!perms.products?.edit) unauthorized('No products edit permission');
 
-    const product = findItemInOrg(ctx.db.product, args.organizationId, args.productId);
+    const groupIds = shareGroupOrgIds(ctx, args.organizationId);
+    const product = [...ctx.db.product.iter()]
+      .find((p: { id: { toString(): string }; organizationId: string }) =>
+        p.id.toString() === args.productId && groupIds.includes(p.organizationId)
+      );
+    if (!product) throw new Error('Product not found in share group');
+
     ctx.db.product.delete(product);
     ctx.db.product.insert({
       ...product,
@@ -2575,6 +2672,7 @@ export const updateProduct = spacetimedb.reducer(
       nameI18n: args.nameI18n,
       options: args.options,
       updatedAt: ctx.timestamp,
+      availableStoreIds: args.availableStoreIds,
     });
   }
 );
@@ -2582,11 +2680,16 @@ export const updateProduct = spacetimedb.reducer(
 export const deleteProduct = spacetimedb.reducer(
   { organizationId: t.string(), productId: t.string() },
   (ctx, { organizationId, productId }) => {
-    const member = findActiveMember(ctx, organizationId);
+    const member = findShareGroupMember(ctx, organizationId);
     const perms = JSON.parse(member.permissions);
     if (!perms.products?.edit) unauthorized('No products edit permission');
 
-    const product = findItemInOrg(ctx.db.product, organizationId, productId);
+    const groupIds = shareGroupOrgIds(ctx, organizationId);
+    const product = [...ctx.db.product.iter()]
+      .find((p: { id: { toString(): string }; organizationId: string }) =>
+        p.id.toString() === productId && groupIds.includes(p.organizationId)
+      );
+    if (!product) throw new Error('Product not found in share group');
     ctx.db.product.delete(product);
   }
 );
@@ -5170,6 +5273,52 @@ function findActiveMember(ctx: any, organizationId: string) {
       m.organizationId === organizationId && m.status === 'active'
     );
   if (!member) unauthorized('Not an active member of this organization');
+  return member as {
+    id: { toString(): string };
+    organizationId: string;
+    role: string;
+    permissions: string;
+    status: string;
+  };
+}
+
+/**
+ * Compute the share-group org ids for a given org. Sub-stores share certain
+ * resources (staff, products, chat, design, sites) with their parent + sibling
+ * sub-stores. The share group is: root org + every org whose parentOrgId is
+ * that root. For a root org, the group is { root, ...children }. For a sub-
+ * store, the group is { root, ...all siblings (including self) }.
+ *
+ * Inventory and forecasts are NOT shared — they stay strictly per-org.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function shareGroupOrgIds(ctx: any, organizationId: string): string[] {
+  const org = [...ctx.db.organization.iter()]
+    .find((o: { id: { toString(): string } }) => o.id.toString() === organizationId);
+  if (!org) return [organizationId];
+  const rootId: string = (org.parentOrgId as string | undefined) ?? organizationId;
+  const ids = new Set<string>([rootId]);
+  for (const o of ctx.db.organization.iter()) {
+    if ((o as { parentOrgId?: string }).parentOrgId === rootId) {
+      ids.add((o as { id: { toString(): string } }).id.toString());
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * Like findActiveMember, but accepts membership in ANY org in the share group.
+ * Used by reducers for resources that are shared across the parent/child tree
+ * (products, chat messages). Returns the membership row found.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findShareGroupMember(ctx: any, organizationId: string) {
+  const groupIds = shareGroupOrgIds(ctx, organizationId);
+  const member = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
+    .find((m: { organizationId: string; status: string }) =>
+      groupIds.includes(m.organizationId) && m.status === 'active'
+    );
+  if (!member) unauthorized('Not an active member of this organization or its share group');
   return member as {
     id: { toString(): string };
     organizationId: string;

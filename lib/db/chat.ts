@@ -46,13 +46,15 @@ function toDateMs(v: any): number {
 // ─── Conversations ──────────────────────────────────────────────────────────
 
 export async function getConversations(
-  organizationId: string
+  orgIdOrIds: string | string[]
 ): Promise<ChatConversation[]> {
   const c = conn();
   if (!c) return [];
 
   const currentIdentity = c.identity;
   if (!currentIdentity) return [];
+
+  const orgIds = Array.isArray(orgIdOrIds) ? orgIdOrIds : [orgIdOrIds];
 
   // Get all members to find conversations the current user belongs to
   const allMembers = Array.from(c.db.chatMember.iter());
@@ -62,10 +64,10 @@ export async function getConversations(
       .map((m: any) => m.conversationId)
   );
 
-  // Get conversations for this org that the user is a member of
+  // Get conversations for any share-group org that the user is a member of
   const allConversations = Array.from(c.db.chatConversation.iter());
   const filtered = allConversations.filter(
-    (r: any) => r.organizationId === organizationId && myConvIds.has(r.id.toString())
+    (r: any) => orgIds.includes(r.organizationId) && myConvIds.has(r.id.toString())
   );
 
   // Sort by updatedAt descending

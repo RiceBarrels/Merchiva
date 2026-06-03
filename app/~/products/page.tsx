@@ -47,7 +47,7 @@ import {
   Cell,
 } from "recharts";
 import { useRouter } from "next/navigation";
-import { addProduct, deleteProduct } from "@/lib/spacetimedb/actions";
+import { addProduct, deleteProduct, updateProduct } from "@/lib/spacetimedb/actions";
 import type { Product } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
@@ -88,18 +88,81 @@ const BLANK: Partial<Product> = {
 
 export default function ProductsPage() {
   const t = useT();
-  const { organizationId } = usePermissions();
+  const { organizationId, shareGroupOrgs } = usePermissions();
   const router = useRouter();
   // Data via SpacetimeDB migration hook
   const { products, refreshing, userId } = useProducts(organizationId);
+  // Multi-store mode is "on" when this org belongs to a share group of more
+  // than one store — surface the "sold at" picker + the store column then.
+  const multiStoreMode = shareGroupOrgs.length > 1;
 
   const [search, setSearch]     = useState("");
   const [category, setCategory] = useState("All");
   const [filterAlert, setFilterAlert] = useState<"all" | "alerts">("all");
+  // "all" | "current" — when multi-store, default to current store so the
+  // table mirrors what a customer would see; users can flip to the full
+  // catalog to edit hidden items.
+  const [storeFilter, setStoreFilter] = useState<"all" | "current">("current");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<Partial<Product>>(BLANK);
   const [saving, setSaving] = useState(false);
   const [showTranslations, setShowTranslations] = useState(false);
+  // Per-product "Sold at" editor — separate from the add dialog so users can
+  // change visibility without reopening the full product form.
+  const [storesEditId, setStoresEditId] = useState<string | null>(null);
+  const [storesEditValue, setStoresEditValue] = useState<string[] | undefined>(undefined);
+  const [storesSaving, setStoresSaving] = useState(false);
+  const editingProduct = storesEditId
+    ? products.find((p) => p.id === storesEditId) ?? null
+    : null;
+  const openStoresEditor = (p: Product) => {
+    setStoresEditId(p.id);
+    setStoresEditValue(p.availableStoreIds ?? undefined);
+  };
+  const toggleStoresEdit = (storeId: string) => {
+    setStoresEditValue((current) => {
+      if (!current) {
+        return shareGroupOrgs.map((s) => s.id).filter((id) => id !== storeId);
+      }
+      const set = new Set(current);
+      if (set.has(storeId)) set.delete(storeId);
+      else set.add(storeId);
+      const next = [...set];
+      if (next.length === shareGroupOrgs.length) return undefined;
+      return next;
+    });
+  };
+  const saveStoresEditor = async () => {
+    if (!storesEditId || !editingProduct) return;
+    setStoresSaving(true);
+    try {
+      // Reducer arg shape: pass every editable field (the reducer requires
+      // them) plus the new availableStoreIds. JSON.stringify on the action
+      // boundary handles arrays.
+      await updateProduct(storesEditId, {
+        name: editingProduct.name,
+        category: editingProduct.category,
+        price: editingProduct.price,
+        cost: editingProduct.cost,
+        trend: editingProduct.trend,
+        alert: editingProduct.alert,
+        alertReason: editingProduct.alertReason ?? null,
+        imageUrl: editingProduct.imageUrl ?? null,
+        description: editingProduct.description ?? null,
+        nameI18N: editingProduct.nameI18n ?? null,
+        options: null,
+        availableStoreIds: storesEditValue ?? null,
+      });
+      hapticSuccess();
+      toast.success(t("multiStore.products.savedToast"));
+      setStoresEditId(null);
+    } catch (err) {
+      console.error(err);
+      toast.error(t("multiStore.products.saveFailedToast"));
+    } finally {
+      setStoresSaving(false);
+    }
+  };
 
   const CATEGORIES = ["All", ...Array.from(new Set(products.map((p) => p.category)))];
 
@@ -107,8 +170,43 @@ export default function ProductsPage() {
     const matchCat    = category === "All" || p.category === category;
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchAlert  = filterAlert === "all" || p.alert !== "none";
-    return matchCat && matchSearch && matchAlert;
+    // Multi-store visibility: "current" hides products that aren't sold at
+    // this store (availableStoreIds set and doesn't include us). "all" shows
+    // every product in the share group regardless.
+    const matchStore = !multiStoreMode || storeFilter === "all"
+      ? true
+      : !p.availableStoreIds || p.availableStoreIds.length === 0
+        ? !p.availableStoreIds // null = sold everywhere (true); [] = sold nowhere (false)
+        : p.availableStoreIds.includes(organizationId ?? "");
+    return matchCat && matchSearch && matchAlert && matchStore;
   });
+
+  // Toggle a single store id in form.availableStoreIds. The "all stores"
+  // option corresponds to availableStoreIds === undefined (the default).
+  const toggleStoreInForm = (storeId: string) => {
+    setForm((f) => {
+      const current = f.availableStoreIds;
+      if (!current) {
+        // Was "all stores" — switch to explicit list of every store EXCEPT
+        // the one just removed (so the toggle reads naturally).
+        const next = shareGroupOrgs.map((s) => s.id).filter((id) => id !== storeId);
+        return { ...f, availableStoreIds: next };
+      }
+      const set = new Set(current);
+      if (set.has(storeId)) set.delete(storeId);
+      else set.add(storeId);
+      const next = [...set];
+      // If the user re-selected every store, collapse back to undefined so the
+      // row reads as "sold everywhere" rather than carrying a stale list.
+      if (next.length === shareGroupOrgs.length) {
+        return { ...f, availableStoreIds: undefined };
+      }
+      return { ...f, availableStoreIds: next };
+    });
+  };
+  const setAllStoresInForm = () => {
+    setForm((f) => ({ ...f, availableStoreIds: undefined }));
+  };
 
   const handleAdd = async () => {
     if (!form.name) {
@@ -295,6 +393,18 @@ export default function ProductsPage() {
                 >
                   <AlertTriangle className="h-3.5 w-3.5" /> {t("products.filters.alertsOnly")}
                 </Button>
+                {multiStoreMode && (
+                  <Button
+                    variant={storeFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStoreFilter((f) => f === "all" ? "current" : "all")}
+                    className="gap-1.5 shrink-0"
+                  >
+                    {storeFilter === "all"
+                      ? t("multiStore.products.filterShowingAll")
+                      : t("multiStore.products.filterShowingCurrent")}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -311,6 +421,7 @@ export default function ProductsPage() {
                     <TableHead>{t("products.table.rating")}</TableHead>
                     <TableHead>{t("products.table.trend")}</TableHead>
                     <TableHead>{t("products.table.status")}</TableHead>
+                    {multiStoreMode && <TableHead>{t("multiStore.products.tableHead")}</TableHead>}
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -382,6 +493,23 @@ export default function ProductsPage() {
                             {t(cfg.labelKey)}
                           </div>
                         </TableCell>
+                        {multiStoreMode && (
+                          <TableCell>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openStoresEditor(p); }}
+                              className="text-xs px-1.5 py-0.5 rounded border border-border bg-muted/40 hover:bg-muted transition-colors text-muted-foreground"
+                            >
+                              {!p.availableStoreIds
+                                ? t("multiStore.products.cellAll")
+                                : p.availableStoreIds.length === 0
+                                  ? t("multiStore.products.cellNone")
+                                  : t("multiStore.products.cellCount").replace(
+                                      "{count}",
+                                      String(p.availableStoreIds.length),
+                                    )}
+                            </button>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}>
                             <XCircle className="h-3.5 w-3.5" />
@@ -392,7 +520,7 @@ export default function ProductsPage() {
                   })}
                   {filtered.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-muted-foreground py-10">{t("products.table.noResults")}</TableCell>
+                      <TableCell colSpan={multiStoreMode ? 11 : 10} className="text-center text-muted-foreground py-10">{t("products.table.noResults")}</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -486,6 +614,64 @@ export default function ProductsPage() {
               />
               <p className="text-[11px] text-muted-foreground text-right">{(form.description ?? "").length}/500</p>
             </div>
+            {/* Sold at — multi-store visibility picker. Only shown when this
+                org belongs to a parent/child share group with more than one store. */}
+            {multiStoreMode && (
+              <div className="space-y-1.5">
+                <Label>{t("multiStore.products.soldAtLabel")}</Label>
+                <div className="rounded-[0.3rem] border border-border bg-muted/30 divide-y divide-border">
+                  <label className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-muted/60 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={form.availableStoreIds === undefined || form.availableStoreIds === null}
+                      onChange={(e) => {
+                        if (e.target.checked) setAllStoresInForm();
+                        else setForm((f) => ({ ...f, availableStoreIds: [] }));
+                      }}
+                      className="h-3.5 w-3.5"
+                    />
+                    <span className="text-sm font-medium">{t("multiStore.products.allStores")}</span>
+                    <span className="ml-auto text-[11px] text-muted-foreground">
+                      {t("multiStore.products.allStoresHint")}
+                    </span>
+                  </label>
+                  {(form.availableStoreIds !== undefined && form.availableStoreIds !== null) && (
+                    <div className="divide-y divide-border">
+                      {shareGroupOrgs.map((s) => {
+                        const checked = (form.availableStoreIds ?? []).includes(s.id);
+                        return (
+                          <label
+                            key={s.id}
+                            className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-muted/60 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleStoreInForm(s.id)}
+                              className="h-3.5 w-3.5"
+                            />
+                            <span className="text-sm">{s.name}</span>
+                            {s.parentOrgId && (
+                              <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px">
+                                {t("multiStore.subBadge")}
+                              </span>
+                            )}
+                            {s.id === organizationId && (
+                              <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
+                                {t("multiStore.products.thisStore")}
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {t("multiStore.products.soldAtHelp")}
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>{t("products.dialog.unitsThisMonth")}</Label>
@@ -518,6 +704,74 @@ export default function ProductsPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("products.dialog.cancel")}</Button>
             <Button onClick={handleAdd} disabled={saving}>
               {saving ? <Spinner size={16} /> : t("products.dialog.submit")}
+            </Button>
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
+      {/* Per-product "Sold at" picker — small modal triggered from the table cell. */}
+      <DynamicUIElement open={!!storesEditId} onOpenChange={(open) => !open && setStoresEditId(null)}>
+        <DynamicUIElementContent className="max-w-md">
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle>{t("multiStore.products.dialogTitle")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>
+              {editingProduct ? editingProduct.name : ""}
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-[0.3rem] border border-border bg-muted/30 divide-y divide-border">
+              <label className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-muted/60 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={storesEditValue === undefined || storesEditValue === null}
+                  onChange={(e) => {
+                    if (e.target.checked) setStoresEditValue(undefined);
+                    else setStoresEditValue([]);
+                  }}
+                  className="h-3.5 w-3.5"
+                />
+                <span className="text-sm font-medium">{t("multiStore.products.allStores")}</span>
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  {t("multiStore.products.allStoresHint")}
+                </span>
+              </label>
+              {(storesEditValue !== undefined && storesEditValue !== null) && (
+                <div className="divide-y divide-border">
+                  {shareGroupOrgs.map((s) => {
+                    const checked = storesEditValue.includes(s.id);
+                    return (
+                      <label
+                        key={s.id}
+                        className="flex items-center gap-2 px-2.5 py-1.5 cursor-pointer hover:bg-muted/60 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleStoresEdit(s.id)}
+                          className="h-3.5 w-3.5"
+                        />
+                        <span className="text-sm">{s.name}</span>
+                        {s.parentOrgId && (
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px">
+                            {t("multiStore.subBadge")}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {t("multiStore.products.soldAtHelp")}
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setStoresEditId(null)} disabled={storesSaving}>
+              {t("products.dialog.cancel")}
+            </Button>
+            <Button onClick={saveStoresEditor} disabled={storesSaving}>
+              {storesSaving ? <Spinner size={16} /> : t("products.dialog.submit")}
             </Button>
           </div>
         </DynamicUIElementContent>

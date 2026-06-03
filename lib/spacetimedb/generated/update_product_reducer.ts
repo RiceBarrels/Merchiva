@@ -24,4 +24,5 @@ export default {
   description: __t.option(__t.string()),
   nameI18N: __t.option(__t.string()),
   options: __t.option(__t.string()),
+  availableStoreIds: __t.option(__t.string()),
 };

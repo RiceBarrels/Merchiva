@@ -16,12 +16,13 @@ function designFromRow(row: any): Design {
   };
 }
 
-export async function getDesigns(organizationId: string): Promise<Design[]> {
+export async function getDesigns(orgIdOrIds: string | string[]): Promise<Design[]> {
   const c = getConnection();
   if (!c) return [];
+  const ids = Array.isArray(orgIdOrIds) ? orgIdOrIds : [orgIdOrIds];
   const rows = (c as any).db.design.iter();
   return Array.from(rows)
-    .filter((r: any) => r.organizationId === organizationId)
+    .filter((r: any) => ids.includes(r.organizationId))
     .map(designFromRow)
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }

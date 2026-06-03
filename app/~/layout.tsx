@@ -202,12 +202,35 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 
     const orgs: OrgSummary[] = myMemberships.map((m) => {
       const org = organizations.find((o) => o.id.toString() === m.organizationId.toString());
-      return { id: m.organizationId.toString(), name: org?.name ?? "Unknown" };
+      return {
+        id: m.organizationId.toString(),
+        name: org?.name ?? "Unknown",
+        parentOrgId: org?.parentOrgId ?? null,
+      };
     });
+    // Pull in any orgs we DON'T have membership in but that are part of the
+    // current org's parent/child tree — needed so the share-group lookup
+    // resolves a parent even when the user is only a member of a sub-store.
+    const currentOrgRow = organizations.find((o) => o.id.toString() === orgId.toString());
+    const rootIdString = (currentOrgRow?.parentOrgId as string | undefined) ?? orgId.toString();
+    const treeRows = organizations.filter(
+      (o) => o.id.toString() === rootIdString || (o.parentOrgId as string | undefined) === rootIdString,
+    );
+    for (const o of treeRows) {
+      const idStr = o.id.toString();
+      if (!orgs.some((existing) => existing.id === idStr)) {
+        orgs.push({
+          id: idStr,
+          name: o.name,
+          parentOrgId: (o.parentOrgId as string | undefined) ?? null,
+        });
+      }
+    }
 
     const currentOrg: OrgSummary = {
       id: orgId.toString(),
-      name: organizations.find((o) => o.id.toString() === orgId.toString())?.name ?? "Unknown",
+      name: currentOrgRow?.name ?? "Unknown",
+      parentOrgId: (currentOrgRow?.parentOrgId as string | undefined) ?? null,
     };
 
     const role = activeMembership.role as OrgRole;

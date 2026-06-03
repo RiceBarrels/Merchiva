@@ -126,6 +126,8 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
+  // null = create as a root store; an org id = create as a sub-store of that org
+  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -142,6 +144,39 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
+  // Build a parent → children tree from the flat org list. Only top-level
+  // (no parentOrgId) orgs become roots; everything else is rendered indented
+  // under its parent. Orgs whose parent isn't in the user's accessible list
+  // (rare — happens when membership doesn't extend to the root) fall back to
+  // rendering at the root for visibility.
+  type TreeNode = { org: typeof organizations[number]; children: typeof organizations };
+  const tree: TreeNode[] = (() => {
+    const byId = new Map(organizations.map((o) => [o.id, o] as const));
+    const roots: TreeNode[] = [];
+    const childrenOf = new Map<string, typeof organizations>();
+    for (const org of organizations) {
+      const parent = org.parentOrgId && byId.has(org.parentOrgId) ? org.parentOrgId : null;
+      if (parent) {
+        const arr = childrenOf.get(parent) ?? [];
+        arr.push(org);
+        childrenOf.set(parent, arr);
+      }
+    }
+    for (const org of organizations) {
+      const isRoot = !org.parentOrgId || !byId.has(org.parentOrgId);
+      if (isRoot) {
+        roots.push({ org, children: childrenOf.get(org.id) ?? [] });
+      }
+    }
+    return roots.sort((a, b) => a.org.name.localeCompare(b.org.name));
+  })();
+
+  // Only root orgs can be parents (we enforce one-level hierarchy on the
+  // server) and only the owner can attach a sub-store — but we don't know who
+  // owns each org client-side, so we show every root and let the reducer
+  // reject if the caller doesn't own the chosen parent.
+  const eligibleParents = organizations.filter((o) => !o.parentOrgId);
+
   const handleSwitch = async (orgId: string) => {
     if (orgId === currentOrg?.id) { setOpen(false); return; }
     hapticMedium();
@@ -157,11 +192,12 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      await createOrg(name);
+      await createOrg(name, newParentId);
       hapticSuccess();
       setOpen(false);
       setCreating(false);
       setNewStoreName("");
+      setNewParentId(null);
       onClose?.();
       // Refresh so PermissionsProvider picks up the new org membership
       // and switches the active org.
@@ -180,21 +216,46 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
       >
         <span className="flex-1 truncate text-left">{currentOrg?.name ?? t("nav.selectStore")}</span>
+        {currentOrg?.parentOrgId && (
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px shrink-0">
+            {t("multiStore.subBadge")}
+          </span>
+        )}
         <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
 
       {open && (
-        <div className="absolute left-3 right-3 top-full mt-1 z-50 rounded border border-border bg-card shadow-md">
+        <div className="absolute left-3 right-3 top-full mt-1 z-50 rounded border border-border bg-card shadow-md max-h-[70vh] overflow-y-auto">
           <div className="py-1">
-            {organizations.map((org) => (
-              <button
-                key={org.id}
-                onClick={() => handleSwitch(org.id)}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
-              >
-                <span className="flex-1 truncate">{org.name}</span>
-                {org.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
-              </button>
+            {tree.map((node) => (
+              <div key={node.org.id}>
+                <button
+                  onClick={() => handleSwitch(node.org.id)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
+                >
+                  <span className="flex-1 truncate font-medium">{node.org.name}</span>
+                  {node.children.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {node.children.length}
+                    </span>
+                  )}
+                  {node.org.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+                </button>
+                {node.children.map((child) => (
+                  <button
+                    key={child.id}
+                    onClick={() => handleSwitch(child.id)}
+                    className="flex w-full items-center gap-2 pl-7 pr-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
+                  >
+                    <span className="text-muted-foreground/70">↳</span>
+                    <span className="flex-1 truncate">{child.name}</span>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px shrink-0">
+                      {t("multiStore.subBadge")}
+                    </span>
+                    {child.id === currentOrg?.id && <Check className="h-3.5 w-3.5 text-foreground shrink-0" />}
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
 
@@ -216,6 +277,26 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                   placeholder={t("nav.storeName")}
                   className="w-full rounded border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-foreground/20"
                 />
+                {eligibleParents.length > 0 && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("multiStore.parentLabel")}
+                    </label>
+                    <select
+                      value={newParentId ?? ""}
+                      onChange={(e) => setNewParentId(e.target.value || null)}
+                      className="w-full rounded border border-border bg-background px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-foreground/20"
+                    >
+                      <option value="">{t("multiStore.parentNone")}</option>
+                      {eligibleParents.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      {newParentId ? t("multiStore.parentHelpSub") : t("multiStore.parentHelpRoot")}
+                    </p>
+                  </div>
+                )}
                 {error && <p className="text-xs text-destructive">{error}</p>}
                 <div className="flex gap-1.5">
                   <button
@@ -227,7 +308,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setCreating(false); setError(null); setNewStoreName(""); }}
+                    onClick={() => { setCreating(false); setError(null); setNewStoreName(""); setNewParentId(null); }}
                     className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
                   >
                     {t("common.cancel")}
