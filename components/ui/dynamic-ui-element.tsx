@@ -314,26 +314,32 @@ function useDialogBgPush({
   scale,
   radius,
   active,
+  transition,
 }: {
   depth: number;
   shift: number;
   scale: number;
   radius: number;
   active: boolean;
+  // Override the default ease (for example "none" while the user is dragging
+  // so the bg tracks the finger instead of lerping behind it). Defaults to the
+  // 500ms cubic-bezier used for open / close.
+  transition?: string;
 }) {
   const targetRef = React.useRef<HTMLElement | null>(null);
   React.useLayoutEffect(() => {
     targetRef.current = findBgTarget(depth);
   }, [depth]);
 
+  const tr = transition ?? DIALOG_BG_TRANSITION;
   React.useLayoutEffect(() => {
     const el = targetRef.current;
     if (!el) return;
-    el.style.transition = DIALOG_BG_TRANSITION;
+    el.style.transition = tr;
     el.style.transform = `translateX(${shift}px) scale(${scale})`;
     el.style.borderRadius = `${radius}px`;
     el.style.overflow = active ? "hidden" : "";
-  }, [shift, scale, radius, active, depth]);
+  }, [shift, scale, radius, active, depth, tr]);
 
   React.useEffect(() => {
     return () => {
@@ -388,33 +394,7 @@ function MobileDynamicUIElementPage({
 }: DialogPrimitive.Popup.Props & { noPadding?: boolean }) {
   const [mobileTitle, setMobileTitle] = React.useState("");
   const ref = React.useRef<HTMLDivElement>(null);
-
-  // Allocate depth synchronously on first render so the background-push effect
-  // targets the correct underlying layer from the very first paint. Doing this
-  // in useEffect (post-render) meant `depth` was 0 for every nested dialog's
-  // first render, so they pushed `mobile-content` instead of the parent dialog,
-  // and the parent never slid left until a later re-render — by which point
-  // the entry animation had already played.
-  const initRef = React.useRef<{ depth: number; id: string } | null>(null);
-  if (initRef.current === null) {
-    const d = globalDynamicUIElementCount;
-    const id = `mobile-dialog-${d}`;
-    globalDynamicUIElementIds.push(id);
-    globalDynamicUIElementCount++;
-    notifyDynamicUIElementListeners();
-    initRef.current = { depth: d, id };
-  }
-  const depth = initRef.current.depth;
-  const myId = initRef.current.id;
-
-  React.useEffect(() => {
-    return () => {
-      globalDynamicUIElementCount--;
-      const idx = globalDynamicUIElementIds.indexOf(myId);
-      if (idx >= 0) globalDynamicUIElementIds.splice(idx, 1);
-      notifyDynamicUIElementListeners();
-    };
-  }, [myId]);
+  const depth = useDialogDepth();
   const [offsetX, setOffsetX] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [entered, setEntered] = React.useState(false);
@@ -506,23 +486,21 @@ function MobileDynamicUIElementPage({
   const bgShift = bgActive ? -screenW * 0.3 * (1 - progress) : 0;
   const bgRadius = bgActive ? Math.round(12 * (1 - progress)) : 0;
 
-  const transition = dragging ? "none" : "transform 500ms cubic-bezier(0.32, 0.72, 0, 1), border-radius 500ms cubic-bezier(0.32, 0.72, 0, 1)";
+  const transition = dragging ? "none" : DIALOG_BG_TRANSITION;
 
-  React.useEffect(() => {
-    const targetId = depth === 0 ? "mobile-content" : `mobile-dialog-${depth - 1}`;
-    const el = document.getElementById(targetId);
-    if (!el) return;
-    el.style.transition = transition;
-    el.style.transform = `translateX(${bgShift}px) scale(${bgScale})`;
-    el.style.borderRadius = `${bgRadius}px`;
-    el.style.overflow = bgActive ? "hidden" : "";
-    return () => {
-      el.style.transition = transition;
-      el.style.transform = "";
-      el.style.borderRadius = "";
-      el.style.overflow = "";
-    };
-  }, [entered, exiting, bgShift, bgScale, bgRadius, bgActive, transition, depth]);
+  // Push the layer underneath us — handled by the shared hook so the cleanup
+  // semantics stay correct (no per-dep-change snap-back; unmount animates
+  // smoothly to identity). Previously this was inlined here with a cleanup
+  // that reset transform on every dep change, which made the bg occasionally
+  // skip its slide-left because the reset raced the apply.
+  useDialogBgPush({
+    depth,
+    shift: bgShift,
+    scale: bgScale,
+    radius: bgRadius,
+    active: bgActive,
+    transition,
+  });
 
   return (
     <MobileDynamicUIElementDepthContext.Provider value={depth + 1}>
@@ -613,41 +591,102 @@ function DynamicUIElementContent({
     );
   }
 
-  // Desktop right-side panel (Sheet behaviour)
+  // Desktop right-side panel (Sheet behaviour) — the layer underneath gets a
+  // medium push (~60px) so the panel reads as a sheet sliding in over the app,
+  // not just a floating overlay.
   if (side === "right") {
     return (
-      <DynamicUIElementPortal>
-        <DynamicUIElementOverlay />
-        <DialogPrimitive.Popup
-          data-slot="dialog-content"
-          initialFocus={false}
-          className={cn(
-            "fixed right-0 top-0 bottom-0 z-50 h-full w-full max-w-md bg-background outline-none shadow-2xl duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right overflow-y-auto",
-            className
-          )}
-          {...props}
-        >
-          {children}
-          {showCloseButton && (
-            <DialogPrimitive.Close
-              data-slot="dialog-close"
-              render={
-                <Button
-                  variant="ghost"
-                  className="absolute top-2 right-2"
-                  size="icon-sm"
-                />
-              }
-            >
-              <XIcon />
-              <span className="sr-only">Close</span>
-            </DialogPrimitive.Close>
-          )}
-        </DialogPrimitive.Popup>
-      </DynamicUIElementPortal>
+      <DesktopSidePanelPage
+        className={className}
+        showCloseButton={showCloseButton}
+        {...props}
+      >
+        {children}
+      </DesktopSidePanelPage>
     );
   }
 
+  return (
+    <DesktopCenteredModalPage
+      className={className}
+      showCloseButton={showCloseButton}
+      {...props}
+    >
+      {children}
+    </DesktopCenteredModalPage>
+  );
+}
+
+/**
+ * Desktop right-side sheet. Tracks dialog depth + pushes the layer below it
+ * leftward so it feels like an iOS-style stack (not just a floating overlay).
+ */
+function DesktopSidePanelPage({
+  children,
+  className,
+  showCloseButton,
+  ...props
+}: DialogPrimitive.Popup.Props & { showCloseButton?: boolean }) {
+  const depth = useDialogDepth();
+  useDialogBgPush({
+    depth,
+    shift: -60,
+    scale: 0.985,
+    radius: 12,
+    active: true,
+  });
+  return (
+    <DynamicUIElementPortal>
+      <DynamicUIElementOverlay />
+      <DialogPrimitive.Popup
+        data-slot="dialog-content"
+        initialFocus={false}
+        className={cn(
+          "fixed right-0 top-0 bottom-0 z-50 h-full w-full max-w-md bg-background outline-none shadow-2xl duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right overflow-y-auto",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close
+            data-slot="dialog-close"
+            render={
+              <Button
+                variant="ghost"
+                className="absolute top-2 right-2"
+                size="icon-sm"
+              />
+            }
+          >
+            <XIcon />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Popup>
+    </DynamicUIElementPortal>
+  );
+}
+
+/**
+ * Desktop centered modal. Push is subtle (~16px / scale 0.99) — the modal
+ * already has its own zoom-in animation, and a heavier shift would compete
+ * with that. The point is the depth cue, not a full sheet slide.
+ */
+function DesktopCenteredModalPage({
+  children,
+  className,
+  showCloseButton,
+  ...props
+}: DialogPrimitive.Popup.Props & { showCloseButton?: boolean }) {
+  const depth = useDialogDepth();
+  useDialogBgPush({
+    depth,
+    shift: -16,
+    scale: 0.99,
+    radius: 8,
+    active: true,
+  });
   return (
     <DynamicUIElementPortal>
       <DynamicUIElementOverlay />

@@ -1569,7 +1569,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel id="shell-main" minSize={360}>
-            <div className="flex h-full flex-col overflow-hidden">
+            {/* id="desktop-content" mirrors id="mobile-content" so DynamicUIElement's
+                bg-push effect can target the right element on either layout. */}
+            <div id="desktop-content" className="flex h-full flex-col overflow-hidden">
               {storeMachineMode && <StoreTopBar deviceName={smDeviceName} />}
               <main className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
                 <PageTransition>
