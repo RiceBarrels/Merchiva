@@ -1042,6 +1042,36 @@ export async function updatePurchaseOrderStatus(orderId: string, status: string)
   return offlineAware("updatePurchaseOrderStatus", { organizationId: orgId(), orderId, status });
 }
 
+// Record a supplier purchase order placed by Mr. Merchiva. Written over the
+// live WebSocket connection (NOT the server route) so it always uses the
+// active, authenticated session. The server-side HTTP RPC path was failing
+// with "Invalid token: ExpiredSignature" on long sessions because it reused a
+// stale localStorage token; the order route now only sends the email.
+export async function recordSupplierOrder(data: {
+  supplierId: string;
+  supplierName: string;
+  items: string; // JSON-encoded line items, matching what was emailed
+  subtotal: number;
+  tax: number;
+  total: number;
+  notes?: string | null;
+  summary: string;
+  emailed: boolean;
+}): Promise<void> {
+  return offlineAware("recordSupplierOrder", {
+    organizationId: orgId(),
+    supplierId: data.supplierId,
+    supplierName: data.supplierName,
+    items: data.items,
+    subtotal: data.subtotal,
+    tax: data.tax,
+    total: data.total,
+    notes: data.notes ?? null,
+    summary: data.summary,
+    emailed: data.emailed,
+  });
+}
+
 // ─── Expenses ────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

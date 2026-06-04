@@ -35,8 +35,9 @@ import {
   updateTrainingObjective,
   deleteTrainingObjective,
   setPunchInCode,
+  recordSupplierOrder,
 } from "@/lib/spacetimedb/actions";
-import { getConnection, getActiveOrgId, getStoredToken } from "@/lib/spacetimedb/client";
+import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -898,6 +899,7 @@ register({
   description:
     "Order inventory from a supplier: email them the purchase order AND record it. Use this (not createPurchaseOrder) when restocking. supplierId MUST match a supplier in LIVE STORE DATA; if the low-stock item's `supplier` name has no matching supplier record (no id), ask to add the supplier first via addSupplier. If the supplier has no email on file, the order is still saved as a draft and managers are notified. " +
     "WHEN A STOCK ITEM IS LOW, don't just say 'tell me if you want me to order' — EMIT this action so the manager gets an Approve/Reject card to confirm contacting the supplier. " +
+    "INTENT = ORDER: requests like '联系供应商 X' / 'contact the supplier for X' / '给 X 下单' / '订货' / 'order more X' / 'restock X' / '补货' ALL mean PLACE AN ORDER. Resolve X (an inventory item) → find its `supplier` name → the matching supplier record's id, compute the restock quantity (see QUANTITIES), and EMIT this action. Do NOT just print the supplier's name / email / phone and tell the user to reach out themselves — emailing the PO is exactly what this action does. Showing contact info instead of emitting the action is wrong. The ONLY time you ask first is when you're missing a hard requirement: no matching supplier id (then offer addSupplier), or the item/quantity is genuinely ambiguous. " +
     "QUANTITIES: order enough to reach the item's max stock, but if the item has `unitsPerCase` set, round the quantity UP to a whole multiple of it (order full cases), and never order below `minOrderQty` when set. Show case math in your text (e.g. 'need 80 → 7 cases × 12 = 84').",
   category: "suppliers",
   parameters: {
@@ -913,8 +915,6 @@ register({
   execute: async (p) => {
     const conn = getConnection();
     if (!conn) throw new Error("Not connected to SpacetimeDB");
-    const token = getStoredToken();
-    if (!token) throw new Error("Not authenticated");
     const organizationId = getActiveOrgId();
 
     const supplierId = String(p.supplierId ?? "");
@@ -955,14 +955,16 @@ register({
     const tax = Number(p.tax ?? 0);
     const total = Number(p.total ?? subtotal + tax);
 
+    // 1) Server route sends the PO email (server-only Resend) and returns the
+    //    canonical summary/totals + whether it actually emailed.
+    const supplierName = String(supplier.name ?? "");
     const res = await fetch("/api/suppliers/order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        token,
         organizationId,
         supplierId,
-        supplierName: supplier.name ?? "",
+        supplierName,
         supplierEmail: supplier.email ?? null,
         contactName: supplier.contactName ?? null,
         orgName: org?.name ?? null,
@@ -978,9 +980,33 @@ register({
       const e = await res.json().catch(() => ({}));
       throw new Error(e.error ?? `Order failed (${res.status})`);
     }
-    const data = (await res.json()) as { emailed?: boolean };
+    const data = (await res.json()) as {
+      emailed?: boolean;
+      summary?: string;
+      subtotal?: number;
+      tax?: number;
+      total?: number;
+    };
+    const emailed = !!data.emailed;
+
+    // 2) Record the PO over the LIVE connection (not the server route) so the
+    //    write uses the active, authenticated session and can't fail with an
+    //    expired token. Manager-only permission is still enforced server-side
+    //    by the reducer. If the email failed, this saves a draft + escalates.
+    await recordSupplierOrder({
+      supplierId,
+      supplierName,
+      items: JSON.stringify(items),
+      subtotal: data.subtotal ?? subtotal,
+      tax: data.tax ?? tax,
+      total: data.total ?? total,
+      notes: p.notes ? String(p.notes) : null,
+      summary: data.summary ?? "",
+      emailed,
+    });
+
     // Stash for toastMessage (executeAction passes the same object to both).
-    (p as Record<string, unknown>).__emailed = !!data.emailed;
+    (p as Record<string, unknown>).__emailed = emailed;
   },
   toastMessage: (p) =>
     (p as Record<string, unknown>).__emailed

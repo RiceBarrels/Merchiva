@@ -8,6 +8,20 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
+import { useI18n } from "@/lib/i18n/context";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import type { Locale } from "@/lib/i18n/config";
+
+// Prefix internal marketing links with the active locale so navigation stays in
+// the same language without a proxy redirect hop. Auth routes (/login, /signup)
+// are not localized; "#"/external links pass through untouched.
+const LOCALIZED_ROUTES = ["/features", "/pricing", "/download", "/about", "/blogs", "/changelog"];
+function localizeHref(href: string, locale: Locale): string {
+  if (href === "/") return `/${locale}`;
+  if (href.startsWith("/#")) return `/${locale}${href.slice(1)}`;
+  if (LOCALIZED_ROUTES.some((r) => href === r || href.startsWith(`${r}/`))) return `/${locale}${href}`;
+  return href;
+}
 
 const C = {
   bg: "#f0eee9",
@@ -35,16 +49,19 @@ function NotchM({ size = 22, fg = C.ink }: { size?: number; fg?: string }) {
   );
 }
 
-const NAV_LINKS: { key: SiteNavKey; label: string; href: string }[] = [
-  { key: "features", label: "Features", href: "/features" },
-  { key: "pricing", label: "Pricing", href: "/pricing" },
-  { key: "download", label: "Download", href: "/download" },
-  { key: "about", label: "About", href: "/about" },
-  { key: "blog", label: "Blog", href: "/blogs" },
-  { key: "changelog", label: "Changelog", href: "/changelog" },
+// `navKey` indexes landing.nav.* in the dictionaries; href is locale-prefixed
+// at render time via localizeHref().
+const NAV_LINKS: { key: SiteNavKey; navKey: string; href: string }[] = [
+  { key: "features", navKey: "features", href: "/features" },
+  { key: "pricing", navKey: "pricing", href: "/pricing" },
+  { key: "download", navKey: "download", href: "/download" },
+  { key: "about", navKey: "about", href: "/about" },
+  { key: "blog", navKey: "blog", href: "/blogs" },
+  { key: "changelog", navKey: "changelog", href: "/changelog" },
 ];
 
 function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.RefObject<HTMLElement | null> }) {
+  const { locale, t } = useI18n();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
@@ -72,7 +89,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
       }}
     >
       <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: 16 }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: C.ink, padding: "6px 4px", marginLeft: -4 }}>
+        <Link href={`/${locale}`} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: C.ink, padding: "6px 4px", marginLeft: -4 }}>
           <NotchM size={22} />
           <span style={{ fontFamily: C.sans, fontWeight: 600, fontSize: 17, color: C.ink, letterSpacing: -0.8, lineHeight: 1 }}>
             Merchiva
@@ -85,7 +102,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
             return (
               <Link
                 key={x.key}
-                href={x.href}
+                href={localizeHref(x.href, locale)}
                 style={{
                   fontSize: 13,
                   color: isActive ? C.ink : C.text3,
@@ -95,7 +112,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
                 }}
                 className="hover:!text-stone-900 dark:text-stone-100 transition-colors"
               >
-                {x.label}
+                {t(`landing.nav.${x.navKey}`)}
               </Link>
             );
           })}
@@ -103,14 +120,12 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
         <div style={{ flex: 1 }} />
         {/* Desktop right cluster */}
         <div data-mv-hide-mobile style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec, letterSpacing: 0.3 }}>
-            v3.4 <span style={{ color: C.good }}>●</span> live
-          </span>
+          <LanguageSwitcher variant="inline" className="w-auto min-w-[120px]" />
           <Link
             href="/login"
             style={{ fontSize: 13, color: C.text2, textDecoration: "none", fontWeight: 500, padding: "6px 10px" }}
           >
-            Sign in
+            {t("landing.cta.signIn")}
           </Link>
           <Link
             href="/signup"
@@ -128,7 +143,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
               gap: 6,
             }}
           >
-            Start free
+            {t("landing.cta.startFree")}
             <span style={{ fontFamily: C.mono, fontSize: 11, opacity: 0.7 }}>→</span>
           </Link>
         </div>
@@ -147,7 +162,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
               letterSpacing: -0.1,
             }}
           >
-            Start free
+            {t("landing.cta.startFree")}
           </Link>
           <button
             type="button"
@@ -199,7 +214,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
               return (
                 <Link
                   key={x.key}
-                  href={x.href}
+                  href={localizeHref(x.href, locale)}
                   onClick={() => setMenuOpen(false)}
                   style={{
                     fontSize: 16,
@@ -214,7 +229,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
                     justifyContent: "space-between",
                   }}
                 >
-                  {x.label}
+                  {t(`landing.nav.${x.navKey}`)}
                   <span style={{ fontFamily: C.mono, fontSize: 12, color: C.ter }}>→</span>
                 </Link>
               );
@@ -235,8 +250,11 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
                 textAlign: "center",
               }}
             >
-              Sign in
+              {t("landing.cta.signIn")}
             </Link>
+            <div style={{ marginTop: 16 }}>
+              <LanguageSwitcher variant="inline" className="w-full" />
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
@@ -245,45 +263,47 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
   );
 }
 
-const FOOTER_GROUPS: [string, { label: string; href: string }[]][] = [
-  [
-    "Product",
-    [
-      { label: "Features", href: "/features" },
-      { label: "Pricing", href: "/pricing" },
-      { label: "Download", href: "/download" },
-      { label: "Changelog", href: "/changelog" },
+// tKey indexes the dictionaries; suffix is non-translated trailing text.
+const FOOTER_GROUPS: { headingKey: string; items: { tKey: string; href: string; suffix?: string }[] }[] = [
+  {
+    headingKey: "product",
+    items: [
+      { tKey: "landing.nav.features", href: "/features" },
+      { tKey: "landing.nav.pricing", href: "/pricing" },
+      { tKey: "landing.nav.download", href: "/download" },
+      { tKey: "landing.nav.changelog", href: "/changelog" },
     ],
-  ],
-  [
-    "Company",
-    [
-      { label: "About", href: "/about" },
-      { label: "Customers", href: "/#customers" },
-      { label: "Careers · 4 open", href: "/about" },
+  },
+  {
+    headingKey: "company",
+    items: [
+      { tKey: "landing.nav.about", href: "/about" },
+      { tKey: "landing.footer.customers", href: "/#customers" },
+      { tKey: "landing.footer.careers", href: "/about", suffix: " · 4 open" },
     ],
-  ],
-  [
-    "Resources",
-    [
-      { label: "Docs", href: "#" },
-      { label: "Blog", href: "/blogs" },
-      { label: "Changelog", href: "/changelog" },
-      { label: "Status", href: "#" },
+  },
+  {
+    headingKey: "resources",
+    items: [
+      { tKey: "landing.footer.docs", href: "#" },
+      { tKey: "landing.nav.blog", href: "/blogs" },
+      { tKey: "landing.nav.changelog", href: "/changelog" },
+      { tKey: "landing.footer.status", href: "#" },
     ],
-  ],
-  [
-    "Legal",
-    [
-      { label: "Privacy", href: "#" },
-      { label: "Terms", href: "#" },
-      { label: "DPA", href: "#" },
-      { label: "Security", href: "#" },
+  },
+  {
+    headingKey: "legal",
+    items: [
+      { tKey: "landing.footer.privacy", href: "#" },
+      { tKey: "landing.footer.terms", href: "#" },
+      { tKey: "landing.footer.dpa", href: "#" },
+      { tKey: "landing.footer.security", href: "#" },
     ],
-  ],
+  },
 ];
 
 export function SiteFooter() {
+  const { locale, t } = useI18n();
   return (
     <footer style={{ background: C.bg, padding: "48px 20px 32px", borderTop: `1px solid ${C.border}` }}>
       <div
@@ -311,12 +331,14 @@ export function SiteFooter() {
           <span>Oakland · Brooklyn · remote-first</span>
         </div>
         <div data-mv-stack-2 style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
-          {FOOTER_GROUPS.map(([h, items]) => (
-            <div key={h} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ color: C.text, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{h}</span>
-              {items.map((x) => (
-                <Link key={x.label} href={x.href} style={{ color: C.sec, textDecoration: "none", padding: "4px 0" }}>
-                  {x.label}
+          {FOOTER_GROUPS.map((g) => (
+            <div key={g.headingKey} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ color: C.text, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                {t(`landing.footer.${g.headingKey}`)}
+              </span>
+              {g.items.map((x) => (
+                <Link key={`${x.tKey}-${x.href}`} href={localizeHref(x.href, locale)} style={{ color: C.sec, textDecoration: "none", padding: "4px 0" }}>
+                  {t(x.tKey)}{x.suffix ?? ""}
                 </Link>
               ))}
             </div>

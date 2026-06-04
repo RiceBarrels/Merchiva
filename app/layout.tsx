@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { DEFAULT_LOCALE, LOCALE_BCP47, RTL_LOCALES, isLocale, type Locale } from "@/lib/i18n/config";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/service-worker";
 import { MobileDetector } from "@/components/mobile-detector";
@@ -43,6 +44,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Locale resolved server-side by proxy.ts from the URL prefix (public pages).
+  // Defaults to English for app/~/ and other unprefixed routes.
+  let locale: Locale = DEFAULT_LOCALE;
+  try {
+    const h = await headers();
+    const fromHeader = h.get("x-locale");
+    if (isLocale(fromHeader)) locale = fromHeader;
+  } catch {
+    /* headers() unavailable in static export */
+  }
+  const dir: "ltr" | "rtl" = RTL_LOCALES.has(locale) ? "rtl" : "ltr";
+
   let isDark = false;
   try {
     const cookieStore = await cookies();
@@ -61,7 +74,8 @@ export default async function RootLayout({
 
   return (
     <html
-      lang="en"
+      lang={LOCALE_BCP47[locale]}
+      dir={dir}
       className={`${inter.variable} ${geistMono.variable} h-full antialiased${isDark ? " dark" : ""}`}
       suppressHydrationWarning
     >
@@ -118,12 +132,13 @@ export default async function RootLayout({
           <MobileDetector />
           <ServiceWorkerRegistrar />
           <div className="h-[calc(100vh-40px)] overflow-hidden">
-            <Providers>{children}</Providers>
+            <Providers initialLocale={locale}>{children}</Providers>
           </div>
           <Toaster position="top-center" richColors />
         </div>
         <Analytics />
       </body>
+      <Analytics />
     </html>
   );
 }

@@ -1,22 +1,20 @@
 // Mr. Merchiva places a purchase order with a supplier.
 //
 // Called by the `orderFromSupplier` AI action after the manager approves the
-// order card. We send the PO email (Resend) and then record the order +
-// outbound message in SpacetimeDB via the recordSupplierOrder reducer (called
-// by name over HTTP RPC as the user, so it respects manager-only permission).
-//
-// If the supplier has no email or the send fails, we still record the order as
-// a draft and the reducer escalates to managers — nothing is silently dropped.
+// order card. This route ONLY sends the PO email (Resend) — a server-only
+// concern — and returns whether it was emailed plus the canonical summary/
+// totals. The caller then records the order over its live SpacetimeDB
+// connection (see lib/spacetimedb/actions.ts → recordSupplierOrder). We moved
+// the reducer write off this route because the server-side HTTP RPC reused a
+// stale localStorage token and failed with "ExpiredSignature" on long sessions.
 
 import { NextRequest, NextResponse } from "next/server";
-import { callReducer } from "@/lib/spacetimedb/server-rpc";
 import { sendSupplierPOEmail, type SupplierPOItem } from "@/lib/email/resend";
 import { encodeThreadToken, inboundDomain } from "@/lib/suppliers/thread-token";
 
 export const runtime = "nodejs";
 
 interface OrderBody {
-  token: string;
   organizationId: string;
   supplierId: string;
   supplierName: string;
@@ -50,7 +48,6 @@ export async function POST(req: NextRequest) {
   }
 
   const {
-    token,
     organizationId,
     supplierId,
     supplierName,
@@ -62,7 +59,6 @@ export async function POST(req: NextRequest) {
     replyTo,
   } = body;
 
-  if (!token) return NextResponse.json({ error: "Missing token" }, { status: 401 });
   if (!organizationId || !supplierId || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json(
       { error: "Missing organizationId, supplierId, or items" },
@@ -110,35 +106,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 2) Record the PO + outbound message (and escalate to managers if !emailed).
-  //    Args are POSITIONAL, matching the reducer's declared order exactly.
-  try {
-    await callReducer({
-      token,
-      name: "recordSupplierOrder",
-      args: [
-        organizationId,
-        supplierId,
-        supplierName || "",
-        JSON.stringify(items),
-        subtotal,
-        tax,
-        total,
-        notes ?? null,
-        summary,
-        emailed,
-      ],
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[suppliers/order] recordSupplierOrder failed:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
-  }
-
+  // 2) Return the email outcome + canonical summary/totals. The caller records
+  //    the PO over its live SpacetimeDB connection (manager-only permission is
+  //    still enforced there by the reducer's ctx.sender). When !emailed the
+  //    order is saved as a draft and the reducer escalates to managers — nothing
+  //    is silently dropped.
   return NextResponse.json({
     ok: true,
     emailed,
     emailError,
+    summary,
+    subtotal,
+    tax,
+    total,
     reason: emailed
       ? "sent"
       : supplierEmail

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, generateObject } from "ai";
+import { streamText, generateObject, stepCountIs } from "ai";
 import { z } from "zod";
 import { getAllPromptSegments } from "@/lib/merchiva/skills/registry";
+import {
+  buildMerchivaTools,
+  buildSlimContext,
+  merchivaToolsEnabled,
+  TOOLS_PROMPT_BLOCK,
+} from "@/lib/merchiva/tools";
 import { callReducer } from "@/lib/spacetimedb/server-rpc";
 import {
   getServiceConn,
@@ -216,7 +222,10 @@ async function runJob(args: RunJobArgs): Promise<void> {
     // delivers everything through the single ai_job row.
     if (triage.message) flusher.push("[[MERCHIVA_ACK]]" + triage.message + "[[/MERCHIVA_ACK]]");
 
-    const systemPrompt = buildSystemPrompt(args.context, args.lang, args.memory, args.permissions);
+    // Read-tools: same as the streaming route. Not for builder/HTML mode, and
+    // only when the service connection + org id are available.
+    const toolsEnabled = merchivaToolsEnabled() && !!args.organizationId && !isBuilderMode;
+    const systemPrompt = buildSystemPrompt(args.context, args.lang, args.memory, args.permissions, toolsEnabled);
     const ackNote = triage.message
       ? `\n\nNOTE: An acknowledgment has ALREADY been sent: "${triage.message}". Skip greetings.`
       : "\n\nNOTE: Skip greetings; go straight to substantive answer or action blocks.";
@@ -234,6 +243,15 @@ async function runJob(args: RunJobArgs): Promise<void> {
       ],
       maxOutputTokens: isBuilderMode ? 3500 : 1500,
       temperature: 0.2,
+      ...(toolsEnabled
+        ? {
+            tools: buildMerchivaTools({
+              organizationId: args.organizationId,
+              today: (args.context as Record<string, unknown> | undefined)?.today as string | undefined,
+            }),
+            stopWhen: stepCountIs(6),
+          }
+        : {}),
     });
 
     let fullReply = "";
@@ -464,6 +482,7 @@ function buildSystemPrompt(
   lang: string,
   memory: { summary?: string; storeOverview?: string; userPreferences?: string },
   permissions?: EnqueueBody["permissions"],
+  toolsEnabled = false,
 ): string {
   const skillPrompts = getAllPromptSegments();
   const langName = languageNameFor(lang);
@@ -477,14 +496,16 @@ function buildSystemPrompt(
     : permissions
       ? `USER ROLE: ${permissions.role ?? "staff"}`
       : "";
+  const dataBlock = toolsEnabled
+    ? `${TOOLS_PROMPT_BLOCK}\n\nSTORE OVERVIEW:\n${buildSlimContext(context)}`
+    : `LIVE STORE DATA:\n${JSON.stringify(context, null, 2)}`;
   return `You are Mr. Merchiva, an AI ops agent for a small business. Reply in ${langName}.
 
 ${permBlock}
 
 ${memoryBlock}
 
-LIVE STORE DATA:
-${JSON.stringify(context, null, 2)}
+${dataBlock}
 
 ${skillPrompts}
 

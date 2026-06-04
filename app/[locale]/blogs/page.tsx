@@ -4,22 +4,32 @@ import Image from "next/image";
 import { SiteShell } from "@/components/landing/site-shell";
 import { fetchPublishedBlogPosts } from "@/lib/spacetimedb/sql";
 import { BlogHero, BlogCard } from "./_animations";
+import { buildAlternates } from "@/lib/i18n/alternates";
+import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
-export const metadata: Metadata = {
-  title: "Blog — Merchiva | Stories from the floor",
-  description:
-    "Field notes, deep dives, and operator wisdom from the Merchiva team and the small businesses we work with.",
-  alternates: { canonical: `${BASE_URL}/blogs` },
-  openGraph: {
-    title: "Merchiva Blog",
-    description: "Field notes, deep dives, and operator wisdom.",
-    url: `${BASE_URL}/blogs`,
-    siteName: "Merchiva",
-    type: "website",
-  },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const loc = isLocale(locale) ? locale : DEFAULT_LOCALE;
+  return {
+    title: "Blog — Merchiva | Stories from the floor",
+    description:
+      "Field notes, deep dives, and operator wisdom from the Merchiva team and the small businesses we work with.",
+    alternates: buildAlternates("/blogs", loc),
+    openGraph: {
+      title: "Merchiva Blog",
+      description: "Field notes, deep dives, and operator wisdom.",
+      url: `${BASE_URL}/${loc}/blogs`,
+      siteName: "Merchiva",
+      type: "website",
+    },
+  };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +43,12 @@ function formatDate(unixMs: number | null, fallback: number): string {
   });
 }
 
-export default async function BlogsPage() {
+export default async function BlogsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
   const posts = await fetchPublishedBlogPosts();
 
   return (
@@ -61,7 +76,7 @@ export default async function BlogsPage() {
             {posts.map((p, i) => (
               <BlogCard key={p.id} index={i}>
                 <Link
-                  href={`/blogs/${p.slug}`}
+                  href={`/${locale}/blogs/${p.slug}`}
                   className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-5 py-7 transition-opacity hover:opacity-80"
                 >
                   {p.coverImage ? (

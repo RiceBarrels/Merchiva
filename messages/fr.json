@@ -3105,5 +3105,474 @@
       "attachSuccess": "Rattaché comme sous-magasin",
       "attachFailed": "Échec du rattachement"
     }
+  },
+  "landing": {
+    "nav": {
+      "features": "Fonctionnalités",
+      "pricing": "Tarifs",
+      "download": "Télécharger",
+      "about": "À propos",
+      "blog": "Blog",
+      "changelog": "Nouveautés"
+    },
+    "cta": {
+      "signIn": "Se connecter",
+      "startFree": "Commencer"
+    },
+    "footer": {
+      "product": "Produit",
+      "company": "Entreprise",
+      "resources": "Ressources",
+      "legal": "Légal",
+      "customers": "Clients",
+      "careers": "Carrières",
+      "docs": "Docs",
+      "status": "Statut",
+      "privacy": "Confidentialité",
+      "terms": "Conditions",
+      "dpa": "DPA",
+      "security": "Sécurité"
+    },
+    "home": {
+      "startFree": "Essai gratuit · 30 jours",
+      "hero": {
+        "badge": "nouveau · v3.4 · moteur de prévision",
+        "tagline": "Une prévision d'inventaire rentable dès la première semaine.",
+        "h1a": "savoir ce qui",
+        "h1b": "se vend ensuite.",
+        "paraStart": "Arrêtez de deviner. Merchiva surveille vos ventes à la minute et vous dit ",
+        "paraEm": "exactement combien commander, et quand",
+        "paraMid": " — pour chaque SKU, chaque fournisseur, chaque emplacement. Erreur de prévision médiane : ",
+        "watchDemo": "Voir la démo de 2 min",
+        "fine": "sans carte · installation en 2 min · annulation à tout moment",
+        "livePre": "en direct · sur",
+        "livePost": "entreprises",
+        "updated": "mis à jour toutes les 30 s"
+      },
+      "ticker": {
+        "forecasts": "prévisions lancées · aujourd'hui",
+        "stockouts": "ruptures évitées · 30 j",
+        "reorders": "réappros auto-suggérés",
+        "accuracy": "précision des prévisions · MAPE"
+      },
+      "trusted": {
+        "tagL": "partenaires de données",
+        "tagR": "nos prévisions alimentées par des données réelles",
+        "headPre": "Conçu avec des entreprises qui ",
+        "headAccent": "partagent leur signal",
+        "since": "depuis",
+        "strip": "leurs données entraînent nos modèles · vos prévisions s'améliorent",
+        "sponsors": {
+          "bake-culture": {
+            "tag": "boulangerie · détail",
+            "stat": "8 emplacements",
+            "desc": "Chaîne de boulangerie asiatique-fusion haut de gamme qui apporte la pâtisserie hongkongaise à la Bay Area. Réputée pour ses pineapple buns, ses tartelettes aux œufs et ses croissants au matcha dans 8 emplacements."
+          },
+          "deviner": {
+            "tag": "café · boulangerie",
+            "stat": "note 4,6★",
+            "desc": "Une pépite de Brooklyn où le savoir-faire du café rencontre une hospitalité sincère. Grains torréfiés avec expertise et pâtisseries d'exception — des lattes riches et onctueux au chocolat chaud inoubliable. 4,6 étoiles pour près de 100 avis, un vrai lieu de rassemblement."
+          }
+        }
+      },
+      "product": {
+        "tag": "02 · le produit",
+        "hint": "défilement auto · cliquez un onglet",
+        "headPre": "Prévoir, réapprovisionner, réassortir. ",
+        "headAccent": "Un seul écran. Quatre heures économisées chaque semaine.",
+        "views": {
+          "forecast": "Prévision",
+          "reorder": "Réappro",
+          "inv": "Inventaire",
+          "sales": "Signal"
+        }
+      },
+      "forecastView": {
+        "title": "Lait d'avoine · 1 L",
+        "meta": "SKU OAT-1L · fournisseur Pacific Farms · délai 3 j",
+        "actual": "réel",
+        "forecast": "prévision",
+        "reorderBadge": "RÉAPPRO · 14 MAI",
+        "stat": {
+          "predicted": {
+            "k": "Prévu · 14 j",
+            "v": "628 L",
+            "s": "+18 % vs préc."
+          },
+          "reorderBy": {
+            "k": "Réappro avant",
+            "v": "14 mai",
+            "s": "dans 4 jours"
+          },
+          "suggestQty": {
+            "k": "Qté suggérée",
+            "v": "14 caisses",
+            "s": "@ 42,50 $/caisse"
+          },
+          "risk": {
+            "k": "Risque de rupture",
+            "v": "2,4 %",
+            "s": "dans la fenêtre"
+          }
+        }
+      },
+      "reorderView": {
+        "status": "6 réappros auto-suggérés · dernier passage il y a 14 s",
+        "approve": "Tout approuver · envoyer 4 BC",
+        "col": {
+          "sku": "SKU",
+          "item": "Article",
+          "vendor": "Fournisseur",
+          "qty": "Qté",
+          "needBy": "Requis le",
+          "risk": "Risque",
+          "action": "Action"
+        },
+        "send": "envoyer",
+        "rows": {
+          "OAT-1L": {
+            "name": "Lait d'avoine · 1 L",
+            "unit": "caisses"
+          },
+          "BEAN-ETH-1KG": {
+            "name": "Café · Éthiopie · 1 kg",
+            "unit": "sacs"
+          },
+          "SYR-VAN-750": {
+            "name": "Sirop vanille · 750 ml",
+            "unit": "bout."
+          },
+          "CUP-12-WHT": {
+            "name": "Gobelets · 12 oz · blanc",
+            "unit": "caisses"
+          },
+          "MILK-WH-1G": {
+            "name": "Lait entier · 1 gal",
+            "unit": "gal"
+          },
+          "LID-12": {
+            "name": "Couvercles · 12 oz",
+            "unit": "caisses"
+          }
+        }
+      },
+      "inventoryView": {
+        "col": {
+          "sku": "SKU",
+          "item": "Article",
+          "onHand": "En stock",
+          "par": "Seuil",
+          "status": "Statut"
+        },
+        "reorder": "RÉAPPRO",
+        "ok": "OK",
+        "rows": {
+          "BEAN-ETH-1KG": "Café · Éthiopie · 1 kg",
+          "CUP-12-WHT": "Gobelets · 12 oz · blanc",
+          "MILK-WH-1G": "Lait entier · 1 gal",
+          "OAT-1L": "Lait d'avoine · 1 L",
+          "SYR-VAN-750": "Sirop vanille · 750 ml",
+          "LID-12": "Couvercles · 12 oz"
+        }
+      },
+      "salesView": {
+        "vsAvg": "+18,4 % vs sam. moyen",
+        "stat": {
+          "orders": "Commandes",
+          "avgTicket": "Ticket moyen",
+          "refunds": "Remboursements",
+          "tipAvg": "Pourboire moy."
+        }
+      },
+      "island": {
+        "0": [
+          {
+            "title": "628 L prévus",
+            "sub": "14 j à venir · 87 % conf"
+          },
+          {
+            "title": "Pluie → +18 %",
+            "sub": "boissons glacées · mer."
+          }
+        ],
+        "1": [
+          {
+            "title": "Réappro avant 14 mai",
+            "sub": "12 SKU · lait d'avoine"
+          },
+          {
+            "title": "BC #4812 envoyé",
+            "sub": "Pacific · 23 caisses"
+          }
+        ],
+        "2": [
+          {
+            "title": "Gobelets : 2,1 j restants",
+            "sub": "ETA jeu. · 4 caisses"
+          },
+          {
+            "title": "Stock OK · 92 SKU",
+            "sub": "8 sous le seuil"
+          }
+        ],
+        "3": [
+          {
+            "title": "+12 % vs sem. dernière",
+            "sub": "Aujourd'hui · 4 820 $"
+          },
+          {
+            "title": "Pic : 10–11 h",
+            "sub": "84 commandes/h"
+          }
+        ]
+      },
+      "schedule": {
+        "tag": "02b · planificateur auto",
+        "hint": "rédige la semaine prochaine · auto",
+        "headPre": "Mr. Merchiva rédige ",
+        "headAccent": "le planning de la semaine prochaine",
+        "intro": "Il lit les disponibilités, les plafonds de masse salariale, les échanges de la semaine passée et la météo — puis pose une semaine entière de shifts en moins d'une minute. Approuvez d'un geste, ou laissez-le valider automatiquement.",
+        "scheduling": "planification",
+        "done": "terminé",
+        "shiftsPlaced": "shifts placés",
+        "weekReady": "Semaine prête",
+        "shifts": "shifts",
+        "underBudget": "sous le budget",
+        "weekOf": "semaine du 13 mai · 2026",
+        "days": {
+          "mon": "Lun",
+          "tue": "Mar",
+          "wed": "Mer",
+          "thu": "Jeu",
+          "fri": "Ven",
+          "sat": "Sam",
+          "sun": "Dim"
+        },
+        "reasons": [
+          "Sarah ouvre lundi — marquée « lève-tôt » dans ses dispos.",
+          "Mateo à la fermeture — 1 h de chevauchement avec Sarah pour la passation.",
+          "Priya mène le mardi matin — hausse de paie prévue +14 %.",
+          "Sarah double le mardi après-midi — Mateo indisponible après 13 h.",
+          "Mateo ouvre mercredi — Sarah a demandé un après-midi en milieu de semaine.",
+          "Devon se forme mercredi après-midi — première fermeture en solo (Priya à proximité).",
+          "Rush du jeudi — un senior au bar ouvre plus proprement.",
+          "Sarah ferme jeudi — trou de couverture comblé sans heures sup.",
+          "Mateo vendredi matin — la météo annonce +22 % de boissons glacées.",
+          "Priya en fermeture prolongée — paie + happy hour du vendredi.",
+          "Devon samedi matin — demande faible, bon jour pour continuer la formation.",
+          "Sarah ferme samedi — Mateo avait posé un congé le samedi le mois dernier.",
+          "Priya en solo dimanche matin — foule du brunch, mix prévisible.",
+          "Mateo clôt la semaine — la fermeture du dimanche garde la paie sous plafond."
+        ]
+      },
+      "pos": {
+        "tag": "02c · merchiva POS",
+        "hint": "scan · panier · encaisser",
+        "headPre": "Du scan au reçu ",
+        "headAccent": "en quatre gestes",
+        "intro": "La caisse Merchiva partage le même catalogue et les mêmes stocks que votre tableau de bord. Chaque vente met à jour la prévision dans la seconde — pas de synchro nocturne.",
+        "catalogPre": "catalogue ·",
+        "itemsWord": "articles",
+        "terminal": "terminal · 03",
+        "cartPre": "panier ·",
+        "item": "article",
+        "items": "articles",
+        "queue": "file #4218",
+        "scanToBegin": "Scannez un article pour commencer",
+        "subtotal": "Sous-total",
+        "tax": "Taxe · 8 %",
+        "total": "Total",
+        "tapToCharge": "Encaisser",
+        "processing": "Traitement…",
+        "charged": "Encaissé",
+        "receiptDone": "reçu #4218 · imprimé · ",
+        "stockUpdated": "stock + prévision mis à jour",
+        "payMethods": "sans contact · carte · NFC · carte cadeau",
+        "scan": "scan",
+        "products": {
+          "1": {
+            "name": "Latte glacé",
+            "tag": "boissons"
+          },
+          "2": {
+            "name": "Croissant aux amandes",
+            "tag": "boulangerie"
+          },
+          "3": {
+            "name": "Double espresso",
+            "tag": "boissons"
+          },
+          "4": {
+            "name": "Toast à l'avocat",
+            "tag": "plats"
+          },
+          "5": {
+            "name": "Latte matcha",
+            "tag": "boissons"
+          },
+          "6": {
+            "name": "Cold brew",
+            "tag": "boissons"
+          }
+        }
+      },
+      "marquee": [
+        "prévisions de demande",
+        "points de réappro",
+        "risque de rupture",
+        "tient compte des délais",
+        "intervalles de confiance",
+        "attribution des facteurs",
+        "signal météo",
+        "effet jours fériés",
+        "pics de jour de paie",
+        "modèles démarrage à froid",
+        "MOQ fournisseurs",
+        "arrondi par colis",
+        "inventaires tournants",
+        "alertes de démarque",
+        "fenêtres de péremption",
+        "multi-emplacements",
+        "bons de commande auto",
+        "fiches fournisseurs",
+        "réglage du stock de sécurité",
+        "scénarios hypothétiques"
+      ],
+      "posLoader": {
+        "latte": "Latte 12 oz",
+        "croissant": "Croissant",
+        "total": "Total"
+      },
+      "booksLoader": {
+        "sales": "Ventes",
+        "tax": "Taxe",
+        "tips": "Pourboires",
+        "net": "Net"
+      },
+      "months": [
+        "Janv",
+        "Févr",
+        "Mars",
+        "Avr",
+        "Mai",
+        "Juin",
+        "Juil",
+        "Août",
+        "Sept",
+        "Oct",
+        "Nov",
+        "Déc"
+      ],
+      "features": {
+        "tag": "03 · modules",
+        "hint": "six modules · une facture",
+        "headPre": "Six choses que notre prévision fait et que ",
+        "headAccent": "votre tableur ne peut pas",
+        "items": {
+          "F01": {
+            "title": "Demande par SKU",
+            "body": "Un modèle distinct par SKU et par emplacement. Granularité journalière et horaire, réajusté chaque nuit sur vos données.",
+            "hint": "7,2 % MAPE · médiane"
+          },
+          "F02": {
+            "title": "Intervalles de confiance",
+            "body": "Les prévisions arrivent avec des intervalles calibrés à 80/95 %. Choisissez la quantité selon votre tolérance aux ruptures.",
+            "hint": "P95 · fenêtre 14 j"
+          },
+          "F03": {
+            "title": "Facteurs expliqués",
+            "body": "Chaque prévision montre ce qui l'a fait bouger : météo, jour de paie, jours fériés, événement local, hausse de la semaine passée.",
+            "hint": "+18 % pluie samedi"
+          },
+          "F04": {
+            "title": "Réappro auto",
+            "body": "Les BC suggérés arrivent dans votre boîte à 4 h. Approuvez d'un geste. Délais, MOQ et conditionnements pris en compte.",
+            "hint": "envoi quotidien à 04:00"
+          },
+          "F05": {
+            "title": "Alertes de rupture",
+            "body": "Une alerte type pager dès que le risque dépasse votre seuil. Se résout discrètement quand vous réapprovisionnez.",
+            "hint": "risque > 70 % · il y a 4 min"
+          },
+          "F06": {
+            "title": "Mode démarrage à froid",
+            "body": "Nouveau SKU ? Nous empruntons de la force aux articles similaires du réseau jusqu'à ce que vous ayez votre propre historique.",
+            "hint": "première prévision utile · jour 7"
+          }
+        }
+      },
+      "metrics": {
+        "tag": "04 · en production",
+        "dataThrough": "données jusqu'à mai 2026",
+        "headPre": "Les opérateurs n'écrivent pas d'avis. Ils ",
+        "headAccent": "renouvellent",
+        "min": " min",
+        "minMedian": " min · médiane",
+        "stat": {
+          "businesses": "entreprises actives",
+          "setup": "temps d'installation moyen",
+          "renewal": "renouvellement annuel",
+          "support": "support · 1re réponse",
+          "gmv": "GMV traité",
+          "states": "états couverts"
+        },
+        "mrr": "revenu récurrent mensuel",
+        "last12": "12 derniers mois · USD"
+      },
+      "testimonials": {
+        "tag": "05 · dans leurs mots",
+        "readAll": "lire les 318 →",
+        "quotes": [
+          {
+            "q": "On a clôturé notre premier mois sans tableur pour la première fois en 6 ans.",
+            "role": "Propriétaire · Maple Coffee · Oakland"
+          },
+          {
+            "q": "A remplacé quatre identifiants. L'équipe l'utilise vraiment parce que l'écran de pointage est plus rapide que l'horloge murale.",
+            "role": "DG · North Pine Salon"
+          },
+          {
+            "q": "L'inventaire, c'était le mercredi soir avec un verre de vin. Maintenant c'est le mercredi après-midi.",
+            "role": "Copropriétaire · Olive & Stone Bakery"
+          }
+        ]
+      },
+      "pricing": {
+        "tag": "06 · tarifs",
+        "hint": "fixe · par emplacement · pas par siège",
+        "headPre": "Deux forfaits. ",
+        "headAccent": "Pas de « contactez le service commercial ».",
+        "mostPicked": "le plus choisi",
+        "perMo": "/mois",
+        "sub": "par emplacement · par mois",
+        "plans": {
+          "operator": {
+            "name": "Operator",
+            "list": [
+              "Jusqu'à 12 employés",
+              "Les 6 modules",
+              "Apps iOS + Android",
+              "Support e-mail · 24 h"
+            ]
+          },
+          "multi": {
+            "name": "Multi",
+            "list": [
+              "Employés illimités",
+              "Les 6 modules + analytique",
+              "Tableau de bord multi-emplacements",
+              "Support prioritaire · 4 h médian",
+              "Appel d'onboarding"
+            ]
+          }
+        }
+      },
+      "cta": {
+        "head1": "ne plus jamais",
+        "head2": "être à court.",
+        "para": "Connectez votre POS. Nous apprenons vos ventes pendant sept jours, puis nous commençons à vous dire quoi commander — à la caisse près, jour par jour. Erreur de prévision médiane : 7,2 %.",
+        "walkthrough": "Réserver une démo de 20 min"
+      }
+    }
   }
 }

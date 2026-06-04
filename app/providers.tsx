@@ -3,8 +3,15 @@
 import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/context";
 import { I18nProvider } from "@/lib/i18n/context";
+import type { Locale } from "@/lib/i18n/config";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
   // Flag the document as React-ready so the Tauri boot splash
   // (server-rendered in app/layout.tsx, only visible when
   // `html.native-shell` is set) can fade itself out via CSS once the
@@ -14,7 +21,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <I18nProvider>
+    <I18nProvider initialLocale={initialLocale}>
       <AuthProvider>{children}</AuthProvider>
     </I18nProvider>
   );

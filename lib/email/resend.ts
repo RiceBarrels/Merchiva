@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM = "Merchiva <onboarding@depxtech.com>";
+const FROM = "Merchiva <onboarding@merchiva.com>";
 
 // Escape user-supplied text before interpolating into email HTML.
 function esc(s: string): string {

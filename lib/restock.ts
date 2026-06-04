@@ -23,6 +23,7 @@ export interface RestockSuggestion {
   supplier: string;
   lastRestocked: string;
   costPerUnit: number;
+  unitsPerCase?: number; // set when item ships in fixed-size cases
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -86,6 +87,24 @@ function determinePriority(
   return "low";
 }
 
+// Adjust a raw recommended quantity to what the supplier will actually accept:
+// bump up to the minimum order quantity, then round up to a whole multiple of
+// the case/pack size so we never order a partial case.
+function applyOrderConstraints(
+  qty: number,
+  minOrderQty?: number,
+  unitsPerCase?: number
+): number {
+  let result = qty;
+  if (minOrderQty && minOrderQty > 0) {
+    result = Math.max(result, minOrderQty);
+  }
+  if (unitsPerCase && unitsPerCase > 0) {
+    result = Math.ceil(result / unitsPerCase) * unitsPerCase;
+  }
+  return result;
+}
+
 const PRIORITY_ORDER: Record<RestockPriority, number> = {
   critical: 0,
   high: 1,
@@ -114,12 +133,20 @@ export function generateRestockSuggestions(
 
     // Order enough to fill back to max, at minimum fill to minStock
     const deficit = item.maxStock - item.currentStock;
-    const recommendedOrderQty = Math.max(
+    let recommendedOrderQty = Math.max(
       Math.ceil(deficit),
       Math.ceil(item.minStock - item.currentStock)
     );
 
     if (recommendedOrderQty <= 0) continue;
+
+    // Respect supplier ordering constraints: never order below the supplier's
+    // minimum, and round up to whole cases so we order in the packs they ship.
+    recommendedOrderQty = applyOrderConstraints(
+      recommendedOrderQty,
+      item.minOrderQty,
+      item.unitsPerCase
+    );
 
     const estimatedCost = Math.round(recommendedOrderQty * item.costPerUnit * 100) / 100;
 
@@ -140,6 +167,7 @@ export function generateRestockSuggestions(
       supplier: item.supplier,
       lastRestocked: item.lastRestocked,
       costPerUnit: item.costPerUnit,
+      unitsPerCase: item.unitsPerCase,
     });
   }
 

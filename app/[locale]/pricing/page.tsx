@@ -1,37 +1,47 @@
 import type { Metadata } from "next";
 import { PricingWrapper } from "@/components/landing/pricing-wrapper";
+import { buildAlternates } from "@/lib/i18n/alternates";
+import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
-export const metadata: Metadata = {
-  title: "Pricing — Merchiva | Per-Location, Flat, No Per-Seat",
-  description:
-    "Three plans from $49/mo per location. Unlimited forecasts, auto-reorder POs, and data export included. 30-day free trial, no credit card required. Cancel any time.",
-  keywords: [
-    "inventory software pricing",
-    "business management pricing",
-    "affordable inventory forecasting",
-    "small business software cost",
-    "POS inventory pricing",
-    "demand forecasting pricing",
-  ],
-  alternates: { canonical: `${BASE_URL}/pricing` },
-  openGraph: {
-    title: "Merchiva Pricing — Simple, Per-Location, No Per-Seat",
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const loc = isLocale(locale) ? locale : DEFAULT_LOCALE;
+  return {
+    title: "Pricing — Merchiva | Per-Location, Flat, No Per-Seat",
     description:
-      "Starter $49/mo, Operator $129/mo, Chain custom. All plans include 30-day free trial. No credit card to start. Median payback: 11 days.",
-    url: `${BASE_URL}/pricing`,
-    siteName: "Merchiva",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Merchiva Pricing — From $49/mo Per Location",
-    description:
-      "Three plans. 30-day free trial. No credit card required. Median payback: 11 days.",
-  },
-  robots: { index: true, follow: true },
-};
+      "Three plans from $49/mo per location. Unlimited forecasts, auto-reorder POs, and data export included. 30-day free trial, no credit card required. Cancel any time.",
+    keywords: [
+      "inventory software pricing",
+      "business management pricing",
+      "affordable inventory forecasting",
+      "small business software cost",
+      "POS inventory pricing",
+      "demand forecasting pricing",
+    ],
+    alternates: buildAlternates("/pricing", loc),
+    openGraph: {
+      title: "Merchiva Pricing — Simple, Per-Location, No Per-Seat",
+      description:
+        "Starter $49/mo, Operator $129/mo, Chain custom. All plans include 30-day free trial. No credit card to start. Median payback: 11 days.",
+      url: `${BASE_URL}/${loc}/pricing`,
+      siteName: "Merchiva",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Merchiva Pricing — From $49/mo Per Location",
+      description:
+        "Three plans. 30-day free trial. No credit card required. Median payback: 11 days.",
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 function PricingJsonLd() {
   const jsonLd = {
