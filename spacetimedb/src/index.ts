@@ -73,6 +73,11 @@ const organizationTable = table(
     subscriptionPriceId: t.option(t.string()).default(undefined),     // Stripe price id, identifies plan + interval
     subscriptionInterval: t.option(t.string()).default(undefined),    // 'month' | 'year' (derived from price)
     currentPeriodEnd: t.option(t.timestamp()).default(undefined),
+    // Multi-store: parent organization id for child/branch orgs. Already present
+    // on the deployed maincloud schema (appended last) — kept here so generated
+    // client types match what the server serializes. `.default(undefined)` for
+    // migrator-safe additive publishes.
+    parentOrgId: t.option(t.string()).default(undefined),
   }
 );
 
@@ -497,6 +502,10 @@ const productTable = table(
     squareItemId: t.option(t.string()),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
+    // Multi-store: JSON list of store/location ids this product is available at.
+    // Already present on the deployed maincloud schema (appended last) — kept here
+    // so generated client types match what the server serializes.
+    availableStoreIds: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1802,6 +1811,7 @@ export const createOrg = spacetimedb.reducer(
       subscriptionPriceId: undefined,
       subscriptionInterval: undefined,
       currentPeriodEnd: undefined,
+      parentOrgId: undefined,
     });
 
     const defaultPermissions = JSON.stringify({
@@ -2469,6 +2479,7 @@ export const addProduct = spacetimedb.reducer(
       squareItemId: undefined,
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
+      availableStoreIds: undefined,
     });
   }
 );
