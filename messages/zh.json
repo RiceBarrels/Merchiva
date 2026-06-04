@@ -2903,8 +2903,14 @@
         "missingFields": "标题和 slug 必填。",
         "created": "文章已创建。",
         "updated": "文章已更新。",
-        "deleted": "文章已删除。"
-      }
+        "deleted": "文章已删除。",
+        "seedDone": "已导入 {count} 篇博客。",
+        "seedPartial": "成功 {succeeded} 篇，失败 {failed} 篇。",
+        "seedFailed": "导入失败。",
+        "notAuthenticated": "未认证。"
+      },
+      "seedButton": "导入 30 篇种子博客",
+      "seeding": "导入中…"
     },
     "coupons": {
       "title": "Stripe 优惠券",

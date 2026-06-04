@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useT } from "@/lib/i18n/context";
+import { useAuth } from "@/lib/auth/context";
+import { apiUrl } from "@/lib/api-client";
 import { useBlogPosts } from "@/lib/spacetimedb/hooks";
 import { createBlogPost, updateBlogPost, deleteBlogPost } from "@/lib/spacetimedb/actions";
 import { Button } from "@/components/ui/button";
@@ -96,11 +98,13 @@ function tsToDate(ts: { __timestamp_micros_since_unix_epoch__: number | bigint }
 
 export default function AdminsBlogsPage() {
   const t = useT();
+  const { getToken } = useAuth();
   const [rows] = useBlogPosts();
   const posts = rows as unknown as BlogPostRow[];
 
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
 
   const filtered = useMemo(() => {
@@ -115,6 +119,40 @@ export default function AdminsBlogsPage() {
 
   function startNew() {
     setEditor({ ...EMPTY });
+  }
+
+  async function handleSeed() {
+    if (seeding) return;
+    setSeeding(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error(t("admins.blogs.toast.notAuthenticated"));
+      const res = await fetch(apiUrl("/api/admins/seed-blogs"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? t("admins.blogs.toast.seedFailed"));
+      const succeeded = Number(data.succeeded ?? 0);
+      const total = Number(data.total ?? 0);
+      const failed = Math.max(0, total - succeeded);
+      if (failed > 0) {
+        toast.warning(
+          t("admins.blogs.toast.seedPartial")
+            .replace("{succeeded}", String(succeeded))
+            .replace("{failed}", String(failed)),
+        );
+      } else {
+        toast.success(
+          t("admins.blogs.toast.seedDone").replace("{count}", String(succeeded)),
+        );
+      }
+      // The list updates automatically — useBlogPosts() is a live SpacetimeDB subscription.
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSeeding(false);
+    }
   }
 
   function startEdit(p: BlogPostRow) {
@@ -203,7 +241,19 @@ export default function AdminsBlogsPage() {
           </h1>
           <p className="mt-1 text-[13px] text-stone-600">{t("admins.blogs.subtitle")}</p>
         </div>
-        <Button onClick={startNew}>{t("admins.blogs.newPost")}</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleSeed} disabled={seeding}>
+            {seeding ? (
+              <>
+                <Spinner size={14} className="mr-2" />
+                {t("admins.blogs.seeding")}
+              </>
+            ) : (
+              t("admins.blogs.seedButton")
+            )}
+          </Button>
+          <Button onClick={startNew}>{t("admins.blogs.newPost")}</Button>
+        </div>
       </div>
 
       <div className="flex gap-2">

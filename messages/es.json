@@ -2903,8 +2903,14 @@
         "missingFields": "Título y slug son obligatorios.",
         "created": "Post creado.",
         "updated": "Post actualizado.",
-        "deleted": "Post eliminado."
-      }
+        "deleted": "Post eliminado.",
+        "seedDone": "Se cargaron {count} entradas de blog.",
+        "seedPartial": "{succeeded} cargadas, {failed} con error.",
+        "seedFailed": "Error al cargar.",
+        "notAuthenticated": "No autenticado."
+      },
+      "seedButton": "Cargar 30 entradas de blog",
+      "seeding": "Cargando…"
     },
     "coupons": {
       "title": "Cupones de Stripe",

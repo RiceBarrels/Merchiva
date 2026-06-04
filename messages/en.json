@@ -2903,8 +2903,14 @@
         "missingFields": "Title and slug are required.",
         "created": "Post created.",
         "updated": "Post updated.",
-        "deleted": "Post deleted."
-      }
+        "deleted": "Post deleted.",
+        "seedDone": "Seeded {count} blog posts.",
+        "seedPartial": "Seeded {succeeded}, {failed} failed.",
+        "seedFailed": "Seeding failed.",
+        "notAuthenticated": "Not authenticated."
+      },
+      "seedButton": "Seed 30 Blog Posts",
+      "seeding": "Seeding…"
     },
     "coupons": {
       "title": "Stripe coupons",

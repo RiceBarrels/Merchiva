@@ -2903,8 +2903,14 @@
         "missingFields": "शीर्षक और slug आवश्यक.",
         "created": "पोस्ट बनी.",
         "updated": "पोस्ट अपडेट हुई.",
-        "deleted": "पोस्ट हटाई गई."
-      }
+        "deleted": "पोस्ट हटाई गई.",
+        "seedDone": "{count} ब्लॉग पोस्ट सीड किए गए।",
+        "seedPartial": "{succeeded} सफल, {failed} विफल।",
+        "seedFailed": "सीडिंग विफल।",
+        "notAuthenticated": "प्रमाणित नहीं।"
+      },
+      "seedButton": "30 ब्लॉग पोस्ट सीड करें",
+      "seeding": "सीड हो रहा है…"
     },
     "coupons": {
       "title": "Stripe कूपन",

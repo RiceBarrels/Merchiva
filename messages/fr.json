@@ -2903,8 +2903,14 @@
         "missingFields": "Titre et slug requis.",
         "created": "Article créé.",
         "updated": "Article mis à jour.",
-        "deleted": "Article supprimé."
-      }
+        "deleted": "Article supprimé.",
+        "seedDone": "{count} articles importés.",
+        "seedPartial": "{succeeded} importés, {failed} en échec.",
+        "seedFailed": "Échec de l'importation.",
+        "notAuthenticated": "Non authentifié."
+      },
+      "seedButton": "Importer 30 articles",
+      "seeding": "Importation…"
     },
     "coupons": {
       "title": "Coupons Stripe",

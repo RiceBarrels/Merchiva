@@ -2903,8 +2903,14 @@
         "missingFields": "العنوان والمعرف مطلوبان.",
         "created": "تم إنشاء المنشور.",
         "updated": "تم تحديث المنشور.",
-        "deleted": "تم حذف المنشور."
-      }
+        "deleted": "تم حذف المنشور.",
+        "seedDone": "تم زرع {count} مقالة مدونة.",
+        "seedPartial": "نجح {succeeded}، فشل {failed}.",
+        "seedFailed": "فشل الزرع.",
+        "notAuthenticated": "غير مُصادق."
+      },
+      "seedButton": "زرع 30 مقالة مدونة",
+      "seeding": "جارٍ الزرع…"
     },
     "coupons": {
       "title": "كوبونات Stripe",
