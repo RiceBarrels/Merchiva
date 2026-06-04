@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
 import { callReducer } from "@/lib/spacetimedb/server-rpc";
+import { languageNameFor as aiLanguageNameFor } from "@/lib/i18n/ai-language";
 import { getServiceConn, getOrgStoreContext } from "@/lib/spacetimedb/service-client";
 import {
   buildSystemPrompt,
@@ -50,12 +51,7 @@ interface Body {
 }
 
 function languageNameFor(lang: string): string {
-  return lang === "zh" ? "Chinese (简体中文)"
-    : lang === "es" ? "Spanish (Español)"
-    : lang === "fr" ? "French (Français)"
-    : lang === "ar" ? "Arabic (العربية)"
-    : lang === "hi" ? "Hindi (हिन्दी)"
-    : "English";
+  return aiLanguageNameFor(lang);
 }
 
 // Conservative relevance gate used only when Merchiva is NOT directly @mentioned.

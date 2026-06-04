@@ -1,35 +1,45 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteShell } from "@/components/landing/site-shell";
+import { buildAlternates } from "@/lib/i18n/alternates";
+import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
-export const metadata: Metadata = {
-  title: "Features — Merchiva | Per-SKU Forecasting, Auto-Reorder, Stockout Alerts",
-  description:
-    "Per-SKU demand models with 7.2% median error. Confidence bands, driver attribution (weather, payday, holiday), auto-send POs, cold-start mode, and multi-location dashboards.",
-  keywords: [
-    "inventory forecasting features",
-    "demand prediction accuracy",
-    "auto reorder purchase orders",
-    "stockout prevention alerts",
-    "weather demand forecasting",
-    "multi-location inventory",
-    "SKU-level forecasting",
-    "confidence interval forecasting",
-    "cold start inventory model",
-    "vendor management software",
-  ],
-  alternates: { canonical: `${BASE_URL}/features` },
-  openGraph: {
-    title: "Merchiva Features — Six Modules, One Forecast Engine",
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const loc = isLocale(locale) ? locale : DEFAULT_LOCALE;
+  return {
+    title: "Features — Merchiva | Per-SKU Forecasting, Auto-Reorder, Stockout Alerts",
     description:
-      "Per-SKU demand models, confidence bands, driver attribution, auto-reorder POs, stockout alerts, cold-start mode. 7.2% median MAPE.",
-    url: `${BASE_URL}/features`,
-    siteName: "Merchiva",
-    type: "website",
-  },
-};
+      "Per-SKU demand models with 7.2% median error. Confidence bands, driver attribution (weather, payday, holiday), auto-send POs, cold-start mode, and multi-location dashboards.",
+    keywords: [
+      "inventory forecasting features",
+      "demand prediction accuracy",
+      "auto reorder purchase orders",
+      "stockout prevention alerts",
+      "weather demand forecasting",
+      "multi-location inventory",
+      "SKU-level forecasting",
+      "confidence interval forecasting",
+      "cold start inventory model",
+      "vendor management software",
+    ],
+    alternates: buildAlternates("/features", loc),
+    openGraph: {
+      title: "Merchiva Features — Six Modules, One Forecast Engine",
+      description:
+        "Per-SKU demand models, confidence bands, driver attribution, auto-reorder POs, stockout alerts, cold-start mode. 7.2% median MAPE.",
+      url: `${BASE_URL}/${loc}/features`,
+      siteName: "Merchiva",
+      type: "website",
+    },
+  };
+}
 
 const C = {
   bg: "#f0eee9",

@@ -18,21 +18,21 @@ const BASE_URL = "https://project-management-phi-red.vercel.app";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: string; slug: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const post = await fetchBlogPostBySlug(slug);
   if (!post) return { title: "Post not found — Merchiva" };
   return {
     title: `${post.title} — Merchiva Blog`,
     description: post.excerpt,
-    alternates: { canonical: `${BASE_URL}/blogs/${post.slug}` },
+    alternates: { canonical: `${BASE_URL}/${locale}/blogs/${post.slug}` },
     openGraph: {
       title: post.title,
       description: post.excerpt,
-      url: `${BASE_URL}/blogs/${post.slug}`,
+      url: `${BASE_URL}/${locale}/blogs/${post.slug}`,
       siteName: "Merchiva",
       type: "article",
       images: post.coverImage ? [{ url: post.coverImage }] : undefined,
@@ -51,7 +51,7 @@ function formatDate(unixMs: number | null, fallback: number): string {
 }
 
 export default async function BlogPostPage({ params }: PageProps) {
-  const { slug } = await params;
+  const { locale, slug } = await params;
   const post = await fetchBlogPostBySlug(slug);
   if (!post) notFound();
 
@@ -59,7 +59,7 @@ export default async function BlogPostPage({ params }: PageProps) {
     <SiteShell active="blog">
       <BlogArticle>
         <div className="font-mono text-[11px] uppercase tracking-wider text-stone-500 mb-4">
-          <Link href="/blogs" className="hover:text-stone-900 transition-colors">
+          <Link href={`/${locale}/blogs`} className="hover:text-stone-900 transition-colors">
             ← back to blog
           </Link>
         </div>

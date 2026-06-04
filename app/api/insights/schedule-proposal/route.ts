@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
+import { languageNameFor } from "@/lib/i18n/ai-language";
 
 export const runtime = "nodejs";
 
@@ -57,12 +58,7 @@ function buildSystemPrompt(
   weekStart: string,
   weekEnd: string,
 ): string {
-  const languageName = lang === "zh" ? "Chinese (简体中文)"
-    : lang === "es" ? "Spanish (Español)"
-    : lang === "fr" ? "French (Français)"
-    : lang === "ar" ? "Arabic (العربية)"
-    : lang === "hi" ? "Hindi (हिन्दी)"
-    : "English";
+  const languageName = languageNameFor(lang);
 
   return `You are Mr. Merchiva drafting a 7-day shift schedule for the OWNER, covering ${weekStart} → ${weekEnd}.
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject, generateText, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
+import { languageNameFor } from "@/lib/i18n/ai-language";
 
 export const runtime = "nodejs";
 
@@ -109,12 +110,7 @@ function recoverBriefingFromText(text: string | undefined): Briefing | null {
 }
 
 function buildSystemPrompt(context: Record<string, unknown>, lang: string, dateStr: string): string {
-  const languageName = lang === "zh" ? "Chinese (简体中文)"
-    : lang === "es" ? "Spanish (Español)"
-    : lang === "fr" ? "French (Français)"
-    : lang === "ar" ? "Arabic (العربية)"
-    : lang === "hi" ? "Hindi (हिन्दी)"
-    : "English";
+  const languageName = languageNameFor(lang);
 
   // Same Mr. Merchiva persona as the right-panel assistant
   // (app/api/store-ai/route.ts buildSystemPrompt) and fed the same LIVE STORE

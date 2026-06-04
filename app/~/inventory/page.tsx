@@ -932,6 +932,11 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
             <span className="text-muted-foreground">Recommended order</span>
             <span className="font-mono font-semibold">
               {s.recommendedOrderQty} {s.unit}
+              {s.unitsPerCase && s.unitsPerCase > 0 && (
+                <span className="ml-1 text-muted-foreground font-normal">
+                  = {s.recommendedOrderQty / s.unitsPerCase} ×{s.unitsPerCase}
+                </span>
+              )}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">

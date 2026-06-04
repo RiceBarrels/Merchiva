@@ -2964,5 +2964,474 @@
       "whosOn": "Who's working right now?",
       "coverage": "Any gaps in this week's schedule?"
     }
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "download": "Download",
+      "about": "About",
+      "blog": "Blog",
+      "changelog": "Changelog"
+    },
+    "cta": {
+      "signIn": "Sign in",
+      "startFree": "Start free"
+    },
+    "footer": {
+      "product": "Product",
+      "company": "Company",
+      "resources": "Resources",
+      "legal": "Legal",
+      "customers": "Customers",
+      "careers": "Careers",
+      "docs": "Docs",
+      "status": "Status",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "dpa": "DPA",
+      "security": "Security"
+    },
+    "home": {
+      "startFree": "Start free · 30 days",
+      "hero": {
+        "badge": "new · v3.4 · forecasting engine",
+        "tagline": "Inventory forecasting that pays back in week one.",
+        "h1a": "know what",
+        "h1b": "sells next.",
+        "paraStart": "Stop guessing. Merchiva watches your sales every minute and tells you ",
+        "paraEm": "exactly how much to order, and when",
+        "paraMid": " — for every SKU, every supplier, every location. Median forecast error: ",
+        "watchDemo": "Watch 2-min demo",
+        "fine": "no card · 2-minute setup · cancel anytime",
+        "livePre": "live · across",
+        "livePost": "businesses",
+        "updated": "updated every 30s"
+      },
+      "ticker": {
+        "forecasts": "forecasts run · today",
+        "stockouts": "stockouts prevented · 30d",
+        "reorders": "reorders auto-suggested",
+        "accuracy": "forecast accuracy · MAPE"
+      },
+      "trusted": {
+        "tagL": "data sponsors",
+        "tagR": "powering our forecasts with real data",
+        "headPre": "Built with businesses who ",
+        "headAccent": "share their signal",
+        "since": "since",
+        "strip": "their data trains our models · your forecasts get better",
+        "sponsors": {
+          "bake-culture": {
+            "tag": "bakery · retail",
+            "stat": "8 locations",
+            "desc": "Premium Asian-fusion bakery chain bringing Hong Kong–style baking to the Bay Area. Known for their signature pineapple buns, egg tarts, and matcha croissants across 8 locations."
+          },
+          "deviner": {
+            "tag": "coffee · bakery",
+            "stat": "4.6★ rating",
+            "desc": "A Brooklyn gem where coffee craftsmanship meets genuine hospitality. Expertly roasted beans paired with exceptional pastries — from rich, smooth lattes to unforgettable hot chocolate. 4.6 stars from nearly 100 reviews, a true community gathering place."
+          }
+        }
+      },
+      "product": {
+        "tag": "02 · the product",
+        "hint": "auto-cycling · click a tab",
+        "headPre": "Forecast, reorder, restock. ",
+        "headAccent": "One screen. Four hours saved every week.",
+        "views": {
+          "forecast": "Forecast",
+          "reorder": "Reorder",
+          "inv": "Inventory",
+          "sales": "Signal"
+        }
+      },
+      "forecastView": {
+        "title": "Oat milk · 1L",
+        "meta": "SKU OAT-1L · supplier Pacific Farms · lead time 3d",
+        "actual": "actual",
+        "forecast": "forecast",
+        "reorderBadge": "REORDER · MAY 14",
+        "stat": {
+          "predicted": {
+            "k": "Predicted · 14d",
+            "v": "628 L",
+            "s": "+18% vs prev"
+          },
+          "reorderBy": {
+            "k": "Reorder by",
+            "v": "May 14",
+            "s": "4 days from now"
+          },
+          "suggestQty": {
+            "k": "Suggest qty",
+            "v": "14 cases",
+            "s": "@ $42.50/case"
+          },
+          "risk": {
+            "k": "Stockout risk",
+            "v": "2.4%",
+            "s": "within window"
+          }
+        }
+      },
+      "reorderView": {
+        "status": "6 reorders auto-suggested · last run 14s ago",
+        "approve": "Approve all · send 4 POs",
+        "col": {
+          "sku": "SKU",
+          "item": "Item",
+          "vendor": "Vendor",
+          "qty": "Qty",
+          "needBy": "Need by",
+          "risk": "Risk",
+          "action": "Action"
+        },
+        "send": "send",
+        "rows": {
+          "OAT-1L": {
+            "name": "Oat milk · 1L",
+            "unit": "cases"
+          },
+          "BEAN-ETH-1KG": {
+            "name": "Beans · Ethiopia · 1kg",
+            "unit": "bags"
+          },
+          "SYR-VAN-750": {
+            "name": "Vanilla syrup · 750ml",
+            "unit": "btl"
+          },
+          "CUP-12-WHT": {
+            "name": "Cups · 12oz · white",
+            "unit": "cases"
+          },
+          "MILK-WH-1G": {
+            "name": "Whole milk · 1gal",
+            "unit": "gal"
+          },
+          "LID-12": {
+            "name": "Lids · 12oz",
+            "unit": "cases"
+          }
+        }
+      },
+      "inventoryView": {
+        "col": {
+          "sku": "SKU",
+          "item": "Item",
+          "onHand": "On hand",
+          "par": "Par",
+          "status": "Status"
+        },
+        "reorder": "REORDER",
+        "ok": "OK",
+        "rows": {
+          "BEAN-ETH-1KG": "Beans · Ethiopia · 1kg",
+          "CUP-12-WHT": "Cups · 12oz · white",
+          "MILK-WH-1G": "Whole milk · 1gal",
+          "OAT-1L": "Oat milk · 1L",
+          "SYR-VAN-750": "Vanilla syrup · 750ml",
+          "LID-12": "Lids · 12oz"
+        }
+      },
+      "salesView": {
+        "vsAvg": "+18.4% vs avg Sat",
+        "stat": {
+          "orders": "Orders",
+          "avgTicket": "Avg ticket",
+          "refunds": "Refunds",
+          "tipAvg": "Tip avg"
+        }
+      },
+      "island": {
+        "0": [
+          {
+            "title": "628L predicted",
+            "sub": "next 14d · 87% conf"
+          },
+          {
+            "title": "Rain → +18%",
+            "sub": "iced drinks · Wed"
+          }
+        ],
+        "1": [
+          {
+            "title": "Reorder by May 14",
+            "sub": "12 SKUs · oat milk"
+          },
+          {
+            "title": "PO #4812 sent",
+            "sub": "Pacific · 23 cases"
+          }
+        ],
+        "2": [
+          {
+            "title": "Cups: 2.1 days left",
+            "sub": "ETA Thu · 4 cases"
+          },
+          {
+            "title": "Stock OK · 92 SKUs",
+            "sub": "8 below threshold"
+          }
+        ],
+        "3": [
+          {
+            "title": "+12% vs last week",
+            "sub": "Today · $4,820"
+          },
+          {
+            "title": "Peak: 10–11 AM",
+            "sub": "84 orders / hr"
+          }
+        ]
+      },
+      "schedule": {
+        "tag": "02b · auto-scheduler",
+        "hint": "writing next week · auto-cycle",
+        "headPre": "Mr. Merchiva writes ",
+        "headAccent": "next week's schedule",
+        "intro": "He reads availability, payroll caps, last week's trades, and the weather — then drops a full week of shifts in under a minute. Approve in one tap, or let it auto-commit.",
+        "scheduling": "scheduling",
+        "done": "done",
+        "shiftsPlaced": "shifts placed",
+        "weekReady": "Week ready",
+        "shifts": "shifts",
+        "underBudget": "under budget",
+        "weekOf": "week of may 13 · 2026",
+        "days": {
+          "mon": "Mon",
+          "tue": "Tue",
+          "wed": "Wed",
+          "thu": "Thu",
+          "fri": "Fri",
+          "sat": "Sat",
+          "sun": "Sun"
+        },
+        "reasons": [
+          "Sarah opens Mon — she's flagged \"early-bird\" in availability.",
+          "Mateo on close — 1h overlap with Sarah for handover.",
+          "Priya leads Tue AM — payday lift forecast +14%.",
+          "Sarah doubles Tue PM — Mateo unavailable after 1 pm.",
+          "Mateo opens Wed — Sarah requested mid-week PM.",
+          "Devon trains Wed PM — first solo close (Priya nearby).",
+          "Thursday rush — senior on bar opens cleaner.",
+          "Sarah closes Thu — coverage gap solved without OT.",
+          "Mateo Fri AM — weather says +22% iced drinks.",
+          "Priya extended close — payday + Friday happy hour.",
+          "Devon Sat AM — soft demand, good day to keep training.",
+          "Sarah Sat close — Mateo flagged Sat PTO last month.",
+          "Priya solo Sun AM — brunch crowd, predictable mix.",
+          "Mateo wraps the week — Sun close keeps payroll under cap."
+        ]
+      },
+      "pos": {
+        "tag": "02c · merchiva POS",
+        "hint": "scan · cart · charge",
+        "headPre": "From scan to receipt ",
+        "headAccent": "in four taps",
+        "intro": "The Merchiva register shares the same catalog and stock counts as your dashboard. Every sale updates the forecast in the same second — no overnight sync.",
+        "catalogPre": "catalog ·",
+        "itemsWord": "items",
+        "terminal": "terminal · 03",
+        "cartPre": "cart ·",
+        "item": "item",
+        "items": "items",
+        "queue": "queue #4218",
+        "scanToBegin": "Scan an item to begin",
+        "subtotal": "Subtotal",
+        "tax": "Tax · 8%",
+        "total": "Total",
+        "tapToCharge": "Tap to charge",
+        "processing": "Processing…",
+        "charged": "Charged",
+        "receiptDone": "receipt #4218 · printed · ",
+        "stockUpdated": "stock + forecast updated",
+        "payMethods": "tap · swipe · contactless · gift card",
+        "scan": "scan",
+        "products": {
+          "1": {
+            "name": "Iced Latte",
+            "tag": "drinks"
+          },
+          "2": {
+            "name": "Almond Croissant",
+            "tag": "bakery"
+          },
+          "3": {
+            "name": "Double Espresso",
+            "tag": "drinks"
+          },
+          "4": {
+            "name": "Avocado Toast",
+            "tag": "food"
+          },
+          "5": {
+            "name": "Matcha Latte",
+            "tag": "drinks"
+          },
+          "6": {
+            "name": "Cold Brew",
+            "tag": "drinks"
+          }
+        }
+      },
+      "marquee": [
+        "demand forecasts",
+        "reorder points",
+        "stockout risk",
+        "lead-time aware",
+        "confidence bands",
+        "driver attribution",
+        "weather signal",
+        "holiday lift",
+        "payday bumps",
+        "cold-start models",
+        "vendor MOQs",
+        "pack rounding",
+        "cycle counts",
+        "shrink alerts",
+        "expiry windows",
+        "multi-location",
+        "auto purchase orders",
+        "supplier scorecards",
+        "safety-stock tuning",
+        "what-if scenarios"
+      ],
+      "posLoader": {
+        "latte": "Latte 12oz",
+        "croissant": "Croissant",
+        "total": "Total"
+      },
+      "booksLoader": {
+        "sales": "Sales",
+        "tax": "Tax",
+        "tips": "Tips",
+        "net": "Net"
+      },
+      "months": [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+      ],
+      "features": {
+        "tag": "03 · modules",
+        "hint": "six modules · one bill",
+        "headPre": "Six things our forecast does that ",
+        "headAccent": "your spreadsheet can't",
+        "items": {
+          "F01": {
+            "title": "Per-SKU demand",
+            "body": "A separate model per SKU per location. Daily and hourly granularity, refit nightly on your data.",
+            "hint": "7.2% MAPE · median"
+          },
+          "F02": {
+            "title": "Confidence bands",
+            "body": "Forecasts come with calibrated 80/95% intervals. Decide reorder qty against your tolerance for stockout.",
+            "hint": "P95 · 14-day window"
+          },
+          "F03": {
+            "title": "Drivers explained",
+            "body": "Every prediction shows what moved it: weather, payday, holiday, local event, last week's lift.",
+            "hint": "+18% rain Saturday"
+          },
+          "F04": {
+            "title": "Auto-reorder",
+            "body": "Suggested POs land in your inbox at 4am. Approve in one tap. Vendor-aware lead times, MOQs, pack sizes.",
+            "hint": "sends at 04:00 daily"
+          },
+          "F05": {
+            "title": "Stockout alerts",
+            "body": "A pager-style alert the moment risk crosses your threshold. Quietly resolves itself when you reorder.",
+            "hint": "risk crossed 70% · 4m ago"
+          },
+          "F06": {
+            "title": "Cold-start mode",
+            "body": "New SKU? We borrow strength from similar items in the network until you have your own history.",
+            "hint": "first useful forecast · day 7"
+          }
+        }
+      },
+      "metrics": {
+        "tag": "04 · in production",
+        "dataThrough": "data through May 2026",
+        "headPre": "Operators don't write reviews. They ",
+        "headAccent": "renew",
+        "min": " min",
+        "minMedian": " min · median",
+        "stat": {
+          "businesses": "businesses live",
+          "setup": "avg setup time",
+          "renewal": "annual renewal",
+          "support": "support · first reply",
+          "gmv": "gmv processed",
+          "states": "states covered"
+        },
+        "mrr": "monthly recurring revenue",
+        "last12": "last 12 mo · USD"
+      },
+      "testimonials": {
+        "tag": "05 · in their words",
+        "readAll": "read all 318 →",
+        "quotes": [
+          {
+            "q": "Closed our first month with no spreadsheet for the first time in 6 years.",
+            "role": "Owner · Maple Coffee · Oakland"
+          },
+          {
+            "q": "Replaced four logins. The crew actually uses it because the punch screen is faster than the wall clock.",
+            "role": "GM · North Pine Salon"
+          },
+          {
+            "q": "Inventory used to be Wednesday night and a glass of wine. Now it's Wednesday afternoon.",
+            "role": "Co-owner · Olive & Stone Bakery"
+          }
+        ]
+      },
+      "pricing": {
+        "tag": "06 · pricing",
+        "hint": "flat · per-location · no per-seat",
+        "headPre": "Two plans. ",
+        "headAccent": "No \"contact sales\".",
+        "mostPicked": "most picked",
+        "perMo": "/mo",
+        "sub": "per location · per month",
+        "plans": {
+          "operator": {
+            "name": "Operator",
+            "list": [
+              "Up to 12 staff",
+              "All 6 modules",
+              "iOS + Android apps",
+              "Email support · 24h"
+            ]
+          },
+          "multi": {
+            "name": "Multi",
+            "list": [
+              "Unlimited staff",
+              "All 6 modules + analytics",
+              "Multi-location dashboard",
+              "Priority support · 4h median",
+              "Onboarding call"
+            ]
+          }
+        }
+      },
+      "cta": {
+        "head1": "never run",
+        "head2": "out again.",
+        "para": "Connect your POS. We learn your sales for seven days, then start telling you what to order — to the case, by the day. Median forecast error: 7.2%.",
+        "walkthrough": "Book a 20-min walkthrough"
+      }
+    }
   }
 }

@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, generateText, generateObject } from "ai";
+import { streamText, generateText, generateObject, stepCountIs } from "ai";
 import { z } from "zod";
 import { getAllPromptSegments } from "@/lib/merchiva/skills/registry";
+import { languageNameFor } from "@/lib/i18n/ai-language";
+import {
+  buildMerchivaTools,
+  buildSlimContext,
+  merchivaToolsEnabled,
+  TOOLS_PROMPT_BLOCK,
+} from "@/lib/merchiva/tools";
 
 function getOpenRouter() {
   const key = process.env.OPENROUTER_API_KEY;
@@ -102,15 +109,6 @@ const triageSchema = z.object({
       `Pick ONE kaomoji from the palette below that matches the mood of your reply. This face is displayed as a watermark on the chat panel so the user gets ambient feedback about your tone. Return the face EXACTLY as written (the unicode characters, no quotes, no surrounding text). Palette:\n${KAOMOJI_PALETTE.map((k) => `- ${k.face} — ${k.mood}`).join("\n")}\nPick the one that fits — happy/warm faces for praise and easy wins, thinking faces while you're escalating to the heavy model, surprised/concerned for anomalies you spot, apologetic for errors. Default to (◕‿◕) when in doubt.`,
     ),
 });
-
-function languageNameFor(lang: string): string {
-  return lang === "zh" ? "Chinese (简体中文)"
-    : lang === "es" ? "Spanish (Español)"
-    : lang === "fr" ? "French (Français)"
-    : lang === "ar" ? "Arabic (العربية)"
-    : lang === "hi" ? "Hindi (हिन्दी)"
-    : "English";
-}
 
 function buildTriageSystemPrompt(lang: string, mode: "chat" | "voice"): string {
   const languageName = languageNameFor(lang);
@@ -840,6 +838,9 @@ export function buildSystemPrompt(
   memory: MemoryContext,
   permissions?: UserPermissions,
   mode: "chat" | "voice" | "group" = "chat",
+  // When true, the model fetches live data via read-tools instead of receiving
+  // the full JSON dump — we inline only a slim overview + the tools guide.
+  toolsEnabled = false,
 ): string {
   const skillPrompts = getAllPromptSegments();
   const currentDateAndTime = new Date().toLocaleString(lang);
@@ -853,12 +854,7 @@ export function buildSystemPrompt(
     memory.userPreferences && `USER PREFERENCES:\n${memory.userPreferences}`,
   ].filter(Boolean).join("\n\n");
 
-  const languageName = lang === "zh" ? "Chinese (简体中文)"
-    : lang === "es" ? "Spanish (Español)"
-    : lang === "fr" ? "French (Français)"
-    : lang === "ar" ? "Arabic (العربية)"
-    : lang === "hi" ? "Hindi (हिन्दी)"
-    : "English";
+  const languageName = languageNameFor(lang);
 
   const voiceModeBlock = mode === "voice" ? `\n📞 VOICE CALL MODE: The user is talking to you via a voice/audio call. Your reply will be spoken aloud through text-to-speech.
 - Keep replies SHORT (1-3 sentences, max ~60 words).
@@ -885,8 +881,11 @@ export function buildSystemPrompt(
 🌐 USER LANGUAGE: ${languageName} (locale code: "${lang}")
 ALL your replies, action explanations, error messages, and confirmations MUST be written in ${languageName}. Do not switch languages even if the LIVE STORE DATA contains other languages. The user's interface is set to "${lang}" — match it.${voiceModeBlock}${groupModeBlock}${builderBlock}
 
-${permBlock ? `${permBlock}\n\n` : ""}${memoryBlock ? `${memoryBlock}\n\n` : ""}LIVE STORE DATA:
-${JSON.stringify(context, null, 2)}
+${permBlock ? `${permBlock}\n\n` : ""}${memoryBlock ? `${memoryBlock}\n\n` : ""}${
+    toolsEnabled
+      ? `${TOOLS_PROMPT_BLOCK}\n\nSTORE OVERVIEW:\n${buildSlimContext(context)}`
+      : `LIVE STORE DATA:\n${JSON.stringify(context, null, 2)}`
+  }
 
 CAPABILITIES:
 - Answer any question about inventory, sales, staffing, products, suppliers, finances
@@ -977,7 +976,7 @@ ROLE/POSITION RULES:
 - When creating a new role, suggest an appropriate icon from: coffee, utensils, chef-hat, store, receipt, banknote, package, box, shopping-cart, truck, clipboard, wrench, hammer, sparkles, headphones, heart-pulse, shield, briefcase, award, star, clock, phone, mail, leaf, music, camera, palette, zap, user, wine, moon-star, sun.
 - When creating a new role, use a color from: #44403c, #78716c, #57534e, #a8a29e, #292524, #6b7280, #374151, #4b5563, #9ca3af.
 - When deleting a role, warn the user about staff currently assigned to it.
-- IMPORTANT: Respond in ${lang === "zh" ? "Chinese (简体中文)" : lang === "es" ? "Spanish (Español)" : lang === "fr" ? "French (Français)" : lang === "ar" ? "Arabic (العربية)" : lang === "hi" ? "Hindi (हिन्दी)" : "English"}. The user's interface language is set to "${lang}" — all your replies, action explanations, and confirmations MUST be in this language. Do not switch languages unless the user explicitly asks.
+- IMPORTANT: Respond in ${languageNameFor(lang)}. The user's interface language is set to "${lang}" — all your replies, action explanations, and confirmations MUST be in this language. Do not switch languages unless the user explicitly asks.
 
 FEW-SHOT EXAMPLES (follow this format exactly):
 
@@ -1114,10 +1113,32 @@ ${prevSummary ? `PREVIOUS SUMMARY:\n${prevSummary}\n\n` : ""}NEW MESSAGES:\n${co
 Output ONLY the updated summary, no preamble.`;
 }
 
+// ── Verbose prompt logging ────────────────────────────────────────────────
+// Dumps the FULL raw system prompt and conversation messages sent to each
+// model to the server console, so you can see exactly what Mr. Merchiva
+// receives. On by default; set STORE_AI_LOG_PROMPTS="false" to silence (e.g.
+// to keep production logs lean) or "preview" to truncate long blocks.
+const LOG_PROMPTS = process.env.STORE_AI_LOG_PROMPTS !== "false";
+const LOG_PREVIEW = process.env.STORE_AI_LOG_PROMPTS === "preview";
+
+function logBlock(label: string, content: string) {
+  if (!LOG_PROMPTS) return;
+  const body = LOG_PREVIEW && content.length > 2000
+    ? `${content.slice(0, 2000)}\n…[+${content.length - 2000} chars truncated]`
+    : content;
+  const bar = "─".repeat(16);
+  console.log(`\n${bar} [store-ai] ${label} (${content.length} chars) ${bar}\n${body}\n${bar} /${label} ${bar}\n`);
+}
+
+function logMessages(label: string, msgs: Array<{ role: string; content: string }>) {
+  if (!LOG_PROMPTS) return;
+  logBlock(label, msgs.map((m, i) => `[${i}] ${m.role}:\n${m.content}`).join("\n\n"));
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, history, context, type, lang, memory, summarize, permissions, mode } = body;
+    const { message, history, context, type, lang, memory, summarize, permissions, mode, organizationId } = body;
     const callMode: "chat" | "voice" = mode === "voice" ? "voice" : "chat";
 
     if (!process.env.OPENROUTER_API_KEY) {
@@ -1130,6 +1151,7 @@ export async function POST(req: NextRequest) {
     if (summarize) {
       const { prevSummary, newMessages } = summarize;
       const prompt = buildSummarizePrompt(prevSummary ?? "", newMessages ?? []);
+      logBlock("summarize prompt", prompt);
       const { text } = await generateText({
         model: getOpenRouterModel(),
         messages: [{ role: "system", content: prompt }],
@@ -1141,7 +1163,8 @@ export async function POST(req: NextRequest) {
 
     // Weekly summary
     if (type === "weekly_summary") {
-      const systemPrompt = `You are Mr. Merchiva generating a weekly summary. Store data:\n${JSON.stringify(context ?? {}, null, 2)}\n\nGenerate a concise weekly report with: Revenue, Top Products, Staffing, Inventory Alerts, Recommendations. Use real numbers. Respond in ${lang === "zh" ? "Chinese" : "English"}.`;
+      const systemPrompt = `You are Mr. Merchiva generating a weekly summary. Store data:\n${JSON.stringify(context ?? {}, null, 2)}\n\nGenerate a concise weekly report with: Revenue, Top Products, Staffing, Inventory Alerts, Recommendations. Use real numbers. Respond in ${languageNameFor(lang)}.`;
+      logBlock("weekly_summary system prompt", systemPrompt);
       const { text } = await generateText({
         model: getOpenRouterModel(),
         system: systemPrompt,
@@ -1158,8 +1181,13 @@ export async function POST(req: NextRequest) {
 
     const memCtx: MemoryContext = memory ?? {};
     const userPerms: UserPermissions | undefined = permissions;
-    const systemPrompt = buildSystemPrompt(context ?? {}, lang ?? "en", memCtx, userPerms, callMode);
     const isBuilderMode = !!(context && (context as Record<string, unknown>).builder);
+    // Tool calling is for store-data work — not builder/HTML mode (which carries
+    // its own page context), and only when the service connection is available
+    // and we know which org to read.
+    const orgId = typeof organizationId === "string" ? organizationId : undefined;
+    const toolsEnabled = merchivaToolsEnabled() && !!orgId && !isBuilderMode;
+    const systemPrompt = buildSystemPrompt(context ?? {}, lang ?? "en", memCtx, userPerms, callMode, toolsEnabled);
 
     // Conversation messages only — the system prompt is passed via the SDK's
     // `system` option (not as a messages[] entry) to avoid the prompt-injection
@@ -1176,6 +1204,21 @@ export async function POST(req: NextRequest) {
     const totalChars =
       systemPrompt.length + convoMsgs.reduce((s, m) => s + m.content.length, 0);
     console.log(`[store-ai] Model: ${model}, messages: ${convoMsgs.length}, total chars: ${totalChars}, builder=${isBuilderMode}`);
+
+    // Raw dump of everything we're about to feed the model.
+    logBlock(
+      `request (mode=${callMode}, lang=${lang ?? "en"}, builder=${isBuilderMode}, stream=${!!body.stream})`,
+      [
+        `message: ${message}`,
+        `history turns: ${Array.isArray(history) ? history.length : 0}`,
+        `permissions: ${JSON.stringify(userPerms ?? null)}`,
+        `memory keys: ${Object.keys(memCtx).join(", ") || "(none)"}`,
+        `context keys: ${context ? Object.keys(context as object).join(", ") : "(none)"}`,
+        `context: ${JSON.stringify(context ?? null)}`,
+      ].join("\n"),
+    );
+    logBlock("system prompt", systemPrompt);
+    logMessages("conversation messages", convoMsgs);
 
     // Builder mode emits long structured JSON for many elements — give it more
     // headroom so multi-section page generations don't get truncated mid-block.
@@ -1200,6 +1243,9 @@ export async function POST(req: NextRequest) {
           : []),
         { role: "user" as const, content: message },
       ];
+
+      logBlock(`triage system (${triageModelName})`, triageSystem);
+      logMessages("triage messages", triageMessages);
 
       let triage: { needsThinking: boolean; needsDeepThinking?: boolean; message: string; kaomoji?: string };
       try {
@@ -1244,7 +1290,12 @@ export async function POST(req: NextRequest) {
       const kaomojiHeader = triage.kaomoji
         ? Buffer.from(triage.kaomoji, "utf-8").toString("base64")
         : "";
-      const ackHeader = triage.message
+      // The ack header is a SHORT preamble shown while the thinking model works
+      // — it only applies on the escalation path, where the body carries a
+      // separate substantive reply. For a direct answer (!needsThinking) the
+      // message IS the body, so emitting it as an ack too made the client render
+      // the same text twice (ack bubble + main bubble). Only set it on escalate.
+      const ackHeader = (triage.needsThinking && triage.message)
         ? Buffer.from(triage.message, "utf-8").toString("base64")
         : "";
       const responseHeaders: Record<string, string> = {
@@ -1294,6 +1345,7 @@ export async function POST(req: NextRequest) {
             const escalationModelName = useThinking ? getThinkingModel() + " (thinking)" : getModel();
             const escalationModel = useThinking ? getOpenRouterThinkingModel() : getOpenRouterModel();
             console.log(`[store-ai] Escalating to ${escalationModelName}`);
+            logBlock(`main system (${escalationModelName})`, mainSystem);
 
             // Auto-batching: when a reply hits the maxOutput cap mid-stream
             // (finishReason === "length"), the action-block parser bails at
@@ -1315,12 +1367,26 @@ export async function POST(req: NextRequest) {
                 ? convoMsgs
                 : [...convoMsgs, { role: "assistant" as const, content: cleanReply }];
 
+              logMessages(`main messages (batch ${batchN})`, turnMessages);
+
               const mainResult = streamText({
                 model: escalationModel,
                 system: mainSystem + continuationNote,
                 messages: turnMessages,
                 maxOutputTokens: maxOutput,
                 temperature: callMode === "voice" ? 0.4 : 0.2,
+                // Read-tools: the model fetches live store data on demand. Writes
+                // stay as ```action``` blocks. stepCountIs caps the fetch→reason
+                // loop so a confused model can't spin forever.
+                ...(toolsEnabled && orgId
+                  ? {
+                      tools: buildMerchivaTools({
+                        organizationId: orgId,
+                        today: (context as Record<string, unknown> | undefined)?.today as string | undefined,
+                      }),
+                      stopWhen: stepCountIs(6),
+                    }
+                  : {}),
               });
 
               // Buffer the batch server-side rather than streaming chunk by
@@ -1374,12 +1440,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Non-streaming fallback
+    logBlock("non-stream system prompt", systemPrompt);
+    logMessages("non-stream messages", convoMsgs);
     const { text } = await generateText({
       model: callMode === "voice" ? getOpenRouterVoiceModel() : getOpenRouterModel(),
       system: systemPrompt,
       messages: convoMsgs,
       maxOutputTokens: maxOutput,
       temperature: callMode === "voice" ? 0.4 : 0.2,
+      ...(toolsEnabled && orgId
+        ? {
+            tools: buildMerchivaTools({
+              organizationId: orgId,
+              today: (context as Record<string, unknown> | undefined)?.today as string | undefined,
+            }),
+            stopWhen: stepCountIs(6),
+          }
+        : {}),
     });
 
     const localeKey = (lang ?? "en") as keyof typeof CHAT_FALLBACK;

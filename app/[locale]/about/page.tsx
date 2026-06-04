@@ -1,22 +1,32 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteShell } from "@/components/landing/site-shell";
+import { buildAlternates } from "@/lib/i18n/alternates";
+import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
-export const metadata: Metadata = {
-  title: "About — Merchiva | Built for Operators, by Operators",
-  description:
-    "Merchiva is a remote-first team building inventory forecasting tools for small businesses. 2,841 businesses live. 96.4% annual renewal. Oakland · Brooklyn.",
-  alternates: { canonical: `${BASE_URL}/about` },
-  openGraph: {
-    title: "About Merchiva — The OS for the Floor",
-    description: "Built for operators, by operators. Remote-first. 2,841 businesses live across 47 states.",
-    url: `${BASE_URL}/about`,
-    siteName: "Merchiva",
-    type: "website",
-  },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const loc = isLocale(locale) ? locale : DEFAULT_LOCALE;
+  return {
+    title: "About — Merchiva | Built for Operators, by Operators",
+    description:
+      "Merchiva is a remote-first team building inventory forecasting tools for small businesses. 2,841 businesses live. 96.4% annual renewal. Oakland · Brooklyn.",
+    alternates: buildAlternates("/about", loc),
+    openGraph: {
+      title: "About Merchiva — The OS for the Floor",
+      description: "Built for operators, by operators. Remote-first. 2,841 businesses live across 47 states.",
+      url: `${BASE_URL}/${loc}/about`,
+      siteName: "Merchiva",
+      type: "website",
+    },
+  };
+}
 
 const C = {
   bg: "#f0eee9", paper: "#ffffff", surface: "#fafaf9", ink: "#0c0a09",

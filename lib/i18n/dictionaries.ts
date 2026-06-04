@@ -1,21 +1,25 @@
 import type { Locale } from "./config";
 
 import en from "@/messages/en.json";
-import zh from "@/messages/zh.json";
+import zhCN from "@/messages/zh-cn.json";
+import zhTW from "@/messages/zh-tw.json";
+import zhHK from "@/messages/zh-hk.json";
+import fr from "@/messages/fr.json";
 import es from "@/messages/es.json";
 import hi from "@/messages/hi.json";
 import ar from "@/messages/ar.json";
-import fr from "@/messages/fr.json";
 
 export type Dictionary = typeof en;
 
 export const dictionaries: Record<Locale, Dictionary> = {
   en,
-  zh: zh as Dictionary,
+  "zh-cn": zhCN as Dictionary,
+  "zh-tw": zhTW as Dictionary,
+  "zh-hk": zhHK as Dictionary,
+  fr: fr as Dictionary,
   es: es as Dictionary,
   hi: hi as Dictionary,
   ar: ar as Dictionary,
-  fr: fr as Dictionary,
 };
 
 export function getDictionary(locale: Locale): Dictionary {

@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { SiteShell } from "@/components/landing/site-shell";
+import { useI18n } from "@/lib/i18n/context";
+
+// Marketing-homepage i18n lives under the `landing.home` namespace; keep this
+// prefix so every t() call below reads like `t("home.…")`.
+const H = "landing.home";
 
 const C = {
   bg: "#f0eee9",
@@ -175,7 +180,8 @@ function AnimatedGrid() {
 }
 
 function HeroWordmark() {
-  const lines = ["know what", "sells next."];
+  const { t, dir } = useI18n();
+  const lines = [t(`${H}.hero.h1a`), t(`${H}.hero.h1b`)];
   let idx = 0;
   return (
     <h1
@@ -189,7 +195,14 @@ function HeroWordmark() {
         color: C.ink,
       }}
     >
-      {lines.map((line, li) => (
+      {lines.map((line, li) =>
+        // Per-letter reveal only for LTR Latin; RTL/cursive scripts (Arabic)
+        // break when split into inline-block glyphs, so render them as a block.
+        dir === "rtl" ? (
+          <div key={li} style={{ animation: `mv-fade-up 800ms cubic-bezier(.2,.8,.2,1) ${120 + li * 220}ms both` }}>
+            {line}
+          </div>
+        ) : (
         <div key={li} style={{ display: "flex", flexWrap: "nowrap" }}>
           {line.split("").map((c) => {
             const i = idx++;
@@ -209,7 +222,8 @@ function HeroWordmark() {
             );
           })}
         </div>
-      ))}
+        )
+      )}
     </h1>
   );
 }
@@ -266,12 +280,13 @@ function TypingLine() {
 
 function HeroTicker() {
   useTick(8);
+  const { t: tr } = useI18n();
   const t = performance.now() / 1000;
   const stats = [
-    { label: "forecasts run · today", base: 184_612, drift: 0.92, fixed: undefined as string | undefined },
-    { label: "stockouts prevented · 30d", base: 41_287, drift: 0.18, fixed: undefined as string | undefined },
-    { label: "reorders auto-suggested", base: 612_408, drift: 0.41, fixed: undefined as string | undefined },
-    { label: "forecast accuracy · MAPE", base: 0, drift: 0, fixed: "7.2%" },
+    { label: tr(`${H}.ticker.forecasts`), base: 184_612, drift: 0.92, fixed: undefined as string | undefined },
+    { label: tr(`${H}.ticker.stockouts`), base: 41_287, drift: 0.18, fixed: undefined as string | undefined },
+    { label: tr(`${H}.ticker.reorders`), base: 612_408, drift: 0.41, fixed: undefined as string | undefined },
+    { label: tr(`${H}.ticker.accuracy`), base: 0, drift: 0, fixed: "7.2%" },
   ];
   return (
     <div
@@ -377,6 +392,7 @@ function MagneticButton({
 }
 
 function Hero() {
+  const { t } = useI18n();
   return (
     <section
       id="top"
@@ -404,10 +420,10 @@ function Hero() {
         >
           <MonoTag>
             <span style={{ width: 6, height: 6, background: C.good, borderRadius: "50%" }} />
-            new · v3.4 · forecasting engine
+            {t(`${H}.hero.badge`)}
           </MonoTag>
           <span style={{ fontSize: 13, color: C.sec, letterSpacing: -0.1 }}>
-            Inventory forecasting that pays back in week one.
+            {t(`${H}.hero.tagline`)}
           </span>
         </div>
 
@@ -436,32 +452,32 @@ function Hero() {
               textWrap: "pretty" as never,
             }}
           >
-            Stop guessing. Merchiva watches your sales every minute and tells you{" "}
+            {t(`${H}.hero.paraStart`)}
             <em style={{ color: C.ink, fontStyle: "normal", fontWeight: 600 }}>
-              exactly how much to order, and when
-            </em>{" "}
-            — for every SKU, every supplier, every location. Median forecast error:{" "}
+              {t(`${H}.hero.paraEm`)}
+            </em>
+            {t(`${H}.hero.paraMid`)}
             <strong style={{ color: C.ink, fontWeight: 600 }}>7.2%</strong>.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: "flex-start" }}>
             <TypingLine />
             <div data-mv-cta-row style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <MagneticButton primary href="/signup">
-                Start free · 30 days
+                {t(`${H}.startFree`)}
               </MagneticButton>
-              <MagneticButton href="#product">Watch 2-min demo</MagneticButton>
+              <MagneticButton href="#product">{t(`${H}.hero.watchDemo`)}</MagneticButton>
             </div>
             <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec, letterSpacing: 0.3 }}>
-              no card · 2-minute setup · cancel anytime
+              {t(`${H}.hero.fine`)}
             </span>
           </div>
         </div>
 
         <div style={{ marginTop: 64, animation: "mv-fade-up 900ms 1100ms both" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
-            <MonoTag border={false}>live · across {(2841).toLocaleString()} businesses</MonoTag>
+            <MonoTag border={false}>{t(`${H}.hero.livePre`)} {(2841).toLocaleString()} {t(`${H}.hero.livePost`)}</MonoTag>
             <DotLeader />
-            <MonoTag border={false}>updated every 30s</MonoTag>
+            <MonoTag border={false}>{t(`${H}.hero.updated`)}</MonoTag>
           </div>
           <HeroTicker />
         </div>
@@ -531,6 +547,8 @@ function SponsorCard({
   hovered: boolean;
   onHover: (h: boolean) => void;
 }) {
+  const { t } = useI18n();
+  const base = `${H}.trusted.sponsors.${s.slug}`;
   return (
     <div
       className="mv-reveal"
@@ -596,7 +614,7 @@ function SponsorCard({
                 background: C.paper,
               }}
             >
-              {s.tag}
+              {t(`${base}.tag`)}
             </span>
           </div>
           <div
@@ -609,9 +627,9 @@ function SponsorCard({
               gap: 14,
             }}
           >
-            <span>since {s.since}</span>
+            <span>{t(`${H}.trusted.since`)} {s.since}</span>
             <span style={{ color: C.borderD }}>·</span>
-            <span>{s.stat}</span>
+            <span>{t(`${base}.stat`)}</span>
           </div>
         </div>
       </div>
@@ -625,7 +643,7 @@ function SponsorCard({
           textWrap: "pretty" as never,
         }}
       >
-        {s.desc}
+        {t(`${base}.desc`)}
       </p>
 
       {/* Bottom accent line */}
@@ -646,6 +664,7 @@ function SponsorCard({
 }
 
 function TrustedBy() {
+  const { t } = useI18n();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   return (
@@ -667,9 +686,9 @@ function TrustedBy() {
             marginBottom: 12,
           }}
         >
-          <MonoTag border={false}>data sponsors</MonoTag>
+          <MonoTag border={false}>{t(`${H}.trusted.tagL`)}</MonoTag>
           <DotLeader />
-          <MonoTag border={false}>powering our forecasts with real data</MonoTag>
+          <MonoTag border={false}>{t(`${H}.trusted.tagR`)}</MonoTag>
         </div>
 
         <h3
@@ -684,8 +703,8 @@ function TrustedBy() {
             color: C.ink,
           }}
         >
-          Built with businesses who{" "}
-          <span style={{ color: C.ter }}>share their signal</span>.
+          {t(`${H}.trusted.headPre`)}
+          <span style={{ color: C.ter }}>{t(`${H}.trusted.headAccent`)}</span>.
         </h3>
 
         {/* Cards */}
@@ -779,7 +798,7 @@ function TrustedBy() {
                     textTransform: "uppercase",
                   }}
                 >
-                  {s.tag}
+                  {t(`${H}.trusted.sponsors.${s.slug}.tag`)}
                 </span>
               </div>
             ))}
@@ -808,7 +827,7 @@ function TrustedBy() {
               textTransform: "uppercase",
             }}
           >
-            their data trains our models · your forecasts get better
+            {t(`${H}.trusted.strip`)}
           </span>
           <div style={{ flex: 1, height: 1, borderTop: `1px dashed ${C.borderD}` }} />
         </div>
@@ -830,6 +849,7 @@ const VIEWS = [
 
 function ViewForecast() {
   useTick(2);
+  const { t: tr } = useI18n();
   const t = performance.now() / 1000;
   const past = Array.from({ length: 14 }, (_, i) => 38 + Math.sin(i * 0.7) * 9 + Math.sin(i * 0.3) * 4 + i * 0.4);
   const fut = Array.from({ length: 14 }, (_, i) => {
@@ -857,9 +877,9 @@ function ViewForecast() {
     <div style={{ padding: 18, fontFamily: C.sans, height: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>Oat milk · 1L</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{tr(`${H}.forecastView.title`)}</div>
           <div style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec, marginTop: 2 }}>
-            SKU OAT-1L · supplier Pacific Farms · lead time 3d
+            {tr(`${H}.forecastView.meta`)}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -896,10 +916,10 @@ function ViewForecast() {
         ))}
         <line x1={splitX} x2={splitX} y1={pad} y2={Hh - pad} stroke={C.borderD} strokeDasharray="3 3" />
         <text x={splitX - 6} y={pad + 10} textAnchor="end" fontFamily={C.mono} fontSize="9.5" fill={C.sec}>
-          actual
+          {tr(`${H}.forecastView.actual`)}
         </text>
         <text x={splitX + 6} y={pad + 10} textAnchor="start" fontFamily={C.mono} fontSize="9.5" fill={C.accent}>
-          forecast
+          {tr(`${H}.forecastView.forecast`)}
         </text>
         <path d={`${bandHi} ${bandLo} Z`} fill="url(#mvFcHatch)" />
         <path d={`${bandHi} ${bandLo} Z`} fill="url(#mvFcBand)" />
@@ -922,15 +942,15 @@ function ViewForecast() {
         <line x1={sx(past.length + 3)} x2={sx(past.length + 3)} y1={pad} y2={Hh - pad} stroke={C.ink} strokeWidth="1" />
         <rect x={sx(past.length + 3) - 50} y={pad - 2} width="100" height="16" fill={C.ink} rx="2" />
         <text x={sx(past.length + 3)} y={pad + 9} textAnchor="middle" fontFamily={C.mono} fontSize="9" fill="#fff" letterSpacing={0.4}>
-          REORDER · MAY 14
+          {tr(`${H}.forecastView.reorderBadge`)}
         </text>
       </svg>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
         {[
-          { k: "Predicted · 14d", v: "628 L", s: "+18% vs prev" },
-          { k: "Reorder by", v: "May 14", s: "4 days from now" },
-          { k: "Suggest qty", v: "14 cases", s: "@ $42.50/case" },
-          { k: "Stockout risk", v: "2.4%", s: "within window" },
+          { k: tr(`${H}.forecastView.stat.predicted.k`), v: tr(`${H}.forecastView.stat.predicted.v`), s: tr(`${H}.forecastView.stat.predicted.s`) },
+          { k: tr(`${H}.forecastView.stat.reorderBy.k`), v: tr(`${H}.forecastView.stat.reorderBy.v`), s: tr(`${H}.forecastView.stat.reorderBy.s`) },
+          { k: tr(`${H}.forecastView.stat.suggestQty.k`), v: tr(`${H}.forecastView.stat.suggestQty.v`), s: tr(`${H}.forecastView.stat.suggestQty.s`) },
+          { k: tr(`${H}.forecastView.stat.risk.k`), v: tr(`${H}.forecastView.stat.risk.v`), s: tr(`${H}.forecastView.stat.risk.s`) },
         ].map((s) => (
           <div key={s.k}>
             <div style={{ fontFamily: C.mono, fontSize: 9.5, color: C.sec, textTransform: "uppercase", letterSpacing: 0.4 }}>{s.k}</div>
@@ -945,19 +965,20 @@ function ViewForecast() {
 
 function ViewReorder() {
   useTick(2);
+  const { t: tr } = useI18n();
   const t = performance.now() / 1000;
   const rows = [
-    { sku: "OAT-1L", name: "Oat milk · 1L", vend: "Pacific Farms", qty: 14, unit: "cases", need: "May 14", risk: 0.62, urg: "high" },
-    { sku: "BEAN-ETH-1KG", name: "Beans · Ethiopia · 1kg", vend: "Ritual Roast", qty: 8, unit: "bags", need: "May 16", risk: 0.41, urg: "med" },
-    { sku: "SYR-VAN-750", name: "Vanilla syrup · 750ml", vend: "Monin · West", qty: 6, unit: "btl", need: "May 17", risk: 0.38, urg: "med" },
-    { sku: "CUP-12-WHT", name: "Cups · 12oz · white", vend: "PaperHaus", qty: 2, unit: "cases", need: "May 19", risk: 0.21, urg: "low" },
-    { sku: "MILK-WH-1G", name: "Whole milk · 1gal", vend: "Local Dairy", qty: 18, unit: "gal", need: "May 13", risk: 0.71, urg: "high" },
-    { sku: "LID-12", name: "Lids · 12oz", vend: "PaperHaus", qty: 1, unit: "cases", need: "May 22", risk: 0.12, urg: "low" },
+    { sku: "OAT-1L", name: tr(`${H}.reorderView.rows.OAT-1L.name`), vend: "Pacific Farms", qty: 14, unit: tr(`${H}.reorderView.rows.OAT-1L.unit`), need: "May 14", risk: 0.62, urg: "high" },
+    { sku: "BEAN-ETH-1KG", name: tr(`${H}.reorderView.rows.BEAN-ETH-1KG.name`), vend: "Ritual Roast", qty: 8, unit: tr(`${H}.reorderView.rows.BEAN-ETH-1KG.unit`), need: "May 16", risk: 0.41, urg: "med" },
+    { sku: "SYR-VAN-750", name: tr(`${H}.reorderView.rows.SYR-VAN-750.name`), vend: "Monin · West", qty: 6, unit: tr(`${H}.reorderView.rows.SYR-VAN-750.unit`), need: "May 17", risk: 0.38, urg: "med" },
+    { sku: "CUP-12-WHT", name: tr(`${H}.reorderView.rows.CUP-12-WHT.name`), vend: "PaperHaus", qty: 2, unit: tr(`${H}.reorderView.rows.CUP-12-WHT.unit`), need: "May 19", risk: 0.21, urg: "low" },
+    { sku: "MILK-WH-1G", name: tr(`${H}.reorderView.rows.MILK-WH-1G.name`), vend: "Local Dairy", qty: 18, unit: tr(`${H}.reorderView.rows.MILK-WH-1G.unit`), need: "May 13", risk: 0.71, urg: "high" },
+    { sku: "LID-12", name: tr(`${H}.reorderView.rows.LID-12.name`), vend: "PaperHaus", qty: 1, unit: tr(`${H}.reorderView.rows.LID-12.unit`), need: "May 22", risk: 0.12, urg: "low" },
   ];
   return (
     <div style={{ padding: 18, fontFamily: C.sans, fontSize: 12, height: "100%", overflow: "auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>6 reorders auto-suggested · last run 14s ago</span>
+        <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>{tr(`${H}.reorderView.status`)}</span>
         <button
           style={{
             fontFamily: C.sans,
@@ -971,7 +992,7 @@ function ViewReorder() {
             cursor: "pointer",
           }}
         >
-          Approve all · send 4 POs
+          {tr(`${H}.reorderView.approve`)}
         </button>
       </div>
       <div
@@ -987,13 +1008,13 @@ function ViewReorder() {
           letterSpacing: 0.4,
         }}
       >
-        <span>SKU</span>
-        <span>Item</span>
-        <span>Vendor</span>
-        <span style={{ textAlign: "right" }}>Qty</span>
-        <span style={{ textAlign: "right" }}>Need by</span>
-        <span style={{ textAlign: "right" }}>Risk</span>
-        <span style={{ textAlign: "right" }}>Action</span>
+        <span>{tr(`${H}.reorderView.col.sku`)}</span>
+        <span>{tr(`${H}.reorderView.col.item`)}</span>
+        <span>{tr(`${H}.reorderView.col.vendor`)}</span>
+        <span style={{ textAlign: "right" }}>{tr(`${H}.reorderView.col.qty`)}</span>
+        <span style={{ textAlign: "right" }}>{tr(`${H}.reorderView.col.needBy`)}</span>
+        <span style={{ textAlign: "right" }}>{tr(`${H}.reorderView.col.risk`)}</span>
+        <span style={{ textAlign: "right" }}>{tr(`${H}.reorderView.col.action`)}</span>
       </div>
       {rows.map((r, i) => {
         const high = r.urg === "high";
@@ -1025,7 +1046,7 @@ function ViewReorder() {
             </span>
             <span style={{ textAlign: "right" }}>
               <span style={{ fontFamily: C.mono, fontSize: 9.5, padding: "3px 6px", borderRadius: 2, background: C.ink, color: "#fff" }}>
-                send
+                {tr(`${H}.reorderView.send`)}
               </span>
             </span>
           </div>
@@ -1037,14 +1058,15 @@ function ViewReorder() {
 
 function ViewInventory() {
   useTick(2);
+  const { t: tr } = useI18n();
   const t = performance.now() / 1000;
   const rows = [
-    { sku: "BEAN-ETH-1KG", name: "Beans · Ethiopia · 1kg", stock: 18, par: 24 },
-    { sku: "CUP-12-WHT", name: "Cups · 12oz · white", stock: 312, par: 800 },
-    { sku: "MILK-WH-1G", name: "Whole milk · 1gal", stock: 6, par: 12 },
-    { sku: "OAT-1L", name: "Oat milk · 1L", stock: 14, par: 18 },
-    { sku: "SYR-VAN-750", name: "Vanilla syrup · 750ml", stock: 3, par: 6 },
-    { sku: "LID-12", name: "Lids · 12oz", stock: 480, par: 800 },
+    { sku: "BEAN-ETH-1KG", name: tr(`${H}.inventoryView.rows.BEAN-ETH-1KG`), stock: 18, par: 24 },
+    { sku: "CUP-12-WHT", name: tr(`${H}.inventoryView.rows.CUP-12-WHT`), stock: 312, par: 800 },
+    { sku: "MILK-WH-1G", name: tr(`${H}.inventoryView.rows.MILK-WH-1G`), stock: 6, par: 12 },
+    { sku: "OAT-1L", name: tr(`${H}.inventoryView.rows.OAT-1L`), stock: 14, par: 18 },
+    { sku: "SYR-VAN-750", name: tr(`${H}.inventoryView.rows.SYR-VAN-750`), stock: 3, par: 6 },
+    { sku: "LID-12", name: tr(`${H}.inventoryView.rows.LID-12`), stock: 480, par: 800 },
   ];
   return (
     <div style={{ padding: 18, fontFamily: C.sans, fontSize: 12 }}>
@@ -1061,11 +1083,11 @@ function ViewInventory() {
           letterSpacing: 0.4,
         }}
       >
-        <span>SKU</span>
-        <span>Item</span>
-        <span style={{ textAlign: "right" }}>On hand</span>
-        <span style={{ paddingLeft: 14 }}>Par</span>
-        <span style={{ textAlign: "right" }}>Status</span>
+        <span>{tr(`${H}.inventoryView.col.sku`)}</span>
+        <span>{tr(`${H}.inventoryView.col.item`)}</span>
+        <span style={{ textAlign: "right" }}>{tr(`${H}.inventoryView.col.onHand`)}</span>
+        <span style={{ paddingLeft: 14 }}>{tr(`${H}.inventoryView.col.par`)}</span>
+        <span style={{ textAlign: "right" }}>{tr(`${H}.inventoryView.col.status`)}</span>
       </div>
       {rows.map((r, i) => {
         const pct = Math.min(1, r.stock / r.par);
@@ -1106,7 +1128,7 @@ function ViewInventory() {
                 transition: "opacity 220ms",
               }}
             >
-              {low ? "REORDER" : "OK"}
+              {low ? tr(`${H}.inventoryView.reorder`) : tr(`${H}.inventoryView.ok`)}
             </span>
           </div>
         );
@@ -1117,6 +1139,7 @@ function ViewInventory() {
 
 function ViewSales() {
   useTick(2);
+  const { t: tr } = useI18n();
   const t = performance.now() / 1000;
   const hours = [6, 7, 8, 9, 10, 11, 12, 13];
   const data = hours.map((h, i) => 200 + Math.abs(Math.sin((h + t * 0.3) * 0.7) * 240) + i * 30);
@@ -1134,7 +1157,7 @@ function ViewSales() {
     <div style={{ padding: 18, fontFamily: C.sans }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 8 }}>
         <span style={{ fontSize: 32, fontWeight: 600, letterSpacing: -1, fontFamily: C.mono }}>${total.toFixed(0)}</span>
-        <span style={{ fontFamily: C.mono, fontSize: 11, color: C.good }}>+18.4% vs avg Sat</span>
+        <span style={{ fontFamily: C.mono, fontSize: 11, color: C.good }}>{tr(`${H}.salesView.vsAvg`)}</span>
       </div>
       <svg width={W} height={Hh} style={{ display: "block", maxWidth: "100%" }}>
         <defs>
@@ -1159,10 +1182,10 @@ function ViewSales() {
       </svg>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginTop: 8 }}>
         {[
-          { k: "Orders", v: "218" },
-          { k: "Avg ticket", v: "$8.42" },
-          { k: "Refunds", v: "2" },
-          { k: "Tip avg", v: "12.1%" },
+          { k: tr(`${H}.salesView.stat.orders`), v: "218" },
+          { k: tr(`${H}.salesView.stat.avgTicket`), v: "$8.42" },
+          { k: tr(`${H}.salesView.stat.refunds`), v: "2" },
+          { k: tr(`${H}.salesView.stat.tipAvg`), v: "12.1%" },
         ].map((s) => (
           <div key={s.k} style={{ borderTop: `1px solid ${C.border}`, paddingTop: 8 }}>
             <div style={{ fontFamily: C.mono, fontSize: 10, color: C.sec, textTransform: "uppercase", letterSpacing: 0.4 }}>{s.k}</div>
@@ -1241,6 +1264,7 @@ const ISLAND_MESSAGES: { icon: "trend" | "cloud" | "box" | "check" | "bar" | "do
 ];
 
 function DynamicIsland({ activeView }: { activeView: number }) {
+  const { t: tr } = useI18n();
   const messages = ISLAND_MESSAGES[activeView] ?? [];
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<"collapsed" | "open">("collapsed");
@@ -1333,7 +1357,7 @@ function DynamicIsland({ activeView }: { activeView: number }) {
                 textOverflow: "ellipsis",
               }}
             >
-              {m.title}
+              {tr(`${H}.island.${activeView}.${idx}.title`)}
             </div>
             <div
               style={{
@@ -1348,7 +1372,7 @@ function DynamicIsland({ activeView }: { activeView: number }) {
                 textOverflow: "ellipsis",
               }}
             >
-              {m.sub}
+              {tr(`${H}.island.${activeView}.${idx}.sub`)}
             </div>
           </div>
           <span
@@ -1508,6 +1532,7 @@ function IPhoneShell({
 }
 
 function LiveDashboard() {
+  const { t } = useI18n();
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
@@ -1523,9 +1548,9 @@ function LiveDashboard() {
     <section id="product" data-mv-section style={{ padding: "120px 32px 80px", position: "relative" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 32 }}>
-          <MonoTag border={false}>02 · the product</MonoTag>
+          <MonoTag border={false}>{t(`${H}.product.tag`)}</MonoTag>
           <DotLeader />
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>auto-cycling · click a tab</span>
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>{t(`${H}.product.hint`)}</span>
         </div>
 
         <div className="mv-reveal" data-d="1">
@@ -1541,8 +1566,8 @@ function LiveDashboard() {
               textWrap: "balance" as never,
             }}
           >
-            Forecast, reorder, restock.{" "}
-            <span style={{ color: C.ter }}>One screen. Four hours saved every week.</span>
+            {t(`${H}.product.headPre`)}
+            <span style={{ color: C.ter }}>{t(`${H}.product.headAccent`)}</span>
           </h2>
         </div>
 
@@ -1646,7 +1671,7 @@ function LiveDashboard() {
                         letterSpacing: -0.2,
                       }}
                     >
-                      {v.label}
+                      {t(`${H}.product.views.${v.id}`)}
                     </span>
                   </div>
                   <div
@@ -1738,6 +1763,7 @@ function MiniSpinner({ size = 12, color = "#fafaf9" }: { size?: number; color?: 
 }
 
 function SchedulingDemo() {
+  const { t } = useI18n();
   const total = SCHEDULE_SHIFTS.length;
   const [step, setStep] = useState(0);
 
@@ -1758,7 +1784,7 @@ function SchedulingDemo() {
   const HOUR_END = 22;
   const ROW_H = 18;
   const HOURS = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
-  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
   const totalHours = placed.reduce((sum, s) => sum + (s.e - s.s), 0);
 
@@ -1766,9 +1792,9 @@ function SchedulingDemo() {
     <section id="scheduling" data-mv-section style={{ padding: "60px 32px 100px", background: C.bg, position: "relative" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 24 }}>
-          <MonoTag border={false}>02b · auto-scheduler</MonoTag>
+          <MonoTag border={false}>{t(`${H}.schedule.tag`)}</MonoTag>
           <DotLeader />
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>writing next week · auto-cycle</span>
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>{t(`${H}.schedule.hint`)}</span>
         </div>
         <h2
           className="mv-reveal"
@@ -1784,7 +1810,7 @@ function SchedulingDemo() {
             textWrap: "balance" as never,
           }}
         >
-          Mr. Merchiva writes <span style={{ color: C.ter }}>next week&apos;s schedule</span>.
+          {t(`${H}.schedule.headPre`)}<span style={{ color: C.ter }}>{t(`${H}.schedule.headAccent`)}</span>.
         </h2>
         <p
           className="mv-reveal"
@@ -1798,7 +1824,7 @@ function SchedulingDemo() {
             textWrap: "pretty" as never,
           }}
         >
-          He reads availability, payroll caps, last week&apos;s trades, and the weather — then drops a full week of shifts in under a minute. Approve in one tap, or let it auto-commit.
+          {t(`${H}.schedule.intro`)}
         </p>
 
         <div
@@ -1867,7 +1893,9 @@ function SchedulingDemo() {
                   Mr. Merchiva
                 </div>
                 <div style={{ fontFamily: C.mono, fontSize: 10, color: C.sec, marginTop: 2, letterSpacing: 0.3 }}>
-                  {isComplete ? `done · ${total} shifts placed` : `scheduling · ${step}/${total}`}
+                  {isComplete
+                    ? `${t(`${H}.schedule.done`)} · ${total} ${t(`${H}.schedule.shiftsPlaced`)}`
+                    : `${t(`${H}.schedule.scheduling`)} · ${step}/${total}`}
                 </div>
               </div>
               {!isComplete && <MiniSpinner size={12} color={C.ink} />}
@@ -1924,7 +1952,7 @@ function SchedulingDemo() {
                           textWrap: "pretty" as never,
                         }}
                       >
-                        {shift.reason}
+                        {t(`${H}.schedule.reasons.${globalIdx}`)}
                       </div>
                       <div
                         style={{
@@ -1937,7 +1965,7 @@ function SchedulingDemo() {
                         }}
                       >
                         <span style={{ color: shift.color }}>●</span>{" "}
-                        {shift.dh.toLowerCase()} · {shift.s.toString().padStart(2, "0")}:00–{shift.e.toString().padStart(2, "0")}:00 · {shift.name}
+                        {t(`${H}.schedule.days.${shift.dh.toLowerCase()}`)} · {shift.s.toString().padStart(2, "0")}:00–{shift.e.toString().padStart(2, "0")}:00 · {shift.name}
                       </div>
                     </div>
                   </div>
@@ -1961,10 +1989,10 @@ function SchedulingDemo() {
                     <path d="M3 8 L7 12 L13 4" stroke={C.good} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <div style={{ fontSize: 12, fontWeight: 600, color: C.good }}>
-                    Week ready · {total} shifts · {totalHours}h
+                    {t(`${H}.schedule.weekReady`)} · {total} {t(`${H}.schedule.shifts`)} · {totalHours}h
                   </div>
                   <div style={{ flex: 1 }} />
-                  <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>under budget</span>
+                  <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>{t(`${H}.schedule.underBudget`)}</span>
                 </div>
               )}
             </div>
@@ -1999,11 +2027,11 @@ function SchedulingDemo() {
                   textTransform: "uppercase",
                 }}
               >
-                week of may 13 · 2026
+                {t(`${H}.schedule.weekOf`)}
               </span>
               <DotLeader />
               <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>
-                {step} / {total} shifts · {totalHours}h
+                {step} / {total} {t(`${H}.schedule.shifts`)} · {totalHours}h
               </span>
             </div>
 
@@ -2023,7 +2051,7 @@ function SchedulingDemo() {
                       paddingLeft: 4,
                     }}
                   >
-                    {d}
+                    {t(`${H}.schedule.days.${d}`)}
                   </div>
                 ))}
               </div>
@@ -2223,6 +2251,7 @@ function POSDemo() {
   //   N        → charging
   //   N+1      → done (receipt printed)
   //   N+2      → reset
+  const { t } = useI18n();
   const totalSteps = POS_SEQUENCE.length + 2;
   const [step, setStep] = useState(0);
 
@@ -2263,9 +2292,9 @@ function POSDemo() {
     <section id="pos" data-mv-section style={{ padding: "60px 32px 100px", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 24 }}>
-          <MonoTag border={false}>02c · merchiva POS</MonoTag>
+          <MonoTag border={false}>{t(`${H}.pos.tag`)}</MonoTag>
           <DotLeader />
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>scan · cart · charge</span>
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>{t(`${H}.pos.hint`)}</span>
         </div>
         <h2
           className="mv-reveal"
@@ -2281,7 +2310,7 @@ function POSDemo() {
             textWrap: "balance" as never,
           }}
         >
-          From scan to receipt <span style={{ color: C.ter }}>in four taps</span>.
+          {t(`${H}.pos.headPre`)}<span style={{ color: C.ter }}>{t(`${H}.pos.headAccent`)}</span>.
         </h2>
         <p
           className="mv-reveal"
@@ -2295,7 +2324,7 @@ function POSDemo() {
             textWrap: "pretty" as never,
           }}
         >
-          The Merchiva register shares the same catalog and stock counts as your dashboard. Every sale updates the forecast in the same second — no overnight sync.
+          {t(`${H}.pos.intro`)}
         </p>
 
         <div
@@ -2338,10 +2367,10 @@ function POSDemo() {
                   textTransform: "uppercase",
                 }}
               >
-                catalog · {POS_PRODUCTS.length} items
+                {t(`${H}.pos.catalogPre`)} {POS_PRODUCTS.length} {t(`${H}.pos.itemsWord`)}
               </span>
               <DotLeader />
-              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>terminal · 03</span>
+              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>{t(`${H}.pos.terminal`)}</span>
             </div>
             <div
               style={{
@@ -2384,10 +2413,10 @@ function POSDemo() {
                         letterSpacing: 0.5,
                       }}
                     >
-                      {p.tag}
+                      {t(`${H}.pos.products.${p.id}.tag`)}
                     </div>
                     <div style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: -0.2, lineHeight: 1.2 }}>
-                      {p.name}
+                      {t(`${H}.pos.products.${p.id}.name`)}
                     </div>
                     <div
                       style={{
@@ -2419,7 +2448,7 @@ function POSDemo() {
                             color: "#fafaf9",
                           }}
                         >
-                          scan
+                          {t(`${H}.pos.scan`)}
                         </span>
                       )}
                     </div>
@@ -2473,10 +2502,10 @@ function POSDemo() {
                   textTransform: "uppercase",
                 }}
               >
-                cart · {itemCount} {itemCount === 1 ? "item" : "items"}
+                {t(`${H}.pos.cartPre`)} {itemCount} {itemCount === 1 ? t(`${H}.pos.item`) : t(`${H}.pos.items`)}
               </span>
               <DotLeader />
-              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>queue #4218</span>
+              <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>{t(`${H}.pos.queue`)}</span>
             </div>
 
             <div style={{ flex: 1, padding: "4px 0", overflow: "hidden" }}>
@@ -2493,7 +2522,7 @@ function POSDemo() {
                     textAlign: "center",
                   }}
                 >
-                  Scan an item to begin
+                  {t(`${H}.pos.scanToBegin`)}
                 </div>
               ) : (
                 cartItems.map((it, i) => (
@@ -2538,7 +2567,7 @@ function POSDemo() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {it.p.name}
+                      {t(`${H}.pos.products.${it.p.id}.name`)}
                     </span>
                     <span
                       style={{
@@ -2568,7 +2597,7 @@ function POSDemo() {
                   fontFamily: C.mono,
                 }}
               >
-                <span>Subtotal</span>
+                <span>{t(`${H}.pos.subtotal`)}</span>
                 <span style={{ fontVariantNumeric: "tabular-nums" }}>${subtotal.toFixed(2)}</span>
               </div>
               <div
@@ -2581,7 +2610,7 @@ function POSDemo() {
                   fontFamily: C.mono,
                 }}
               >
-                <span>Tax · 8%</span>
+                <span>{t(`${H}.pos.tax`)}</span>
                 <span style={{ fontVariantNumeric: "tabular-nums" }}>${tax.toFixed(2)}</span>
               </div>
               <div
@@ -2595,7 +2624,7 @@ function POSDemo() {
                   letterSpacing: -0.2,
                 }}
               >
-                <span>Total</span>
+                <span>{t(`${H}.pos.total`)}</span>
                 <span
                   style={{
                     fontFamily: C.mono,
@@ -2630,10 +2659,10 @@ function POSDemo() {
                       : undefined,
                 }}
               >
-                {phase === "scanning" && itemCount === 0 && "Tap to charge"}
+                {phase === "scanning" && itemCount === 0 && t(`${H}.pos.tapToCharge`)}
                 {phase === "scanning" && itemCount > 0 && (
                   <>
-                    Tap to charge{" "}
+                    {t(`${H}.pos.tapToCharge`)}{" "}
                     <span
                       style={{
                         fontFamily: C.mono,
@@ -2647,7 +2676,7 @@ function POSDemo() {
                 {phase === "charge" && (
                   <>
                     <MiniSpinner size={12} color="#fafaf9" />
-                    Processing…
+                    {t(`${H}.pos.processing`)}
                   </>
                 )}
                 {phase === "done" && (
@@ -2661,7 +2690,7 @@ function POSDemo() {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    Charged{" "}
+                    {t(`${H}.pos.charged`)}{" "}
                     <span
                       style={{
                         fontFamily: C.mono,
@@ -2687,11 +2716,11 @@ function POSDemo() {
                 <span>
                   {phase === "done" ? (
                     <>
-                      receipt #4218 · printed ·{" "}
-                      <span style={{ color: C.good }}>stock + forecast updated</span>
+                      {t(`${H}.pos.receiptDone`)}
+                      <span style={{ color: C.good }}>{t(`${H}.pos.stockUpdated`)}</span>
                     </>
                   ) : (
-                    "tap · swipe · contactless · gift card"
+                    t(`${H}.pos.payMethods`)
                   )}
                 </span>
               </div>
@@ -2708,28 +2737,8 @@ function POSDemo() {
 // ═══════════════════════════════════════════════════════════
 
 function Marquee() {
-  const items = [
-    "demand forecasts",
-    "reorder points",
-    "stockout risk",
-    "lead-time aware",
-    "confidence bands",
-    "driver attribution",
-    "weather signal",
-    "holiday lift",
-    "payday bumps",
-    "cold-start models",
-    "vendor MOQs",
-    "pack rounding",
-    "cycle counts",
-    "shrink alerts",
-    "expiry windows",
-    "multi-location",
-    "auto purchase orders",
-    "supplier scorecards",
-    "safety-stock tuning",
-    "what-if scenarios",
-  ];
+  const { t } = useI18n();
+  const items = Array.from({ length: 20 }, (_, i) => t(`${H}.marquee.${i}`));
   const row = [...items, ...items];
   return (
     <section
@@ -2796,16 +2805,17 @@ function MiniLoader_Schedule() {
 
 function MiniLoader_POS() {
   useTick(4);
+  const { t: tr } = useI18n();
   const t = performance.now() / 1000;
   const v = Math.sin(t) * 0.5 + 0.5;
   return (
     <div style={{ width: "100%", fontFamily: C.mono, fontSize: 10.5, color: C.text }}>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
-        <span style={{ color: C.sec }}>Latte 12oz</span>
+        <span style={{ color: C.sec }}>{tr(`${H}.posLoader.latte`)}</span>
         <span>$5.50</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
-        <span style={{ color: C.sec }}>Croissant</span>
+        <span style={{ color: C.sec }}>{tr(`${H}.posLoader.croissant`)}</span>
         <span>$4.25</span>
       </div>
       <div
@@ -2817,7 +2827,7 @@ function MiniLoader_POS() {
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontWeight: 600 }}>Total</span>
+        <span style={{ fontWeight: 600 }}>{tr(`${H}.posLoader.total`)}</span>
         <span style={{ fontWeight: 600, fontFamily: C.mono }}>${(9.75 + v * 0.01).toFixed(2)}</span>
       </div>
     </div>
@@ -2844,12 +2854,13 @@ function MiniLoader_Inv() {
 
 function MiniLoader_Books() {
   useTick(4);
+  const { t: tr } = useI18n();
   const t = performance.now() / 200;
   const lines = [
-    { l: "Sales", v: 4128.4 + Math.sin(t * 0.3) * 30 },
-    { l: "Tax", v: 361.23 + Math.sin(t * 0.2) * 4 },
-    { l: "Tips", v: 502.1 + Math.sin(t * 0.4) * 6 },
-    { l: "Net", v: 3265.07 + Math.sin(t * 0.25) * 18 },
+    { l: tr(`${H}.booksLoader.sales`), v: 4128.4 + Math.sin(t * 0.3) * 30 },
+    { l: tr(`${H}.booksLoader.tax`), v: 361.23 + Math.sin(t * 0.2) * 4 },
+    { l: tr(`${H}.booksLoader.tips`), v: 502.1 + Math.sin(t * 0.4) * 6 },
+    { l: tr(`${H}.booksLoader.net`), v: 3265.07 + Math.sin(t * 0.25) * 18 },
   ];
   return (
     <div style={{ fontFamily: C.mono, fontSize: 10.5, color: C.text2, width: "100%" }}>
@@ -2919,7 +2930,9 @@ const FEATURES: Feature[] = [
 ];
 
 function FeatureCard({ f, idx }: { f: Feature; idx: number }) {
+  const { t } = useI18n();
   const [hover, setHover] = useState(false);
+  const base = `${H}.features.items.${f.tag}`;
   return (
     <div
       className="mv-reveal"
@@ -2965,11 +2978,11 @@ function FeatureCard({ f, idx }: { f: Feature; idx: number }) {
             {f.tag}
           </span>
         </div>
-        <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>{f.hint}</span>
+        <span style={{ fontFamily: C.mono, fontSize: 10, color: C.sec }}>{t(`${base}.hint`)}</span>
       </div>
       <div>
-        <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.6, color: C.ink, marginBottom: 6 }}>{f.title}</div>
-        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: C.text3, textWrap: "pretty" as never }}>{f.body}</p>
+        <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: -0.6, color: C.ink, marginBottom: 6 }}>{t(`${base}.title`)}</div>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5, color: C.text3, textWrap: "pretty" as never }}>{t(`${base}.body`)}</p>
       </div>
       <div style={{ flex: 1 }} />
       <div
@@ -2990,13 +3003,14 @@ function FeatureCard({ f, idx }: { f: Feature; idx: number }) {
 }
 
 function FeatureGrid() {
+  const { t } = useI18n();
   return (
     <section id="modules" data-mv-section style={{ padding: "120px 32px", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 16 }}>
-          <MonoTag border={false}>03 · modules</MonoTag>
+          <MonoTag border={false}>{t(`${H}.features.tag`)}</MonoTag>
           <DotLeader />
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>six modules · one bill</span>
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>{t(`${H}.features.hint`)}</span>
         </div>
         <h2
           className="mv-reveal"
@@ -3012,7 +3026,7 @@ function FeatureGrid() {
             textWrap: "balance" as never,
           }}
         >
-          Six things our forecast does that <span style={{ color: C.ter }}>your spreadsheet can&apos;t</span>.
+          {t(`${H}.features.headPre`)}<span style={{ color: C.ter }}>{t(`${H}.features.headAccent`)}</span>.
         </h2>
         <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {FEATURES.map((f, i) => (
@@ -3078,6 +3092,7 @@ function CountUp({
 }
 
 function DrawingChart() {
+  const { t } = useI18n();
   const ref = useRef<SVGSVGElement>(null);
   const [drawn, setDrawn] = useState(false);
   useEffect(() => {
@@ -3097,7 +3112,7 @@ function DrawingChart() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const months = Array.from({ length: 12 }, (_, i) => t(`${H}.months.${i}`));
   const bars = [44, 52, 61, 70, 78, 92, 88, 96, 110, 124, 138, 156];
   const max = Math.max(...bars);
   const W = 720,
@@ -3166,6 +3181,7 @@ function DrawingChart() {
 }
 
 function Metrics() {
+  const { t } = useI18n();
   return (
     <section
       data-mv-section
@@ -3193,10 +3209,10 @@ function Metrics() {
           style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 24, color: "#a8a29e" }}
         >
           <span style={{ fontFamily: C.mono, fontSize: 10.5, letterSpacing: 0.4, textTransform: "uppercase" }}>
-            04 · in production
+            {t(`${H}.metrics.tag`)}
           </span>
           <div style={{ flex: 1, height: 1, borderTop: "1px dashed #44403c", transform: "translateY(-2px)" }} />
-          <span style={{ fontFamily: C.mono, fontSize: 10.5 }}>data through May 2026</span>
+          <span style={{ fontFamily: C.mono, fontSize: 10.5 }}>{t(`${H}.metrics.dataThrough`)}</span>
         </div>
         <h2
           className="mv-reveal"
@@ -3212,18 +3228,18 @@ function Metrics() {
             textWrap: "balance" as never,
           }}
         >
-          Operators don&apos;t write reviews. They <span style={{ color: C.ter }}>renew</span>.
+          {t(`${H}.metrics.headPre`)}<span style={{ color: C.ter }}>{t(`${H}.metrics.headAccent`)}</span>.
         </h2>
 
         <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 48, alignItems: "center" }}>
           <div className="mv-reveal" data-d="2" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 24 }}>
             {[
-              { k: "businesses live", v: 2841, fmt: {} },
-              { k: "avg setup time", v: 14, fmt: { suffix: " min" } },
-              { k: "annual renewal", v: 96.4, fmt: { suffix: "%", decimals: 1 } },
-              { k: "support · first reply", v: 4, fmt: { suffix: " min · median" } },
-              { k: "gmv processed", v: 2.4, fmt: { prefix: "$", suffix: "B", decimals: 1 } },
-              { k: "states covered", v: 47, fmt: {} },
+              { k: t(`${H}.metrics.stat.businesses`), v: 2841, fmt: {} },
+              { k: t(`${H}.metrics.stat.setup`), v: 14, fmt: { suffix: t(`${H}.metrics.min`) } },
+              { k: t(`${H}.metrics.stat.renewal`), v: 96.4, fmt: { suffix: "%", decimals: 1 } },
+              { k: t(`${H}.metrics.stat.support`), v: 4, fmt: { suffix: t(`${H}.metrics.minMedian`) } },
+              { k: t(`${H}.metrics.stat.gmv`), v: 2.4, fmt: { prefix: "$", suffix: "B", decimals: 1 } },
+              { k: t(`${H}.metrics.stat.states`), v: 47, fmt: {} },
             ].map((s) => (
               <div key={s.k} style={{ borderTop: "1px solid #292524", paddingTop: 16 }}>
                 <div
@@ -3269,13 +3285,13 @@ function Metrics() {
                     letterSpacing: 0.5,
                   }}
                 >
-                  monthly recurring revenue
+                  {t(`${H}.metrics.mrr`)}
                 </div>
                 <div style={{ fontFamily: C.mono, fontSize: 28, fontWeight: 600, color: "#fafaf9", letterSpacing: -1, marginTop: 4 }}>
                   $156k <span style={{ color: C.good, fontSize: 12 }}>+13%</span>
                 </div>
               </div>
-              <span style={{ fontFamily: C.mono, fontSize: 10, color: "#a8a29e" }}>last 12 mo · USD</span>
+              <span style={{ fontFamily: C.mono, fontSize: 10, color: "#a8a29e" }}>{t(`${H}.metrics.last12`)}</span>
             </div>
             <DrawingChart />
           </div>
@@ -3290,6 +3306,7 @@ function Metrics() {
 // ═══════════════════════════════════════════════════════════
 
 function Testimonials() {
+  const { t: tr } = useI18n();
   const quotes = [
     {
       q: "Closed our first month with no spreadsheet for the first time in 6 years.",
@@ -3314,9 +3331,9 @@ function Testimonials() {
     <section id="customers" data-mv-section style={{ padding: "120px 32px", background: C.bg }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 32 }}>
-          <MonoTag border={false}>05 · in their words</MonoTag>
+          <MonoTag border={false}>{tr(`${H}.testimonials.tag`)}</MonoTag>
           <DotLeader />
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>read all 318 →</span>
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>{tr(`${H}.testimonials.readAll`)}</span>
         </div>
         <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
           {quotes.map((t, i) => (
@@ -3358,7 +3375,7 @@ function Testimonials() {
                   textWrap: "pretty" as never,
                 }}
               >
-                &ldquo;{t.q}&rdquo;
+                &ldquo;{tr(`${H}.testimonials.quotes.${i}.q`)}&rdquo;
               </blockquote>
               <div style={{ flex: 1 }} />
               <figcaption
@@ -3392,7 +3409,7 @@ function Testimonials() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{t.who}</div>
-                  <div style={{ fontSize: 11.5, color: C.sec }}>{t.role}</div>
+                  <div style={{ fontSize: 11.5, color: C.sec }}>{tr(`${H}.testimonials.quotes.${i}.role`)}</div>
                 </div>
               </figcaption>
             </figure>
@@ -3408,31 +3425,34 @@ function Testimonials() {
 // ═══════════════════════════════════════════════════════════
 
 function Pricing() {
+  const { t } = useI18n();
   const plans = [
     {
       tag: "01",
-      name: "Operator",
+      key: "operator",
+      name: t(`${H}.pricing.plans.operator.name`),
       price: 49,
-      sub: "per location · per month",
+      sub: t(`${H}.pricing.sub`),
       hl: false,
-      list: ["Up to 12 staff", "All 6 modules", "iOS + Android apps", "Email support · 24h"],
+      list: [0, 1, 2, 3].map((i) => t(`${H}.pricing.plans.operator.list.${i}`)),
     },
     {
       tag: "02",
-      name: "Multi",
+      key: "multi",
+      name: t(`${H}.pricing.plans.multi.name`),
       price: 129,
-      sub: "per location · per month",
+      sub: t(`${H}.pricing.sub`),
       hl: true,
-      list: ["Unlimited staff", "All 6 modules + analytics", "Multi-location dashboard", "Priority support · 4h median", "Onboarding call"],
+      list: [0, 1, 2, 3, 4].map((i) => t(`${H}.pricing.plans.multi.list.${i}`)),
     },
   ];
   return (
     <section id="pricing" data-mv-section style={{ padding: "120px 32px", background: C.bg, borderTop: `1px solid ${C.border}` }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
         <div className="mv-reveal" style={{ display: "flex", alignItems: "baseline", gap: 24, marginBottom: 16 }}>
-          <MonoTag border={false}>06 · pricing</MonoTag>
+          <MonoTag border={false}>{t(`${H}.pricing.tag`)}</MonoTag>
           <DotLeader />
-          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>flat · per-location · no per-seat</span>
+          <span style={{ fontFamily: C.mono, fontSize: 10.5, color: C.sec }}>{t(`${H}.pricing.hint`)}</span>
         </div>
         <h2
           className="mv-reveal"
@@ -3448,7 +3468,7 @@ function Pricing() {
             textWrap: "balance" as never,
           }}
         >
-          Two plans. <span style={{ color: C.ter }}>No &ldquo;contact sales&rdquo;.</span>
+          {t(`${H}.pricing.headPre`)}<span style={{ color: C.ter }}>{t(`${H}.pricing.headAccent`)}</span>
         </h2>
         <div data-mv-stack style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16, maxWidth: 880 }}>
           {plans.map((p, i) => (
@@ -3478,13 +3498,13 @@ function Pricing() {
                 >
                   {p.tag} · {p.name}
                 </span>
-                {p.hl && <MonoTag border={false} color="#fafaf9">most picked</MonoTag>}
+                {p.hl && <MonoTag border={false} color="#fafaf9">{t(`${H}.pricing.mostPicked`)}</MonoTag>}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
                 <span style={{ fontSize: 64, fontWeight: 600, fontFamily: C.sans, letterSpacing: -2.4, lineHeight: 1 }}>
                   ${p.price}
                 </span>
-                <span style={{ fontFamily: C.mono, fontSize: 12, color: p.hl ? "#a8a29e" : C.sec }}>/mo</span>
+                <span style={{ fontFamily: C.mono, fontSize: 12, color: p.hl ? "#a8a29e" : C.sec }}>{t(`${H}.pricing.perMo`)}</span>
               </div>
               <div style={{ fontFamily: C.mono, fontSize: 11, color: p.hl ? "#a8a29e" : C.sec, marginBottom: 24 }}>
                 {p.sub}
@@ -3514,7 +3534,7 @@ function Pricing() {
                   fontWeight: 500,
                 }}
               >
-                Start free · 30 days
+                {t(`${H}.startFree`)}
                 <span style={{ fontFamily: C.mono, fontSize: 12, opacity: 0.7 }}>→</span>
               </Link>
             </div>
@@ -3530,6 +3550,7 @@ function Pricing() {
 // ═══════════════════════════════════════════════════════════
 
 function CTAFooter() {
+  const { t } = useI18n();
   return (
     <section id="start" data-mv-section style={{ padding: "120px 32px 80px", background: C.bg, position: "relative", overflow: "hidden" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", position: "relative" }}>
@@ -3551,9 +3572,9 @@ function CTAFooter() {
               textWrap: "balance" as never,
             }}
           >
-            never run
+            {t(`${H}.cta.head1`)}
             <br />
-            out again.
+            {t(`${H}.cta.head2`)}
           </h2>
           <p
             className="mv-reveal"
@@ -3567,14 +3588,13 @@ function CTAFooter() {
               textWrap: "pretty" as never,
             }}
           >
-            Connect your POS. We learn your sales for seven days, then start telling you what to order — to the case, by
-            the day. Median forecast error: 7.2%.
+            {t(`${H}.cta.para`)}
           </p>
           <div className="mv-reveal" data-d="3" data-mv-cta-row style={{ marginTop: 32, display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
             <MagneticButton primary href="/signup">
-              Start free · 30 days
+              {t(`${H}.startFree`)}
             </MagneticButton>
-            <MagneticButton href="#product">Book a 20-min walkthrough</MagneticButton>
+            <MagneticButton href="#product">{t(`${H}.cta.walkthrough`)}</MagneticButton>
           </div>
         </div>
       </div>

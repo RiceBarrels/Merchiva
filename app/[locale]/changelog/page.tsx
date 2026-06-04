@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { SiteShell } from "@/components/landing/site-shell";
+import { buildAlternates } from "@/lib/i18n/alternates";
+import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 const REPO = process.env.NEXT_PUBLIC_GITHUB_REPO ?? "RiceBarrels/Merchiva";
@@ -7,19 +9,27 @@ const REPO = process.env.NEXT_PUBLIC_GITHUB_REPO ?? "RiceBarrels/Merchiva";
 // Refetch from GitHub at most once an hour (ISR).
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
-  title: "Changelog — Merchiva | Product Updates and New Features",
-  description:
-    "Latest product updates, new features, and improvements to Merchiva. Currently in beta — transparent release notes published with every update.",
-  alternates: { canonical: `${BASE_URL}/changelog` },
-  openGraph: {
-    title: "Merchiva Changelog — What's New",
-    description: "Beta release notes, new feature rollouts, and platform improvements.",
-    url: `${BASE_URL}/changelog`,
-    siteName: "Merchiva",
-    type: "website",
-  },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const loc = isLocale(locale) ? locale : DEFAULT_LOCALE;
+  return {
+    title: "Changelog — Merchiva | Product Updates and New Features",
+    description:
+      "Latest product updates, new features, and improvements to Merchiva. Currently in beta — transparent release notes published with every update.",
+    alternates: buildAlternates("/changelog", loc),
+    openGraph: {
+      title: "Merchiva Changelog — What's New",
+      description: "Beta release notes, new feature rollouts, and platform improvements.",
+      url: `${BASE_URL}/${loc}/changelog`,
+      siteName: "Merchiva",
+      type: "website",
+    },
+  };
+}
 
 const C = {
   bg: "#f0eee9", paper: "#ffffff", surface: "#fafaf9", ink: "#0c0a09",

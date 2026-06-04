@@ -23,7 +23,7 @@ import {
   saveAiChatSession as execSaveSession,
 } from "@/lib/spacetimedb/actions";
 import { getConnection } from "@/lib/spacetimedb/client";
-import { useStaffRoles, useRoleTasks, useAiChatSessions, useTrainingDays, useTrainingObjectives, useSettingsRows } from "@/lib/spacetimedb/hooks";
+import { useStaffRoles, useRoleTasks, useAiChatSessions, useTrainingDays, useTrainingObjectives, useSettingsRows, useSuppliers } from "@/lib/spacetimedb/hooks";
 import { getUpcomingHolidays, inferCountryFromLocale, parseOpeningHours } from "@/lib/holidays";
 import { toast } from "sonner";
 import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/skills/registry";
@@ -57,6 +57,40 @@ const M_ACC_BD = "var(--m-acc-bd)";
 // neither depends on a custom HTTP header (which the dev proxy can strip).
 const ACK_OPEN = "[[MERCHIVA_ACK]]";
 const ACK_CLOSE = "[[/MERCHIVA_ACK]]";
+
+// Monotonic message id generator. `Date.now()` alone collides when two
+// messages are created within the same millisecond (e.g. user + ack, or two
+// errors in quick succession), producing React "duplicate key" warnings and
+// dropped/duplicated rows. The counter guarantees uniqueness per session.
+let _msgIdCounter = 0;
+function msgId(prefix: string): string {
+  _msgIdCounter += 1;
+  return `${prefix}-${Date.now()}-${_msgIdCounter}`;
+}
+
+// Verbose client-side logging of what we POST to /api/store-ai — mirrors the
+// server's raw prompt dump so the full round-trip is inspectable from the
+// browser console. On by default; silence with
+// `localStorage.setItem("merchiva:logSend", "0")`.
+function logMerchivaSend(label: string, payload: Record<string, unknown>) {
+  try {
+    if (typeof window !== "undefined" && localStorage.getItem("merchiva:logSend") === "0") return;
+  } catch { /* localStorage unavailable — log anyway */ }
+  const p = payload as { message?: string; history?: unknown[]; context?: unknown; permissions?: unknown };
+  console.groupCollapsed(
+    `%c[Mr. Merchiva → /api/store-ai] ${label}`,
+    "color:#0ea5e9;font-weight:600",
+    `${(p.message ?? "").toString().length} msg chars, ${Array.isArray(p.history) ? p.history.length : 0} history turns`,
+  );
+  console.log("message:", p.message);
+  console.log("history:", p.history);
+  console.log("context:", p.context);
+  console.log("permissions:", p.permissions);
+  // Redact the auth token before dumping the full payload to the console.
+  const redacted = "token" in payload ? { ...payload, token: "[redacted]" } : payload;
+  console.log("full payload:", redacted);
+  console.groupEnd();
+}
 function splitAck(raw: string): { ack: string; rest: string } {
   if (!raw.startsWith(ACK_OPEN)) return { ack: "", rest: raw };
   const closeIdx = raw.indexOf(ACK_CLOSE);
@@ -821,6 +855,108 @@ function RolePreviewStrip({ action }: { action: Record<string, unknown> }) {
   );
 }
 
+// Rich preview for orderFromSupplier / createPurchaseOrder cards. The generic
+// field grid truncated the `items` array to one cut-off line; this lays the
+// order out line-by-line (item × qty, unit cost) with a resolved supplier name
+// and totals so the user can actually review what they're approving.
+function SupplierOrderPreview({ action, supplierNameById }: {
+  action: Record<string, unknown>;
+  supplierNameById?: Map<string, string>;
+}) {
+  const t = useT();
+  const supplierId = String(action.supplierId ?? "");
+  const supplierName =
+    (action.supplierName as string | undefined) ||
+    supplierNameById?.get(supplierId) ||
+    (supplierId ? supplierId : t("merchiva.ui.unknownSupplier") || "Supplier");
+  const items = Array.isArray(action.items)
+    ? (action.items as Array<Record<string, unknown>>)
+    : [];
+  const num = (v: unknown): number | null => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const subtotal = num(action.subtotal);
+  const tax = num(action.tax);
+  // Fall back to summing unitCost × quantity when no explicit total was given.
+  const computed = items.reduce((s, it) => {
+    const q = num(it.quantity) ?? 0;
+    const c = num(it.unitCost) ?? 0;
+    return s + q * c;
+  }, 0);
+  const total = num(action.total) ?? (subtotal != null ? subtotal + (tax ?? 0) : computed || null);
+  const notes = action.notes ? String(action.notes) : "";
+  const money = (n: number) => `$${n.toFixed(2)}`;
+
+  return (
+    <div className="mt-1 mb-2 rounded-[0.2rem] border border-border bg-background/60">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
+        <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="text-[12px] font-semibold truncate">{supplierName}</span>
+        <span className="text-[10px] font-mono text-muted-foreground ml-auto shrink-0">
+          {items.length} {items.length === 1 ? "item" : "items"}
+        </span>
+      </div>
+      {items.length > 0 ? (
+        <div className="divide-y divide-border/60">
+          {items.map((it, i) => {
+            const name = String(it.name ?? it.itemName ?? "—");
+            const qty = num(it.quantity);
+            const unit = it.unit ? String(it.unit) : "";
+            const unitCost = num(it.unitCost);
+            return (
+              <div key={i} className="flex items-baseline gap-2 px-2.5 py-1.5">
+                <span className="text-[12.5px] font-medium truncate flex-1">{name}</span>
+                {qty != null && (
+                  <span className="text-[12px] font-mono text-stone-600 dark:text-stone-300 shrink-0">
+                    × {qty}{unit && ` ${unit}`}
+                  </span>
+                )}
+                {unitCost != null && (
+                  <span className="text-[11px] font-mono text-muted-foreground shrink-0 w-16 text-right">
+                    {money(unitCost)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground italic">
+          {t("merchiva.ui.noItems") || "No line items"}
+        </div>
+      )}
+      {(subtotal != null || tax != null || total != null) && (
+        <div className="flex flex-col gap-0.5 px-2.5 py-1.5 border-t border-border">
+          {subtotal != null && (
+            <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+              <span>{t("merchiva.fields.subtotal").startsWith("merchiva.") ? "Subtotal" : t("merchiva.fields.subtotal")}</span>
+              <span>{money(subtotal)}</span>
+            </div>
+          )}
+          {tax != null && (
+            <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
+              <span>{t("merchiva.fields.tax").startsWith("merchiva.") ? "Tax" : t("merchiva.fields.tax")}</span>
+              <span>{money(tax)}</span>
+            </div>
+          )}
+          {total != null && (
+            <div className="flex justify-between text-[12.5px] font-semibold font-mono">
+              <span>{t("merchiva.fields.total").startsWith("merchiva.") ? "Total" : t("merchiva.fields.total")}</span>
+              <span>{money(total)}</span>
+            </div>
+          )}
+        </div>
+      )}
+      {notes && (
+        <div className="px-2.5 py-1.5 border-t border-border text-[11.5px] text-stone-600 dark:text-stone-300">
+          {notes}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BuilderAddPreview({ action }: { action: Record<string, unknown> }) {
   const elements = Array.isArray(action.elements) ? action.elements as Array<Record<string, unknown>> : [];
   if (elements.length === 0) return null;
@@ -890,7 +1026,7 @@ function BuilderEditPreview({ action }: { action: Record<string, unknown> }) {
   );
 }
 
-function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, validRoleNamesLower }: {
+function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, validRoleNamesLower, supplierNameById }: {
   action: Record<string, unknown>;
   onApprove: () => void;
   onReject: () => void;
@@ -899,6 +1035,8 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   // Passed through to ShiftPreviewStrip so addShift cards can flag invalid
   // staffRoles before the user clicks approve and trips the validator.
   validRoleNamesLower?: Set<string>;
+  // supplierId → name, so the order card shows a readable supplier instead of a raw id.
+  supplierNameById?: Map<string, string>;
 }) {
   const t = useT();
   const actionName = String(action.action ?? "unknown");
@@ -915,6 +1053,7 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   const isBuilderAdd = actionName === "addBuilderElement";
   const isBuilderDelete = actionName === "deleteBuilderElement";
   const isBuilderEdit = actionName === "editBuilderHtml";
+  const isSupplierOrder = actionName === "orderFromSupplier" || actionName === "createPurchaseOrder";
 
   useEffect(() => {
     if (status !== "pending" || autoRan.current || isHighRisk) return;
@@ -978,9 +1117,10 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
       {isBuilderAdd && status !== "rejected" && <BuilderAddPreview action={action} />}
       {isBuilderDelete && status !== "rejected" && <BuilderDeletePreview action={action} />}
       {isBuilderEdit && status !== "rejected" && <BuilderEditPreview action={action} />}
+      {isSupplierOrder && status !== "rejected" && <SupplierOrderPreview action={action} supplierNameById={supplierNameById} />}
 
       {/* Field grid (skip fields already shown in rich preview) */}
-      {!isShiftAction && !isRoleAction && !isBuilderAdd && !isBuilderDelete && !isBuilderEdit && (
+      {!isShiftAction && !isRoleAction && !isBuilderAdd && !isBuilderDelete && !isBuilderEdit && !isSupplierOrder && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-2">
           {displayFields.map((key) => {
             const val = action[key];
@@ -2064,7 +2204,17 @@ function parseSessionMessages(raw: string | undefined | null): ChatMessage[] {
   if (!raw || raw === "[]") return [];
   try {
     const msgs: ChatMessage[] = JSON.parse(raw);
-    return msgs.map((m) => ({ ...m, executed: true }));
+    // Older sessions were saved with `${prefix}-${Date.now()}` ids that could
+    // collide when messages were created in the same millisecond. Such dupes
+    // are baked into stored data, so reassign a fresh unique id to any id we've
+    // already seen — otherwise React throws "duplicate key" on render.
+    const seen = new Set<string>();
+    return msgs.map((m) => {
+      let id = m.id;
+      if (!id || seen.has(id)) id = msgId("e");
+      seen.add(id);
+      return { ...m, id, executed: true };
+    });
   } catch { return []; }
 }
 
@@ -2370,6 +2520,26 @@ export function MerchivaChat({
     [chatOptions]
   );
   const { products } = useProducts(organizationId);
+  // Supplier records (id + email) so Mr. Merchiva can resolve a low-stock
+  // item's supplier NAME to a real supplier id when calling orderFromSupplier.
+  // Without this the AI never sees existing suppliers and wrongly asks to
+  // re-add them before every order.
+  const [rawSupplierRows] = useSuppliers() as [unknown[], boolean];
+  const suppliers = useMemo(
+    () =>
+      (rawSupplierRows ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((r: any) => r && r.organizationId === organizationId)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => ({
+          id: r.id?.toString?.() ?? String(r.id),
+          name: r.name ?? "",
+          contactName: r.contactName ?? "",
+          email: r.email ?? "",
+          phone: r.phone ?? "",
+        })),
+    [rawSupplierRows, organizationId],
+  );
   const [rawNotifs] = useNotifications();
   // Settings row for this org — opening hours + country code for holiday lookup.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2392,6 +2562,11 @@ export function MerchivaChat({
   const validRoleNamesLower = useMemo(
     () => new Set(staffRoles.map((r) => String(r.name).trim().toLowerCase())),
     [staffRoles],
+  );
+  // supplierId → name, so orderFromSupplier cards render a readable supplier.
+  const supplierNameById = useMemo(
+    () => new Map(suppliers.map((s) => [s.id, s.name])),
+    [suppliers],
   );
   const staffRolesRef = useRef(staffRoles);
   staffRolesRef.current = staffRoles;
@@ -2476,6 +2651,11 @@ export function MerchivaChat({
         status: i.status,
         // Ordering specs so restock orders round to whole cases / respect a minimum.
         minOrderQty: i.minOrderQty, unitsPerCase: i.unitsPerCase,
+      })),
+      // Supplier records — orderFromSupplier needs the `id`. Match an inventory
+      // item's `supplier` NAME to a supplier here to get the id before ordering.
+      suppliers: suppliers.map((s) => ({
+        id: s.id, name: s.name, contactName: s.contactName, email: s.email, phone: s.phone,
       })),
       todayShifts: shifts.filter((s) => s.date === today).map((s) => ({
         id: s.id, name: s.staffName, role: s.staffRoles.join(", "), start: s.startTime, end: s.endTime, type: s.shiftType,
@@ -2577,7 +2757,7 @@ export function MerchivaChat({
         siteFeatures: builderContext.siteFeatures,
       } : undefined,
     };
-  }, [orgName, today, invItems, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, trainingDays, trainingObjectives, builderContext, orgSettings, locale]);
+  }, [orgName, today, invItems, suppliers, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, trainingDays, trainingObjectives, builderContext, orgSettings, locale]);
 
   // Scroll to bottom only when a new message is added
   const prevMsgCount = useRef(messages.length);
@@ -2598,10 +2778,12 @@ export function MerchivaChat({
     const mem = loadMemory(organizationId);
     localStorage.removeItem(bufKey);
     try {
+      const summarizePayload = { summarize: { prevSummary: mem.summary, newMessages: buf } };
+      logMerchivaSend("summarize", summarizePayload);
       const res = await fetch("/api/store-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summarize: { prevSummary: mem.summary, newMessages: buf } }),
+        body: JSON.stringify(summarizePayload),
       });
       const data = await res.json();
       if (data.summary) {
@@ -2649,7 +2831,9 @@ export function MerchivaChat({
     const recognition = new SR();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = locale === "zh" ? "zh-CN"
+    recognition.lang = locale === "zh-tw" ? "zh-TW"
+      : locale === "zh-hk" ? "zh-HK"
+      : locale.startsWith("zh") ? "zh-CN"
       : locale === "es" ? "es-ES"
       : locale === "fr" ? "fr-FR"
       : locale === "ar" ? "ar-SA"
@@ -2904,13 +3088,13 @@ export function MerchivaChat({
     const parsed = parseAllSkills(text);
     if (parsed.actionsList && !parsed.actions.length && !parsed.tasksAdd.length && !parsed.rolesAdd.length && !parsed.tasksDelete.length) {
       const userMsg: ChatMessage = {
-        id: `u-${Date.now()}`,
+        id: msgId("u"),
         from: "user",
         text: text.trim(),
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
       };
       const aiMsg: ChatMessage = {
-        id: `a-${Date.now()}`,
+        id: msgId("a"),
         from: "system",
         text: parsed.cleanText || "Here are all AI actions currently available:",
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
@@ -2922,13 +3106,13 @@ export function MerchivaChat({
     }
     if (parsed.tasksDelete.length > 0 && !parsed.tasksAdd.length && !parsed.rolesAdd.length && !parsed.actions.length) {
       const userMsg: ChatMessage = {
-        id: `u-${Date.now()}`,
+        id: msgId("u"),
         from: "user",
         text: text.trim(),
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
       };
       const aiMsg: ChatMessage = {
-        id: `a-${Date.now()}`,
+        id: msgId("a"),
         from: "merchiva",
         text: parsed.cleanText || "",
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
@@ -2965,7 +3149,7 @@ export function MerchivaChat({
       : text.trim();
 
     const userMsg: ChatMessage = {
-      id: `u-${Date.now()}`,
+      id: msgId("u"),
       from: "user",
       text: displayText,
       time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
@@ -3000,30 +3184,32 @@ export function MerchivaChat({
       const token = (await getToken().catch(() => null)) || getStoredToken();
       if (token && organizationId && activeSessionId && !enqueueDisabledRef.current) {
         try {
+          const enqueuePayload = {
+            token,
+            organizationId,
+            sessionId: activeSessionId,
+            message: fullText,
+            history: last10,
+            context: storeContext,
+            lang: locale,
+            memory: {
+              summary: mem.summary || undefined,
+              storeOverview: mem.storeOverview || undefined,
+              userPreferences: mem.userPreferences || undefined,
+            },
+            permissions: {
+              isOwner,
+              role: orgRole,
+              sections: Object.fromEntries(
+                Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
+              ),
+            },
+          };
+          logMerchivaSend("enqueue (background job)", enqueuePayload);
           const enq = await fetch("/api/store-ai/enqueue", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              token,
-              organizationId,
-              sessionId: activeSessionId,
-              message: fullText,
-              history: last10,
-              context: storeContext,
-              lang: locale,
-              memory: {
-                summary: mem.summary || undefined,
-                storeOverview: mem.storeOverview || undefined,
-                userPreferences: mem.userPreferences || undefined,
-              },
-              permissions: {
-                isOwner,
-                role: orgRole,
-                sections: Object.fromEntries(
-                  Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
-                ),
-              },
-            }),
+            body: JSON.stringify(enqueuePayload),
           });
           if (enq.ok) {
             // Sending state is cleared by the subscription effect when the new
@@ -3047,28 +3233,31 @@ export function MerchivaChat({
       }
 
       // ── Legacy streaming fallback (when no token / not in a session) ──
+      const streamPayload = {
+        message: fullText,
+        history: last10,
+        context: storeContext,
+        organizationId,
+        lang: locale,
+        stream: true,
+        memory: {
+          summary: mem.summary || undefined,
+          storeOverview: mem.storeOverview || undefined,
+          userPreferences: mem.userPreferences || undefined,
+        },
+        permissions: {
+          isOwner,
+          role: orgRole,
+          sections: Object.fromEntries(
+            Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
+          ),
+        },
+      };
+      logMerchivaSend("stream", streamPayload);
       const res = await fetch("/api/store-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: fullText,
-          history: last10,
-          context: storeContext,
-          lang: locale,
-          stream: true,
-          memory: {
-            summary: mem.summary || undefined,
-            storeOverview: mem.storeOverview || undefined,
-            userPreferences: mem.userPreferences || undefined,
-          },
-          permissions: {
-            isOwner,
-            role: orgRole,
-            sections: Object.fromEntries(
-              Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
-            ),
-          },
-        }),
+        body: JSON.stringify(streamPayload),
       });
 
       // Decode a base64-UTF8 response header (kaomoji + ack live there because
@@ -3095,7 +3284,7 @@ export function MerchivaChat({
         );
       }
 
-      const streamMsgId = `a-${Date.now()}`;
+      const streamMsgId = msgId("a");
       const streamTime = new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
       const ackMsgIdEarly = `ack-${streamMsgId}`;
 
@@ -3200,27 +3389,30 @@ export function MerchivaChat({
           m.id === streamMsgId ? { ...m, text: "..." } : m
         ));
         try {
+          const fallbackPayload = {
+            message: fullText,
+            history: last10,
+            context: storeContext,
+            organizationId,
+            lang: locale,
+            memory: {
+              summary: mem.summary || undefined,
+              storeOverview: mem.storeOverview || undefined,
+              userPreferences: mem.userPreferences || undefined,
+            },
+            permissions: {
+              isOwner,
+              role: orgRole,
+              sections: Object.fromEntries(
+                Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
+              ),
+            },
+          };
+          logMerchivaSend("non-stream fallback", fallbackPayload);
           const fallbackRes = await fetch("/api/store-ai", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: fullText,
-              history: last10,
-              context: storeContext,
-              lang: locale,
-              memory: {
-                summary: mem.summary || undefined,
-                storeOverview: mem.storeOverview || undefined,
-                userPreferences: mem.userPreferences || undefined,
-              },
-              permissions: {
-                isOwner,
-                role: orgRole,
-                sections: Object.fromEntries(
-                  Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
-                ),
-              },
-            }),
+            body: JSON.stringify(fallbackPayload),
           });
           const fallbackData = await fallbackRes.json();
           if (!fallbackRes.ok) {
@@ -3290,7 +3482,7 @@ export function MerchivaChat({
       if (!parsed.actionsList) bufferAndMaybeSummarize(text.trim(), parsed.cleanText);
     } catch {
       setMessages((prev) => [...prev, {
-        id: `e-${Date.now()}`,
+        id: msgId("e"),
         from: "merchiva",
         text: t("merchiva.errorNoResponse"),
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
@@ -3650,6 +3842,7 @@ export function MerchivaChat({
                         onApprove={() => handleApprove(msg.id, act.id)}
                         onReject={() => handleReject(msg.id, act.id)}
                         validRoleNamesLower={validRoleNamesLower}
+                        supplierNameById={supplierNameById}
                       />
                     ))}
                   </>

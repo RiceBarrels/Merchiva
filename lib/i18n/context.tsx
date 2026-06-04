@@ -42,10 +42,37 @@ function writeCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${oneYear}; SameSite=Lax`;
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+// If the current path is locale-prefixed (a public marketing page served under
+// /<locale>/…), return that locale; otherwise null. Used so a language switch on
+// a public page navigates to the matching prefix instead of only flipping the
+// client cookie (which wouldn't change the server-rendered language).
+function localePrefixOfPath(pathname: string): Locale | null {
+  const first = pathname.split("/")[1];
+  return isLocale(first) ? first : null;
+}
+
+export function I18nProvider({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  // Server-resolved locale (from the URL prefix via the proxy + root layout).
+  // Seeds the first render so SSR markup is already in the right language.
+  initialLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale ?? DEFAULT_LOCALE);
 
   useEffect(() => {
+    // On a locale-prefixed public page the URL is authoritative — trust it and
+    // keep the cookie in sync, skipping cookie/browser detection.
+    if (typeof window !== "undefined") {
+      const fromPath = localePrefixOfPath(window.location.pathname);
+      if (fromPath) {
+        writeCookie(LOCALE_COOKIE, fromPath);
+        if (fromPath !== locale) setLocaleState(fromPath);
+        return;
+      }
+    }
     const cookieVal = readCookie(LOCALE_COOKIE);
     if (isLocale(cookieVal)) {
       if (cookieVal !== locale) setLocaleState(cookieVal);
@@ -71,6 +98,17 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLocale = useCallback((next: Locale) => {
     writeCookie(LOCALE_COOKIE, next);
     setLocaleState(next);
+    // On a locale-prefixed public page, swap the prefix and navigate so the
+    // server re-renders the page in the new language (full reload guarantees
+    // fresh SSR HTML for SEO/correctness). App pages under /~/ are unaffected.
+    if (typeof window !== "undefined") {
+      const { pathname, search, hash } = window.location;
+      const current = localePrefixOfPath(pathname);
+      if (current && current !== next) {
+        const rest = pathname.slice(`/${current}`.length) || "/";
+        window.location.assign(`/${next}${rest === "/" ? "" : rest}${search}${hash}`);
+      }
+    }
   }, []);
 
   const dict = useMemo(() => getDictionary(locale), [locale]);
