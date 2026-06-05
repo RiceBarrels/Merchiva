@@ -25,4 +25,6 @@ export default {
   lossRate: __t.f64(),
   minOrderQty: __t.option(__t.f64()),
   unitsPerCase: __t.option(__t.f64()),
+  operatorMemberId: __t.option(__t.string()),
+  operatorName: __t.option(__t.string()),
 };

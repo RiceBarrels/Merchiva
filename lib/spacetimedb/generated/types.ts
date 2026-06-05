@@ -225,6 +225,8 @@ export const InventoryTransaction = __t.object("InventoryTransaction", {
   note: __t.string(),
   date: __t.string(),
   createdAt: __t.timestamp(),
+  operatorMemberId: __t.option(__t.string()),
+  operatorName: __t.option(__t.string()),
 });
 export type InventoryTransaction = __Infer<typeof InventoryTransaction>;
 

@@ -234,6 +234,12 @@ const inventoryTransactionTable = table(
     note: t.string(),
     date: t.string(),   // ISO date string
     createdAt: t.timestamp(),
+    // Store-device usage tracking (appended — keep at END for safe migration).
+    // operatorMemberId is the org_member id of the punched-in user who made the
+    // change at the store device. Null when the change came from the regular
+    // web app (logged-in identity is already known via ctx.sender).
+    operatorMemberId: t.option(t.string()).default(undefined),
+    operatorName: t.option(t.string()).default(undefined),
   }
 );
 
@@ -2497,6 +2503,8 @@ export const updateInventoryItem = spacetimedb.reducer(
     lossRate: t.number(),
     minOrderQty: t.option(t.number()),
     unitsPerCase: t.option(t.number()),
+    operatorMemberId: t.option(t.string()),
+    operatorName: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2505,6 +2513,7 @@ export const updateInventoryItem = spacetimedb.reducer(
 
     const item = findItemInOrg(ctx.db.inventoryItem, args.organizationId, args.itemId);
     const wasAboveMin = item.currentStock > item.minStock;
+    const stockDelta = args.currentStock - item.currentStock;
     ctx.db.inventoryItem.delete(item);
     ctx.db.inventoryItem.insert({
       ...item,
@@ -2522,6 +2531,22 @@ export const updateInventoryItem = spacetimedb.reducer(
       minOrderQty: args.minOrderQty,
       unitsPerCase: args.unitsPerCase,
     });
+
+    if (stockDelta !== 0) {
+      ctx.db.inventoryTransaction.insert({
+        id: ctx.newUuidV4(),
+        organizationId: args.organizationId,
+        itemId: args.itemId,
+        itemName: args.name,
+        type: stockDelta > 0 ? 'in' : 'adjustment',
+        quantity: Math.abs(stockDelta),
+        note: stockDelta > 0 ? 'Stock added via edit' : 'Stock adjusted via edit',
+        date: args.lastRestocked,
+        createdAt: ctx.timestamp,
+        operatorMemberId: args.operatorMemberId,
+        operatorName: args.operatorName,
+      });
+    }
 
     if (wasAboveMin && args.currentStock <= args.minStock) {
       notifyOrgMembers(ctx, args.organizationId, 'inventory_low',
@@ -2553,6 +2578,8 @@ export const addInventoryTransaction = spacetimedb.reducer(
     quantity: t.number(),
     note: t.string(),
     date: t.string(),
+    operatorMemberId: t.option(t.string()),
+    operatorName: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2569,6 +2596,8 @@ export const addInventoryTransaction = spacetimedb.reducer(
       note: args.note,
       date: args.date,
       createdAt: ctx.timestamp,
+      operatorMemberId: args.operatorMemberId,
+      operatorName: args.operatorName,
     });
   }
 );
@@ -4548,6 +4577,8 @@ export const addWasteLog = spacetimedb.reducer(
     costPerUnit: t.number(),
     date: t.string(),
     notes: t.option(t.string()),
+    operatorMemberId: t.option(t.string()),
+    operatorName: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -4593,6 +4624,8 @@ export const addWasteLog = spacetimedb.reducer(
           note: `Waste: ${args.reason}${args.notes ? ' — ' + args.notes : ''}`,
           date: args.date,
           createdAt: ctx.timestamp,
+          operatorMemberId: args.operatorMemberId,
+          operatorName: args.operatorName,
         });
 
         if (wasAboveMin && newStock <= item.minStock) {

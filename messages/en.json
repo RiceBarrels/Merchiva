@@ -1687,11 +1687,19 @@
   "lock": {
     "title": "Device Locked",
     "subtitle": "Enter your PIN to unlock the store device.",
-    "subtitleWithOp": "Last operator: {name}. Enter your PIN to take over.",
+    "subtitleWithOp": "Last operator: {name}. Tap a name or enter a PIN to take over.",
     "pinLabel": "Enter PIN",
     "tapToType": "Tap here to type",
     "verifying": "Verifying…",
     "pinNotRecognized": "PIN not recognized",
+    "tapToUnlock": "Tap your name to unlock",
+    "noMembers": "No team members with a PIN yet.",
+    "enterPin": "Or enter PIN",
+    "back": "Back",
+    "clear": "Clear",
+    "noUser": "No user",
+    "logout": "End session",
+    "unknownOp": "Operator",
     "autolockTitle": "Auto-lock after",
     "autolockSubtitle": "Require a PIN if the store device is idle for this long.",
     "autolockMetaPrefix": "PIN after {label} idle",
@@ -1910,13 +1918,15 @@
       "date": "Date",
       "type": "Type",
       "quantity": "Quantity",
-      "note": "Note"
+      "note": "Note",
+      "operator": "Operator"
     },
     "noItems": "No items found.",
     "transactions": {
       "title": "Recent Transactions",
       "description": "Stock movements — deliveries, usage, and waste",
-      "empty": "No transactions yet. They'll appear here once you start tracking stock movements."
+      "empty": "No transactions yet. They'll appear here once you start tracking stock movements.",
+      "systemOperator": "System"
     },
     "losses": {
       "title": "Loss Rate by Item",

@@ -33,6 +33,8 @@ import { useT, useI18n } from "@/lib/i18n/context";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { MerchivaChat } from "@/components/merchiva-chat-dashboard";
+import { useStoreMachineMode } from "@/lib/store-machine-mode";
+import { useCurrentOperator } from "@/lib/store-device-lock";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 function MerchivaChatEmbed({ compact = false, header = true }: { compact?: boolean; header?: boolean } = {}) {
@@ -124,9 +126,25 @@ export default function ChatPage() {
   }, []);
 
   const stdb = useSpacetimeDB();
+  const [storeMachine] = useStoreMachineMode();
+  const operator = useCurrentOperator();
+  // In store-device mode, scope the chat to the punched-in operator so each
+  // staff member sees their own conversations on the shared terminal. We
+  // override the "me" userId by looking up the operator's orgMember row and
+  // pulling its userId.
+  const [memberRowsForOp] = useTable(tables.orgMember);
   useEffect(() => {
+    if (storeMachine && operator?.memberId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = memberRowsForOp as unknown as Array<{ id: { toString(): string }; userId: { toString(): string } }>;
+      const row = rows.find((m) => m.id.toString() === operator.memberId);
+      if (row) {
+        setUserId(row.userId.toString());
+        return;
+      }
+    }
     if (stdb?.identity) setUserId(stdb.identity.toHexString());
-  }, [stdb?.identity]);
+  }, [stdb?.identity, storeMachine, operator?.memberId, memberRowsForOp]);
 
   useEffect(() => {
     if (!organizationId) return;
@@ -139,7 +157,7 @@ export default function ChatPage() {
     setLoading(false);
 
     Promise.all([
-      getConversations(ids),
+      getConversations(ids, userId),
       Promise.all(ids.map((id) => getTeamForScheduling(id))).then((arrays) => {
         // De-dupe team members by userId so the same person on multiple orgs
         // appears once in the picker.
@@ -262,7 +280,7 @@ export default function ChatPage() {
     try {
       await setConversationMerchiva(activeConv.id, next);
       if (organizationId) {
-        const convs = await getConversations(organizationId);
+        const convs = await getConversations(organizationId, userId);
         setConversations(convs);
         const updated = convs.find((c) => c.id === activeConv.id);
         if (updated) setActiveConv(updated);
@@ -302,7 +320,7 @@ export default function ChatPage() {
     // same socket; refetch (with a short retry) and pick the conversation that's
     // new to us so callers get the REAL id (needed to enable Mr. Merchiva on it).
     for (let i = 0; i < 6; i++) {
-      const convs = await getConversations(organizationId!);
+      const convs = await getConversations(organizationId!, userId);
       const fresh = convs.find((c) => !prevIds.has(c.id) && c.type === type);
       if (fresh) {
         setConversations(convs);
@@ -365,7 +383,7 @@ export default function ChatPage() {
     setSelectedMembers([]);
     // Refresh conversations
     if (organizationId) {
-      const convs = await getConversations(organizationId);
+      const convs = await getConversations(organizationId, userId);
       setConversations(convs);
       const updated = convs.find((c) => c.id === activeConv.id);
       if (updated) setActiveConv(updated);

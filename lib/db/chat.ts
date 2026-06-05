@@ -46,7 +46,11 @@ function toDateMs(v: any): number {
 // ─── Conversations ──────────────────────────────────────────────────────────
 
 export async function getConversations(
-  orgIdOrIds: string | string[]
+  orgIdOrIds: string | string[],
+  // Optional: scope to a specific userId instead of the connection identity.
+  // Used in store-device mode where one device acts on behalf of the punched-in
+  // operator rather than the signed-in account.
+  userIdOverride?: string | null,
 ): Promise<ChatConversation[]> {
   const c = conn();
   if (!c) return [];
@@ -55,12 +59,15 @@ export async function getConversations(
   if (!currentIdentity) return [];
 
   const orgIds = Array.isArray(orgIdOrIds) ? orgIdOrIds : [orgIdOrIds];
+  const scopeUserId = (userIdOverride && userIdOverride.length > 0)
+    ? userIdOverride
+    : currentIdentity.toHexString();
 
-  // Get all members to find conversations the current user belongs to
+  // Get all members to find conversations the scoped user belongs to
   const allMembers = Array.from(c.db.chatMember.iter());
   const myConvIds = new Set(
     allMembers
-      .filter((m: any) => m.userId.toHexString() === currentIdentity.toHexString())
+      .filter((m: any) => m.userId.toHexString() === scopeUserId)
       .map((m: any) => m.conversationId)
   );
 

@@ -20,4 +20,6 @@ export default __t.row({
   note: __t.string(),
   date: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
+  operatorMemberId: __t.option(__t.string()).name("operator_member_id"),
+  operatorName: __t.option(__t.string()).name("operator_name"),
 });

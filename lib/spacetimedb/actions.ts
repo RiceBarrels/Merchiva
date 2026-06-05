@@ -45,6 +45,21 @@ async function offlineAware(
 
 // ─── Inventory ────────────────────────────────────────────────────────────────
 
+// Read the current store-device operator (if any) directly from localStorage so
+// we don't have to thread the operator through every mutation call site. Server
+// reducers store these on the inventory_transaction row for activity tracking.
+function operatorArgs(): { operatorMemberId?: string; operatorName?: string } {
+  if (typeof window === "undefined") return {};
+  try {
+    const id = localStorage.getItem("store_device_operator_member_id");
+    if (!id) return {};
+    const name = localStorage.getItem("store_device_operator_name") ?? "";
+    return { operatorMemberId: id, operatorName: name };
+  } catch {
+    return {};
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addInventoryItem(data: any, _userId?: string): Promise<void> {
   return offlineAware("addInventoryItem", { organizationId: orgId(), ...data });
@@ -52,7 +67,7 @@ export async function addInventoryItem(data: any, _userId?: string): Promise<voi
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateInventoryItem(itemId: string, data: any): Promise<void> {
-  return offlineAware("updateInventoryItem", { organizationId: orgId(), itemId, ...data });
+  return offlineAware("updateInventoryItem", { organizationId: orgId(), itemId, ...data, ...operatorArgs() });
 }
 
 export async function deleteInventoryItem(itemId: string): Promise<void> {
@@ -61,7 +76,7 @@ export async function deleteInventoryItem(itemId: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addInventoryTransaction(data: any): Promise<void> {
-  return offlineAware("addInventoryTransaction", { organizationId: orgId(), ...data });
+  return offlineAware("addInventoryTransaction", { organizationId: orgId(), ...data, ...operatorArgs() });
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -985,7 +1000,7 @@ export async function deletePushSubscription(endpoint: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addWasteLog(data: any): Promise<void> {
-  return offlineAware("addWasteLog", { organizationId: orgId(), ...data });
+  return offlineAware("addWasteLog", { organizationId: orgId(), ...data, ...operatorArgs() });
 }
 
 export async function deleteWasteLog(wasteLogId: string): Promise<void> {

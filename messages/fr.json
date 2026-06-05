@@ -1687,11 +1687,19 @@
   "lock": {
     "title": "Appareil verrouillé",
     "subtitle": "Saisissez votre PIN pour déverrouiller l'appareil du magasin.",
-    "subtitleWithOp": "Dernier opérateur : {name}. Saisissez votre PIN pour prendre le relais.",
+    "subtitleWithOp": "Dernier opérateur : {name}. Touchez un nom ou saisissez un PIN pour prendre le relais.",
     "pinLabel": "Saisir le PIN",
     "tapToType": "Touchez ici pour saisir",
     "verifying": "Vérification…",
     "pinNotRecognized": "PIN non reconnu",
+    "tapToUnlock": "Touchez votre nom pour déverrouiller",
+    "noMembers": "Aucun membre avec un PIN pour le moment.",
+    "enterPin": "Ou saisir un PIN",
+    "back": "Retour",
+    "clear": "Effacer",
+    "noUser": "Aucun utilisateur",
+    "logout": "Terminer la session",
+    "unknownOp": "Opérateur",
     "autolockTitle": "Verrouillage automatique",
     "autolockSubtitle": "Exiger un PIN si l'appareil reste inactif pendant cette durée.",
     "autolockMetaPrefix": "PIN après {label} d'inactivité",
@@ -1910,13 +1918,15 @@
       "date": "Date",
       "type": "Type",
       "quantity": "Quantité",
-      "note": "Note"
+      "note": "Note",
+      "operator": "Opérateur"
     },
     "noItems": "Aucun article trouvé.",
     "transactions": {
       "title": "Transactions récentes",
       "description": "Mouvements de stock — livraisons, utilisation et pertes",
-      "empty": "Aucune transaction pour l'instant. Elles apparaîtront ici dès que vous commencerez à suivre les mouvements de stock."
+      "empty": "Aucune transaction pour l'instant. Elles apparaîtront ici dès que vous commencerez à suivre les mouvements de stock.",
+      "systemOperator": "Système"
     },
     "losses": {
       "title": "Taux de perte par article",

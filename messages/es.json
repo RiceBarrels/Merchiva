@@ -1687,11 +1687,19 @@
   "lock": {
     "title": "Dispositivo bloqueado",
     "subtitle": "Ingresa tu PIN para desbloquear el dispositivo de la tienda.",
-    "subtitleWithOp": "Último operador: {name}. Ingresa tu PIN para tomar el control.",
+    "subtitleWithOp": "Último operador: {name}. Toca un nombre o ingresa un PIN para tomar el control.",
     "pinLabel": "Ingresar PIN",
     "tapToType": "Toca aquí para escribir",
     "verifying": "Verificando…",
     "pinNotRecognized": "PIN no reconocido",
+    "tapToUnlock": "Toca tu nombre para desbloquear",
+    "noMembers": "Aún no hay miembros con PIN.",
+    "enterPin": "O ingresa PIN",
+    "back": "Atrás",
+    "clear": "Limpiar",
+    "noUser": "Sin usuario",
+    "logout": "Finalizar sesión",
+    "unknownOp": "Operador",
     "autolockTitle": "Bloqueo automático",
     "autolockSubtitle": "Pedir PIN si el dispositivo de la tienda está inactivo por este tiempo.",
     "autolockMetaPrefix": "PIN tras {label} de inactividad",
@@ -1910,13 +1918,15 @@
       "date": "Fecha",
       "type": "Tipo",
       "quantity": "Cantidad",
-      "note": "Nota"
+      "note": "Nota",
+      "operator": "Operador"
     },
     "noItems": "No se encontraron artículos.",
     "transactions": {
       "title": "Transacciones recientes",
       "description": "Movimientos de stock — entregas, uso y desperdicio",
-      "empty": "Aún no hay transacciones. Aparecerán aquí cuando empieces a registrar movimientos de stock."
+      "empty": "Aún no hay transacciones. Aparecerán aquí cuando empieces a registrar movimientos de stock.",
+      "systemOperator": "Sistema"
     },
     "losses": {
       "title": "Tasa de pérdida por artículo",

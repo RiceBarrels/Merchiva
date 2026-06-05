@@ -92,6 +92,9 @@ export interface InventoryTransaction {
   quantity: number;
   date: string;
   note: string;
+  operatorMemberId?: string;
+  operatorName?: string;
+  createdAt?: Date;
 }
 
 // ─── Sales ───────────────────────────────────────────────────────────────────

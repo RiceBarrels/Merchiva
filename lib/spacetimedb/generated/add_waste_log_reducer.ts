@@ -20,4 +20,6 @@ export default {
   costPerUnit: __t.f64(),
   date: __t.string(),
   notes: __t.option(__t.string()),
+  operatorMemberId: __t.option(__t.string()),
+  operatorName: __t.option(__t.string()),
 };

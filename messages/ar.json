@@ -1687,11 +1687,19 @@
   "lock": {
     "title": "الجهاز مقفل",
     "subtitle": "أدخل رمز PIN لفتح جهاز المتجر.",
-    "subtitleWithOp": "آخر مشغل: {name}. أدخل PIN للاستلام.",
+    "subtitleWithOp": "آخر مشغل: {name}. اضغط على اسم أو أدخل PIN للاستلام.",
     "pinLabel": "أدخل PIN",
     "tapToType": "اضغط هنا للكتابة",
     "verifying": "جارٍ التحقق…",
     "pinNotRecognized": "PIN غير معروف",
+    "tapToUnlock": "اضغط على اسمك لفتح القفل",
+    "noMembers": "لا يوجد أعضاء لديهم PIN بعد.",
+    "enterPin": "أو أدخل PIN",
+    "back": "رجوع",
+    "clear": "مسح",
+    "noUser": "لا يوجد مستخدم",
+    "logout": "إنهاء الجلسة",
+    "unknownOp": "مشغل",
     "autolockTitle": "القفل التلقائي",
     "autolockSubtitle": "اطلب PIN عند خمول الجهاز لهذه المدة.",
     "autolockMetaPrefix": "PIN بعد {label} من الخمول",
@@ -1910,13 +1918,15 @@
       "date": "التاريخ",
       "type": "النوع",
       "quantity": "الكمية",
-      "note": "ملاحظة"
+      "note": "ملاحظة",
+      "operator": "المشغل"
     },
     "noItems": "لم يتم العثور على عناصر.",
     "transactions": {
       "title": "الحركات الأخيرة",
       "description": "حركات المخزون — استلام واستهلاك وهدر",
-      "empty": "لا توجد حركات بعد. ستظهر هنا عند بدء تتبّع حركات المخزون."
+      "empty": "لا توجد حركات بعد. ستظهر هنا عند بدء تتبّع حركات المخزون.",
+      "systemOperator": "النظام"
     },
     "losses": {
       "title": "نسبة الفاقد حسب العنصر",

@@ -18,4 +18,6 @@ export default {
   quantity: __t.f64(),
   note: __t.string(),
   date: __t.string(),
+  operatorMemberId: __t.option(__t.string()),
+  operatorName: __t.option(__t.string()),
 };

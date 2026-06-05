@@ -423,28 +423,44 @@ export default function InventoryPage() {
                         <TableHead>{t("inventory.tableHeaders.item")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.type")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.quantity")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.operator")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.note")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transactions.map((t) => (
-                        <TableRow key={t.id}>
-                          <TableCell className="text-muted-foreground text-sm">{t.date}</TableCell>
-                          <TableCell className="font-medium">{t.itemName}</TableCell>
+                      {[...transactions]
+                        .sort((a, b) => {
+                          const ta = a.createdAt?.getTime() ?? new Date(a.date).getTime();
+                          const tb = b.createdAt?.getTime() ?? new Date(b.date).getTime();
+                          return tb - ta;
+                        })
+                        .map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                            {tx.createdAt
+                              ? tx.createdAt.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })
+                              : tx.date}
+                          </TableCell>
+                          <TableCell className="font-medium">{tx.itemName}</TableCell>
                           <TableCell>
                             <Badge
-                              variant={t.type === "in" ? "outline" : t.type === "loss" ? "destructive" : "secondary"}
+                              variant={tx.type === "in" ? "outline" : tx.type === "loss" ? "destructive" : "secondary"}
                               className="capitalize text-xs"
                             >
-                              {t.type}
+                              {tx.type}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span className={t.type === "in" ? "text-emerald-600 font-medium" : t.type === "loss" ? "text-destructive font-medium" : ""}>
-                              {t.type === "in" ? "+" : "-"}{t.quantity}
+                            <span className={tx.type === "in" ? "text-emerald-600 font-medium" : tx.type === "loss" ? "text-destructive font-medium" : ""}>
+                              {tx.type === "in" ? "+" : tx.type === "out" || tx.type === "loss" ? "-" : "±"}{tx.quantity}
                             </span>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{t.note}</TableCell>
+                          <TableCell className="text-sm">
+                            {tx.operatorName
+                              ? <span className="inline-flex items-center gap-1.5 font-medium">{tx.operatorName}</span>
+                              : <span className="text-muted-foreground">{t("inventory.transactions.systemOperator")}</span>}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{tx.note}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

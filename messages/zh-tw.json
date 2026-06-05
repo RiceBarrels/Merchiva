@@ -1663,11 +1663,19 @@
   "lock": {
     "title": "裝置已鎖定",
     "subtitle": "請輸入 PIN 解鎖店鋪裝置。",
-    "subtitleWithOp": "上一位操作者：{name}。輸入 PIN 接管。",
+    "subtitleWithOp": "上一位操作者：{name}。點擊姓名或輸入 PIN 接管。",
     "pinLabel": "輸入 PIN",
     "tapToType": "點這裡輸入",
     "verifying": "驗證中…",
     "pinNotRecognized": "PIN 不正確",
+    "tapToUnlock": "點擊姓名解鎖",
+    "noMembers": "尚無設置 PIN 的員工。",
+    "enterPin": "或輸入 PIN",
+    "back": "返回",
+    "clear": "清除",
+    "noUser": "無使用者",
+    "logout": "結束工作階段",
+    "unknownOp": "操作者",
     "autolockTitle": "自動鎖屏",
     "autolockSubtitle": "店鋪裝置閒置達到該時長後要求輸入 PIN。",
     "autolockMetaPrefix": "閒置 {label} 後要求 PIN",
@@ -1886,13 +1894,15 @@
       "date": "日期",
       "type": "型別",
       "quantity": "數量",
-      "note": "備註"
+      "note": "備註",
+      "operator": "操作者"
     },
     "noItems": "未找到商品。",
     "transactions": {
       "title": "最近交易",
       "description": "庫存變動 — 到貨、消耗與損耗",
-      "empty": "暫無交易記錄。開始跟蹤庫存變動後將顯示在此處。"
+      "empty": "暫無交易記錄。開始跟蹤庫存變動後將顯示在此處。",
+      "systemOperator": "系統"
     },
     "losses": {
       "title": "各商品損耗率",

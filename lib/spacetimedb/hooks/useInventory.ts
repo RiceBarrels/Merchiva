@@ -43,15 +43,28 @@ export function useInventory(_organizationId: string | null) {
     if (!organizationId) return [];
     return rawTx
       .filter((r) => r.organizationId === organizationId)
-      .map((r) => ({
-        id:       r.id.toString(),
-        itemId:   r.itemId ?? "",
-        itemName: r.itemName,
-        type:     r.type as InventoryTransaction["type"],
-        quantity: r.quantity,
-        date:     r.date,
-        note:     r.note,
-      }));
+      .map((r) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const row = r as any;
+        let createdAt: Date | undefined;
+        if (row.createdAt && typeof row.createdAt.toDate === "function") {
+          createdAt = row.createdAt.toDate() as Date;
+        } else if (row.createdAt && typeof row.createdAt.microsSinceUnixEpoch === "bigint") {
+          createdAt = new Date(Number(row.createdAt.microsSinceUnixEpoch / BigInt(1000)));
+        }
+        return {
+          id:       r.id.toString(),
+          itemId:   r.itemId ?? "",
+          itemName: r.itemName,
+          type:     r.type as InventoryTransaction["type"],
+          quantity: r.quantity,
+          date:     r.date,
+          note:     r.note,
+          operatorMemberId: row.operatorMemberId ?? undefined,
+          operatorName: row.operatorName ?? undefined,
+          createdAt,
+        };
+      });
   }, [rawTx, organizationId]);
 
   const isReady = itemsReady && txReady;

@@ -1687,11 +1687,19 @@
   "lock": {
     "title": "设备已锁定",
     "subtitle": "请输入 PIN 解锁店铺设备。",
-    "subtitleWithOp": "上一位操作者：{name}。输入 PIN 接管。",
+    "subtitleWithOp": "上一位操作者：{name}。点击姓名或输入 PIN 接管。",
     "pinLabel": "输入 PIN",
     "tapToType": "点这里输入",
     "verifying": "验证中…",
     "pinNotRecognized": "PIN 不正确",
+    "tapToUnlock": "点击姓名解锁",
+    "noMembers": "尚无设置 PIN 的员工。",
+    "enterPin": "或输入 PIN",
+    "back": "返回",
+    "clear": "清除",
+    "noUser": "无用户",
+    "logout": "退出登录",
+    "unknownOp": "操作者",
     "autolockTitle": "自动锁屏",
     "autolockSubtitle": "店铺设备闲置达到该时长后要求输入 PIN。",
     "autolockMetaPrefix": "闲置 {label} 后要求 PIN",
@@ -1910,13 +1918,15 @@
       "date": "日期",
       "type": "类型",
       "quantity": "数量",
-      "note": "备注"
+      "note": "备注",
+      "operator": "操作者"
     },
     "noItems": "未找到商品。",
     "transactions": {
       "title": "最近交易",
       "description": "库存变动 — 到货、消耗与损耗",
-      "empty": "暂无交易记录。开始跟踪库存变动后将显示在此处。"
+      "empty": "暂无交易记录。开始跟踪库存变动后将显示在此处。",
+      "systemOperator": "系统"
     },
     "losses": {
       "title": "各商品损耗率",

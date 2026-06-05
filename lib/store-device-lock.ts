@@ -11,7 +11,7 @@ const EVENT = "store-device-lock-change";
 export const AUTOLOCK_OPTIONS = [30, 60, 120, 300, 0] as const;
 export type AutolockSeconds = (typeof AUTOLOCK_OPTIONS)[number];
 
-const DEFAULT_TIMEOUT: AutolockSeconds = 60;
+const DEFAULT_TIMEOUT: AutolockSeconds = 30;
 
 export function getAutolockSeconds(): AutolockSeconds {
   if (typeof window === "undefined") return DEFAULT_TIMEOUT;

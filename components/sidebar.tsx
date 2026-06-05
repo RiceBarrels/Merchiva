@@ -47,6 +47,7 @@ import { clearCache } from "@/lib/cache";
 import { createOrg } from "@/lib/spacetimedb/actions";
 import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
 import { StoreDeviceLock } from "@/components/store-device-lock";
+import { useCurrentOperator, setCurrentOperator } from "@/lib/store-device-lock";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
@@ -1134,17 +1135,60 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
 function StoreTopBar({ deviceName }: { deviceName: string }) {
   const t = useT();
+  const operator = useCurrentOperator();
+  const initials = (name: string) =>
+    name
+      .split(/\s+/)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?";
+
+  const handleLogout = () => {
+    hapticMedium();
+    setCurrentOperator(null);
+    // Dispatch a synthetic blur so the lock screen's autolock timer triggers
+    // immediately on the next tick. Clearing the operator alone doesn't lock —
+    // we want the lock screen up right away so the next user can sign in.
+    window.dispatchEvent(new Event("store-device-force-lock"));
+  };
+
   return (
     <header className="h-11 shrink-0 border-b border-background/20 bg-foreground text-background flex items-center px-4 gap-3 z-30">
       <span className="font-mono text-xs font-bold tracking-[0.18em]">{t("components.store.appName")}</span>
       <span className="w-px h-4 bg-background/30" />
       <span className="text-[13px] font-semibold">{t("components.store.timeClock")}</span>
-      <span className="inline-flex items-center gap-1.5 ml-1.5 px-2 py-0.5 rounded-full border border-background/30 text-[10px] font-mono tracking-wider text-muted-foreground">
+      <span className="hidden sm:inline-flex items-center gap-1.5 ml-1.5 px-2 py-0.5 rounded-full border border-background/30 text-[10px] font-mono tracking-wider text-muted-foreground">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{t("components.store.online")}
       </span>
-      <span className="ml-auto text-[11px] font-mono text-muted-foreground truncate">
+      <span className="hidden md:inline ml-2 text-[11px] font-mono text-muted-foreground truncate">
         {deviceName ? deviceName.toUpperCase() : t("components.store.terminal")}
       </span>
+      <div className="ml-auto flex items-center gap-2">
+        {operator ? (
+          <div className="inline-flex items-center gap-1.5 pl-1 pr-1 py-1 rounded-[0.3rem] border border-background/30 bg-background/10">
+            <span className="h-6 w-6 rounded-[0.2rem] bg-background text-foreground inline-flex items-center justify-center font-mono text-[10px] font-semibold">
+              {initials(operator.name)}
+            </span>
+            <span className="text-[12px] font-semibold truncate max-w-[140px]">
+              {operator.name || t("lock.unknownOp")}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              aria-label={t("lock.logout")}
+              title={t("lock.logout")}
+              className="ml-0.5 h-6 w-6 inline-flex items-center justify-center rounded-[0.2rem] hover:bg-background/20 active:bg-background/30 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <span className="text-[11px] font-mono text-muted-foreground tracking-wider uppercase">
+            {t("lock.noUser")}
+          </span>
+        )}
+      </div>
     </header>
   );
 }
