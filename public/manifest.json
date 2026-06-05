@@ -2,7 +2,7 @@
   "name": "Merchiva",
   "short_name": "Merchiva",
   "description": "AI-Powered Business Management",
-  "start_url": "/dashboard",
+  "start_url": "/~/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#18181b",
