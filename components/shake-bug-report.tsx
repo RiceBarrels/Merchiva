@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/context/permissions";
 import { hapticHeavy } from "@/lib/haptics";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Shake Detection ────────────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ export function ShakeBugReport() {
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { organizationId } = usePermissions();
+  const t = useT();
 
   const handleShake = useCallback(() => {
     hapticHeavy();
@@ -107,15 +109,15 @@ export function ShakeBugReport() {
         logging: false,
       });
       setScreenshot(canvas.toDataURL("image/jpeg", 0.6));
-      toast.success("Screenshot captured");
+      toast.success(t("bugReport.screenshotCaptured"));
     } catch {
-      toast.error("Failed to capture screenshot");
+      toast.error(t("bugReport.screenshotFailed"));
     }
-  }, []);
+  }, [t]);
 
   const handleSubmit = useCallback(() => {
     if (!title.trim()) {
-      toast.error("Please add a title");
+      toast.error(t("bugReport.titleRequired"));
       return;
     }
 
@@ -136,12 +138,12 @@ export function ShakeBugReport() {
       localStorage.setItem("bug_reports", JSON.stringify(existing));
     } catch {}
 
-    toast.success("Bug report saved");
+    toast.success(t("bugReport.saved"));
     setOpen(false);
     setTitle("");
     setDescription("");
     setScreenshot(null);
-  }, [title, description, screenshot, organizationId]);
+  }, [title, description, screenshot, organizationId, t]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen} direction="bottom">
@@ -150,10 +152,10 @@ export function ShakeBugReport() {
         <div className="flex items-center justify-between px-4 pb-3 pt-3 border-b border-border">
           <DrawerTitle className="flex items-center gap-2 text-[14px] font-semibold">
             <Bug className="h-4 w-4 text-red-500" />
-            Report a Bug
+            {t("bugReport.title")}
           </DrawerTitle>
           <DrawerDescription className="sr-only">
-            Describe the issue you ran into and optionally attach a screenshot.
+            {t("bugReport.drawerDescription")}
           </DrawerDescription>
           <DrawerClose asChild>
             <button className="p-1 rounded-[0.3rem] hover:bg-muted">
@@ -165,22 +167,22 @@ export function ShakeBugReport() {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">What went wrong?</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("bugReport.whatWentWrong")}</label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Brief description of the issue"
+              placeholder={t("bugReport.titlePlaceholder")}
               className="text-[14px]"
               autoFocus
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Details (optional)</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("bugReport.detailsLabel")}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Steps to reproduce, expected behavior..."
+              placeholder={t("bugReport.detailsPlaceholder")}
               rows={3}
               className="w-full rounded-[0.3rem] border border-border bg-background px-3 py-2 text-[13px] placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-border resize-none"
             />
@@ -188,10 +190,10 @@ export function ShakeBugReport() {
 
           {/* Screenshot */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Screenshot</label>
+            <label className="text-xs font-medium text-muted-foreground">{t("bugReport.screenshotLabel")}</label>
             {screenshot ? (
               <div className="relative">
-                <img src={screenshot} alt="Bug screenshot" className="w-full rounded-[0.3rem] border border-border" />
+                <img src={screenshot} alt={t("bugReport.screenshotAlt")} className="w-full rounded-[0.3rem] border border-border" />
                 <button
                   onClick={() => setScreenshot(null)}
                   className="absolute top-1 right-1 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-white"
@@ -205,7 +207,7 @@ export function ShakeBugReport() {
                 className="w-full py-3 border border-dashed border-border rounded-[0.3rem] flex items-center justify-center gap-2 text-xs text-muted-foreground hover:bg-muted transition-colors"
               >
                 <Camera className="h-3.5 w-3.5" />
-                Capture Screenshot
+                {t("bugReport.captureScreenshot")}
               </button>
             )}
           </div>
@@ -221,7 +223,7 @@ export function ShakeBugReport() {
         <div className="px-4 py-3 border-t border-border">
           <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2">
             <Send className="h-3.5 w-3.5" />
-            Submit Report
+            {t("bugReport.submit")}
           </Button>
         </div>
       </DrawerContent>

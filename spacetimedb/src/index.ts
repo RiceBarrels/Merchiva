@@ -176,6 +176,12 @@ const settingsTable = table(
     // holidays so the AI can flag them when proposing schedules. Optional —
     // defaults to undefined; the chat helper falls back to locale inference.
     countryCode: t.option(t.string()).default(undefined),
+    // JSON-encoded Mr. Merchiva autonomy config (see lib/merchiva/autonomy.ts
+    // AutonomyConfig: { enabled, mode, perCategory, caps }). Governs which
+    // assistant actions auto-execute vs. require one-click approval. Optional —
+    // null/missing means "use the app default" (low-risk auto, sensitive
+    // proposed). Kept at the END for safe migration.
+    assistantConfig: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1952,6 +1958,7 @@ export const createOrg = spacetimedb.reducer(
       autoCommitSchedules: undefined,
       openingHours: undefined,
       countryCode: undefined,
+      assistantConfig: undefined,
     });
   }
 );
@@ -6013,6 +6020,28 @@ export const setAutoCommitSchedules = spacetimedb.reducer(
     ctx.db.settings.insert({
       ...existing,
       autoCommitSchedules: autoCommit,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+/**
+ * Set Mr. Merchiva's autonomy config (JSON-encoded AutonomyConfig). Owner only —
+ * granting the assistant autonomous write power is a trust decision, like the
+ * auto-commit toggle. The client validates the JSON shape; we pass it through.
+ */
+export const setAssistantConfig = spacetimedb.reducer(
+  { organizationId: t.string(), config: t.string() },
+  (ctx, { organizationId, config }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role !== 'owner') unauthorized('Owner only');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      assistantConfig: config,
       updatedAt: ctx.timestamp,
     });
   }

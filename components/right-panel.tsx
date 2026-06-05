@@ -8,6 +8,7 @@ import {
 import { motion } from "motion/react";
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { MerchivaChat, NotchM } from "@/components/merchiva-chat-dashboard";
+import { useT } from "@/lib/i18n/context";
 
 // ─── RightPanel Component ───────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ export function RightPanel({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 } = {}) {
+  const t = useT();
   const safeAreaInsets = getSafeAreaInsets();
 
   if (!collapsible) {
@@ -56,7 +58,7 @@ export function RightPanel({
             type="button"
             onClick={onToggleCollapse}
             className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
-            title="Collapse panel"
+            title={t("merchiva.collapsePanel")}
           >
             <PanelRightClose className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -76,7 +78,7 @@ export function RightPanel({
           transition: "opacity 180ms ease",
         }}
         onClick={onToggleCollapse}
-        title="Open Mr. Merchiva"
+        title={t("merchiva.openPanel")}
       >
         <div className="pt-3">
           <PanelRightOpen className="h-4 w-4 text-muted-foreground" />

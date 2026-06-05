@@ -461,9 +461,9 @@ export default function ChatPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Mr. Merchiva</p>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />online</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{t("chat.online")}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">Your AI ops agent</p>
+                  <p className="text-xs text-muted-foreground truncate">{t("chat.aiOpsAgent")}</p>
                 </div>
               </div>
             </button>
@@ -1309,7 +1309,7 @@ function ChatView({
               </label>
               <button
                 className="h-7 px-2 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center gap-1.5 transition-colors"
-                title="Mention"
+                title={t("chat.mention")}
                 onClick={() => {
                   const val = input + "@";
                   setInput(val);
@@ -1318,16 +1318,16 @@ function ChatView({
                 }}
               >
                 <AtSign className="h-[13px] w-[13px]" />
-                <span className="text-[11px]">mention</span>
+                <span className="text-[11px]">{t("chat.mentionLower")}</span>
               </button>
               <div className="flex-1" />
-              <kbd className="font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ send</kbd>
+              <kbd className="font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ {t("chat.sendKbd")}</kbd>
               <button
                 onClick={onSend}
                 disabled={sending || !input.trim()}
                 className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 inline-flex items-center gap-1.5 disabled:opacity-30 transition-colors"
               >
-                {sending ? <Spinner size={14} /> : "Send"}
+                {sending ? <Spinner size={14} /> : t("chat.send")}
                 {!sending && <ArrowUp className="h-3.5 w-3.5" />}
               </button>
             </div>

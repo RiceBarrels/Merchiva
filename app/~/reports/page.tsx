@@ -145,6 +145,7 @@ function ExportBar({
   onPDF: () => void;
   children?: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {children}
@@ -156,7 +157,7 @@ function ExportBar({
         className="gap-1.5 h-8 text-xs"
       >
         <Download className="h-3.5 w-3.5" />
-        Export CSV
+        {t("reports.exportCsv")}
       </Button>
       <Button
         variant="outline"
@@ -165,7 +166,7 @@ function ExportBar({
         className="gap-1.5 h-8 text-xs"
       >
         <FileText className="h-3.5 w-3.5" />
-        Export PDF
+        {t("reports.exportPdf")}
       </Button>
     </div>
   );
@@ -180,15 +181,16 @@ function DateRangeSelect({
   value: DateRange;
   onChange: (v: DateRange) => void;
 }) {
+  const t = useT();
   return (
     <Select value={value} onValueChange={(v) => onChange(v as DateRange)}>
       <SelectTrigger className="w-[160px] h-8 text-xs">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="this_month">This Month</SelectItem>
-        <SelectItem value="last_month">Last Month</SelectItem>
-        <SelectItem value="last_90">Last 90 Days</SelectItem>
+        <SelectItem value="this_month">{t("reports.thisMonth")}</SelectItem>
+        <SelectItem value="last_month">{t("reports.lastMonth")}</SelectItem>
+        <SelectItem value="last_90">{t("reports.last90Days")}</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -328,7 +330,7 @@ export default function ReportsPage() {
       r.weather || "-",
       r.isHoliday ? "Yes" : "No",
     ]);
-    downloadPDF(`Sales Report`, headers, rows, {
+    downloadPDF(t("reports.salesReportTitle"), headers, rows, {
       subtitle: salesBounds.label,
     });
   }
@@ -360,7 +362,7 @@ export default function ReportsPage() {
       shiftHours(s.startTime, s.endTime).toFixed(2),
       s.shiftType,
     ]);
-    downloadPDF(`Staff Hours Report`, headers, rows, {
+    downloadPDF(t("reports.staffHoursReportTitle"), headers, rows, {
       subtitle: staffBounds.label,
     });
   }
@@ -404,7 +406,7 @@ export default function ReportsPage() {
       fmtPct(i.lossRate),
       i.status.replace("_", " "),
     ]);
-    downloadPDF(`Inventory Report`, headers, rows, { landscape: true });
+    downloadPDF(t("reports.inventoryReportTitle"), headers, rows, { landscape: true });
   }
 
   function exportProductsCSV() {
@@ -444,15 +446,15 @@ export default function ReportsPage() {
       p.trend,
       p.alert === "none" ? "-" : p.alert,
     ]);
-    downloadPDF(`Product Performance Report`, headers, rows, { landscape: true });
+    downloadPDF(t("reports.productPerformanceReportTitle"), headers, rows, { landscape: true });
   }
 
   // ── Inventory status helper ───────────────────────────────────────────────
 
   function invStatus(item: InventoryItem): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } {
-    if (item.currentStock <= 0) return { label: "Out of Stock", variant: "destructive" };
-    if (item.currentStock <= item.minStock) return { label: "Low Stock", variant: "secondary" };
-    return { label: "In Stock", variant: "outline" };
+    if (item.currentStock <= 0) return { label: t("reports.outOfStock"), variant: "destructive" };
+    if (item.currentStock <= item.minStock) return { label: t("reports.lowStock"), variant: "secondary" };
+    return { label: t("reports.inStock"), variant: "outline" };
   }
 
   // ── Loading state ─────────────────────────────────────────────────────────
@@ -461,7 +463,7 @@ export default function ReportsPage() {
     return (
       <PermissionGuard section="sales">
         <div className="">
-          <PageHeader title="Reports" subtitle="Export and review business data" />
+          <PageHeader title={t("reports.title")} subtitle={t("reports.subtitle")} />
           <PageTabs tabs={[
             { label: t("nav.sales"), href: "/~/sales" },
             { label: t("nav.reports"), href: "/~/reports" },
@@ -481,12 +483,12 @@ export default function ReportsPage() {
     <PermissionGuard section="sales">
       <div className="">
         <PageHeader
-          title="Reports"
-          subtitle="Export and review business data"
+          title={t("reports.title")}
+          subtitle={t("reports.subtitle")}
           right={
             <Badge variant="outline" className="gap-1.5 text-xs px-2.5 py-1">
               <BarChart3 className="h-3 w-3 text-muted-foreground" />
-              {salesHistory.length + shifts.length + inventoryItems.length + products.length} records
+              {t("reports.recordsCount").replace("{count}", String(salesHistory.length + shifts.length + inventoryItems.length + products.length))}
             </Badge>
           }
         />
@@ -500,19 +502,19 @@ export default function ReportsPage() {
           <TabsList>
             <TabsTrigger value="sales" className="gap-1.5 text-xs">
               <DollarSign className="h-3.5 w-3.5" />
-              Sales
+              {t("reports.tabSales")}
             </TabsTrigger>
             <TabsTrigger value="staff" className="gap-1.5 text-xs">
               <Users className="h-3.5 w-3.5" />
-              Staff Hours
+              {t("reports.tabStaffHours")}
             </TabsTrigger>
             <TabsTrigger value="inventory" className="gap-1.5 text-xs">
               <Package className="h-3.5 w-3.5" />
-              Inventory
+              {t("reports.tabInventory")}
             </TabsTrigger>
             <TabsTrigger value="products" className="gap-1.5 text-xs">
               <ShoppingBag className="h-3.5 w-3.5" />
-              Products
+              {t("reports.tabProducts")}
             </TabsTrigger>
           </TabsList>
 
@@ -521,27 +523,27 @@ export default function ReportsPage() {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <SummaryCard
                 icon={DollarSign}
-                label="Total Revenue"
+                label={t("reports.totalRevenue")}
                 value={salesTotalRevenue > 0 ? fmtCurrency(salesTotalRevenue) : "--"}
                 sub={salesBounds.label}
               />
               <SummaryCard
                 icon={BarChart3}
-                label="Avg Daily Revenue"
+                label={t("reports.avgDailyRevenue")}
                 value={salesAvgDaily > 0 ? fmtCurrency(salesAvgDaily) : "--"}
-                sub="Per day average"
+                sub={t("reports.perDayAverage")}
               />
               <SummaryCard
                 icon={TrendingUp}
-                label="Best Day"
+                label={t("reports.bestDay")}
                 value={salesBestDay ? fmtCurrency(salesBestDay.actual) : "--"}
                 sub={salesBestDay?.date ?? ""}
               />
               <SummaryCard
                 icon={Target}
-                label="Forecast Accuracy"
+                label={t("reports.forecastAccuracy")}
                 value={salesAccuracy > 0 ? `${salesAccuracy}%` : "--"}
-                sub="Predicted vs actual"
+                sub={t("reports.predictedVsActual")}
               />
             </div>
 
@@ -553,15 +555,15 @@ export default function ReportsPage() {
               <Card className="border-dashed">
                 <CardContent className="py-12 text-center">
                   <DollarSign className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
-                  <p className="text-sm text-muted-foreground mt-2">No sales data for this period</p>
+                  <p className="text-sm text-muted-foreground mt-2">{t("reports.noSalesData")}</p>
                 </CardContent>
               </Card>
             ) : (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Sales Records</CardTitle>
+                  <CardTitle className="text-sm">{t("reports.salesRecords")}</CardTitle>
                   <CardDescription className="text-xs">
-                    {filteredSales.length} records -- {salesBounds.label}
+                    {t("reports.recordsForPeriod").replace("{count}", String(filteredSales.length)).replace("{period}", salesBounds.label)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -569,11 +571,11 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Date</TableHead>
-                          <TableHead className="text-xs text-right">Actual</TableHead>
-                          <TableHead className="text-xs text-right">Predicted</TableHead>
-                          <TableHead className="text-xs">Weather</TableHead>
-                          <TableHead className="text-xs text-center">Holiday</TableHead>
+                          <TableHead className="text-xs">{t("reports.colDate")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colActual")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colPredicted")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colWeather")}</TableHead>
+                          <TableHead className="text-xs text-center">{t("reports.colHoliday")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -592,7 +594,7 @@ export default function ReportsPage() {
                               <TableCell className="text-xs capitalize">{r.weather || "-"}</TableCell>
                               <TableCell className="text-xs text-center">
                                 {r.isHoliday ? (
-                                  <Badge variant="secondary" className="text-[10px]">Yes</Badge>
+                                  <Badge variant="secondary" className="text-[10px]">{t("reports.yes")}</Badge>
                                 ) : (
                                   <span className="text-muted-foreground">-</span>
                                 )}
@@ -604,7 +606,7 @@ export default function ReportsPage() {
                   </div>
                   {filteredSales.length > 50 && (
                     <p className="text-[11px] text-muted-foreground text-center py-2 border-t">
-                      Showing 50 of {filteredSales.length} records. Export for full data.
+                      {t("reports.showingRecords").replace("{count}", String(filteredSales.length))}
                     </p>
                   )}
                 </CardContent>
@@ -617,21 +619,21 @@ export default function ReportsPage() {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
               <SummaryCard
                 icon={Clock}
-                label="Total Scheduled Hours"
+                label={t("reports.totalScheduledHours")}
                 value={staffTotalHours > 0 ? `${staffTotalHours.toFixed(1)}h` : "--"}
                 sub={staffBounds.label}
               />
               <SummaryCard
                 icon={Users}
-                label="Number of Staff"
+                label={t("reports.numberOfStaff")}
                 value={staffUniqueNames > 0 ? String(staffUniqueNames) : "--"}
-                sub="Unique staff scheduled"
+                sub={t("reports.uniqueStaffScheduled")}
               />
               <SummaryCard
                 icon={BarChart3}
-                label="Avg Hours / Staff"
+                label={t("reports.avgHoursPerStaff")}
                 value={staffAvgHours > 0 ? `${staffAvgHours}h` : "--"}
-                sub="Average per person"
+                sub={t("reports.averagePerPerson")}
               />
             </div>
 
@@ -643,15 +645,15 @@ export default function ReportsPage() {
               <Card className="border-dashed">
                 <CardContent className="py-12 text-center">
                   <Users className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
-                  <p className="text-sm text-muted-foreground mt-2">No shifts for this period</p>
+                  <p className="text-sm text-muted-foreground mt-2">{t("reports.noShifts")}</p>
                 </CardContent>
               </Card>
             ) : (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Shift Records</CardTitle>
+                  <CardTitle className="text-sm">{t("reports.shiftRecords")}</CardTitle>
                   <CardDescription className="text-xs">
-                    {filteredShifts.length} shifts -- {staffBounds.label}
+                    {t("reports.shiftsForPeriod").replace("{count}", String(filteredShifts.length)).replace("{period}", staffBounds.label)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -659,12 +661,12 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Staff Name</TableHead>
-                          <TableHead className="text-xs">Date</TableHead>
-                          <TableHead className="text-xs">Start</TableHead>
-                          <TableHead className="text-xs">End</TableHead>
-                          <TableHead className="text-xs text-right">Hours</TableHead>
-                          <TableHead className="text-xs">Type</TableHead>
+                          <TableHead className="text-xs">{t("reports.colStaffName")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colDate")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colStart")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colEnd")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colHours")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colType")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -688,7 +690,7 @@ export default function ReportsPage() {
                   </div>
                   {filteredShifts.length > 50 && (
                     <p className="text-[11px] text-muted-foreground text-center py-2 border-t">
-                      Showing 50 of {filteredShifts.length} shifts. Export for full data.
+                      {t("reports.showingShifts").replace("{count}", String(filteredShifts.length))}
                     </p>
                   )}
                 </CardContent>
@@ -701,31 +703,31 @@ export default function ReportsPage() {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <SummaryCard
                 icon={Package}
-                label="Total Items"
+                label={t("reports.totalItems")}
                 value={inventoryItems.length > 0 ? String(inventoryItems.length) : "--"}
-                sub="Tracked inventory items"
+                sub={t("reports.trackedInventoryItems")}
               />
               <SummaryCard
                 icon={AlertTriangle}
-                label="Low / Out of Stock"
+                label={t("reports.lowOutOfStock")}
                 value={
                   inventoryItems.length > 0
                     ? `${invLowStockCount} / ${invOutOfStockCount}`
                     : "--"
                 }
-                sub="Needs attention"
+                sub={t("reports.needsAttention")}
               />
               <SummaryCard
                 icon={DollarSign}
-                label="Total Value"
+                label={t("reports.totalValue")}
                 value={invTotalValue > 0 ? fmtCurrency(invTotalValue) : "--"}
-                sub="Stock x cost/unit"
+                sub={t("reports.stockTimesCostPerUnit")}
               />
               <SummaryCard
                 icon={TrendingDown}
-                label="Avg Loss Rate"
+                label={t("reports.avgLossRate")}
                 value={inventoryItems.length > 0 ? fmtPct(invAvgLossRate) : "--"}
-                sub="Across all items"
+                sub={t("reports.acrossAllItems")}
               />
             </div>
 
@@ -735,15 +737,15 @@ export default function ReportsPage() {
               <Card className="border-dashed">
                 <CardContent className="py-12 text-center">
                   <Package className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
-                  <p className="text-sm text-muted-foreground mt-2">No inventory items tracked</p>
+                  <p className="text-sm text-muted-foreground mt-2">{t("reports.noInventoryItems")}</p>
                 </CardContent>
               </Card>
             ) : (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Inventory Items</CardTitle>
+                  <CardTitle className="text-sm">{t("reports.inventoryItems")}</CardTitle>
                   <CardDescription className="text-xs">
-                    {inventoryItems.length} items
+                    {t("reports.itemsCount").replace("{count}", String(inventoryItems.length))}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -751,17 +753,17 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Name</TableHead>
-                          <TableHead className="text-xs">Category</TableHead>
-                          <TableHead className="text-xs text-right">Stock</TableHead>
-                          <TableHead className="text-xs text-right">Min</TableHead>
-                          <TableHead className="text-xs text-right">Max</TableHead>
-                          <TableHead className="text-xs">Unit</TableHead>
-                          <TableHead className="text-xs text-right">Cost/Unit</TableHead>
-                          <TableHead className="text-xs text-right">Value</TableHead>
-                          <TableHead className="text-xs">Supplier</TableHead>
-                          <TableHead className="text-xs text-right">Loss %</TableHead>
-                          <TableHead className="text-xs">Status</TableHead>
+                          <TableHead className="text-xs">{t("common.name")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colCategory")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colStock")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colMin")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colMax")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colUnit")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colCostPerUnit")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colValue")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colSupplier")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colLossPct")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colStatus")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -797,7 +799,7 @@ export default function ReportsPage() {
                   </div>
                   {inventoryItems.length > 50 && (
                     <p className="text-[11px] text-muted-foreground text-center py-2 border-t">
-                      Showing 50 of {inventoryItems.length} items. Export for full data.
+                      {t("reports.showingItems").replace("{count}", String(inventoryItems.length))}
                     </p>
                   )}
                 </CardContent>
@@ -810,27 +812,27 @@ export default function ReportsPage() {
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <SummaryCard
                 icon={ShoppingBag}
-                label="Total Products"
+                label={t("reports.totalProducts")}
                 value={products.length > 0 ? String(products.length) : "--"}
-                sub="Active products"
+                sub={t("reports.activeProducts")}
               />
               <SummaryCard
                 icon={DollarSign}
-                label="Total Revenue"
+                label={t("reports.totalRevenue")}
                 value={prodTotalRevenue > 0 ? fmtCurrency(prodTotalRevenue) : "--"}
-                sub="All products combined"
+                sub={t("reports.allProductsCombined")}
               />
               <SummaryCard
                 icon={Target}
-                label="Avg Margin"
+                label={t("reports.avgMargin")}
                 value={products.length > 0 ? fmtPct(prodAvgMargin) : "--"}
-                sub="Average profit margin"
+                sub={t("reports.averageProfitMargin")}
               />
               <SummaryCard
                 icon={AlertTriangle}
-                label="Underperforming"
+                label={t("reports.underperforming")}
                 value={products.length > 0 ? String(prodUnderperforming) : "--"}
-                sub="Needs review"
+                sub={t("reports.needsReview")}
               />
             </div>
 
@@ -840,15 +842,15 @@ export default function ReportsPage() {
               <Card className="border-dashed">
                 <CardContent className="py-12 text-center">
                   <ShoppingBag className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
-                  <p className="text-sm text-muted-foreground mt-2">No products tracked</p>
+                  <p className="text-sm text-muted-foreground mt-2">{t("reports.noProducts")}</p>
                 </CardContent>
               </Card>
             ) : (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Product Performance</CardTitle>
+                  <CardTitle className="text-sm">{t("reports.productPerformance")}</CardTitle>
                   <CardDescription className="text-xs">
-                    {products.length} products
+                    {t("reports.productsCount").replace("{count}", String(products.length))}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -856,16 +858,16 @@ export default function ReportsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Name</TableHead>
-                          <TableHead className="text-xs">Category</TableHead>
-                          <TableHead className="text-xs text-right">Price</TableHead>
-                          <TableHead className="text-xs text-right">Cost</TableHead>
-                          <TableHead className="text-xs text-right">Margin</TableHead>
-                          <TableHead className="text-xs text-right">This Mo.</TableHead>
-                          <TableHead className="text-xs text-right">Last Mo.</TableHead>
-                          <TableHead className="text-xs text-right">Revenue</TableHead>
-                          <TableHead className="text-xs text-center">Trend</TableHead>
-                          <TableHead className="text-xs">Alert</TableHead>
+                          <TableHead className="text-xs">{t("common.name")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colCategory")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colPrice")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colCost")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colMargin")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colThisMonth")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colLastMonth")}</TableHead>
+                          <TableHead className="text-xs text-right">{t("reports.colRevenue")}</TableHead>
+                          <TableHead className="text-xs text-center">{t("reports.colTrend")}</TableHead>
+                          <TableHead className="text-xs">{t("reports.colAlert")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -904,7 +906,7 @@ export default function ReportsPage() {
                   </div>
                   {products.length > 50 && (
                     <p className="text-[11px] text-muted-foreground text-center py-2 border-t">
-                      Showing 50 of {products.length} products. Export for full data.
+                      {t("reports.showingProducts").replace("{count}", String(products.length))}
                     </p>
                   )}
                 </CardContent>

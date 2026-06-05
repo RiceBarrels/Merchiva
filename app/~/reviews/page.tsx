@@ -78,8 +78,8 @@ export default function ReviewsPage() {
     <PermissionGuard section="settings">
       <div className="">
         <PageHeader
-          title="Reviews & Reputation"
-          subtitle="Monitor and manage your online reviews"
+          title={t("reviews.pageTitle")}
+          subtitle={t("reviews.pageSubtitle")}
         />
         <PageTabs tabs={[
           { label: t("nav.website"), href: "/~/builder" },
@@ -97,20 +97,20 @@ export default function ReviewsPage() {
                   <Globe className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
-                  <CardTitle className="text-base">Google Reviews Integration</CardTitle>
-                  <CardDescription>Coming Soon</CardDescription>
+                  <CardTitle className="text-base">{t("reviews.googleIntegrationTitle")}</CardTitle>
+                  <CardDescription>{t("marketing.campaigns.comingSoon")}</CardDescription>
                 </div>
                 <Badge variant="outline" className="ml-auto text-[10px]">
-                  Planned
+                  {t("reviews.plannedBadge")}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Monitor and respond to Google reviews from one place. Connect your Google Business Profile to get started.
+                {t("reviews.googleIntegrationDesc")}
               </p>
               <div className="space-y-1.5">
-                <Label className="text-xs">Google Places ID</Label>
+                <Label className="text-xs">{t("reviews.placesIdLabel")}</Label>
                 <div className="flex gap-2">
                   <Input
                     value={placesId}
@@ -120,11 +120,11 @@ export default function ReviewsPage() {
                   />
                   <Button disabled className="shrink-0 gap-1.5">
                     <ExternalLink className="h-3.5 w-3.5" />
-                    Connect
+                    {t("reviews.connectButton")}
                   </Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Find your Places ID at{" "}
+                  {t("reviews.findPlacesIdAt")}{" "}
                   <span className="font-mono text-foreground/70">developers.google.com/maps/documentation/places</span>
                 </p>
               </div>
@@ -134,9 +134,9 @@ export default function ReviewsPage() {
           {/* Recent Reviews (sample) */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Recent Reviews</CardTitle>
+              <CardTitle className="text-base">{t("reviews.recentReviewsTitle")}</CardTitle>
               <CardDescription>
-                Sample data shown below. Connect Google Reviews to see real reviews.
+                {t("reviews.recentReviewsDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -168,7 +168,7 @@ export default function ReviewsPage() {
                   </p>
                   <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled>
                     <Reply className="h-3 w-3" />
-                    Reply
+                    {t("chat.reply")}
                   </Button>
                 </div>
               ))}
@@ -180,7 +180,7 @@ export default function ReviewsPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-base">Rating Trend</CardTitle>
+                <CardTitle className="text-base">{t("reviews.ratingTrendTitle")}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -188,13 +188,12 @@ export default function ReviewsPage() {
                 <span className="text-3xl font-bold font-mono">4.5</span>
                 <div className="space-y-0.5">
                   <StarRating rating={4} />
-                  <p className="text-xs text-muted-foreground">based on 0 reviews</p>
+                  <p className="text-xs text-muted-foreground">{t("reviews.basedOnReviews").replace("{count}", String(0))}</p>
                 </div>
               </div>
               <div className="p-2.5 rounded-[0.3rem] bg-muted/50 border border-border">
                 <p className="text-xs text-muted-foreground">
-                  This feature will be available when Google Reviews API is connected.
-                  Rating data will include historical trends and comparison with competitors.
+                  {t("reviews.ratingTrendUnavailable")}
                 </p>
               </div>
             </CardContent>

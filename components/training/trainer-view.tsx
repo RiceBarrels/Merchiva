@@ -20,6 +20,7 @@ import {
   useTrainingObjectives,
 } from "@/lib/spacetimedb/hooks";
 import { gradeTrainingDay } from "@/lib/spacetimedb/actions";
+import { useT } from "@/lib/i18n/context";
 import { DayRail, type DayRailItem } from "./day-rail";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -75,6 +76,7 @@ function isHtmlContent(s: string): boolean {
 }
 
 export function TrainingTrainerView({ orgId }: { orgId: string }) {
+  const t = useT();
   const [rawDays] = useTrainingDays() as [unknown[], boolean];
   const [rawObjectives] = useTrainingObjectives() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
@@ -204,11 +206,11 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
   }, [existingDayGrade, traineeId, activeId]);
 
   const rubricItems = [
-    { id: 0, label: "Knows the material", hint: "Recall, confidence" },
-    { id: 1, label: "Practical skill", hint: "Hands-on accuracy" },
-    { id: 2, label: "Speed & flow", hint: "Pace at expected level" },
-    { id: 3, label: "Recovery", hint: "Handles mistakes well" },
-    { id: 4, label: "Station discipline", hint: "Clean, organized" },
+    { id: 0, label: t("training.rubric.knowsMaterial"), hint: t("training.rubric.knowsMaterialHint") },
+    { id: 1, label: t("training.rubric.practicalSkill"), hint: t("training.rubric.practicalSkillHint") },
+    { id: 2, label: t("training.rubric.speedFlow"), hint: t("training.rubric.speedFlowHint") },
+    { id: 3, label: t("training.rubric.recovery"), hint: t("training.rubric.recoveryHint") },
+    { id: 4, label: t("training.rubric.stationDiscipline"), hint: t("training.rubric.stationDisciplineHint") },
   ];
 
   const total = rubric.reduce((a, b) => a + b, 0);
@@ -270,24 +272,24 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
           )}
           <div className="flex-1 min-w-[200px]">
             <div className="text-[15px] font-semibold tracking-[-0.01em] truncate">
-              {activeDay?.title ?? "Pick a day"}
+              {activeDay?.title ?? t("training.trainer.pickADay")}
             </div>
             <div className="text-[11.5px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-[11px] w-[11px]" strokeWidth={1.75} />
-                Day {activeDay?.dayNumber ?? "—"}
+                {t("training.trainer.dayN").replace("{n}", String(activeDay?.dayNumber ?? "—"))}
               </span>
               <span>·</span>
               <span className="inline-flex items-center gap-1">
                 <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} />
-                Required
+                {t("training.trainer.required")}
               </span>
               {activeDay && (
                 <>
                   <span>·</span>
                   <span>
                     <span className="font-mono">{traineeProgressByDay[activeDay.id] ?? "0/0"}</span>{" "}
-                    trainees passed
+                    {t("training.trainer.traineesPassed")}
                   </span>
                 </>
               )}
@@ -301,7 +303,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
               color: "oklch(0.55 0.09 55)",
             }}
           >
-            <Award className="h-[11px] w-[11px]" strokeWidth={1.75} /> trainer
+            <Award className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.trainer.badge")}
           </span>
         </div>
 
@@ -315,13 +317,13 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
               )
             ) : (
               <p className="italic text-muted-foreground">
-                This day has no published content yet.
+                {t("training.trainer.noContent")}
               </p>
             )}
 
             {activeObjectives.length > 0 && (
               <>
-                <h2>Objectives</h2>
+                <h2>{t("training.trainer.objectives")}</h2>
                 <ul>
                   {activeObjectives.map((o) => (
                     <li key={o.id}>
@@ -343,15 +345,15 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
       <aside className="w-[400px] shrink-0 border-l border-border bg-background hidden xl:flex flex-col min-h-0">
         <div className="px-4 pt-4 pb-3 border-b border-border flex items-center gap-2 shrink-0">
           <div className="flex-1">
-            <div className="text-[13.5px] font-semibold leading-tight">Trainees</div>
+            <div className="text-[13.5px] font-semibold leading-tight">{t("training.trainer.trainees")}</div>
             <div className="text-[10.5px] text-muted-foreground mt-0.5">
-              <span className="font-mono">{trainees.length}</span> active
+              <span className="font-mono">{trainees.length}</span> {t("training.role.active")}
             </div>
           </div>
           <button
             type="button"
             className="h-7 w-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted"
-            title="Filter"
+            title={t("training.trainer.filter")}
           >
             <Filter className="h-3 w-3" strokeWidth={1.75} />
           </button>
@@ -360,7 +362,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
         <div className="border-b border-border divide-y divide-border shrink-0 max-h-[240px] overflow-y-auto">
           {trainees.length === 0 ? (
             <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">
-              No trainees yet
+              {t("training.trainer.noTraineesYet")}
             </div>
           ) : (
             trainees.map((m) => (
@@ -410,15 +412,15 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                   {activeTrainee.displayName}
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
-                  Grading · Day {activeDay.dayNumber}
+                  {t("training.trainer.gradingDay").replace("{n}", String(activeDay.dayNumber))}
                 </div>
               </div>
               <button
                 type="button"
                 className="h-7 px-2 rounded-[0.3rem] border border-border bg-background text-[11px] hover:bg-muted inline-flex items-center gap-1"
-                title="Message"
+                title={t("training.trainer.message")}
               >
-                <MessageSquare className="h-[11px] w-[11px]" strokeWidth={1.75} /> DM
+                <MessageSquare className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.trainer.dm")}
               </button>
             </div>
 
@@ -426,7 +428,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
             <div className="border-y border-border">
               <div className="px-4 py-2 flex items-center gap-2 bg-muted/60 border-b border-border">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Rubric
+                  {t("training.trainer.rubricLabel")}
                 </span>
                 <div className="flex-1" />
                 <span className="font-mono text-[11px] tabular-nums">
@@ -452,11 +454,11 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
             <div className="px-4 py-3">
               <div className="flex items-baseline gap-2 mb-1.5">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Notes for trainee
+                  {t("training.trainer.notesForTrainee")}
                 </span>
                 <div className="flex-1" />
                 <span className="text-[10.5px] text-muted-foreground">
-                  visible to {activeTrainee.displayName.split(" ")[0]}
+                  {t("training.trainer.visibleTo").replace("{name}", activeTrainee.displayName.split(" ")[0])}
                 </span>
               </div>
               <textarea
@@ -464,7 +466,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 disabled={busy}
-                placeholder="What went well? What to practice next?"
+                placeholder={t("training.trainer.notesPlaceholder")}
                 className="w-full rounded-[0.3rem] border border-border bg-background p-2.5 text-[12.5px] leading-relaxed outline-none focus:border-stone-400 resize-none disabled:opacity-50"
               />
             </div>
@@ -482,7 +484,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                       : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 hover:border-emerald-400 hover:text-emerald-700",
                   )}
                 >
-                  <CheckCircle2 className="h-[14px] w-[14px]" strokeWidth={1.75} /> Pass
+                  <CheckCircle2 className="h-[14px] w-[14px]" strokeWidth={1.75} /> {t("training.pass")}
                 </button>
                 <button
                   type="button"
@@ -494,7 +496,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                       : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 hover:border-amber-400 hover:text-amber-700",
                   )}
                 >
-                  <RotateCcw className="h-[14px] w-[14px]" strokeWidth={1.75} /> Retry
+                  <RotateCcw className="h-[14px] w-[14px]" strokeWidth={1.75} /> {t("training.trainer.retry")}
                 </button>
               </div>
               <button
@@ -503,17 +505,17 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                 disabled={!verdict || total === 0 || busy}
                 className="w-full h-9 rounded-[0.3rem] bg-foreground text-background text-[12.5px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
               >
-                Submit grade
+                {t("training.trainer.submitGrade")}
                 <ArrowRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
               </button>
               <div className="mt-1.5 text-[10.5px] text-muted-foreground text-center">
-                {activeTrainee.displayName.split(" ")[0]} will be notified · saved to their training file
+                {t("training.trainer.willBeNotified").replace("{name}", activeTrainee.displayName.split(" ")[0])}
               </div>
             </div>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center px-4 text-[12.5px] text-muted-foreground text-center">
-            Pick a trainee from the list to start grading.
+            {t("training.trainer.pickTrainee")}
           </div>
         )}
       </aside>

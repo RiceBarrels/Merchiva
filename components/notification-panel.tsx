@@ -4,16 +4,17 @@ import { ArrowLeftRight, CalendarX, Check, Ban, Clock, Inbox } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useT } from "@/lib/i18n/context";
 import type { ShiftTrade, TimeOffRequest, Shift } from "@/lib/types";
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (key: string) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("notifications.justNow");
+  if (mins < 60) return t("notifications.minutesAgo").replace("{n}", String(mins));
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return t("notifications.hoursAgo").replace("{n}", String(hrs));
+  return t("notifications.daysAgo").replace("{n}", String(Math.floor(hrs / 24)));
 }
 
 interface NotificationPanelProps {
@@ -38,13 +39,14 @@ export function NotificationPanel({
   onAcceptTrade, onDenyTrade, onManagerApproveTrade,
   onApproveTimeOff, onDenyTimeOff,
 }: NotificationPanelProps) {
+  const t = useT();
   const empty = trades.length === 0 && timeOff.length === 0;
 
   if (empty) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Inbox className="h-8 w-8 mb-2 opacity-40" />
-        <p className="text-sm">No notifications</p>
+        <p className="text-sm">{t("notifications.empty")}</p>
       </div>
     );
   }
@@ -60,14 +62,14 @@ export function NotificationPanel({
 
         let description: string;
         if (trade.broadcastToAll && isPending) {
-          description = `${requesterName} is offering their shift to everyone`;
+          description = t("notifications.tradeOfferedToEveryone").replace("{name}", requesterName);
         } else if (isPending) {
-          description = `${requesterName} wants to trade with you`;
+          description = t("notifications.tradeWantsToTrade").replace("{name}", requesterName);
         } else if (isAcceptedAwaitingManager) {
-          const acceptorName = trade.acceptedById ? getMemberName(trade.acceptedById) : "Someone";
-          description = `${acceptorName} accepted — awaiting manager approval`;
+          const acceptorName = trade.acceptedById ? getMemberName(trade.acceptedById) : t("notifications.someone");
+          description = t("notifications.tradeAcceptedAwaitingManager").replace("{name}", acceptorName);
         } else {
-          description = `Trade from ${requesterName}`;
+          description = t("notifications.tradeFrom").replace("{name}", requesterName);
         }
 
         return (
@@ -85,33 +87,33 @@ export function NotificationPanel({
                 )}
                 <p className="text-xs text-muted-foreground mt-0.5">
                   <Clock className="inline h-3 w-3 mr-0.5 -translate-y-[0.5px]" />
-                  {timeAgo(trade.createdAt)}
+                  {timeAgo(trade.createdAt, t)}
                 </p>
               </div>
             </div>
             {!canEdit && isPending && isMyTrade && (
               <div className="flex gap-2 ml-9">
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAcceptTrade(trade.id)}>
-                  <Check className="h-3.5 w-3.5 mr-1" />Accept
+                  <Check className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.accept")}
                 </Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onDenyTrade(trade.id)}>
-                  <Ban className="h-3.5 w-3.5 mr-1" />Deny
+                  <Ban className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.deny")}
                 </Button>
               </div>
             )}
             {canEdit && isAcceptedAwaitingManager && (
               <div className="flex gap-2 ml-9">
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onManagerApproveTrade(trade.id, true)}>
-                  <Check className="h-3.5 w-3.5 mr-1" />Approve
+                  <Check className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.approve")}
                 </Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onManagerApproveTrade(trade.id, false)}>
-                  <Ban className="h-3.5 w-3.5 mr-1" />Deny
+                  <Ban className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.deny")}
                 </Button>
               </div>
             )}
             {canEdit && isPending && (
               <p className="text-xs text-muted-foreground ml-9">
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Waiting for staff</Badge>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t("notifications.waitingForStaff")}</Badge>
               </p>
             )}
             <Separator className="mt-1" />
@@ -127,7 +129,7 @@ export function NotificationPanel({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground leading-tight">
-                {getMemberName(req.userId)} requested time off
+                {t("notifications.requestedTimeOff").replace("{name}", getMemberName(req.userId))}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
@@ -142,10 +144,10 @@ export function NotificationPanel({
           </div>
           <div className="flex gap-2 ml-9">
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onApproveTimeOff(req.id)}>
-              <Check className="h-3.5 w-3.5 mr-1" />Approve
+              <Check className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.approve")}
             </Button>
             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onDenyTimeOff(req.id)}>
-              <Ban className="h-3.5 w-3.5 mr-1" />Deny
+              <Ban className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.deny")}
             </Button>
           </div>
           <Separator className="mt-1" />

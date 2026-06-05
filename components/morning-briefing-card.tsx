@@ -44,6 +44,7 @@ import {
   useCoupons,
   useSettingsRows,
   useOrganizations,
+  usePunchEvents,
 } from "@/lib/spacetimedb/hooks";
 import {
   saveDailyBriefing,
@@ -170,6 +171,19 @@ function localDateOf(v: any, tz: string): string | null {
     return new Date(ms).toISOString().slice(0, 10);
   }
 }
+// UTC instant (or ms number) → "HH:MM" (24h) in the given timezone.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function localTimeOf(v: any, tz: string): string | null {
+  const ms = tsToMs(v);
+  if (!Number.isFinite(ms)) return null;
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(new Date(ms));
+  } catch {
+    return new Date(ms).toISOString().slice(11, 16);
+  }
+}
 
 // ── Issue model ──────────────────────────────────────────────────────────
 type Severity = "high" | "medium" | "low";
@@ -228,6 +242,7 @@ export function MorningBriefingCard() {
   const [coupons] = useCoupons() as [unknown[], boolean];
   const [settingsRows] = useSettingsRows() as [unknown[], boolean];
   const [organizations] = useOrganizations() as [unknown[], boolean];
+  const [punchEvents] = usePunchEvents() as [unknown[], boolean];
 
   const today = todayLocal();
 
@@ -601,6 +616,64 @@ export function MorningBriefingCard() {
       ),
     [settingsRows, organizationId],
   );
+  const tz = (orgSetting?.timezone as string | undefined) || "UTC";
+
+  // ── Today's attendance + yesterday's task completion ───────────────────
+  // Deterministic, computed straight from live punch_event + role-task rows so
+  // these always reflect reality (not the AI's write-up). "On shift" mirrors the
+  // punch-in terminal (open "in", on break if an open "break-start" exists).
+  const todayStatus = useMemo(() => {
+    if (!organizationId) return null;
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const yesterday = addDaysLocal(today, -1);
+
+    // Attendance from punch_event.
+    const evts = (punchEvents as any[]).filter((e) => e.organizationId === organizationId);
+    const nameByMemberId = new Map<string, string>();
+    for (const m of orgMembers as any[]) {
+      if (m.organizationId !== organizationId) continue;
+      nameByMemberId.set(m.id?.toString?.() ?? String(m.id), m.displayName || m.email || "Staff");
+    }
+    const resolveName = (id: any) => nameByMemberId.get(String(id)) || "Staff";
+    const onShift = evts
+      .filter((e) => e.action === "in" && !e.closed)
+      .map((e) => ({
+        name: resolveName(e.memberId),
+        since: localTimeOf(e.at, tz),
+        onBreak: evts.some(
+          (b) => String(b.memberId) === String(e.memberId) && b.action === "break-start" && !b.closed,
+        ),
+      }));
+    const firstIn = new Map<string, number>();
+    for (const e of evts) {
+      if (e.action !== "in") continue;
+      if (localDateOf(e.at, tz) !== today) continue;
+      const mid = String(e.memberId);
+      const ms = tsToMs(e.at);
+      if (!Number.isFinite(ms)) continue;
+      if (!firstIn.has(mid) || ms < (firstIn.get(mid) as number)) firstIn.set(mid, ms);
+    }
+    const punchedInToday = [...firstIn.entries()].map(([mid, ms]) => ({
+      name: resolveName(mid),
+      firstIn: localTimeOf(ms, tz),
+    }));
+
+    // Yesterday's role-task completion (assignments due yesterday).
+    let dueY = 0;
+    let doneY = 0;
+    let skippedY = 0;
+    for (const a of roleTaskAssignments as any[]) {
+      if (a.organizationId !== organizationId) continue;
+      if (localDateOf(a.dueAt, tz) !== yesterday) continue;
+      dueY++;
+      if (a.status === "completed") doneY++;
+      else if (a.status === "skipped") skippedY++;
+    }
+    const notDoneY = Math.max(0, dueY - doneY - skippedY);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+
+    return { onShift, punchedInToday, dueY, doneY, skippedY, notDoneY };
+  }, [organizationId, today, tz, punchEvents, orgMembers, roleTaskAssignments]);
 
   // ── Horizontal hourly-scan timeline ("the pulse") ──────────────────────
   // Mr. Merchiva scans the store every hour; each scan that ran becomes a dot
@@ -703,6 +776,7 @@ export function MorningBriefingCard() {
         staffAvailability: staffAvailability as unknown[],
         coupons: coupons as unknown[],
         settings: settingsRows as unknown[],
+        punchEvents: punchEvents as unknown[],
       },
       organizationId ?? "",
       today,
@@ -712,7 +786,7 @@ export function MorningBriefingCard() {
     organizations, orgMembers, staffMembers, inventoryItems, shifts, timeOff,
     shiftTrades, salesRecords, payments, products, staffRoles, roleTasks,
     roleTaskAssignments, notifications, shiftPresets, staffAvailability, coupons,
-    settingsRows, organizationId, today, locale,
+    settingsRows, punchEvents, organizationId, today, locale,
   ]);
 
   // ── Generate briefing — guarded to once per day per org ───────────────
@@ -1183,6 +1257,108 @@ export function MorningBriefingCard() {
                 })}
               </div>
             </div>
+
+            {/* ── Today's attendance + yesterday's tasks (deterministic) ──
+                Answers "who's clocked in today" and "did yesterday's tasks get
+                done" straight from live punch + role-task rows, independent of
+                the AI write-up. Only on the live (today) view. */}
+            {viewingLatest && todayStatus && (
+              <div className="space-y-2.5">
+                {/* Today's attendance */}
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                      {t("dashboard.attendance.title") || "Today's attendance"}
+                    </span>
+                    <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-stone-200 px-1 font-mono text-[9.5px] tabular-nums dark:bg-stone-700">
+                      {todayStatus.onShift.length}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                    {todayStatus.punchedInToday.length > 0 && (
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                        {todayStatus.punchedInToday.length} {t("dashboard.attendance.punchedIn") || "punched in"}
+                      </span>
+                    )}
+                  </div>
+                  {todayStatus.onShift.length === 0 ? (
+                    <p className="text-[11.5px] text-muted-foreground">
+                      {todayStatus.punchedInToday.length > 0
+                        ? t("dashboard.attendance.allOut") || "Everyone has clocked out."
+                        : t("dashboard.attendance.nobody") || "No one has punched in yet."}
+                    </p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-1.5">
+                      {todayStatus.onShift.map((s, i) => (
+                        <li
+                          key={`${s.name}-${i}`}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-[0.3rem] border px-2 py-1 text-[11.5px]",
+                            s.onBreak
+                              ? "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20"
+                              : "border-border bg-muted/40",
+                          )}
+                        >
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              s.onBreak ? "bg-amber-500" : "bg-emerald-500",
+                            )}
+                          />
+                          <span className="font-medium">{s.name}</span>
+                          <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                            {s.onBreak
+                              ? t("dashboard.attendance.onBreak") || "on break"
+                              : s.since ?? ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Yesterday's tasks */}
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                      {t("dashboard.yesterdayTasks.title") || "Yesterday's tasks"}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                  {todayStatus.dueY === 0 ? (
+                    <p className="text-[11.5px] text-muted-foreground">
+                      {t("dashboard.yesterdayTasks.none") || "No tasks were due yesterday."}
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11.5px]">
+                      <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-border bg-muted/40 px-2 py-1">
+                        <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                        <span className="font-mono tabular-nums">
+                          {todayStatus.doneY}/{todayStatus.dueY}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {t("dashboard.yesterdayTasks.done") || "done"}
+                        </span>
+                      </span>
+                      {todayStatus.notDoneY > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-amber-200 bg-amber-50/60 px-2 py-1 dark:border-amber-900/50 dark:bg-amber-950/20">
+                          <span className="font-mono tabular-nums">{todayStatus.notDoneY}</span>
+                          <span className="text-amber-700 dark:text-amber-400">
+                            {t("dashboard.yesterdayTasks.notDone") || "not done"}
+                          </span>
+                        </span>
+                      )}
+                      {todayStatus.skippedY > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-border px-2 py-1 text-muted-foreground">
+                          <span className="font-mono tabular-nums">{todayStatus.skippedY}</span>
+                          <span>{t("dashboard.yesterdayTasks.skipped") || "skipped"}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Viewing a past snapshot — jump back to the live view. */}
             {!viewingLatest && displayedBriefing && (

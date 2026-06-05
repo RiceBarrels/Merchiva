@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth/context";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { useT } from "@/lib/i18n/context";
 
 interface OrgRow {
   id: { toString(): string };
@@ -36,6 +37,7 @@ function periodEndToDate(p: OrgRow["currentPeriodEnd"]): Date | null {
 const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 function BillingInner() {
+  const t = useT();
   const router = useRouter();
   const sp = useSearchParams();
   const { organizationId, isOwner } = usePermissions();
@@ -104,10 +106,10 @@ function BillingInner() {
   useEffect(() => {
     if (statusParam === "success" && sessionIdParam) {
       void sync({ sessionId: sessionIdParam });
-      toast.success("Subscription activated");
+      toast.success(t("billing.toastSubscriptionActivated"));
       router.replace("/~/settings/billing");
     } else if (statusParam === "canceled") {
-      toast.info("Checkout canceled");
+      toast.info(t("billing.toastCheckoutCanceled"));
       router.replace("/~/settings/billing");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,18 +139,18 @@ function BillingInner() {
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          toast.error("Checkout failed", { description: err.error });
+          toast.error(t("billing.toastCheckoutFailed"), { description: err.error });
           return;
         }
         const { url } = (await res.json()) as { url: string };
         window.location.href = url;
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Checkout failed");
+        toast.error(err instanceof Error ? err.message : t("billing.toastCheckoutFailed"));
       } finally {
         setBusy(null);
       }
     },
-    [organizationId, customerId, user?.email],
+    [organizationId, customerId, user?.email, t],
   );
 
   const handlePortal = useCallback(async () => {
@@ -162,26 +164,26 @@ function BillingInner() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error("Could not open portal", { description: err.error });
+        toast.error(t("billing.toastPortalOpenFailed"), { description: err.error });
         return;
       }
       const { url } = (await res.json()) as { url: string };
       window.location.href = url;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Portal error");
+      toast.error(err instanceof Error ? err.message : t("billing.toastPortalError"));
     } finally {
       setBusy(null);
     }
-  }, [customerId]);
+  }, [customerId, t]);
 
   if (!isOwner) {
     return (
       <PermissionGuard section="settings">
-        <PageHeader title="Billing" subtitle="Manage your Merchiva subscription" />
+        <PageHeader title={t("billing.title")} subtitle={t("billing.subtitle")} />
         <div className="px-4 lg:px-6 py-4 max-w-2xl">
           <Card>
             <CardContent className="py-8 text-center text-[13px] text-muted-foreground">
-              Only the organization owner can manage billing.
+              {t("billing.ownerOnly")}
             </CardContent>
           </Card>
         </div>
@@ -191,13 +193,13 @@ function BillingInner() {
 
   return (
     <PermissionGuard section="settings">
-      <PageHeader title="Billing" subtitle="Manage your Merchiva subscription" />
+      <PageHeader title={t("billing.title")} subtitle={t("billing.subtitle")} />
       <div className="px-4 lg:px-6 py-4 max-w-2xl space-y-4">
         {/* Current state */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Current plan</CardTitle>
+              <CardTitle className="text-sm">{t("billing.currentPlan")}</CardTitle>
               {syncing && <Spinner size={14} className="text-muted-foreground" />}
             </div>
           </CardHeader>
@@ -211,13 +213,13 @@ function BillingInner() {
                     <Badge className="text-[10px] bg-emerald-600">{status}</Badge>
                     {interval && (
                       <Badge variant="outline" className="text-[10px]">
-                        {interval === "year" ? "Yearly" : "Monthly"}
+                        {interval === "year" ? t("billing.yearly") : t("billing.monthly")}
                       </Badge>
                     )}
                   </div>
                   {periodEnd && (
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      Next renewal: {periodEnd.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                      {t("billing.nextRenewal").replace("{date}", periodEnd.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }))}
                     </p>
                   )}
                 </div>
@@ -226,9 +228,9 @@ function BillingInner() {
               <div className="flex items-start gap-3">
                 <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div className="flex-1">
-                  <div className="text-[15px] font-semibold">Free</div>
+                  <div className="text-[15px] font-semibold">{t("billing.freePlan")}</div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Upgrade to Pro to unlock all features.
+                    {t("billing.upgradePrompt")}
                   </p>
                 </div>
               </div>
@@ -241,9 +243,9 @@ function BillingInner() {
           <Card>
             <CardContent className="py-4 flex items-center justify-between gap-3">
               <div>
-                <div className="text-[13px] font-medium">Manage subscription</div>
+                <div className="text-[13px] font-medium">{t("billing.manageSubscription")}</div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Change plan, payment method, invoices, and cancellation.
+                  {t("billing.manageSubscriptionDesc")}
                 </p>
               </div>
               <Button onClick={handlePortal} disabled={busy === "portal"}>
@@ -251,7 +253,7 @@ function BillingInner() {
                   <Spinner size={16} />
                 ) : (
                   <>
-                    Open portal
+                    {t("billing.openPortal")}
                     <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
                   </>
                 )}
@@ -261,29 +263,30 @@ function BillingInner() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Upgrade to Pro</CardTitle>
+              <CardTitle className="text-sm">{t("billing.upgradeToPro")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <PlanRow
-                label="Monthly"
+                label={t("billing.monthly")}
                 price="$29"
-                period="/ month"
+                period={t("billing.perMonth")}
                 onClick={() => handleSubscribe("monthly")}
                 busy={busy === "monthly"}
                 disabled={!!busy}
               />
               <PlanRow
-                label="Yearly"
+                label={t("billing.yearly")}
                 price="$290"
-                period="/ year"
-                hint="Save 17% — 2 months free"
+                period={t("billing.perYear")}
+                hint={t("billing.yearlySaveHint")}
                 highlight
+                recommendedLabel={t("billing.recommended")}
                 onClick={() => handleSubscribe("yearly")}
                 busy={busy === "yearly"}
                 disabled={!!busy}
               />
               <ul className="mt-3 space-y-1.5 text-[12px] text-muted-foreground">
-                {["All current features included", "Unlimited team members", "Priority support"].map((b) => (
+                {[t("billing.featureAllFeatures"), t("billing.featureUnlimitedTeam"), t("billing.featurePrioritySupport")].map((b) => (
                   <li key={b} className="flex items-start gap-1.5">
                     <Check className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
                     <span>{b}</span>
@@ -299,13 +302,14 @@ function BillingInner() {
 }
 
 function PlanRow({
-  label, price, period, hint, highlight, onClick, busy, disabled,
+  label, price, period, hint, highlight, recommendedLabel, onClick, busy, disabled,
 }: {
   label: string;
   price: string;
   period: string;
   hint?: string;
   highlight?: boolean;
+  recommendedLabel?: string;
   onClick: () => void;
   busy?: boolean;
   disabled?: boolean;
@@ -326,7 +330,7 @@ function PlanRow({
       <div>
         <div className="text-[13px] font-medium flex items-center gap-2">
           {label}
-          {highlight && <Badge variant="default" className="text-[9px] h-4">Recommended</Badge>}
+          {highlight && recommendedLabel && <Badge variant="default" className="text-[9px] h-4">{recommendedLabel}</Badge>}
         </div>
         {hint && <p className="text-[10.5px] text-muted-foreground mt-0.5">{hint}</p>}
       </div>

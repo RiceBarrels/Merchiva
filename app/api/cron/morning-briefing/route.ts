@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
       "SELECT * FROM staff_availability",
       "SELECT * FROM coupon",
       "SELECT * FROM settings",
+      "SELECT * FROM punch_event",
     ]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
   const staffAvailability = allRows("staffAvailability");
   const coupons = allRows("coupon");
   const settings = allRows("settings");
+  const punchEvents = allRows("punchEvent");
   const briefings = allRows("dailyBriefing");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -238,6 +240,7 @@ export async function POST(req: NextRequest) {
           staffAvailability,
           coupons,
           settings,
+          punchEvents,
         },
         orgId,
         date,

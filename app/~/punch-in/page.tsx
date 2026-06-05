@@ -6,6 +6,7 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
 import { recordPunch, setPunchInCode } from "@/lib/spacetimedb/actions";
 import { PermissionGuard } from "@/components/permission-guard";
+import { useT } from "@/lib/i18n/context";
 import { useDeviceName } from "@/lib/store-machine-mode";
 import { hapticSuccess, hapticLight } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -96,6 +97,7 @@ function Corners() {
 // ─── Main page ──────────────────────────────────────────────────────────────
 
 export default function PunchInPage() {
+  const t = useT();
   const now = useTick();
   const stdb = useSpacetimeDB();
   const { organizationId } = usePermissions();
@@ -130,14 +132,14 @@ export default function PunchInPage() {
   const handleSaveCode = async () => {
     if (!myMember) return;
     const code = codeInput.trim();
-    if (!/^[0-9]{4}$/.test(code)) { toast.error("Code must be 4 digits"); return; }
+    if (!/^[0-9]{4}$/.test(code)) { toast.error(t("punchIn.toastCodeMustBe4Digits")); return; }
     setSavingCode(true);
     try {
       await setPunchInCode(myMember.id.toString(), code);
-      hapticSuccess(); toast.success("Code set");
+      hapticSuccess(); toast.success(t("punchIn.toastCodeSet"));
       setSetCodeOpen(false); setCodeInput("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed");
+      toast.error(err instanceof Error ? err.message : t("punchIn.toastFailed"));
     } finally { setSavingCode(false); }
   };
 
@@ -205,7 +207,7 @@ export default function PunchInPage() {
     const member = (orgMembers as unknown as MemberRow[]).find(
       m => m.organizationId === organizationId && m.punchInCode === code && m.status === "active",
     );
-    if (!member) { setError("PIN not recognized"); return; }
+    if (!member) { setError(t("punchIn.errorPinNotRecognized")); return; }
     setMatched(member);
 
     const memberEvts = orgEvents.filter(e => e.memberId === member.id.toString());
@@ -225,7 +227,7 @@ export default function PunchInPage() {
   const handleConfirm = async () => {
     if (!matched) return;
     const action = needsChoice ? chosenAction : detectedAction;
-    if (!action) { toast.error("Select an action"); return; }
+    if (!action) { toast.error(t("punchIn.toastSelectAnAction")); return; }
     setConfirming(true);
     try {
       await recordPunch(pin, action);
@@ -297,10 +299,10 @@ export default function PunchInPage() {
                 {/* Header — compact on mobile */}
                 <div className="flex justify-between items-start gap-3 mb-4 sm:mb-5">
                   <div className="min-w-0">
-                    <div className="hidden sm:block font-mono text-[11px] tracking-[0.14em] text-muted-foreground mb-2">01 · AUTHENTICATE</div>
-                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold tracking-tight">Enter your PIN</h1>
+                    <div className="hidden sm:block font-mono text-[11px] tracking-[0.14em] text-muted-foreground mb-2">{t("punchIn.stepAuthenticate")}</div>
+                    <h1 className="text-lg sm:text-xl lg:text-2xl font-bold tracking-tight">{t("punchIn.enterYourPin")}</h1>
                     <p className="text-[12px] sm:text-[13px] text-muted-foreground mt-1 leading-relaxed hidden sm:block">
-                      Punch in or out by keying your employee PIN.
+                      {t("punchIn.punchInOrOutHint")}
                     </p>
                   </div>
                   <div className="text-right border border-border rounded-[0.3rem] px-2.5 sm:px-3.5 py-2 sm:py-2.5 bg-muted shrink-0">
@@ -314,7 +316,7 @@ export default function PunchInPage() {
                   <div className="flex-1 flex flex-col gap-3 sm:gap-4">
                     {/* PIN display */}
                     <div className={cn("relative border-[1.5px] rounded-[0.3rem] p-3 sm:p-4", error ? "border-red-400" : "border-border")}>
-                      <div className="absolute -top-2 left-3 bg-background px-1.5 font-mono text-[10px] tracking-[0.14em] text-muted-foreground">PIN</div>
+                      <div className="absolute -top-2 left-3 bg-background px-1.5 font-mono text-[10px] tracking-[0.14em] text-muted-foreground">{t("punchIn.pinLabel")}</div>
                       <div className="grid grid-cols-4 gap-2 sm:gap-3">
                         {[0, 1, 2, 3].map(i => (
                           <div key={i} className={cn(
@@ -329,10 +331,10 @@ export default function PunchInPage() {
                       </div>
                       <div className="flex justify-between items-center mt-2.5 sm:mt-3.5">
                         <span className="font-mono text-[10px] sm:text-[11px] tracking-wider text-muted-foreground">
-                          {error ? "▲ ERROR" : pin.length === 0 ? "READY" : pin.length < 4 ? `${pin.length}/4 ENTERED` : "VERIFYING…"}
+                          {error ? t("punchIn.statusError") : pin.length === 0 ? t("punchIn.statusReady") : pin.length < 4 ? t("punchIn.statusEntered").replace("{count}", String(pin.length)) : t("punchIn.statusVerifying")}
                         </span>
                         <span className={cn("font-mono text-[10px] sm:text-[11px] tracking-wider", error ? "text-red-500" : "text-muted-foreground")}>
-                          {error ?? <span className="hidden sm:inline">PRESS DIGITS OR USE KEYBOARD</span>}
+                          {error ?? <span className="hidden sm:inline">{t("punchIn.keyboardHint")}</span>}
                         </span>
                       </div>
                     </div>
@@ -342,7 +344,7 @@ export default function PunchInPage() {
                       {["1","2","3","4","5","6","7","8","9"].map(k => (
                         <button key={k} onClick={() => handleDigit(k)} className="rounded-[0.3rem] border border-border bg-background text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[52px]">{k}</button>
                       ))}
-                      <button onClick={() => { setPin(""); setError(null); }} className="rounded-[0.3rem] border border-border bg-muted font-mono text-xs sm:text-sm font-medium text-muted-foreground shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[52px]">Clear</button>
+                      <button onClick={() => { setPin(""); setError(null); }} className="rounded-[0.3rem] border border-border bg-muted font-mono text-xs sm:text-sm font-medium text-muted-foreground shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[52px]">{t("punchIn.clear")}</button>
                       <button onClick={() => handleDigit("0")} className="rounded-[0.3rem] border border-border bg-background text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[52px]">0</button>
                       <button onClick={() => setPin(p => p.slice(0, -1))} className="rounded-[0.3rem] border border-border bg-muted text-muted-foreground shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none flex items-center justify-center min-h-[52px]">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3.5-7.1L3 8" /><path d="M3 3v5h5" /></svg>
@@ -357,11 +359,11 @@ export default function PunchInPage() {
                     <div className="flex items-center gap-3 sm:gap-5">
                       <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center font-mono text-sm sm:text-base font-semibold tracking-wider shrink-0">{initials(matched.displayName)}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-mono text-[10px] sm:text-[11px] text-muted-foreground tracking-wider">EMPLOYEE</div>
+                        <div className="font-mono text-[10px] sm:text-[11px] text-muted-foreground tracking-wider">{t("punchIn.employee")}</div>
                         <div className="text-xl sm:text-2xl font-bold leading-tight truncate">{matched.displayName}</div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="font-mono text-[10px] sm:text-[11px] text-muted-foreground tracking-wider">ACTION</div>
+                        <div className="font-mono text-[10px] sm:text-[11px] text-muted-foreground tracking-wider">{t("punchIn.action")}</div>
                         <div className="mt-1">
                           {actionBadge(needsChoice ? chosenAction : detectedAction!)}
                         </div>
@@ -370,9 +372,9 @@ export default function PunchInPage() {
 
                     {needsChoice && (
                       <div>
-                        <div className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground mb-2">SELECT AN ACTION</div>
+                        <div className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground mb-2">{t("punchIn.selectAnAction")}</div>
                         <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-                          {([["out", "End shift", "Punch out"], ["break-start", "Start break", "Meal / rest"]] as const).map(([act, title, sub]) => (
+                          {([["out", t("punchIn.optionEndShiftTitle"), t("punchIn.optionEndShiftSub")], ["break-start", t("punchIn.optionStartBreakTitle"), t("punchIn.optionStartBreakSub")]] as const).map(([act, title, sub]) => (
                             <button key={act} onClick={() => setChosenAction(act)} className={cn(
                               "text-left p-2.5 sm:p-3 rounded-[0.3rem] border-[1.5px] flex items-center gap-2 sm:gap-2.5 transition-all",
                               chosenAction === act ? "border-foreground bg-foreground text-background" : "border-border bg-background hover:bg-muted",
@@ -389,7 +391,7 @@ export default function PunchInPage() {
                     )}
 
                     <div className="grid grid-cols-3 gap-px bg-muted border border-border rounded-[0.3rem] overflow-hidden">
-                      {[["TIME", fmtClock(now)], ["DATE", now.toLocaleDateString(undefined, { month: "short", day: "numeric" })], ["STATE", memberState === "off" ? "OFF" : memberState === "break" ? "BREAK" : "ON"]].map(([k, v]) => (
+                      {[[t("punchIn.fieldTime"), fmtClock(now)], [t("punchIn.fieldDate"), now.toLocaleDateString(undefined, { month: "short", day: "numeric" })], [t("punchIn.fieldState"), memberState === "off" ? t("punchIn.stateOff") : memberState === "break" ? t("punchIn.stateBreak") : t("punchIn.stateOn")]].map(([k, v]) => (
                         <div key={k} className="bg-background px-2.5 sm:px-3.5 py-2.5 sm:py-3">
                           <div className="font-mono text-[9px] sm:text-[10px] tracking-wider text-muted-foreground">{k}</div>
                           <div className="font-mono text-[13px] sm:text-[15px] font-semibold mt-0.5">{v}</div>
@@ -398,9 +400,9 @@ export default function PunchInPage() {
                     </div>
 
                     <div className="flex gap-2 sm:gap-2.5">
-                      <button onClick={handleCancel} className="flex-1 h-11 rounded-[0.3rem] border border-foreground bg-background text-sm font-semibold hover:bg-muted active:bg-muted transition-colors">Cancel</button>
+                      <button onClick={handleCancel} className="flex-1 h-11 rounded-[0.3rem] border border-foreground bg-background text-sm font-semibold hover:bg-muted active:bg-muted transition-colors">{t("common.cancel")}</button>
                       <button onClick={handleConfirm} disabled={confirming} className="flex-[2] h-11 rounded-[0.3rem] border border-foreground bg-foreground text-background text-sm font-semibold disabled:opacity-50 hover:bg-foreground/90 active:bg-foreground/80 transition-colors flex items-center justify-center gap-2">
-                        {confirming ? <Spinner size={16} /> : <>Confirm<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg></>}
+                        {confirming ? <Spinner size={16} /> : <>{t("punchIn.confirm")}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 5l7 7-7 7" /></svg></>}
                       </button>
                     </div>
                   </div>
@@ -413,26 +415,26 @@ export default function PunchInPage() {
                       <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[0.3rem] bg-emerald-500 flex items-center justify-center">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                       </div>
-                      <span className="font-mono text-xs tracking-wider text-muted-foreground">PUNCH RECORDED</span>
+                      <span className="font-mono text-xs tracking-wider text-muted-foreground">{t("punchIn.punchRecorded")}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl lg:text-[44px] font-bold mt-3 sm:mt-4 leading-[1.05] tracking-tight">
-                      {successAction === "in" ? `Welcome, ${successMember.displayName.split(" ")[0]}.` :
-                       successAction === "out" ? `Goodbye, ${successMember.displayName.split(" ")[0]}.` :
-                       successAction === "break-start" ? "Break started." :
-                       `Welcome back, ${successMember.displayName.split(" ")[0]}.`}
+                      {successAction === "in" ? t("punchIn.successWelcome").replace("{name}", successMember.displayName.split(" ")[0]) :
+                       successAction === "out" ? t("punchIn.successGoodbye").replace("{name}", successMember.displayName.split(" ")[0]) :
+                       successAction === "break-start" ? t("punchIn.successBreakStarted") :
+                       t("punchIn.successWelcomeBack").replace("{name}", successMember.displayName.split(" ")[0])}
                     </div>
                     <div className="text-[13px] sm:text-[15px] text-muted-foreground mt-1.5">
-                      {successAction === "in" ? "Your shift is now open." :
-                       successAction === "out" ? "Your shift has been closed." :
-                       successAction === "break-start" ? "Clock paused — end your break when ready." :
-                       "Break ended — shift is active again."}
+                      {successAction === "in" ? t("punchIn.successInSub") :
+                       successAction === "out" ? t("punchIn.successOutSub") :
+                       successAction === "break-start" ? t("punchIn.successBreakStartSub") :
+                       t("punchIn.successBreakEndSub")}
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-white/15 border border-white/15 rounded-[0.3rem] overflow-hidden mt-4 sm:mt-5">
                       {[
-                        [successAction === "in" ? "IN AT" : successAction === "out" ? "OUT AT" : successAction === "break-start" ? "BREAK AT" : "RESUMED", fmtClock(successTime)],
-                        ["TERMINAL", (deviceName || "TC-01").toUpperCase().slice(0, 10)],
-                        ["LOCATION", (deviceName || "—").toUpperCase().slice(0, 16)],
-                        ["CONF. ID", "0x" + Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase().padStart(6, "0")],
+                        [successAction === "in" ? t("punchIn.fieldInAt") : successAction === "out" ? t("punchIn.fieldOutAt") : successAction === "break-start" ? t("punchIn.fieldBreakAt") : t("punchIn.fieldResumed"), fmtClock(successTime)],
+                        [t("punchIn.fieldTerminal"), (deviceName || "TC-01").toUpperCase().slice(0, 10)],
+                        [t("punchIn.fieldLocation"), (deviceName || "—").toUpperCase().slice(0, 16)],
+                        [t("punchIn.fieldConfId"), "0x" + Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase().padStart(6, "0")],
                       ].map(([k, v]) => (
                         <div key={k} className="bg-foreground px-2.5 sm:px-3.5 py-2.5 sm:py-3">
                           <div className="font-mono text-[9px] sm:text-[10px] tracking-wider text-muted-foreground">{k}</div>
@@ -441,7 +443,7 @@ export default function PunchInPage() {
                       ))}
                     </div>
                     <div className="font-mono text-[10px] sm:text-[11px] tracking-wider text-muted-foreground mt-4 sm:mt-5">
-                      TAP TO DISMISS · AUTO-RESET IN 5S
+                      {t("punchIn.tapToDismiss")}
                     </div>
                   </div>
                 )}
@@ -455,7 +457,7 @@ export default function PunchInPage() {
                 className="w-full flex items-center justify-between px-4 py-3 active:bg-muted"
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-[11px] tracking-wider text-muted-foreground">ON SHIFT</span>
+                  <span className="font-mono text-[11px] tracking-wider text-muted-foreground">{t("punchIn.onShift")}</span>
                   <span className="font-mono text-sm font-bold">{onShift.length}</span>
                   {onShift.length > 0 && (
                     <div className="flex -space-x-1.5">
@@ -477,7 +479,7 @@ export default function PunchInPage() {
                   {/* On shift */}
                   <div className="px-4 py-3">
                     {onShift.length === 0 ? (
-                      <div className="text-[13px] text-muted-foreground py-2">No active shifts.</div>
+                      <div className="text-[13px] text-muted-foreground py-2">{t("punchIn.noActiveShifts")}</div>
                     ) : (
                       <div className="space-y-2">
                         {onShift.map(s => (
@@ -499,11 +501,11 @@ export default function PunchInPage() {
                   {/* Recent punches */}
                   <div className="border-t border-border">
                     <div className="px-4 py-2.5 flex items-center justify-between">
-                      <span className="font-mono text-[11px] tracking-wider text-muted-foreground">RECENT PUNCHES</span>
-                      <span className="font-mono text-[10px] tracking-wider text-muted-foreground">LIVE</span>
+                      <span className="font-mono text-[11px] tracking-wider text-muted-foreground">{t("punchIn.recentPunches")}</span>
+                      <span className="font-mono text-[10px] tracking-wider text-muted-foreground">{t("punchIn.live")}</span>
                     </div>
                     {recentPunches.length === 0 ? (
-                      <div className="text-center py-6 text-muted-foreground text-sm">No punches today</div>
+                      <div className="text-center py-6 text-muted-foreground text-sm">{t("punchIn.noPunchesToday")}</div>
                     ) : (
                       <div className="space-y-0">
                         {recentPunches.slice(0, 8).map(p => (
@@ -525,14 +527,14 @@ export default function PunchInPage() {
           <aside className="hidden lg:flex border-l border-border bg-background flex-col min-h-0 overflow-y-auto">
             {/* On shift now */}
             <div className="p-5 border-b border-border">
-              <div className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground mb-1">02 · ON SHIFT NOW</div>
+              <div className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground mb-1">{t("punchIn.stepOnShiftNow")}</div>
               <div className="flex items-baseline gap-2.5">
                 <span className="text-[40px] font-bold tracking-tight font-mono leading-none">{onShift.length}</span>
-                <span className="text-[13px] text-muted-foreground">active</span>
+                <span className="text-[13px] text-muted-foreground">{t("punchIn.activeCount")}</span>
               </div>
               <div className="h-px bg-muted my-3.5" />
               {onShift.length === 0 ? (
-                <div className="text-[13px] text-muted-foreground">No active shifts.</div>
+                <div className="text-[13px] text-muted-foreground">{t("punchIn.noActiveShifts")}</div>
               ) : (
                 <div className="space-y-2">
                   {onShift.map(s => (
@@ -543,7 +545,7 @@ export default function PunchInPage() {
                       )}>{s.avatar}</div>
                       <div className="flex-1 min-w-0">
                         <div className="text-[13px] font-semibold truncate">{s.name}</div>
-                        <div className="text-[11px] text-muted-foreground">{s.onBreak ? "on break" : "active"}</div>
+                        <div className="text-[11px] text-muted-foreground">{s.onBreak ? t("punchIn.onBreak") : t("punchIn.active")}</div>
                       </div>
                       <span className={cn("font-mono text-xs", s.onBreak ? "text-amber-600" : "text-muted-foreground")}>{fmtDur(now.getTime() - s.at.getTime())}</span>
                     </div>
@@ -556,24 +558,24 @@ export default function PunchInPage() {
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
                 <div>
-                  <div className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground">03 · RECENT PUNCHES</div>
-                  <div className="text-sm font-semibold mt-0.5">Today</div>
+                  <div className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground">{t("punchIn.stepRecentPunches")}</div>
+                  <div className="text-sm font-semibold mt-0.5">{t("punchIn.today")}</div>
                 </div>
-                <span className="font-mono text-[11px] tracking-wider text-muted-foreground">LIVE</span>
+                <span className="font-mono text-[11px] tracking-wider text-muted-foreground">{t("punchIn.live")}</span>
               </div>
               <div className="flex-1 overflow-y-auto">
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr className="bg-muted">
-                      <th className="text-left px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">Time</th>
-                      <th className="text-left px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">Who</th>
-                      <th className="text-left px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">Action</th>
-                      <th className="text-right px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">Duration</th>
+                      <th className="text-left px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">{t("punchIn.colTime")}</th>
+                      <th className="text-left px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">{t("punchIn.colWho")}</th>
+                      <th className="text-left px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">{t("punchIn.colAction")}</th>
+                      <th className="text-right px-3.5 py-2.5 font-mono text-[10px] tracking-wider text-muted-foreground font-medium border-b border-border">{t("punchIn.colDuration")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentPunches.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-8 text-muted-foreground text-sm">No punches today</td></tr>
+                      <tr><td colSpan={4} className="text-center py-8 text-muted-foreground text-sm">{t("punchIn.noPunchesToday")}</td></tr>
                     ) : recentPunches.map(p => (
                       <tr key={p.id}>
                         <td className="px-3.5 py-2.5 font-mono border-b border-border w-[70px]">{fmtHM(p.at)}</td>
@@ -583,7 +585,7 @@ export default function PunchInPage() {
                         </td>
                         <td className="px-3.5 py-2.5 border-b border-border">{tableBadge(p.action)}</td>
                         <td className="px-3.5 py-2.5 border-b border-border text-right font-mono text-xs text-muted-foreground">
-                          {p.dur != null ? fmtDur(p.dur) : (p.closed ? "—" : (p.action === "break-start" ? "on break" : "open"))}
+                          {p.dur != null ? fmtDur(p.dur) : (p.closed ? "—" : (p.action === "break-start" ? t("punchIn.durOnBreak") : t("punchIn.durOpen")))}
                         </td>
                       </tr>
                     ))}
@@ -600,18 +602,18 @@ export default function PunchInPage() {
       <DynamicUIElement open={setCodeOpen} onOpenChange={setSetCodeOpen}>
         <DynamicUIElementContent>
           <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle="Punch-in code">{myCode ? "Change your punch-in code" : "Set your punch-in code"}</DynamicUIElementTitle>
+            <DynamicUIElementTitle mobileTitle={t("punchIn.dialogMobileTitle")}>{myCode ? t("punchIn.dialogChangeTitle") : t("punchIn.dialogSetTitle")}</DynamicUIElementTitle>
             <DynamicUIElementDescription>
-              {myCode ? "Update the 4-digit code you enter at this store." : "Pick a 4-digit code you'll remember. You'll enter it every time you punch in."}
+              {myCode ? t("punchIn.dialogChangeDesc") : t("punchIn.dialogSetDesc")}
             </DynamicUIElementDescription>
           </DynamicUIElementHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>New code</Label>
-              <Input value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="4 digits" className="h-11 font-mono text-base tracking-[0.3em]" autoFocus onKeyDown={e => { if (e.key === "Enter") handleSaveCode(); }} />
+              <Label>{t("punchIn.newCodeLabel")}</Label>
+              <Input value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder={t("punchIn.codePlaceholder")} className="h-11 font-mono text-base tracking-[0.3em]" autoFocus onKeyDown={e => { if (e.key === "Enter") handleSaveCode(); }} />
             </div>
             <Button onClick={handleSaveCode} disabled={savingCode || codeInput.length < 4} className="w-full">
-              {savingCode ? <Spinner size={16} /> : "Save code"}
+              {savingCode ? <Spinner size={16} /> : t("punchIn.saveCode")}
             </Button>
           </div>
         </DynamicUIElementContent>

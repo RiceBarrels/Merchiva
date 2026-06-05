@@ -30,6 +30,7 @@ import {
 import { usePermissions } from "@/lib/context/permissions";
 import { usePayments } from "@/lib/spacetimedb/hooks";
 import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
+import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
@@ -50,6 +51,7 @@ interface DayPredictions {
 }
 
 export function ItemForecast() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const { settings } = useSettings();
   const [rawPayments] = usePayments();
@@ -131,7 +133,7 @@ export function ItemForecast() {
       });
       setTrainResult(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Training failed");
+      setError(err instanceof Error ? err.message : t("itemForecast.trainingFailed"));
     } finally {
       setTraining(false);
     }
@@ -158,7 +160,7 @@ export function ItemForecast() {
 
       setPredictions(byDay);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Prediction failed");
+      setError(err instanceof Error ? err.message : t("itemForecast.predictionFailed"));
     } finally {
       setLoading(false);
     }
@@ -192,11 +194,11 @@ export function ItemForecast() {
         <CardContent className="py-12 text-center space-y-4">
           <Brain className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
           <div>
-            <p className="font-semibold text-sm">AI Model Not Trained Yet</p>
+            <p className="font-semibold text-sm">{t("itemForecast.modelNotTrained")}</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
               {trainingRecords.length >= 100
-                ? `You have ${trainingRecords.length.toLocaleString()} item-day records. Train the AI model to get per-item predictions.`
-                : `Need at least 100 item-day records from payment history. Currently have ${trainingRecords.length}.`}
+                ? t("itemForecast.recordsReady").replace("{count}", trainingRecords.length.toLocaleString())
+                : t("itemForecast.recordsNeeded").replace("{count}", String(trainingRecords.length))}
             </p>
           </div>
           {trainingRecords.length >= 100 && (
@@ -212,12 +214,15 @@ export function ItemForecast() {
               ) : (
                 <Brain className="h-3.5 w-3.5" />
               )}
-              {training ? "Training..." : "Train AI Model"}
+              {training ? t("itemForecast.training") : t("itemForecast.trainModel")}
             </Button>
           )}
           {trainResult && (
             <div className="text-xs text-muted-foreground">
-              Model trained: {trainResult.items_count} items, {trainResult.days_count} days, R²={trainResult.metrics.r2.toFixed(2)}
+              {t("itemForecast.modelTrainedSummary")
+                .replace("{items}", String(trainResult.items_count))
+                .replace("{days}", String(trainResult.days_count))
+                .replace("{r2}", trainResult.metrics.r2.toFixed(2))}
             </div>
           )}
         </CardContent>
@@ -230,7 +235,7 @@ export function ItemForecast() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">Per-Item AI Forecast</h3>
+          <h3 className="text-sm font-semibold">{t("itemForecast.title")}</h3>
           <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1">
             <Brain className="h-3 w-3" />
             XGBoost
@@ -249,7 +254,7 @@ export function ItemForecast() {
             ) : (
               <RefreshCw className="h-3 w-3" />
             )}
-            Retrain
+            {t("itemForecast.retrain")}
           </Button>
           <Button
             onClick={handlePredict}
@@ -263,7 +268,7 @@ export function ItemForecast() {
             ) : (
               <TrendingUp className="h-3 w-3" />
             )}
-            Refresh
+            {t("itemForecast.refresh")}
           </Button>
         </div>
       </div>
@@ -278,7 +283,7 @@ export function ItemForecast() {
       {loading && !predictions && (
         <div className="flex items-center gap-2 py-8 justify-center">
           <Spinner size={16} className="text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Loading predictions...</span>
+          <span className="text-sm text-muted-foreground">{t("itemForecast.loadingPredictions")}</span>
         </div>
       )}
 
@@ -301,7 +306,7 @@ export function ItemForecast() {
                 )}
               >
                 <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {i === 0 ? "Today" : day.dayLabel.split(" ")[0]}
+                  {i === 0 ? t("itemForecast.today") : day.dayLabel.split(" ")[0]}
                 </span>
                 <p className="text-xs text-muted-foreground">
                   {day.dayLabel.split(" ")[1]}
@@ -310,7 +315,7 @@ export function ItemForecast() {
                   {day.total}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  items total
+                  {t("itemForecast.itemsTotal")}
                 </p>
               </button>
             ))}
@@ -323,14 +328,14 @@ export function ItemForecast() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm">
-                      Top Items: {selected.dayLabel}
+                      {t("itemForecast.topItems").replace("{day}", selected.dayLabel)}
                     </CardTitle>
                     <CardDescription className="text-xs">
-                      Predicted units to sell
+                      {t("itemForecast.predictedUnits")}
                     </CardDescription>
                   </div>
                   <span className="text-xs font-mono text-muted-foreground">
-                    Total: {selected.total} items
+                    {t("itemForecast.totalItems").replace("{count}", String(selected.total))}
                   </span>
                 </div>
               </CardHeader>
@@ -361,7 +366,7 @@ export function ItemForecast() {
                         border: "1px solid #e7e5e4",
                         fontSize: "11px",
                       }}
-                      formatter={(v) => [`${v} units`, "Predicted"]}
+                      formatter={(v) => [t("itemForecast.unitsValue").replace("{count}", String(v)), t("itemForecast.predicted")]}
                     />
                     <Bar
                       dataKey="qty"
@@ -380,7 +385,7 @@ export function ItemForecast() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">
-                  All Items: {selected.dayLabel}
+                  {t("itemForecast.allItems").replace("{day}", selected.dayLabel)}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -408,12 +413,12 @@ export function ItemForecast() {
                     {showAll ? (
                       <>
                         <ChevronUp className="h-3 w-3" />
-                        Show less
+                        {t("itemForecast.showLess")}
                       </>
                     ) : (
                       <>
                         <ChevronDown className="h-3 w-3" />
-                        Show all {selected.items.length} items
+                        {t("itemForecast.showAllItems").replace("{count}", String(selected.items.length))}
                       </>
                     )}
                   </button>
@@ -425,7 +430,11 @@ export function ItemForecast() {
           {/* Train result toast */}
           {trainResult && (
             <div className="text-xs text-muted-foreground text-center">
-              Last trained: {trainResult.items_count} items across {trainResult.days_count} days — MAE: {trainResult.metrics.mae.toFixed(1)}, R²: {trainResult.metrics.r2.toFixed(2)}
+              {t("itemForecast.lastTrainedSummary")
+                .replace("{items}", String(trainResult.items_count))
+                .replace("{days}", String(trainResult.days_count))
+                .replace("{mae}", trainResult.metrics.mae.toFixed(1))
+                .replace("{r2}", trainResult.metrics.r2.toFixed(2))}
             </div>
           )}
         </>

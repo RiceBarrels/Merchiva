@@ -82,12 +82,12 @@ const CAT_ICON_MAP: Record<string, typeof Coffee> = {
 
 const DISCOUNT_PRESETS = [10, 15, 20, 50];
 const DISCOUNT_REASONS = [
-  { value: "", label: "Reason (optional)…" },
-  { value: "staff", label: "Staff discount" },
-  { value: "loyalty", label: "Loyalty reward" },
-  { value: "comp", label: "Comp / on the house" },
-  { value: "damaged", label: "Made incorrectly" },
-  { value: "manager", label: "Manager override" },
+  { value: "", labelKey: "pos.discountReasons.none" },
+  { value: "staff", labelKey: "pos.discountReasons.staff" },
+  { value: "loyalty", labelKey: "pos.discountReasons.loyalty" },
+  { value: "comp", labelKey: "pos.discountReasons.comp" },
+  { value: "damaged", labelKey: "pos.discountReasons.damaged" },
+  { value: "manager", labelKey: "pos.discountReasons.manager" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -235,15 +235,16 @@ function CartSidebar({
   onEditLine: (uid: string) => void;
   onCharge: () => void;
 }) {
+  const t = useT();
   const money = useMoney();
   return (
     <aside className="hidden md:flex w-72 lg:w-80 flex-col shrink-0 border-l border-border bg-card overflow-hidden">
       {/* Header */}
       <div className="px-3 py-2.5 border-b border-border flex items-center gap-2 shrink-0">
         <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Ticket
+          {t("pos.cart.ticket")}
         </span>
-        <span className="text-[10.5px] text-muted-foreground ml-auto">{cart.length} items</span>
+        <span className="text-[10.5px] text-muted-foreground ml-auto">{t("pos.cart.itemsCount").replace("{count}", String(cart.length))}</span>
       </div>
 
       {/* Customer */}
@@ -255,7 +256,7 @@ function CartSidebar({
           type="text"
           value={customerName}
           onChange={e => onSetCustomerName(e.target.value)}
-          placeholder="Walk-in (tap to name)"
+          placeholder={t("pos.cart.walkInPlaceholder")}
           className="flex-1 bg-transparent text-[12.5px] font-medium outline-none placeholder:text-muted-foreground min-w-0 border-0 p-0"
         />
         <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -268,8 +269,8 @@ function CartSidebar({
             <div className="h-10 w-10 rounded bg-muted flex items-center justify-center mb-2">
               <ShoppingBag className="h-4 w-4" />
             </div>
-            <p className="text-[12px] font-medium">Cart is empty</p>
-            <p className="text-[11px] mt-0.5">Tap an item to start</p>
+            <p className="text-[12px] font-medium">{t("pos.cart.empty")}</p>
+            <p className="text-[11px] mt-0.5">{t("pos.cart.tapToStart")}</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -296,7 +297,7 @@ function CartSidebar({
                         <div className="text-[10.5px] text-emerald-700 mt-1 leading-snug flex items-start gap-1 font-mono tabular-nums">
                           <Percent className="h-[10px] w-[10px] mt-[1px] shrink-0" />
                           <span>
-                            {l.discount.pct ? `${l.discount.pct}% off` : `${money(l.discount.amount ?? 0)} off`}
+                            {l.discount.pct ? t("pos.cart.pctOff").replace("{pct}", String(l.discount.pct)) : t("pos.cart.amountOff").replace("{amount}", money(l.discount.amount ?? 0))}
                             {l.discount.reason && (
                               <span className="text-muted-foreground font-sans"> &middot; {l.discount.reason}</span>
                             )}
@@ -334,7 +335,7 @@ function CartSidebar({
                       onClick={() => onEditLine(l.uid)}
                       className="ml-auto h-6 px-1.5 rounded border border-border bg-card hover:bg-muted text-[10px] font-medium inline-flex items-center gap-1 text-muted-foreground"
                     >
-                      <Pencil className="h-[10px] w-[10px]" /> Edit
+                      <Pencil className="h-[10px] w-[10px]" /> {t("common.edit")}
                     </button>
                     <button
                       type="button"
@@ -354,9 +355,9 @@ function CartSidebar({
       {/* Totals */}
       <div className="shrink-0 flex flex-col border-t border-border">
         <div className="px-4 py-2.5 space-y-1 text-[12px] font-mono">
-          <TotalsRow label="Subtotal" value={money(subtotal)} />
-          <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
-          <TotalsRow label="Tax" value={money(tax)} />
+          <TotalsRow label={t("pos.register.subtotal")} value={money(subtotal)} />
+          <TotalsRow label={t("pos.cart.tipLabel").replace("{pct}", String(tipPct))} value={money(tip)} />
+          <TotalsRow label={t("pos.register.taxShort")} value={money(tax)} />
         </div>
         <button
           type="button"
@@ -364,7 +365,7 @@ function CartSidebar({
           disabled={cart.length === 0}
           className="h-12 bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground text-background text-[13px] font-semibold inline-flex items-center justify-between px-4 transition-colors"
         >
-          <span>Charge</span>
+          <span>{t("pos.register.charge")}</span>
           <span className="font-mono tabular-nums text-[15px]">{money(total)}</span>
         </button>
       </div>
@@ -394,6 +395,7 @@ function LineEditorPanel({
   onSave: (patch: Partial<POSLine>) => void;
   onRemove: () => void;
 }) {
+  const t = useT();
   const money = useMoney();
   const { symbol } = useCurrency();
   const [qty, setQty] = useState(line.qty);
@@ -424,17 +426,17 @@ function LineEditorPanel({
   return (
     <>
       <DynamicUIElementHeader>
-        <DynamicUIElementTitle mobileTitle={`Edit · ${line.name}`}>
-          Edit line
+        <DynamicUIElementTitle mobileTitle={t("pos.lineEditor.mobileTitle").replace("{name}", line.name)}>
+          {t("pos.lineEditor.title")}
         </DynamicUIElementTitle>
         <DynamicUIElementDescription>
-          {line.name} · {money(line.price)}/ea
+          {line.name} · {t("pos.lineEditor.perEach").replace("{price}", money(line.price))}
         </DynamicUIElementDescription>
       </DynamicUIElementHeader>
 
       <div className="space-y-4 mt-2">
         {/* Quantity */}
-        <FieldGroup label="Quantity">
+        <FieldGroup label={t("pos.lineEditor.quantity")}>
           <div className="inline-flex items-center border border-border rounded">
             <button type="button" onClick={() => setQty(q => Math.max(1, q - 1))} className="h-8 w-8 hover:bg-muted flex items-center justify-center">
               <Minus className="h-[13px] w-[13px]" />
@@ -449,12 +451,12 @@ function LineEditorPanel({
         {/* Notes */}
         <div>
           <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
-            <MessageSquare className="h-[11px] w-[11px]" /> Notes for kitchen / bar
+            <MessageSquare className="h-[11px] w-[11px]" /> {t("pos.lineEditor.notesLabel")}
           </div>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="Allergies, prep instructions, name on cup..."
+            placeholder={t("pos.lineEditor.notesPlaceholder")}
             rows={2}
             className="w-full text-[13px] py-2 px-2.5 resize-none rounded border border-border bg-background outline-none focus:ring-1 focus:ring-ring"
           />
@@ -464,7 +466,7 @@ function LineEditorPanel({
         <div className="border border-border rounded-[0.3rem] overflow-hidden">
           <div className="px-3 py-2 bg-muted border-b border-border flex items-center gap-2">
             <Percent className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Line discount</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">{t("pos.lineEditor.lineDiscount")}</span>
             {discKind !== "none" && (
               <span className="ml-auto text-[11px] font-mono tabular-nums text-emerald-700 font-semibold">
                 &minus; {money(discountAmt)}
@@ -489,7 +491,7 @@ function LineEditorPanel({
                       : "bg-card border-border hover:border-muted-foreground text-foreground"
                   )}
                 >
-                  {k === "none" ? "None" : k === "pct" ? "% off" : `${symbol} off`}
+                  {k === "none" ? t("pos.lineEditor.discNone") : k === "pct" ? t("pos.lineEditor.discPct") : t("pos.lineEditor.discAmount").replace("{symbol}", symbol)}
                 </button>
               ))}
             </div>
@@ -534,7 +536,7 @@ function LineEditorPanel({
                   className="w-full text-[12.5px] py-1.5 px-2 rounded border border-border bg-background outline-none"
                 >
                   {DISCOUNT_REASONS.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
+                    <option key={r.value} value={r.value}>{t(r.labelKey)}</option>
                   ))}
                 </select>
               </>
@@ -549,10 +551,10 @@ function LineEditorPanel({
             onClick={() => { onRemove(); onClose(); }}
             className="h-8 px-3 rounded border border-border bg-card hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 text-[12px] font-medium inline-flex items-center gap-1.5"
           >
-            <Trash2 className="h-3 w-3" /> Remove
+            <Trash2 className="h-3 w-3" /> {t("pos.lineEditor.remove")}
           </button>
           <div className="ml-auto text-right">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Line total</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("pos.lineEditor.lineTotal")}</p>
             <p className="text-[15px] font-mono font-semibold tabular-nums">
               {discKind !== "none" && (
                 <span className="text-muted-foreground line-through font-normal mr-1.5 text-[12px]">{money(grossLine)}</span>
@@ -565,7 +567,7 @@ function LineEditorPanel({
             onClick={handleSave}
             className="h-8 px-3 rounded bg-foreground hover:bg-foreground/90 text-background text-[12px] font-semibold inline-flex items-center gap-1.5"
           >
-            <Check className="h-[13px] w-[13px]" /> Save
+            <Check className="h-[13px] w-[13px]" /> {t("common.save")}
           </button>
         </div>
       </div>
@@ -623,6 +625,7 @@ function PayOverlay({
   isOnline: boolean;
   onOfflineCard: (cardNumber: string) => void;
 }) {
+  const t = useT();
   const money = useMoney();
   const { symbol } = useCurrency();
   const [cashTaken, setCashTaken] = useState<number | null>(null);
@@ -651,10 +654,10 @@ function PayOverlay({
   const showOfflineCardInput = payMethod === "card" && !isOnline;
 
   const methods: { id: PmtMethod; label: string; icon: typeof CreditCard; sub: string }[] = [
-    { id: "card", label: "Card", icon: CreditCard, sub: !isOnline ? "Enter card — queued offline" : cardAvailable ? "Tap, insert, or swipe" : "Not configured" },
-    { id: "cash", label: "Cash", icon: Banknote, sub: "Open drawer" },
-    { id: "mobile", label: "Mobile Pay", icon: Smartphone, sub: "Apple / Google Pay" },
-    { id: "gift", label: "Gift Card", icon: Gift, sub: "Scan or enter code" },
+    { id: "card", label: t("pos.pay.methods.card"), icon: CreditCard, sub: !isOnline ? t("pos.pay.cardSubOffline") : cardAvailable ? t("pos.pay.cardSubAvailable") : t("pos.pay.cardSubNotConfigured") },
+    { id: "cash", label: t("pos.pay.methods.cash"), icon: Banknote, sub: t("pos.pay.cashSub") },
+    { id: "mobile", label: t("pos.pay.methods.mobilePay"), icon: Smartphone, sub: t("pos.pay.mobileSub") },
+    { id: "gift", label: t("pos.pay.methods.giftCard"), icon: Gift, sub: t("pos.pay.giftSub") },
   ];
 
   const canCharge =
@@ -683,14 +686,14 @@ function PayOverlay({
           onClick={onBack}
           className="h-10 px-3 rounded border border-border hover:bg-muted inline-flex items-center gap-1.5 text-[13px] font-medium shrink-0"
         >
-          <ArrowLeft className="h-[15px] w-[15px]" /> Back to order
+          <ArrowLeft className="h-[15px] w-[15px]" /> {t("pos.pay.backToOrder")}
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Checkout</p>
-          <p className="text-[15px] font-semibold truncate">{cart.length} items{customerName ? ` · ${customerName}` : ""}</p>
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{t("pos.pay.checkout")}</p>
+          <p className="text-[15px] font-semibold truncate">{t("pos.cart.itemsCount").replace("{count}", String(cart.length))}{customerName ? ` · ${customerName}` : ""}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Total</p>
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{t("pos.register.total")}</p>
           <p className="text-[22px] font-semibold tabular-nums">{money(total)}</p>
         </div>
       </div>
@@ -700,7 +703,7 @@ function PayOverlay({
         <div className="p-8 overflow-auto">
           <div className="max-w-[640px] mx-auto space-y-8">
             <section>
-              <SectionLabel>Tender</SectionLabel>
+              <SectionLabel>{t("pos.pay.tender")}</SectionLabel>
               <div className="grid grid-cols-2 gap-3">
                 {methods.map(m => {
                   // Card is always selectable when offline (for queueing), only disabled when online and not configured
@@ -739,7 +742,7 @@ function PayOverlay({
             {/* Offline card number input */}
             {showOfflineCardInput && (
               <section>
-                <SectionLabel>Card number (queued for later)</SectionLabel>
+                <SectionLabel>{t("pos.pay.cardNumberQueued")}</SectionLabel>
                 <div className="rounded-[0.3rem] border border-border bg-card p-4">
                   <input
                     type="text"
@@ -751,19 +754,19 @@ function PayOverlay({
                     className="w-full text-[22px] font-mono tracking-wider tabular-nums bg-transparent outline-none placeholder:text-muted-foreground/40 border-0 p-0"
                   />
                   <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-wide">
-                    Payment will be queued and processed when back online
+                    {t("pos.pay.queuedHint")}
                   </p>
                 </div>
                 {/* PCI compliance warning */}
                 <div className="flex items-start gap-2 rounded-[0.3rem] border border-amber-300 bg-amber-50 p-2.5 text-[10.5px] text-amber-800 mt-2">
                   <AlertCircle className="h-3 w-3 shrink-0 mt-0.5 text-amber-600" />
-                  <span>Demo/MVP only — card numbers stored locally are not PCI-compliant.</span>
+                  <span>{t("pos.pay.pciWarning")}</span>
                 </div>
               </section>
             )}
 
             <section>
-              <SectionLabel>Tip</SectionLabel>
+              <SectionLabel>{t("pos.pay.tip")}</SectionLabel>
               <div className="grid grid-cols-5 gap-2">
                 {[0, 10, 15, 20, 25].map(p => (
                   <button
@@ -777,7 +780,7 @@ function PayOverlay({
                         : "bg-card border-border hover:border-muted-foreground"
                     )}
                   >
-                    <p className="text-[13px] font-semibold">{p === 0 ? "None" : `${p}%`}</p>
+                    <p className="text-[13px] font-semibold">{p === 0 ? t("pos.pay.tipNone") : `${p}%`}</p>
                     {p > 0 && (
                       <p className={cn("text-[11px] mt-0.5 tabular-nums", tipPct === p ? "text-white/70" : "text-muted-foreground")}>
                         {money(subtotal * p / 100)}
@@ -790,7 +793,7 @@ function PayOverlay({
 
             {payMethod === "cash" && (
               <section>
-                <SectionLabel>Cash tendered</SectionLabel>
+                <SectionLabel>{t("pos.pay.cashTendered")}</SectionLabel>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {cashOptions.map(v => (
                     <button
@@ -817,7 +820,7 @@ function PayOverlay({
                         : "bg-card border-border hover:border-muted-foreground"
                     )}
                   >
-                    <p className="text-[13px] font-semibold">Other</p>
+                    <p className="text-[13px] font-semibold">{t("pos.pay.other")}</p>
                   </button>
                 </div>
                 {showCustomCash && (
@@ -842,7 +845,7 @@ function PayOverlay({
                   <div className="mt-3 rounded-[0.3rem] bg-muted border border-border p-4 flex items-center gap-3">
                     <Banknote className="h-5 w-5 text-emerald-700" />
                     <div>
-                      <p className="text-[12px] text-emerald-700 font-semibold uppercase tracking-wide">Change owed</p>
+                      <p className="text-[12px] text-emerald-700 font-semibold uppercase tracking-wide">{t("pos.pay.changeOwed")}</p>
                       <p className="text-[22px] font-bold text-emerald-900 tabular-nums">{money(cashTaken - total)}</p>
                     </div>
                   </div>
@@ -851,7 +854,7 @@ function PayOverlay({
             )}
 
             <section>
-              <SectionLabel>Split</SectionLabel>
+              <SectionLabel>{t("pos.pay.split")}</SectionLabel>
               <div className="flex items-center gap-2">
                 {[1, 2, 3, 4].map(n => (
                   <button
@@ -865,9 +868,9 @@ function PayOverlay({
                         : "bg-card border-border hover:border-muted-foreground"
                     )}
                   >
-                    <p className="text-[12px] font-semibold">{n === 1 ? "Single" : `${n} ways`}</p>
+                    <p className="text-[12px] font-semibold">{n === 1 ? t("pos.pay.splitSingle") : t("pos.pay.splitWays").replace("{n}", String(n))}</p>
                     {n > 1 && (
-                      <p className="text-[11px] tabular-nums mt-0.5 opacity-70">{money(total / n)} each</p>
+                      <p className="text-[11px] tabular-nums mt-0.5 opacity-70">{t("pos.pay.splitEach").replace("{amount}", money(total / n))}</p>
                     )}
                   </button>
                 ))}
@@ -877,11 +880,11 @@ function PayOverlay({
             {/* Mobile totals + charge */}
             <div className="md:hidden space-y-3 mt-4">
               <div className="rounded-[0.3rem] border border-border bg-card p-4 space-y-1.5 text-[13px]">
-                <TotalsRow label="Subtotal" value={money(subtotal)} />
-                <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
-                <TotalsRow label="Tax" value={money(tax)} />
+                <TotalsRow label={t("pos.register.subtotal")} value={money(subtotal)} />
+                <TotalsRow label={t("pos.cart.tipLabel").replace("{pct}", String(tipPct))} value={money(tip)} />
+                <TotalsRow label={t("pos.register.taxShort")} value={money(tax)} />
                 <div className="h-px bg-border my-2" />
-                <TotalsRow label="Total" value={money(total)} bold big />
+                <TotalsRow label={t("pos.register.total")} value={money(total)} bold big />
               </div>
               <button
                 type="button"
@@ -894,7 +897,7 @@ function PayOverlay({
                 ) : (
                   <CheckCircle className="h-[18px] w-[18px]" />
                 )}
-                {processing ? "Processing…" : showOfflineCardInput ? `Queue Card ${money(total)}` : `Charge ${money(total)}`}
+                {processing ? t("pos.charge.processing") : showOfflineCardInput ? t("pos.pay.queueCardAmount").replace("{amount}", money(total)) : t("pos.pay.chargeAmount").replace("{amount}", money(total))}
               </button>
             </div>
           </div>
@@ -903,7 +906,7 @@ function PayOverlay({
         {/* Right: summary — hidden on mobile */}
         <aside className="hidden md:flex border-l border-border bg-card flex-col overflow-hidden">
           <div className="p-5 border-b border-border">
-            <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">Order summary</p>
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">{t("pos.pay.orderSummary")}</p>
           </div>
           <div className="flex-1 overflow-auto divide-y divide-border">
             {cart.map(l => (
@@ -918,11 +921,11 @@ function PayOverlay({
             ))}
           </div>
           <div className="px-5 py-4 space-y-1.5 text-[13px] border-t border-border bg-muted">
-            <TotalsRow label="Subtotal" value={money(subtotal)} />
-            <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
-            <TotalsRow label="Tax (8.75%)" value={money(tax)} />
+            <TotalsRow label={t("pos.register.subtotal")} value={money(subtotal)} />
+            <TotalsRow label={t("pos.cart.tipLabel").replace("{pct}", String(tipPct))} value={money(tip)} />
+            <TotalsRow label={t("pos.register.taxShort")} value={money(tax)} />
             <div className="h-px bg-border my-2" />
-            <TotalsRow label="Total" value={money(total)} bold big />
+            <TotalsRow label={t("pos.register.total")} value={money(total)} bold big />
           </div>
           <button
             type="button"
@@ -935,7 +938,7 @@ function PayOverlay({
             ) : (
               <CheckCircle className="h-[18px] w-[18px]" />
             )}
-            {processing ? "Processing…" : showOfflineCardInput ? `Queue Card ${money(total)}` : `Charge ${money(total)}`}
+            {processing ? t("pos.charge.processing") : showOfflineCardInput ? t("pos.pay.queueCardAmount").replace("{amount}", money(total)) : t("pos.pay.chargeAmount").replace("{amount}", money(total))}
           </button>
         </aside>
       </div>
@@ -984,6 +987,7 @@ function MobileCheckoutPanel({
   isOnline: boolean;
   onOfflineCard: (cardNumber: string) => void;
 }) {
+  const t = useT();
   const money = useMoney();
   const { symbol } = useCurrency();
   const [cashTaken, setCashTaken] = useState<number | null>(null);
@@ -1010,10 +1014,10 @@ function MobileCheckoutPanel({
   }, [total]);
 
   const methods: { id: PmtMethod; label: string; icon: typeof CreditCard }[] = [
-    { id: "card", label: "Card", icon: CreditCard },
-    { id: "cash", label: "Cash", icon: Banknote },
-    { id: "mobile", label: "Mobile", icon: Smartphone },
-    { id: "gift", label: "Gift", icon: Gift },
+    { id: "card", label: t("pos.pay.methods.card"), icon: CreditCard },
+    { id: "cash", label: t("pos.pay.methods.cash"), icon: Banknote },
+    { id: "mobile", label: t("pos.pay.methods.mobile"), icon: Smartphone },
+    { id: "gift", label: t("pos.pay.methods.gift"), icon: Gift },
   ];
 
   const canCharge =
@@ -1036,15 +1040,15 @@ function MobileCheckoutPanel({
   return (
     <div className="px-4 space-y-6 pb-8">
       <DynamicUIElementHeader>
-        <DynamicUIElementTitle mobileTitle="Checkout">Checkout</DynamicUIElementTitle>
+        <DynamicUIElementTitle mobileTitle={t("pos.pay.checkout")}>{t("pos.pay.checkout")}</DynamicUIElementTitle>
         <DynamicUIElementDescription>
-          {cart.length} item{cart.length !== 1 ? "s" : ""} · {money(total)}
+          {t("pos.cart.itemsCount").replace("{count}", String(cart.length))} · {money(total)}
         </DynamicUIElementDescription>
       </DynamicUIElementHeader>
 
       {/* Payment method */}
       <section>
-        <SectionLabel>Tender</SectionLabel>
+        <SectionLabel>{t("pos.pay.tender")}</SectionLabel>
         <div className="grid grid-cols-4 gap-2">
           {methods.map(m => {
             const disabled = m.id === "card" && isOnline && !cardAvailable;
@@ -1079,7 +1083,7 @@ function MobileCheckoutPanel({
       {/* Offline card number input */}
       {showOfflineCardInput && (
         <section>
-          <SectionLabel>Card number (queued for later)</SectionLabel>
+          <SectionLabel>{t("pos.pay.cardNumberQueued")}</SectionLabel>
           <div className="rounded-[0.3rem] border border-border bg-card p-3">
             <input
               type="text"
@@ -1091,7 +1095,7 @@ function MobileCheckoutPanel({
               className="w-full text-[20px] font-mono tracking-wider tabular-nums bg-transparent outline-none placeholder:text-muted-foreground/40 border-0 p-0"
             />
             <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-wide">
-              Queued and processed when back online
+              {t("pos.pay.queuedHintShort")}
             </p>
           </div>
         </section>
@@ -1099,7 +1103,7 @@ function MobileCheckoutPanel({
 
       {/* Tip */}
       <section>
-        <SectionLabel>Tip</SectionLabel>
+        <SectionLabel>{t("pos.pay.tip")}</SectionLabel>
         <div className="grid grid-cols-5 gap-1.5">
           {[0, 10, 15, 20, 25].map(p => (
             <button
@@ -1127,7 +1131,7 @@ function MobileCheckoutPanel({
       {/* Cash options */}
       {payMethod === "cash" && (
         <section>
-          <SectionLabel>Cash tendered</SectionLabel>
+          <SectionLabel>{t("pos.pay.cashTendered")}</SectionLabel>
           <div className="grid grid-cols-3 gap-2">
             {cashOptions.map(v => (
               <button
@@ -1154,7 +1158,7 @@ function MobileCheckoutPanel({
                   : "bg-card border-border active:bg-muted"
               )}
             >
-              <p className="text-[13px] font-semibold">Other</p>
+              <p className="text-[13px] font-semibold">{t("pos.pay.other")}</p>
             </button>
           </div>
           {showCustomCash && (
@@ -1179,7 +1183,7 @@ function MobileCheckoutPanel({
             <div className="mt-3 rounded-[0.3rem] bg-muted border border-border p-3 flex items-center gap-3">
               <Banknote className="h-5 w-5 text-emerald-700" />
               <div>
-                <p className="text-[11px] text-emerald-700 font-semibold uppercase tracking-wide">Change</p>
+                <p className="text-[11px] text-emerald-700 font-semibold uppercase tracking-wide">{t("pos.pay.change")}</p>
                 <p className="text-[20px] font-bold text-emerald-900 tabular-nums">{money(cashTaken - total)}</p>
               </div>
             </div>
@@ -1189,11 +1193,11 @@ function MobileCheckoutPanel({
 
       {/* Totals */}
       <div className="rounded-[0.3rem] border border-border bg-card p-4 space-y-1.5 text-[13px]">
-        <TotalsRow label="Subtotal" value={money(subtotal)} />
-        <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
-        <TotalsRow label="Tax" value={money(tax)} />
+        <TotalsRow label={t("pos.register.subtotal")} value={money(subtotal)} />
+        <TotalsRow label={t("pos.cart.tipLabel").replace("{pct}", String(tipPct))} value={money(tip)} />
+        <TotalsRow label={t("pos.register.taxShort")} value={money(tax)} />
         <div className="h-px bg-border my-2" />
-        <TotalsRow label="Total" value={money(total)} bold big />
+        <TotalsRow label={t("pos.register.total")} value={money(total)} bold big />
       </div>
 
       {/* Charge */}
@@ -1208,7 +1212,7 @@ function MobileCheckoutPanel({
         ) : (
           <CheckCircle className="h-[18px] w-[18px]" />
         )}
-        {processing ? "Processing…" : showOfflineCardInput ? `Queue Card ${money(total)}` : `Charge ${money(total)}`}
+        {processing ? t("pos.charge.processing") : showOfflineCardInput ? t("pos.pay.queueCardAmount").replace("{amount}", money(total)) : t("pos.pay.chargeAmount").replace("{amount}", money(total))}
       </button>
     </div>
   );
@@ -1217,13 +1221,14 @@ function MobileCheckoutPanel({
 // ─── Receipt Overlay ─────────────────────────────────────────────────────────
 
 function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: () => void }) {
+  const t = useT();
   const money = useMoney();
   const { payment, businessName, tipAmount, tipPct } = data;
   const now = new Date(payment.createdAt);
   const timeStr = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const dateStr = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
-  const methodLabel: Record<string, string> = { card: "Card", cash: "Cash", other: "Other" };
+  const methodLabel: Record<string, string> = { card: t("pos.pay.methods.card"), cash: t("pos.pay.methods.cash"), other: t("pos.pay.other") };
 
   return (
     <div className="absolute inset-0 z-30 bg-muted flex flex-col items-center justify-center p-8 overflow-auto">
@@ -1231,7 +1236,7 @@ function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: (
         <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-5">
           <Check className="h-9 w-9 text-emerald-700" strokeWidth={2.4} />
         </div>
-        <p className="text-[24px] font-semibold">Paid {money(payment.amount)}</p>
+        <p className="text-[24px] font-semibold">{t("pos.receipt.paidAmount").replace("{amount}", money(payment.amount))}</p>
         <p className="text-[14px] text-muted-foreground mt-1">
           {payment.customerName ? `${payment.customerName} · ` : ""}
           {dateStr}
@@ -1240,7 +1245,7 @@ function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: (
         {/* Receipt card */}
         <div className="bg-card border border-border rounded-[0.3rem] w-full mt-6 p-5 font-mono text-[12px]">
           <div className="text-center border-b border-dashed border-muted-foreground/30 pb-3 mb-3">
-            <p className="font-sans text-[14px] font-semibold">{businessName || "Your Business"}</p>
+            <p className="font-sans text-[14px] font-semibold">{businessName || t("pos.receipt.yourBusiness")}</p>
             <p className="text-[11px] text-muted-foreground">{dateStr} &middot; {timeStr}</p>
             {payment.customerName && (
               <p className="text-[11px] text-muted-foreground mt-0.5">{payment.customerName}</p>
@@ -1259,37 +1264,37 @@ function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: (
           <div className="border-t border-dashed border-muted-foreground/30 my-3" />
           <div className="space-y-1">
             <div className="flex justify-between">
-              <span>Subtotal</span>
+              <span>{t("pos.receipt.subtotal")}</span>
               <span className="tabular-nums">
                 {money(payment.amount - payment.taxAmount - tipAmount + payment.discountAmount)}
               </span>
             </div>
             {tipAmount > 0 && (
               <div className="flex justify-between">
-                <span>Tip {tipPct}%</span>
+                <span>{t("pos.receipt.tipPct").replace("{pct}", String(tipPct))}</span>
                 <span className="tabular-nums">{money(tipAmount)}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span>Tax</span>
+              <span>{t("pos.receipt.tax")}</span>
               <span className="tabular-nums">{money(payment.taxAmount)}</span>
             </div>
             {payment.discountAmount > 0 && (
               <div className="flex justify-between text-emerald-600">
-                <span>Discount</span>
+                <span>{t("pos.receipt.discount")}</span>
                 <span className="tabular-nums">&minus;{money(payment.discountAmount)}</span>
               </div>
             )}
             <div className="flex justify-between font-semibold text-[13px] mt-1 pt-1 border-t border-muted-foreground/30">
-              <span>Total</span>
+              <span>{t("pos.receipt.total")}</span>
               <span className="tabular-nums">{money(payment.amount)}</span>
             </div>
             <div className="flex justify-between text-muted-foreground">
-              <span>Paid</span>
+              <span>{t("pos.receipt.paid")}</span>
               <span className="capitalize">{methodLabel[payment.method] ?? payment.method}</span>
             </div>
           </div>
-          <p className="text-center text-[10.5px] text-muted-foreground mt-3 font-sans">Thank you!</p>
+          <p className="text-center text-[10.5px] text-muted-foreground mt-3 font-sans">{t("pos.receipt.thankYou")}</p>
         </div>
 
         <div className="flex gap-2 mt-6 w-full">
@@ -1298,13 +1303,13 @@ function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: (
             onClick={() => window.print()}
             className="flex-1 h-10 rounded-[0.3rem] border border-border bg-card hover:bg-muted text-[13px] font-medium inline-flex items-center justify-center gap-2"
           >
-            <Printer className="h-[15px] w-[15px]" /> Print
+            <Printer className="h-[15px] w-[15px]" /> {t("pos.receipt.print")}
           </button>
           <button
             type="button"
             className="flex-1 h-10 rounded-[0.3rem] border border-border bg-card hover:bg-muted text-[13px] font-medium inline-flex items-center justify-center gap-2"
           >
-            <Mail className="h-[15px] w-[15px]" /> Email
+            <Mail className="h-[15px] w-[15px]" /> {t("pos.receipt.email")}
           </button>
         </div>
         <button
@@ -1312,7 +1317,7 @@ function ReceiptOverlay({ data, onNewOrder }: { data: ReceiptData; onNewOrder: (
           onClick={() => { hapticSuccess(); onNewOrder(); }}
           className="mt-3 w-full h-11 rounded-[0.3rem] bg-foreground hover:bg-foreground/90 text-background text-[13px] font-semibold inline-flex items-center justify-center gap-2"
         >
-          <Plus className="h-4 w-4" /> New order
+          <Plus className="h-4 w-4" /> {t("pos.receipt.newOrder")}
         </button>
       </div>
     </div>
@@ -1864,14 +1869,15 @@ export default function POSPage() {
     const updated = [...pendingCards, entry];
     savePendingCards(updated);
     hapticSuccess();
-    toast.success("Payment queued", { description: `Card ending ${entry.cardNumberLast4} — will process when online` });
+    toast.success(t("pos.toast.paymentQueued"), { description: t("pos.toast.paymentQueuedDesc").replace("{last4}", entry.cardNumberLast4) });
     clearCart();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCards, savePendingCards, cart, customerName, tipPct, tip, tax, total, clearCart]);
 
   const clearPendingCards = useCallback(() => {
     savePendingCards([]);
-    toast.success("Pending cards cleared");
+    toast.success(t("pos.toast.pendingCardsCleared"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savePendingCards]);
 
   // ── Payment ─────────────────────────────────────────────────────────────────
@@ -2066,7 +2072,7 @@ export default function POSPage() {
         <div className="shrink-0 bg-amber-100 border-b border-amber-300 px-4 py-1.5 flex items-center gap-2">
           <WifiOff className="h-3.5 w-3.5 text-amber-700" />
           <span className="text-[11.5px] font-semibold text-amber-800 uppercase tracking-wide">
-            Offline mode — Cash &amp; Card Queue only
+            {t("pos.offline.banner")}
           </span>
         </div>
       )}
@@ -2076,14 +2082,14 @@ export default function POSPage() {
         <div className="shrink-0 bg-blue-50 border-b border-blue-200 px-4 py-1.5 flex items-center gap-2">
           <CreditCard className="h-3.5 w-3.5 text-blue-700" />
           <span className="text-[11.5px] font-medium text-blue-800">
-            {pendingCards.length} pending card payment{pendingCards.length !== 1 ? "s" : ""} queued
+            {(pendingCards.length === 1 ? t("pos.pending.queuedOne") : t("pos.pending.queuedOther")).replace("{count}", String(pendingCards.length))}
           </span>
           <button
             type="button"
             onClick={clearPendingCards}
             className="ml-auto text-[11px] font-semibold text-blue-700 hover:text-blue-900 px-2 py-0.5 rounded border border-blue-300 hover:bg-blue-100 transition-colors"
           >
-            Process {pendingCards.length} pending card{pendingCards.length !== 1 ? "s" : ""}
+            {(pendingCards.length === 1 ? t("pos.pending.processOne") : t("pos.pending.processOther")).replace("{count}", String(pendingCards.length))}
           </button>
         </div>
       )}
@@ -2101,15 +2107,15 @@ export default function POSPage() {
             {/* Top bar */}
             <div className="h-14 bg-card border-b border-border px-5 flex items-center gap-3 shrink-0">
               <div className="min-w-0">
-                <p className="text-[15px] font-semibold leading-tight">New order</p>
-                <p className="text-[11.5px] text-muted-foreground leading-tight">Register</p>
+                <p className="text-[15px] font-semibold leading-tight">{t("pos.register.newOrder")}</p>
+                <p className="text-[11.5px] text-muted-foreground leading-tight">{t("pos.tabs.register")}</p>
               </div>
               <div className="relative flex-1 max-w-[360px] ml-6">
                 <Search className="h-[14px] w-[14px] absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Search menu..."
+                  placeholder={t("pos.register.searchMenu")}
                   className="w-full pl-8 pr-3 py-1.5 text-[13px] rounded border border-border bg-background outline-none focus:ring-1 focus:ring-ring"
                 />
                 {search && (
@@ -2119,10 +2125,10 @@ export default function POSPage() {
                 )}
               </div>
               <div className="ml-auto flex items-center gap-1.5">
-                <button type="button" className="h-8 w-8 rounded border border-border bg-card hover:bg-muted inline-flex items-center justify-center text-muted-foreground" title="Scan">
+                <button type="button" className="h-8 w-8 rounded border border-border bg-card hover:bg-muted inline-flex items-center justify-center text-muted-foreground" title={t("pos.register.scan")}>
                   <ScanLine className="h-[15px] w-[15px]" />
                 </button>
-                <button type="button" className="h-8 w-8 rounded border border-border bg-card hover:bg-muted inline-flex items-center justify-center text-muted-foreground" title="More">
+                <button type="button" className="h-8 w-8 rounded border border-border bg-card hover:bg-muted inline-flex items-center justify-center text-muted-foreground" title={t("common.more")}>
                   <MoreHorizontal className="h-[15px] w-[15px]" />
                 </button>
               </div>
@@ -2146,7 +2152,7 @@ export default function POSPage() {
                     )}
                   >
                     <CIcon className="h-[13px] w-[13px]" />
-                    {cat}
+                    {cat === "All" ? t("pos.register.all") : cat}
                   </button>
                 );
               })}
@@ -2156,14 +2162,14 @@ export default function POSPage() {
             <div className="flex-1 overflow-auto bg-muted/50 p-5">
               <div className="flex items-baseline gap-2 mb-3">
                 <h2 className="text-[13px] font-semibold">
-                  {search ? `Matches for "${search}"` : activeCategory}
+                  {search ? t("pos.register.matchesFor").replace("{query}", search) : activeCategory === "All" ? t("pos.register.all") : activeCategory}
                 </h2>
-                <span className="text-[11.5px] text-muted-foreground">{filteredProducts.length} items</span>
+                <span className="text-[11.5px] text-muted-foreground">{t("pos.cart.itemsCount").replace("{count}", String(filteredProducts.length))}</span>
               </div>
               {filteredProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
                   <ShoppingBag className="h-8 w-8 opacity-30" />
-                  <p className="text-sm">{search ? "No results found" : "No products in this category"}</p>
+                  <p className="text-sm">{search ? t("pos.register.noResultsFound") : t("pos.register.noProductsInCategory")}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -2206,7 +2212,7 @@ export default function POSPage() {
                       {cart.reduce((s, l) => s + l.qty, 0)}
                     </span>
                   </div>
-                  <span className="text-[13px] font-semibold">View Cart</span>
+                  <span className="text-[13px] font-semibold">{t("pos.cart.viewCart")}</span>
                 </div>
                 <span className="font-mono tabular-nums text-[13px] font-semibold">{money(total)}</span>
               </button>
@@ -2218,14 +2224,14 @@ export default function POSPage() {
             <DrawerContent>
               <DrawerHeader className="border-b border-border">
                 <DrawerTitle className="text-sm">
-                  Cart · {cart.length} item{cart.length !== 1 ? "s" : ""}
+                  {t("pos.cart.drawerTitle").replace("{count}", String(cart.length))}
                 </DrawerTitle>
               </DrawerHeader>
               <div className="flex-1 overflow-y-auto max-h-[50vh] divide-y divide-border">
                 {cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                     <ShoppingBag className="h-8 w-8 opacity-30 mb-2" />
-                    <p className="text-[12px]">Cart is empty</p>
+                    <p className="text-[12px]">{t("pos.cart.empty")}</p>
                   </div>
                 ) : (
                   cart.map(l => {
@@ -2247,7 +2253,7 @@ export default function POSPage() {
                             )}
                             {l.discount && (
                               <p className="text-[11px] text-emerald-700 mt-0.5 font-mono">
-                                {l.discount.pct ? `${l.discount.pct}% off` : `${money(l.discount.amount ?? 0)} off`}
+                                {l.discount.pct ? t("pos.cart.pctOff").replace("{pct}", String(l.discount.pct)) : t("pos.cart.amountOff").replace("{amount}", money(l.discount.amount ?? 0))}
                               </p>
                             )}
                           </div>
@@ -2285,9 +2291,9 @@ export default function POSPage() {
               {cart.length > 0 && (
                 <>
                   <div className="px-4 py-3 space-y-1 text-[12px] font-mono border-t border-border">
-                    <TotalsRow label="Subtotal" value={money(subtotal)} />
-                    <TotalsRow label={`Tip (${tipPct}%)`} value={money(tip)} />
-                    <TotalsRow label="Tax" value={money(tax)} />
+                    <TotalsRow label={t("pos.register.subtotal")} value={money(subtotal)} />
+                    <TotalsRow label={t("pos.cart.tipLabel").replace("{pct}", String(tipPct))} value={money(tip)} />
+                    <TotalsRow label={t("pos.register.taxShort")} value={money(tax)} />
                   </div>
                   <div className="p-3 pt-0">
                     <button
@@ -2295,7 +2301,7 @@ export default function POSPage() {
                       onClick={() => { hapticLight(); setCartDrawerOpen(false); setTimeout(() => setMobilePayOpen(true), 300); }}
                       className="w-full h-10 bg-foreground hover:bg-foreground/90 text-background rounded-[0.3rem] text-[12px] font-semibold flex items-center justify-between px-4"
                     >
-                      <span>Charge</span>
+                      <span>{t("pos.register.charge")}</span>
                       <span className="font-mono tabular-nums text-[13px]">{money(total)}</span>
                     </button>
                   </div>

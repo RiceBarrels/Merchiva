@@ -248,7 +248,7 @@ export default function InventoryPage() {
               <TrendingDown className="h-3.5 w-3.5" /> {t("inventory.tabs.losses")}
             </TabsTrigger>
             <TabsTrigger value="restock" className="gap-2">
-              <Sparkles className="h-3.5 w-3.5" /> Restock
+              <Sparkles className="h-3.5 w-3.5" /> {t("inventory.tabs.restock")}
             </TabsTrigger>
           </TabsList>
 
@@ -513,8 +513,8 @@ export default function InventoryPage() {
               <Card>
                 <CardContent className="py-16 text-center text-muted-foreground">
                   <CheckCircle2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">All stocked up — no restocking needed</p>
-                  <p className="text-sm mt-1">Your inventory levels look healthy.</p>
+                  <p className="font-medium">{t("inventory.restock.emptyTitle")}</p>
+                  <p className="text-sm mt-1">{t("inventory.restock.emptyHint")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -528,7 +528,7 @@ export default function InventoryPage() {
                       </div>
                       <div>
                         <p className="text-lg font-bold font-mono">{criticalCount}</p>
-                        <p className="text-xs text-muted-foreground">Critical Items</p>
+                        <p className="text-xs text-muted-foreground">{t("inventory.restock.criticalItems")}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -539,7 +539,7 @@ export default function InventoryPage() {
                       </div>
                       <div>
                         <p className="text-lg font-bold font-mono">{highCount}</p>
-                        <p className="text-xs text-muted-foreground">High Priority</p>
+                        <p className="text-xs text-muted-foreground">{t("inventory.restock.highPriority")}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -550,7 +550,7 @@ export default function InventoryPage() {
                       </div>
                       <div>
                         <p className="text-lg font-bold font-mono">{format(totalOrderValue, { decimals: 0 })}</p>
-                        <p className="text-xs text-muted-foreground">Total Order Value</p>
+                        <p className="text-xs text-muted-foreground">{t("inventory.restock.totalOrderValue")}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -561,7 +561,7 @@ export default function InventoryPage() {
                       </div>
                       <div>
                         <p className="text-lg font-bold font-mono">{restockSuggestions.length}</p>
-                        <p className="text-xs text-muted-foreground">Items to Restock</p>
+                        <p className="text-xs text-muted-foreground">{t("inventory.restock.itemsToRestock")}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -576,11 +576,11 @@ export default function InventoryPage() {
                     onClick={() => {
                       const { headers, rows } = formatPurchaseOrder(restockSuggestions);
                       downloadCSV("purchase-order", headers, rows);
-                      toast.success("Purchase order CSV downloaded");
+                      toast.success(t("inventory.restock.csvDownloaded"));
                     }}
                   >
                     <Download className="h-4 w-4" />
-                    Export Purchase Order (CSV)
+                    {t("inventory.restock.exportCsv")}
                   </Button>
                   <Button
                     variant="outline"
@@ -588,15 +588,17 @@ export default function InventoryPage() {
                     className="gap-2"
                     onClick={() => {
                       const { headers, rows } = formatPurchaseOrder(restockSuggestions);
-                      downloadPDF("Purchase Order", headers, rows, {
-                        subtitle: `${restockSuggestions.length} items — Est. ${format(totalOrderValue)}`,
+                      downloadPDF(t("inventory.restock.pdfTitle"), headers, rows, {
+                        subtitle: t("inventory.restock.pdfSubtitle")
+                          .replace("{count}", String(restockSuggestions.length))
+                          .replace("{cost}", format(totalOrderValue)),
                         landscape: true,
                       });
-                      toast.success("Purchase order PDF downloaded");
+                      toast.success(t("inventory.restock.pdfDownloaded"));
                     }}
                   >
                     <Download className="h-4 w-4" />
-                    Export Purchase Order (PDF)
+                    {t("inventory.restock.exportPdf")}
                   </Button>
                 </div>
 
@@ -834,6 +836,7 @@ const PRIORITY_BAR_COLORS: Record<RestockPriority, string> = {
 
 function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
   const { format } = useCurrency();
+  const t = useT();
   const stockPct = Math.min(100, Math.round((s.currentStock / s.maxStock) * 100));
   const daysSinceRestock = Math.round(
     (Date.now() - new Date(s.lastRestocked).getTime()) / 86_400_000
@@ -848,10 +851,10 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
 
   const trendLabel =
     s.consumptionTrend === "increasing"
-      ? "increasing"
+      ? t("inventory.restock.trend.increasing")
       : s.consumptionTrend === "decreasing"
-      ? "decreasing"
-      : "stable";
+      ? t("inventory.restock.trend.decreasing")
+      : t("inventory.restock.trend.stable");
 
   return (
     <Card className="rounded-[0.3rem]">
@@ -877,7 +880,7 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
         {/* Stock level */}
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Stock level</span>
+            <span className="text-muted-foreground">{t("inventory.restock.stockLevel")}</span>
             <span className="font-mono font-medium">
               {s.currentStock} <span className="text-muted-foreground">/ {s.maxStock} {s.unit}</span>
             </span>
@@ -890,9 +893,9 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
 
         {/* Consumption + trend */}
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Daily consumption</span>
+          <span className="text-muted-foreground">{t("inventory.restock.dailyConsumption")}</span>
           <span className="inline-flex items-center gap-1 font-mono font-medium">
-            {s.dailyConsumptionRate} {s.unit}/day
+            {t("inventory.restock.perDay").replace("{rate}", String(s.dailyConsumptionRate)).replace("{unit}", s.unit)}
             <TrendIcon className={cn(
               "h-3 w-3",
               s.consumptionTrend === "increasing" ? "text-red-500" :
@@ -912,7 +915,7 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
 
         {/* Days until stockout */}
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Days until stockout</span>
+          <span className="text-muted-foreground">{t("inventory.restock.daysUntilStockout")}</span>
           <span
             className={cn(
               "font-mono font-semibold",
@@ -923,7 +926,7 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
                 : "text-stone-700 dark:text-stone-300"
             )}
           >
-            {s.daysUntilStockout >= 999 ? "N/A" : `${s.daysUntilStockout} days`}
+            {s.daysUntilStockout >= 999 ? t("inventory.restock.notApplicable") : t("inventory.restock.daysValue").replace("{days}", String(s.daysUntilStockout))}
           </span>
         </div>
 
@@ -932,7 +935,7 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
         {/* Order recommendation */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Recommended order</span>
+            <span className="text-muted-foreground">{t("inventory.restock.recommendedOrder")}</span>
             <span className="font-mono font-semibold">
               {s.recommendedOrderQty} {s.unit}
               {s.unitsPerCase && s.unitsPerCase > 0 && (
@@ -943,17 +946,17 @@ function RestockCard({ suggestion: s }: { suggestion: RestockSuggestion }) {
             </span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Estimated cost</span>
+            <span className="text-muted-foreground">{t("inventory.restock.estimatedCost")}</span>
             <span className="font-mono font-semibold">{format(s.estimatedCost)}</span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Supplier</span>
+            <span className="text-muted-foreground">{t("inventory.dialog.supplier")}</span>
             <span className="text-sm truncate max-w-[140px]">{s.supplier || "—"}</span>
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Last restocked</span>
+            <span className="text-muted-foreground">{t("inventory.restock.lastRestocked")}</span>
             <span className="text-muted-foreground font-mono">
-              {daysSinceRestock} days ago
+              {t("inventory.restock.daysAgo").replace("{days}", String(daysSinceRestock))}
             </span>
           </div>
         </div>

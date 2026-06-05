@@ -1428,6 +1428,23 @@ export async function setAutoCommitSchedules(autoCommit: boolean): Promise<void>
   });
 }
 
+// ─── Mr. Merchiva autonomy config ───────────────────────────────────────────
+//
+// Stores a JSON-encoded AutonomyConfig (lib/merchiva/autonomy.ts) on the org's
+// settings row. Owner-only, enforced by the reducer. `config` may be an
+// AutonomyConfig object or an already-stringified blob.
+export async function setAssistantConfig(
+  config: unknown,
+  organizationId?: string,
+): Promise<void> {
+  const json = typeof config === "string" ? config : JSON.stringify(config);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (conn().reducers as any).setAssistantConfig({
+    organizationId: organizationId ?? orgId(),
+    config: json,
+  });
+}
+
 // ─── Blog Posts ─────────────────────────────────────────────────────────────
 
 export async function createBlogPost(data: {

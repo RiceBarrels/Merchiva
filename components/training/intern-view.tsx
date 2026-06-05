@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 import {
   useTrainingDayGrades,
   useTrainingDays,
@@ -50,6 +51,7 @@ const ACC_BD = "#ecd9b8";
 const ACC = "oklch(0.55 0.09 55)";
 
 export function TrainingInternView({ orgId, userId }: { orgId: string; userId: string | null }) {
+  const t = useT();
   const [rawDays] = useTrainingDays() as [unknown[], boolean];
   const [rawObjectives] = useTrainingObjectives() as [unknown[], boolean];
   const [rawDayGrades] = useTrainingDayGrades() as [unknown[], boolean];
@@ -152,7 +154,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
 
   const tasks = activeObjectives.map((o, i) => ({
     id: o.id,
-    label: o.text || `Objective ${i + 1}`,
+    label: o.text || t("training.intern.objectiveFallback").replace("{number}", String(i + 1)),
     done: !!taskState[o.id],
   }));
   const doneCount = tasks.filter((t) => t.done).length;
@@ -201,10 +203,12 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
         <div className="px-4 lg:px-6 py-3 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              progress
+              {t("training.intern.progress")}
             </span>
             <span className="text-[13px] font-semibold">
-              Day {internDayNumber} of {total}
+              {t("training.intern.dayOfTotal")
+                .replace("{day}", String(internDayNumber))
+                .replace("{total}", String(total))}
             </span>
           </div>
           <div className="flex-1 min-w-[200px] max-w-[420px]">
@@ -228,9 +232,9 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
               })}
             </div>
             <div className="flex items-center justify-between mt-1.5 text-[10.5px] text-muted-foreground font-mono">
-              <span>{completedCount} done</span>
+              <span>{t("training.intern.doneCount").replace("{count}", String(completedCount))}</span>
               <span className="text-foreground font-semibold">{pct}%</span>
-              <span>{total - completedCount} remaining</span>
+              <span>{t("training.intern.remainingCount").replace("{count}", String(total - completedCount))}</span>
             </div>
           </div>
           <div className="flex-1" />
@@ -239,7 +243,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
             style={{ background: ACC_SOFT, border: `1px solid ${ACC_BD}`, color: ACC }}
           >
             <Flame className="h-3 w-3" strokeWidth={1.75} />
-            <span className="uppercase tracking-wider">Keep going</span>
+            <span className="uppercase tracking-wider">{t("training.intern.keepGoing")}</span>
           </div>
         </div>
       </div>
@@ -260,21 +264,21 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
           <div className="max-w-[680px] mx-auto px-6 lg:px-8 py-8">
             <div className="flex items-center gap-2 text-[11.5px] text-muted-foreground mb-5 flex-wrap">
               <span className="font-mono uppercase tracking-wider text-muted-foreground/80">
-                Day {activeDay?.dayNumber ?? "—"}
+                {t("training.intern.dayLabel").replace("{number}", String(activeDay?.dayNumber ?? "—"))}
               </span>
               <span className="text-stone-300 dark:text-stone-700">·</span>
               <span className="inline-flex items-center gap-1">
-                <Clock className="h-[11px] w-[11px]" strokeWidth={1.75} /> Practice
+                <Clock className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.intern.practice")}
               </span>
               <span className="text-stone-300 dark:text-stone-700">·</span>
               <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
-                <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} /> required
+                <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.intern.required")}
               </span>
               {isLocked && (
                 <>
                   <span className="text-stone-300 dark:text-stone-700">·</span>
                   <span className="inline-flex items-center gap-1 text-muted-foreground">
-                    <Lock className="h-[11px] w-[11px]" strokeWidth={1.75} /> locked until prior day passes
+                    <Lock className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.intern.lockedUntilPrior")}
                   </span>
                 </>
               )}
@@ -290,7 +294,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                 )
               ) : (
                 <p className="italic text-muted-foreground">
-                  No content yet for this day.
+                  {t("training.intern.noContentYet")}
                 </p>
               )}
             </div>
@@ -348,7 +352,11 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                 className="h-9 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ArrowLeft className="h-[13px] w-[13px]" strokeWidth={1.75} />{" "}
-                {prevDay ? `Day ${prevDay.dayNumber} · ${prevDay.title}` : "Prev"}
+                {prevDay
+                  ? t("training.intern.dayWithTitle")
+                      .replace("{number}", String(prevDay.dayNumber))
+                      .replace("{title}", prevDay.title)
+                  : t("common.previous")}
               </button>
               <div className="flex-1" />
               <button
@@ -357,7 +365,11 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                 onClick={() => nextDay && !nextLocked && setActiveId(nextDay.id)}
                 className="h-9 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-stone-700 dark:text-stone-200 inline-flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-muted"
               >
-                {nextDay ? `Day ${nextDay.dayNumber} · ${nextDay.title}` : "Next"}
+                {nextDay
+                  ? t("training.intern.dayWithTitle")
+                      .replace("{number}", String(nextDay.dayNumber))
+                      .replace("{title}", nextDay.title)
+                  : t("common.next")}
                 {nextLocked ? (
                   <Lock className="h-[12px] w-[12px]" strokeWidth={1.75} />
                 ) : (
@@ -375,22 +387,22 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
             <div className="px-4 pt-4 pb-2">
               <div className="flex items-baseline gap-2">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  practice
+                  {t("training.intern.practice")}
                 </span>
                 <span className="ml-auto font-mono text-[11px] tabular-nums">
                   <span className="text-foreground font-semibold">{doneCount}</span>
                   <span className="text-muted-foreground">/{tasks.length}</span>
                 </span>
               </div>
-              <div className="text-[13.5px] font-semibold leading-tight mt-1">Tasks for today</div>
+              <div className="text-[13.5px] font-semibold leading-tight mt-1">{t("training.intern.tasksForToday")}</div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
-                Check each off as you complete it.
+                {t("training.intern.checkEachOff")}
               </div>
             </div>
             <div className="px-4 pb-3">
               {tasks.length === 0 && (
                 <div className="text-[12px] italic text-muted-foreground py-2">
-                  No tasks yet — your manager will add objectives soon.
+                  {t("training.intern.noTasksYet")}
                 </div>
               )}
               {tasks.map((t) => (
@@ -436,7 +448,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
             <div className="bg-background border-b border-border">
               <div className="px-4 pt-3 pb-2">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  resources
+                  {t("training.intern.resources")}
                 </span>
               </div>
               <div className="px-4 pb-3 flex flex-col gap-1.5">
@@ -463,7 +475,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                         {a.text || a.mediaType}
                       </span>
                       <span className="font-mono text-[9.5px] text-muted-foreground tabular-nums shrink-0">
-                        {a.mediaType ?? "note"}
+                        {a.mediaType ?? t("training.intern.note")}
                       </span>
                     </a>
                   );
@@ -482,15 +494,18 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                   disabled={!allDone}
                   className="w-full h-10 rounded-[0.3rem] bg-foreground text-background text-[13px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
-                  Request trainer review
+                  {t("training.intern.requestTrainerReview")}
                   <ArrowRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
                 </button>
                 <div className="mt-1.5 text-[10.5px] text-muted-foreground text-center">
                   {allDone
-                    ? "Your trainer will be notified."
+                    ? t("training.intern.trainerWillBeNotified")
                     : tasks.length === 0
-                      ? "Wait for tasks to be assigned."
-                      : `Complete ${tasks.length - doneCount} more task${tasks.length - doneCount === 1 ? "" : "s"} to request review`}
+                      ? t("training.intern.waitForTasks")
+                      : (tasks.length - doneCount === 1
+                          ? t("training.intern.completeMoreTask")
+                          : t("training.intern.completeMoreTasks")
+                        ).replace("{count}", String(tasks.length - doneCount))}
                 </div>
               </>
             ) : (
@@ -507,11 +522,11 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                     className="font-mono text-[10.5px] uppercase tracking-wider"
                     style={{ color: ACC }}
                   >
-                    awaiting review
+                    {t("training.intern.awaitingReview")}
                   </span>
                 </div>
                 <div className="text-[12.5px] mt-1.5 text-stone-700 dark:text-stone-300">
-                  Your trainer will come over for live grading. Stay near the bar.
+                  {t("training.intern.liveGradingNote")}
                 </div>
               </div>
             )}
@@ -520,7 +535,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
               type="button"
               className="w-full h-9 mt-2 rounded-[0.3rem] border border-border bg-background text-[12.5px] text-muted-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5"
             >
-              <MessageSquare className="h-3 w-3" strokeWidth={1.75} /> Ask trainer a question
+              <MessageSquare className="h-3 w-3" strokeWidth={1.75} /> {t("training.intern.askTrainerQuestion")}
             </button>
           </div>
         </aside>

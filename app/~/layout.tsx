@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { MobileShell } from "@/components/sidebar";
 import { MerchivaQuickDialog } from "@/components/merchiva-quick-dialog";
 import { OfflineIndicator } from "@/components/offline-indicator";
@@ -25,6 +25,7 @@ import { useT } from "@/lib/i18n/context";
 
 import { tables } from "@/lib/spacetimedb/generated";
 import { getConnection, setActiveOrgId } from "@/lib/spacetimedb/client";
+import { evaluateSubscription } from "@/lib/billing/subscription";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
 
 // New-user onboarding: shown when SpacetimeDB is ready but the user has no org membership yet.
@@ -329,6 +330,33 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       setupRouter.replace("/~/setup");
     }
   }, [effectiveAuth, needsName, setupComplete, setupRouter]);
+
+  // ── Subscription gate ────────────────────────────────────────────────────
+  // An org may use the app while subscribed (Stripe active/trialing/past_due)
+  // or inside its free-trial window. Subscription lives on the ROOT org, so
+  // sub-stores inherit their parent's status. We only block when we can
+  // positively read the org row and it's genuinely out of access — if the row
+  // hasn't streamed in yet (or we're offline) we fail open, never locking a
+  // legitimate user out. Returns null while undetermined.
+  const pathname = usePathname();
+  const subscriptionBlocked = useMemo<boolean | null>(() => {
+    if (!effectiveAuth) return null;
+    if (!orgsReady) return null;
+    const rootOrgId = effectiveAuth.currentOrg.parentOrgId ?? effectiveAuth.organizationId;
+    const orgRow = organizations.find((o) => o.id.toString() === rootOrgId);
+    if (!orgRow) return null; // can't determine — fail open
+    return !evaluateSubscription(orgRow, Date.now()).allowed;
+  }, [effectiveAuth, orgsReady, organizations]);
+
+  useEffect(() => {
+    if (!effectiveAuth || needsName) return;
+    if (setupComplete !== true) return; // let onboarding finish first
+    if (subscriptionBlocked !== true) return;
+    // Don't bounce off the paywall or the billing page (where they pay).
+    if (pathname?.startsWith("/~/subscribe")) return;
+    if (pathname?.startsWith("/~/settings/billing")) return;
+    setupRouter.replace("/~/subscribe");
+  }, [effectiveAuth, needsName, setupComplete, subscriptionBlocked, pathname, setupRouter]);
 
   // ── Splash flow ───────────────────────────────────────────────────────
   // Cold load: SpacetimeDB tables aren't ready AND we have no cached auth.

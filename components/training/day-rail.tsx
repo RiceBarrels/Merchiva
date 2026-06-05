@@ -2,6 +2,7 @@
 
 import { Check, GripVertical, Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 import type { TrainingRole } from "./role-switcher";
 
 export interface DayRailItem {
@@ -22,13 +23,13 @@ const TYPE_DOT: Record<NonNullable<DayRailItem["type"]>, string> = {
   assessment: "#dc2626",
 };
 
-const TYPE_LABEL: Record<NonNullable<DayRailItem["type"]>, string> = {
-  orientation: "orientation",
-  theory: "theory",
-  practice: "practice",
-  system: "system",
-  compliance: "compliance",
-  assessment: "assessment",
+const TYPE_LABEL_KEY: Record<NonNullable<DayRailItem["type"]>, string> = {
+  orientation: "training.dayRail.typeOrientation",
+  theory: "training.dayRail.typeTheory",
+  practice: "training.dayRail.typePractice",
+  system: "training.dayRail.typeSystem",
+  compliance: "training.dayRail.typeCompliance",
+  assessment: "training.dayRail.typeAssessment",
 };
 
 export function DayRail({
@@ -52,15 +53,16 @@ export function DayRail({
   title?: string;
   subtitle?: string;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-4 pb-2 flex items-center gap-2 shrink-0">
         <div className="flex-1 min-w-0">
           <div className="text-[13.5px] font-semibold leading-tight truncate">
-            {title ?? "Curriculum"}
+            {title ?? t("training.curriculumDays")}
           </div>
           <div className="text-[10.5px] text-muted-foreground leading-tight mt-0.5 truncate">
-            <span className="font-mono">{days.length}</span> {subtitle ?? "days"}
+            <span className="font-mono">{days.length}</span> {subtitle ?? t("training.dayRail.days")}
           </div>
         </div>
         {role === "manager" && onAddDay && (
@@ -68,8 +70,8 @@ export function DayRail({
             type="button"
             onClick={onAddDay}
             className="h-7 w-7 rounded-[0.3rem] border border-border bg-background text-muted-foreground inline-flex items-center justify-center hover:bg-muted"
-            title="Add day"
-            aria-label="Add day"
+            title={t("training.addDay")}
+            aria-label={t("training.addDay")}
           >
             <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} />
           </button>
@@ -79,7 +81,7 @@ export function DayRail({
       <div className="flex-1 overflow-y-auto px-2 pb-3 pt-1">
         {days.length === 0 && (
           <div className="px-3 py-6 text-center text-[11.5px] text-muted-foreground">
-            No days yet
+            {t("training.dayRail.noDaysYet")}
           </div>
         )}
         {days.map((d) => {
@@ -91,7 +93,9 @@ export function DayRail({
           const isCurrent =
             role === "intern" && internDayNumber != null && d.dayNumber === internDayNumber;
           const dotColor = d.type ? TYPE_DOT[d.type] : "#a8a29e";
-          const typeLabel = d.type ? TYPE_LABEL[d.type] : "general";
+          const typeLabel = d.type
+            ? t(TYPE_LABEL_KEY[d.type])
+            : t("training.dayRail.typeGeneral");
           return (
             <button
               key={d.id}
@@ -109,7 +113,7 @@ export function DayRail({
                     active ? "text-background/60" : "text-muted-foreground",
                   )}
                 >
-                  DAY
+                  {t("training.dayRail.dayAbbrev")}
                 </span>
                 <span
                   className={cn(
@@ -142,7 +146,7 @@ export function DayRail({
                         active ? "text-background/60" : "text-muted-foreground/70",
                       )}
                     >
-                      · optional
+                      · {t("training.dayRail.optional")}
                     </span>
                   )}
                 </div>
