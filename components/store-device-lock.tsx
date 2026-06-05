@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Lock, Delete, ArrowLeft } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
@@ -11,6 +10,7 @@ import {
   setCurrentOperator,
   getCurrentOperator,
 } from "@/lib/store-device-lock";
+import { recordPunch } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { hapticSuccess, hapticMedium, hapticLight } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -26,20 +26,10 @@ interface MemberRow {
 
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"] as const;
 
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "?"
-  );
-}
-
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
+const pad = (n: number) => String(n).padStart(2, "0");
+const fmtClock = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const fmtDate = (d: Date) =>
+  d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
 function useTick(ms = 1000) {
   const [now, setNow] = useState(() => new Date());
@@ -50,6 +40,28 @@ function useTick(ms = 1000) {
   return now;
 }
 
+function Corners() {
+  const cls = "absolute w-2.5 h-2.5 text-muted-foreground";
+  return (
+    <>
+      <svg className={cn(cls, "top-2 left-2")} viewBox="0 0 10 10">
+        <path d="M0 0h4M0 0v4" fill="none" stroke="currentColor" strokeWidth="1" />
+      </svg>
+      <svg className={cn(cls, "top-2 right-2 -scale-x-100")} viewBox="0 0 10 10">
+        <path d="M0 0h4M0 0v4" fill="none" stroke="currentColor" strokeWidth="1" />
+      </svg>
+      <svg className={cn(cls, "bottom-2 left-2 -scale-y-100")} viewBox="0 0 10 10">
+        <path d="M0 0h4M0 0v4" fill="none" stroke="currentColor" strokeWidth="1" />
+      </svg>
+      <svg className={cn(cls, "bottom-2 right-2 -scale-100")} viewBox="0 0 10 10">
+        <path d="M0 0h4M0 0v4" fill="none" stroke="currentColor" strokeWidth="1" />
+      </svg>
+    </>
+  );
+}
+
+type Stage = "entry" | "verifying" | "success";
+
 export function StoreDeviceLock() {
   const t = useT();
   const now = useTick();
@@ -58,13 +70,16 @@ export function StoreDeviceLock() {
   const [deviceName] = useDeviceName();
   const [memberRows] = useTable(tables.orgMember);
 
-  const [locked, setLocked] = useState(false);
-  const [stage, setStage] = useState<"picker" | "pin">("picker");
-  const [selected, setSelected] = useState<MemberRow | null>(null);
+  // In store-machine mode the device is locked by default — even on a fresh
+  // load or refresh. The next user has to identify themselves with their PIN
+  // before they can use the app.
+  const [locked, setLocked] = useState(true);
+  const [stage, setStage] = useState<Stage>("entry");
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [punchedMember, setPunchedMember] = useState<MemberRow | null>(null);
+  const [punchedAction, setPunchedAction] = useState<string | null>(null);
 
-  // Track timeout in a ref so activity handlers can reset without re-rendering.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearTimer = useCallback(() => {
@@ -78,11 +93,10 @@ export function StoreDeviceLock() {
     clearTimer();
     if (!storeMachine || locked) return;
     const seconds = getAutolockSeconds();
-    if (seconds <= 0) return; // 0 = never
+    if (seconds <= 0) return;
     timerRef.current = setTimeout(() => {
       setLocked(true);
-      setStage("picker");
-      setSelected(null);
+      setStage("entry");
       setPin("");
       setError(null);
     }, seconds * 1000);
@@ -102,25 +116,38 @@ export function StoreDeviceLock() {
     };
   }, [storeMachine, locked, scheduleLock, clearTimer]);
 
-  // If we leave store-machine mode, drop the lock so the regular UI isn't blocked.
+  // Drop the lock when leaving store mode; re-lock when re-entering it. Anchored
+  // off a ref of the previous value so we only react to actual transitions, not
+  // every render.
+  const prevStoreMachineRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (!storeMachine && locked) {
-      setLocked(false);
-      setStage("picker");
-      setSelected(null);
+    const prev = prevStoreMachineRef.current;
+    prevStoreMachineRef.current = storeMachine;
+    if (prev === storeMachine) return;
+    if (!storeMachine) {
+      // Leaving store mode → drop the lock so the normal UI isn't blocked.
+      if (locked) {
+        setLocked(false);
+        setStage("entry");
+        setPin("");
+        setError(null);
+      }
+    } else if (prev === false) {
+      // Entering store mode (after a toggle) → force re-identification.
+      setLocked(true);
+      setStage("entry");
       setPin("");
       setError(null);
     }
   }, [storeMachine, locked]);
 
-  // External force-lock trigger (e.g. operator chip logout button).
+  // External force-lock trigger (operator chip logout button).
   useEffect(() => {
     if (!storeMachine) return;
     const handler = () => {
       clearTimer();
       setLocked(true);
-      setStage("picker");
-      setSelected(null);
+      setStage("entry");
       setPin("");
       setError(null);
     };
@@ -128,279 +155,337 @@ export function StoreDeviceLock() {
     return () => window.removeEventListener("store-device-force-lock", handler);
   }, [storeMachine, clearTimer]);
 
-  // Active members in this org that have a punch-in code (eligible to unlock).
-  const eligibleMembers = useMemo<MemberRow[]>(() => {
-    if (!organizationId) return [];
-    const rows = (memberRows as unknown as MemberRow[]).filter(
-      (m) =>
-        m.organizationId === organizationId &&
-        m.status === "active" &&
-        typeof m.punchInCode === "string" &&
-        m.punchInCode.length > 0,
-    );
-    return rows.slice().sort((a, b) => a.displayName.localeCompare(b.displayName));
-  }, [memberRows, organizationId]);
-
-  // PIN verification — runs whenever 4 digits are present.
+  // Reset entry state every time we re-enter the lock screen.
   useEffect(() => {
-    if (!locked || stage !== "pin" || pin.length !== 4) return;
-    const member = selected
-      ? (selected.punchInCode === pin ? selected : null)
-      : (memberRows as unknown as MemberRow[]).find(
+    if (locked) {
+      setStage("entry");
+      setPin("");
+      setError(null);
+    }
+  }, [locked]);
+
+  // Auto-clear errors after a short delay.
+  useEffect(() => {
+    if (!error) return;
+    const id = window.setTimeout(() => {
+      setError(null);
+      setPin("");
+    }, 1200);
+    return () => window.clearTimeout(id);
+  }, [error]);
+
+  // Auto-dismiss success state.
+  useEffect(() => {
+    if (stage !== "success") return;
+    const id = window.setTimeout(() => {
+      setLocked(false);
+      setStage("entry");
+      setPin("");
+      setPunchedMember(null);
+      setPunchedAction(null);
+    }, 2200);
+    return () => window.clearTimeout(id);
+  }, [stage]);
+
+  const handleDigit = useCallback(
+    (d: string) => {
+      if (!locked || stage !== "entry") return;
+      hapticLight();
+      setError(null);
+      setPin((prev) => (prev.length >= 4 ? prev : prev + d));
+    },
+    [locked, stage],
+  );
+
+  const handleBackspace = useCallback(() => {
+    if (!locked || stage !== "entry") return;
+    hapticLight();
+    setPin((p) => p.slice(0, -1));
+  }, [locked, stage]);
+
+  const handleClear = useCallback(() => {
+    if (!locked || stage !== "entry") return;
+    hapticLight();
+    setPin("");
+    setError(null);
+  }, [locked, stage]);
+
+  // Try to unlock once 4 digits are in.
+  useEffect(() => {
+    if (!locked || stage !== "entry" || pin.length !== 4) return;
+    const code = pin;
+    setStage("verifying");
+    (async () => {
+      try {
+        const member = (memberRows as unknown as MemberRow[]).find(
           (m) =>
             m.organizationId === organizationId &&
             m.status === "active" &&
             typeof m.punchInCode === "string" &&
-            m.punchInCode === pin,
+            m.punchInCode === code,
         );
-    if (!member) {
-      setError(t("lock.pinNotRecognized"));
-      hapticMedium();
-      const timeout = window.setTimeout(() => {
-        setPin("");
-        setError(null);
-      }, 800);
-      return () => window.clearTimeout(timeout);
-    }
-    setCurrentOperator({ memberId: member.id.toString(), name: member.displayName ?? "" });
-    hapticSuccess();
-    setLocked(false);
-    setStage("picker");
-    setSelected(null);
-    setPin("");
-    setError(null);
-  }, [pin, locked, stage, selected, memberRows, organizationId, t]);
+        if (!member) {
+          throw new Error("PIN_NOT_RECOGNIZED");
+        }
 
-  // Keyboard input for PIN entry.
+        // Set operator first so any reducer kicked off below tags rows with the
+        // correct identity (e.g. inventory actions read this from localStorage).
+        setCurrentOperator({ memberId: member.id.toString(), name: member.displayName ?? "" });
+
+        // Auto punch — server-side "auto" resolves to:
+        //   not on shift → in
+        //   on break     → break-end
+        //   on shift     → NEEDS_EXPLICIT_ACTION (we ignore, treat as plain unlock)
+        let action: string | null = null;
+        try {
+          await recordPunch(code, "auto");
+          action = "in"; // optimistic — server logged it
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes("NEEDS_EXPLICIT_ACTION")) {
+            action = null; // already on shift — just unlocking
+          } else {
+            // Punch failed for an unexpected reason. Don't block the unlock —
+            // the user identified themselves correctly with their PIN. Surface
+            // it to the console for diagnostics.
+            console.warn("[StoreDeviceLock] auto punch failed:", msg);
+            action = null;
+          }
+        }
+
+        hapticSuccess();
+        setPunchedMember(member);
+        setPunchedAction(action);
+        setStage("success");
+      } catch {
+        hapticMedium();
+        setError(t("lock.pinNotRecognized"));
+        setStage("entry");
+      }
+    })();
+  }, [pin, locked, stage, memberRows, organizationId, t]);
+
+  // Hardware keyboard input — works alongside the on-screen keypad.
   useEffect(() => {
-    if (!locked || stage !== "pin") return;
+    if (!locked) return;
     const handler = (e: KeyboardEvent) => {
-      if (/^[0-9]$/.test(e.key)) {
-        setPin((p) => (p.length >= 4 ? p : p + e.key));
-        hapticLight();
-        setError(null);
-      } else if (e.key === "Backspace") {
-        setPin((p) => p.slice(0, -1));
-      } else if (e.key === "Escape") {
-        setStage("picker");
-        setSelected(null);
-        setPin("");
-        setError(null);
+      if (stage === "entry") {
+        if (/^[0-9]$/.test(e.key)) handleDigit(e.key);
+        else if (e.key === "Backspace") handleBackspace();
+        else if (e.key === "Escape") handleClear();
+      } else if (stage === "success") {
+        if (/^[0-9]$/.test(e.key) || e.key === "Enter" || e.key === "Escape") {
+          setLocked(false);
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [locked, stage]);
+  }, [locked, stage, handleDigit, handleBackspace, handleClear]);
 
   if (!storeMachine || !locked) return null;
 
   const currentOp = getCurrentOperator();
-  const clock = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  const dateLine = now.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex flex-col bg-background"
-      role="dialog"
-      aria-modal="true"
-    >
-      {/* Top status bar */}
-      <header className="h-11 shrink-0 border-b border-background/20 bg-foreground text-background flex items-center px-4 gap-3">
-        <Lock className="h-3.5 w-3.5" />
-        <span className="font-mono text-xs font-bold tracking-[0.18em]">
-          {t("components.store.appName")}
-        </span>
-        <span className="w-px h-4 bg-background/30" />
-        <span className="text-[13px] font-semibold">{t("lock.title")}</span>
-        <span className="ml-auto text-[11px] font-mono text-muted-foreground truncate">
-          {deviceName ? deviceName.toUpperCase() : t("components.store.terminal")}
-        </span>
-      </header>
-
+    <div className="fixed inset-0 z-[100] bg-muted overflow-hidden flex flex-col">
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl w-full px-6 py-8 sm:py-12">
-          {/* Clock + store header */}
-          <div className="text-center mb-8 sm:mb-10">
-            <div className="font-mono text-[64px] sm:text-[88px] font-bold tracking-tight leading-none tabular-nums">
-              {clock}
-            </div>
-            <div className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground mt-3 uppercase">
-              {dateLine}
-            </div>
-            {deviceName && (
-              <div className="mt-4 text-base sm:text-lg font-semibold tracking-tight">
-                {deviceName}
-              </div>
-            )}
-            {currentOp?.name && stage === "picker" && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {t("lock.subtitleWithOp").replace("{name}", currentOp.name)}
-              </p>
-            )}
-          </div>
+        <div className="mx-auto max-w-2xl w-full p-3 sm:p-4 lg:p-6">
+          <div className="relative bg-background border border-border rounded-[0.3rem] p-4 sm:p-5 lg:p-6 flex flex-col">
+            <Corners />
 
-          {stage === "picker" && (
-            <>
-              <div className="text-center mb-4">
-                <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-                  {t("lock.tapToUnlock")}
-                </p>
-              </div>
-              {eligibleMembers.length === 0 ? (
-                <div className="border border-border rounded-[0.3rem] p-6 text-center">
-                  <p className="text-sm text-muted-foreground">{t("lock.noMembers")}</p>
-                  <button
-                    onClick={() => setStage("pin")}
-                    className="mt-4 inline-flex items-center px-4 py-2 border border-foreground rounded-[0.3rem] text-sm font-semibold hover:bg-muted"
-                  >
-                    {t("lock.enterPin")}
-                  </button>
+            {/* Header: title + clock */}
+            <div className="flex justify-between items-start gap-3 mb-4 sm:mb-5">
+              <div className="min-w-0">
+                <div className="hidden sm:block font-mono text-[11px] tracking-[0.14em] text-muted-foreground mb-2">
+                  01 · {t("lock.headerStep").toUpperCase()}
                 </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 sm:gap-3">
-                    {eligibleMembers.map((m) => (
-                      <button
-                        key={m.id.toString()}
-                        onClick={() => {
-                          hapticLight();
-                          setSelected(m);
-                          setPin("");
-                          setError(null);
-                          setStage("pin");
-                        }}
-                        className="group border border-border rounded-[0.3rem] p-3 bg-background hover:bg-muted active:bg-muted transition-colors flex flex-col items-center gap-2"
-                      >
-                        <div className="h-12 w-12 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center font-mono text-sm font-semibold">
-                          {initials(m.displayName)}
-                        </div>
-                        <div className="text-[12px] font-semibold leading-tight text-center truncate w-full">
-                          {m.displayName}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="text-center mt-6">
-                    <button
-                      onClick={() => {
-                        hapticLight();
-                        setSelected(null);
-                        setPin("");
-                        setError(null);
-                        setStage("pin");
-                      }}
-                      className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
-                    >
-                      {t("lock.enterPin")}
-                    </button>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {stage === "pin" && (
-            <div className="max-w-xs mx-auto space-y-6">
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => {
-                    setStage("picker");
-                    setSelected(null);
-                    setPin("");
-                    setError(null);
-                  }}
-                  className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
-                >
-                  <ArrowLeft className="h-3 w-3" />
-                  {t("lock.back")}
-                </button>
-                {selected && (
-                  <span className="text-[11px] font-semibold truncate">
-                    {selected.displayName}
-                  </span>
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold tracking-tight">
+                  {t("lock.enterPinTitle")}
+                </h1>
+                <p className="text-[12px] sm:text-[13px] text-muted-foreground mt-1 leading-relaxed hidden sm:block">
+                  {t("lock.enterPinHint")}
+                </p>
+                {currentOp?.name && (
+                  <p className="text-[11px] text-muted-foreground mt-2 font-mono tracking-wider">
+                    {t("lock.subtitleWithOp").replace("{name}", currentOp.name)}
+                  </p>
                 )}
               </div>
-
-              <div className="flex justify-center gap-2">
-                {[0, 1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "h-12 w-12 flex items-center justify-center border text-xl font-mono tabular-nums rounded-[0.3rem]",
-                      pin.length > i
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-muted-foreground",
-                    )}
-                  >
-                    {pin.length > i ? "•" : ""}
+              <div className="text-right border border-border rounded-[0.3rem] px-2.5 sm:px-3.5 py-2 sm:py-2.5 bg-muted shrink-0">
+                <div className="font-mono text-lg sm:text-2xl font-semibold tracking-tight leading-none tabular-nums">
+                  {fmtClock(now)}
+                </div>
+                <div className="font-mono text-[9px] sm:text-[10px] tracking-[0.14em] text-muted-foreground mt-1">
+                  {fmtDate(now).toUpperCase()}
+                </div>
+                {deviceName && (
+                  <div className="font-mono text-[9px] sm:text-[10px] tracking-[0.14em] text-muted-foreground mt-1 truncate max-w-[120px]">
+                    {deviceName.toUpperCase()}
                   </div>
-                ))}
-              </div>
-
-              {error && (
-                <p className="text-center text-xs text-red-600 dark:text-red-400 font-medium">
-                  {error}
-                </p>
-              )}
-
-              {pin.length === 4 && !error && (
-                <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                  <Spinner size={12} />
-                  {t("lock.verifying")}
-                </p>
-              )}
-
-              {/* On-screen keypad */}
-              <div className="grid grid-cols-3 gap-2">
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => {
-                      hapticLight();
-                      setError(null);
-                      setPin((p) => (p.length >= 4 ? p : p + k));
-                    }}
-                    className="rounded-[0.3rem] border border-border bg-background text-2xl font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px]"
-                  >
-                    {k}
-                  </button>
-                ))}
-                <button
-                  onClick={() => {
-                    hapticLight();
-                    setPin("");
-                    setError(null);
-                  }}
-                  className="rounded-[0.3rem] border border-border bg-muted font-mono text-xs font-medium text-muted-foreground active:translate-y-px active:bg-muted transition-all select-none min-h-[56px]"
-                >
-                  {t("lock.clear")}
-                </button>
-                <button
-                  onClick={() => {
-                    hapticLight();
-                    setError(null);
-                    setPin((p) => (p.length >= 4 ? p : p + "0"));
-                  }}
-                  className="rounded-[0.3rem] border border-border bg-background text-2xl font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px]"
-                >
-                  0
-                </button>
-                <button
-                  onClick={() => {
-                    hapticLight();
-                    setPin((p) => p.slice(0, -1));
-                  }}
-                  className="rounded-[0.3rem] border border-border bg-muted text-muted-foreground active:translate-y-px active:bg-muted transition-all select-none flex items-center justify-center min-h-[56px]"
-                >
-                  <Delete className="h-4 w-4" />
-                </button>
+                )}
               </div>
             </div>
-          )}
+
+            {stage !== "success" ? (
+              <div className="flex flex-col gap-3 sm:gap-4">
+                {/* PIN display */}
+                <div
+                  className={cn(
+                    "relative border-[1.5px] rounded-[0.3rem] p-3 sm:p-4",
+                    error ? "border-red-400" : "border-border",
+                  )}
+                >
+                  <div className="absolute -top-2 left-3 bg-background px-1.5 font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
+                    PIN
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "relative aspect-[1/0.65] sm:aspect-[1/0.72] border-[1.5px] rounded-[0.3rem] flex items-center justify-center transition-all",
+                          i < pin.length
+                            ? "border-foreground bg-foreground text-background"
+                            : i === pin.length
+                              ? "border-foreground bg-background"
+                              : "border-border bg-background",
+                        )}
+                      >
+                        <span className="font-mono text-[32px] sm:text-[40px] font-semibold leading-none">
+                          {i < pin.length ? "●" : "·"}
+                        </span>
+                        <span className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 font-mono text-[9px] sm:text-[10px] text-muted-foreground">
+                          {i + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center mt-2.5 sm:mt-3.5">
+                    <span className="font-mono text-[10px] sm:text-[11px] tracking-wider text-muted-foreground">
+                      {error
+                        ? "▲ " + t("lock.errorLabel").toUpperCase()
+                        : stage === "verifying"
+                          ? t("lock.verifying").toUpperCase()
+                          : pin.length === 0
+                            ? t("lock.ready").toUpperCase()
+                            : pin.length < 4
+                              ? `${pin.length}/4 ${t("lock.entered").toUpperCase()}`
+                              : t("lock.verifying").toUpperCase()}
+                    </span>
+                    <span
+                      className={cn(
+                        "font-mono text-[10px] sm:text-[11px] tracking-wider",
+                        error ? "text-red-500" : "text-muted-foreground",
+                      )}
+                    >
+                      {error ?? <span className="hidden sm:inline">{t("lock.keypadHint").toUpperCase()}</span>}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Keypad */}
+                <div className="grid grid-cols-3 grid-rows-4 gap-1.5 sm:gap-2.5">
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => handleDigit(k)}
+                      disabled={stage === "verifying"}
+                      className="rounded-[0.3rem] border border-border bg-background text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50 disabled:active:translate-y-0"
+                    >
+                      {k}
+                    </button>
+                  ))}
+                  <button
+                    onClick={handleClear}
+                    disabled={stage === "verifying"}
+                    className="rounded-[0.3rem] border border-border bg-muted font-mono text-xs sm:text-sm font-medium text-muted-foreground shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50"
+                  >
+                    {t("lock.clear")}
+                  </button>
+                  <button
+                    onClick={() => handleDigit("0")}
+                    disabled={stage === "verifying"}
+                    className="rounded-[0.3rem] border border-border bg-background text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50 disabled:active:translate-y-0"
+                  >
+                    0
+                  </button>
+                  <button
+                    onClick={handleBackspace}
+                    disabled={stage === "verifying"}
+                    className="rounded-[0.3rem] border border-border bg-muted text-muted-foreground shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none flex items-center justify-center min-h-[56px] disabled:opacity-50"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M3 12a9 9 0 1 0 3.5-7.1L3 8" />
+                      <path d="M3 3v5h5" />
+                    </svg>
+                  </button>
+                </div>
+
+                {stage === "verifying" && (
+                  <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+                    <Spinner size={12} />
+                    {t("lock.verifying")}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div
+                onClick={() => setLocked(false)}
+                className="border-[1.5px] border-foreground rounded-[0.3rem] p-4 sm:p-6 bg-foreground text-background cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[0.3rem] bg-emerald-500 flex items-center justify-center">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </div>
+                  <span className="font-mono text-xs tracking-wider text-muted-foreground">
+                    {punchedAction === "in"
+                      ? t("lock.punchInRecorded").toUpperCase()
+                      : t("lock.unlocked").toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-2xl sm:text-3xl lg:text-[44px] font-bold mt-3 sm:mt-4 leading-[1.05] tracking-tight">
+                  {punchedAction === "in"
+                    ? t("lock.welcomeName").replace(
+                        "{name}",
+                        (punchedMember?.displayName ?? "").split(" ")[0] || "",
+                      )
+                    : t("lock.welcomeBackName").replace(
+                        "{name}",
+                        (punchedMember?.displayName ?? "").split(" ")[0] || "",
+                      )}
+                </div>
+                <div className="text-[13px] sm:text-[15px] text-muted-foreground mt-1.5">
+                  {punchedAction === "in"
+                    ? t("lock.shiftOpen")
+                    : t("lock.shiftContinue")}
+                </div>
+                <div className="font-mono text-[10px] sm:text-[11px] tracking-wider text-muted-foreground mt-4 sm:mt-5">
+                  {t("lock.tapToDismiss").toUpperCase()}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
