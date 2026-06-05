@@ -54,7 +54,7 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.settings",  href: "/~/settings",        icon: Settings },
 ];
 
-const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in"]);
+const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in", "/~/chat"]);
 
 const PRIMARY_HREFS = ["/~/dashboard", "/~/personnel", "/~/chat", "/~/notifications"];
 

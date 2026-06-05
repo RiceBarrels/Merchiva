@@ -131,29 +131,49 @@ export default function ChatPage() {
   // In store-device mode, scope the chat to the punched-in operator so each
   // staff member sees their own conversations on the shared terminal. We
   // override the "me" userId by looking up the operator's orgMember row and
-  // pulling its userId.
+  // pulling its userId. orgMember.userId is a SpacetimeDB Identity — call
+  // toHexString() explicitly so it matches every other identity comparison in
+  // the chat layer (see lib/db/chat.ts).
   const [memberRowsForOp] = useTable(tables.orgMember);
   useEffect(() => {
     if (storeMachine && operator?.memberId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const rows = memberRowsForOp as unknown as Array<{ id: { toString(): string }; userId: { toString(): string } }>;
+      const rows = memberRowsForOp as unknown as Array<{
+        id: { toString(): string };
+        userId: { toHexString?: () => string; toString(): string };
+      }>;
       const row = rows.find((m) => m.id.toString() === operator.memberId);
       if (row) {
-        setUserId(row.userId.toString());
+        const hex = typeof row.userId.toHexString === "function"
+          ? row.userId.toHexString()
+          : row.userId.toString();
+        setUserId(hex);
         return;
       }
     }
     if (stdb?.identity) setUserId(stdb.identity.toHexString());
   }, [stdb?.identity, storeMachine, operator?.memberId, memberRowsForOp]);
 
+  // When the operator changes on a shared store device, drop any open
+  // conversation so the new operator doesn't accidentally land in someone
+  // else's thread. The list reloads via the userId-keyed effect below.
+  useEffect(() => {
+    setActiveConv(null);
+    setMessages([]);
+    setReplyTo(null);
+    setInput("");
+  }, [userId]);
+
   useEffect(() => {
     if (!organizationId) return;
     // Chat conversations + teammates are shared across the share group, so
     // load both from every org in the parent/child tree.
     const ids = shareGroupOrgIds.length ? shareGroupOrgIds : [organizationId];
-    const cacheKey = `conversations_${ids.join("|")}`;
+    // Cache is per-user — on store devices a different operator must NOT see
+    // the previous operator's conversations from cache.
+    const cacheKey = `conversations_${ids.join("|")}_${userId ?? "anon"}`;
     const cachedConvs = getCached<ChatConversation[]>(cacheKey);
     if (cachedConvs) setConversations(cachedConvs);
+    else setConversations([]);
     setLoading(false);
 
     Promise.all([
@@ -183,7 +203,7 @@ export default function ChatPage() {
       })
       .catch((err) => console.error("Chat load failed:", err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, groupKey]);
+  }, [organizationId, groupKey, userId]);
 
   // Subscribe to the chat_message table. The hook fires a re-render whenever
   // a row is inserted/updated/deleted in the local cache — covers our own

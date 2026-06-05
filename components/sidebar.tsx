@@ -866,7 +866,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const [expandedHrefs, setExpandedHrefs] = useState<Set<string>>(() => new Set());
 
   // Paths allowed when the device is in store-machine mode.
-  const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in"]);
+  const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in", "/~/chat"]);
 
   // True when `pathname` sits inside the section (its main page or any sub-page).
   const isInSection = (item: NavItemExt) =>
