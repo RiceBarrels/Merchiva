@@ -1281,7 +1281,8 @@
       "inviteCancelFailed": "रद्द करना विफल"
     },
     "title": "कार्मिक",
-    "subtitle": "शेड्यूल, टीम, भूमिकाएँ और प्रशिक्षण"
+    "subtitle": "शेड्यूल, टीम, भूमिकाएँ और प्रशिक्षण",
+    "pendingRequests": "लंबित अनुरोध"
   },
   "pos": {
     "tabs": {
@@ -1299,7 +1300,12 @@
       "customer": "ग्राहक",
       "thankYou": "धन्यवाद!",
       "print": "प्रिंट",
-      "newOrder": "नया ऑर्डर"
+      "newOrder": "नया ऑर्डर",
+      "paidAmount": "{amount} भुगतान किया गया",
+      "yourBusiness": "आपका व्यवसाय",
+      "tipPct": "टिप {pct}%",
+      "paid": "भुगतान किया गया",
+      "email": "ईमेल"
     },
     "refund": {
       "title": "रिफंड",
@@ -1340,7 +1346,14 @@
       "noProducts": "कोई उत्पाद नहीं",
       "addInProducts": "उत्पाद पृष्ठ पर उत्पाद जोड़ें",
       "noResults": "कोई परिणाम नहीं",
-      "each": "प्रति"
+      "each": "प्रति",
+      "taxShort": "कर",
+      "newOrder": "नया ऑर्डर",
+      "searchMenu": "मेनू खोजें...",
+      "scan": "स्कैन करें",
+      "matchesFor": "\"{query}\" के लिए मेल",
+      "noResultsFound": "कोई परिणाम नहीं मिला",
+      "noProductsInCategory": "इस श्रेणी में कोई उत्पाद नहीं"
     },
     "customItem": {
       "title": "कस्टम आइटम",
@@ -1386,6 +1399,90 @@
       "cardDeclined": "कार्ड अस्वीकृत",
       "paymentFailed": "भुगतान विफल",
       "moduleUnavailable": "भुगतान मॉड्यूल अनुपलब्ध"
+    },
+    "discountReasons": {
+      "none": "कारण (वैकल्पिक)…",
+      "staff": "स्टाफ छूट",
+      "loyalty": "लॉयल्टी पुरस्कार",
+      "comp": "मुफ़्त / हाउस की ओर से",
+      "damaged": "गलत तरीके से बनाया गया",
+      "manager": "मैनेजर ओवरराइड"
+    },
+    "cart": {
+      "ticket": "टिकट",
+      "itemsCount": "{count} आइटम",
+      "walkInPlaceholder": "वॉक-इन (नाम देने के लिए टैप करें)",
+      "empty": "कार्ट खाली है",
+      "tapToStart": "शुरू करने के लिए किसी आइटम पर टैप करें",
+      "pctOff": "{pct}% छूट",
+      "amountOff": "{amount} छूट",
+      "tipLabel": "टिप ({pct}%)",
+      "viewCart": "कार्ट देखें",
+      "drawerTitle": "कार्ट · {count} आइटम"
+    },
+    "lineEditor": {
+      "title": "लाइन संपादित करें",
+      "mobileTitle": "संपादित करें · {name}",
+      "perEach": "{price}/प्रति",
+      "quantity": "मात्रा",
+      "notesLabel": "किचन / बार के लिए नोट्स",
+      "notesPlaceholder": "एलर्जी, तैयारी निर्देश, कप पर नाम...",
+      "lineDiscount": "लाइन छूट",
+      "discNone": "कोई नहीं",
+      "discPct": "% छूट",
+      "discAmount": "{symbol} छूट",
+      "remove": "हटाएँ",
+      "lineTotal": "लाइन कुल"
+    },
+    "pay": {
+      "methods": {
+        "card": "कार्ड",
+        "cash": "नकद",
+        "mobilePay": "मोबाइल भुगतान",
+        "giftCard": "गिफ्ट कार्ड",
+        "mobile": "मोबाइल",
+        "gift": "गिफ्ट"
+      },
+      "cardSubOffline": "कार्ड दर्ज करें — ऑफ़लाइन कतार में",
+      "cardSubAvailable": "टैप, इंसर्ट, या स्वाइप करें",
+      "cardSubNotConfigured": "कॉन्फ़िगर नहीं किया गया",
+      "cashSub": "ड्रॉअर खोलें",
+      "mobileSub": "Apple / Google Pay",
+      "giftSub": "कोड स्कैन करें या दर्ज करें",
+      "backToOrder": "ऑर्डर पर वापस",
+      "checkout": "चेकआउट",
+      "tender": "टेंडर",
+      "cardNumberQueued": "कार्ड नंबर (बाद के लिए कतार में)",
+      "queuedHint": "भुगतान कतार में रखा जाएगा और ऑनलाइन होने पर संसाधित किया जाएगा",
+      "queuedHintShort": "कतार में और ऑनलाइन होने पर संसाधित",
+      "pciWarning": "केवल Demo/MVP — स्थानीय रूप से संग्रहीत कार्ड नंबर PCI-अनुपालक नहीं हैं।",
+      "tip": "टिप",
+      "tipNone": "कोई नहीं",
+      "cashTendered": "नकद टेंडर किया गया",
+      "other": "अन्य",
+      "changeOwed": "बकाया छुट्टे",
+      "change": "छुट्टे",
+      "split": "विभाजित",
+      "splitSingle": "एकल",
+      "splitWays": "{n} भागों में",
+      "splitEach": "{amount} प्रत्येक",
+      "orderSummary": "ऑर्डर सारांश",
+      "queueCardAmount": "कार्ड कतार में {amount}",
+      "chargeAmount": "{amount} चार्ज करें"
+    },
+    "offline": {
+      "banner": "ऑफ़लाइन मोड — केवल नकद और कार्ड कतार"
+    },
+    "pending": {
+      "queuedOne": "{count} लंबित कार्ड भुगतान कतार में",
+      "queuedOther": "{count} लंबित कार्ड भुगतान कतार में",
+      "processOne": "{count} लंबित कार्ड संसाधित करें",
+      "processOther": "{count} लंबित कार्ड संसाधित करें"
+    },
+    "toast": {
+      "paymentQueued": "भुगतान कतार में",
+      "paymentQueuedDesc": "{last4} पर समाप्त कार्ड — ऑनलाइन होने पर संसाधित होगा",
+      "pendingCardsCleared": "लंबित कार्ड साफ़ किए गए"
     }
   },
   "settings": {
@@ -1682,7 +1779,28 @@
       "KRW": "दक्षिण कोरियाई वॉन",
       "INR": "भारतीय रुपया",
       "SAR": "सऊदी रियाल"
-    }
+    },
+    "toastGeolocationUnsupported": "आपका ब्राउज़र जियोलोकेशन का समर्थन नहीं करता",
+    "toastLocationDetected": "स्थान का पता चला",
+    "toastGeolocationFailed": "आपका स्थान प्राप्त नहीं किया जा सका। कृपया निर्देशांक मैन्युअल रूप से दर्ज करें।",
+    "exitStoreModeTitle": "स्टोर मोड से बाहर निकलने के लिए PIN दर्ज करें",
+    "exitStoreModeMobileTitle": "स्टोर मोड से बाहर निकलें",
+    "exitStoreModeDesc": "स्टोर मशीन मोड अक्षम करने के लिए मालिक या प्रबंधक का पंच-इन कोड दर्ज करें।",
+    "exitPinInvalid": "अमान्य कोड",
+    "exitPinInvalidRole": "अमान्य कोड। यह मालिक या प्रबंधक का कोड होना चाहिए।",
+    "toastStoreModeDisabled": "स्टोर मोड अक्षम किया गया",
+    "disableStoreMode": "स्टोर मोड अक्षम करें",
+    "manageDeviceTitle": "डिवाइस प्रबंधित करें",
+    "manageDeviceMobileTitle": "डिवाइस प्रबंधित करें",
+    "manageDeviceDesc": "इस स्टोर डिवाइस का नाम बदलें या हटाएँ।",
+    "toastDeviceRenamed": "डिवाइस का नाम बदला गया",
+    "toastDeviceRemoved": "डिवाइस हटाया गया",
+    "removeDevice": "डिवाइस हटाएँ",
+    "forecastLocation": "पूर्वानुमान स्थान",
+    "noPlaceId": "कोई Place ID नहीं",
+    "storeDevices": "स्टोर डिवाइस",
+    "unnamedDevice": "बेनाम डिवाइस",
+    "deviceOff": "बंद"
   },
   "lock": {
     "title": "डिवाइस लॉक",
@@ -1818,7 +1936,12 @@
     "merchivaRemove": "Mr. Merchiva हटाएँ",
     "merchivaOn": "Mr. Merchiva",
     "merchivaMentionHint": "AI सहायक से पूछें",
-    "noMatches": "कोई मिलान नहीं"
+    "noMatches": "कोई मिलान नहीं",
+    "online": "ऑनलाइन",
+    "aiOpsAgent": "आपका AI ऑप्स एजेंट",
+    "mentionLower": "उल्लेख",
+    "sendKbd": "भेजें",
+    "send": "भेजें"
   },
   "dashboard": {
     "greeting": {
@@ -1885,7 +2008,74 @@
       "addMore": "और जोड़ें",
       "choose": "फ़ाइल चुनें",
       "complete": "पूर्ण"
-    }
+    },
+    "attendance": {
+      "title": "आज की उपस्थिति",
+      "punchedIn": "पंच इन",
+      "onBreak": "ब्रेक पर",
+      "nobody": "अभी तक किसी ने पंच इन नहीं किया।",
+      "allOut": "सभी पंच आउट कर चुके हैं।"
+    },
+    "yesterdayTasks": {
+      "title": "कल के कार्य",
+      "done": "पूर्ण",
+      "notDone": "अधूरे",
+      "skipped": "छोड़े गए",
+      "none": "कल कोई कार्य देय नहीं था।"
+    },
+    "widgets": {
+      "salesToday": {
+        "title": "आज की बिक्री",
+        "predicted": "अनुमानित",
+        "vsYesterday": "कल की तुलना में"
+      },
+      "inventoryAlerts": {
+        "title": "इन्वेंट्री अलर्ट",
+        "allStocked": "सभी आइटम पर्याप्त स्टॉक में हैं",
+        "outOfStock": "{count} स्टॉक में नहीं",
+        "lowStock": "{count} कम स्टॉक",
+        "outBadge": "समाप्त",
+        "lowBadge": "कम"
+      },
+      "scheduleOverview": {
+        "title": "शेड्यूल अवलोकन",
+        "empty": "आज कोई शिफ्ट निर्धारित नहीं",
+        "shiftToday": "शिफ्ट आज",
+        "shiftsToday": "शिफ्ट आज",
+        "nextLabel": "अगला:",
+        "atLabel": "पर"
+      },
+      "todo": {
+        "title": "कार्य",
+        "placeholder": "नया कार्य...",
+        "empty": "अभी तक कोई कार्य नहीं",
+        "more": "+{count} और"
+      },
+      "wasteCost": {
+        "title": "अपव्यय लागत",
+        "details": "विवरण",
+        "today": "आज",
+        "thisWeek": "इस सप्ताह",
+        "thisMonth": "इस महीने",
+        "empty": "अभी तक कोई अपव्यय दर्ज नहीं"
+      },
+      "notifications": {
+        "title": "सूचनाएँ",
+        "empty": "कोई अपठित सूचना नहीं"
+      },
+      "topProducts": {
+        "title": "शीर्ष उत्पाद",
+        "empty": "अभी तक कोई उत्पाद डेटा नहीं"
+      },
+      "quickStats": {
+        "title": "त्वरित आँकड़े",
+        "products": "उत्पाद",
+        "staffOnDuty": "ड्यूटी पर स्टाफ",
+        "inventoryItems": "इन्वेंट्री आइटम",
+        "lowStock": "कम स्टॉक"
+      }
+    },
+    "title": "डैशबोर्ड"
   },
   "inventory": {
     "title": "इन्वेंटरी",
@@ -1905,7 +2095,8 @@
     "tabs": {
       "items": "आइटम",
       "transactions": "लेनदेन लॉग",
-      "losses": "हानि ट्रैकिंग"
+      "losses": "हानि ट्रैकिंग",
+      "restock": "पुनः स्टॉक"
     },
     "filters": {
       "searchPlaceholder": "आइटम या आपूर्तिकर्ता खोजें…",
@@ -1979,6 +2170,35 @@
       "saveFailed": "आइटम सहेजने में विफल",
       "itemDeleted": "आइटम हटा दिया गया",
       "deleteFailed": "आइटम हटाने में विफल"
+    },
+    "restock": {
+      "emptyTitle": "पूरी तरह स्टॉक — पुनः स्टॉक की आवश्यकता नहीं",
+      "emptyHint": "आपका इन्वेंट्री स्तर स्वस्थ दिख रहा है।",
+      "criticalItems": "गंभीर आइटम",
+      "highPriority": "उच्च प्राथमिकता",
+      "totalOrderValue": "कुल ऑर्डर मूल्य",
+      "itemsToRestock": "पुनः स्टॉक करने योग्य आइटम",
+      "exportCsv": "खरीद ऑर्डर निर्यात करें (CSV)",
+      "csvDownloaded": "खरीद ऑर्डर CSV डाउनलोड हो गया",
+      "exportPdf": "खरीद ऑर्डर निर्यात करें (PDF)",
+      "pdfDownloaded": "खरीद ऑर्डर PDF डाउनलोड हो गया",
+      "pdfTitle": "खरीद ऑर्डर",
+      "pdfSubtitle": "{count} आइटम — अनुमानित {cost}",
+      "stockLevel": "स्टॉक स्तर",
+      "dailyConsumption": "दैनिक खपत",
+      "perDay": "{rate} {unit}/दिन",
+      "daysUntilStockout": "स्टॉक समाप्ति तक दिन",
+      "notApplicable": "लागू नहीं",
+      "daysValue": "{days} दिन",
+      "recommendedOrder": "अनुशंसित ऑर्डर",
+      "estimatedCost": "अनुमानित लागत",
+      "lastRestocked": "अंतिम बार पुनः स्टॉक किया गया",
+      "daysAgo": "{days} दिन पहले",
+      "trend": {
+        "increasing": "बढ़ रहा है",
+        "decreasing": "घट रहा है",
+        "stable": "स्थिर"
+      }
     }
   },
   "sales": {
@@ -2003,7 +2223,9 @@
     },
     "tabs": {
       "history": "ऐतिहासिक विश्लेषण",
-      "hourly": "आज प्रति घंटा"
+      "hourly": "आज प्रति घंटा",
+      "forecast": "पूर्वानुमान",
+      "aiItems": "AI आइटम"
     },
     "history": {
       "title": "30 दिन का बिक्री इतिहास",
@@ -2047,7 +2269,14 @@
     "filterTeam": "टीम",
     "filterInventory": "स्टॉक",
     "filterOrder": "ऑर्डर",
-    "filterGeneral": "सिस्टम"
+    "filterGeneral": "सिस्टम",
+    "tradeOfferedToEveryone": "{name} अपनी शिफ्ट सभी को ऑफ़र कर रहे हैं",
+    "tradeWantsToTrade": "{name} आपके साथ अदला-बदली करना चाहते हैं",
+    "tradeAcceptedAwaitingManager": "{name} ने स्वीकार किया — प्रबंधक की मंजूरी की प्रतीक्षा है",
+    "tradeFrom": "{name} से अदला-बदली",
+    "someone": "कोई",
+    "waitingForStaff": "स्टाफ की प्रतीक्षा है",
+    "requestedTimeOff": "{name} ने छुट्टी का अनुरोध किया"
   },
   "push": {
     "promptTitle": "डेस्कटॉप अलर्ट प्राप्त करें",
@@ -2390,7 +2619,118 @@
     "foodStep2": "भोजन का तापमान जाँचें और रीडिंग दर्ज करें",
     "foodStep3": "भंडारण क्षेत्रों में एक्सपायर्ड वस्तुएँ जाँचें",
     "foodStep4": "तैयारी की सतहों को साफ़ और सैनिटाइज़ करें",
-    "foodStep5": "सही लेबलिंग और डेटिंग सत्यापित करें"
+    "foodStep5": "सही लेबलिंग और डेटिंग सत्यापित करें",
+    "manager": {
+      "dayCount": "{count} दिन",
+      "dayCountPlural": "{count} दिन",
+      "curriculumSettings": "पाठ्यक्रम सेटिंग्स",
+      "moduleLabel": "मॉड्यूल",
+      "untitledDay": "शीर्षकहीन दिन",
+      "allRoles": "सभी भूमिकाएँ",
+      "required": "आवश्यक",
+      "selectOrAddDay": "लेखन शुरू करने के लिए कोई दिन चुनें या जोड़ें",
+      "unsaved": "सहेजा नहीं गया",
+      "history": "इतिहास",
+      "previewAsIntern": "प्रशिक्षु के रूप में पूर्वावलोकन",
+      "publish": "प्रकाशित करें",
+      "editor": "संपादक",
+      "words": "शब्द",
+      "minRead": "मिनट पढ़ें",
+      "saved": "सहेजा गया",
+      "lessonPlaceholder": "दिन का पाठ लिखें — शीर्षक, सूचियाँ, लिंक, उद्धरण, इनलाइन छवियाँ…",
+      "pickDayToEdit": "संपादित करने के लिए पाठ्यक्रम से कोई दिन चुनें",
+      "preview": "पूर्वावलोकन",
+      "howInternsSeeIt": "प्रशिक्षु इसे कैसे देखेंगे",
+      "desktop": "डेस्कटॉप",
+      "mobile": "मोबाइल",
+      "emptyDay": "खाली दिन। इसे यहाँ देखने के लिए संपादक में सामग्री जोड़ें।",
+      "attachments": "अनुलग्नक",
+      "item": "आइटम",
+      "items": "आइटम",
+      "embedUrl": "एम्बेड URL",
+      "selectDayForAttachments": "अनुलग्नक जोड़ने के लिए कोई दिन चुनें।",
+      "video": "वीडियो",
+      "photo": "फोटो",
+      "note": "नोट",
+      "remove": "हटाएँ",
+      "dropFile": "फ़ाइल छोड़ें",
+      "upload": "अपलोड करें"
+    },
+    "rubric": {
+      "knowsMaterial": "सामग्री जानता है",
+      "knowsMaterialHint": "याद, आत्मविश्वास",
+      "practicalSkill": "व्यावहारिक कौशल",
+      "practicalSkillHint": "व्यावहारिक सटीकता",
+      "speedFlow": "गति और प्रवाह",
+      "speedFlowHint": "अपेक्षित स्तर पर गति",
+      "recovery": "पुनर्प्राप्ति",
+      "recoveryHint": "गलतियों को अच्छी तरह संभालता है",
+      "stationDiscipline": "स्टेशन अनुशासन",
+      "stationDisciplineHint": "साफ-सुथरा, व्यवस्थित"
+    },
+    "trainer": {
+      "pickADay": "एक दिन चुनें",
+      "dayN": "दिन {n}",
+      "required": "आवश्यक",
+      "traineesPassed": "प्रशिक्षु उत्तीर्ण हुए",
+      "badge": "प्रशिक्षक",
+      "noContent": "इस दिन के लिए अभी कोई प्रकाशित सामग्री नहीं है।",
+      "objectives": "उद्देश्य",
+      "trainees": "प्रशिक्षु",
+      "filter": "फ़िल्टर",
+      "noTraineesYet": "अभी तक कोई प्रशिक्षु नहीं",
+      "gradingDay": "ग्रेडिंग · दिन {n}",
+      "message": "संदेश",
+      "dm": "DM",
+      "rubricLabel": "रूब्रिक",
+      "notesForTrainee": "प्रशिक्षु के लिए नोट्स",
+      "visibleTo": "{name} को दिखाई देता है",
+      "notesPlaceholder": "क्या अच्छा रहा? आगे किस चीज़ का अभ्यास करना है?",
+      "retry": "पुनः प्रयास करें",
+      "submitGrade": "ग्रेड सबमिट करें",
+      "willBeNotified": "{name} को सूचित किया जाएगा · उनकी प्रशिक्षण फ़ाइल में सहेजा गया",
+      "pickTrainee": "ग्रेडिंग शुरू करने के लिए सूची से एक प्रशिक्षु चुनें।"
+    },
+    "intern": {
+      "objectiveFallback": "उद्देश्य {number}",
+      "progress": "प्रगति",
+      "dayOfTotal": "{total} में से दिन {day}",
+      "doneCount": "{count} पूर्ण",
+      "remainingCount": "{count} शेष",
+      "keepGoing": "जारी रखें",
+      "dayLabel": "दिन {number}",
+      "practice": "अभ्यास",
+      "required": "आवश्यक",
+      "lockedUntilPrior": "पिछले दिन के उत्तीर्ण होने तक लॉक है",
+      "noContentYet": "इस दिन के लिए अभी कोई सामग्री नहीं।",
+      "dayWithTitle": "दिन {number} · {title}",
+      "tasksForToday": "आज के कार्य",
+      "checkEachOff": "हर एक को पूरा करते ही चिह्नित करें।",
+      "noTasksYet": "अभी तक कोई कार्य नहीं — आपका प्रबंधक जल्द ही उद्देश्य जोड़ेगा।",
+      "resources": "संसाधन",
+      "note": "नोट",
+      "requestTrainerReview": "प्रशिक्षक समीक्षा का अनुरोध करें",
+      "trainerWillBeNotified": "आपके प्रशिक्षक को सूचित किया जाएगा।",
+      "waitForTasks": "कार्य सौंपे जाने की प्रतीक्षा करें।",
+      "completeMoreTask": "समीक्षा का अनुरोध करने के लिए {count} और कार्य पूरा करें",
+      "completeMoreTasks": "समीक्षा का अनुरोध करने के लिए {count} और कार्य पूरे करें",
+      "awaitingReview": "समीक्षा प्रतीक्षारत",
+      "liveGradingNote": "आपका प्रशिक्षक लाइव ग्रेडिंग के लिए आएगा। बार के पास रहें।",
+      "askTrainerQuestion": "प्रशिक्षक से प्रश्न पूछें"
+    },
+    "dayRail": {
+      "days": "दिन",
+      "noDaysYet": "अभी तक कोई दिन नहीं",
+      "dayAbbrev": "दिन",
+      "optional": "वैकल्पिक",
+      "typeOrientation": "परिचय",
+      "typeTheory": "सिद्धांत",
+      "typePractice": "अभ्यास",
+      "typeSystem": "सिस्टम",
+      "typeCompliance": "अनुपालन",
+      "typeAssessment": "मूल्यांकन",
+      "typeGeneral": "सामान्य"
+    }
   },
   "display": {
     "kitchen": "रसोई",
@@ -2747,7 +3087,168 @@
     "menuReAsk": "फिर से पूछें",
     "menuRegenerate": "उत्तर पुनः उत्पन्न करें",
     "menuDelete": "इतिहास से हटाएं",
-    "menuCopied": "क्लिपबोर्ड पर कॉपी किया गया"
+    "menuCopied": "क्लिपबोर्ड पर कॉपी किया गया",
+    "kpi": {
+      "revenueToday": "राजस्व · आज",
+      "vsAvg": "औसत की तुलना में",
+      "live": "लाइव",
+      "orders": "ऑर्डर",
+      "today": "आज",
+      "onShift": "शिफ्ट पर",
+      "skusAtRisk": "जोखिम में SKU",
+      "ofTracked": "{count} ट्रैक किए गए में से",
+      "nHigh": "{n} उच्च"
+    },
+    "insight": {
+      "confidence": "विश्वास",
+      "hide": "छिपाएँ",
+      "why": "क्यों",
+      "basedOn": "के आधार पर",
+      "view": "देखें",
+      "dismiss": "खारिज करें"
+    },
+    "embed": {
+      "daysCover": "~{days}दि कवर",
+      "current": "वर्तमान",
+      "minMax": "न्यूनतम / अधिकतम",
+      "cover": "कवर",
+      "daysApprox": "~{days} दिन"
+    },
+    "shift": {
+      "invalidRole": "इस संगठन में कोई जॉब रोल नहीं — स्वीकृति अस्वीकार कर दी जाएगी",
+      "jobRole": "जॉब रोल"
+    },
+    "order": {
+      "itemCount": "{count} आइटम",
+      "itemCountPlural": "{count} आइटम"
+    },
+    "builder": {
+      "elementCount": "{count} एलिमेंट",
+      "elementCountPlural": "{count} एलिमेंट",
+      "moreCount": "+{count} और"
+    },
+    "actionsList": {
+      "tag": "कार्रवाइयाँ",
+      "optionalCount": "+{count} वैकल्पिक"
+    },
+    "actionsAvailable": "वर्तमान में उपलब्ध सभी AI कार्रवाइयाँ यहाँ हैं:",
+    "qa": {
+      "multiSelect": "बहु-चयन · {count} चयनित",
+      "other": "अन्य...",
+      "customReplyPlaceholder": "एक कस्टम उत्तर टाइप करें...",
+      "submit": "सबमिट करें",
+      "pickAtLeastOne": "प्रत्येक प्रश्न के लिए कम से कम एक चुनें",
+      "submitted": "सबमिट किया गया"
+    },
+    "rolesList": {
+      "tag": "रोल",
+      "count": "{count} रोल",
+      "empty": "अभी तक कोई रोल नहीं"
+    },
+    "roleAdd": {
+      "tag": "नया रोल",
+      "responsibilities": "जिम्मेदारियाँ"
+    },
+    "status": {
+      "adding": "जोड़ा जा रहा है...",
+      "deleting": "हटाया जा रहा है...",
+      "added": "जोड़ा गया",
+      "deleted": "हटाया गया"
+    },
+    "tasks": {
+      "loading": "कार्य लोड हो रहे हैं...",
+      "deleteFailed": "कार्य हटाने में विफल",
+      "tag": "कार्य",
+      "empty": "इस रोल के लिए कोई कार्य नहीं",
+      "evidence": "साक्ष्य"
+    },
+    "taskAdd": {
+      "tag": "नया कार्य",
+      "chooseChat": "ग्रुप चैट चुनें",
+      "evidenceRequired": "साक्ष्य आवश्यक",
+      "evidencePrompt": "इस कार्य के लिए साक्ष्य आवश्यक है — वह ग्रुप चैट चुनें जहाँ इसे अपलोड किया जाना चाहिए:",
+      "noGroupChats": "अभी तक कोई ग्रुप चैट नहीं — पहले Chat पेज से एक बनाएँ।",
+      "add": "जोड़ें",
+      "skip": "छोड़ें"
+    },
+    "command": {
+      "deleteRoleFailed": "रोल हटाने में विफल",
+      "roleNotFound": "रोल नहीं मिला: {role}",
+      "addTaskFailed": "कार्य जोड़ने में विफल"
+    },
+    "taskDelete": {
+      "tag": "हटाएँ",
+      "failed": "हटाना विफल"
+    },
+    "dataCategory": {
+      "inventory": {
+        "label": "इन्वेंट्री",
+        "desc": "स्टॉक स्तर, कम आइटम, आपूर्तिकर्ता"
+      },
+      "sales": {
+        "label": "बिक्री",
+        "desc": "राजस्व, ऑर्डर, रुझान"
+      },
+      "staffing": {
+        "label": "स्टाफिंग",
+        "desc": "शिफ्ट, शेड्यूल, टीम"
+      },
+      "products": {
+        "label": "उत्पाद",
+        "desc": "कैटलॉग, मूल्य निर्धारण, प्रदर्शन"
+      },
+      "all": {
+        "label": "सब कुछ",
+        "desc": "सभी स्टोर डेटा"
+      }
+    },
+    "yourStore": "आपका स्टोर",
+    "untitledGroup": "शीर्षकहीन ग्रुप",
+    "newConversation": "नई बातचीत",
+    "chatTitle": "चैट",
+    "voiceUnsupported": "आपका ब्राउज़र वॉइस इनपुट का समर्थन नहीं करता।",
+    "approve": {
+      "notTeamMember": "\"{name}\" टीम सदस्य नहीं है। पहले उन्हें जोड़ें या इनमें से चुनें: {names}",
+      "noTeamMembers": "(अभी तक कोई टीम सदस्य नहीं)",
+      "noValidRole": "शिफ्ट के लिए कोई वैध जॉब रोल नहीं। मिला {got} — इनमें से एक चुनें: {roles}।",
+      "noRolesDefined": "(अभी तक कोई रोल परिभाषित नहीं)"
+    },
+    "builderChips": {
+      "heroSection": "एक हीरो सेक्शन जोड़ें",
+      "contactForm": "एक संपर्क फ़ॉर्म जोड़ें",
+      "mobileFriendly": "इस पेज को मोबाइल-अनुकूल बनाएँ",
+      "deleteFooter": "फ़ुटर हटाएँ",
+      "pricingTable": "एक मूल्य निर्धारण तालिका जोड़ें"
+    },
+    "pick": {
+      "titleActive": "कैनवास में किसी भी एलिमेंट पर क्लिक करें · रद्द करने के लिए Esc",
+      "titleIdle": "अटैच करने के लिए एक एलिमेंट चुनें",
+      "clicking": "एलिमेंट पर क्लिक करें…",
+      "element": "एलिमेंट"
+    },
+    "schedule": {
+      "title": "आज का शेड्यूल",
+      "shifts": "शिफ्ट",
+      "hrs": "घंटे",
+      "open": "खुला",
+      "onShift": "शिफ्ट पर · {count}",
+      "live": "लाइव",
+      "upNext": "अगला",
+      "inMinutes": "{n} मि में",
+      "inHours": "{n} घं में",
+      "noShifts": "आज कोई शिफ्ट निर्धारित नहीं"
+    },
+    "notifications": {
+      "title": "सूचनाएँ",
+      "new": "नई",
+      "needDecision": "निर्णय आवश्यक",
+      "markAllRead": "सभी को पढ़ा हुआ चिह्नित करें",
+      "review": "समीक्षा करें",
+      "dismiss": "खारिज करें",
+      "empty": "कोई नई सूचना नहीं"
+    },
+    "collapsePanel": "पैनल संक्षिप्त करें",
+    "openPanel": "Mr. Merchiva खोलें"
   },
   "design": {
     "list": {
@@ -2777,7 +3278,9 @@
       "fit": "स्क्रीन में फ़िट करें",
       "notFound": "डिज़ाइन नहीं मिला",
       "layers": "लेयर्स",
-      "properties": "प्रॉपर्टीज़"
+      "properties": "प्रॉपर्टीज़",
+      "undo": "पूर्ववत करें",
+      "redo": "फिर से करें"
     },
     "ai": {
       "title": "AI से जनरेट करें",
@@ -3593,6 +4096,655 @@
         "para": "अपना POS कनेक्ट करें। हम सात दिन आपकी बिक्री सीखते हैं, फिर बताना शुरू करते हैं क्या ऑर्डर करना है — केस तक, दिन के हिसाब से। माध्यिका पूर्वानुमान त्रुटि: 7.2%।",
         "walkthrough": "20-मिनट का वॉकथ्रू बुक करें"
       }
+    }
+  },
+  "reports": {
+    "title": "रिपोर्ट",
+    "subtitle": "व्यावसायिक डेटा निर्यात करें और समीक्षा करें",
+    "recordsCount": "{count} रिकॉर्ड",
+    "exportCsv": "CSV निर्यात करें",
+    "exportPdf": "PDF निर्यात करें",
+    "thisMonth": "इस माह",
+    "lastMonth": "पिछला माह",
+    "last90Days": "पिछले 90 दिन",
+    "tabSales": "बिक्री",
+    "tabStaffHours": "स्टाफ घंटे",
+    "tabInventory": "इन्वेंट्री",
+    "tabProducts": "उत्पाद",
+    "totalRevenue": "कुल राजस्व",
+    "avgDailyRevenue": "औसत दैनिक राजस्व",
+    "perDayAverage": "प्रति दिन औसत",
+    "bestDay": "सर्वश्रेष्ठ दिन",
+    "forecastAccuracy": "पूर्वानुमान सटीकता",
+    "predictedVsActual": "अनुमानित बनाम वास्तविक",
+    "noSalesData": "इस अवधि के लिए कोई बिक्री डेटा नहीं",
+    "salesRecords": "बिक्री रिकॉर्ड",
+    "recordsForPeriod": "{count} रिकॉर्ड -- {period}",
+    "colDate": "तारीख",
+    "colActual": "वास्तविक",
+    "colPredicted": "अनुमानित",
+    "colWeather": "मौसम",
+    "colHoliday": "अवकाश",
+    "yes": "हाँ",
+    "showingRecords": "{count} में से 50 रिकॉर्ड दिखा रहे हैं। पूर्ण डेटा के लिए निर्यात करें।",
+    "totalScheduledHours": "कुल निर्धारित घंटे",
+    "numberOfStaff": "स्टाफ की संख्या",
+    "uniqueStaffScheduled": "निर्धारित अद्वितीय स्टाफ",
+    "avgHoursPerStaff": "औसत घंटे / स्टाफ",
+    "averagePerPerson": "प्रति व्यक्ति औसत",
+    "noShifts": "इस अवधि के लिए कोई शिफ्ट नहीं",
+    "shiftRecords": "शिफ्ट रिकॉर्ड",
+    "shiftsForPeriod": "{count} शिफ्ट -- {period}",
+    "colStaffName": "स्टाफ का नाम",
+    "colStart": "प्रारंभ",
+    "colEnd": "समाप्त",
+    "colHours": "घंटे",
+    "colType": "प्रकार",
+    "showingShifts": "{count} में से 50 शिफ्ट दिखा रहे हैं। पूर्ण डेटा के लिए निर्यात करें।",
+    "totalItems": "कुल आइटम",
+    "trackedInventoryItems": "ट्रैक किए गए इन्वेंट्री आइटम",
+    "lowOutOfStock": "कम / स्टॉक खत्म",
+    "needsAttention": "ध्यान देने की आवश्यकता",
+    "totalValue": "कुल मूल्य",
+    "stockTimesCostPerUnit": "स्टॉक x प्रति इकाई लागत",
+    "avgLossRate": "औसत हानि दर",
+    "acrossAllItems": "सभी आइटम में",
+    "noInventoryItems": "कोई इन्वेंट्री आइटम ट्रैक नहीं किया गया",
+    "inventoryItems": "इन्वेंट्री आइटम",
+    "itemsCount": "{count} आइटम",
+    "colCategory": "श्रेणी",
+    "colStock": "स्टॉक",
+    "colMin": "न्यूनतम",
+    "colMax": "अधिकतम",
+    "colUnit": "इकाई",
+    "colCostPerUnit": "लागत/इकाई",
+    "colValue": "मूल्य",
+    "colSupplier": "आपूर्तिकर्ता",
+    "colLossPct": "हानि %",
+    "colStatus": "स्थिति",
+    "outOfStock": "स्टॉक खत्म",
+    "lowStock": "कम स्टॉक",
+    "inStock": "स्टॉक में",
+    "showingItems": "{count} में से 50 आइटम दिखा रहे हैं। पूर्ण डेटा के लिए निर्यात करें।",
+    "totalProducts": "कुल उत्पाद",
+    "activeProducts": "सक्रिय उत्पाद",
+    "allProductsCombined": "सभी उत्पाद संयुक्त",
+    "avgMargin": "औसत मार्जिन",
+    "averageProfitMargin": "औसत लाभ मार्जिन",
+    "underperforming": "कमज़ोर प्रदर्शन",
+    "needsReview": "समीक्षा की आवश्यकता",
+    "noProducts": "कोई उत्पाद ट्रैक नहीं किया गया",
+    "productPerformance": "उत्पाद प्रदर्शन",
+    "productsCount": "{count} उत्पाद",
+    "colPrice": "मूल्य",
+    "colCost": "लागत",
+    "colMargin": "मार्जिन",
+    "colThisMonth": "इस माह",
+    "colLastMonth": "पिछला माह",
+    "colRevenue": "राजस्व",
+    "colTrend": "रुझान",
+    "colAlert": "अलर्ट",
+    "showingProducts": "{count} में से 50 उत्पाद दिखा रहे हैं। पूर्ण डेटा के लिए निर्यात करें।",
+    "salesReportTitle": "बिक्री रिपोर्ट",
+    "staffHoursReportTitle": "स्टाफ घंटे रिपोर्ट",
+    "inventoryReportTitle": "इन्वेंट्री रिपोर्ट",
+    "productPerformanceReportTitle": "उत्पाद प्रदर्शन रिपोर्ट"
+  },
+  "customers": {
+    "summary": {
+      "totalCustomers": "कुल ग्राहक",
+      "newThisMonth": "इस माह नए",
+      "avgOrderValue": "औसत ऑर्डर मूल्य",
+      "totalRevenue": "कुल राजस्व"
+    },
+    "searchPlaceholder": "नाम या ईमेल से खोजें...",
+    "filterPlaceholder": "फ़िल्टर",
+    "tagFilter": {
+      "all": "सभी टैग"
+    },
+    "tags": {
+      "vip": "VIP",
+      "regular": "नियमित",
+      "new": "नया",
+      "atRisk": "जोखिम में"
+    },
+    "sortPlaceholder": "क्रमबद्ध करें",
+    "sort": {
+      "totalSpent": "कुल खर्च",
+      "orders": "ऑर्डर",
+      "lastOrder": "अंतिम ऑर्डर"
+    },
+    "emptyFiltered": "आपके फ़िल्टर से कोई ग्राहक मेल नहीं खाता।",
+    "empty": "अभी कोई ग्राहक नहीं। आपकी साइट पर साइन अप करने के बाद वे यहाँ दिखाई देंगे।",
+    "col": {
+      "phone": "फ़ोन",
+      "orders": "ऑर्डर",
+      "totalSpent": "कुल खर्च",
+      "avgOrder": "औसत ऑर्डर",
+      "lastOrder": "अंतिम ऑर्डर",
+      "tags": "टैग",
+      "status": "स्थिति"
+    },
+    "noName": "कोई नाम नहीं",
+    "status": {
+      "active": "सक्रिय",
+      "inactive": "निष्क्रिय"
+    },
+    "detail": {
+      "customer": "ग्राहक",
+      "title": "ग्राहक विवरण",
+      "srDescription": "ग्राहक विवरण दृश्य",
+      "customerInfo": "ग्राहक जानकारी",
+      "memberSince": "{date} से सदस्य",
+      "orderHistory": "ऑर्डर इतिहास",
+      "noOrders": "अभी तक कोई ऑर्डर नहीं।"
+    },
+    "orderCol": {
+      "date": "तारीख",
+      "items": "आइटम",
+      "total": "कुल"
+    },
+    "export": {
+      "pdfTitle": "ग्राहक रिपोर्ट",
+      "pdfSubtitle": "{count} ग्राहक"
+    }
+  },
+  "suppliers": {
+    "export": "निर्यात करें",
+    "addSupplier": "आपूर्तिकर्ता जोड़ें",
+    "add": "जोड़ें",
+    "totalSuppliers": "कुल आपूर्तिकर्ता",
+    "activePurchaseOrders": "सक्रिय क्रय आदेश",
+    "poValueThisMonth": "इस महीने का PO मूल्य",
+    "tabSuppliers": "आपूर्तिकर्ता",
+    "tabPurchaseOrders": "क्रय आदेश",
+    "searchPlaceholder": "आपूर्तिकर्ता खोजें...",
+    "emptyNoSuppliers": "अभी तक कोई आपूर्तिकर्ता नहीं। शुरू करने के लिए अपना पहला आपूर्तिकर्ता जोड़ें।",
+    "emptyNoMatch": "आपकी खोज से कोई आपूर्तिकर्ता मेल नहीं खाता।",
+    "poCount": "{count} PO",
+    "lastPo": "अंतिम: {date}",
+    "createPo": "PO बनाएँ",
+    "emptyNoOrders": "अभी तक कोई क्रय आदेश नहीं।",
+    "createPurchaseOrder": "क्रय आदेश बनाएँ",
+    "colPoNumber": "PO #",
+    "colSupplier": "आपूर्तिकर्ता",
+    "colDate": "तारीख",
+    "colItems": "आइटम",
+    "colTotal": "कुल",
+    "colStatus": "स्थिति",
+    "colActions": "कार्रवाइयाँ",
+    "unknownSupplier": "अज्ञात",
+    "status": {
+      "draft": "मसौदा",
+      "sent": "भेजा गया",
+      "received": "प्राप्त हुआ",
+      "cancelled": "रद्द किया गया"
+    },
+    "actionSend": "भेजें",
+    "actionReceived": "प्राप्त हुआ",
+    "editSupplier": "आपूर्तिकर्ता संपादित करें",
+    "editSupplierDesc": "आपूर्तिकर्ता जानकारी अपडेट करें।",
+    "addSupplierDesc": "अपने संगठन में एक नया आपूर्तिकर्ता जोड़ें।",
+    "labelName": "नाम *",
+    "placeholderName": "आपूर्तिकर्ता का नाम",
+    "labelContactName": "संपर्क नाम",
+    "labelPhone": "फ़ोन",
+    "labelEmail": "ईमेल",
+    "labelAddress": "पता",
+    "labelPaymentTerms": "भुगतान शर्तें",
+    "terms": {
+      "net30": "Net 30",
+      "net60": "Net 60",
+      "cod": "COD",
+      "prepaid": "प्रीपेड"
+    },
+    "labelRating": "रेटिंग",
+    "labelNotes": "नोट्स",
+    "placeholderSupplierNotes": "इस आपूर्तिकर्ता के बारे में अतिरिक्त नोट्स...",
+    "update": "अपडेट करें",
+    "createPoDesc": "एक नया ड्राफ्ट खरीद ऑर्डर बनाएं।",
+    "labelSupplier": "आपूर्तिकर्ता *",
+    "selectSupplier": "आपूर्तिकर्ता चुनें",
+    "labelItems": "आइटम",
+    "poColItem": "आइटम",
+    "poColQty": "मात्रा",
+    "poColUnit": "इकाई",
+    "poColCost": "लागत",
+    "poColTotal": "कुल",
+    "placeholderItemName": "आइटम का नाम",
+    "addRow": "पंक्ति जोड़ें",
+    "subtotal": "उप-योग",
+    "taxPercent": "कर ({percent}%)",
+    "totalLabel": "कुल",
+    "placeholderPoNotes": "अतिरिक्त नोट्स...",
+    "createDraft": "ड्राफ्ट बनाएं",
+    "csvName": "नाम",
+    "csvContact": "संपर्क",
+    "toastNameRequired": "आपूर्तिकर्ता का नाम आवश्यक है",
+    "toastSaveFailed": "आपूर्तिकर्ता सहेजने में विफल",
+    "toastDeleteFailed": "आपूर्तिकर्ता हटाने में विफल",
+    "toastSelectSupplier": "कृपया एक आपूर्तिकर्ता चुनें",
+    "toastAddItem": "कृपया कम से कम एक आइटम जोड़ें",
+    "toastCreatePOFailed": "खरीद ऑर्डर बनाने में विफल",
+    "toastUpdateStatusFailed": "स्थिति अपडेट करने में विफल"
+  },
+  "apiSettings": {
+    "toast": {
+      "keyGenerated": "API कुंजी बनाई गई",
+      "keyRevoked": "API कुंजी निरस्त की गई",
+      "copied": "क्लिपबोर्ड पर कॉपी किया गया",
+      "urlRequired": "URL आवश्यक है",
+      "selectEvent": "कम से कम एक इवेंट चुनें",
+      "webhookAdded": "Webhook जोड़ा गया",
+      "webhookRemoved": "Webhook हटाया गया"
+    },
+    "pageTitle": "API और Webhooks",
+    "pageSubtitle": "API कुंजियों और webhook एकीकरण को प्रबंधित करें",
+    "tabs": {
+      "apiKeys": "API कुंजियाँ",
+      "webhooks": "Webhooks"
+    },
+    "apiKey": {
+      "title": "API कुंजी",
+      "description": "Merchiva API पर अनुरोधों को प्रमाणित करने के लिए इस कुंजी का उपयोग करें।",
+      "created": "{date} को बनाया गया",
+      "revoke": "निरस्त करें",
+      "generate": "API कुंजी बनाएं"
+    },
+    "usage": {
+      "title": "उपयोग",
+      "description": "Merchiva API के साथ प्रमाणीकरण कैसे करें",
+      "authentication": "प्रमाणीकरण",
+      "availableEndpoints": "उपलब्ध एंडपॉइंट्स",
+      "placeholderNotice": "यह एक प्लेसहोल्डर कार्यान्वयन है। उत्पादन में, API कुंजियाँ उचित हैशिंग और रेट सीमित करने के साथ सर्वर-साइड संग्रहीत की जाएंगी।"
+    },
+    "endpoints": {
+      "listProducts": "उत्पाद सूचीबद्ध करें",
+      "listInventory": "इन्वेंट्री आइटम सूचीबद्ध करें",
+      "listOrders": "हाल के ऑर्डर सूचीबद्ध करें",
+      "createOrder": "ऑर्डर बनाएं",
+      "listStaff": "स्टाफ सदस्य सूचीबद्ध करें"
+    },
+    "addWebhook": {
+      "title": "Webhook जोड़ें",
+      "description": "जब आपके स्टोर में इवेंट होते हैं तो सूचनाएं प्राप्त करें।",
+      "endpointUrl": "एंडपॉइंट URL",
+      "events": "इवेंट्स",
+      "submit": "Webhook जोड़ें"
+    },
+    "configured": {
+      "title": "कॉन्फ़िगर किए गए Webhooks"
+    },
+    "status": {
+      "active": "सक्रिय",
+      "paused": "रोका गया"
+    },
+    "webhookActions": {
+      "test": "परीक्षण करें",
+      "pause": "रोकें",
+      "enable": "सक्षम करें"
+    },
+    "samplePayload": {
+      "title": "नमूना पेलोड",
+      "dismiss": "खारिज करें",
+      "descriptionPrefix": "यह वह है जो भेजा जाएगा एक ",
+      "descriptionSuffix": " इवेंट के लिए।"
+    },
+    "empty": {
+      "title": "कोई webhook कॉन्फ़िगर नहीं किया गया",
+      "description": "स्टोर इवेंट्स के बारे में रीयल-टाइम सूचनाएं प्राप्त करने के लिए ऊपर एक webhook एंडपॉइंट जोड़ें।"
+    }
+  },
+  "punchIn": {
+    "toastCodeMustBe4Digits": "कोड 4 अंकों का होना चाहिए",
+    "toastCodeSet": "कोड सेट किया गया",
+    "toastFailed": "विफल",
+    "errorPinNotRecognized": "PIN पहचाना नहीं गया",
+    "toastSelectAnAction": "एक क्रिया चुनें",
+    "stepAuthenticate": "01 · प्रमाणीकरण",
+    "enterYourPin": "अपना PIN दर्ज करें",
+    "punchInOrOutHint": "अपना कर्मचारी PIN दर्ज करके पंच इन या आउट करें।",
+    "pinLabel": "PIN",
+    "statusError": "▲ त्रुटि",
+    "statusReady": "तैयार",
+    "statusEntered": "{count}/4 दर्ज किया गया",
+    "statusVerifying": "सत्यापित किया जा रहा है…",
+    "keyboardHint": "अंक दबाएं या कीबोर्ड का उपयोग करें",
+    "clear": "साफ़ करें",
+    "employee": "कर्मचारी",
+    "action": "क्रिया",
+    "selectAnAction": "एक क्रिया चुनें",
+    "optionEndShiftTitle": "शिफ्ट समाप्त करें",
+    "optionEndShiftSub": "पंच आउट",
+    "optionStartBreakTitle": "ब्रेक शुरू करें",
+    "optionStartBreakSub": "भोजन / विश्राम",
+    "fieldTime": "समय",
+    "fieldDate": "दिनांक",
+    "fieldState": "स्थिति",
+    "stateOff": "बंद",
+    "stateBreak": "ब्रेक",
+    "stateOn": "चालू",
+    "confirm": "पुष्टि करें",
+    "punchRecorded": "पंच दर्ज किया गया",
+    "successWelcome": "स्वागत है, {name}।",
+    "successGoodbye": "अलविदा, {name}।",
+    "successBreakStarted": "ब्रेक शुरू हुआ।",
+    "successWelcomeBack": "वापसी पर स्वागत है, {name}।",
+    "successInSub": "आपकी शिफ्ट अब खुली है।",
+    "successOutSub": "आपकी शिफ्ट बंद कर दी गई है।",
+    "successBreakStartSub": "घड़ी रोकी गई — तैयार होने पर अपना ब्रेक समाप्त करें।",
+    "successBreakEndSub": "ब्रेक समाप्त हुआ — शिफ्ट फिर से सक्रिय है।",
+    "fieldInAt": "इन समय",
+    "fieldOutAt": "आउट समय",
+    "fieldBreakAt": "ब्रेक समय",
+    "fieldResumed": "फिर शुरू हुआ",
+    "fieldTerminal": "टर्मिनल",
+    "fieldLocation": "स्थान",
+    "fieldConfId": "पुष्टि ID",
+    "tapToDismiss": "खारिज करने के लिए टैप करें · 5 सेकंड में ऑटो-रीसेट",
+    "onShift": "शिफ्ट पर",
+    "noActiveShifts": "कोई सक्रिय शिफ्ट नहीं।",
+    "recentPunches": "हाल के पंच",
+    "live": "लाइव",
+    "noPunchesToday": "आज कोई पंच नहीं",
+    "stepOnShiftNow": "02 · अभी शिफ्ट पर",
+    "activeCount": "सक्रिय",
+    "onBreak": "ब्रेक पर",
+    "active": "सक्रिय",
+    "stepRecentPunches": "03 · हाल के पंच",
+    "today": "आज",
+    "colTime": "समय",
+    "colWho": "कौन",
+    "colAction": "क्रिया",
+    "colDuration": "अवधि",
+    "durOnBreak": "ब्रेक पर",
+    "durOpen": "खुला",
+    "dialogMobileTitle": "पंच-इन कोड",
+    "dialogChangeTitle": "अपना पंच-इन कोड बदलें",
+    "dialogSetTitle": "अपना पंच-इन कोड सेट करें",
+    "dialogChangeDesc": "इस स्टोर पर आप जो 4-अंकों का कोड दर्ज करते हैं उसे अपडेट करें।",
+    "dialogSetDesc": "एक 4-अंकों का कोड चुनें जो आपको याद रहे। आप हर बार पंच इन करते समय इसे दर्ज करेंगे।",
+    "newCodeLabel": "नया कोड",
+    "codePlaceholder": "4 अंक",
+    "saveCode": "कोड सहेजें"
+  },
+  "billing": {
+    "title": "बिलिंग",
+    "subtitle": "अपनी Merchiva सदस्यता प्रबंधित करें",
+    "ownerOnly": "केवल संगठन का मालिक बिलिंग प्रबंधित कर सकता है।",
+    "currentPlan": "वर्तमान योजना",
+    "yearly": "वार्षिक",
+    "monthly": "मासिक",
+    "nextRenewal": "अगला नवीनीकरण: {date}",
+    "freePlan": "मुफ्त",
+    "upgradePrompt": "सभी सुविधाओं को अनलॉक करने के लिए Pro में अपग्रेड करें।",
+    "manageSubscription": "सदस्यता प्रबंधित करें",
+    "manageSubscriptionDesc": "योजना, भुगतान विधि, चालान और रद्दीकरण बदलें।",
+    "openPortal": "पोर्टल खोलें",
+    "upgradeToPro": "Pro में अपग्रेड करें",
+    "perMonth": "/ माह",
+    "perYear": "/ वर्ष",
+    "yearlySaveHint": "17% बचाएँ — 2 माह मुफ्त",
+    "recommended": "अनुशंसित",
+    "featureAllFeatures": "सभी मौजूदा सुविधाएँ शामिल",
+    "featureUnlimitedTeam": "असीमित टीम सदस्य",
+    "featurePrioritySupport": "प्राथमिकता समर्थन",
+    "toastSubscriptionActivated": "सदस्यता सक्रिय हुई",
+    "toastCheckoutCanceled": "चेकआउट रद्द हुआ",
+    "toastCheckoutFailed": "चेकआउट विफल",
+    "toastPortalOpenFailed": "पोर्टल नहीं खोला जा सका",
+    "toastPortalError": "पोर्टल त्रुटि"
+  },
+  "reviews": {
+    "pageTitle": "समीक्षाएँ और प्रतिष्ठा",
+    "pageSubtitle": "अपनी ऑनलाइन समीक्षाओं की निगरानी और प्रबंधन करें",
+    "googleIntegrationTitle": "Google समीक्षा एकीकरण",
+    "plannedBadge": "नियोजित",
+    "googleIntegrationDesc": "एक ही जगह से Google समीक्षाओं की निगरानी करें और उत्तर दें। शुरू करने के लिए अपना Google Business Profile कनेक्ट करें।",
+    "placesIdLabel": "Google Places ID",
+    "connectButton": "कनेक्ट करें",
+    "findPlacesIdAt": "अपना Places ID यहाँ खोजें",
+    "recentReviewsTitle": "हाल की समीक्षाएँ",
+    "recentReviewsDesc": "नीचे नमूना डेटा दिखाया गया है। वास्तविक समीक्षाएँ देखने के लिए Google समीक्षा कनेक्ट करें।",
+    "ratingTrendTitle": "रेटिंग रुझान",
+    "basedOnReviews": "{count} समीक्षाओं के आधार पर",
+    "ratingTrendUnavailable": "यह सुविधा तब उपलब्ध होगी जब Google समीक्षा API कनेक्ट होगा। रेटिंग डेटा में ऐतिहासिक रुझान और प्रतिस्पर्धियों के साथ तुलना शामिल होगी।"
+  },
+  "setup": {
+    "steps": {
+      "storeInfo": "स्टोर जानकारी",
+      "hours": "समय",
+      "team": "टीम",
+      "pos": "POS"
+    },
+    "skip": "छोड़ें",
+    "settingUp": "आपका कार्यक्षेत्र सेट किया जा रहा है...",
+    "footer": {
+      "step": "चरण {current} / {total}",
+      "yourStore": "आपका स्टोर"
+    },
+    "toast": {
+      "complete": "सेटअप पूर्ण!",
+      "error": "कुछ गलत हुआ, लेकिन आपका कार्यक्षेत्र तैयार है।"
+    },
+    "storeInfo": {
+      "title": "हमें अपने स्टोर के बारे में बताएँ।",
+      "subtitle": "हम इसका उपयोग आपके डैशबोर्ड को अनुकूलित करने और आपका कार्यक्षेत्र सेट करने के लिए करेंगे।",
+      "storeNameLabel": "स्टोर का नाम",
+      "storeNamePlaceholder": "जैसे, Maple Coffee",
+      "addressLabel": "पता",
+      "addressPlaceholder": "जैसे, 123 Main St, Oakland CA",
+      "businessTypeLabel": "व्यवसाय का प्रकार",
+      "types": {
+        "cafe": "कैफे / बेकरी",
+        "restaurant": "रेस्तरां",
+        "retail": "खुदरा दुकान",
+        "service": "सेवा / मरम्मत",
+        "other": "अन्य"
+      }
+    },
+    "hours": {
+      "title": "आप कब खुले रहते हैं?",
+      "subtitle": "यह Mr. Merchiva को स्टाफ शेड्यूल करने और माँग का अनुमान लगाने में मदद करता है।",
+      "openLabel": "खुलने का समय",
+      "closeLabel": "बंद होने का समय",
+      "openDaysLabel": "खुले दिन",
+      "days": {
+        "mon": "सोम",
+        "tue": "मंगल",
+        "wed": "बुध",
+        "thu": "गुरु",
+        "fri": "शुक्र",
+        "sat": "शनि",
+        "sun": "रवि"
+      }
+    },
+    "team": {
+      "title": "अपनी टीम को आमंत्रित करें।",
+      "subtitle": "स्टाफ जोड़ें ताकि वे क्लॉक-इन कर सकें, शेड्यूल देख सकें और POS का उपयोग कर सकें।",
+      "roleManager": "प्रबंधक",
+      "roleStaff": "स्टाफ",
+      "addAnother": "एक और जोड़ें",
+      "sendInvite": "{count} आमंत्रण भेजें",
+      "sendInvites": "{count} आमंत्रण भेजें"
+    },
+    "pos": {
+      "title": "अपना POS कनेक्ट करें।",
+      "subtitle": "Merchiva आपके POS से बिक्री, उत्पाद और इन्वेंट्री सिंक करता है।",
+      "connectOAuth": "OAuth के माध्यम से कनेक्ट करें",
+      "noPos": "अभी कोई POS नहीं",
+      "setupLater": "बाद में मैन्युअल रूप से सेट करें",
+      "finishSetup": "सेटअप पूरा करें"
+    }
+  },
+  "salesForecast": {
+    "dataExcellent": "उत्कृष्ट डेटा",
+    "dataGood": "अच्छा डेटा",
+    "dataFair": "ठीक-ठाक डेटा",
+    "dataLimited": "सीमित डेटा",
+    "loadingData": "पूर्वानुमान डेटा लोड हो रहा है...",
+    "notEnoughData": "पूर्वानुमान के लिए पर्याप्त डेटा नहीं",
+    "notEnoughDataDesc": "भविष्यवाणियों के लिए कम से कम 7 दिनों के बिक्री डेटा की आवश्यकता है। वर्तमान में {count} दिनों को ट्रैक किया जा रहा है।",
+    "title": "7-दिवसीय पूर्वानुमान",
+    "noLocation": "कोई स्थान नहीं — मौसम उपलब्ध नहीं",
+    "weatherUnavailable": "मौसम डेटा उपलब्ध नहीं",
+    "confidence": "{percent}% विश्वास",
+    "today": "आज",
+    "factorBase": "आधार:",
+    "factorWeather": "मौसम:",
+    "factorHoliday": "अवकाश:",
+    "factorTraffic": "ट्रैफ़िक:",
+    "factorStaff": "स्टाफ:",
+    "factorTrend": "रुझान:",
+    "hourlyBreakdown": "प्रति घंटा विवरण",
+    "predictedRevenuePerHour": "प्रति घंटा अनुमानित राजस्व",
+    "total": "कुल",
+    "predicted": "अनुमानित",
+    "bestDay": "सर्वश्रेष्ठ दिन",
+    "at": "पर",
+    "boostedBy": "{holiday} से बढ़ा",
+    "highFootTraffic": "अधिक अपेक्षित ग्राहक आवाजाही",
+    "strongBaseline": "मजबूत {day} आधार रेखा",
+    "weatherImpact": "मौसम प्रभाव",
+    "enableLocation": "मौसम-आधारित भविष्यवाणियाँ देखने के लिए स्थान पहुँच सक्षम करें",
+    "maySee": "देख सकते हैं",
+    "dueToWeather": "{weather} मौसम के कारण",
+    "favorableWeather": "पूरे सप्ताह अनुकूल मौसम की उम्मीद",
+    "daysClear": "{count}/7 दिन साफ़",
+    "weatherPending": "मौसम डेटा लंबित",
+    "staffingAdvisory": "स्टाफिंग सलाह",
+    "daysCount": "{count} दिन",
+    "daysCountPlural": "{count} दिन",
+    "mayBeUnderstaffed": "स्टाफ की कमी हो सकती है",
+    "considerAddingShifts": "{days} — शिफ्ट जोड़ने पर विचार करें",
+    "noShiftData": "कोई शिफ्ट डेटा उपलब्ध नहीं। स्टाफिंग अनुशंसाएँ सक्षम करने के लिए शिफ्ट शेड्यूल करें।",
+    "staffingAdequate": "सभी 7 दिनों में स्टाफिंग पर्याप्त लगती है (प्रति दिन औसत {avg})"
+  },
+  "subscribe": {
+    "toastActivated": "सब्सक्रिप्शन सक्रिय हुआ",
+    "toastCanceled": "चेकआउट रद्द किया गया",
+    "toastCheckoutFailed": "चेकआउट विफल रहा",
+    "trialDaysLeftOne": "आपके मुफ़्त ट्रायल में 1 दिन शेष है",
+    "trialDaysLeftOther": "आपके मुफ़्त ट्रायल में {count} दिन शेष हैं",
+    "trialEnded": "आपका मुफ़्त ट्रायल समाप्त हो गया है",
+    "titleTrial": "आप मुफ़्त ट्रायल पर हैं",
+    "titleSubscribe": "Merchiva की सदस्यता लें",
+    "trialDescription": "{trialLine}. अपने स्टोर को बिना रुकावट चालू रखने के लिए अभी सदस्यता लें।",
+    "ownerDescription": "Merchiva का उपयोग जारी रखने के लिए एक सक्रिय सब्सक्रिप्शन आवश्यक है।",
+    "memberDescription": "जारी रखने के लिए आपके संगठन को एक सक्रिय सब्सक्रिप्शन की आवश्यकता है।",
+    "monthly": "मासिक",
+    "perMonth": "/ माह",
+    "yearly": "वार्षिक",
+    "perYear": "/ वर्ष",
+    "yearlyHint": "17% बचाएं — 2 माह मुफ़्त",
+    "featureAllFeatures": "सभी सुविधाएँ शामिल",
+    "featureUnlimitedMembers": "असीमित टीम सदस्य",
+    "featurePrioritySupport": "प्राथमिकता समर्थन",
+    "memberOwnerOnly": "केवल संगठन का मालिक ही सदस्यता ले सकता है। कृपया {org} के मालिक से सब्सक्रिप्शन सक्रिय करने का अनुरोध करें, फिर रिफ्रेश करें।",
+    "yourOrganization": "आपका संगठन",
+    "continueInTrial": "ट्रायल में जारी रखें",
+    "recommended": "अनुशंसित"
+  },
+  "bugReport": {
+    "title": "बग की रिपोर्ट करें",
+    "drawerDescription": "आपको आई समस्या का वर्णन करें और वैकल्पिक रूप से एक स्क्रीनशॉट संलग्न करें।",
+    "whatWentWrong": "क्या गलत हुआ?",
+    "titlePlaceholder": "समस्या का संक्षिप्त विवरण",
+    "detailsLabel": "विवरण (वैकल्पिक)",
+    "detailsPlaceholder": "दोबारा उत्पन्न करने के चरण, अपेक्षित व्यवहार...",
+    "screenshotLabel": "स्क्रीनशॉट",
+    "screenshotAlt": "बग स्क्रीनशॉट",
+    "captureScreenshot": "स्क्रीनशॉट कैप्चर करें",
+    "submit": "रिपोर्ट सबमिट करें",
+    "screenshotCaptured": "स्क्रीनशॉट कैप्चर किया गया",
+    "screenshotFailed": "स्क्रीनशॉट कैप्चर करने में विफल",
+    "titleRequired": "कृपया एक शीर्षक जोड़ें",
+    "saved": "बग रिपोर्ट सहेजी गई"
+  },
+  "myTasks": {
+    "title": "आज के कार्य",
+    "doneCount": "{done} / {total} पूर्ण",
+    "all": "सभी",
+    "allCompleted": "आज के सभी कार्य पूरे हो गए।",
+    "evidenceBadge": "प्रमाण",
+    "done": "पूर्ण",
+    "moreCount": "+ {count} और",
+    "evidenceRequiredError": "इस कार्य के लिए प्रमाण के रूप में एक फ़ोटो या वीडियो आवश्यक है",
+    "chatHeader": "✅ कार्य पूर्ण: {title}",
+    "chatAttachments": "📎 {count} अटैचमेंट",
+    "partialChatFailure": "कार्य पूर्ण हुआ, लेकिन {count} चैट संदेश विफल रहे",
+    "completedSuccess": "कार्य पूर्ण हुआ",
+    "completeError": "पूर्ण करने में विफल",
+    "evidenceLabel": "प्रमाण फ़ोटो / वीडियो",
+    "evidenceAlt": "प्रमाण",
+    "remove": "हटाएं",
+    "uploadError": "अपलोड विफल रहा",
+    "uploading": "अपलोड हो रहा है…",
+    "noteLabel": "नोट",
+    "optional": "(वैकल्पिक)",
+    "notePlaceholder": "प्रबंधक के लिए कुछ चिह्नित करना है?",
+    "markDone": "पूर्ण के रूप में चिह्नित करें"
+  },
+  "itemForecast": {
+    "title": "प्रति-आइटम AI पूर्वानुमान",
+    "retrain": "पुनः प्रशिक्षित करें",
+    "refresh": "रिफ्रेश करें",
+    "loadingPredictions": "पूर्वानुमान लोड हो रहे हैं...",
+    "today": "आज",
+    "itemsTotal": "कुल आइटम",
+    "topItems": "शीर्ष आइटम: {day}",
+    "predictedUnits": "बिकने के अनुमानित यूनिट",
+    "totalItems": "कुल: {count} आइटम",
+    "predicted": "अनुमानित",
+    "unitsValue": "{count} यूनिट",
+    "allItems": "सभी आइटम: {day}",
+    "showLess": "कम दिखाएं",
+    "showAllItems": "सभी {count} आइटम दिखाएं",
+    "modelNotTrained": "AI मॉडल अभी प्रशिक्षित नहीं है",
+    "recordsReady": "आपके पास {count} आइटम-दिन रिकॉर्ड हैं। प्रति-आइटम पूर्वानुमान पाने के लिए AI मॉडल को प्रशिक्षित करें।",
+    "recordsNeeded": "भुगतान इतिहास से कम से कम 100 आइटम-दिन रिकॉर्ड की आवश्यकता है। वर्तमान में {count} हैं।",
+    "training": "प्रशिक्षण हो रहा है...",
+    "trainModel": "AI मॉडल प्रशिक्षित करें",
+    "modelTrainedSummary": "मॉडल प्रशिक्षित: {items} आइटम, {days} दिन, R²={r2}",
+    "lastTrainedSummary": "अंतिम प्रशिक्षण: {days} दिनों में {items} आइटम — MAE: {mae}, R²: {r2}",
+    "trainingFailed": "प्रशिक्षण विफल रहा",
+    "predictionFailed": "पूर्वानुमान विफल रहा"
+  },
+  "scheduler": {
+    "auto": {
+      "button": "ऑटो शेड्यूल",
+      "title": "ऑटो शेड्यूल",
+      "description": "उपलब्धता, बाधाओं और निष्पक्षता के आधार पर अनुकूलित शिफ्ट असाइनमेंट उत्पन्न करें।",
+      "startDate": "आरंभ तिथि",
+      "endDate": "समाप्ति तिथि",
+      "maxHoursPerWeek": "अधिकतम घंटे/सप्ताह",
+      "maxConsecutiveDays": "अधिकतम लगातार दिन",
+      "minRestHours": "न्यूनतम आराम (घंटे)",
+      "generate": "शेड्यूल उत्पन्न करें",
+      "statShifts": "शिफ्ट",
+      "statTotalHours": "कुल घंटे",
+      "statAvgPerStaff": "औसत/स्टाफ",
+      "statFairness": "निष्पक्षता",
+      "unfilledSlots": "खाली स्लॉट ({count})",
+      "moreUnfilled": "+{count} और खाली",
+      "schedulePreview": "शेड्यूल पूर्वावलोकन",
+      "selectAll": "सभी चुनें",
+      "deselectAll": "सभी अचयनित करें",
+      "colDate": "तिथि",
+      "colShift": "शिफ्ट",
+      "colTime": "समय",
+      "colStaff": "स्टाफ",
+      "colRoles": "भूमिकाएं",
+      "colScore": "स्कोर",
+      "colStatus": "स्थिति",
+      "statusOk": "ठीक है",
+      "regenerate": "पुनः उत्पन्न करें",
+      "applySelected": "चयनित लागू करें ({count})",
+      "noShiftsGenerated": "कोई शिफ्ट उत्पन्न नहीं की जा सकी। अपनी टीम की उपलब्धता और शिफ्ट प्रीसेट जांचें।",
+      "generateFailed": "शेड्यूल उत्पन्न करने में विफल।",
+      "noShiftsSelected": "लागू करने के लिए कोई शिफ्ट चयनित नहीं।",
+      "shiftsAdded": "शेड्यूल में {count} शिफ्ट जोड़ी गई।",
+      "applyFailed": "कुछ शिफ्ट लागू करने में विफल। कृपया पुनः प्रयास करें।"
     }
   }
 }

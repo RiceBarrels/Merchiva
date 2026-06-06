@@ -1281,7 +1281,8 @@
       "inviteCancelFailed": "تعذّر الإلغاء"
     },
     "title": "الموظفون",
-    "subtitle": "الجدولة والفريق والأدوار والتدريب"
+    "subtitle": "الجدولة والفريق والأدوار والتدريب",
+    "pendingRequests": "الطلبات المعلّقة"
   },
   "pos": {
     "tabs": {
@@ -1299,7 +1300,12 @@
       "customer": "العميل",
       "thankYou": "شكراً لك!",
       "print": "طباعة",
-      "newOrder": "طلب جديد"
+      "newOrder": "طلب جديد",
+      "paidAmount": "مدفوع {amount}",
+      "yourBusiness": "نشاطك التجاري",
+      "tipPct": "بقشيش {pct}%",
+      "paid": "مدفوع",
+      "email": "البريد الإلكتروني"
     },
     "refund": {
       "title": "استرداد",
@@ -1340,7 +1346,14 @@
       "noProducts": "لا توجد منتجات",
       "addInProducts": "أضف المنتجات في صفحة المنتجات",
       "noResults": "لا توجد نتائج",
-      "each": "للقطعة"
+      "each": "للقطعة",
+      "taxShort": "الضريبة",
+      "newOrder": "طلب جديد",
+      "searchMenu": "البحث في القائمة...",
+      "scan": "مسح",
+      "matchesFor": "نتائج لـ \"{query}\"",
+      "noResultsFound": "لم يتم العثور على نتائج",
+      "noProductsInCategory": "لا توجد منتجات في هذه الفئة"
     },
     "customItem": {
       "title": "عنصر مخصص",
@@ -1386,6 +1399,90 @@
       "cardDeclined": "تم رفض البطاقة",
       "paymentFailed": "فشل الدفع",
       "moduleUnavailable": "وحدة الدفع غير متوفرة"
+    },
+    "discountReasons": {
+      "none": "السبب (اختياري)…",
+      "staff": "خصم الموظفين",
+      "loyalty": "مكافأة الولاء",
+      "comp": "مجاني / على حساب المحل",
+      "damaged": "تم تحضيره بشكل خاطئ",
+      "manager": "تجاوز المدير"
+    },
+    "cart": {
+      "ticket": "الفاتورة",
+      "itemsCount": "{count} عنصر",
+      "walkInPlaceholder": "عميل عابر (انقر للتسمية)",
+      "empty": "السلة فارغة",
+      "tapToStart": "انقر على عنصر للبدء",
+      "pctOff": "خصم {pct}%",
+      "amountOff": "خصم {amount}",
+      "tipLabel": "البقشيش ({pct}%)",
+      "viewCart": "عرض السلة",
+      "drawerTitle": "السلة · {count} عنصر"
+    },
+    "lineEditor": {
+      "title": "تعديل السطر",
+      "mobileTitle": "تعديل · {name}",
+      "perEach": "{price}/للوحدة",
+      "quantity": "الكمية",
+      "notesLabel": "ملاحظات للمطبخ / البار",
+      "notesPlaceholder": "الحساسية، تعليمات التحضير، الاسم على الكوب...",
+      "lineDiscount": "خصم السطر",
+      "discNone": "لا شيء",
+      "discPct": "% خصم",
+      "discAmount": "خصم {symbol}",
+      "remove": "إزالة",
+      "lineTotal": "إجمالي السطر"
+    },
+    "pay": {
+      "methods": {
+        "card": "بطاقة",
+        "cash": "نقدًا",
+        "mobilePay": "الدفع عبر الجوال",
+        "giftCard": "بطاقة هدية",
+        "mobile": "جوال",
+        "gift": "هدية"
+      },
+      "cardSubOffline": "أدخل البطاقة — في قائمة الانتظار دون اتصال",
+      "cardSubAvailable": "انقر أو أدخل أو مرّر البطاقة",
+      "cardSubNotConfigured": "غير مُهيّأ",
+      "cashSub": "فتح الدرج",
+      "mobileSub": "Apple / Google Pay",
+      "giftSub": "امسح أو أدخل الرمز",
+      "backToOrder": "العودة إلى الطلب",
+      "checkout": "إتمام الدفع",
+      "tender": "الدفع",
+      "cardNumberQueued": "رقم البطاقة (في قائمة الانتظار لوقت لاحق)",
+      "queuedHint": "ستوضع الدفعة في قائمة الانتظار وتتم معالجتها عند عودة الاتصال",
+      "queuedHintShort": "في قائمة الانتظار وتتم معالجتها عند عودة الاتصال",
+      "pciWarning": "للعرض التوضيحي / النسخة الأولية فقط — أرقام البطاقات المخزّنة محليًا غير متوافقة مع معايير PCI.",
+      "tip": "البقشيش",
+      "tipNone": "لا شيء",
+      "cashTendered": "المبلغ النقدي المدفوع",
+      "other": "أخرى",
+      "changeOwed": "الباقي المستحق",
+      "change": "الباقي",
+      "split": "تقسيم",
+      "splitSingle": "فردي",
+      "splitWays": "{n} طرق",
+      "splitEach": "{amount} لكل منها",
+      "orderSummary": "ملخص الطلب",
+      "queueCardAmount": "وضع البطاقة في الانتظار {amount}",
+      "chargeAmount": "تحصيل {amount}"
+    },
+    "offline": {
+      "banner": "وضع عدم الاتصال — النقد وقائمة انتظار البطاقات فقط"
+    },
+    "pending": {
+      "queuedOne": "تم وضع {count} دفعة بطاقة معلّقة في قائمة الانتظار",
+      "queuedOther": "تم وضع {count} دفعة بطاقة معلّقة في قائمة الانتظار",
+      "processOne": "معالجة {count} بطاقة معلّقة",
+      "processOther": "معالجة {count} بطاقة معلّقة"
+    },
+    "toast": {
+      "paymentQueued": "تم وضع الدفعة في قائمة الانتظار",
+      "paymentQueuedDesc": "بطاقة تنتهي بـ {last4} — ستتم المعالجة عند الاتصال",
+      "pendingCardsCleared": "تم مسح البطاقات المعلّقة"
     }
   },
   "settings": {
@@ -1682,7 +1779,28 @@
       "KRW": "وون كوري جنوبي",
       "INR": "روبية هندية",
       "SAR": "ريال سعودي"
-    }
+    },
+    "toastGeolocationUnsupported": "تحديد الموقع الجغرافي غير مدعوم في متصفحك",
+    "toastLocationDetected": "تم تحديد الموقع",
+    "toastGeolocationFailed": "تعذّر تحديد موقعك. يرجى إدخال الإحداثيات يدويًا.",
+    "exitStoreModeTitle": "أدخل رمز PIN للخروج من وضع المتجر",
+    "exitStoreModeMobileTitle": "الخروج من وضع المتجر",
+    "exitStoreModeDesc": "أدخل رمز تسجيل الحضور لمالك أو مدير لتعطيل وضع جهاز المتجر.",
+    "exitPinInvalid": "رمز غير صالح",
+    "exitPinInvalidRole": "رمز غير صالح. يجب أن يكون رمز مالك أو مدير.",
+    "toastStoreModeDisabled": "تم تعطيل وضع المتجر",
+    "disableStoreMode": "تعطيل وضع المتجر",
+    "manageDeviceTitle": "إدارة الجهاز",
+    "manageDeviceMobileTitle": "إدارة الجهاز",
+    "manageDeviceDesc": "إعادة تسمية هذا الجهاز أو إزالته.",
+    "toastDeviceRenamed": "تمت إعادة تسمية الجهاز",
+    "toastDeviceRemoved": "تمت إزالة الجهاز",
+    "removeDevice": "إزالة الجهاز",
+    "forecastLocation": "موقع التوقعات",
+    "noPlaceId": "لا يوجد معرّف مكان",
+    "storeDevices": "أجهزة المتجر",
+    "unnamedDevice": "جهاز بلا اسم",
+    "deviceOff": "متوقف"
   },
   "lock": {
     "title": "الجهاز مقفل",
@@ -1818,7 +1936,12 @@
     "merchivaRemove": "إزالة Mr. Merchiva",
     "merchivaOn": "Mr. Merchiva",
     "merchivaMentionHint": "اسأل المساعد الذكي",
-    "noMatches": "لا توجد نتائج"
+    "noMatches": "لا توجد نتائج",
+    "online": "متصل",
+    "aiOpsAgent": "وكيل العمليات بالذكاء الاصطناعي الخاص بك",
+    "mentionLower": "إشارة",
+    "sendKbd": "إرسال",
+    "send": "إرسال"
   },
   "dashboard": {
     "greeting": {
@@ -1885,7 +2008,74 @@
       "addMore": "إضافة المزيد",
       "choose": "اختر ملفًا",
       "complete": "إكمال"
-    }
+    },
+    "attendance": {
+      "title": "حضور اليوم",
+      "punchedIn": "سجّلوا الدخول",
+      "onBreak": "في استراحة",
+      "nobody": "لم يسجّل أحد الدخول بعد.",
+      "allOut": "سجّل الجميع الخروج."
+    },
+    "yesterdayTasks": {
+      "title": "مهام الأمس",
+      "done": "منجزة",
+      "notDone": "غير منجزة",
+      "skipped": "متخطّاة",
+      "none": "لا توجد مهام مستحقة بالأمس."
+    },
+    "widgets": {
+      "salesToday": {
+        "title": "مبيعات اليوم",
+        "predicted": "متوقَّع",
+        "vsYesterday": "مقارنة بالأمس"
+      },
+      "inventoryAlerts": {
+        "title": "تنبيهات المخزون",
+        "allStocked": "جميع العناصر متوفرة بكميات جيدة",
+        "outOfStock": "{count} نفد من المخزون",
+        "lowStock": "{count} مخزون منخفض",
+        "outBadge": "نافد",
+        "lowBadge": "منخفض"
+      },
+      "scheduleOverview": {
+        "title": "نظرة عامة على الجدول",
+        "empty": "لا توجد مناوبات مجدولة اليوم",
+        "shiftToday": "مناوبة اليوم",
+        "shiftsToday": "مناوبات اليوم",
+        "nextLabel": "التالي:",
+        "atLabel": "في"
+      },
+      "todo": {
+        "title": "المهام",
+        "placeholder": "مهمة جديدة...",
+        "empty": "لا توجد مهام بعد",
+        "more": "+{count} أخرى"
+      },
+      "wasteCost": {
+        "title": "تكلفة الهدر",
+        "details": "التفاصيل",
+        "today": "اليوم",
+        "thisWeek": "هذا الأسبوع",
+        "thisMonth": "هذا الشهر",
+        "empty": "لم يُسجَّل أي هدر بعد"
+      },
+      "notifications": {
+        "title": "الإشعارات",
+        "empty": "لا توجد إشعارات غير مقروءة"
+      },
+      "topProducts": {
+        "title": "أفضل المنتجات",
+        "empty": "لا توجد بيانات منتجات بعد"
+      },
+      "quickStats": {
+        "title": "إحصاءات سريعة",
+        "products": "المنتجات",
+        "staffOnDuty": "الموظفون في الخدمة",
+        "inventoryItems": "عناصر المخزون",
+        "lowStock": "مخزون منخفض"
+      }
+    },
+    "title": "لوحة التحكم"
   },
   "inventory": {
     "title": "المخزون",
@@ -1905,7 +2095,8 @@
     "tabs": {
       "items": "العناصر",
       "transactions": "سجل الحركات",
-      "losses": "تتبّع الفاقد"
+      "losses": "تتبّع الفاقد",
+      "restock": "إعادة التخزين"
     },
     "filters": {
       "searchPlaceholder": "ابحث عن عناصر أو موردين…",
@@ -1979,6 +2170,35 @@
       "saveFailed": "فشل حفظ العنصر",
       "itemDeleted": "تم حذف العنصر",
       "deleteFailed": "فشل حذف العنصر"
+    },
+    "restock": {
+      "emptyTitle": "المخزون مكتمل — لا حاجة لإعادة التخزين",
+      "emptyHint": "تبدو مستويات مخزونك جيدة.",
+      "criticalItems": "العناصر الحرجة",
+      "highPriority": "أولوية عالية",
+      "totalOrderValue": "إجمالي قيمة الطلب",
+      "itemsToRestock": "العناصر المطلوب إعادة تخزينها",
+      "exportCsv": "تصدير أمر الشراء (CSV)",
+      "csvDownloaded": "تم تنزيل أمر الشراء بصيغة CSV",
+      "exportPdf": "تصدير أمر الشراء (PDF)",
+      "pdfDownloaded": "تم تنزيل أمر الشراء بصيغة PDF",
+      "pdfTitle": "أمر الشراء",
+      "pdfSubtitle": "{count} عنصر — التكلفة التقديرية {cost}",
+      "stockLevel": "مستوى المخزون",
+      "dailyConsumption": "الاستهلاك اليومي",
+      "perDay": "{rate} {unit}/يوم",
+      "daysUntilStockout": "الأيام حتى نفاد المخزون",
+      "notApplicable": "غير متاح",
+      "daysValue": "{days} يوم",
+      "recommendedOrder": "الطلب الموصى به",
+      "estimatedCost": "التكلفة التقديرية",
+      "lastRestocked": "آخر إعادة تخزين",
+      "daysAgo": "قبل {days} يوم",
+      "trend": {
+        "increasing": "متزايد",
+        "decreasing": "متناقص",
+        "stable": "مستقر"
+      }
     }
   },
   "sales": {
@@ -2003,7 +2223,9 @@
     },
     "tabs": {
       "history": "التحليل التاريخي",
-      "hourly": "اليوم بالساعة"
+      "hourly": "اليوم بالساعة",
+      "forecast": "التوقعات",
+      "aiItems": "عناصر AI"
     },
     "history": {
       "title": "سجل المبيعات خلال 30 يومًا",
@@ -2047,7 +2269,14 @@
     "filterTeam": "الفريق",
     "filterInventory": "المخزون",
     "filterOrder": "الطلبات",
-    "filterGeneral": "النظام"
+    "filterGeneral": "النظام",
+    "tradeOfferedToEveryone": "يعرض {name} وردية عمله على الجميع",
+    "tradeWantsToTrade": "يريد {name} تبادل الورديات معك",
+    "tradeAcceptedAwaitingManager": "وافق {name} — بانتظار موافقة المدير",
+    "tradeFrom": "تبادل من {name}",
+    "someone": "شخص ما",
+    "waitingForStaff": "بانتظار الموظفين",
+    "requestedTimeOff": "طلب {name} إجازة"
   },
   "push": {
     "promptTitle": "تلقّ تنبيهات على سطح المكتب",
@@ -2390,7 +2619,118 @@
     "foodStep2": "فحص درجات حرارة الطعام وتسجيل القراءات",
     "foodStep3": "فحص أماكن التخزين بحثاً عن المنتجات منتهية الصلاحية",
     "foodStep4": "تنظيف وتعقيم أسطح التحضير",
-    "foodStep5": "التحقق من صحة التوسيم والتواريخ"
+    "foodStep5": "التحقق من صحة التوسيم والتواريخ",
+    "manager": {
+      "dayCount": "{count} يوم",
+      "dayCountPlural": "{count} أيام",
+      "curriculumSettings": "إعدادات المنهج",
+      "moduleLabel": "وحدة",
+      "untitledDay": "يوم بلا عنوان",
+      "allRoles": "جميع الأدوار",
+      "required": "مطلوب",
+      "selectOrAddDay": "اختر أو أضف يومًا للبدء في التأليف",
+      "unsaved": "غير محفوظ",
+      "history": "السجل",
+      "previewAsIntern": "معاينة كمتدرب",
+      "publish": "نشر",
+      "editor": "المحرر",
+      "words": "كلمات",
+      "minRead": "دقيقة قراءة",
+      "saved": "محفوظ",
+      "lessonPlaceholder": "اكتب درس اليوم — العناوين والقوائم والروابط والاقتباسات والصور المضمّنة…",
+      "pickDayToEdit": "اختر يومًا من المنهج لتحريره",
+      "preview": "معاينة",
+      "howInternsSeeIt": "كيف سيراها المتدربون",
+      "desktop": "سطح المكتب",
+      "mobile": "الجوال",
+      "emptyDay": "يوم فارغ. أضف محتوى في المحرر لتراه هنا.",
+      "attachments": "المرفقات",
+      "item": "عنصر",
+      "items": "عناصر",
+      "embedUrl": "رابط التضمين",
+      "selectDayForAttachments": "اختر يومًا لإضافة المرفقات.",
+      "video": "فيديو",
+      "photo": "صورة",
+      "note": "ملاحظة",
+      "remove": "إزالة",
+      "dropFile": "أفلت الملف",
+      "upload": "رفع"
+    },
+    "rubric": {
+      "knowsMaterial": "يتقن المادة",
+      "knowsMaterialHint": "الاسترجاع، الثقة",
+      "practicalSkill": "المهارة العملية",
+      "practicalSkillHint": "الدقة في التطبيق العملي",
+      "speedFlow": "السرعة والانسيابية",
+      "speedFlowHint": "وتيرة عند المستوى المتوقع",
+      "recovery": "التعافي",
+      "recoveryHint": "يتعامل مع الأخطاء بشكل جيد",
+      "stationDiscipline": "انضباط محطة العمل",
+      "stationDisciplineHint": "نظيف ومنظم"
+    },
+    "trainer": {
+      "pickADay": "اختر يومًا",
+      "dayN": "اليوم {n}",
+      "required": "مطلوب",
+      "traineesPassed": "متدربون اجتازوا",
+      "badge": "مدرّب",
+      "noContent": "لا يحتوي هذا اليوم على محتوى منشور بعد.",
+      "objectives": "الأهداف",
+      "trainees": "المتدربون",
+      "filter": "تصفية",
+      "noTraineesYet": "لا يوجد متدربون بعد",
+      "gradingDay": "التقييم · اليوم {n}",
+      "message": "رسالة",
+      "dm": "رسالة مباشرة",
+      "rubricLabel": "معايير التقييم",
+      "notesForTrainee": "ملاحظات للمتدرب",
+      "visibleTo": "مرئي لـ {name}",
+      "notesPlaceholder": "ما الذي سار على ما يرام؟ وما الذي يجب التدرّب عليه لاحقًا؟",
+      "retry": "إعادة المحاولة",
+      "submitGrade": "إرسال التقييم",
+      "willBeNotified": "سيتم إشعار {name} · تم الحفظ في ملف تدريبه",
+      "pickTrainee": "اختر متدربًا من القائمة لبدء التقييم."
+    },
+    "intern": {
+      "objectiveFallback": "الهدف {number}",
+      "progress": "التقدّم",
+      "dayOfTotal": "اليوم {day} من {total}",
+      "doneCount": "{count} مكتمل",
+      "remainingCount": "{count} متبقٍ",
+      "keepGoing": "واصل التقدّم",
+      "dayLabel": "اليوم {number}",
+      "practice": "تطبيق عملي",
+      "required": "مطلوب",
+      "lockedUntilPrior": "مقفل حتى اجتياز اليوم السابق",
+      "noContentYet": "لا يوجد محتوى لهذا اليوم بعد.",
+      "dayWithTitle": "اليوم {number} · {title}",
+      "tasksForToday": "مهام اليوم",
+      "checkEachOff": "ضع علامة على كل مهمة عند إكمالها.",
+      "noTasksYet": "لا توجد مهام بعد — سيضيف مديرك الأهداف قريبًا.",
+      "resources": "موارد",
+      "note": "ملاحظة",
+      "requestTrainerReview": "طلب مراجعة المدرّب",
+      "trainerWillBeNotified": "سيتم إشعار مدرّبك.",
+      "waitForTasks": "انتظر إسناد المهام.",
+      "completeMoreTask": "أكمل {count} مهمة إضافية لطلب المراجعة",
+      "completeMoreTasks": "أكمل {count} مهام إضافية لطلب المراجعة",
+      "awaitingReview": "بانتظار المراجعة",
+      "liveGradingNote": "سيأتي مدرّبك لإجراء التقييم المباشر. ابقَ بالقرب من البار.",
+      "askTrainerQuestion": "اطرح سؤالاً على المدرّب"
+    },
+    "dayRail": {
+      "days": "أيام",
+      "noDaysYet": "لا توجد أيام بعد",
+      "dayAbbrev": "يوم",
+      "optional": "اختياري",
+      "typeOrientation": "تعريفي",
+      "typeTheory": "نظري",
+      "typePractice": "تطبيقي",
+      "typeSystem": "نظام",
+      "typeCompliance": "امتثال",
+      "typeAssessment": "تقييم",
+      "typeGeneral": "عام"
+    }
   },
   "display": {
     "kitchen": "المطبخ",
@@ -2747,7 +3087,168 @@
     "menuReAsk": "إعادة السؤال",
     "menuRegenerate": "إعادة توليد الرد",
     "menuDelete": "حذف من السجل",
-    "menuCopied": "تم النسخ إلى الحافظة"
+    "menuCopied": "تم النسخ إلى الحافظة",
+    "kpi": {
+      "revenueToday": "الإيرادات · اليوم",
+      "vsAvg": "مقارنة بالمتوسط",
+      "live": "مباشر",
+      "orders": "الطلبات",
+      "today": "اليوم",
+      "onShift": "في المناوبة",
+      "skusAtRisk": "وحدات SKU معرّضة للخطر",
+      "ofTracked": "من {count} متتبَّعة",
+      "nHigh": "{n} مرتفعة"
+    },
+    "insight": {
+      "confidence": "الثقة",
+      "hide": "إخفاء",
+      "why": "لماذا",
+      "basedOn": "بناءً على",
+      "view": "عرض",
+      "dismiss": "تجاهل"
+    },
+    "embed": {
+      "daysCover": "تغطية ~{days} يوم",
+      "current": "الحالي",
+      "minMax": "الأدنى / الأقصى",
+      "cover": "التغطية",
+      "daysApprox": "~{days} يوم"
+    },
+    "shift": {
+      "invalidRole": "ليس دورًا وظيفيًا في هذه المؤسسة — سيُرفض الاعتماد",
+      "jobRole": "الدور الوظيفي"
+    },
+    "order": {
+      "itemCount": "{count} عنصر",
+      "itemCountPlural": "{count} عنصر"
+    },
+    "builder": {
+      "elementCount": "{count} عنصر",
+      "elementCountPlural": "{count} عنصر",
+      "moreCount": "+{count} أخرى"
+    },
+    "actionsList": {
+      "tag": "الإجراءات",
+      "optionalCount": "+{count} اختياري"
+    },
+    "actionsAvailable": "إليك جميع إجراءات الذكاء الاصطناعي المتاحة حاليًا:",
+    "qa": {
+      "multiSelect": "تحديد متعدد · {count} محدَّد",
+      "other": "أخرى...",
+      "customReplyPlaceholder": "اكتب ردًا مخصصًا...",
+      "submit": "إرسال",
+      "pickAtLeastOne": "اختر واحدًا على الأقل لكل سؤال",
+      "submitted": "تم الإرسال"
+    },
+    "rolesList": {
+      "tag": "الأدوار",
+      "count": "{count} دور",
+      "empty": "لا توجد أدوار بعد"
+    },
+    "roleAdd": {
+      "tag": "دور جديد",
+      "responsibilities": "المسؤوليات"
+    },
+    "status": {
+      "adding": "جارٍ الإضافة...",
+      "deleting": "جارٍ الحذف...",
+      "added": "تمت الإضافة",
+      "deleted": "تم الحذف"
+    },
+    "tasks": {
+      "loading": "جارٍ تحميل المهام...",
+      "deleteFailed": "فشل حذف المهمة",
+      "tag": "المهام",
+      "empty": "لا توجد مهام لهذا الدور",
+      "evidence": "الأدلة"
+    },
+    "taskAdd": {
+      "tag": "مهمة جديدة",
+      "chooseChat": "اختر محادثة جماعية",
+      "evidenceRequired": "الأدلة مطلوبة",
+      "evidencePrompt": "تتطلب هذه المهمة أدلة — اختر المحادثة الجماعية التي ينبغي رفعها إليها:",
+      "noGroupChats": "لا توجد محادثات جماعية بعد — أنشئ واحدة من صفحة المحادثة أولًا.",
+      "add": "إضافة",
+      "skip": "تخطٍّ"
+    },
+    "command": {
+      "deleteRoleFailed": "فشل حذف الدور",
+      "roleNotFound": "الدور غير موجود: {role}",
+      "addTaskFailed": "فشل إضافة المهمة"
+    },
+    "taskDelete": {
+      "tag": "حذف",
+      "failed": "فشل الحذف"
+    },
+    "dataCategory": {
+      "inventory": {
+        "label": "المخزون",
+        "desc": "مستويات المخزون، العناصر المنخفضة، الموردون"
+      },
+      "sales": {
+        "label": "المبيعات",
+        "desc": "الإيرادات، الطلبات، الاتجاهات"
+      },
+      "staffing": {
+        "label": "الموظفون",
+        "desc": "المناوبات، الجدول، الفريق"
+      },
+      "products": {
+        "label": "المنتجات",
+        "desc": "الكتالوج، التسعير، الأداء"
+      },
+      "all": {
+        "label": "كل شيء",
+        "desc": "جميع بيانات المتجر"
+      }
+    },
+    "yourStore": "متجرك",
+    "untitledGroup": "مجموعة بلا عنوان",
+    "newConversation": "محادثة جديدة",
+    "chatTitle": "المحادثة",
+    "voiceUnsupported": "متصفحك لا يدعم الإدخال الصوتي.",
+    "approve": {
+      "notTeamMember": "\"{name}\" ليس عضوًا في الفريق. أضِفه أولًا أو اختر من: {names}",
+      "noTeamMembers": "(لا يوجد أعضاء فريق بعد)",
+      "noValidRole": "لا يوجد دور وظيفي صالح للمناوبة. تم استلام {got} — اختر واحدًا من: {roles}.",
+      "noRolesDefined": "(لم تُحدَّد أدوار بعد)"
+    },
+    "builderChips": {
+      "heroSection": "إضافة قسم رئيسي",
+      "contactForm": "إضافة نموذج تواصل",
+      "mobileFriendly": "اجعل هذه الصفحة متوافقة مع الجوال",
+      "deleteFooter": "حذف التذييل",
+      "pricingTable": "إضافة جدول تسعير"
+    },
+    "pick": {
+      "titleActive": "انقر على أي عنصر في اللوحة · Esc للإلغاء",
+      "titleIdle": "اختر عنصرًا لإرفاقه",
+      "clicking": "انقر على العنصر…",
+      "element": "العنصر"
+    },
+    "schedule": {
+      "title": "جدول اليوم",
+      "shifts": "مناوبات",
+      "hrs": "ساعات",
+      "open": "مفتوح",
+      "onShift": "في المناوبة · {count}",
+      "live": "مباشر",
+      "upNext": "التالي",
+      "inMinutes": "خلال {n} د",
+      "inHours": "خلال {n} س",
+      "noShifts": "لا توجد مناوبات مجدولة اليوم"
+    },
+    "notifications": {
+      "title": "الإشعارات",
+      "new": "جديد",
+      "needDecision": "بحاجة إلى قرار",
+      "markAllRead": "تعليم الكل كمقروء",
+      "review": "مراجعة",
+      "dismiss": "تجاهل",
+      "empty": "لا توجد إشعارات جديدة"
+    },
+    "collapsePanel": "طيّ اللوحة",
+    "openPanel": "فتح Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2777,7 +3278,9 @@
       "fit": "ملاءمة الشاشة",
       "notFound": "التصميم غير موجود",
       "layers": "الطبقات",
-      "properties": "الخصائص"
+      "properties": "الخصائص",
+      "undo": "تراجع",
+      "redo": "إعادة"
     },
     "ai": {
       "title": "إنشاء بالذكاء الاصطناعي",
@@ -3593,6 +4096,655 @@
         "para": "اربط نقطة البيع لديك. نتعلّم مبيعاتك سبعة أيام، ثم نبدأ بإخبارك بما تطلب — حتى الصندوق، يومًا بيوم. متوسط خطأ التنبؤ: 7.2%.",
         "walkthrough": "احجز جولة تعريفية 20 دقيقة"
       }
+    }
+  },
+  "reports": {
+    "title": "التقارير",
+    "subtitle": "تصدير ومراجعة بيانات الأعمال",
+    "recordsCount": "{count} سجل",
+    "exportCsv": "تصدير CSV",
+    "exportPdf": "تصدير PDF",
+    "thisMonth": "هذا الشهر",
+    "lastMonth": "الشهر الماضي",
+    "last90Days": "آخر 90 يومًا",
+    "tabSales": "المبيعات",
+    "tabStaffHours": "ساعات الموظفين",
+    "tabInventory": "المخزون",
+    "tabProducts": "المنتجات",
+    "totalRevenue": "إجمالي الإيرادات",
+    "avgDailyRevenue": "متوسط الإيرادات اليومية",
+    "perDayAverage": "المتوسط لكل يوم",
+    "bestDay": "أفضل يوم",
+    "forecastAccuracy": "دقة التوقعات",
+    "predictedVsActual": "المتوقع مقابل الفعلي",
+    "noSalesData": "لا توجد بيانات مبيعات لهذه الفترة",
+    "salesRecords": "سجلات المبيعات",
+    "recordsForPeriod": "{count} سجل -- {period}",
+    "colDate": "التاريخ",
+    "colActual": "الفعلي",
+    "colPredicted": "المتوقع",
+    "colWeather": "الطقس",
+    "colHoliday": "عطلة",
+    "yes": "نعم",
+    "showingRecords": "عرض 50 من أصل {count} سجل. قم بالتصدير للحصول على البيانات الكاملة.",
+    "totalScheduledHours": "إجمالي الساعات المجدولة",
+    "numberOfStaff": "عدد الموظفين",
+    "uniqueStaffScheduled": "الموظفون المجدولون الفريدون",
+    "avgHoursPerStaff": "متوسط الساعات / موظف",
+    "averagePerPerson": "المتوسط لكل شخص",
+    "noShifts": "لا توجد مناوبات لهذه الفترة",
+    "shiftRecords": "سجلات المناوبات",
+    "shiftsForPeriod": "{count} مناوبة -- {period}",
+    "colStaffName": "اسم الموظف",
+    "colStart": "البداية",
+    "colEnd": "النهاية",
+    "colHours": "الساعات",
+    "colType": "النوع",
+    "showingShifts": "عرض 50 من أصل {count} مناوبة. قم بالتصدير للحصول على البيانات الكاملة.",
+    "totalItems": "إجمالي العناصر",
+    "trackedInventoryItems": "عناصر المخزون المتتبَّعة",
+    "lowOutOfStock": "منخفض / نفد من المخزون",
+    "needsAttention": "يحتاج إلى انتباه",
+    "totalValue": "القيمة الإجمالية",
+    "stockTimesCostPerUnit": "المخزون × التكلفة/الوحدة",
+    "avgLossRate": "متوسط معدل الخسارة",
+    "acrossAllItems": "عبر جميع العناصر",
+    "noInventoryItems": "لا توجد عناصر مخزون متتبَّعة",
+    "inventoryItems": "عناصر المخزون",
+    "itemsCount": "{count} عنصر",
+    "colCategory": "الفئة",
+    "colStock": "المخزون",
+    "colMin": "الحد الأدنى",
+    "colMax": "الحد الأقصى",
+    "colUnit": "الوحدة",
+    "colCostPerUnit": "التكلفة/الوحدة",
+    "colValue": "القيمة",
+    "colSupplier": "المورد",
+    "colLossPct": "نسبة الخسارة",
+    "colStatus": "الحالة",
+    "outOfStock": "نفد من المخزون",
+    "lowStock": "مخزون منخفض",
+    "inStock": "متوفر في المخزون",
+    "showingItems": "عرض 50 من أصل {count} عنصر. قم بالتصدير للحصول على البيانات الكاملة.",
+    "totalProducts": "إجمالي المنتجات",
+    "activeProducts": "المنتجات النشطة",
+    "allProductsCombined": "جميع المنتجات مجتمعة",
+    "avgMargin": "متوسط الهامش",
+    "averageProfitMargin": "متوسط هامش الربح",
+    "underperforming": "ضعيف الأداء",
+    "needsReview": "يحتاج إلى مراجعة",
+    "noProducts": "لا توجد منتجات متتبَّعة",
+    "productPerformance": "أداء المنتجات",
+    "productsCount": "{count} منتج",
+    "colPrice": "السعر",
+    "colCost": "التكلفة",
+    "colMargin": "الهامش",
+    "colThisMonth": "هذا الشهر",
+    "colLastMonth": "الشهر الماضي",
+    "colRevenue": "الإيرادات",
+    "colTrend": "الاتجاه",
+    "colAlert": "تنبيه",
+    "showingProducts": "عرض 50 من أصل {count} منتج. قم بالتصدير للحصول على البيانات الكاملة.",
+    "salesReportTitle": "تقرير المبيعات",
+    "staffHoursReportTitle": "تقرير ساعات الموظفين",
+    "inventoryReportTitle": "تقرير المخزون",
+    "productPerformanceReportTitle": "تقرير أداء المنتجات"
+  },
+  "customers": {
+    "summary": {
+      "totalCustomers": "إجمالي العملاء",
+      "newThisMonth": "جدد هذا الشهر",
+      "avgOrderValue": "متوسط قيمة الطلب",
+      "totalRevenue": "إجمالي الإيرادات"
+    },
+    "searchPlaceholder": "البحث بالاسم أو البريد الإلكتروني...",
+    "filterPlaceholder": "تصفية",
+    "tagFilter": {
+      "all": "جميع الوسوم"
+    },
+    "tags": {
+      "vip": "كبار الشخصيات",
+      "regular": "منتظم",
+      "new": "جديد",
+      "atRisk": "معرّض للخطر"
+    },
+    "sortPlaceholder": "ترتيب",
+    "sort": {
+      "totalSpent": "إجمالي الإنفاق",
+      "orders": "الطلبات",
+      "lastOrder": "آخر طلب"
+    },
+    "emptyFiltered": "لا يوجد عملاء يطابقون عوامل التصفية.",
+    "empty": "لا يوجد عملاء بعد. سيظهرون هنا بمجرد تسجيلهم على موقعك.",
+    "col": {
+      "phone": "الهاتف",
+      "orders": "الطلبات",
+      "totalSpent": "إجمالي الإنفاق",
+      "avgOrder": "متوسط الطلب",
+      "lastOrder": "آخر طلب",
+      "tags": "الوسوم",
+      "status": "الحالة"
+    },
+    "noName": "بلا اسم",
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "detail": {
+      "customer": "العميل",
+      "title": "تفاصيل العميل",
+      "srDescription": "عرض تفاصيل العميل",
+      "customerInfo": "معلومات العميل",
+      "memberSince": "عضو منذ {date}",
+      "orderHistory": "سجل الطلبات",
+      "noOrders": "لا توجد طلبات بعد."
+    },
+    "orderCol": {
+      "date": "التاريخ",
+      "items": "العناصر",
+      "total": "الإجمالي"
+    },
+    "export": {
+      "pdfTitle": "تقرير العملاء",
+      "pdfSubtitle": "{count} عميل"
+    }
+  },
+  "suppliers": {
+    "export": "تصدير",
+    "addSupplier": "إضافة مورّد",
+    "add": "إضافة",
+    "totalSuppliers": "إجمالي الموردين",
+    "activePurchaseOrders": "أوامر الشراء النشطة",
+    "poValueThisMonth": "قيمة أوامر الشراء هذا الشهر",
+    "tabSuppliers": "الموردون",
+    "tabPurchaseOrders": "أوامر الشراء",
+    "searchPlaceholder": "البحث عن موردين...",
+    "emptyNoSuppliers": "لا يوجد موردون بعد. أضِف أول مورّد لك للبدء.",
+    "emptyNoMatch": "لا يوجد موردون يطابقون بحثك.",
+    "poCount": "{count} أمر شراء",
+    "lastPo": "الأخير: {date}",
+    "createPo": "إنشاء أمر شراء",
+    "emptyNoOrders": "لا توجد أوامر شراء بعد.",
+    "createPurchaseOrder": "إنشاء أمر شراء",
+    "colPoNumber": "رقم أمر الشراء",
+    "colSupplier": "المورّد",
+    "colDate": "التاريخ",
+    "colItems": "العناصر",
+    "colTotal": "الإجمالي",
+    "colStatus": "الحالة",
+    "colActions": "الإجراءات",
+    "unknownSupplier": "غير معروف",
+    "status": {
+      "draft": "مسودة",
+      "sent": "مُرسَل",
+      "received": "مُستلَم",
+      "cancelled": "ملغى"
+    },
+    "actionSend": "إرسال",
+    "actionReceived": "مُستلَم",
+    "editSupplier": "تعديل المورد",
+    "editSupplierDesc": "تحديث معلومات المورد.",
+    "addSupplierDesc": "إضافة مورد جديد إلى مؤسستك.",
+    "labelName": "الاسم *",
+    "placeholderName": "اسم المورد",
+    "labelContactName": "اسم جهة الاتصال",
+    "labelPhone": "الهاتف",
+    "labelEmail": "البريد الإلكتروني",
+    "labelAddress": "العنوان",
+    "labelPaymentTerms": "شروط الدفع",
+    "terms": {
+      "net30": "صافي 30 يومًا",
+      "net60": "صافي 60 يومًا",
+      "cod": "الدفع عند الاستلام",
+      "prepaid": "الدفع المسبق"
+    },
+    "labelRating": "التقييم",
+    "labelNotes": "ملاحظات",
+    "placeholderSupplierNotes": "ملاحظات إضافية حول هذا المورد...",
+    "update": "تحديث",
+    "createPoDesc": "إنشاء مسودة أمر شراء جديد.",
+    "labelSupplier": "المورد *",
+    "selectSupplier": "اختر المورد",
+    "labelItems": "العناصر",
+    "poColItem": "العنصر",
+    "poColQty": "الكمية",
+    "poColUnit": "الوحدة",
+    "poColCost": "التكلفة",
+    "poColTotal": "الإجمالي",
+    "placeholderItemName": "اسم العنصر",
+    "addRow": "إضافة صف",
+    "subtotal": "المجموع الفرعي",
+    "taxPercent": "الضريبة ({percent}%)",
+    "totalLabel": "الإجمالي",
+    "placeholderPoNotes": "ملاحظات إضافية...",
+    "createDraft": "إنشاء مسودة",
+    "csvName": "الاسم",
+    "csvContact": "جهة الاتصال",
+    "toastNameRequired": "اسم المورد مطلوب",
+    "toastSaveFailed": "فشل حفظ المورد",
+    "toastDeleteFailed": "فشل حذف المورد",
+    "toastSelectSupplier": "يرجى اختيار مورد",
+    "toastAddItem": "يرجى إضافة عنصر واحد على الأقل",
+    "toastCreatePOFailed": "فشل إنشاء أمر الشراء",
+    "toastUpdateStatusFailed": "فشل تحديث الحالة"
+  },
+  "apiSettings": {
+    "toast": {
+      "keyGenerated": "تم إنشاء مفتاح API",
+      "keyRevoked": "تم إبطال مفتاح API",
+      "copied": "تم النسخ إلى الحافظة",
+      "urlRequired": "عنوان URL مطلوب",
+      "selectEvent": "اختر حدثًا واحدًا على الأقل",
+      "webhookAdded": "تمت إضافة الـ Webhook",
+      "webhookRemoved": "تمت إزالة الـ Webhook"
+    },
+    "pageTitle": "API و Webhooks",
+    "pageSubtitle": "إدارة مفاتيح API وتكاملات Webhook",
+    "tabs": {
+      "apiKeys": "مفاتيح API",
+      "webhooks": "Webhooks"
+    },
+    "apiKey": {
+      "title": "مفتاح API",
+      "description": "استخدم هذا المفتاح لمصادقة الطلبات إلى Merchiva API.",
+      "created": "تم الإنشاء في {date}",
+      "revoke": "إبطال",
+      "generate": "إنشاء مفتاح API"
+    },
+    "usage": {
+      "title": "الاستخدام",
+      "description": "كيفية المصادقة مع Merchiva API",
+      "authentication": "المصادقة",
+      "availableEndpoints": "نقاط النهاية المتاحة",
+      "placeholderNotice": "هذا تطبيق مؤقت. في بيئة الإنتاج، يتم تخزين مفاتيح API على جانب الخادم مع تجزئة مناسبة وتحديد لمعدل الطلبات."
+    },
+    "endpoints": {
+      "listProducts": "عرض المنتجات",
+      "listInventory": "عرض عناصر المخزون",
+      "listOrders": "عرض الطلبات الأخيرة",
+      "createOrder": "إنشاء طلب",
+      "listStaff": "عرض أعضاء الفريق"
+    },
+    "addWebhook": {
+      "title": "إضافة Webhook",
+      "description": "تلقَّ إشعارات عند وقوع أحداث في متجرك.",
+      "endpointUrl": "عنوان URL لنقطة النهاية",
+      "events": "الأحداث",
+      "submit": "إضافة Webhook"
+    },
+    "configured": {
+      "title": "Webhooks المُهيّأة"
+    },
+    "status": {
+      "active": "نشط",
+      "paused": "متوقف مؤقتًا"
+    },
+    "webhookActions": {
+      "test": "اختبار",
+      "pause": "إيقاف مؤقت",
+      "enable": "تفعيل"
+    },
+    "samplePayload": {
+      "title": "نموذج الحمولة",
+      "dismiss": "إغلاق",
+      "descriptionPrefix": "هذا ما سيتم إرساله لحدث ",
+      "descriptionSuffix": "."
+    },
+    "empty": {
+      "title": "لا توجد Webhooks مُهيّأة",
+      "description": "أضِف نقطة نهاية Webhook أعلاه لتلقّي إشعارات فورية حول أحداث المتجر."
+    }
+  },
+  "punchIn": {
+    "toastCodeMustBe4Digits": "يجب أن يتكوّن الرمز من 4 أرقام",
+    "toastCodeSet": "تم تعيين الرمز",
+    "toastFailed": "فشل",
+    "errorPinNotRecognized": "رقم التعريف الشخصي غير معروف",
+    "toastSelectAnAction": "اختر إجراءً",
+    "stepAuthenticate": "01 · المصادقة",
+    "enterYourPin": "أدخل رقم التعريف الشخصي",
+    "punchInOrOutHint": "سجّل الحضور أو الانصراف بإدخال رقم التعريف الشخصي للموظف.",
+    "pinLabel": "رقم التعريف الشخصي",
+    "statusError": "▲ خطأ",
+    "statusReady": "جاهز",
+    "statusEntered": "{count}/4 مُدخل",
+    "statusVerifying": "جارٍ التحقق…",
+    "keyboardHint": "اضغط على الأرقام أو استخدم لوحة المفاتيح",
+    "clear": "مسح",
+    "employee": "الموظف",
+    "action": "الإجراء",
+    "selectAnAction": "اختر إجراءً",
+    "optionEndShiftTitle": "إنهاء الوردية",
+    "optionEndShiftSub": "تسجيل الانصراف",
+    "optionStartBreakTitle": "بدء الاستراحة",
+    "optionStartBreakSub": "وجبة / راحة",
+    "fieldTime": "الوقت",
+    "fieldDate": "التاريخ",
+    "fieldState": "الحالة",
+    "stateOff": "خارج الدوام",
+    "stateBreak": "استراحة",
+    "stateOn": "في الدوام",
+    "confirm": "تأكيد",
+    "punchRecorded": "تم تسجيل الحضور",
+    "successWelcome": "مرحبًا، {name}.",
+    "successGoodbye": "إلى اللقاء، {name}.",
+    "successBreakStarted": "بدأت الاستراحة.",
+    "successWelcomeBack": "مرحبًا بعودتك، {name}.",
+    "successInSub": "وردية عملك مفتوحة الآن.",
+    "successOutSub": "تم إغلاق وردية عملك.",
+    "successBreakStartSub": "تم إيقاف الساعة مؤقتًا — أنهِ استراحتك عندما تكون جاهزًا.",
+    "successBreakEndSub": "انتهت الاستراحة — الوردية نشطة مرة أخرى.",
+    "fieldInAt": "حضر في",
+    "fieldOutAt": "انصرف في",
+    "fieldBreakAt": "استراحة في",
+    "fieldResumed": "استؤنف",
+    "fieldTerminal": "الجهاز",
+    "fieldLocation": "الموقع",
+    "fieldConfId": "معرّف التأكيد",
+    "tapToDismiss": "انقر للإغلاق · إعادة تعيين تلقائية خلال 5 ثوانٍ",
+    "onShift": "في الوردية",
+    "noActiveShifts": "لا توجد ورديات نشطة.",
+    "recentPunches": "التسجيلات الأخيرة",
+    "live": "مباشر",
+    "noPunchesToday": "لا توجد تسجيلات اليوم",
+    "stepOnShiftNow": "02 · في الوردية الآن",
+    "activeCount": "نشط",
+    "onBreak": "في استراحة",
+    "active": "نشط",
+    "stepRecentPunches": "03 · التسجيلات الأخيرة",
+    "today": "اليوم",
+    "colTime": "الوقت",
+    "colWho": "من",
+    "colAction": "الإجراء",
+    "colDuration": "المدة",
+    "durOnBreak": "في استراحة",
+    "durOpen": "مفتوح",
+    "dialogMobileTitle": "رمز تسجيل الحضور",
+    "dialogChangeTitle": "تغيير رمز تسجيل الحضور",
+    "dialogSetTitle": "تعيين رمز تسجيل الحضور",
+    "dialogChangeDesc": "حدّث الرمز المكوّن من 4 أرقام الذي تُدخله في هذا المتجر.",
+    "dialogSetDesc": "اختر رمزًا مكوّنًا من 4 أرقام يسهل تذكّره. ستُدخله في كل مرة تسجّل فيها الحضور.",
+    "newCodeLabel": "رمز جديد",
+    "codePlaceholder": "4 أرقام",
+    "saveCode": "حفظ الرمز"
+  },
+  "billing": {
+    "title": "الفوترة",
+    "subtitle": "إدارة اشتراكك في Merchiva",
+    "ownerOnly": "يمكن لمالك المؤسسة فقط إدارة الفوترة.",
+    "currentPlan": "الخطة الحالية",
+    "yearly": "سنوي",
+    "monthly": "شهري",
+    "nextRenewal": "التجديد التالي: {date}",
+    "freePlan": "مجاني",
+    "upgradePrompt": "قم بالترقية إلى Pro لفتح جميع الميزات.",
+    "manageSubscription": "إدارة الاشتراك",
+    "manageSubscriptionDesc": "تغيير الخطة وطريقة الدفع والفواتير والإلغاء.",
+    "openPortal": "فتح البوابة",
+    "upgradeToPro": "الترقية إلى Pro",
+    "perMonth": "/ شهر",
+    "perYear": "/ سنة",
+    "yearlySaveHint": "وفّر 17% — شهران مجانًا",
+    "recommended": "موصى به",
+    "featureAllFeatures": "تشمل جميع الميزات الحالية",
+    "featureUnlimitedTeam": "أعضاء فريق غير محدودين",
+    "featurePrioritySupport": "دعم ذو أولوية",
+    "toastSubscriptionActivated": "تم تفعيل الاشتراك",
+    "toastCheckoutCanceled": "تم إلغاء الدفع",
+    "toastCheckoutFailed": "فشل الدفع",
+    "toastPortalOpenFailed": "تعذّر فتح البوابة",
+    "toastPortalError": "خطأ في البوابة"
+  },
+  "reviews": {
+    "pageTitle": "المراجعات والسمعة",
+    "pageSubtitle": "راقب وأدِر مراجعاتك عبر الإنترنت",
+    "googleIntegrationTitle": "تكامل مراجعات Google",
+    "plannedBadge": "مخطط له",
+    "googleIntegrationDesc": "راقب مراجعات Google وردّ عليها من مكان واحد. اربط ملفك التجاري على Google للبدء.",
+    "placesIdLabel": "معرّف Google Places",
+    "connectButton": "ربط",
+    "findPlacesIdAt": "اعثر على معرّف Places الخاص بك في",
+    "recentReviewsTitle": "المراجعات الأخيرة",
+    "recentReviewsDesc": "تظهر بيانات عيّنة أدناه. اربط مراجعات Google لرؤية المراجعات الحقيقية.",
+    "ratingTrendTitle": "اتجاه التقييم",
+    "basedOnReviews": "استنادًا إلى {count} مراجعة",
+    "ratingTrendUnavailable": "ستتوفر هذه الميزة عند ربط واجهة برمجة تطبيقات مراجعات Google. ستتضمن بيانات التقييم اتجاهات تاريخية ومقارنة مع المنافسين."
+  },
+  "setup": {
+    "steps": {
+      "storeInfo": "معلومات المتجر",
+      "hours": "ساعات العمل",
+      "team": "الفريق",
+      "pos": "POS"
+    },
+    "skip": "تخطّي",
+    "settingUp": "جارٍ إعداد مساحة عملك...",
+    "footer": {
+      "step": "الخطوة {current} / {total}",
+      "yourStore": "متجرك"
+    },
+    "toast": {
+      "complete": "اكتمل الإعداد!",
+      "error": "حدث خطأ ما، لكن مساحة عملك جاهزة."
+    },
+    "storeInfo": {
+      "title": "أخبرنا عن متجرك.",
+      "subtitle": "سنستخدم هذا لتخصيص لوحة التحكم وإعداد مساحة عملك.",
+      "storeNameLabel": "اسم المتجر",
+      "storeNamePlaceholder": "مثال: Maple Coffee",
+      "addressLabel": "العنوان",
+      "addressPlaceholder": "مثال: 123 Main St, Oakland CA",
+      "businessTypeLabel": "نوع النشاط التجاري",
+      "types": {
+        "cafe": "مقهى / مخبز",
+        "restaurant": "مطعم",
+        "retail": "متجر تجزئة",
+        "service": "خدمة / إصلاح",
+        "other": "أخرى"
+      }
+    },
+    "hours": {
+      "title": "متى تفتح؟",
+      "subtitle": "يساعد هذا Mr. Merchiva في جدولة الموظفين والتنبؤ بالطلب.",
+      "openLabel": "الفتح",
+      "closeLabel": "الإغلاق",
+      "openDaysLabel": "أيام العمل",
+      "days": {
+        "mon": "الإثنين",
+        "tue": "الثلاثاء",
+        "wed": "الأربعاء",
+        "thu": "الخميس",
+        "fri": "الجمعة",
+        "sat": "السبت",
+        "sun": "الأحد"
+      }
+    },
+    "team": {
+      "title": "ادعُ فريقك.",
+      "subtitle": "أضف الموظفين ليتمكنوا من تسجيل الحضور وعرض الجداول واستخدام POS.",
+      "roleManager": "مدير",
+      "roleStaff": "موظف",
+      "addAnother": "إضافة آخر",
+      "sendInvite": "إرسال {count} دعوة",
+      "sendInvites": "إرسال {count} دعوات"
+    },
+    "pos": {
+      "title": "اربط نظام POS الخاص بك.",
+      "subtitle": "يقوم Merchiva بمزامنة المبيعات والمنتجات والمخزون من نظام POS الخاص بك.",
+      "connectOAuth": "الربط عبر OAuth",
+      "noPos": "لا يوجد POS بعد",
+      "setupLater": "الإعداد يدويًا لاحقًا",
+      "finishSetup": "إنهاء الإعداد"
+    }
+  },
+  "salesForecast": {
+    "dataExcellent": "بيانات ممتازة",
+    "dataGood": "بيانات جيدة",
+    "dataFair": "بيانات مقبولة",
+    "dataLimited": "بيانات محدودة",
+    "loadingData": "جارٍ تحميل بيانات التوقعات...",
+    "notEnoughData": "لا توجد بيانات كافية للتنبؤ",
+    "notEnoughDataDesc": "يلزم 7 أيام على الأقل من بيانات المبيعات للتنبؤات. يتم حاليًا تتبع {count} يوم.",
+    "title": "توقعات 7 أيام",
+    "noLocation": "لا يوجد موقع — الطقس غير متاح",
+    "weatherUnavailable": "بيانات الطقس غير متاحة",
+    "confidence": "ثقة {percent}%",
+    "today": "اليوم",
+    "factorBase": "الأساس:",
+    "factorWeather": "الطقس:",
+    "factorHoliday": "العطلة:",
+    "factorTraffic": "الحركة:",
+    "factorStaff": "الموظفون:",
+    "factorTrend": "الاتجاه:",
+    "hourlyBreakdown": "التفصيل بالساعة",
+    "predictedRevenuePerHour": "الإيرادات المتوقعة لكل ساعة",
+    "total": "الإجمالي",
+    "predicted": "متوقع",
+    "bestDay": "أفضل يوم",
+    "at": "في",
+    "boostedBy": "مدعوم بـ {holiday}",
+    "highFootTraffic": "حركة زوار متوقعة عالية",
+    "strongBaseline": "خط أساس قوي ليوم {day}",
+    "weatherImpact": "تأثير الطقس",
+    "enableLocation": "فعّل الوصول إلى الموقع لرؤية التنبؤات المعتمدة على الطقس",
+    "maySee": "قد يشهد",
+    "dueToWeather": "بسبب طقس {weather}",
+    "favorableWeather": "طقس مواتٍ متوقع طوال الأسبوع",
+    "daysClear": "{count}/7 أيام صافية",
+    "weatherPending": "بيانات الطقس قيد الانتظار",
+    "staffingAdvisory": "إرشادات التوظيف",
+    "daysCount": "{count} يوم",
+    "daysCountPlural": "{count} أيام",
+    "mayBeUnderstaffed": "قد يكون نقص في الموظفين",
+    "considerAddingShifts": "{days} — فكّر في إضافة مناوبات",
+    "noShiftData": "لا تتوفر بيانات مناوبات. جدوِل المناوبات لتمكين توصيات التوظيف.",
+    "staffingAdequate": "يبدو التوظيف كافيًا عبر الأيام السبعة جميعها (بمتوسط {avg} في اليوم)"
+  },
+  "subscribe": {
+    "toastActivated": "تم تفعيل الاشتراك",
+    "toastCanceled": "تم إلغاء عملية الدفع",
+    "toastCheckoutFailed": "فشلت عملية الدفع",
+    "trialDaysLeftOne": "بقي يوم واحد في فترتك التجريبية المجانية",
+    "trialDaysLeftOther": "بقي {count} يومًا في فترتك التجريبية المجانية",
+    "trialEnded": "انتهت فترتك التجريبية المجانية",
+    "titleTrial": "أنت في فترة تجريبية مجانية",
+    "titleSubscribe": "اشترك في Merchiva",
+    "trialDescription": "{trialLine}. اشترك الآن لإبقاء متجرك يعمل دون انقطاع.",
+    "ownerDescription": "يلزم وجود اشتراك نشط لمواصلة استخدام Merchiva.",
+    "memberDescription": "تحتاج مؤسستك إلى اشتراك نشط للمتابعة.",
+    "monthly": "شهري",
+    "perMonth": "/ شهريًا",
+    "yearly": "سنوي",
+    "perYear": "/ سنويًا",
+    "yearlyHint": "وفّر 17% — شهران مجانًا",
+    "featureAllFeatures": "جميع الميزات مشمولة",
+    "featureUnlimitedMembers": "أعضاء فريق غير محدودين",
+    "featurePrioritySupport": "دعم ذو أولوية",
+    "memberOwnerOnly": "يمكن لمالك المؤسسة فقط الاشتراك. يُرجى الطلب من مالك {org} تفعيل الاشتراك، ثم قم بالتحديث.",
+    "yourOrganization": "مؤسستك",
+    "continueInTrial": "المتابعة في الفترة التجريبية",
+    "recommended": "موصى به"
+  },
+  "bugReport": {
+    "title": "الإبلاغ عن خطأ",
+    "drawerDescription": "صِف المشكلة التي واجهتها وأرفق لقطة شاشة اختياريًا.",
+    "whatWentWrong": "ما الذي حدث من خطأ؟",
+    "titlePlaceholder": "وصف موجز للمشكلة",
+    "detailsLabel": "التفاصيل (اختياري)",
+    "detailsPlaceholder": "خطوات إعادة الإنتاج، السلوك المتوقع...",
+    "screenshotLabel": "لقطة شاشة",
+    "screenshotAlt": "لقطة شاشة للخطأ",
+    "captureScreenshot": "التقاط لقطة شاشة",
+    "submit": "إرسال البلاغ",
+    "screenshotCaptured": "تم التقاط لقطة الشاشة",
+    "screenshotFailed": "فشل التقاط لقطة الشاشة",
+    "titleRequired": "يُرجى إضافة عنوان",
+    "saved": "تم حفظ بلاغ الخطأ"
+  },
+  "myTasks": {
+    "title": "مهام اليوم",
+    "doneCount": "{done} / {total} مكتمل",
+    "all": "الكل",
+    "allCompleted": "اكتملت جميع المهام اليوم.",
+    "evidenceBadge": "دليل",
+    "done": "مكتمل",
+    "moreCount": "+ {count} إضافية",
+    "evidenceRequiredError": "تتطلب هذه المهمة صورة أو مقطع فيديو كدليل",
+    "chatHeader": "✅ تم إكمال المهمة: {title}",
+    "chatAttachments": "📎 {count} مرفق(ات)",
+    "partialChatFailure": "اكتملت المهمة، لكن فشل إرسال {count} رسالة محادثة",
+    "completedSuccess": "تم إكمال المهمة",
+    "completeError": "فشل الإكمال",
+    "evidenceLabel": "صور / مقاطع فيديو كدليل",
+    "evidenceAlt": "دليل",
+    "remove": "إزالة",
+    "uploadError": "فشل الرفع",
+    "uploading": "جارٍ الرفع…",
+    "noteLabel": "ملاحظة",
+    "optional": "(اختياري)",
+    "notePlaceholder": "هل من شيء تريد تنبيه المدير إليه؟",
+    "markDone": "وضع علامة كمكتمل"
+  },
+  "itemForecast": {
+    "title": "توقعات AI لكل عنصر",
+    "retrain": "إعادة التدريب",
+    "refresh": "تحديث",
+    "loadingPredictions": "جارٍ تحميل التوقعات...",
+    "today": "اليوم",
+    "itemsTotal": "إجمالي العناصر",
+    "topItems": "أبرز العناصر: {day}",
+    "predictedUnits": "الوحدات المتوقع بيعها",
+    "totalItems": "الإجمالي: {count} عنصر",
+    "predicted": "متوقع",
+    "unitsValue": "{count} وحدة",
+    "allItems": "جميع العناصر: {day}",
+    "showLess": "عرض أقل",
+    "showAllItems": "عرض كل العناصر {count}",
+    "modelNotTrained": "لم يتم تدريب نموذج AI بعد",
+    "recordsReady": "لديك {count} سجل لكل عنصر-يوم. درّب نموذج AI للحصول على توقعات لكل عنصر.",
+    "recordsNeeded": "يلزم 100 سجل عنصر-يوم على الأقل من سجل المدفوعات. لديك حاليًا {count}.",
+    "training": "جارٍ التدريب...",
+    "trainModel": "تدريب نموذج AI",
+    "modelTrainedSummary": "تم تدريب النموذج: {items} عنصر، {days} يوم، R²={r2}",
+    "lastTrainedSummary": "آخر تدريب: {items} عنصر عبر {days} يوم — MAE: {mae}، R²: {r2}",
+    "trainingFailed": "فشل التدريب",
+    "predictionFailed": "فشل التوقع"
+  },
+  "scheduler": {
+    "auto": {
+      "button": "جدولة تلقائية",
+      "title": "جدولة تلقائية",
+      "description": "توليد توزيعات ورديات محسّنة بناءً على التوفر والقيود والإنصاف.",
+      "startDate": "تاريخ البدء",
+      "endDate": "تاريخ الانتهاء",
+      "maxHoursPerWeek": "أقصى ساعات/أسبوع",
+      "maxConsecutiveDays": "أقصى أيام متتالية",
+      "minRestHours": "أدنى راحة (ساعات)",
+      "generate": "توليد الجدول",
+      "statShifts": "الورديات",
+      "statTotalHours": "إجمالي الساعات",
+      "statAvgPerStaff": "المتوسط/موظف",
+      "statFairness": "الإنصاف",
+      "unfilledSlots": "الفترات غير المشغولة ({count})",
+      "moreUnfilled": "+{count} غير مشغولة إضافية",
+      "schedulePreview": "معاينة الجدول",
+      "selectAll": "تحديد الكل",
+      "deselectAll": "إلغاء تحديد الكل",
+      "colDate": "التاريخ",
+      "colShift": "الوردية",
+      "colTime": "الوقت",
+      "colStaff": "الموظف",
+      "colRoles": "الأدوار",
+      "colScore": "النتيجة",
+      "colStatus": "الحالة",
+      "statusOk": "جيد",
+      "regenerate": "إعادة التوليد",
+      "applySelected": "تطبيق المحدد ({count})",
+      "noShiftsGenerated": "تعذّر توليد أي ورديات. تحقق من توفر فريقك وإعدادات الورديات المسبقة.",
+      "generateFailed": "فشل توليد الجدول.",
+      "noShiftsSelected": "لم يتم تحديد ورديات لتطبيقها.",
+      "shiftsAdded": "تمت إضافة {count} وردية إلى الجدول.",
+      "applyFailed": "فشل تطبيق بعض الورديات. يُرجى المحاولة مرة أخرى."
     }
   }
 }

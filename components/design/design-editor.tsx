@@ -579,7 +579,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
         <button
           onClick={() => { hapticLight(); undo(); }}
           disabled={!canUndo}
-          title="Undo"
+          title={t("design.editor.undo")}
           className="flex h-7 w-7 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
         >
           <Undo2 className="h-4 w-4" />
@@ -587,7 +587,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
         <button
           onClick={() => { hapticLight(); redo(); }}
           disabled={!canRedo}
-          title="Redo"
+          title={t("design.editor.redo")}
           className="flex h-7 w-7 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
         >
           <Redo2 className="h-4 w-4" />

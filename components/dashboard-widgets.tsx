@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { useCurrency } from "@/lib/currency";
+import { useT } from "@/lib/i18n/context";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
@@ -136,6 +137,7 @@ export function WidgetCard({
 // ── 1. Sales Today Widget ────────────────────────────────────────────────────
 
 export function SalesTodayWidget() {
+  const t = useT();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { history, isReady } = useSales();
@@ -166,14 +168,14 @@ export function SalesTodayWidget() {
 
   if (!isReady) {
     return (
-      <WidgetCard icon={DollarSign} title="Sales Today">
+      <WidgetCard icon={DollarSign} title={t("dashboard.widgets.salesToday.title")}>
         <WidgetSkeleton />
       </WidgetCard>
     );
   }
 
   return (
-    <WidgetCard icon={DollarSign} title="Sales Today">
+    <WidgetCard icon={DollarSign} title={t("dashboard.widgets.salesToday.title")}>
       <div className="space-y-2">
         <div className="flex items-baseline gap-3">
           <span className="text-2xl font-bold font-mono">
@@ -181,7 +183,7 @@ export function SalesTodayWidget() {
           </span>
           {predicted > 0 && (
             <span className="text-xs text-muted-foreground">
-              / {format(predicted, { decimals: 0 })} predicted
+              / {format(predicted, { decimals: 0 })} {t("dashboard.widgets.salesToday.predicted")}
             </span>
           )}
         </div>
@@ -210,7 +212,7 @@ export function SalesTodayWidget() {
           >
             {diff !== 0 ? `${isUp ? "+" : ""}${diff.toFixed(1)}%` : "0%"}
           </span>
-          <span className="text-muted-foreground">vs yesterday</span>
+          <span className="text-muted-foreground">{t("dashboard.widgets.salesToday.vsYesterday")}</span>
         </div>
       </div>
     </WidgetCard>
@@ -220,6 +222,7 @@ export function SalesTodayWidget() {
 // ── 2. Inventory Alerts Widget ───────────────────────────────────────────────
 
 export function InventoryAlertsWidget() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const { items } = useInventory(organizationId);
 
@@ -239,29 +242,29 @@ export function InventoryAlertsWidget() {
   return (
     <WidgetCard
       icon={Package}
-      title="Inventory Alerts"
+      title={t("dashboard.widgets.inventoryAlerts.title")}
       action={
         <Link
           href="/~/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
-          View all <ChevronRight className="h-3 w-3" />
+          {t("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
         </Link>
       }
     >
       {totalAlerts === 0 ? (
-        <WidgetEmpty message="All items are well stocked" />
+        <WidgetEmpty message={t("dashboard.widgets.inventoryAlerts.allStocked")} />
       ) : (
         <div className="space-y-2">
           <div className="flex gap-3 text-xs">
             {outCount > 0 && (
               <span className="text-destructive font-medium">
-                {outCount} out of stock
+                {t("dashboard.widgets.inventoryAlerts.outOfStock").replace("{count}", String(outCount))}
               </span>
             )}
             {lowCount > 0 && (
               <span className="text-amber-600 font-medium">
-                {lowCount} low stock
+                {t("dashboard.widgets.inventoryAlerts.lowStock").replace("{count}", String(lowCount))}
               </span>
             )}
           </div>
@@ -279,7 +282,9 @@ export function InventoryAlertsWidget() {
                   variant={item.status === "out_of_stock" ? "destructive" : "outline"}
                   className="text-[10px] px-1.5 py-0"
                 >
-                  {item.status === "out_of_stock" ? "Out" : "Low"}
+                  {item.status === "out_of_stock"
+                    ? t("dashboard.widgets.inventoryAlerts.outBadge")
+                    : t("dashboard.widgets.inventoryAlerts.lowBadge")}
                 </Badge>
               </div>
             ))}
@@ -293,6 +298,7 @@ export function InventoryAlertsWidget() {
 // ── 3. Schedule Overview Widget ──────────────────────────────────────────────
 
 export function ScheduleOverviewWidget() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const { shifts } = useStaffing(organizationId, null, false);
 
@@ -328,18 +334,18 @@ export function ScheduleOverviewWidget() {
   return (
     <WidgetCard
       icon={Clock}
-      title="Schedule Overview"
+      title={t("dashboard.widgets.scheduleOverview.title")}
       action={
         <Link
           href="/~/personnel"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
-          View all <ChevronRight className="h-3 w-3" />
+          {t("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
         </Link>
       }
     >
       {todayShifts.length === 0 ? (
-        <WidgetEmpty message="No shifts scheduled today" />
+        <WidgetEmpty message={t("dashboard.widgets.scheduleOverview.empty")} />
       ) : (
         <div className="space-y-2">
           <div className="flex items-baseline gap-2">
@@ -347,7 +353,9 @@ export function ScheduleOverviewWidget() {
               {todayShifts.length}
             </span>
             <span className="text-xs text-muted-foreground">
-              shift{todayShifts.length !== 1 ? "s" : ""} today
+              {todayShifts.length !== 1
+                ? t("dashboard.widgets.scheduleOverview.shiftsToday")
+                : t("dashboard.widgets.scheduleOverview.shiftToday")}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -365,8 +373,10 @@ export function ScheduleOverviewWidget() {
           </div>
           {nextShift && (
             <div className="text-xs text-muted-foreground">
-              Next: <span className="font-medium text-foreground">{nextShift.staffName}</span>{" "}
-              at <span className="font-mono">{formatTime(nextShift.startTime)}</span>
+              {t("dashboard.widgets.scheduleOverview.nextLabel")}{" "}
+              <span className="font-medium text-foreground">{nextShift.staffName}</span>{" "}
+              {t("dashboard.widgets.scheduleOverview.atLabel")}{" "}
+              <span className="font-mono">{formatTime(nextShift.startTime)}</span>
             </div>
           )}
         </div>
@@ -378,6 +388,7 @@ export function ScheduleOverviewWidget() {
 // ── 4. Todo Widget ───────────────────────────────────────────────────────────
 
 export function TodoWidget() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const [rawTodos] = useTodos();
   const [todoInput, setTodoInput] = useState("");
@@ -449,7 +460,7 @@ export function TodoWidget() {
   return (
     <WidgetCard
       icon={CheckCircle2}
-      title="Todos"
+      title={t("dashboard.widgets.todo.title")}
       action={
         <button
           onClick={() => {
@@ -458,7 +469,7 @@ export function TodoWidget() {
           }}
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
-          <Plus className="h-3 w-3" /> Add
+          <Plus className="h-3 w-3" /> {t("dashboard.todo.add")}
         </button>
       }
     >
@@ -477,19 +488,19 @@ export function TodoWidget() {
                   setTodoInput("");
                 }
               }}
-              placeholder="New todo..."
+              placeholder={t("dashboard.widgets.todo.placeholder")}
               className="flex-1 rounded-[0.3rem] border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
             />
             <button
               onClick={handleAdd}
               className="rounded-[0.3rem] bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Add
+              {t("dashboard.todo.add")}
             </button>
           </div>
         )}
         {shown.length === 0 && !addingTodo ? (
-          <WidgetEmpty message="No todos yet" />
+          <WidgetEmpty message={t("dashboard.widgets.todo.empty")} />
         ) : (
           shown.map((t) => (
             <div
@@ -528,7 +539,7 @@ export function TodoWidget() {
         )}
         {todos.length > 8 && (
           <div className="text-[10px] text-muted-foreground text-center pt-1">
-            +{todos.length - 8} more
+            {t("dashboard.widgets.todo.more").replace("{count}", String(todos.length - 8))}
           </div>
         )}
       </div>
@@ -553,6 +564,7 @@ const REASON_LABELS: Record<WasteReason, string> = {
 };
 
 export function WasteCostWidget() {
+  const t = useT();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const [rawLogs] = useWasteLogs();
@@ -609,32 +621,32 @@ export function WasteCostWidget() {
   return (
     <WidgetCard
       icon={Trash2}
-      title="Waste Cost"
+      title={t("dashboard.widgets.wasteCost.title")}
       action={
         <Link
           href="/~/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
-          Details <ChevronRight className="h-3 w-3" />
+          {t("dashboard.widgets.wasteCost.details")} <ChevronRight className="h-3 w-3" />
         </Link>
       }
     >
       <div className="space-y-2">
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <div className="text-[10px] text-muted-foreground">Today</div>
+            <div className="text-[10px] text-muted-foreground">{t("dashboard.widgets.wasteCost.today")}</div>
             <div className="text-sm font-bold font-mono">
               {format(todayCost)}
             </div>
           </div>
           <div>
-            <div className="text-[10px] text-muted-foreground">This week</div>
+            <div className="text-[10px] text-muted-foreground">{t("dashboard.widgets.wasteCost.thisWeek")}</div>
             <div className="text-sm font-bold font-mono">
               {format(weekCost)}
             </div>
           </div>
           <div>
-            <div className="text-[10px] text-muted-foreground">This month</div>
+            <div className="text-[10px] text-muted-foreground">{t("dashboard.widgets.wasteCost.thisMonth")}</div>
             <div className="text-sm font-bold font-mono">
               {format(monthCost)}
             </div>
@@ -658,7 +670,7 @@ export function WasteCostWidget() {
             ))}
           </div>
         )}
-        {logs.length === 0 && <WidgetEmpty message="No waste logged yet" />}
+        {logs.length === 0 && <WidgetEmpty message={t("dashboard.widgets.wasteCost.empty")} />}
       </div>
     </WidgetCard>
   );
@@ -676,6 +688,7 @@ const NOTIF_ICONS: Record<NotificationType, LucideIcon> = {
 };
 
 export function NotificationFeedWidget() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const [rawNotifs] = useNotifications();
 
@@ -713,20 +726,20 @@ export function NotificationFeedWidget() {
   return (
     <WidgetCard
       icon={Bell}
-      title="Notifications"
+      title={t("dashboard.widgets.notifications.title")}
       action={
         notifications.length > 0 ? (
           <button
             onClick={handleMarkAllRead}
             className="text-[10px] text-muted-foreground hover:text-foreground"
           >
-            Mark all read
+            {t("notifications.markAllRead")}
           </button>
         ) : null
       }
     >
       {notifications.length === 0 ? (
-        <WidgetEmpty message="No unread notifications" />
+        <WidgetEmpty message={t("dashboard.widgets.notifications.empty")} />
       ) : (
         <div className="space-y-1">
           {notifications.map((n) => {
@@ -760,6 +773,7 @@ export function NotificationFeedWidget() {
 // ── 7. Product Performance Widget ────────────────────────────────────────────
 
 export function ProductPerformanceWidget() {
+  const t = useT();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { products } = useProducts(organizationId);
@@ -777,18 +791,18 @@ export function ProductPerformanceWidget() {
   return (
     <WidgetCard
       icon={BarChart3}
-      title="Top Products"
+      title={t("dashboard.widgets.topProducts.title")}
       action={
         <Link
           href="/~/products"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
-          View all <ChevronRight className="h-3 w-3" />
+          {t("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
         </Link>
       }
     >
       {topProducts.length === 0 ? (
-        <WidgetEmpty message="No product data yet" />
+        <WidgetEmpty message={t("dashboard.widgets.topProducts.empty")} />
       ) : (
         <div className="space-y-1.5">
           {topProducts.map((p, i) => (
@@ -834,6 +848,7 @@ export function ProductPerformanceWidget() {
 // ── 8. Quick Stats Widget ────────────────────────────────────────────────────
 
 export function QuickStatsWidget() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const { products } = useProducts(organizationId);
   const { items } = useInventory(organizationId);
@@ -845,29 +860,29 @@ export function QuickStatsWidget() {
 
   const stats = [
     {
-      label: "Products",
+      label: t("dashboard.widgets.quickStats.products"),
       value: products.length,
       icon: ShoppingCart,
     },
     {
-      label: "Staff On Duty",
+      label: t("dashboard.widgets.quickStats.staffOnDuty"),
       value: uniqueStaff,
       icon: Users,
     },
     {
-      label: "Inventory Items",
+      label: t("dashboard.widgets.quickStats.inventoryItems"),
       value: items.length,
       icon: Package,
     },
     {
-      label: "Low Stock",
+      label: t("dashboard.widgets.quickStats.lowStock"),
       value: items.filter((i) => i.status === "low_stock" || i.status === "out_of_stock").length,
       icon: AlertTriangle,
     },
   ];
 
   return (
-    <WidgetCard icon={Activity} title="Quick Stats">
+    <WidgetCard icon={Activity} title={t("dashboard.widgets.quickStats.title")}>
       <div className="grid grid-cols-2 gap-2">
         {stats.map((s) => {
           const Icon = s.icon;

@@ -27,6 +27,7 @@ import type {
 } from "@/lib/types";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,7 @@ export function AutoScheduler({
   presets, roles, salesHistory, organizationId, onApply,
   compact,
 }: AutoSchedulerProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -154,11 +156,11 @@ export function AutoScheduler({
         setSelected(new Set(scheduleResult.shifts.map((_, i) => i)));
 
         if (scheduleResult.shifts.length === 0) {
-          toast.error("No shifts could be generated. Check your team's availability and shift presets.");
+          toast.error(t("scheduler.auto.noShiftsGenerated"));
         }
       } catch (err) {
         console.error("Auto-schedule error:", err);
-        toast.error("Failed to generate schedule.");
+        toast.error(t("scheduler.auto.generateFailed"));
       } finally {
         setGenerating(false);
       }
@@ -169,18 +171,18 @@ export function AutoScheduler({
     if (!result) return;
     const selectedShifts = result.shifts.filter((_, i) => selected.has(i));
     if (selectedShifts.length === 0) {
-      toast.error("No shifts selected to apply.");
+      toast.error(t("scheduler.auto.noShiftsSelected"));
       return;
     }
 
     setApplying(true);
     try {
       await onApply(selectedShifts);
-      toast.success(`${selectedShifts.length} shift(s) added to the schedule.`);
+      toast.success(t("scheduler.auto.shiftsAdded").replace("{count}", String(selectedShifts.length)));
       setOpen(false);
     } catch (err) {
       console.error("Apply schedule error:", err);
-      toast.error("Failed to apply some shifts. Please try again.");
+      toast.error(t("scheduler.auto.applyFailed"));
     } finally {
       setApplying(false);
     }
@@ -228,18 +230,18 @@ export function AutoScheduler({
           className="gap-1.5 text-xs font-medium"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          Auto Schedule
+          {t("scheduler.auto.button")}
         </Button>
       )}
 
       <DynamicUIElement open={open} onOpenChange={setOpen}>
         <DynamicUIElementContent className="max-w-2xl max-h-[90vh]" noPadding>
           <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle="Auto Schedule">
-              Auto Schedule
+            <DynamicUIElementTitle mobileTitle={t("scheduler.auto.title")}>
+              {t("scheduler.auto.title")}
             </DynamicUIElementTitle>
             <DynamicUIElementDescription>
-              Generate optimized shift assignments based on availability, constraints, and fairness.
+              {t("scheduler.auto.description")}
             </DynamicUIElementDescription>
           </DynamicUIElementHeader>
 
@@ -250,7 +252,7 @@ export function AutoScheduler({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                      Start Date
+                      {t("scheduler.auto.startDate")}
                     </Label>
                     <div className="flex items-center gap-2 mt-1">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -264,7 +266,7 @@ export function AutoScheduler({
                   </div>
                   <div>
                     <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                      End Date
+                      {t("scheduler.auto.endDate")}
                     </Label>
                     <div className="flex items-center gap-2 mt-1">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -281,7 +283,7 @@ export function AutoScheduler({
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                      Max hrs/week
+                      {t("scheduler.auto.maxHoursPerWeek")}
                     </Label>
                     <Input
                       type="number"
@@ -294,7 +296,7 @@ export function AutoScheduler({
                   </div>
                   <div>
                     <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                      Max consec. days
+                      {t("scheduler.auto.maxConsecutiveDays")}
                     </Label>
                     <Input
                       type="number"
@@ -307,7 +309,7 @@ export function AutoScheduler({
                   </div>
                   <div>
                     <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
-                      Min rest (hrs)
+                      {t("scheduler.auto.minRestHours")}
                     </Label>
                     <Input
                       type="number"
@@ -330,7 +332,7 @@ export function AutoScheduler({
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-1.5" />
-                      Generate Schedule
+                      {t("scheduler.auto.generate")}
                     </>
                   )}
                 </Button>
@@ -344,21 +346,21 @@ export function AutoScheduler({
                     <div className="grid grid-cols-4 gap-3">
                       <div className="text-center">
                         <div className="text-lg font-mono font-bold">{result.stats.totalShifts}</div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Shifts</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statShifts")}</div>
                       </div>
                       <div className="text-center">
                         <div className="text-lg font-mono font-bold">{result.stats.totalHours}h</div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Total Hours</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statTotalHours")}</div>
                       </div>
                       <div className="text-center">
                         <div className="text-lg font-mono font-bold">{result.stats.avgHoursPerStaff}h</div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg/Staff</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statAvgPerStaff")}</div>
                       </div>
                       <div className="text-center">
                         <div className={`text-lg font-mono font-bold ${scoreColor(result.stats.fairnessScore)}`}>
                           {result.stats.fairnessScore}
                         </div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Fairness</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statFairness")}</div>
                         <Progress value={result.stats.fairnessScore} className="mt-1 h-1" />
                       </div>
                     </div>
@@ -380,7 +382,7 @@ export function AutoScheduler({
                   {result.unfilledSlots.length > 0 && (
                     <div className="px-4 py-2 space-y-1.5 border-b border-border">
                       <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">
-                        Unfilled Slots ({result.unfilledSlots.length})
+                        {t("scheduler.auto.unfilledSlots").replace("{count}", String(result.unfilledSlots.length))}
                       </div>
                       {result.unfilledSlots.slice(0, 5).map((slot, i) => (
                         <div key={i} className="flex items-start gap-2 px-2.5 py-1.5 text-xs bg-red-50 border border-red-200 rounded-[0.3rem]">
@@ -392,7 +394,7 @@ export function AutoScheduler({
                       ))}
                       {result.unfilledSlots.length > 5 && (
                         <div className="text-[11px] text-muted-foreground pl-6">
-                          +{result.unfilledSlots.length - 5} more unfilled
+                          {t("scheduler.auto.moreUnfilled").replace("{count}", String(result.unfilledSlots.length - 5))}
                         </div>
                       )}
                     </div>
@@ -403,13 +405,13 @@ export function AutoScheduler({
                     <div className="px-4 py-2">
                       <div className="flex items-center justify-between mb-2">
                         <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">
-                          Schedule Preview
+                          {t("scheduler.auto.schedulePreview")}
                         </div>
                         <button
                           onClick={toggleAll}
                           className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {selectedCount === totalCount ? "Deselect All" : "Select All"} ({selectedCount}/{totalCount})
+                          {selectedCount === totalCount ? t("scheduler.auto.deselectAll") : t("scheduler.auto.selectAll")} ({selectedCount}/{totalCount})
                         </button>
                       </div>
 
@@ -419,13 +421,13 @@ export function AutoScheduler({
                             <thead>
                               <tr className="bg-muted/50 border-b border-border">
                                 <th className="w-8 px-2 py-1.5 text-center">&nbsp;</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Date</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Shift</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Time</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Staff</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Roles</th>
-                                <th className="px-2 py-1.5 text-center font-medium text-muted-foreground">Score</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">Status</th>
+                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colDate")}</th>
+                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colShift")}</th>
+                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colTime")}</th>
+                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colStaff")}</th>
+                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colRoles")}</th>
+                                <th className="px-2 py-1.5 text-center font-medium text-muted-foreground">{t("scheduler.auto.colScore")}</th>
+                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colStatus")}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -502,7 +504,7 @@ export function AutoScheduler({
                                       ) : (
                                         <div className="flex items-center gap-1 text-emerald-600">
                                           <Check className="h-3 w-3" />
-                                          <span className="text-[10px]">OK</span>
+                                          <span className="text-[10px]">{t("scheduler.auto.statusOk")}</span>
                                         </div>
                                       )}
                                     </td>
@@ -528,7 +530,7 @@ export function AutoScheduler({
                   onClick={() => setOpen(false)}
                   className="text-xs"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   variant="outline"
@@ -538,7 +540,7 @@ export function AutoScheduler({
                   className="text-xs gap-1"
                 >
                   <RotateCcw className="h-3 w-3" />
-                  Regenerate
+                  {t("scheduler.auto.regenerate")}
                 </Button>
                 <div className="flex-1" />
                 <Button
@@ -552,7 +554,7 @@ export function AutoScheduler({
                   ) : (
                     <>
                       <Check className="h-3.5 w-3.5" />
-                      Apply Selected ({selectedCount})
+                      {t("scheduler.auto.applySelected").replace("{count}", String(selectedCount))}
                     </>
                   )}
                 </Button>

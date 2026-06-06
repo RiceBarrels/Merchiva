@@ -35,9 +35,10 @@ function hrefFor(segment: HubTab["segment"]) {
 // ─── Loading fallback ────────────────────────────────────────────────────────
 
 export function PersonnelLoading() {
+  const t = useT();
   return (
     <div className="flex-1 flex items-center justify-center text-[13px] text-muted-foreground">
-      Loading…
+      {t("common.loading")}
     </div>
   );
 }
@@ -63,7 +64,7 @@ export function PersonnelHeader() {
         type="button"
         onClick={openRequests}
         className="md:hidden relative h-9 w-9 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"
-        aria-label="Pending requests"
+        aria-label={t("personnel.pendingRequests")}
       >
         <Inbox className="h-4 w-4" strokeWidth={1.75} />
         {pending > 0 && (

@@ -81,6 +81,22 @@ function localDateOf(v: any, tz: string): string | null {
   }
 }
 
+/** UTC instant → "HH:MM" (24h) in the given IANA timezone (falls back to UTC). */
+function localTimeOf(v: any, tz: string): string | null {
+  const ms = tsToMs(v);
+  if (!Number.isFinite(ms)) return null;
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(ms));
+  } catch {
+    return new Date(ms).toISOString().slice(11, 16);
+  }
+}
+
 /** Shift a "YYYY-MM-DD" string by `delta` days (UTC arithmetic on the date). */
 function addDaysIso(dateStr: string, delta: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
@@ -131,6 +147,7 @@ export interface BriefingRows {
   staffAvailability?: any[];
   coupons?: any[];
   settings?: any[];
+  punchEvents?: any[];
 }
 
 export type EvidenceStatus = "complete" | "missing_required" | "not_required";
@@ -162,6 +179,16 @@ export interface BriefingContext {
   upcomingHolidays: HolidayInfo[];
 
   team: { name: string; role: string; hasPunchInCode: boolean }[];
+
+  // Today's live attendance, derived from punch_event rows. `onShift` = members
+  // currently punched in and not yet out (with break state + clock-in time);
+  // `punchedInToday` = everyone with at least one "in" today (with first-in time).
+  attendance: {
+    onShiftCount: number;
+    onShift: { name: string; since: string | null; onBreak: boolean }[];
+    punchedInCount: number;
+    punchedInToday: { name: string; firstIn: string | null }[];
+  };
 
   inventory: {
     name: string; category: string; stock: number;
@@ -281,6 +308,49 @@ export function buildBriefingContext(
       teamNames.add(s.name);
     }
   }
+
+  // ── Today's attendance (from punch_event) ──
+  // punch_event.memberId is org_member.id (or staff_member.id) as a string, so
+  // resolveMemberName lines up. "On shift" mirrors the punch-in terminal: an
+  // open "in" with no matching "out" (closed=false), on break if it also has an
+  // open "break-start". "Punched in today" buckets the "in" timestamp into the
+  // org timezone so end-of-day punches land on the right local day.
+  const orgPunchEvents = (rows.punchEvents ?? []).filter(
+    (e: any) => e.organizationId === orgId,
+  );
+  const attendanceOnShift = orgPunchEvents
+    .filter((e: any) => e.action === "in" && !e.closed)
+    .map((e: any) => ({
+      name: resolveMemberName(e.memberId),
+      since: localTimeOf(e.at, tz),
+      onBreak: orgPunchEvents.some(
+        (b: any) =>
+          idStr(b.memberId) === idStr(e.memberId) &&
+          b.action === "break-start" &&
+          !b.closed,
+      ),
+    }));
+  const firstInByMember = new Map<string, number>();
+  for (const e of orgPunchEvents) {
+    if (e.action !== "in") continue;
+    if (localDateOf(e.at, tz) !== today) continue;
+    const mid = idStr(e.memberId);
+    const ms = tsToMs(e.at);
+    if (!Number.isFinite(ms)) continue;
+    if (!firstInByMember.has(mid) || ms < (firstInByMember.get(mid) as number)) {
+      firstInByMember.set(mid, ms);
+    }
+  }
+  const punchedInToday = [...firstInByMember.entries()].map(([mid, ms]) => ({
+    name: resolveMemberName(mid),
+    firstIn: localTimeOf(ms, tz),
+  }));
+  const attendance = {
+    onShiftCount: attendanceOnShift.length,
+    onShift: attendanceOnShift,
+    punchedInCount: punchedInToday.length,
+    punchedInToday,
+  };
 
   // ── Inventory (status derived: out / low / ok) ──
   const inventory = (rows.inventoryItems ?? [])
@@ -560,6 +630,7 @@ export function buildBriefingContext(
     countryCode,
     upcomingHolidays,
     team,
+    attendance,
     inventory,
     lowStock,
     todayShifts,

@@ -143,8 +143,8 @@ export default function SalesPage() {
           <TabsList>
             <TabsTrigger value="history">{t("sales.tabs.history")}</TabsTrigger>
             <TabsTrigger value="hourly">{t("sales.tabs.hourly")}</TabsTrigger>
-            <TabsTrigger value="forecast">Forecast</TabsTrigger>
-            <TabsTrigger value="ai-items">AI Items</TabsTrigger>
+            <TabsTrigger value="forecast">{t("sales.tabs.forecast")}</TabsTrigger>
+            <TabsTrigger value="ai-items">{t("sales.tabs.aiItems")}</TabsTrigger>
           </TabsList>
 
           {/* History */}

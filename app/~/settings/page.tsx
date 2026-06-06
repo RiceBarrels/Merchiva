@@ -506,7 +506,7 @@ export default function SettingsPage() {
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      toast.error("Geolocation is not supported by your browser");
+      toast.error(t("settings.toastGeolocationUnsupported"));
       return;
     }
     setGettingLocation(true);
@@ -515,11 +515,11 @@ export default function SettingsPage() {
         setLocationLatitude(String(position.coords.latitude));
         setLocationLongitude(String(position.coords.longitude));
         setGettingLocation(false);
-        toast.success("Location detected");
+        toast.success(t("settings.toastLocationDetected"));
       },
       (err) => {
         console.error("[settings] Geolocation error:", err);
-        toast.error("Could not get your location. Please enter coordinates manually.");
+        toast.error(t("settings.toastGeolocationFailed"));
         setGettingLocation(false);
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -1434,17 +1434,17 @@ export default function SettingsPage() {
         <DynamicUIElement open={exitPinDialog} onOpenChange={(o) => { if (!o) setExitPinDialog(false); }}>
           <DynamicUIElementContent>
             <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle="Exit store mode">Enter PIN to exit store mode</DynamicUIElementTitle>
-              <DynamicUIElementDescription>Enter an owner or manager punch-in code to disable store machine mode.</DynamicUIElementDescription>
+              <DynamicUIElementTitle mobileTitle={t("settings.exitStoreModeMobileTitle")}>{t("settings.exitStoreModeTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("settings.exitStoreModeDesc")}</DynamicUIElementDescription>
             </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Punch-in code</Label>
+                <Label>{t("settings.punchInCode")}</Label>
                 <Input
                   value={exitPinInput}
                   onChange={(e) => { setExitPinInput(e.target.value.replace(/\D/g, "").slice(0, 4)); setExitPinError(""); }}
                   inputMode="numeric"
-                  placeholder="4 digits"
+                  placeholder={t("settings.fourDigitsPlaceholder")}
                   className="h-11 font-mono text-base tracking-[0.3em]"
                   autoFocus
                   onKeyDown={(e) => {
@@ -1453,12 +1453,12 @@ export default function SettingsPage() {
                       const match = (memberRows as unknown as any[]).find(
                         (m) => m.organizationId === organizationId && m.status === "active" && m.punchInCode === exitPinInput && (m.role === "owner" || m.role === "manager"),
                       );
-                      if (!match) { setExitPinError("Invalid code"); return; }
+                      if (!match) { setExitPinError(t("settings.exitPinInvalid")); return; }
                       setStoreMachine(false);
                       updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
                       setExitPinDialog(false);
                       hapticSuccess();
-                      toast.success("Store mode disabled");
+                      toast.success(t("settings.toastStoreModeDisabled"));
                     }
                   }}
                 />
@@ -1470,17 +1470,17 @@ export default function SettingsPage() {
                   const match = (memberRows as unknown as any[]).find(
                     (m) => m.organizationId === organizationId && m.status === "active" && m.punchInCode === exitPinInput && (m.role === "owner" || m.role === "manager"),
                   );
-                  if (!match) { setExitPinError("Invalid code. Must be an owner or manager code."); return; }
+                  if (!match) { setExitPinError(t("settings.exitPinInvalidRole")); return; }
                   setStoreMachine(false);
                   updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
                   setExitPinDialog(false);
                   hapticSuccess();
-                  toast.success("Store mode disabled");
+                  toast.success(t("settings.toastStoreModeDisabled"));
                 }}
                 disabled={exitPinInput.length !== 4}
                 className="w-full"
               >
-                Disable Store Mode
+                {t("settings.disableStoreMode")}
               </Button>
             </div>
           </DynamicUIElementContent>
@@ -1490,16 +1490,16 @@ export default function SettingsPage() {
         <DynamicUIElement open={manageDeviceDialog} onOpenChange={setManageDeviceDialog}>
           <DynamicUIElementContent>
             <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle="Manage device">Manage Device</DynamicUIElementTitle>
-              <DynamicUIElementDescription>Rename or remove this store device.</DynamicUIElementDescription>
+              <DynamicUIElementTitle mobileTitle={t("settings.manageDeviceMobileTitle")}>{t("settings.manageDeviceTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("settings.manageDeviceDesc")}</DynamicUIElementDescription>
             </DynamicUIElementHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Device name</Label>
+                <Label>{t("settings.deviceName")}</Label>
                 <Input
                   value={manageDeviceNameInput}
                   onChange={(e) => setManageDeviceNameInput(e.target.value.slice(0, 40))}
-                  placeholder="Front Counter"
+                  placeholder={t("settings.deviceNamePlaceholder")}
                   className="h-11"
                   autoFocus
                 />
@@ -1510,12 +1510,12 @@ export default function SettingsPage() {
                   await updateStoreDevice(manageDeviceTarget.deviceId, { name: manageDeviceNameInput.trim() });
                   setManageDeviceDialog(false);
                   hapticSuccess();
-                  toast.success("Device renamed");
+                  toast.success(t("settings.toastDeviceRenamed"));
                 }}
                 disabled={!manageDeviceNameInput.trim()}
                 className="w-full"
               >
-                Save
+                {t("settings.save")}
               </Button>
               <Button
                 variant="outline"
@@ -1523,11 +1523,11 @@ export default function SettingsPage() {
                   if (!manageDeviceTarget) return;
                   await removeStoreDevice(manageDeviceTarget.deviceId);
                   setManageDeviceDialog(false);
-                  toast.success("Device removed");
+                  toast.success(t("settings.toastDeviceRemoved"));
                 }}
                 className="w-full text-red-600 border-red-200 hover:bg-red-50"
               >
-                Remove Device
+                {t("settings.removeDevice")}
               </Button>
             </div>
           </DynamicUIElementContent>
@@ -2210,9 +2210,9 @@ export default function SettingsPage() {
             />
             <SRow
               icon={<Activity className="h-4 w-4 text-foreground" />}
-              title="Forecast Location"
-              meta={locationLatitude && locationLongitude ? `${locationLatitude}, ${locationLongitude}` : "Not set"}
-              right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{googlePlacesId ? googlePlacesId.slice(0, 12) + "..." : "No Place ID"}</span>}
+              title={t("settings.forecastLocation")}
+              meta={locationLatitude && locationLongitude ? `${locationLatitude}, ${locationLongitude}` : t("settings.notSet")}
+              right={<span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{googlePlacesId ? googlePlacesId.slice(0, 12) + "..." : t("settings.noPlaceId")}</span>}
             />
             <SRow
               icon={<CreditCard className="h-4 w-4 text-foreground" />}
@@ -2554,15 +2554,15 @@ export default function SettingsPage() {
             )}
             {isAdmin && orgDevices.length > 0 && (
               <>
-                <SGroupHeader label="Store Devices" />
+                <SGroupHeader label={t("settings.storeDevices")} />
                 {orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean; lastSeenAt: { toDate?: () => Date } }, i: number) => (
                   <SRow
                     key={device.id.toString()}
                     icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
-                    title={device.name || "Unnamed device"}
+                    title={device.name || t("settings.unnamedDevice")}
                     meta={device.deviceId.slice(0, 8)}
                     isFirst={i === 0}
-                    right={device.enabled ? <SBadge tone="ok">Active</SBadge> : <SBadge>Off</SBadge>}
+                    right={device.enabled ? <SBadge tone="ok">{t("settings.active")}</SBadge> : <SBadge>{t("settings.deviceOff")}</SBadge>}
                     onClick={() => {
                       setManageDeviceTarget(device);
                       setManageDeviceNameInput(device.name);

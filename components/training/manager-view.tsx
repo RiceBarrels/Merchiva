@@ -11,6 +11,7 @@ import {
   updateTrainingDay,
 } from "@/lib/spacetimedb/actions";
 import { useUploadThing } from "@/lib/uploadthing";
+import { useT } from "@/lib/i18n/context";
 import { QuillEditor } from "./quill-editor";
 import { DayRail, type DayRailItem } from "./day-rail";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -47,6 +48,7 @@ function plainTextFromHtml(html: string): string {
 }
 
 export function TrainingManagerView({ orgId }: { orgId: string }) {
+  const t = useT();
   const [rawDays] = useTrainingDays() as [unknown[], boolean];
   const [rawObjectives] = useTrainingObjectives() as [unknown[], boolean];
 
@@ -167,7 +169,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
     try {
       await addTrainingDay({
         dayNumber: days.length + 1,
-        title: `Day ${days.length + 1}`,
+        title: t("training.dayLabel").replace("{n}", String(days.length + 1)),
         description: null,
         sortOrder: days.length,
       });
@@ -219,12 +221,16 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
           onSelect={setActiveId}
           role="manager"
           onAddDay={handleAddDay}
-          title="Curriculum"
-          subtitle={`${days.length} day${days.length === 1 ? "" : "s"}`}
+          title={t("training.curriculumDays")}
+          subtitle={
+            days.length === 1
+              ? t("training.manager.dayCount").replace("{count}", String(days.length))
+              : t("training.manager.dayCountPlural").replace("{count}", String(days.length))
+          }
         />
         <div className="border-t border-border px-3 py-2.5 flex items-center gap-2">
           <Settings2 className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
-          <span className="text-[11.5px] text-muted-foreground">Curriculum settings</span>
+          <span className="text-[11.5px] text-muted-foreground">{t("training.manager.curriculumSettings")}</span>
         </div>
       </aside>
 
@@ -235,7 +241,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
           <div className="flex items-center gap-3 px-4 lg:px-6 py-3 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                module
+                {t("training.manager.moduleLabel")}
               </span>
               {activeDay && (
                 <span className="font-mono text-[10px] uppercase tracking-wider text-foreground bg-muted border border-border rounded-[0.3rem] px-1.5 py-0.5">
@@ -250,7 +256,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                     <input
                       value={draftTitle}
                       onChange={(e) => onTitleChange(e.target.value)}
-                      placeholder="Untitled day"
+                      placeholder={t("training.manager.untitledDay")}
                       className="text-[18px] font-semibold tracking-[-0.01em] bg-transparent border-0 outline-none w-full max-w-[400px] focus:bg-muted rounded-[0.3rem] px-1 -mx-1"
                     />
                     <Pencil className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
@@ -258,23 +264,23 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                   <div className="text-[11.5px] text-muted-foreground mt-0.5 flex items-center gap-3 flex-wrap">
                     <span className="inline-flex items-center gap-1">
                       <Clock className="h-[11px] w-[11px]" strokeWidth={1.75} />
-                      Day {activeDay.dayNumber}
+                      {t("training.dayLabel").replace("{n}", String(activeDay.dayNumber))}
                     </span>
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
                       <Users className="h-[11px] w-[11px]" strokeWidth={1.75} />
-                      All roles
+                      {t("training.manager.allRoles")}
                     </span>
                     <span>·</span>
                     <span className="inline-flex items-center gap-1">
                       <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} />
-                      Required
+                      {t("training.manager.required")}
                     </span>
                   </div>
                 </>
               ) : (
                 <div className="text-[14px] text-muted-foreground">
-                  Select or add a day to start authoring
+                  {t("training.manager.selectOrAddDay")}
                 </div>
               )}
             </div>
@@ -283,16 +289,16 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
               {dirty && (
                 <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[0.3rem] bg-amber-50 border border-amber-200 font-mono text-[10px] uppercase tracking-wider text-amber-700 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  unsaved
+                  {t("training.manager.unsaved")}
                 </span>
               )}
               <button
                 type="button"
                 className="h-8 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5"
-                title="History"
+                title={t("training.manager.history")}
               >
                 <History className="h-[13px] w-[13px]" strokeWidth={1.75} />
-                <span className="hidden md:inline">History</span>
+                <span className="hidden md:inline">{t("training.manager.history")}</span>
               </button>
               <button
                 type="button"
@@ -305,7 +311,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                 )}
               >
                 <Eye className="h-[13px] w-[13px]" strokeWidth={1.75} />
-                <span className="hidden md:inline">Preview as intern</span>
+                <span className="hidden md:inline">{t("training.manager.previewAsIntern")}</span>
               </button>
               <button
                 type="button"
@@ -317,7 +323,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                   <Spinner size={16} />
                 ) : (
                   <>
-                    <span>Publish</span>
+                    <span>{t("training.manager.publish")}</span>
                     <ArrowUpRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
                   </>
                 )}
@@ -339,18 +345,18 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
           <div className="flex flex-col border-r border-border bg-background min-h-0">
             <div className="px-4 h-9 border-b border-border flex items-center gap-2 shrink-0">
               <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Editor
+                {t("training.manager.editor")}
               </span>
               <span className="text-stone-300 dark:text-stone-700">·</span>
               <span className="text-[11px] text-muted-foreground">
-                <span className="font-mono">{wordCount}</span> words · ~
-                <span className="font-mono">{readingMin}</span> min read
+                <span className="font-mono">{wordCount}</span> {t("training.manager.words")} · ~
+                <span className="font-mono">{readingMin}</span> {t("training.manager.minRead")}
               </span>
               <div className="flex-1" />
               {!dirty && activeDay && (
                 <span className="font-mono text-[10px] text-emerald-600 inline-flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  saved
+                  {t("training.manager.saved")}
                 </span>
               )}
             </div>
@@ -360,14 +366,14 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                   <QuillEditor
                     value={draftDesc}
                     onChange={onDescChange}
-                    placeholder="Write the day's lesson — headings, lists, links, quotes, inline images…"
+                    placeholder={t("training.manager.lessonPlaceholder")}
                     minHeight={420}
                     onUploadImage={handleUploadInlineImage}
                   />
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-[13px] text-muted-foreground">
-                  Pick a day from the curriculum to edit
+                  {t("training.manager.pickDayToEdit")}
                 </div>
               )}
             </div>
@@ -378,11 +384,11 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
             <div className="hidden lg:flex flex-col bg-muted/30 min-h-0">
               <div className="px-4 h-9 border-b border-border flex items-center gap-2 shrink-0">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Preview
+                  {t("training.manager.preview")}
                 </span>
                 <span className="text-stone-300 dark:text-stone-700">·</span>
                 <span className="text-[11px] text-muted-foreground">
-                  how interns will see it
+                  {t("training.manager.howInternsSeeIt")}
                 </span>
                 <div className="flex-1" />
                 <div className="inline-flex rounded-[0.3rem] border border-border bg-background overflow-hidden">
@@ -396,7 +402,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                         : "text-muted-foreground",
                     )}
                   >
-                    Desktop
+                    {t("training.manager.desktop")}
                   </button>
                   <button
                     type="button"
@@ -408,7 +414,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                         : "text-muted-foreground",
                     )}
                   >
-                    Mobile
+                    {t("training.manager.mobile")}
                   </button>
                 </div>
               </div>
@@ -433,7 +439,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                       )
                     ) : (
                       <p className="text-[12.5px] italic text-muted-foreground">
-                        Empty day. Add content in the editor to see it here.
+                        {t("training.manager.emptyDay")}
                       </p>
                     )
                   ) : null}
@@ -447,11 +453,11 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
         <div className="border-t border-border bg-background shrink-0">
           <div className="px-4 lg:px-6 h-10 flex items-center gap-3">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Attachments
+              {t("training.manager.attachments")}
             </span>
             <span className="text-[11.5px] text-muted-foreground">
               <span className="font-mono">{activeObjectives.length}</span>{" "}
-              {activeObjectives.length === 1 ? "item" : "items"}
+              {activeObjectives.length === 1 ? t("training.manager.item") : t("training.manager.items")}
             </span>
             <div className="flex-1" />
             <AttachmentUploadButton
@@ -464,7 +470,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
               disabled={!activeDay}
               className="h-7 px-2.5 rounded-[0.3rem] border border-border bg-background text-[11.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50"
             >
-              <Link2 className="h-3 w-3" strokeWidth={1.75} /> Embed URL
+              <Link2 className="h-3 w-3" strokeWidth={1.75} /> {t("training.manager.embedUrl")}
             </button>
           </div>
           <div className="px-4 lg:px-6 pb-4 pt-1 flex gap-2.5 overflow-x-auto">
@@ -474,7 +480,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
             ))}
             {!activeDay && (
               <div className="text-[12px] text-muted-foreground italic self-center pl-2">
-                Select a day to add attachments.
+                {t("training.manager.selectDayForAttachments")}
               </div>
             )}
           </div>
@@ -485,10 +491,17 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
 }
 
 function AttachmentTile({ a }: { a: ObjectiveRow }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const isVideo = a.mediaType === "video";
   const isPhoto = a.mediaType === "image";
-  const label = plainTextFromHtml(a.text).slice(0, 60) || (isVideo ? "Video" : isPhoto ? "Photo" : "Note");
+  const label =
+    plainTextFromHtml(a.text).slice(0, 60) ||
+    (isVideo
+      ? t("training.manager.video")
+      : isPhoto
+        ? t("training.manager.photo")
+        : t("training.manager.note"));
 
   const onDelete = async () => {
     if (busy) return;
@@ -539,8 +552,8 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
           onClick={onDelete}
           disabled={busy}
           className="absolute top-1 right-1 w-5 h-5 rounded-[0.3rem] bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-black/60 disabled:opacity-50"
-          title="Remove"
-          aria-label="Remove"
+          title={t("training.manager.remove")}
+          aria-label={t("training.manager.remove")}
         >
           {busy ? <Spinner size={16} /> : <X className="h-[11px] w-[11px]" />}
         </button>
@@ -550,7 +563,7 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
           {label || "—"}
         </div>
         <div className="font-mono text-[9.5px] text-muted-foreground tabular-nums">
-          {a.mediaType ?? "note"}
+          {a.mediaType ?? t("training.manager.note")}
         </div>
       </div>
     </div>
@@ -558,6 +571,7 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
 }
 
 function AttachmentDropZone() {
+  const t = useT();
   const [hover, setHover] = useState(false);
   return (
     <div
@@ -580,7 +594,7 @@ function AttachmentDropZone() {
     >
       <UploadCloud className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
       <div className="text-[11px] font-medium text-stone-700 dark:text-stone-300">
-        Drop file
+        {t("training.manager.dropFile")}
       </div>
       <div className="font-mono text-[9.5px] text-muted-foreground uppercase tracking-wider">
         jpg · png · webp
@@ -598,6 +612,7 @@ function AttachmentUploadButton({
   sortOrder: number;
   disabled?: boolean;
 }) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -655,7 +670,7 @@ function AttachmentUploadButton({
         ) : (
           <Upload className="h-3 w-3" strokeWidth={1.75} />
         )}{" "}
-        Upload
+        {t("training.manager.upload")}
       </button>
       <input
         ref={inputRef}

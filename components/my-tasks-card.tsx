@@ -18,6 +18,7 @@ import { UploadButton } from "@/lib/uploadthing";
 import { useRoleTasks, useRoleTaskAssignments, useStaffRoles } from "@/lib/spacetimedb/hooks";
 import { recordTaskCompletion, sendMessage } from "@/lib/spacetimedb/actions";
 import { usePermissions } from "@/lib/context/permissions";
+import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
@@ -64,6 +65,7 @@ function startOfDayMs(): number {
 // Each card has a Complete button that opens an evidence-upload dialog and
 // records a completion row directly (no pre-assignment step).
 export function MyTasksCard() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const [taskRows] = useRoleTasks();
   const [roleRows] = useStaffRoles();
@@ -133,42 +135,42 @@ export function MyTasksCard() {
     <div className="rounded-lg border border-border bg-background overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-        <span className="text-[13px] font-semibold text-foreground">Today&rsquo;s tasks</span>
+        <span className="text-[13px] font-semibold text-foreground">{t("myTasks.title")}</span>
         <span className="font-mono text-[10.5px] text-muted-foreground">
-          {totalTasks - pending.length} / {totalTasks} done
+          {t("myTasks.doneCount").replace("{done}", String(totalTasks - pending.length)).replace("{total}", String(totalTasks))}
         </span>
         <Link
           href="/~/personnel"
           className="ml-auto h-8 px-2 -mr-2 text-[12px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 rounded-[0.3rem]"
         >
-          All
+          {t("myTasks.all")}
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
 
       {pending.length === 0 ? (
         <div className="px-4 py-8 text-center">
-          <div className="text-[13px] text-muted-foreground">All tasks completed today.</div>
+          <div className="text-[13px] text-muted-foreground">{t("myTasks.allCompleted")}</div>
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {top.map((t) => (
-            <div key={t.id} className="px-4 py-3 flex items-center gap-3 min-h-[56px]">
+          {top.map((task) => (
+            <div key={task.id} className="px-4 py-3 flex items-center gap-3 min-h-[56px]">
               <div className="h-[18px] w-[18px] rounded-full border-2 border-stone-300 dark:border-stone-600 shrink-0" />
               <div className="min-w-0 flex-1">
-                <div className="text-[13.5px] font-medium text-foreground truncate leading-tight">{t.title}</div>
+                <div className="text-[13.5px] font-medium text-foreground truncate leading-tight">{task.title}</div>
                 <div className="flex items-center gap-1.5 mt-1">
-                  {t.startTime && (
+                  {task.startTime && (
                     <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-muted text-muted-foreground text-[10px] font-mono">
                       <Clock className="h-2.5 w-2.5" />
-                      {t.startTime}
-                      {t.endTime ? `–${t.endTime}` : ""}
+                      {task.startTime}
+                      {task.endTime ? `–${task.endTime}` : ""}
                     </span>
                   )}
-                  {t.requiresEvidence && (
+                  {task.requiresEvidence && (
                     <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-mono">
                       <ImageIcon className="h-2.5 w-2.5" />
-                      evidence
+                      {t("myTasks.evidenceBadge")}
                     </span>
                   )}
                 </div>
@@ -177,16 +179,16 @@ export function MyTasksCard() {
                 size="sm"
                 variant="outline"
                 className={cn("h-9 px-3 text-[12px] shrink-0")}
-                onClick={() => setCompleteFor(t)}
+                onClick={() => setCompleteFor(task)}
               >
                 <Camera className="h-3.5 w-3.5 mr-1" />
-                Done
+                {t("myTasks.done")}
               </Button>
             </div>
           ))}
           {pending.length > top.length && (
             <div className="px-4 py-2.5 text-[11.5px] text-muted-foreground text-center bg-muted/30">
-              + {pending.length - top.length} more
+              {t("myTasks.moreCount").replace("{count}", String(pending.length - top.length))}
             </div>
           )}
         </div>
@@ -212,6 +214,7 @@ function InlineComplete({
   organizationId: string;
   onClose: () => void;
 }) {
+  const t = useT();
   const [evidence, setEvidence] = useState<{ url: string; type: string }[]>([]);
   const [note, setNote] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -224,7 +227,7 @@ function InlineComplete({
 
   async function submit() {
     if (evidenceRequired && evidence.length === 0) {
-      toast.error("This task requires a photo or video as evidence");
+      toast.error(t("myTasks.evidenceRequiredError"));
       return;
     }
     setSubmitting(true);
@@ -239,9 +242,9 @@ function InlineComplete({
       // Send the note first (with a header), then one message per attachment.
       if (task.notifyChats.length > 0) {
         const trimmedNote = note.trim();
-        const lines = [`✅ Task completed: ${task.title}`];
+        const lines = [t("myTasks.chatHeader").replace("{title}", task.title)];
         if (trimmedNote) lines.push(trimmedNote);
-        if (evidence.length > 0) lines.push(`📎 ${evidence.length} attachment(s)`);
+        if (evidence.length > 0) lines.push(t("myTasks.chatAttachments").replace("{count}", String(evidence.length)));
         const header = lines.join("\n");
 
         const sends: Promise<unknown>[] = [];
@@ -293,13 +296,13 @@ function InlineComplete({
         const results = await Promise.allSettled(sends);
         const failed = results.filter((r) => r.status === "rejected").length;
         if (failed > 0) {
-          toast.warning(`Task completed, but ${failed} chat message(s) failed`);
+          toast.warning(t("myTasks.partialChatFailure").replace("{count}", String(failed)));
         }
       }
-      toast.success("Task completed");
+      toast.success(t("myTasks.completedSuccess"));
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to complete");
+      toast.error(err instanceof Error ? err.message : t("myTasks.completeError"));
     } finally {
       setSubmitting(false);
     }
@@ -314,7 +317,7 @@ function InlineComplete({
         <div className="space-y-3 p-4">
           <div>
             <Label className="text-[11px]">
-              Evidence photos / videos
+              {t("myTasks.evidenceLabel")}
               {evidenceRequired && <span className="text-red-500 ml-1">*</span>}
               {evidence.length > 0 && (
                 <span className="text-muted-foreground ml-1">({evidence.length})</span>
@@ -337,7 +340,7 @@ function InlineComplete({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={item.url}
-                          alt="Evidence"
+                          alt={t("myTasks.evidenceAlt")}
                           className="w-full h-full object-cover rounded-[0.2rem] border border-border"
                         />
                       )}
@@ -350,7 +353,7 @@ function InlineComplete({
                         type="button"
                         onClick={() => removeEvidence(item.url)}
                         className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 text-white inline-flex items-center justify-center hover:bg-black/80"
-                        title="Remove"
+                        title={t("myTasks.remove")}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -385,7 +388,7 @@ function InlineComplete({
                   }}
                   onUploadError={(err) => {
                     setUploading(false);
-                    toast.error(err.message ?? "Upload failed");
+                    toast.error(err.message ?? t("myTasks.uploadError"));
                   }}
                   appearance={{
                     button:
@@ -396,7 +399,7 @@ function InlineComplete({
                 {uploading && (
                   <div className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
                     <Spinner size={12} />
-                    Uploading…
+                    {t("myTasks.uploading")}
                   </div>
                 )}
               </div>
@@ -404,26 +407,26 @@ function InlineComplete({
           </div>
           <div>
             <Label className="text-[11px]">
-              Note <span className="text-muted-foreground">(optional)</span>
+              {t("myTasks.noteLabel")} <span className="text-muted-foreground">{t("myTasks.optional")}</span>
             </Label>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Anything to flag for the manager?"
+              placeholder={t("myTasks.notePlaceholder")}
               rows={3}
               className="text-[12.5px]"
             />
           </div>
         </div>
         <DynamicUIElementFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t("common.cancel")}</Button>
           <Button onClick={submit} disabled={submitting || uploading}>
             {submitting ? (
               <Spinner size={14} className="mr-1" />
             ) : (
               <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
             )}
-            Mark done
+            {t("myTasks.markDone")}
           </Button>
         </DynamicUIElementFooter>
       </DynamicUIElementContent>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Globe } from "lucide-react";
-import { useI18n } from "@/lib/i18n/context";
+import { useI18n, useT } from "@/lib/i18n/context";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 import {
@@ -20,13 +20,14 @@ export function LanguageSwitcher({
   variant?: "default" | "inline";
 }) {
   const { locale, setLocale } = useI18n();
+  const t = useT();
 
   if (variant === "inline") {
     return (
       <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
         <SelectTrigger
           size="sm"
-          aria-label="Language"
+          aria-label={t("common.language")}
           className={cn(
             "rounded border border-border bg-background text-[12px] text-foreground hover:bg-muted focus-visible:border-muted-foreground focus-visible:ring-0",
             className,

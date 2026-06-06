@@ -185,6 +185,7 @@ function Sparkline({
 // ── KPI Strip ───────────────────────────────────────────────────────────────
 
 function KpiStrip() {
+  const t = useT();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { history: salesHistory, hourly: salesHourly, isReady: salesReady } = useSales();
@@ -232,31 +233,31 @@ function KpiStrip() {
 
   const kpis = [
     {
-      label: "Revenue · today",
+      label: t("merchiva.kpi.revenueToday"),
       v: todayRevenue != null ? format(todayRevenue, { decimals: 0 }) : "—",
-      sub: "vs avg",
-      delta: todayRevenue != null && todayRevenue > 0 ? "live" : "—",
+      sub: t("merchiva.kpi.vsAvg"),
+      delta: todayRevenue != null && todayRevenue > 0 ? t("merchiva.kpi.live") : "—",
       good: todayRevenue != null && todayRevenue > 0,
     },
     {
-      label: "Orders",
+      label: t("merchiva.kpi.orders"),
       v: todayOrders != null ? String(todayOrders) : "—",
-      sub: "today",
-      delta: todayOrders != null && todayOrders > 0 ? "live" : "—",
+      sub: t("merchiva.kpi.today"),
+      delta: todayOrders != null && todayOrders > 0 ? t("merchiva.kpi.live") : "—",
       good: todayOrders != null && todayOrders > 0,
     },
     {
-      label: "On shift",
+      label: t("merchiva.kpi.onShift"),
       v: onShiftCount != null ? `${onShiftCount} / ${totalTodayShifts}` : "—",
-      sub: "live",
-      delta: "live",
+      sub: t("merchiva.kpi.live"),
+      delta: t("merchiva.kpi.live"),
       mono: true,
     },
     {
-      label: "SKUs at risk",
+      label: t("merchiva.kpi.skusAtRisk"),
       v: atRisk != null ? String(atRisk) : "—",
-      sub: `of ${invItems.length} tracked`,
-      delta: atRisk != null && atRisk > 0 ? `${Math.min(atRisk, 3)} high` : "0",
+      sub: t("merchiva.kpi.ofTracked").replace("{count}", String(invItems.length)),
+      delta: atRisk != null && atRisk > 0 ? t("merchiva.kpi.nHigh").replace("{n}", String(Math.min(atRisk, 3))) : "0",
       warn: atRisk != null && atRisk > 0,
     },
   ];
@@ -584,6 +585,7 @@ function InsightCard({
   embed?: React.ReactNode;
   reasoning?: string[];
 }) {
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
   return (
     <Bubble>
@@ -595,7 +597,7 @@ function InsightCard({
         </span>
         <div className="flex-1" />
         <div className="inline-flex items-center gap-1.5 text-[10.5px] font-mono text-muted-foreground">
-          confidence
+          {t("merchiva.insight.confidence")}
           <span className="tabular-nums text-foreground font-semibold">{(confidence * 100).toFixed(0)}%</span>
           <span className="inline-block w-12 h-1 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
             <span className="block h-full" style={{ width: `${confidence * 100}%`, background: M_ACC }} />
@@ -619,14 +621,14 @@ function InsightCard({
         {reasoning && (
           <button onClick={() => setExpanded((e) => !e)}
             className="h-9 px-2 text-[11.5px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-            {expanded ? "Hide" : "Why"}
+            {expanded ? t("merchiva.insight.hide") : t("merchiva.insight.why")}
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
         )}
       </div>
       {expanded && reasoning && (
         <div className="border-t border-border pt-3 -mx-4 -mb-4 px-4 pb-4 bg-stone-50/60 dark:bg-stone-950/60">
-          <MonoCap>based on</MonoCap>
+          <MonoCap>{t("merchiva.insight.basedOn")}</MonoCap>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {reasoning.map((r) => (
               <span key={r} className="inline-flex items-center gap-1.5 px-2 py-1 border border-border rounded-[0.3rem] bg-background font-mono text-[10.5px] text-stone-600 dark:text-stone-300">
@@ -651,13 +653,14 @@ const INSIGHT_ICONS: Record<string, React.ReactNode> = {
 };
 
 function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
+  const t = useT();
   if (insight.type === "inventory" && insight.data) {
     const d = insight.data as { itemName: string; currentStock: number; minStock: number; maxStock: number; unit: string; daysOfCover: number };
     return (
       <div className="rounded-[0.3rem] border border-border bg-stone-50/40 dark:bg-stone-950/40 p-3">
         <div className="flex items-baseline gap-2 mb-2">
           <div className="text-[12.5px] font-semibold">{d.itemName}</div>
-          <MonoCap>{d.currentStock} / {d.maxStock} {d.unit} · ~{d.daysOfCover}d cover</MonoCap>
+          <MonoCap>{d.currentStock} / {d.maxStock} {d.unit} · {t("merchiva.embed.daysCover").replace("{days}", String(d.daysOfCover))}</MonoCap>
         </div>
         <div className="w-full h-2 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
           <div
@@ -670,9 +673,9 @@ function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
         </div>
         <div className="grid grid-cols-3 gap-0 mt-3 divide-x divide-border border-t border-border pt-3 -mx-3 -mb-3 px-3 pb-2">
           {([
-            ["Current", `${d.currentStock} ${d.unit}`],
-            ["Min / Max", `${d.minStock} / ${d.maxStock}`],
-            ["Cover", `~${d.daysOfCover} days`],
+            [t("merchiva.embed.current"), `${d.currentStock} ${d.unit}`],
+            [t("merchiva.embed.minMax"), `${d.minStock} / ${d.maxStock}`],
+            [t("merchiva.embed.cover"), t("merchiva.embed.daysApprox").replace("{days}", String(d.daysOfCover))],
           ] as const).map(([k, v], i) => (
             <div key={k} className={cn(i > 0 && "pl-3")}>
               <MonoCap>{k}</MonoCap>
@@ -778,6 +781,7 @@ function ShiftPreviewStrip({ action, validRoleNamesLower }: {
   // and render every role neutral — same as before.
   validRoleNamesLower?: Set<string>;
 }) {
+  const t = useT();
   const name = String(action.staffName ?? "");
   const date = String(action.date ?? "");
   const start = String(action.startTime ?? "");
@@ -829,7 +833,7 @@ function ShiftPreviewStrip({ action, validRoleNamesLower }: {
                 ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900 line-through"
                 : "bg-stone-50 dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700",
             )}
-            title={isInvalid ? "Not a job role in this org — approve will be rejected" : "Job role"}
+            title={isInvalid ? t("merchiva.shift.invalidRole") : t("merchiva.shift.jobRole")}
           >
             {roleName}
           </span>
@@ -896,7 +900,7 @@ function SupplierOrderPreview({ action, supplierNameById }: {
         <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="text-[12px] font-semibold truncate">{supplierName}</span>
         <span className="text-[10px] font-mono text-muted-foreground ml-auto shrink-0">
-          {items.length} {items.length === 1 ? "item" : "items"}
+          {(items.length === 1 ? t("merchiva.order.itemCount") : t("merchiva.order.itemCountPlural")).replace("{count}", String(items.length))}
         </span>
       </div>
       {items.length > 0 ? (
@@ -960,12 +964,13 @@ function SupplierOrderPreview({ action, supplierNameById }: {
 }
 
 function BuilderAddPreview({ action }: { action: Record<string, unknown> }) {
+  const t = useT();
   const elements = Array.isArray(action.elements) ? action.elements as Array<Record<string, unknown>> : [];
   if (elements.length === 0) return null;
   return (
     <div className="mt-1 mb-1">
       <div className="text-[10.5px] text-muted-foreground font-mono mb-1">
-        {elements.length} {elements.length === 1 ? "element" : "elements"}
+        {(elements.length === 1 ? t("merchiva.builder.elementCount") : t("merchiva.builder.elementCountPlural")).replace("{count}", String(elements.length))}
       </div>
       <div className="flex flex-wrap gap-1">
         {elements.slice(0, 12).map((el, i) => {
@@ -982,7 +987,7 @@ function BuilderAddPreview({ action }: { action: Record<string, unknown> }) {
           );
         })}
         {elements.length > 12 && (
-          <span className="text-[10.5px] text-muted-foreground">+{elements.length - 12} more</span>
+          <span className="text-[10.5px] text-muted-foreground">{t("merchiva.builder.moreCount").replace("{count}", String(elements.length - 12))}</span>
         )}
       </div>
     </div>
@@ -1203,7 +1208,7 @@ function ActionsListCard() {
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
         <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
           <Sparkles className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">ACTIONS</span>
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.actionsList.tag")}</span>
         </span>
         <span className="text-[11px] text-muted-foreground font-mono">{catalog.length}</span>
       </div>
@@ -1249,7 +1254,7 @@ function ActionsListCard() {
                       ))}
                       {optional > 0 && (
                         <span className="h-5 px-1.5 rounded-[0.2rem] border border-border bg-stone-50 dark:bg-stone-950 text-[10px] font-mono text-muted-foreground inline-flex items-center">
-                          +{optional} optional
+                          {t("merchiva.actionsList.optionalCount").replace("{count}", String(optional))}
                         </span>
                       )}
                       {permission !== "none" && (
@@ -1272,6 +1277,7 @@ function ActionsListCard() {
 // ── Q&A form UI ──────────────────────────────────────────────────────────
 
 function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: string) => void }) {
+  const t = useT();
   const [selections, setSelections] = useState<Record<number, string[]>>({});
   const [otherOpen, setOtherOpen] = useState<Record<number, boolean>>({});
   const [otherText, setOtherText] = useState<Record<number, string>>({});
@@ -1321,7 +1327,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
         </span>
         {!submitted && (
           <span className="text-[10.5px] text-muted-foreground font-mono">
-            Multi-select · {totalSelected} selected
+            {t("merchiva.qa.multiSelect").replace("{count}", String(totalSelected))}
           </span>
         )}
       </div>
@@ -1362,7 +1368,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
                     : "border border-dashed border-border bg-background text-muted-foreground hover:bg-muted"
                 )}
               >
-                Other...
+                {t("merchiva.qa.other")}
               </button>
             )}
           </div>
@@ -1373,7 +1379,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
                 value={otherText[qi] ?? ""}
                 onChange={(e) => setOtherText((prev) => ({ ...prev, [qi]: e.target.value }))}
                 onKeyDown={(e) => { if (e.key === "Enter") handleOtherConfirm(qi); }}
-                placeholder="Type a custom reply..."
+                placeholder={t("merchiva.qa.customReplyPlaceholder")}
                 className="flex-1 h-8 px-2.5 rounded-[0.3rem] border border-border bg-background text-[12px] outline-none focus:border-stone-400"
               />
               <button
@@ -1399,12 +1405,12 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
           )}
         >
           <Check className="h-3.5 w-3.5" />
-          {allAnswered ? "Submit" : "Pick at least one for each question"}
+          {allAnswered ? t("merchiva.qa.submit") : t("merchiva.qa.pickAtLeastOne")}
         </button>
       )}
       {submitted && (
         <div className="text-[11px] font-mono text-emerald-600 inline-flex items-center gap-1">
-          <Check className="h-3 w-3" /> Submitted
+          <Check className="h-3 w-3" /> {t("merchiva.qa.submitted")}
         </div>
       )}
     </div>
@@ -1417,17 +1423,18 @@ import type { QAItem, RoleAddCmd, TaskAddCmd } from "@/lib/merchiva/skills/types
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
+  const t = useT();
   return (
     <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden mt-2">
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
         <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
           <Users className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">ROLES</span>
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.rolesList.tag")}</span>
         </span>
-        <span className="text-[11px] text-muted-foreground font-mono">{roles.length} roles</span>
+        <span className="text-[11px] text-muted-foreground font-mono">{t("merchiva.rolesList.count").replace("{count}", String(roles.length))}</span>
       </div>
       {roles.length === 0 ? (
-        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No roles yet</div>
+        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">{t("merchiva.rolesList.empty")}</div>
       ) : (
         <div className="divide-y divide-border">
           {roles.map((role) => (
@@ -1456,7 +1463,7 @@ function RoleAddCard({ role, status, onDelete }: {
   status: "pending" | "adding" | "added" | "rejected" | "deleting";
   onDelete: () => void;
 }) {
-
+  const t = useT();
   return (
     <div className={cn(
       "rounded-[0.3rem] border p-3 mt-2",
@@ -1467,25 +1474,25 @@ function RoleAddCard({ role, status, onDelete }: {
       <div className="flex items-center gap-2 mb-2.5">
         <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
           <Users className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">NEW ROLE</span>
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.roleAdd.tag")}</span>
         </span>
         {status === "adding" && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> Adding...
+            <Spinner size={12} /> {t("merchiva.status.adding")}
           </span>
         )}
         {status === "deleting" && (
           <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> Deleting...
+            <Spinner size={12} /> {t("merchiva.status.deleting")}
           </span>
         )}
         {status === "added" && (
           <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> Added
+            <Check className="h-3 w-3" /> {t("merchiva.status.added")}
           </span>
         )}
         {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-red-500 ml-auto">Deleted</span>
+          <span className="text-[10.5px] font-mono text-red-500 ml-auto">{t("merchiva.status.deleted")}</span>
         )}
       </div>
       <div className="flex items-center gap-3 mb-2">
@@ -1500,7 +1507,7 @@ function RoleAddCard({ role, status, onDelete }: {
       </div>
       {role.tasks && (
         <div className="mb-2.5">
-          <MonoCap>Responsibilities</MonoCap>
+          <MonoCap>{t("merchiva.roleAdd.responsibilities")}</MonoCap>
           <div className="flex flex-wrap gap-1 mt-1">
             {role.tasks.split(",").map((t) => t.trim()).filter(Boolean).map((task) => (
               <span key={task} className="inline-flex items-center px-2 py-0.5 rounded-[0.2rem] border border-border bg-background text-[11px]">
@@ -1517,7 +1524,7 @@ function RoleAddCard({ role, status, onDelete }: {
       {status === "added" && (
         <button onClick={onDelete}
           className="h-7 px-3 mt-2.5 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
-          <Trash2 className="h-3 w-3" /> Delete
+          <Trash2 className="h-3 w-3" /> {t("common.delete")}
         </button>
       )}
     </div>
@@ -1527,6 +1534,7 @@ function RoleAddCard({ role, status, onDelete }: {
 // ── Task command UI ────────────────────────────────────────────────────────
 
 function TasksListInline({ roleId, roleName }: { roleId: string; roleName: string }) {
+  const t = useT();
   const [tasks, setTasks] = useState<Array<{ id: string; title: string; description: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean }>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1544,7 +1552,7 @@ function TasksListInline({ roleId, roleName }: { roleId: string; roleName: strin
   if (loading) {
     return (
       <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
-        <Spinner size={12} /> Loading tasks...
+        <Spinner size={12} /> {t("merchiva.tasks.loading")}
       </div>
     );
   }
@@ -1556,6 +1564,7 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
   roleName: string;
   tasks: Array<{ id: string; title: string; description: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean }>;
 }) {
+  const t = useT();
   const [tasks, setTasks] = useState(initialTasks);
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
 
@@ -1563,10 +1572,10 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
     setDeleting((prev) => new Set(prev).add(id));
     try {
       await execDeleteRoleTask(id);
-      setTasks((prev) => prev.filter((t) => t.id !== id));
+      setTasks((prev) => prev.filter((task) => task.id !== id));
     } catch (err) {
       console.error(`[TasksListCard] Failed to delete task:`, err);
-      toast.error("Failed to delete task");
+      toast.error(t("merchiva.tasks.deleteFailed"));
     } finally {
       setDeleting((prev) => { const s = new Set(prev); s.delete(id); return s; });
     }
@@ -1577,13 +1586,13 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
         <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
           <Clipboard className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">TASKS</span>
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.tasks.tag")}</span>
         </span>
         <span className="text-[12px] font-medium">{roleName}</span>
         <span className="text-[10.5px] text-muted-foreground font-mono ml-auto">{tasks.length}</span>
       </div>
       {tasks.length === 0 ? (
-        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No tasks for this role</div>
+        <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">{t("merchiva.tasks.empty")}</div>
       ) : (
         <div className="divide-y divide-border">
           {tasks.map((task) => (
@@ -1593,7 +1602,7 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
                   <div className="text-[12.5px] font-medium leading-tight">{task.title}</div>
                   {task.requiresEvidence && (
                     <span className="h-4 px-1 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-mono uppercase inline-flex items-center">
-                      Evidence
+                      {t("merchiva.tasks.evidence")}
                     </span>
                   )}
                 </div>
@@ -1631,7 +1640,7 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
   onConfirm: () => void;
   onDelete: () => void;
 }) {
-
+  const t = useT();
   return (
     <div className={cn(
       "rounded-[0.3rem] border p-3 mt-2",
@@ -1643,29 +1652,29 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
       <div className="flex items-center gap-2 mb-2.5">
         <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
           <Clipboard className="h-[10px] w-[10px]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">NEW TASK</span>
+          <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.taskAdd.tag")}</span>
         </span>
         <span className="text-[11px] text-muted-foreground">→ {task.role}</span>
         {status === "adding" && (
           <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> Adding...
+            <Spinner size={12} /> {t("merchiva.status.adding")}
           </span>
         )}
         {status === "deleting" && (
           <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
-            <Spinner size={12} /> Deleting...
+            <Spinner size={12} /> {t("merchiva.status.deleting")}
           </span>
         )}
         {status === "added" && (
           <span className="text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1 ml-auto">
-            <Check className="h-3 w-3" /> Added
+            <Check className="h-3 w-3" /> {t("merchiva.status.added")}
           </span>
         )}
         {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-red-500 ml-auto">Deleted</span>
+          <span className="text-[10.5px] font-mono text-red-500 ml-auto">{t("merchiva.status.deleted")}</span>
         )}
         {status === "needs-chat" && (
-          <span className="text-[10.5px] font-mono text-amber-700 ml-auto">Choose group chat</span>
+          <span className="text-[10.5px] font-mono text-amber-700 ml-auto">{t("merchiva.taskAdd.chooseChat")}</span>
         )}
       </div>
       <div className="flex items-start gap-3 mb-2">
@@ -1684,18 +1693,18 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
         )}
         {task.requiresEvidence && (
           <span className="h-5 px-1.5 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-mono uppercase inline-flex items-center gap-1">
-            <Camera className="h-[10px] w-[10px]" /> Evidence required
+            <Camera className="h-[10px] w-[10px]" /> {t("merchiva.taskAdd.evidenceRequired")}
           </span>
         )}
       </div>
       {status === "needs-chat" && (
         <div className="mt-2 pt-2.5 border-t border-amber-200/60 dark:border-amber-800/60">
           <div className="text-[10.5px] text-amber-800 dark:text-amber-200 mb-1.5">
-            This task requires evidence — pick the group chat where it should be uploaded:
+            {t("merchiva.taskAdd.evidencePrompt")}
           </div>
           {groupChats.length === 0 ? (
             <div className="text-[10.5px] text-muted-foreground italic">
-              No group chats yet — create one from the Chat page first.
+              {t("merchiva.taskAdd.noGroupChats")}
             </div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
@@ -1724,13 +1733,13 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
               disabled={selectedChats.length === 0}
               className="h-7 px-3 rounded-[0.3rem] border border-foreground bg-foreground text-background text-[11px] font-medium inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Check className="h-3 w-3" /> Add
+              <Check className="h-3 w-3" /> {t("merchiva.taskAdd.add")}
             </button>
             <button
               onClick={onDelete}
               className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5"
             >
-              <Trash2 className="h-3 w-3" /> Skip
+              <Trash2 className="h-3 w-3" /> {t("merchiva.taskAdd.skip")}
             </button>
           </div>
         </div>
@@ -1738,7 +1747,7 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
       {status === "added" && (
         <button onClick={onDelete}
           className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
-          <Trash2 className="h-3 w-3" /> Delete
+          <Trash2 className="h-3 w-3" /> {t("common.delete")}
         </button>
       )}
     </div>
@@ -1756,6 +1765,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
   onRejectRole?: (index: number) => void;
   onRejectTask?: (index: number) => void;
 }) {
+  const t = useT();
   const rejRoles = new Set(rejectedRoles ?? []);
   const rejTasks = new Set(rejectedTasks ?? []);
   const safeRoles = roles ?? [];
@@ -1807,10 +1817,10 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
       onRejectRole?.(i);
     } catch (err) {
       console.error(`[CommandGroup] Failed to delete role "${role.title}":`, err);
-      toast.error("Failed to delete role");
+      toast.error(t("merchiva.command.deleteRoleFailed"));
       setRoleStatuses((prev) => ({ ...prev, [i]: "added" }));
     }
-  }, [safeRoles, findRoleByName, onRejectRole]);
+  }, [safeRoles, findRoleByName, onRejectRole, t]);
 
   const handleDeleteTask = useCallback(async (i: number) => {
     const task = safeTasks[i];
@@ -1828,10 +1838,10 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
       onRejectTask?.(i);
     } catch (err) {
       console.error(`[CommandGroup] Failed to delete task "${task.title}":`, err);
-      toast.error("Failed to delete task");
+      toast.error(t("merchiva.tasks.deleteFailed"));
       setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
     }
-  }, [safeTasks, findRoleByName, getDbTasks, onRejectTask]);
+  }, [safeTasks, findRoleByName, getDbTasks, onRejectTask, t]);
 
   useEffect(() => {
     if (autoRan.current) return;
@@ -1887,7 +1897,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
           }
           if (!found) {
             console.error(`[CommandGroup] Role not found for task "${task.title}": "${task.role}"`);
-            toast.error(`Role not found: ${task.role}`);
+            toast.error(t("merchiva.command.roleNotFound").replace("{role}", task.role));
             setTaskStatuses((prev) => ({ ...prev, [i]: "pending" }));
             continue;
           }
@@ -1937,7 +1947,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
         }
       }
       if (!found) {
-        toast.error(`Role not found: ${task.role}`);
+        toast.error(t("merchiva.command.roleNotFound").replace("{role}", task.role));
         setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
         return;
       }
@@ -1964,10 +1974,10 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
       setTaskStatuses((prev) => ({ ...prev, [i]: "added" }));
     } catch (err) {
       console.error(`[CommandGroup] Failed to confirm task "${task.title}":`, err);
-      toast.error("Failed to add task");
+      toast.error(t("merchiva.command.addTaskFailed"));
       setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
     }
-  }, [safeTasks, taskChats, findRoleByName, getDbTasks]);
+  }, [safeTasks, taskChats, findRoleByName, getDbTasks, t]);
 
   const toggleTaskChat = useCallback((i: number, chatId: string) => {
     setTaskChats((prev) => {
@@ -2015,6 +2025,7 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
   deletes: TaskDeleteCmd[];
   alreadyExecuted?: boolean;
 }) {
+  const t = useT();
   type Status = "pending" | "deleting" | "deleted" | "failed";
   const [statuses, setStatuses] = useState<Record<number, Status>>(
     () => Object.fromEntries(deletes.map((_, i) => [i, alreadyExecuted ? "deleted" : "pending"]))
@@ -2085,22 +2096,22 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
           <div className="flex items-center gap-2">
             <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-red-100 border border-red-200 text-red-600">
               <Trash2 className="h-[10px] w-[10px]" />
-              <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">DELETE</span>
+              <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.taskDelete.tag")}</span>
             </span>
             <span className="text-[12px] font-medium truncate">{del.title}</span>
             <span className="text-[11px] text-muted-foreground">← {del.role}</span>
             {statuses[i] === "deleting" && (
               <span className="text-[10.5px] font-mono text-muted-foreground inline-flex items-center gap-1 ml-auto">
-                <Spinner size={12} /> Deleting...
+                <Spinner size={12} /> {t("merchiva.status.deleting")}
               </span>
             )}
             {statuses[i] === "deleted" && (
               <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
-                <Check className="h-3 w-3" /> Deleted
+                <Check className="h-3 w-3" /> {t("merchiva.status.deleted")}
               </span>
             )}
             {statuses[i] === "failed" && (
-              <span className="text-[10.5px] font-mono text-amber-600 ml-auto">Delete failed</span>
+              <span className="text-[10.5px] font-mono text-amber-600 ml-auto">{t("merchiva.taskDelete.failed")}</span>
             )}
           </div>
         </div>
@@ -2395,10 +2406,10 @@ export function MerchivaChat({
       setMessages(parseSessionMessages(latest.messages));
       sessionInitDone.current = true;
     } else if (getConnection()) {
-      execCreateSession("New conversation").catch(() => {});
+      execCreateSession(t("merchiva.newConversation")).catch(() => {});
       sessionInitDone.current = true;
     }
-  }, [organizationId, mySessions, sessionsReady, builderMode, builderStorageKey]);
+  }, [organizationId, mySessions, sessionsReady, builderMode, builderStorageKey, t]);
 
   // When sessions update and we just created one, pick the newest (skip in builder mode)
   useEffect(() => {
@@ -2512,14 +2523,14 @@ export function MerchivaChat({
     setAttachedElements((prev) => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const orgName = currentOrg?.name ?? "your store";
+  const orgName = currentOrg?.name ?? t("merchiva.yourStore");
 
   const { items: invItems } = useInventory(organizationId);
   const { history: salesHistory, hourly: salesHourly } = useSales();
   const { shifts, team, presets: shiftPresets, allAvailability, myTimeOffRequests: timeOffRequests, orgShiftTrades: shiftTrades, chatOptions } = useStaffing(organizationId, null, false);
   const groupChats = useMemo(
-    () => chatOptions.filter((c) => c.type === "group").map((c) => ({ id: c.id, name: c.name ?? "Untitled group" })),
-    [chatOptions]
+    () => chatOptions.filter((c) => c.type === "group").map((c) => ({ id: c.id, name: c.name ?? t("merchiva.untitledGroup") })),
+    [chatOptions, t]
   );
   const { products } = useProducts(organizationId);
   // Supplier records (id + email) so Mr. Merchiva can resolve a low-stock
@@ -2827,7 +2838,7 @@ export function MerchivaChat({
     const w = window as any;
     const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SR) {
-      alert("Your browser doesn't support voice input.");
+      alert(t("merchiva.voiceUnsupported"));
       return;
     }
     const recognition = new SR();
@@ -2854,7 +2865,7 @@ export function MerchivaChat({
     recognitionRef.current = recognition;
     recognition.start();
     setRecording(true);
-  }, [locale]);
+  }, [locale, t]);
 
   const stopVoice = useCallback(() => {
     recognitionRef.current?.stop();
@@ -3036,7 +3047,7 @@ export function MerchivaChat({
         parsed.tasksAdd.length > 0 || parsed.tasksDelete.length > 0 || parsed.questions.length > 0 || parsed.actionsList;
       const displayText = parsed.cleanText || (
         parsed.actionsList && parsed.actions.length === 0
-          ? "Here are all AI actions currently available:"
+          ? t("merchiva.actionsAvailable")
           : hasStructured ? "" : finalText.trim()
       );
       setMessages((prev) => prev.map((m) => (
@@ -3098,7 +3109,7 @@ export function MerchivaChat({
       const aiMsg: ChatMessage = {
         id: msgId("a"),
         from: "system",
-        text: parsed.cleanText || "Here are all AI actions currently available:",
+        text: parsed.cleanText || t("merchiva.actionsAvailable"),
         time: new Date().toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }),
         actionsList: true,
       };
@@ -3453,7 +3464,7 @@ export function MerchivaChat({
         parsed.actionsList;
       const displayText = parsed.cleanText || (
         parsed.actionsList && parsed.actions.length === 0
-          ? "Here are all AI actions currently available:"
+          ? t("merchiva.actionsAvailable")
           : hasStructured ? "" : reply.trim()
       );
 
@@ -3476,7 +3487,7 @@ export function MerchivaChat({
 
       // Auto-title session from first user message
       if (activeSessionId && messages.length <= 2) {
-        const title = text.trim().slice(0, 30) || "Chat";
+        const title = text.trim().slice(0, 30) || t("merchiva.chatTitle");
         execSaveSession(activeSessionId, JSON.stringify(messages.slice(-50)), title).catch(() => {});
       }
 
@@ -3515,7 +3526,11 @@ export function MerchivaChat({
       const member = team.find((m) => (m.displayName ?? "").trim().toLowerCase() === wantedName);
       if (!member) {
         const validNames = team.map((m) => m.displayName);
-        toast.error(`"${actionData.staffName}" is not a team member. Add them first or pick from: ${validNames.join(", ") || "(no team members yet)"}`);
+        toast.error(
+          t("merchiva.approve.notTeamMember")
+            .replace("{name}", String(actionData.staffName))
+            .replace("{names}", validNames.join(", ") || t("merchiva.approve.noTeamMembers")),
+        );
         return;
       }
       actionData.memberId = member.id;
@@ -3540,9 +3555,11 @@ export function MerchivaChat({
         .map((r) => validRoleByLower.get(r.toLowerCase()))
         .filter((r): r is string => Boolean(r));
       if (canonicalRoles.length === 0) {
-        const validList = [...validRoleByLower.values()].join(", ") || "(no roles defined yet)";
+        const validList = [...validRoleByLower.values()].join(", ") || t("merchiva.approve.noRolesDefined");
         toast.error(
-          `No valid job role for shift. Got ${JSON.stringify(roleNames)} — pick one of: ${validList}.`,
+          t("merchiva.approve.noValidRole")
+            .replace("{got}", JSON.stringify(roleNames))
+            .replace("{roles}", validList),
         );
         return;
       }
@@ -3576,7 +3593,7 @@ export function MerchivaChat({
         };
       }));
     }
-  }, [messages, team, staffRoles]);
+  }, [messages, team, staffRoles, t]);
 
   const handleReject = useCallback((msgId: string, actionId: string) => {
     setMessages((prev) => prev.map((m) => {
@@ -3633,11 +3650,11 @@ export function MerchivaChat({
   const quickChips = useMemo(() => {
     if (builderMode) {
       return [
-        "Add a hero section",
-        "Add a contact form",
-        "Make this page mobile-friendly",
-        "Delete the footer",
-        "Add a pricing table",
+        t("merchiva.builderChips.heroSection"),
+        t("merchiva.builderChips.contactForm"),
+        t("merchiva.builderChips.mobileFriendly"),
+        t("merchiva.builderChips.deleteFooter"),
+        t("merchiva.builderChips.pricingTable"),
       ];
     }
     const chips: string[] = [];
@@ -3746,8 +3763,8 @@ export function MerchivaChat({
                 title={insight.title}
                 body={insight.body}
                 confidence={insight.confidence}
-                primary={insight.primaryAction ?? { label: "View" }}
-                secondary={insight.secondaryAction ?? "Dismiss"}
+                primary={insight.primaryAction ?? { label: t("merchiva.insight.view") }}
+                secondary={insight.secondaryAction ?? t("merchiva.insight.dismiss")}
                 reasoning={insight.reasoning}
                 embed={<InsightEmbed insight={insight} />}
               />
@@ -3872,7 +3889,7 @@ export function MerchivaChat({
                     <TasksListInline roleId={matchedRole.id} roleName={matchedRole.name} />
                   ) : (
                     <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 text-[12px] text-muted-foreground">
-                      Role not found: {msg.tasksList}
+                      {t("merchiva.command.roleNotFound").replace("{role}", msg.tasksList ?? "")}
                     </div>
                   );
                 })()}
@@ -3985,8 +4002,8 @@ export function MerchivaChat({
               >
                 {DATA_ICONS[cat.id]}
                 <div className="flex-1 min-w-0">
-                  <div className="text-[12.5px] font-medium">{cat.label}</div>
-                  <div className={cn("text-[10.5px]", attachedData.includes(cat.id) ? "text-background/60" : "text-muted-foreground")}>{cat.desc}</div>
+                  <div className="text-[12.5px] font-medium">{t(`merchiva.dataCategory.${cat.id}.label`)}</div>
+                  <div className={cn("text-[10.5px]", attachedData.includes(cat.id) ? "text-background/60" : "text-muted-foreground")}>{t(`merchiva.dataCategory.${cat.id}.desc`)}</div>
                 </div>
                 {attachedData.includes(cat.id) && <Check className="h-3.5 w-3.5 shrink-0" />}
               </button>
@@ -4055,11 +4072,11 @@ export function MerchivaChat({
                       ? "text-foreground bg-muted"
                       : "text-muted-foreground hover:bg-muted",
                 )}
-                title={pickMode ? "Click any element in the canvas · Esc to cancel" : "Pick an element to attach"}
+                title={pickMode ? t("merchiva.pick.titleActive") : t("merchiva.pick.titleIdle")}
               >
                 <MousePointer2 className="h-[14px] w-[14px]" />
                 <span className="text-[11.5px]">
-                  {pickMode ? "Click element…" : `Element${attachedElements.length > 0 ? ` · ${attachedElements.length}` : ""}`}
+                  {pickMode ? t("merchiva.pick.clicking") : `${t("merchiva.pick.element")}${attachedElements.length > 0 ? ` · ${attachedElements.length}` : ""}`}
                 </span>
               </button>
             )}
@@ -4164,6 +4181,7 @@ export function MerchivaChat({
 // ── Today's Schedule Card ───────────────────────────────────────────────────
 
 function TodayScheduleCard() {
+  const t = useT();
   const { organizationId } = usePermissions();
   const { shifts: allShifts } = useStaffing(organizationId, null, false);
 
@@ -4224,8 +4242,8 @@ function TodayScheduleCard() {
 
   const ticks = [6, 10, 14, 18, 22];
 
-  function formatTimeShort(t: string) {
-    const [h, m] = t.split(":").map(Number);
+  function formatTimeShort(time: string) {
+    const [h, m] = time.split(":").map(Number);
     const p = h >= 12 ? "p" : "a";
     const hr = h % 12 || 12;
     return m === 0 ? `${hr}${p}` : `${hr}:${String(m).padStart(2, "0")}${p}`;
@@ -4238,13 +4256,13 @@ function TodayScheduleCard() {
     <section className="rounded-lg border border-border bg-background overflow-hidden">
       <header className="px-5 py-3 border-b border-border flex items-center gap-2">
         <div className="flex-1">
-          <div className="text-[13.5px] font-semibold">Today&apos;s schedule</div>
+          <div className="text-[13.5px] font-semibold">{t("merchiva.schedule.title")}</div>
           <div className="text-[11px] text-muted-foreground">
-            <span className="font-mono">{shifts.length}</span> shifts · <span className="font-mono">{totalHrs.toFixed(1)}</span> hrs
+            <span className="font-mono">{shifts.length}</span> {t("merchiva.schedule.shifts")} · <span className="font-mono">{totalHrs.toFixed(1)}</span> {t("merchiva.schedule.hrs")}
           </div>
         </div>
         <button className="text-[11.5px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5">
-          Open <ChevronRight className="h-3 w-3" />
+          {t("merchiva.schedule.open")} <ChevronRight className="h-3 w-3" />
         </button>
       </header>
 
@@ -4295,9 +4313,9 @@ function TodayScheduleCard() {
             {onShift.length > 0 && (
               <>
                 <div className="px-5 py-2 flex items-center gap-2">
-                  <MonoCap>on shift · {onShift.length}</MonoCap>
+                  <MonoCap>{t("merchiva.schedule.onShift").replace("{count}", String(onShift.length))}</MonoCap>
                   <span className="ml-auto text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> live
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> {t("merchiva.schedule.live")}
                   </span>
                 </div>
                 {onShift.map((s) => (
@@ -4317,11 +4335,13 @@ function TodayScheduleCard() {
             {upNext.length > 0 && (
               <>
                 <div className="px-5 py-2 flex items-center gap-2">
-                  <MonoCap>up next</MonoCap>
+                  <MonoCap>{t("merchiva.schedule.upNext")}</MonoCap>
                 </div>
                 {upNext.map((s) => {
                   const inMin = s.startMin - nowMin;
-                  const inStr = inMin < 60 ? `in ${inMin}m` : `in ${Math.floor(inMin / 60)}h`;
+                  const inStr = inMin < 60
+                    ? t("merchiva.schedule.inMinutes").replace("{n}", String(inMin))
+                    : t("merchiva.schedule.inHours").replace("{n}", String(Math.floor(inMin / 60)));
                   return (
                     <div key={s.id} className="px-5 py-2 flex items-center gap-3">
                       <Initials name={s.name} size={24} />
@@ -4338,7 +4358,7 @@ function TodayScheduleCard() {
           </div>
         </>
       ) : (
-        <div className="px-5 py-8 text-center text-xs text-muted-foreground">No shifts scheduled today</div>
+        <div className="px-5 py-8 text-center text-xs text-muted-foreground">{t("merchiva.schedule.noShifts")}</div>
       )}
     </section>
   );
@@ -4347,6 +4367,7 @@ function TodayScheduleCard() {
 // ── Notifications Card ──────────────────────────────────────────────────────
 
 function NotificationsCard() {
+  const t = useT();
   const [rawNotifs] = useNotifications();
 
   const recent = useMemo(() => {
@@ -4380,25 +4401,25 @@ function NotificationsCard() {
     <section className="rounded-lg border border-border bg-background overflow-hidden flex flex-col">
       <header className="px-5 py-3 border-b border-border flex items-center gap-2">
         <div className="flex-1">
-          <div className="text-[13.5px] font-semibold">Notifications</div>
+          <div className="text-[13.5px] font-semibold">{t("merchiva.notifications.title")}</div>
           <div className="text-[11px] text-muted-foreground">
-            <span className="font-mono">{recent.length}</span> new
-            {needsDecision > 0 && <> · <span className="font-mono">{needsDecision}</span> need a decision</>}
+            <span className="font-mono">{recent.length}</span> {t("merchiva.notifications.new")}
+            {needsDecision > 0 && <> · <span className="font-mono">{needsDecision}</span> {t("merchiva.notifications.needDecision")}</>}
           </div>
         </div>
-        <button className="text-[11.5px] text-muted-foreground hover:text-foreground">Mark all read</button>
+        <button className="text-[11.5px] text-muted-foreground hover:text-foreground">{t("merchiva.notifications.markAllRead")}</button>
       </header>
 
       {recent.length > 0 ? (
         <div className="divide-y divide-border">
           {recent.map((n) => {
-            const t = tones[n.type] ?? tones.general;
+            const tone = tones[n.type] ?? tones.general;
             const icon = ICONS[n.type] ?? ICONS.general;
             const ago = timeAgo(n.createdAt.toDate().toISOString());
             return (
               <div key={n.id.toString()} className="px-5 py-3 flex items-start gap-3">
                 <span className="h-6 w-6 rounded-[0.3rem] border inline-flex items-center justify-center shrink-0"
-                  style={{ background: t.bg, borderColor: t.bd, color: t.fg }}>
+                  style={{ background: tone.bg, borderColor: tone.bd, color: tone.fg }}>
                   {icon}
                 </span>
                 <div className="flex-1 min-w-0">
@@ -4410,10 +4431,10 @@ function NotificationsCard() {
                   {(n.type === "shift_trade" || n.type === "time_off") && (
                     <div className="flex items-center gap-1.5 mt-2">
                       <button className="h-6 px-2 rounded-[0.3rem] bg-foreground text-background text-[11px] font-medium hover:bg-foreground/90">
-                        Review
+                        {t("merchiva.notifications.review")}
                       </button>
                       <button className="h-6 px-2 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-muted">
-                        Dismiss
+                        {t("merchiva.notifications.dismiss")}
                       </button>
                     </div>
                   )}
@@ -4423,7 +4444,7 @@ function NotificationsCard() {
           })}
         </div>
       ) : (
-        <div className="px-5 py-8 text-center text-xs text-muted-foreground">No new notifications</div>
+        <div className="px-5 py-8 text-center text-xs text-muted-foreground">{t("merchiva.notifications.empty")}</div>
       )}
     </section>
   );
@@ -4459,6 +4480,7 @@ export function DesktopMerchivaDashboard() {
 // ── Mobile Dashboard ────────────────────────────────────────────────────────
 
 function MobileKpiRow() {
+  const t = useT();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const { history: salesHistory, hourly: salesHourly, isReady: salesReady } = useSales();
@@ -4481,13 +4503,13 @@ function MobileKpiRow() {
   return (
     <div className="grid grid-cols-2 gap-3 px-4">
       <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">
-        <MonoCap>Revenue · today</MonoCap>
+        <MonoCap>{t("merchiva.kpi.revenueToday")}</MonoCap>
         <div className="text-[26px] font-semibold leading-none tracking-tight tabular-nums">
           {todayRevenue != null ? format(todayRevenue, { decimals: 0 }) : "—"}
         </div>
       </div>
       <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">
-        <MonoCap>SKUs at risk</MonoCap>
+        <MonoCap>{t("merchiva.kpi.skusAtRisk")}</MonoCap>
         <div className={cn("text-[26px] font-semibold leading-none tracking-tight tabular-nums", atRisk && atRisk > 0 ? "text-amber-600" : "")}>
           {atRisk != null ? String(atRisk) : "—"}
         </div>
@@ -4499,7 +4521,7 @@ function MobileKpiRow() {
 function MobileMerchivaChat() {
   const { currentOrg, organizationId } = usePermissions();
   const t = useT();
-  const orgName = currentOrg?.name ?? "your store";
+  const orgName = currentOrg?.name ?? t("merchiva.yourStore");
 
   const { items: invItems } = useInventory(organizationId);
   const { history: salesHistory, hourly: salesHourly } = useSales();
@@ -4601,7 +4623,7 @@ function MobileMerchivaChat() {
           />
           <button
             type="button"
-            aria-label="Send"
+            aria-label={t("merchiva.send")}
             className="h-9 w-9 rounded-full bg-foreground text-background inline-flex items-center justify-center shrink-0 active:scale-95 transition-transform"
           >
             <ArrowUp className="h-4 w-4" />

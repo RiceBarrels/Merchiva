@@ -115,13 +115,6 @@ const TAG_STYLES: Record<CustomerTag, string> = {
   "at-risk": "bg-stone-50 text-stone-500 border-stone-200 border-dashed dark:bg-stone-900 dark:text-stone-400 dark:border-stone-700",
 };
 
-const TAG_LABELS: Record<CustomerTag, string> = {
-  vip: "VIP",
-  regular: "Regular",
-  new: "New",
-  "at-risk": "At Risk",
-};
-
 const ORDER_STATUS_STYLES: Record<string, string> = {
   completed: "bg-stone-800 text-stone-100 border-stone-700 dark:bg-stone-200 dark:text-stone-800 dark:border-stone-300",
   confirmed: "bg-stone-200 text-stone-700 border-stone-300 dark:bg-stone-700 dark:text-stone-200 dark:border-stone-600",
@@ -154,6 +147,19 @@ function CustomersContent() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const ready = customersReady && ordersReady;
+
+  const tagLabel = (tag: CustomerTag): string => {
+    switch (tag) {
+      case "vip":
+        return t("customers.tags.vip");
+      case "regular":
+        return t("customers.tags.regular");
+      case "new":
+        return t("customers.tags.new");
+      case "at-risk":
+        return t("customers.tags.atRisk");
+    }
+  };
 
   // Filter sites by current organization
   // SpacetimeDB Uuid fields need .toString() for comparison
@@ -324,15 +330,15 @@ function CustomersContent() {
 
   function handleExportCSV() {
     const headers = [
-      "Name",
-      "Email",
-      "Phone",
-      "Orders",
-      "Total Spent",
-      "Avg Order",
-      "Last Order",
-      "Tags",
-      "Status",
+      t("common.name"),
+      t("common.email"),
+      t("customers.col.phone"),
+      t("customers.col.orders"),
+      t("customers.col.totalSpent"),
+      t("customers.col.avgOrder"),
+      t("customers.col.lastOrder"),
+      t("customers.col.tags"),
+      t("customers.col.status"),
     ];
     const rows = filteredCustomers.map((c) => [
       c.name ?? "-",
@@ -342,7 +348,7 @@ function CustomersContent() {
       format(c.totalSpent),
       format(c.avgOrderValue),
       c.lastOrderDate ? formatDate(c.lastOrderDate) : "-",
-      c.tags.map((t) => TAG_LABELS[t]).join(", ") || "-",
+      c.tags.map((tag) => tagLabel(tag)).join(", ") || "-",
       c.status,
     ]);
     downloadCSV("customers-export", headers, rows);
@@ -350,14 +356,14 @@ function CustomersContent() {
 
   function handleExportPDF() {
     const headers = [
-      "Name",
-      "Email",
-      "Phone",
-      "Orders",
-      "Total Spent",
-      "Avg Order",
-      "Last Order",
-      "Tags",
+      t("common.name"),
+      t("common.email"),
+      t("customers.col.phone"),
+      t("customers.col.orders"),
+      t("customers.col.totalSpent"),
+      t("customers.col.avgOrder"),
+      t("customers.col.lastOrder"),
+      t("customers.col.tags"),
     ];
     const rows = filteredCustomers.map((c) => [
       c.name ?? "-",
@@ -367,10 +373,10 @@ function CustomersContent() {
       format(c.totalSpent),
       format(c.avgOrderValue),
       c.lastOrderDate ? formatDate(c.lastOrderDate) : "-",
-      c.tags.map((t) => TAG_LABELS[t]).join(", ") || "-",
+      c.tags.map((tag) => tagLabel(tag)).join(", ") || "-",
     ]);
-    downloadPDF("Customer Report", headers, rows, {
-      subtitle: `${filteredCustomers.length} customers`,
+    downloadPDF(t("customers.export.pdfTitle"), headers, rows, {
+      subtitle: t("customers.export.pdfSubtitle").replace("{count}", String(filteredCustomers.length)),
       landscape: true,
     });
   }
@@ -411,23 +417,23 @@ function CustomersContent() {
         {/* ── Summary Cards ───────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <SummaryCard
-            label="Total Customers"
+            label={t("customers.summary.totalCustomers")}
             value={String(metrics.total)}
             icon={<Users className="h-4 w-4" />}
           />
           <SummaryCard
-            label="New This Month"
+            label={t("customers.summary.newThisMonth")}
             value={String(metrics.newThisMonth)}
             icon={<UserPlus className="h-4 w-4" />}
           />
           <SummaryCard
-            label="Avg Order Value"
+            label={t("customers.summary.avgOrderValue")}
             value={format(metrics.avgOrderValue)}
             icon={<TrendingUp className="h-4 w-4" />}
             mono
           />
           <SummaryCard
-            label="Total Revenue"
+            label={t("customers.summary.totalRevenue")}
             value={format(metrics.totalRevenue)}
             icon={<DollarSign className="h-4 w-4" />}
             mono
@@ -441,7 +447,7 @@ function CustomersContent() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or email..."
+              placeholder={t("customers.searchPlaceholder")}
               className="pl-8 h-8 text-[13px] rounded-[0.3rem]"
             />
             {search && (
@@ -456,27 +462,27 @@ function CustomersContent() {
 
           <Select value={tagFilter} onValueChange={(v) => setTagFilter(v as typeof tagFilter)}>
             <SelectTrigger className="w-[130px] h-8 text-[13px] rounded-[0.3rem]">
-              <SelectValue placeholder="Filter" />
+              <SelectValue placeholder={t("customers.filterPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Tags</SelectItem>
-              <SelectItem value="vip">VIP</SelectItem>
-              <SelectItem value="regular">Regular</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="at-risk">At Risk</SelectItem>
+              <SelectItem value="all">{t("customers.tagFilter.all")}</SelectItem>
+              <SelectItem value="vip">{t("customers.tags.vip")}</SelectItem>
+              <SelectItem value="regular">{t("customers.tags.regular")}</SelectItem>
+              <SelectItem value="new">{t("customers.tags.new")}</SelectItem>
+              <SelectItem value="at-risk">{t("customers.tags.atRisk")}</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
             <SelectTrigger className="w-[150px] h-8 text-[13px] rounded-[0.3rem]">
               <ArrowUpDown className="h-3 w-3 mr-1.5 shrink-0" />
-              <SelectValue placeholder="Sort" />
+              <SelectValue placeholder={t("customers.sortPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="totalSpent">Total Spent</SelectItem>
-              <SelectItem value="orderCount">Orders</SelectItem>
-              <SelectItem value="lastOrder">Last Order</SelectItem>
-              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="totalSpent">{t("customers.sort.totalSpent")}</SelectItem>
+              <SelectItem value="orderCount">{t("customers.sort.orders")}</SelectItem>
+              <SelectItem value="lastOrder">{t("customers.sort.lastOrder")}</SelectItem>
+              <SelectItem value="name">{t("common.name")}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -508,8 +514,8 @@ function CustomersContent() {
             <Users className="h-8 w-8 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">
               {search || tagFilter !== "all"
-                ? "No customers match your filters."
-                : "No customers yet. They will appear here once they sign up on your site."}
+                ? t("customers.emptyFiltered")
+                : t("customers.empty")}
             </p>
           </div>
         ) : (
@@ -517,15 +523,15 @@ function CustomersContent() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider">Name</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden md:table-cell">Email</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell">Phone</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right">Orders</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right">Total Spent</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right hidden md:table-cell">Avg Order</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell">Last Order</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider">Tags</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("common.name")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden md:table-cell">{t("common.email")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell">{t("customers.col.phone")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right">{t("customers.col.orders")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right">{t("customers.col.totalSpent")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider text-right hidden md:table-cell">{t("customers.col.avgOrder")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden lg:table-cell">{t("customers.col.lastOrder")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider">{t("customers.col.tags")}</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wider hidden sm:table-cell">{t("customers.col.status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -539,7 +545,7 @@ function CustomersContent() {
                     }}
                   >
                     <TableCell className="text-[13px] font-medium">
-                      {c.name || <span className="text-muted-foreground italic">No name</span>}
+                      {c.name || <span className="text-muted-foreground italic">{t("customers.noName")}</span>}
                     </TableCell>
                     <TableCell className="text-[13px] text-muted-foreground hidden md:table-cell font-mono">
                       {c.email}
@@ -564,7 +570,7 @@ function CustomersContent() {
                                   TAG_STYLES[tag]
                                 )}
                               >
-                                {TAG_LABELS[tag]}
+                                {tagLabel(tag)}
                               </span>
                             ))
                           : <span className="text-[11px] text-muted-foreground">-</span>}
@@ -579,7 +585,7 @@ function CustomersContent() {
                             : "bg-stone-100 text-stone-500 border-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:border-stone-700"
                         )}
                       >
-                        {c.status === "active" ? "Active" : "Inactive"}
+                        {c.status === "active" ? t("customers.status.active") : t("customers.status.inactive")}
                       </span>
                     </TableCell>
                   </TableRow>
@@ -594,10 +600,10 @@ function CustomersContent() {
       <DynamicUIElement open={detailOpen} onOpenChange={setDetailOpen}>
         <DynamicUIElementContent className="max-w-lg">
           <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={selectedCustomer?.name ?? "Customer"}>
-              {selectedCustomer?.name ?? "Customer Details"}
+            <DynamicUIElementTitle mobileTitle={selectedCustomer?.name ?? t("customers.detail.customer")}>
+              {selectedCustomer?.name ?? t("customers.detail.title")}
             </DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">Customer detail view</DynamicUIElementDescription>
+            <DynamicUIElementDescription className="hidden">{t("customers.detail.srDescription")}</DynamicUIElementDescription>
           </DynamicUIElementHeader>
 
           {selectedCustomer && (
@@ -605,7 +611,7 @@ function CustomersContent() {
               {/* Customer info */}
               <div className="space-y-2.5">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Customer Info
+                  {t("customers.detail.customerInfo")}
                 </h3>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 text-[13px]">
@@ -621,7 +627,7 @@ function CustomersContent() {
                   <div className="flex items-center gap-2 text-[13px]">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="text-muted-foreground">
-                      Member since {formatDate(selectedCustomer.createdAt)}
+                      {t("customers.detail.memberSince").replace("{date}", formatDate(selectedCustomer.createdAt))}
                     </span>
                   </div>
                 </div>
@@ -638,7 +644,7 @@ function CustomersContent() {
                         TAG_STYLES[tag]
                       )}
                     >
-                      {TAG_LABELS[tag]}
+                      {tagLabel(tag)}
                     </span>
                   ))}
                 </div>
@@ -648,7 +654,7 @@ function CustomersContent() {
               <div className="grid grid-cols-3 gap-2">
                 <div className="border border-border rounded-[0.3rem] p-2.5">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Orders
+                    {t("customers.col.orders")}
                   </p>
                   <p className="text-lg font-semibold font-mono leading-tight mt-0.5">
                     {selectedCustomer.orderCount}
@@ -656,7 +662,7 @@ function CustomersContent() {
                 </div>
                 <div className="border border-border rounded-[0.3rem] p-2.5">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Total Spent
+                    {t("customers.col.totalSpent")}
                   </p>
                   <p className="text-lg font-semibold font-mono leading-tight mt-0.5">
                     {format(selectedCustomer.totalSpent)}
@@ -664,7 +670,7 @@ function CustomersContent() {
                 </div>
                 <div className="border border-border rounded-[0.3rem] p-2.5">
                   <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    Avg Order
+                    {t("customers.col.avgOrder")}
                   </p>
                   <p className="text-lg font-semibold font-mono leading-tight mt-0.5">
                     {format(selectedCustomer.avgOrderValue)}
@@ -676,21 +682,21 @@ function CustomersContent() {
               <div className="space-y-2">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <ShoppingBag className="h-3 w-3" />
-                  Order History
+                  {t("customers.detail.orderHistory")}
                 </h3>
                 {selectedCustomerOrders.length === 0 ? (
                   <p className="text-[13px] text-muted-foreground py-3">
-                    No orders yet.
+                    {t("customers.detail.noOrders")}
                   </p>
                 ) : (
                   <div className="border border-border rounded-[0.3rem] overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent">
-                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Date</TableHead>
-                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Items</TableHead>
-                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-right">Total</TableHead>
-                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Status</TableHead>
+                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider">{t("customers.orderCol.date")}</TableHead>
+                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider">{t("customers.orderCol.items")}</TableHead>
+                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-right">{t("customers.orderCol.total")}</TableHead>
+                          <TableHead className="text-[10px] font-semibold uppercase tracking-wider">{t("customers.col.status")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

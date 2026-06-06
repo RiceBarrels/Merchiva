@@ -1281,7 +1281,8 @@
       "inviteCancelFailed": "撤回失败"
     },
     "title": "人事",
-    "subtitle": "排班、团队、角色与培训"
+    "subtitle": "排班、团队、角色与培训",
+    "pendingRequests": "待处理请求"
   },
   "pos": {
     "tabs": {
@@ -1299,7 +1300,12 @@
       "customer": "顾客",
       "thankYou": "谢谢惠顾！",
       "print": "打印",
-      "newOrder": "新订单"
+      "newOrder": "新订单",
+      "paidAmount": "已付 {amount}",
+      "yourBusiness": "您的商家",
+      "tipPct": "小费 {pct}%",
+      "paid": "已付",
+      "email": "邮箱"
     },
     "refund": {
       "title": "退款",
@@ -1340,7 +1346,14 @@
       "noProducts": "暂无商品",
       "addInProducts": "请到商品页添加",
       "noResults": "没有结果",
-      "each": "每件"
+      "each": "每件",
+      "taxShort": "税费",
+      "newOrder": "新订单",
+      "searchMenu": "搜索菜单…",
+      "scan": "扫描",
+      "matchesFor": "“{query}” 的匹配结果",
+      "noResultsFound": "未找到结果",
+      "noProductsInCategory": "此类别中无产品"
     },
     "customItem": {
       "title": "自定义商品",
@@ -1386,6 +1399,90 @@
       "cardDeclined": "银行卡被拒绝",
       "paymentFailed": "付款失败",
       "moduleUnavailable": "支付模块不可用"
+    },
+    "discountReasons": {
+      "none": "原因（可选）…",
+      "staff": "员工折扣",
+      "loyalty": "会员奖励",
+      "comp": "免单 / 赠送",
+      "damaged": "制作错误",
+      "manager": "经理授权"
+    },
+    "cart": {
+      "ticket": "单据",
+      "itemsCount": "{count} 件商品",
+      "walkInPlaceholder": "散客（点击命名）",
+      "empty": "购物车为空",
+      "tapToStart": "点击商品开始",
+      "pctOff": "{pct}% 折扣",
+      "amountOff": "减 {amount}",
+      "tipLabel": "小费（{pct}%）",
+      "viewCart": "查看购物车",
+      "drawerTitle": "购物车 · {count} 件商品"
+    },
+    "lineEditor": {
+      "title": "编辑明细",
+      "mobileTitle": "编辑 · {name}",
+      "perEach": "{price}/个",
+      "quantity": "数量",
+      "notesLabel": "厨房 / 吧台备注",
+      "notesPlaceholder": "过敏信息、制作说明、杯身姓名…",
+      "lineDiscount": "明细折扣",
+      "discNone": "无",
+      "discPct": "% 折扣",
+      "discAmount": "减 {symbol}",
+      "remove": "移除",
+      "lineTotal": "明细合计"
+    },
+    "pay": {
+      "methods": {
+        "card": "刷卡",
+        "cash": "现金",
+        "mobilePay": "移动支付",
+        "giftCard": "礼品卡",
+        "mobile": "移动",
+        "gift": "礼品卡"
+      },
+      "cardSubOffline": "输入卡号 — 离线排队",
+      "cardSubAvailable": "拍卡、插卡或刷卡",
+      "cardSubNotConfigured": "未配置",
+      "cashSub": "打开钱箱",
+      "mobileSub": "Apple / Google Pay",
+      "giftSub": "扫描或输入代码",
+      "backToOrder": "返回订单",
+      "checkout": "结账",
+      "tender": "收款",
+      "cardNumberQueued": "卡号（已排队待处理）",
+      "queuedHint": "付款将排队，恢复在线后处理",
+      "queuedHintShort": "已排队，恢复在线后处理",
+      "pciWarning": "仅供演示 / MVP 使用 — 本地存储的卡号不符合 PCI 规范。",
+      "tip": "小费",
+      "tipNone": "无",
+      "cashTendered": "实收现金",
+      "other": "其他",
+      "changeOwed": "应找零",
+      "change": "找零",
+      "split": "拆分",
+      "splitSingle": "单笔",
+      "splitWays": "{n} 等分",
+      "splitEach": "每份 {amount}",
+      "orderSummary": "订单摘要",
+      "queueCardAmount": "排队刷卡 {amount}",
+      "chargeAmount": "收款 {amount}"
+    },
+    "offline": {
+      "banner": "离线模式 — 仅支持现金与刷卡排队"
+    },
+    "pending": {
+      "queuedOne": "{count} 笔待处理刷卡付款已排队",
+      "queuedOther": "{count} 笔待处理刷卡付款已排队",
+      "processOne": "处理 {count} 笔待处理刷卡",
+      "processOther": "处理 {count} 笔待处理刷卡"
+    },
+    "toast": {
+      "paymentQueued": "付款已排队",
+      "paymentQueuedDesc": "卡号尾号 {last4} — 将在恢复在线后处理",
+      "pendingCardsCleared": "待处理刷卡已清除"
     }
   },
   "settings": {
@@ -1682,7 +1779,28 @@
       "KRW": "韩元",
       "INR": "印度卢比",
       "SAR": "沙特里亚尔"
-    }
+    },
+    "toastGeolocationUnsupported": "您的浏览器不支持地理定位",
+    "toastLocationDetected": "已检测到位置",
+    "toastGeolocationFailed": "无法获取您的位置。请手动输入坐标。",
+    "exitStoreModeTitle": "输入 PIN 以退出门店模式",
+    "exitStoreModeMobileTitle": "退出门店模式",
+    "exitStoreModeDesc": "输入店主或经理的打卡码以关闭门店设备模式。",
+    "exitPinInvalid": "无效代码",
+    "exitPinInvalidRole": "无效代码。必须是店主或经理代码。",
+    "toastStoreModeDisabled": "门店模式已禁用",
+    "disableStoreMode": "禁用门店模式",
+    "manageDeviceTitle": "管理设备",
+    "manageDeviceMobileTitle": "管理设备",
+    "manageDeviceDesc": "重命名或移除此门店设备。",
+    "toastDeviceRenamed": "设备已重命名",
+    "toastDeviceRemoved": "设备已移除",
+    "removeDevice": "移除设备",
+    "forecastLocation": "预测位置",
+    "noPlaceId": "无 Place ID",
+    "storeDevices": "门店设备",
+    "unnamedDevice": "未命名设备",
+    "deviceOff": "已关闭"
   },
   "lock": {
     "title": "设备已锁定",
@@ -1818,7 +1936,12 @@
     "merchivaRemove": "移除 Mr. Merchiva",
     "merchivaOn": "Mr. Merchiva",
     "merchivaMentionHint": "询问 AI 助手",
-    "noMatches": "无匹配"
+    "noMatches": "无匹配",
+    "online": "在线",
+    "aiOpsAgent": "您的 AI 运营助手",
+    "mentionLower": "提及",
+    "sendKbd": "发送",
+    "send": "发送"
   },
   "dashboard": {
     "greeting": {
@@ -1885,7 +2008,74 @@
       "addMore": "继续添加",
       "choose": "选择文件",
       "complete": "完成"
-    }
+    },
+    "attendance": {
+      "title": "今日打卡",
+      "punchedIn": "已打卡",
+      "onBreak": "休息中",
+      "nobody": "还没有人打卡。",
+      "allOut": "所有人都已下班打卡。"
+    },
+    "yesterdayTasks": {
+      "title": "昨日任务",
+      "done": "已完成",
+      "notDone": "未完成",
+      "skipped": "已跳过",
+      "none": "昨天没有到期的任务。"
+    },
+    "widgets": {
+      "salesToday": {
+        "title": "今日销售",
+        "predicted": "预测",
+        "vsYesterday": "对比昨日"
+      },
+      "inventoryAlerts": {
+        "title": "库存提醒",
+        "allStocked": "所有商品库存充足",
+        "outOfStock": "{count} 个缺货",
+        "lowStock": "{count} 个低库存",
+        "outBadge": "缺货",
+        "lowBadge": "偏低"
+      },
+      "scheduleOverview": {
+        "title": "排班概览",
+        "empty": "今日暂无排班",
+        "shiftToday": "今日班次",
+        "shiftsToday": "今日班次",
+        "nextLabel": "下一班：",
+        "atLabel": "于"
+      },
+      "todo": {
+        "title": "待办",
+        "placeholder": "新待办…",
+        "empty": "暂无待办",
+        "more": "+{count} 更多"
+      },
+      "wasteCost": {
+        "title": "损耗成本",
+        "details": "详情",
+        "today": "今日",
+        "thisWeek": "本周",
+        "thisMonth": "本月",
+        "empty": "暂无损耗记录"
+      },
+      "notifications": {
+        "title": "通知",
+        "empty": "暂无未读通知"
+      },
+      "topProducts": {
+        "title": "热门产品",
+        "empty": "暂无产品数据"
+      },
+      "quickStats": {
+        "title": "快速统计",
+        "products": "产品",
+        "staffOnDuty": "在岗员工",
+        "inventoryItems": "库存商品",
+        "lowStock": "低库存"
+      }
+    },
+    "title": "仪表盘"
   },
   "inventory": {
     "title": "库存",
@@ -1905,7 +2095,8 @@
     "tabs": {
       "items": "商品",
       "transactions": "交易记录",
-      "losses": "损耗跟踪"
+      "losses": "损耗跟踪",
+      "restock": "补货"
     },
     "filters": {
       "searchPlaceholder": "搜索商品或供应商…",
@@ -1979,6 +2170,35 @@
       "saveFailed": "保存商品失败",
       "itemDeleted": "商品已删除",
       "deleteFailed": "删除商品失败"
+    },
+    "restock": {
+      "emptyTitle": "库存充足——无需补货",
+      "emptyHint": "你的库存水平良好。",
+      "criticalItems": "紧急项目",
+      "highPriority": "高优先级",
+      "totalOrderValue": "订单总金额",
+      "itemsToRestock": "待补货项目",
+      "exportCsv": "导出采购订单（CSV）",
+      "csvDownloaded": "采购订单 CSV 已下载",
+      "exportPdf": "导出采购订单（PDF）",
+      "pdfDownloaded": "采购订单 PDF 已下载",
+      "pdfTitle": "采购订单",
+      "pdfSubtitle": "{count} 个项目——预计 {cost}",
+      "stockLevel": "库存水平",
+      "dailyConsumption": "每日消耗",
+      "perDay": "{rate} {unit}/天",
+      "daysUntilStockout": "距缺货天数",
+      "notApplicable": "不适用",
+      "daysValue": "{days} 天",
+      "recommendedOrder": "建议订购量",
+      "estimatedCost": "预计成本",
+      "lastRestocked": "上次补货",
+      "daysAgo": "{days} 天前",
+      "trend": {
+        "increasing": "上升",
+        "decreasing": "下降",
+        "stable": "平稳"
+      }
     }
   },
   "sales": {
@@ -2003,7 +2223,9 @@
     },
     "tabs": {
       "history": "历史分析",
-      "hourly": "今日分时"
+      "hourly": "今日分时",
+      "forecast": "预测",
+      "aiItems": "AI 商品"
     },
     "history": {
       "title": "30 天销售历史",
@@ -2047,7 +2269,14 @@
     "filterTeam": "团队",
     "filterInventory": "库存",
     "filterOrder": "订单",
-    "filterGeneral": "系统"
+    "filterGeneral": "系统",
+    "tradeOfferedToEveryone": "{name} 正在向所有人转让其班次",
+    "tradeWantsToTrade": "{name} 想与你换班",
+    "tradeAcceptedAwaitingManager": "{name} 已接受——等待经理批准",
+    "tradeFrom": "来自 {name} 的换班",
+    "someone": "某人",
+    "waitingForStaff": "等待员工",
+    "requestedTimeOff": "{name} 申请了休假"
   },
   "push": {
     "promptTitle": "接收桌面提醒",
@@ -2390,6 +2619,117 @@
       "intern": "实习员工",
       "internSub": "今日学习与实践",
       "active": "当前"
+    },
+    "manager": {
+      "dayCount": "{count} 天",
+      "dayCountPlural": "{count} 天",
+      "curriculumSettings": "课程设置",
+      "moduleLabel": "模块",
+      "untitledDay": "未命名日程",
+      "allRoles": "所有角色",
+      "required": "必修",
+      "selectOrAddDay": "选择或添加日程以开始编写",
+      "unsaved": "未保存",
+      "history": "历史记录",
+      "previewAsIntern": "以实习生视角预览",
+      "publish": "发布",
+      "editor": "编辑器",
+      "words": "字",
+      "minRead": "分钟阅读",
+      "saved": "已保存",
+      "lessonPlaceholder": "撰写当日课程内容 — 标题、列表、链接、引用、内嵌图片……",
+      "pickDayToEdit": "从课程中选择一个日程进行编辑",
+      "preview": "预览",
+      "howInternsSeeIt": "实习生看到的效果",
+      "desktop": "桌面端",
+      "mobile": "移动端",
+      "emptyDay": "空白日程。在编辑器中添加内容以在此显示。",
+      "attachments": "附件",
+      "item": "项",
+      "items": "项",
+      "embedUrl": "嵌入链接",
+      "selectDayForAttachments": "选择一个日程以添加附件。",
+      "video": "视频",
+      "photo": "照片",
+      "note": "备注",
+      "remove": "移除",
+      "dropFile": "拖放文件",
+      "upload": "上传"
+    },
+    "rubric": {
+      "knowsMaterial": "掌握材料",
+      "knowsMaterialHint": "记忆、自信",
+      "practicalSkill": "实操技能",
+      "practicalSkillHint": "动手准确度",
+      "speedFlow": "速度与流畅度",
+      "speedFlowHint": "达到预期节奏",
+      "recovery": "应变能力",
+      "recoveryHint": "妥善处理失误",
+      "stationDiscipline": "岗位纪律",
+      "stationDisciplineHint": "整洁、有序"
+    },
+    "trainer": {
+      "pickADay": "选择一天",
+      "dayN": "第 {n} 天",
+      "required": "必修",
+      "traineesPassed": "名学员已通过",
+      "badge": "培训师",
+      "noContent": "这一天尚未发布任何内容。",
+      "objectives": "目标",
+      "trainees": "学员",
+      "filter": "筛选",
+      "noTraineesYet": "暂无学员",
+      "gradingDay": "评分 · 第 {n} 天",
+      "message": "消息",
+      "dm": "私信",
+      "rubricLabel": "评分标准",
+      "notesForTrainee": "给学员的备注",
+      "visibleTo": "{name} 可见",
+      "notesPlaceholder": "哪些做得好？接下来需要练习什么？",
+      "retry": "重试",
+      "submitGrade": "提交评分",
+      "willBeNotified": "{name} 将收到通知 · 已保存至其培训档案",
+      "pickTrainee": "从列表中选择一名学员开始评分。"
+    },
+    "intern": {
+      "objectiveFallback": "目标 {number}",
+      "progress": "进度",
+      "dayOfTotal": "第 {day} 天，共 {total} 天",
+      "doneCount": "已完成 {count} 项",
+      "remainingCount": "剩余 {count} 项",
+      "keepGoing": "继续加油",
+      "dayLabel": "第 {number} 天",
+      "practice": "实操",
+      "required": "必修",
+      "lockedUntilPrior": "需通过前一天后解锁",
+      "noContentYet": "这一天暂无内容。",
+      "dayWithTitle": "第 {number} 天 · {title}",
+      "tasksForToday": "今日任务",
+      "checkEachOff": "完成后逐项勾选。",
+      "noTasksYet": "暂无任务——你的经理稍后会添加目标。",
+      "resources": "资源",
+      "note": "备注",
+      "requestTrainerReview": "申请培训师评审",
+      "trainerWillBeNotified": "你的培训师将收到通知。",
+      "waitForTasks": "请等待任务分配。",
+      "completeMoreTask": "再完成 {count} 项任务即可申请评审",
+      "completeMoreTasks": "再完成 {count} 项任务即可申请评审",
+      "awaitingReview": "等待评审",
+      "liveGradingNote": "你的培训师将前来现场评分。请在吧台附近等候。",
+      "askTrainerQuestion": "向培训师提问"
+    },
+    "dayRail": {
+      "days": "天",
+      "noDaysYet": "暂无天数",
+      "dayAbbrev": "天",
+      "optional": "可选",
+      "typeOrientation": "入职引导",
+      "typeTheory": "理论",
+      "typePractice": "实操",
+      "typeSystem": "系统",
+      "typeCompliance": "合规",
+      "typeAssessment": "考核",
+      "typeGeneral": "通用"
     }
   },
   "display": {
@@ -2747,7 +3087,168 @@
     "menuReAsk": "重新提问",
     "menuRegenerate": "重新生成回复",
     "menuDelete": "从记录中删除",
-    "menuCopied": "已复制到剪贴板"
+    "menuCopied": "已复制到剪贴板",
+    "kpi": {
+      "revenueToday": "营收 · 今日",
+      "vsAvg": "对比均值",
+      "live": "实时",
+      "orders": "订单",
+      "today": "今日",
+      "onShift": "在岗",
+      "skusAtRisk": "风险 SKU",
+      "ofTracked": "共 {count} 个跟踪中",
+      "nHigh": "{n} 个高风险"
+    },
+    "insight": {
+      "confidence": "置信度",
+      "hide": "隐藏",
+      "why": "原因",
+      "basedOn": "依据",
+      "view": "查看",
+      "dismiss": "忽略"
+    },
+    "embed": {
+      "daysCover": "约可用 {days} 天",
+      "current": "当前",
+      "minMax": "最小 / 最大",
+      "cover": "可用量",
+      "daysApprox": "约 {days} 天"
+    },
+    "shift": {
+      "invalidRole": "并非本组织的岗位 — 审批将被拒绝",
+      "jobRole": "岗位"
+    },
+    "order": {
+      "itemCount": "{count} 件商品",
+      "itemCountPlural": "{count} 件商品"
+    },
+    "builder": {
+      "elementCount": "{count} 个元素",
+      "elementCountPlural": "{count} 个元素",
+      "moreCount": "+{count} 更多"
+    },
+    "actionsList": {
+      "tag": "操作",
+      "optionalCount": "+{count} 可选"
+    },
+    "actionsAvailable": "以下是当前所有可用的 AI 操作：",
+    "qa": {
+      "multiSelect": "多选 · 已选 {count} 项",
+      "other": "其他…",
+      "customReplyPlaceholder": "输入自定义回复…",
+      "submit": "提交",
+      "pickAtLeastOne": "每个问题至少选择一项",
+      "submitted": "已提交"
+    },
+    "rolesList": {
+      "tag": "岗位",
+      "count": "{count} 个岗位",
+      "empty": "暂无岗位"
+    },
+    "roleAdd": {
+      "tag": "新岗位",
+      "responsibilities": "职责"
+    },
+    "status": {
+      "adding": "添加中…",
+      "deleting": "删除中…",
+      "added": "已添加",
+      "deleted": "已删除"
+    },
+    "tasks": {
+      "loading": "正在加载任务…",
+      "deleteFailed": "删除任务失败",
+      "tag": "任务",
+      "empty": "此岗位暂无任务",
+      "evidence": "凭证"
+    },
+    "taskAdd": {
+      "tag": "新任务",
+      "chooseChat": "选择群聊",
+      "evidenceRequired": "需要凭证",
+      "evidencePrompt": "此任务需要凭证 — 请选择应上传的群聊：",
+      "noGroupChats": "暂无群聊 — 请先在聊天页面创建一个。",
+      "add": "添加",
+      "skip": "跳过"
+    },
+    "command": {
+      "deleteRoleFailed": "删除岗位失败",
+      "roleNotFound": "未找到岗位：{role}",
+      "addTaskFailed": "添加任务失败"
+    },
+    "taskDelete": {
+      "tag": "删除",
+      "failed": "删除失败"
+    },
+    "dataCategory": {
+      "inventory": {
+        "label": "库存",
+        "desc": "库存水平、低库存商品、供应商"
+      },
+      "sales": {
+        "label": "销售",
+        "desc": "营收、订单、趋势"
+      },
+      "staffing": {
+        "label": "排班",
+        "desc": "班次、排班表、团队"
+      },
+      "products": {
+        "label": "产品",
+        "desc": "目录、定价、表现"
+      },
+      "all": {
+        "label": "全部",
+        "desc": "所有门店数据"
+      }
+    },
+    "yourStore": "您的门店",
+    "untitledGroup": "未命名群组",
+    "newConversation": "新对话",
+    "chatTitle": "聊天",
+    "voiceUnsupported": "您的浏览器不支持语音输入。",
+    "approve": {
+      "notTeamMember": "“{name}”不是团队成员。请先添加，或从以下选择：{names}",
+      "noTeamMembers": "（暂无团队成员）",
+      "noValidRole": "班次没有有效岗位。收到 {got} — 请选择其一：{roles}。",
+      "noRolesDefined": "（尚未定义岗位）"
+    },
+    "builderChips": {
+      "heroSection": "添加主视觉区块",
+      "contactForm": "添加联系表单",
+      "mobileFriendly": "让此页面适配移动端",
+      "deleteFooter": "删除页脚",
+      "pricingTable": "添加价格表"
+    },
+    "pick": {
+      "titleActive": "点击画布中的任意元素 · 按 Esc 取消",
+      "titleIdle": "选择要关联的元素",
+      "clicking": "点击元素…",
+      "element": "元素"
+    },
+    "schedule": {
+      "title": "今日排班",
+      "shifts": "班次",
+      "hrs": "小时",
+      "open": "空缺",
+      "onShift": "在岗 · {count}",
+      "live": "实时",
+      "upNext": "即将开始",
+      "inMinutes": "{n} 分钟后",
+      "inHours": "{n} 小时后",
+      "noShifts": "今日暂无排班"
+    },
+    "notifications": {
+      "title": "通知",
+      "new": "新",
+      "needDecision": "需要决策",
+      "markAllRead": "全部标为已读",
+      "review": "查看",
+      "dismiss": "忽略",
+      "empty": "暂无新通知"
+    },
+    "collapsePanel": "收起面板",
+    "openPanel": "打开 Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2777,7 +3278,9 @@
       "fit": "适应屏幕",
       "notFound": "未找到该设计",
       "layers": "图层",
-      "properties": "属性"
+      "properties": "属性",
+      "undo": "撤销",
+      "redo": "重做"
     },
     "ai": {
       "title": "用 AI 生成",
@@ -3593,6 +4096,655 @@
         "para": "接入你的 POS。我们学习你七天的销售，然后开始告诉你该订什么——精确到箱、精确到天。预测误差中位数：7.2%。",
         "walkthrough": "预约 20 分钟讲解"
       }
+    }
+  },
+  "reports": {
+    "title": "报表",
+    "subtitle": "导出并查看业务数据",
+    "recordsCount": "{count} 条记录",
+    "exportCsv": "导出 CSV",
+    "exportPdf": "导出 PDF",
+    "thisMonth": "本月",
+    "lastMonth": "上月",
+    "last90Days": "近 90 天",
+    "tabSales": "销售",
+    "tabStaffHours": "员工工时",
+    "tabInventory": "库存",
+    "tabProducts": "产品",
+    "totalRevenue": "总营收",
+    "avgDailyRevenue": "日均营收",
+    "perDayAverage": "每日平均",
+    "bestDay": "最佳单日",
+    "forecastAccuracy": "预测准确率",
+    "predictedVsActual": "预测值对比实际值",
+    "noSalesData": "此期间无销售数据",
+    "salesRecords": "销售记录",
+    "recordsForPeriod": "{count} 条记录 — {period}",
+    "colDate": "日期",
+    "colActual": "实际",
+    "colPredicted": "预测",
+    "colWeather": "天气",
+    "colHoliday": "节假日",
+    "yes": "是",
+    "showingRecords": "显示 {count} 条记录中的 50 条。导出以查看完整数据。",
+    "totalScheduledHours": "排班总工时",
+    "numberOfStaff": "员工人数",
+    "uniqueStaffScheduled": "已排班的不重复员工",
+    "avgHoursPerStaff": "人均工时",
+    "averagePerPerson": "每人平均",
+    "noShifts": "此期间无班次",
+    "shiftRecords": "班次记录",
+    "shiftsForPeriod": "{count} 个班次 — {period}",
+    "colStaffName": "员工姓名",
+    "colStart": "开始",
+    "colEnd": "结束",
+    "colHours": "工时",
+    "colType": "类型",
+    "showingShifts": "显示 {count} 个班次中的 50 个。导出以查看完整数据。",
+    "totalItems": "项目总数",
+    "trackedInventoryItems": "已跟踪的库存项目",
+    "lowOutOfStock": "低库存 / 缺货",
+    "needsAttention": "需要关注",
+    "totalValue": "总价值",
+    "stockTimesCostPerUnit": "库存 × 单位成本",
+    "avgLossRate": "平均损耗率",
+    "acrossAllItems": "所有项目合计",
+    "noInventoryItems": "未跟踪任何库存项目",
+    "inventoryItems": "库存项目",
+    "itemsCount": "{count} 个项目",
+    "colCategory": "类别",
+    "colStock": "库存",
+    "colMin": "最小",
+    "colMax": "最大",
+    "colUnit": "单位",
+    "colCostPerUnit": "单位成本",
+    "colValue": "价值",
+    "colSupplier": "供应商",
+    "colLossPct": "损耗 %",
+    "colStatus": "状态",
+    "outOfStock": "缺货",
+    "lowStock": "低库存",
+    "inStock": "有货",
+    "showingItems": "显示 {count} 个项目中的 50 个。导出以查看完整数据。",
+    "totalProducts": "产品总数",
+    "activeProducts": "在售产品",
+    "allProductsCombined": "所有产品合计",
+    "avgMargin": "平均利润率",
+    "averageProfitMargin": "平均利润率",
+    "underperforming": "表现不佳",
+    "needsReview": "需要审查",
+    "noProducts": "未跟踪任何产品",
+    "productPerformance": "产品表现",
+    "productsCount": "{count} 个产品",
+    "colPrice": "价格",
+    "colCost": "成本",
+    "colMargin": "利润率",
+    "colThisMonth": "本月",
+    "colLastMonth": "上月",
+    "colRevenue": "营收",
+    "colTrend": "趋势",
+    "colAlert": "提醒",
+    "showingProducts": "显示 {count} 个产品中的 50 个。导出以查看完整数据。",
+    "salesReportTitle": "销售报表",
+    "staffHoursReportTitle": "员工工时报表",
+    "inventoryReportTitle": "库存报表",
+    "productPerformanceReportTitle": "产品表现报表"
+  },
+  "customers": {
+    "summary": {
+      "totalCustomers": "客户总数",
+      "newThisMonth": "本月新增",
+      "avgOrderValue": "平均订单金额",
+      "totalRevenue": "总营收"
+    },
+    "searchPlaceholder": "按姓名或邮箱搜索…",
+    "filterPlaceholder": "筛选",
+    "tagFilter": {
+      "all": "所有标签"
+    },
+    "tags": {
+      "vip": "VIP",
+      "regular": "常客",
+      "new": "新客",
+      "atRisk": "流失风险"
+    },
+    "sortPlaceholder": "排序",
+    "sort": {
+      "totalSpent": "消费总额",
+      "orders": "订单数",
+      "lastOrder": "最近订单"
+    },
+    "emptyFiltered": "没有符合筛选条件的客户。",
+    "empty": "暂无客户。客户在您的网站注册后将显示在此处。",
+    "col": {
+      "phone": "电话",
+      "orders": "订单数",
+      "totalSpent": "消费总额",
+      "avgOrder": "平均订单",
+      "lastOrder": "最近订单",
+      "tags": "标签",
+      "status": "状态"
+    },
+    "noName": "无姓名",
+    "status": {
+      "active": "活跃",
+      "inactive": "不活跃"
+    },
+    "detail": {
+      "customer": "客户",
+      "title": "客户详情",
+      "srDescription": "客户详情视图",
+      "customerInfo": "客户信息",
+      "memberSince": "加入于 {date}",
+      "orderHistory": "订单历史",
+      "noOrders": "暂无订单。"
+    },
+    "orderCol": {
+      "date": "日期",
+      "items": "商品",
+      "total": "合计"
+    },
+    "export": {
+      "pdfTitle": "客户报告",
+      "pdfSubtitle": "{count} 位客户"
+    }
+  },
+  "suppliers": {
+    "export": "导出",
+    "addSupplier": "添加供应商",
+    "add": "添加",
+    "totalSuppliers": "供应商总数",
+    "activePurchaseOrders": "进行中的采购订单",
+    "poValueThisMonth": "本月采购订单金额",
+    "tabSuppliers": "供应商",
+    "tabPurchaseOrders": "采购订单",
+    "searchPlaceholder": "搜索供应商…",
+    "emptyNoSuppliers": "暂无供应商。添加您的第一个供应商以开始使用。",
+    "emptyNoMatch": "没有匹配搜索的供应商。",
+    "poCount": "{count} 个采购订单",
+    "lastPo": "最近：{date}",
+    "createPo": "创建采购订单",
+    "emptyNoOrders": "暂无采购订单。",
+    "createPurchaseOrder": "创建采购订单",
+    "colPoNumber": "采购订单号",
+    "colSupplier": "供应商",
+    "colDate": "日期",
+    "colItems": "商品",
+    "colTotal": "合计",
+    "colStatus": "状态",
+    "colActions": "操作",
+    "unknownSupplier": "未知",
+    "status": {
+      "draft": "草稿",
+      "sent": "已发送",
+      "received": "已收货",
+      "cancelled": "已取消"
+    },
+    "actionSend": "发送",
+    "actionReceived": "已收货",
+    "editSupplier": "编辑供应商",
+    "editSupplierDesc": "更新供应商信息。",
+    "addSupplierDesc": "为你的组织添加新供应商。",
+    "labelName": "名称 *",
+    "placeholderName": "供应商名称",
+    "labelContactName": "联系人姓名",
+    "labelPhone": "电话",
+    "labelEmail": "邮箱",
+    "labelAddress": "地址",
+    "labelPaymentTerms": "付款条款",
+    "terms": {
+      "net30": "30 天账期",
+      "net60": "60 天账期",
+      "cod": "货到付款",
+      "prepaid": "预付款"
+    },
+    "labelRating": "评分",
+    "labelNotes": "备注",
+    "placeholderSupplierNotes": "关于该供应商的其他备注…",
+    "update": "更新",
+    "createPoDesc": "创建新的采购订单草稿。",
+    "labelSupplier": "供应商 *",
+    "selectSupplier": "选择供应商",
+    "labelItems": "明细",
+    "poColItem": "项目",
+    "poColQty": "数量",
+    "poColUnit": "单位",
+    "poColCost": "成本",
+    "poColTotal": "合计",
+    "placeholderItemName": "项目名称",
+    "addRow": "添加行",
+    "subtotal": "小计",
+    "taxPercent": "税费（{percent}%）",
+    "totalLabel": "合计",
+    "placeholderPoNotes": "其他备注…",
+    "createDraft": "创建草稿",
+    "csvName": "名称",
+    "csvContact": "联系人",
+    "toastNameRequired": "请填写供应商名称",
+    "toastSaveFailed": "保存供应商失败",
+    "toastDeleteFailed": "删除供应商失败",
+    "toastSelectSupplier": "请选择供应商",
+    "toastAddItem": "请至少添加一个项目",
+    "toastCreatePOFailed": "创建采购订单失败",
+    "toastUpdateStatusFailed": "更新状态失败"
+  },
+  "apiSettings": {
+    "toast": {
+      "keyGenerated": "API 密钥已生成",
+      "keyRevoked": "API 密钥已吊销",
+      "copied": "已复制到剪贴板",
+      "urlRequired": "请填写 URL",
+      "selectEvent": "请至少选择一个事件",
+      "webhookAdded": "Webhook 已添加",
+      "webhookRemoved": "Webhook 已移除"
+    },
+    "pageTitle": "API 与 Webhook",
+    "pageSubtitle": "管理 API 密钥和 Webhook 集成",
+    "tabs": {
+      "apiKeys": "API 密钥",
+      "webhooks": "Webhook"
+    },
+    "apiKey": {
+      "title": "API 密钥",
+      "description": "使用此密钥对发送至 Merchiva API 的请求进行身份验证。",
+      "created": "创建于 {date}",
+      "revoke": "吊销",
+      "generate": "生成 API 密钥"
+    },
+    "usage": {
+      "title": "用法",
+      "description": "如何对 Merchiva API 进行身份验证",
+      "authentication": "身份验证",
+      "availableEndpoints": "可用端点",
+      "placeholderNotice": "这是占位实现。在生产环境中，API 密钥将存储在服务器端，并进行适当的哈希处理和速率限制。"
+    },
+    "endpoints": {
+      "listProducts": "列出产品",
+      "listInventory": "列出库存项目",
+      "listOrders": "列出最近订单",
+      "createOrder": "创建订单",
+      "listStaff": "列出员工"
+    },
+    "addWebhook": {
+      "title": "添加 Webhook",
+      "description": "当店铺中发生事件时接收通知。",
+      "endpointUrl": "端点 URL",
+      "events": "事件",
+      "submit": "添加 Webhook"
+    },
+    "configured": {
+      "title": "已配置的 Webhook"
+    },
+    "status": {
+      "active": "已启用",
+      "paused": "已暂停"
+    },
+    "webhookActions": {
+      "test": "测试",
+      "pause": "暂停",
+      "enable": "启用"
+    },
+    "samplePayload": {
+      "title": "示例负载",
+      "dismiss": "关闭",
+      "descriptionPrefix": "这是针对 ",
+      "descriptionSuffix": " 事件将要发送的内容。"
+    },
+    "empty": {
+      "title": "尚未配置 Webhook",
+      "description": "在上方添加 Webhook 端点，以接收关于店铺事件的实时通知。"
+    }
+  },
+  "punchIn": {
+    "toastCodeMustBe4Digits": "代码必须为 4 位数字",
+    "toastCodeSet": "代码已设置",
+    "toastFailed": "失败",
+    "errorPinNotRecognized": "无法识别 PIN",
+    "toastSelectAnAction": "请选择一项操作",
+    "stepAuthenticate": "01 · 身份验证",
+    "enterYourPin": "输入你的 PIN",
+    "punchInOrOutHint": "输入员工 PIN 以上班或下班打卡。",
+    "pinLabel": "PIN",
+    "statusError": "▲ 错误",
+    "statusReady": "就绪",
+    "statusEntered": "已输入 {count}/4",
+    "statusVerifying": "验证中…",
+    "keyboardHint": "按数字键或使用键盘",
+    "clear": "清除",
+    "employee": "员工",
+    "action": "操作",
+    "selectAnAction": "选择一项操作",
+    "optionEndShiftTitle": "结束排班",
+    "optionEndShiftSub": "下班打卡",
+    "optionStartBreakTitle": "开始休息",
+    "optionStartBreakSub": "用餐 / 休息",
+    "fieldTime": "时间",
+    "fieldDate": "日期",
+    "fieldState": "状态",
+    "stateOff": "下班",
+    "stateBreak": "休息",
+    "stateOn": "上班",
+    "confirm": "确认",
+    "punchRecorded": "打卡已记录",
+    "successWelcome": "欢迎，{name}。",
+    "successGoodbye": "再见，{name}。",
+    "successBreakStarted": "休息已开始。",
+    "successWelcomeBack": "欢迎回来，{name}。",
+    "successInSub": "你的排班现已开始。",
+    "successOutSub": "你的排班已结束。",
+    "successBreakStartSub": "计时已暂停——准备好后结束休息。",
+    "successBreakEndSub": "休息已结束——排班重新生效。",
+    "fieldInAt": "上班于",
+    "fieldOutAt": "下班于",
+    "fieldBreakAt": "休息于",
+    "fieldResumed": "已恢复",
+    "fieldTerminal": "终端",
+    "fieldLocation": "位置",
+    "fieldConfId": "确认 ID",
+    "tapToDismiss": "点击关闭 · 5 秒后自动重置",
+    "onShift": "在班",
+    "noActiveShifts": "无进行中的排班。",
+    "recentPunches": "最近打卡",
+    "live": "实时",
+    "noPunchesToday": "今日无打卡记录",
+    "stepOnShiftNow": "02 · 当前在班",
+    "activeCount": "在班",
+    "onBreak": "休息中",
+    "active": "在班",
+    "stepRecentPunches": "03 · 最近打卡",
+    "today": "今天",
+    "colTime": "时间",
+    "colWho": "人员",
+    "colAction": "操作",
+    "colDuration": "时长",
+    "durOnBreak": "休息中",
+    "durOpen": "进行中",
+    "dialogMobileTitle": "打卡代码",
+    "dialogChangeTitle": "修改你的打卡代码",
+    "dialogSetTitle": "设置你的打卡代码",
+    "dialogChangeDesc": "更新你在本店输入的 4 位代码。",
+    "dialogSetDesc": "选一个你能记住的 4 位代码。每次打卡时都需输入。",
+    "newCodeLabel": "新代码",
+    "codePlaceholder": "4 位数字",
+    "saveCode": "保存代码"
+  },
+  "billing": {
+    "title": "账单",
+    "subtitle": "管理你的 Merchiva 订阅",
+    "ownerOnly": "仅组织所有者可管理账单。",
+    "currentPlan": "当前套餐",
+    "yearly": "按年",
+    "monthly": "按月",
+    "nextRenewal": "下次续订：{date}",
+    "freePlan": "免费",
+    "upgradePrompt": "升级到 Pro 以解锁全部功能。",
+    "manageSubscription": "管理订阅",
+    "manageSubscriptionDesc": "更改套餐、付款方式、发票及取消订阅。",
+    "openPortal": "打开门户",
+    "upgradeToPro": "升级到 Pro",
+    "perMonth": "/ 月",
+    "perYear": "/ 年",
+    "yearlySaveHint": "立省 17% — 免费两个月",
+    "recommended": "推荐",
+    "featureAllFeatures": "包含当前所有功能",
+    "featureUnlimitedTeam": "团队成员人数不限",
+    "featurePrioritySupport": "优先支持",
+    "toastSubscriptionActivated": "订阅已激活",
+    "toastCheckoutCanceled": "结账已取消",
+    "toastCheckoutFailed": "结账失败",
+    "toastPortalOpenFailed": "无法打开门户",
+    "toastPortalError": "门户错误"
+  },
+  "reviews": {
+    "pageTitle": "评价与口碑",
+    "pageSubtitle": "监控并管理您的在线评价",
+    "googleIntegrationTitle": "Google 评价集成",
+    "plannedBadge": "计划中",
+    "googleIntegrationDesc": "在一处监控并回复 Google 评价。连接您的 Google 商家资料即可开始。",
+    "placesIdLabel": "Google Places ID",
+    "connectButton": "连接",
+    "findPlacesIdAt": "查找您的 Places ID：",
+    "recentReviewsTitle": "最近评价",
+    "recentReviewsDesc": "下方显示为示例数据。连接 Google 评价以查看真实评价。",
+    "ratingTrendTitle": "评分趋势",
+    "basedOnReviews": "基于 {count} 条评价",
+    "ratingTrendUnavailable": "此功能将在连接 Google 评价 API 后可用。评分数据将包含历史趋势及与竞争对手的对比。"
+  },
+  "setup": {
+    "steps": {
+      "storeInfo": "门店信息",
+      "hours": "营业时间",
+      "team": "团队",
+      "pos": "POS"
+    },
+    "skip": "跳过",
+    "settingUp": "正在设置您的工作区……",
+    "footer": {
+      "step": "第 {current} / {total} 步",
+      "yourStore": "您的门店"
+    },
+    "toast": {
+      "complete": "设置完成！",
+      "error": "出现了一些问题，但您的工作区已就绪。"
+    },
+    "storeInfo": {
+      "title": "介绍一下您的门店。",
+      "subtitle": "我们将据此定制您的仪表盘并设置工作区。",
+      "storeNameLabel": "门店名称",
+      "storeNamePlaceholder": "例如：枫叶咖啡",
+      "addressLabel": "地址",
+      "addressPlaceholder": "例如：奥克兰市主街 123 号",
+      "businessTypeLabel": "业务类型",
+      "types": {
+        "cafe": "咖啡馆 / 烘焙店",
+        "restaurant": "餐厅",
+        "retail": "零售店",
+        "service": "服务 / 维修",
+        "other": "其他"
+      }
+    },
+    "hours": {
+      "title": "您的营业时间是？",
+      "subtitle": "这有助于 Mr. Merchiva 安排员工排班并预测需求。",
+      "openLabel": "开门",
+      "closeLabel": "关门",
+      "openDaysLabel": "营业日",
+      "days": {
+        "mon": "周一",
+        "tue": "周二",
+        "wed": "周三",
+        "thu": "周四",
+        "fri": "周五",
+        "sat": "周六",
+        "sun": "周日"
+      }
+    },
+    "team": {
+      "title": "邀请您的团队。",
+      "subtitle": "添加员工，以便他们打卡、查看排班并使用 POS。",
+      "roleManager": "经理",
+      "roleStaff": "员工",
+      "addAnother": "再添加一个",
+      "sendInvite": "发送 {count} 个邀请",
+      "sendInvites": "发送 {count} 个邀请"
+    },
+    "pos": {
+      "title": "连接您的 POS。",
+      "subtitle": "Merchiva 会从您的 POS 同步销售、产品和库存。",
+      "connectOAuth": "通过 OAuth 连接",
+      "noPos": "暂无 POS",
+      "setupLater": "稍后手动设置",
+      "finishSetup": "完成设置"
+    }
+  },
+  "salesForecast": {
+    "dataExcellent": "数据极佳",
+    "dataGood": "数据良好",
+    "dataFair": "数据一般",
+    "dataLimited": "数据有限",
+    "loadingData": "正在加载预测数据……",
+    "notEnoughData": "数据不足，无法预测",
+    "notEnoughDataDesc": "预测至少需要 7 天的销售数据。目前已记录 {count} 天。",
+    "title": "7 天预测",
+    "noLocation": "无位置 — 无法获取天气",
+    "weatherUnavailable": "天气数据不可用",
+    "confidence": "{percent}% 置信度",
+    "today": "今天",
+    "factorBase": "基准：",
+    "factorWeather": "天气：",
+    "factorHoliday": "节假日：",
+    "factorTraffic": "客流：",
+    "factorStaff": "员工：",
+    "factorTrend": "趋势：",
+    "hourlyBreakdown": "分时明细",
+    "predictedRevenuePerHour": "每小时预测营收",
+    "total": "合计",
+    "predicted": "预测",
+    "bestDay": "最佳日",
+    "at": "于",
+    "boostedBy": "受 {holiday} 提振",
+    "highFootTraffic": "预计客流量高",
+    "strongBaseline": "{day} 基准强劲",
+    "weatherImpact": "天气影响",
+    "enableLocation": "启用位置访问以查看基于天气的预测",
+    "maySee": "可能出现",
+    "dueToWeather": "因 {weather} 天气",
+    "favorableWeather": "预计全周天气良好",
+    "daysClear": "7 天中 {count} 天晴朗",
+    "weatherPending": "天气数据待获取",
+    "staffingAdvisory": "排班建议",
+    "daysCount": "{count} 天",
+    "daysCountPlural": "{count} 天",
+    "mayBeUnderstaffed": "可能人手不足",
+    "considerAddingShifts": "{days} — 考虑增加排班",
+    "noShiftData": "暂无排班数据。安排排班以启用人员配置建议。",
+    "staffingAdequate": "7 天的人员配置看起来充足（平均每天 {avg} 人）"
+  },
+  "subscribe": {
+    "toastActivated": "订阅已激活",
+    "toastCanceled": "结账已取消",
+    "toastCheckoutFailed": "结账失败",
+    "trialDaysLeftOne": "免费试用还剩 1 天",
+    "trialDaysLeftOther": "免费试用还剩 {count} 天",
+    "trialEnded": "你的免费试用已结束",
+    "titleTrial": "你正在免费试用中",
+    "titleSubscribe": "订阅 Merchiva",
+    "trialDescription": "{trialLine}。立即订阅，让你的店铺不间断运营。",
+    "ownerDescription": "需要有效的订阅才能继续使用 Merchiva。",
+    "memberDescription": "你的组织需要有效的订阅才能继续。",
+    "monthly": "按月",
+    "perMonth": "/ 月",
+    "yearly": "按年",
+    "perYear": "/ 年",
+    "yearlyHint": "节省 17%——免费送 2 个月",
+    "featureAllFeatures": "包含全部功能",
+    "featureUnlimitedMembers": "无限团队成员",
+    "featurePrioritySupport": "优先支持",
+    "memberOwnerOnly": "只有组织所有者可以订阅。请联系 {org} 的所有者激活订阅，然后刷新。",
+    "yourOrganization": "你的组织",
+    "continueInTrial": "继续试用",
+    "recommended": "推荐"
+  },
+  "bugReport": {
+    "title": "报告 Bug",
+    "drawerDescription": "描述你遇到的问题，可选择附上截图。",
+    "whatWentWrong": "出了什么问题？",
+    "titlePlaceholder": "简要描述问题",
+    "detailsLabel": "详情（可选）",
+    "detailsPlaceholder": "重现步骤、预期行为……",
+    "screenshotLabel": "截图",
+    "screenshotAlt": "Bug 截图",
+    "captureScreenshot": "截取屏幕",
+    "submit": "提交报告",
+    "screenshotCaptured": "已截取屏幕",
+    "screenshotFailed": "截图失败",
+    "titleRequired": "请填写标题",
+    "saved": "Bug 报告已保存"
+  },
+  "myTasks": {
+    "title": "今日任务",
+    "doneCount": "已完成 {done} / {total}",
+    "all": "全部",
+    "allCompleted": "今日任务已全部完成。",
+    "evidenceBadge": "凭证",
+    "done": "已完成",
+    "moreCount": "+ 还有 {count} 项",
+    "evidenceRequiredError": "此任务需要照片或视频作为凭证",
+    "chatHeader": "✅ 任务已完成：{title}",
+    "chatAttachments": "📎 {count} 个附件",
+    "partialChatFailure": "任务已完成，但 {count} 条聊天消息发送失败",
+    "completedSuccess": "任务已完成",
+    "completeError": "完成失败",
+    "evidenceLabel": "凭证照片 / 视频",
+    "evidenceAlt": "凭证",
+    "remove": "移除",
+    "uploadError": "上传失败",
+    "uploading": "上传中……",
+    "noteLabel": "备注",
+    "optional": "（可选）",
+    "notePlaceholder": "有什么需要向经理反馈的吗？",
+    "markDone": "标记为完成"
+  },
+  "itemForecast": {
+    "title": "单品 AI 预测",
+    "retrain": "重新训练",
+    "refresh": "刷新",
+    "loadingPredictions": "正在加载预测……",
+    "today": "今天",
+    "itemsTotal": "件商品",
+    "topItems": "热门商品：{day}",
+    "predictedUnits": "预测销售数量",
+    "totalItems": "共计：{count} 件商品",
+    "predicted": "预测",
+    "unitsValue": "{count} 件",
+    "allItems": "全部商品：{day}",
+    "showLess": "收起",
+    "showAllItems": "显示全部 {count} 件商品",
+    "modelNotTrained": "AI 模型尚未训练",
+    "recordsReady": "你已有 {count} 条单品日记录。训练 AI 模型以获取单品预测。",
+    "recordsNeeded": "需要至少 100 条来自支付历史的单品日记录。当前有 {count} 条。",
+    "training": "训练中……",
+    "trainModel": "训练 AI 模型",
+    "modelTrainedSummary": "模型已训练：{items} 件商品，{days} 天，R²={r2}",
+    "lastTrainedSummary": "上次训练：{items} 件商品，跨 {days} 天——MAE：{mae}，R²：{r2}",
+    "trainingFailed": "训练失败",
+    "predictionFailed": "预测失败"
+  },
+  "scheduler": {
+    "auto": {
+      "button": "自动排班",
+      "title": "自动排班",
+      "description": "根据可用性、约束条件和公平性生成优化的班次分配。",
+      "startDate": "开始日期",
+      "endDate": "结束日期",
+      "maxHoursPerWeek": "每周最多小时数",
+      "maxConsecutiveDays": "最多连续天数",
+      "minRestHours": "最少休息（小时）",
+      "generate": "生成排班",
+      "statShifts": "班次",
+      "statTotalHours": "总小时数",
+      "statAvgPerStaff": "人均",
+      "statFairness": "公平性",
+      "unfilledSlots": "空缺班次（{count}）",
+      "moreUnfilled": "+ 还有 {count} 个空缺",
+      "schedulePreview": "排班预览",
+      "selectAll": "全选",
+      "deselectAll": "取消全选",
+      "colDate": "日期",
+      "colShift": "班次",
+      "colTime": "时间",
+      "colStaff": "员工",
+      "colRoles": "角色",
+      "colScore": "评分",
+      "colStatus": "状态",
+      "statusOk": "正常",
+      "regenerate": "重新生成",
+      "applySelected": "应用所选（{count}）",
+      "noShiftsGenerated": "无法生成班次。请检查团队的可用性和班次预设。",
+      "generateFailed": "生成排班失败。",
+      "noShiftsSelected": "未选择要应用的班次。",
+      "shiftsAdded": "已将 {count} 个班次添加到排班。",
+      "applyFailed": "部分班次应用失败。请重试。"
     }
   }
 }

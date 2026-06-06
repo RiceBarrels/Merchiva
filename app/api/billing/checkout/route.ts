@@ -11,6 +11,16 @@ interface CheckoutBody {
   // via metadata so the webhook + sync can map back to the org.
   stripeCustomerId?: string | null;
   customerEmail?: string;
+  // Where Stripe sends the user back after checkout. Defaults to the billing
+  // settings page; the /~/subscribe paywall passes "/~/subscribe" so a blocked
+  // org returns to the gate page (which forwards to the dashboard once active).
+  returnPath?: string;
+}
+
+// Only allow internal app paths as the post-checkout return target.
+function safeReturnPath(p?: string): string {
+  if (p && p.startsWith("/~/") && !p.startsWith("//")) return p;
+  return "/~/settings/billing";
 }
 
 export async function POST(req: NextRequest) {
@@ -18,6 +28,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as CheckoutBody;
     const orgId = body.orgId?.trim();
     const interval = body.interval === "year" ? "year" : "month";
+    const returnPath = safeReturnPath(body.returnPath);
 
     if (!orgId) {
       return NextResponse.json({ error: "orgId required" }, { status: 400 });
@@ -53,8 +64,8 @@ export async function POST(req: NextRequest) {
       // resolve the org without needing to fetch the session).
       metadata: { orgId },
       subscription_data: { metadata: { orgId } },
-      success_url: `${origin}/~/settings/billing?session_id={CHECKOUT_SESSION_ID}&status=success`,
-      cancel_url: `${origin}/~/settings/billing?status=canceled`,
+      success_url: `${origin}${returnPath}?session_id={CHECKOUT_SESSION_ID}&status=success`,
+      cancel_url: `${origin}${returnPath}?status=canceled`,
       allow_promotion_codes: true,
       billing_address_collection: "auto",
     });

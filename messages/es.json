@@ -1281,7 +1281,8 @@
       "inviteCancelFailed": "No se pudo cancelar"
     },
     "title": "Personal",
-    "subtitle": "Horario, equipo, roles y capacitación"
+    "subtitle": "Horario, equipo, roles y capacitación",
+    "pendingRequests": "Solicitudes pendientes"
   },
   "pos": {
     "tabs": {
@@ -1299,7 +1300,12 @@
       "customer": "Cliente",
       "thankYou": "¡Gracias!",
       "print": "Imprimir",
-      "newOrder": "Nuevo pedido"
+      "newOrder": "Nuevo pedido",
+      "paidAmount": "Pagado {amount}",
+      "yourBusiness": "Tu negocio",
+      "tipPct": "Propina {pct}%",
+      "paid": "Pagado",
+      "email": "Correo electrónico"
     },
     "refund": {
       "title": "Reembolso",
@@ -1340,7 +1346,14 @@
       "noProducts": "Sin productos",
       "addInProducts": "Agrega productos en la página de Productos",
       "noResults": "Sin resultados",
-      "each": "c/u"
+      "each": "c/u",
+      "taxShort": "Impuesto",
+      "newOrder": "Nuevo pedido",
+      "searchMenu": "Buscar en el menú...",
+      "scan": "Escanear",
+      "matchesFor": "Coincidencias para \"{query}\"",
+      "noResultsFound": "No se encontraron resultados",
+      "noProductsInCategory": "No hay productos en esta categoría"
     },
     "customItem": {
       "title": "Artículo personalizado",
@@ -1386,6 +1399,90 @@
       "cardDeclined": "Tarjeta rechazada",
       "paymentFailed": "Pago fallido",
       "moduleUnavailable": "Módulo de pago no disponible"
+    },
+    "discountReasons": {
+      "none": "Motivo (opcional)…",
+      "staff": "Descuento de empleado",
+      "loyalty": "Recompensa de fidelidad",
+      "comp": "Cortesía / por cuenta de la casa",
+      "damaged": "Preparado incorrectamente",
+      "manager": "Anulación del gerente"
+    },
+    "cart": {
+      "ticket": "Ticket",
+      "itemsCount": "{count} artículos",
+      "walkInPlaceholder": "Cliente sin cita (toca para nombrar)",
+      "empty": "El carrito está vacío",
+      "tapToStart": "Toca un artículo para empezar",
+      "pctOff": "{pct}% de descuento",
+      "amountOff": "{amount} de descuento",
+      "tipLabel": "Propina ({pct}%)",
+      "viewCart": "Ver carrito",
+      "drawerTitle": "Carrito · {count} artículos"
+    },
+    "lineEditor": {
+      "title": "Editar línea",
+      "mobileTitle": "Editar · {name}",
+      "perEach": "{price}/u",
+      "quantity": "Cantidad",
+      "notesLabel": "Notas para cocina / barra",
+      "notesPlaceholder": "Alergias, instrucciones de preparación, nombre en el vaso...",
+      "lineDiscount": "Descuento de línea",
+      "discNone": "Ninguno",
+      "discPct": "% de descuento",
+      "discAmount": "{symbol} de descuento",
+      "remove": "Quitar",
+      "lineTotal": "Total de línea"
+    },
+    "pay": {
+      "methods": {
+        "card": "Tarjeta",
+        "cash": "Efectivo",
+        "mobilePay": "Pago móvil",
+        "giftCard": "Tarjeta de regalo",
+        "mobile": "Móvil",
+        "gift": "Regalo"
+      },
+      "cardSubOffline": "Ingresa la tarjeta — en cola sin conexión",
+      "cardSubAvailable": "Toca, inserta o desliza",
+      "cardSubNotConfigured": "Sin configurar",
+      "cashSub": "Abrir cajón",
+      "mobileSub": "Apple / Google Pay",
+      "giftSub": "Escanea o ingresa el código",
+      "backToOrder": "Volver al pedido",
+      "checkout": "Pagar",
+      "tender": "Cobrar",
+      "cardNumberQueued": "Número de tarjeta (en cola para más tarde)",
+      "queuedHint": "El pago se pondrá en cola y se procesará al volver a estar en línea",
+      "queuedHintShort": "En cola y procesado al volver a estar en línea",
+      "pciWarning": "Solo demo/MVP — los números de tarjeta almacenados localmente no cumplen con PCI.",
+      "tip": "Propina",
+      "tipNone": "Ninguna",
+      "cashTendered": "Efectivo entregado",
+      "other": "Otro",
+      "changeOwed": "Cambio adeudado",
+      "change": "Cambio",
+      "split": "Dividir",
+      "splitSingle": "Único",
+      "splitWays": "{n} partes",
+      "splitEach": "{amount} cada uno",
+      "orderSummary": "Resumen del pedido",
+      "queueCardAmount": "Poner tarjeta en cola {amount}",
+      "chargeAmount": "Cobrar {amount}"
+    },
+    "offline": {
+      "banner": "Modo sin conexión — solo cola de efectivo y tarjeta"
+    },
+    "pending": {
+      "queuedOne": "{count} pago con tarjeta pendiente en cola",
+      "queuedOther": "{count} pagos con tarjeta pendientes en cola",
+      "processOne": "Procesar {count} tarjeta pendiente",
+      "processOther": "Procesar {count} tarjetas pendientes"
+    },
+    "toast": {
+      "paymentQueued": "Pago en cola",
+      "paymentQueuedDesc": "Tarjeta terminada en {last4} — se procesará al estar en línea",
+      "pendingCardsCleared": "Tarjetas pendientes eliminadas"
     }
   },
   "settings": {
@@ -1682,7 +1779,28 @@
       "KRW": "Won surcoreano",
       "INR": "Rupia india",
       "SAR": "Riyal saudí"
-    }
+    },
+    "toastGeolocationUnsupported": "Tu navegador no admite la geolocalización",
+    "toastLocationDetected": "Ubicación detectada",
+    "toastGeolocationFailed": "No se pudo obtener tu ubicación. Ingresa las coordenadas manualmente.",
+    "exitStoreModeTitle": "Ingresa el PIN para salir del modo tienda",
+    "exitStoreModeMobileTitle": "Salir del modo tienda",
+    "exitStoreModeDesc": "Ingresa un código de fichaje de propietario o gerente para desactivar el modo máquina de tienda.",
+    "exitPinInvalid": "Código no válido",
+    "exitPinInvalidRole": "Código no válido. Debe ser un código de propietario o gerente.",
+    "toastStoreModeDisabled": "Modo tienda desactivado",
+    "disableStoreMode": "Desactivar modo tienda",
+    "manageDeviceTitle": "Gestionar dispositivo",
+    "manageDeviceMobileTitle": "Gestionar dispositivo",
+    "manageDeviceDesc": "Renombra o elimina este dispositivo de tienda.",
+    "toastDeviceRenamed": "Dispositivo renombrado",
+    "toastDeviceRemoved": "Dispositivo eliminado",
+    "removeDevice": "Eliminar dispositivo",
+    "forecastLocation": "Ubicación de la predicción",
+    "noPlaceId": "Sin Place ID",
+    "storeDevices": "Dispositivos de la tienda",
+    "unnamedDevice": "Dispositivo sin nombre",
+    "deviceOff": "Apagado"
   },
   "lock": {
     "title": "Dispositivo bloqueado",
@@ -1818,7 +1936,12 @@
     "merchivaRemove": "Quitar a Mr. Merchiva",
     "merchivaOn": "Mr. Merchiva",
     "merchivaMentionHint": "Pregunta al asistente IA",
-    "noMatches": "Sin coincidencias"
+    "noMatches": "Sin coincidencias",
+    "online": "en línea",
+    "aiOpsAgent": "Tu agente de operaciones con IA",
+    "mentionLower": "mencionar",
+    "sendKbd": "enviar",
+    "send": "Enviar"
   },
   "dashboard": {
     "greeting": {
@@ -1885,7 +2008,74 @@
       "addMore": "Añadir más",
       "choose": "Elegir archivo",
       "complete": "Completar"
-    }
+    },
+    "attendance": {
+      "title": "Asistencia de hoy",
+      "punchedIn": "fichados",
+      "onBreak": "en descanso",
+      "nobody": "Nadie ha fichado todavía.",
+      "allOut": "Todos han fichado la salida."
+    },
+    "yesterdayTasks": {
+      "title": "Tareas de ayer",
+      "done": "hechas",
+      "notDone": "sin hacer",
+      "skipped": "omitidas",
+      "none": "No había tareas para ayer."
+    },
+    "widgets": {
+      "salesToday": {
+        "title": "Ventas de hoy",
+        "predicted": "previsto",
+        "vsYesterday": "vs ayer"
+      },
+      "inventoryAlerts": {
+        "title": "Alertas de inventario",
+        "allStocked": "Todos los artículos están bien abastecidos",
+        "outOfStock": "{count} agotados",
+        "lowStock": "{count} con stock bajo",
+        "outBadge": "Agotado",
+        "lowBadge": "Bajo"
+      },
+      "scheduleOverview": {
+        "title": "Resumen de horario",
+        "empty": "No hay turnos programados para hoy",
+        "shiftToday": "turno hoy",
+        "shiftsToday": "turnos hoy",
+        "nextLabel": "Siguiente:",
+        "atLabel": "a las"
+      },
+      "todo": {
+        "title": "Pendientes",
+        "placeholder": "Nuevo pendiente...",
+        "empty": "Aún no hay pendientes",
+        "more": "+{count} más"
+      },
+      "wasteCost": {
+        "title": "Costo de desperdicio",
+        "details": "Detalles",
+        "today": "Hoy",
+        "thisWeek": "Esta semana",
+        "thisMonth": "Este mes",
+        "empty": "Aún no hay desperdicio registrado"
+      },
+      "notifications": {
+        "title": "Notificaciones",
+        "empty": "No hay notificaciones sin leer"
+      },
+      "topProducts": {
+        "title": "Productos principales",
+        "empty": "Aún no hay datos de productos"
+      },
+      "quickStats": {
+        "title": "Estadísticas rápidas",
+        "products": "Productos",
+        "staffOnDuty": "Personal de servicio",
+        "inventoryItems": "Artículos de inventario",
+        "lowStock": "Stock bajo"
+      }
+    },
+    "title": "Panel"
   },
   "inventory": {
     "title": "Inventario",
@@ -1905,7 +2095,8 @@
     "tabs": {
       "items": "Artículos",
       "transactions": "Registro de transacciones",
-      "losses": "Control de pérdidas"
+      "losses": "Control de pérdidas",
+      "restock": "Reabastecimiento"
     },
     "filters": {
       "searchPlaceholder": "Buscar artículos o proveedores…",
@@ -1979,6 +2170,35 @@
       "saveFailed": "No se pudo guardar el artículo",
       "itemDeleted": "Artículo eliminado",
       "deleteFailed": "No se pudo eliminar el artículo"
+    },
+    "restock": {
+      "emptyTitle": "Todo abastecido — no se necesita reabastecer",
+      "emptyHint": "Tus niveles de inventario se ven saludables.",
+      "criticalItems": "Artículos críticos",
+      "highPriority": "Prioridad alta",
+      "totalOrderValue": "Valor total del pedido",
+      "itemsToRestock": "Artículos por reabastecer",
+      "exportCsv": "Exportar orden de compra (CSV)",
+      "csvDownloaded": "Orden de compra CSV descargada",
+      "exportPdf": "Exportar orden de compra (PDF)",
+      "pdfDownloaded": "Orden de compra PDF descargada",
+      "pdfTitle": "Orden de compra",
+      "pdfSubtitle": "{count} artículos — Est. {cost}",
+      "stockLevel": "Nivel de stock",
+      "dailyConsumption": "Consumo diario",
+      "perDay": "{rate} {unit}/día",
+      "daysUntilStockout": "Días hasta agotarse",
+      "notApplicable": "N/D",
+      "daysValue": "{days} días",
+      "recommendedOrder": "Pedido recomendado",
+      "estimatedCost": "Costo estimado",
+      "lastRestocked": "Último reabastecimiento",
+      "daysAgo": "hace {days} días",
+      "trend": {
+        "increasing": "en aumento",
+        "decreasing": "en descenso",
+        "stable": "estable"
+      }
     }
   },
   "sales": {
@@ -2003,7 +2223,9 @@
     },
     "tabs": {
       "history": "Análisis histórico",
-      "hourly": "Hoy por horas"
+      "hourly": "Hoy por horas",
+      "forecast": "Pronóstico",
+      "aiItems": "Artículos con IA"
     },
     "history": {
       "title": "Historial de ventas de 30 días",
@@ -2047,7 +2269,14 @@
     "filterTeam": "Equipo",
     "filterInventory": "Inventario",
     "filterOrder": "Pedidos",
-    "filterGeneral": "Sistema"
+    "filterGeneral": "Sistema",
+    "tradeOfferedToEveryone": "{name} está ofreciendo su turno a todos",
+    "tradeWantsToTrade": "{name} quiere intercambiar contigo",
+    "tradeAcceptedAwaitingManager": "{name} aceptó — en espera de aprobación del gerente",
+    "tradeFrom": "Intercambio de {name}",
+    "someone": "Alguien",
+    "waitingForStaff": "Esperando al personal",
+    "requestedTimeOff": "{name} solicitó tiempo libre"
   },
   "push": {
     "promptTitle": "Recibe avisos de escritorio",
@@ -2390,7 +2619,118 @@
     "foodStep2": "Comprobar las temperaturas y registrar las lecturas",
     "foodStep3": "Inspeccionar el almacén en busca de productos caducados",
     "foodStep4": "Limpiar y desinfectar las superficies de preparación",
-    "foodStep5": "Verificar el etiquetado y las fechas correctas"
+    "foodStep5": "Verificar el etiquetado y las fechas correctas",
+    "manager": {
+      "dayCount": "{count} día",
+      "dayCountPlural": "{count} días",
+      "curriculumSettings": "Configuración del plan de estudios",
+      "moduleLabel": "módulo",
+      "untitledDay": "Día sin título",
+      "allRoles": "Todos los roles",
+      "required": "Obligatorio",
+      "selectOrAddDay": "Selecciona o agrega un día para empezar a redactar",
+      "unsaved": "sin guardar",
+      "history": "Historial",
+      "previewAsIntern": "Ver como aprendiz",
+      "publish": "Publicar",
+      "editor": "Editor",
+      "words": "palabras",
+      "minRead": "min de lectura",
+      "saved": "guardado",
+      "lessonPlaceholder": "Escribe la lección del día — encabezados, listas, enlaces, citas, imágenes en línea…",
+      "pickDayToEdit": "Elige un día del plan de estudios para editar",
+      "preview": "Vista previa",
+      "howInternsSeeIt": "cómo lo verán los aprendices",
+      "desktop": "Escritorio",
+      "mobile": "Móvil",
+      "emptyDay": "Día vacío. Agrega contenido en el editor para verlo aquí.",
+      "attachments": "Adjuntos",
+      "item": "elemento",
+      "items": "elementos",
+      "embedUrl": "URL para incrustar",
+      "selectDayForAttachments": "Selecciona un día para agregar adjuntos.",
+      "video": "Video",
+      "photo": "Foto",
+      "note": "Nota",
+      "remove": "Quitar",
+      "dropFile": "Suelta el archivo",
+      "upload": "Subir"
+    },
+    "rubric": {
+      "knowsMaterial": "Conoce el material",
+      "knowsMaterialHint": "Memoria, confianza",
+      "practicalSkill": "Habilidad práctica",
+      "practicalSkillHint": "Precisión práctica",
+      "speedFlow": "Velocidad y fluidez",
+      "speedFlowHint": "Ritmo en el nivel esperado",
+      "recovery": "Recuperación",
+      "recoveryHint": "Maneja bien los errores",
+      "stationDiscipline": "Disciplina de estación",
+      "stationDisciplineHint": "Limpio y ordenado"
+    },
+    "trainer": {
+      "pickADay": "Elige un día",
+      "dayN": "Día {n}",
+      "required": "Obligatorio",
+      "traineesPassed": "aprendices aprobados",
+      "badge": "capacitador",
+      "noContent": "Este día aún no tiene contenido publicado.",
+      "objectives": "Objetivos",
+      "trainees": "Aprendices",
+      "filter": "Filtrar",
+      "noTraineesYet": "Aún no hay aprendices",
+      "gradingDay": "Calificación · Día {n}",
+      "message": "Mensaje",
+      "dm": "Mensaje directo",
+      "rubricLabel": "Rúbrica",
+      "notesForTrainee": "Notas para el aprendiz",
+      "visibleTo": "visible para {name}",
+      "notesPlaceholder": "¿Qué salió bien? ¿Qué practicar a continuación?",
+      "retry": "Reintentar",
+      "submitGrade": "Enviar calificación",
+      "willBeNotified": "{name} recibirá una notificación · guardado en su expediente de capacitación",
+      "pickTrainee": "Elige un aprendiz de la lista para comenzar a calificar."
+    },
+    "intern": {
+      "objectiveFallback": "Objetivo {number}",
+      "progress": "progreso",
+      "dayOfTotal": "Día {day} de {total}",
+      "doneCount": "{count} completadas",
+      "remainingCount": "{count} restantes",
+      "keepGoing": "Sigue así",
+      "dayLabel": "Día {number}",
+      "practice": "Práctica",
+      "required": "obligatorio",
+      "lockedUntilPrior": "bloqueado hasta aprobar el día anterior",
+      "noContentYet": "Aún no hay contenido para este día.",
+      "dayWithTitle": "Día {number} · {title}",
+      "tasksForToday": "Tareas de hoy",
+      "checkEachOff": "Marca cada una a medida que la completes.",
+      "noTasksYet": "Aún no hay tareas — tu gerente agregará objetivos pronto.",
+      "resources": "recursos",
+      "note": "nota",
+      "requestTrainerReview": "Solicitar revisión del capacitador",
+      "trainerWillBeNotified": "Tu capacitador recibirá una notificación.",
+      "waitForTasks": "Espera a que se asignen las tareas.",
+      "completeMoreTask": "Completa {count} tarea más para solicitar la revisión",
+      "completeMoreTasks": "Completa {count} tareas más para solicitar la revisión",
+      "awaitingReview": "en espera de revisión",
+      "liveGradingNote": "Tu capacitador vendrá para calificarte en vivo. Permanece cerca de la barra.",
+      "askTrainerQuestion": "Hacer una pregunta al capacitador"
+    },
+    "dayRail": {
+      "days": "días",
+      "noDaysYet": "Aún no hay días",
+      "dayAbbrev": "DÍA",
+      "optional": "opcional",
+      "typeOrientation": "orientación",
+      "typeTheory": "teoría",
+      "typePractice": "práctica",
+      "typeSystem": "sistema",
+      "typeCompliance": "cumplimiento",
+      "typeAssessment": "evaluación",
+      "typeGeneral": "general"
+    }
   },
   "display": {
     "kitchen": "Cocina",
@@ -2747,7 +3087,168 @@
     "menuReAsk": "Volver a preguntar",
     "menuRegenerate": "Regenerar respuesta",
     "menuDelete": "Eliminar del historial",
-    "menuCopied": "Copiado al portapapeles"
+    "menuCopied": "Copiado al portapapeles",
+    "kpi": {
+      "revenueToday": "Ingresos · hoy",
+      "vsAvg": "vs prom.",
+      "live": "en vivo",
+      "orders": "Pedidos",
+      "today": "hoy",
+      "onShift": "En turno",
+      "skusAtRisk": "SKU en riesgo",
+      "ofTracked": "de {count} monitoreados",
+      "nHigh": "{n} altos"
+    },
+    "insight": {
+      "confidence": "confianza",
+      "hide": "Ocultar",
+      "why": "Por qué",
+      "basedOn": "basado en",
+      "view": "Ver",
+      "dismiss": "Descartar"
+    },
+    "embed": {
+      "daysCover": "~{days}d de cobertura",
+      "current": "Actual",
+      "minMax": "Mín. / Máx.",
+      "cover": "Cobertura",
+      "daysApprox": "~{days} días"
+    },
+    "shift": {
+      "invalidRole": "No es un puesto de trabajo en esta organización; la aprobación será rechazada",
+      "jobRole": "Puesto de trabajo"
+    },
+    "order": {
+      "itemCount": "{count} artículo",
+      "itemCountPlural": "{count} artículos"
+    },
+    "builder": {
+      "elementCount": "{count} elemento",
+      "elementCountPlural": "{count} elementos",
+      "moreCount": "+{count} más"
+    },
+    "actionsList": {
+      "tag": "ACCIONES",
+      "optionalCount": "+{count} opcionales"
+    },
+    "actionsAvailable": "Estas son todas las acciones de IA disponibles actualmente:",
+    "qa": {
+      "multiSelect": "Selección múltiple · {count} seleccionados",
+      "other": "Otro...",
+      "customReplyPlaceholder": "Escribe una respuesta personalizada...",
+      "submit": "Enviar",
+      "pickAtLeastOne": "Elige al menos uno por cada pregunta",
+      "submitted": "Enviado"
+    },
+    "rolesList": {
+      "tag": "PUESTOS",
+      "count": "{count} puestos",
+      "empty": "Aún no hay puestos"
+    },
+    "roleAdd": {
+      "tag": "NUEVO PUESTO",
+      "responsibilities": "Responsabilidades"
+    },
+    "status": {
+      "adding": "Agregando...",
+      "deleting": "Eliminando...",
+      "added": "Agregado",
+      "deleted": "Eliminado"
+    },
+    "tasks": {
+      "loading": "Cargando tareas...",
+      "deleteFailed": "No se pudo eliminar la tarea",
+      "tag": "TAREAS",
+      "empty": "No hay tareas para este puesto",
+      "evidence": "Evidencia"
+    },
+    "taskAdd": {
+      "tag": "NUEVA TAREA",
+      "chooseChat": "Elegir chat grupal",
+      "evidenceRequired": "Evidencia requerida",
+      "evidencePrompt": "Esta tarea requiere evidencia; elige el chat grupal donde debe subirse:",
+      "noGroupChats": "Aún no hay chats grupales; crea uno primero desde la página de Chat.",
+      "add": "Agregar",
+      "skip": "Omitir"
+    },
+    "command": {
+      "deleteRoleFailed": "No se pudo eliminar el puesto",
+      "roleNotFound": "Puesto no encontrado: {role}",
+      "addTaskFailed": "No se pudo agregar la tarea"
+    },
+    "taskDelete": {
+      "tag": "ELIMINAR",
+      "failed": "Error al eliminar"
+    },
+    "dataCategory": {
+      "inventory": {
+        "label": "Inventario",
+        "desc": "Niveles de stock, artículos bajos, proveedores"
+      },
+      "sales": {
+        "label": "Ventas",
+        "desc": "Ingresos, pedidos, tendencias"
+      },
+      "staffing": {
+        "label": "Personal",
+        "desc": "Turnos, horario, equipo"
+      },
+      "products": {
+        "label": "Productos",
+        "desc": "Catálogo, precios, rendimiento"
+      },
+      "all": {
+        "label": "Todo",
+        "desc": "Todos los datos de la tienda"
+      }
+    },
+    "yourStore": "tu tienda",
+    "untitledGroup": "Grupo sin título",
+    "newConversation": "Nueva conversación",
+    "chatTitle": "Chat",
+    "voiceUnsupported": "Tu navegador no admite la entrada de voz.",
+    "approve": {
+      "notTeamMember": "\"{name}\" no es miembro del equipo. Agrégalo primero o elige de: {names}",
+      "noTeamMembers": "(aún no hay miembros del equipo)",
+      "noValidRole": "No hay un puesto de trabajo válido para el turno. Se recibió {got}; elige uno de: {roles}.",
+      "noRolesDefined": "(aún no hay puestos definidos)"
+    },
+    "builderChips": {
+      "heroSection": "Agregar una sección hero",
+      "contactForm": "Agregar un formulario de contacto",
+      "mobileFriendly": "Adaptar esta página a móviles",
+      "deleteFooter": "Eliminar el pie de página",
+      "pricingTable": "Agregar una tabla de precios"
+    },
+    "pick": {
+      "titleActive": "Haz clic en cualquier elemento del lienzo · Esc para cancelar",
+      "titleIdle": "Elige un elemento para adjuntar",
+      "clicking": "Haz clic en el elemento…",
+      "element": "Elemento"
+    },
+    "schedule": {
+      "title": "Horario de hoy",
+      "shifts": "turnos",
+      "hrs": "h",
+      "open": "Abierto",
+      "onShift": "en turno · {count}",
+      "live": "en vivo",
+      "upNext": "a continuación",
+      "inMinutes": "en {n} min",
+      "inHours": "en {n} h",
+      "noShifts": "No hay turnos programados para hoy"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "new": "nuevas",
+      "needDecision": "requieren una decisión",
+      "markAllRead": "Marcar todo como leído",
+      "review": "Revisar",
+      "dismiss": "Descartar",
+      "empty": "No hay notificaciones nuevas"
+    },
+    "collapsePanel": "Contraer panel",
+    "openPanel": "Abrir Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2777,7 +3278,9 @@
       "fit": "Ajustar a pantalla",
       "notFound": "Diseño no encontrado",
       "layers": "Capas",
-      "properties": "Propiedades"
+      "properties": "Propiedades",
+      "undo": "Deshacer",
+      "redo": "Rehacer"
     },
     "ai": {
       "title": "Generar con IA",
@@ -3593,6 +4096,655 @@
         "para": "Conecta tu POS. Aprendemos tus ventas durante siete días y luego empezamos a decirte qué pedir — a la caja, día a día. Error de pronóstico mediano: 7,2 %.",
         "walkthrough": "Reserva una demo de 20 min"
       }
+    }
+  },
+  "reports": {
+    "title": "Informes",
+    "subtitle": "Exporta y revisa los datos del negocio",
+    "recordsCount": "{count} registros",
+    "exportCsv": "Exportar CSV",
+    "exportPdf": "Exportar PDF",
+    "thisMonth": "Este mes",
+    "lastMonth": "Mes pasado",
+    "last90Days": "Últimos 90 días",
+    "tabSales": "Ventas",
+    "tabStaffHours": "Horas del personal",
+    "tabInventory": "Inventario",
+    "tabProducts": "Productos",
+    "totalRevenue": "Ingresos totales",
+    "avgDailyRevenue": "Ingreso diario promedio",
+    "perDayAverage": "Promedio por día",
+    "bestDay": "Mejor día",
+    "forecastAccuracy": "Precisión del pronóstico",
+    "predictedVsActual": "Previsto vs. real",
+    "noSalesData": "No hay datos de ventas para este período",
+    "salesRecords": "Registros de ventas",
+    "recordsForPeriod": "{count} registros -- {period}",
+    "colDate": "Fecha",
+    "colActual": "Real",
+    "colPredicted": "Previsto",
+    "colWeather": "Clima",
+    "colHoliday": "Festivo",
+    "yes": "Sí",
+    "showingRecords": "Mostrando 50 de {count} registros. Exporta para ver todos los datos.",
+    "totalScheduledHours": "Total de horas programadas",
+    "numberOfStaff": "Número de empleados",
+    "uniqueStaffScheduled": "Empleados únicos programados",
+    "avgHoursPerStaff": "Horas promedio / empleado",
+    "averagePerPerson": "Promedio por persona",
+    "noShifts": "No hay turnos para este período",
+    "shiftRecords": "Registros de turnos",
+    "shiftsForPeriod": "{count} turnos -- {period}",
+    "colStaffName": "Nombre del empleado",
+    "colStart": "Inicio",
+    "colEnd": "Fin",
+    "colHours": "Horas",
+    "colType": "Tipo",
+    "showingShifts": "Mostrando 50 de {count} turnos. Exporta para ver todos los datos.",
+    "totalItems": "Total de artículos",
+    "trackedInventoryItems": "Artículos de inventario rastreados",
+    "lowOutOfStock": "Bajo / Agotado",
+    "needsAttention": "Requiere atención",
+    "totalValue": "Valor total",
+    "stockTimesCostPerUnit": "Existencias x costo/unidad",
+    "avgLossRate": "Tasa de pérdida promedio",
+    "acrossAllItems": "En todos los artículos",
+    "noInventoryItems": "No hay artículos de inventario rastreados",
+    "inventoryItems": "Artículos de inventario",
+    "itemsCount": "{count} artículos",
+    "colCategory": "Categoría",
+    "colStock": "Existencias",
+    "colMin": "Mín",
+    "colMax": "Máx",
+    "colUnit": "Unidad",
+    "colCostPerUnit": "Costo/unidad",
+    "colValue": "Valor",
+    "colSupplier": "Proveedor",
+    "colLossPct": "% de pérdida",
+    "colStatus": "Estado",
+    "outOfStock": "Agotado",
+    "lowStock": "Existencias bajas",
+    "inStock": "En existencia",
+    "showingItems": "Mostrando 50 de {count} artículos. Exporta para ver todos los datos.",
+    "totalProducts": "Total de productos",
+    "activeProducts": "Productos activos",
+    "allProductsCombined": "Todos los productos combinados",
+    "avgMargin": "Margen promedio",
+    "averageProfitMargin": "Margen de ganancia promedio",
+    "underperforming": "Bajo rendimiento",
+    "needsReview": "Requiere revisión",
+    "noProducts": "No hay productos rastreados",
+    "productPerformance": "Rendimiento de productos",
+    "productsCount": "{count} productos",
+    "colPrice": "Precio",
+    "colCost": "Costo",
+    "colMargin": "Margen",
+    "colThisMonth": "Este mes",
+    "colLastMonth": "Mes pasado",
+    "colRevenue": "Ingresos",
+    "colTrend": "Tendencia",
+    "colAlert": "Alerta",
+    "showingProducts": "Mostrando 50 de {count} productos. Exporta para ver todos los datos.",
+    "salesReportTitle": "Informe de ventas",
+    "staffHoursReportTitle": "Informe de horas del personal",
+    "inventoryReportTitle": "Informe de inventario",
+    "productPerformanceReportTitle": "Informe de rendimiento de productos"
+  },
+  "customers": {
+    "summary": {
+      "totalCustomers": "Total de clientes",
+      "newThisMonth": "Nuevos este mes",
+      "avgOrderValue": "Valor promedio del pedido",
+      "totalRevenue": "Ingresos totales"
+    },
+    "searchPlaceholder": "Buscar por nombre o correo electrónico...",
+    "filterPlaceholder": "Filtrar",
+    "tagFilter": {
+      "all": "Todas las etiquetas"
+    },
+    "tags": {
+      "vip": "VIP",
+      "regular": "Habitual",
+      "new": "Nuevo",
+      "atRisk": "En riesgo"
+    },
+    "sortPlaceholder": "Ordenar",
+    "sort": {
+      "totalSpent": "Total gastado",
+      "orders": "Pedidos",
+      "lastOrder": "Último pedido"
+    },
+    "emptyFiltered": "Ningún cliente coincide con tus filtros.",
+    "empty": "Aún no hay clientes. Aparecerán aquí una vez que se registren en tu sitio.",
+    "col": {
+      "phone": "Teléfono",
+      "orders": "Pedidos",
+      "totalSpent": "Total gastado",
+      "avgOrder": "Pedido prom.",
+      "lastOrder": "Último pedido",
+      "tags": "Etiquetas",
+      "status": "Estado"
+    },
+    "noName": "Sin nombre",
+    "status": {
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
+    "detail": {
+      "customer": "Cliente",
+      "title": "Detalles del cliente",
+      "srDescription": "Vista de detalle del cliente",
+      "customerInfo": "Información del cliente",
+      "memberSince": "Miembro desde {date}",
+      "orderHistory": "Historial de pedidos",
+      "noOrders": "Aún no hay pedidos."
+    },
+    "orderCol": {
+      "date": "Fecha",
+      "items": "Artículos",
+      "total": "Total"
+    },
+    "export": {
+      "pdfTitle": "Informe de clientes",
+      "pdfSubtitle": "{count} clientes"
+    }
+  },
+  "suppliers": {
+    "export": "Exportar",
+    "addSupplier": "Agregar proveedor",
+    "add": "Agregar",
+    "totalSuppliers": "Total de proveedores",
+    "activePurchaseOrders": "Órdenes de compra activas",
+    "poValueThisMonth": "Valor de OC este mes",
+    "tabSuppliers": "Proveedores",
+    "tabPurchaseOrders": "Órdenes de compra",
+    "searchPlaceholder": "Buscar proveedores...",
+    "emptyNoSuppliers": "Aún no hay proveedores. Agrega tu primer proveedor para comenzar.",
+    "emptyNoMatch": "Ningún proveedor coincide con tu búsqueda.",
+    "poCount": "{count} OC",
+    "lastPo": "Última: {date}",
+    "createPo": "Crear OC",
+    "emptyNoOrders": "Aún no hay órdenes de compra.",
+    "createPurchaseOrder": "Crear orden de compra",
+    "colPoNumber": "N.º de OC",
+    "colSupplier": "Proveedor",
+    "colDate": "Fecha",
+    "colItems": "Artículos",
+    "colTotal": "Total",
+    "colStatus": "Estado",
+    "colActions": "Acciones",
+    "unknownSupplier": "Desconocido",
+    "status": {
+      "draft": "Borrador",
+      "sent": "Enviada",
+      "received": "Recibida",
+      "cancelled": "Cancelada"
+    },
+    "actionSend": "Enviar",
+    "actionReceived": "Recibida",
+    "editSupplier": "Editar proveedor",
+    "editSupplierDesc": "Actualiza la información del proveedor.",
+    "addSupplierDesc": "Añade un nuevo proveedor a tu organización.",
+    "labelName": "Nombre *",
+    "placeholderName": "Nombre del proveedor",
+    "labelContactName": "Nombre de contacto",
+    "labelPhone": "Teléfono",
+    "labelEmail": "Correo electrónico",
+    "labelAddress": "Dirección",
+    "labelPaymentTerms": "Condiciones de pago",
+    "terms": {
+      "net30": "Net 30",
+      "net60": "Net 60",
+      "cod": "Contra entrega",
+      "prepaid": "Prepago"
+    },
+    "labelRating": "Valoración",
+    "labelNotes": "Notas",
+    "placeholderSupplierNotes": "Notas adicionales sobre este proveedor...",
+    "update": "Actualizar",
+    "createPoDesc": "Crea una nueva orden de compra en borrador.",
+    "labelSupplier": "Proveedor *",
+    "selectSupplier": "Seleccionar proveedor",
+    "labelItems": "Artículos",
+    "poColItem": "Artículo",
+    "poColQty": "Cant.",
+    "poColUnit": "Unidad",
+    "poColCost": "Costo",
+    "poColTotal": "Total",
+    "placeholderItemName": "Nombre del artículo",
+    "addRow": "Añadir fila",
+    "subtotal": "Subtotal",
+    "taxPercent": "Impuesto ({percent}%)",
+    "totalLabel": "Total",
+    "placeholderPoNotes": "Notas adicionales...",
+    "createDraft": "Crear borrador",
+    "csvName": "Nombre",
+    "csvContact": "Contacto",
+    "toastNameRequired": "El nombre del proveedor es obligatorio",
+    "toastSaveFailed": "No se pudo guardar el proveedor",
+    "toastDeleteFailed": "No se pudo eliminar el proveedor",
+    "toastSelectSupplier": "Selecciona un proveedor",
+    "toastAddItem": "Añade al menos un artículo",
+    "toastCreatePOFailed": "No se pudo crear la orden de compra",
+    "toastUpdateStatusFailed": "No se pudo actualizar el estado"
+  },
+  "apiSettings": {
+    "toast": {
+      "keyGenerated": "Clave API generada",
+      "keyRevoked": "Clave API revocada",
+      "copied": "Copiado al portapapeles",
+      "urlRequired": "La URL es obligatoria",
+      "selectEvent": "Selecciona al menos un evento",
+      "webhookAdded": "Webhook añadido",
+      "webhookRemoved": "Webhook eliminado"
+    },
+    "pageTitle": "API y webhooks",
+    "pageSubtitle": "Gestiona claves API e integraciones de webhooks",
+    "tabs": {
+      "apiKeys": "Claves API",
+      "webhooks": "Webhooks"
+    },
+    "apiKey": {
+      "title": "Clave API",
+      "description": "Usa esta clave para autenticar solicitudes a la API de Merchiva.",
+      "created": "Creada el {date}",
+      "revoke": "Revocar",
+      "generate": "Generar clave API"
+    },
+    "usage": {
+      "title": "Uso",
+      "description": "Cómo autenticarse con la API de Merchiva",
+      "authentication": "Autenticación",
+      "availableEndpoints": "Endpoints disponibles",
+      "placeholderNotice": "Esta es una implementación de ejemplo. En producción, las claves API se almacenarían en el servidor con un hash adecuado y límites de uso."
+    },
+    "endpoints": {
+      "listProducts": "Listar productos",
+      "listInventory": "Listar artículos de inventario",
+      "listOrders": "Listar pedidos recientes",
+      "createOrder": "Crear pedido",
+      "listStaff": "Listar miembros del personal"
+    },
+    "addWebhook": {
+      "title": "Añadir webhook",
+      "description": "Recibe notificaciones cuando ocurran eventos en tu tienda.",
+      "endpointUrl": "URL del endpoint",
+      "events": "Eventos",
+      "submit": "Añadir webhook"
+    },
+    "configured": {
+      "title": "Webhooks configurados"
+    },
+    "status": {
+      "active": "Activo",
+      "paused": "Pausado"
+    },
+    "webhookActions": {
+      "test": "Probar",
+      "pause": "Pausar",
+      "enable": "Activar"
+    },
+    "samplePayload": {
+      "title": "Carga de ejemplo",
+      "dismiss": "Descartar",
+      "descriptionPrefix": "Esto es lo que se enviaría para un evento ",
+      "descriptionSuffix": "."
+    },
+    "empty": {
+      "title": "No hay webhooks configurados",
+      "description": "Añade un endpoint de webhook arriba para recibir notificaciones en tiempo real sobre los eventos de la tienda."
+    }
+  },
+  "punchIn": {
+    "toastCodeMustBe4Digits": "El código debe tener 4 dígitos",
+    "toastCodeSet": "Código establecido",
+    "toastFailed": "Error",
+    "errorPinNotRecognized": "PIN no reconocido",
+    "toastSelectAnAction": "Selecciona una acción",
+    "stepAuthenticate": "01 · AUTENTICAR",
+    "enterYourPin": "Introduce tu PIN",
+    "punchInOrOutHint": "Ficha entrada o salida introduciendo tu PIN de empleado.",
+    "pinLabel": "PIN",
+    "statusError": "▲ ERROR",
+    "statusReady": "LISTO",
+    "statusEntered": "{count}/4 INTRODUCIDOS",
+    "statusVerifying": "VERIFICANDO…",
+    "keyboardHint": "PULSA LOS DÍGITOS O USA EL TECLADO",
+    "clear": "Borrar",
+    "employee": "EMPLEADO",
+    "action": "ACCIÓN",
+    "selectAnAction": "SELECCIONA UNA ACCIÓN",
+    "optionEndShiftTitle": "Finalizar turno",
+    "optionEndShiftSub": "Fichar salida",
+    "optionStartBreakTitle": "Iniciar descanso",
+    "optionStartBreakSub": "Comida / descanso",
+    "fieldTime": "HORA",
+    "fieldDate": "FECHA",
+    "fieldState": "ESTADO",
+    "stateOff": "FUERA",
+    "stateBreak": "DESCANSO",
+    "stateOn": "ACTIVO",
+    "confirm": "Confirmar",
+    "punchRecorded": "FICHAJE REGISTRADO",
+    "successWelcome": "Bienvenido, {name}.",
+    "successGoodbye": "Adiós, {name}.",
+    "successBreakStarted": "Descanso iniciado.",
+    "successWelcomeBack": "Bienvenido de nuevo, {name}.",
+    "successInSub": "Tu turno está ahora abierto.",
+    "successOutSub": "Tu turno se ha cerrado.",
+    "successBreakStartSub": "Reloj en pausa — finaliza tu descanso cuando estés listo.",
+    "successBreakEndSub": "Descanso finalizado — el turno está activo de nuevo.",
+    "fieldInAt": "ENTRADA A LAS",
+    "fieldOutAt": "SALIDA A LAS",
+    "fieldBreakAt": "DESCANSO A LAS",
+    "fieldResumed": "REANUDADO",
+    "fieldTerminal": "TERMINAL",
+    "fieldLocation": "UBICACIÓN",
+    "fieldConfId": "ID CONF.",
+    "tapToDismiss": "TOCA PARA DESCARTAR · REINICIO AUTOMÁTICO EN 5S",
+    "onShift": "EN TURNO",
+    "noActiveShifts": "Sin turnos activos.",
+    "recentPunches": "FICHAJES RECIENTES",
+    "live": "EN VIVO",
+    "noPunchesToday": "Sin fichajes hoy",
+    "stepOnShiftNow": "02 · EN TURNO AHORA",
+    "activeCount": "activos",
+    "onBreak": "en descanso",
+    "active": "activo",
+    "stepRecentPunches": "03 · FICHAJES RECIENTES",
+    "today": "Hoy",
+    "colTime": "Hora",
+    "colWho": "Quién",
+    "colAction": "Acción",
+    "colDuration": "Duración",
+    "durOnBreak": "en descanso",
+    "durOpen": "abierto",
+    "dialogMobileTitle": "Código de fichaje",
+    "dialogChangeTitle": "Cambia tu código de fichaje",
+    "dialogSetTitle": "Establece tu código de fichaje",
+    "dialogChangeDesc": "Actualiza el código de 4 dígitos que introduces en esta tienda.",
+    "dialogSetDesc": "Elige un código de 4 dígitos que recuerdes. Lo introducirás cada vez que fiches.",
+    "newCodeLabel": "Nuevo código",
+    "codePlaceholder": "4 dígitos",
+    "saveCode": "Guardar código"
+  },
+  "billing": {
+    "title": "Facturación",
+    "subtitle": "Gestiona tu suscripción de Merchiva",
+    "ownerOnly": "Solo el propietario de la organización puede gestionar la facturación.",
+    "currentPlan": "Plan actual",
+    "yearly": "Anual",
+    "monthly": "Mensual",
+    "nextRenewal": "Próxima renovación: {date}",
+    "freePlan": "Gratis",
+    "upgradePrompt": "Actualiza a Pro para desbloquear todas las funciones.",
+    "manageSubscription": "Gestionar suscripción",
+    "manageSubscriptionDesc": "Cambia de plan, método de pago, facturas y cancelación.",
+    "openPortal": "Abrir portal",
+    "upgradeToPro": "Actualizar a Pro",
+    "perMonth": "/ mes",
+    "perYear": "/ año",
+    "yearlySaveHint": "Ahorra 17 % — 2 meses gratis",
+    "recommended": "Recomendado",
+    "featureAllFeatures": "Todas las funciones actuales incluidas",
+    "featureUnlimitedTeam": "Miembros del equipo ilimitados",
+    "featurePrioritySupport": "Soporte prioritario",
+    "toastSubscriptionActivated": "Suscripción activada",
+    "toastCheckoutCanceled": "Pago cancelado",
+    "toastCheckoutFailed": "Falló el pago",
+    "toastPortalOpenFailed": "No se pudo abrir el portal",
+    "toastPortalError": "Error del portal"
+  },
+  "reviews": {
+    "pageTitle": "Reseñas y reputación",
+    "pageSubtitle": "Supervisa y gestiona tus reseñas en línea",
+    "googleIntegrationTitle": "Integración con Google Reseñas",
+    "plannedBadge": "Planificado",
+    "googleIntegrationDesc": "Supervisa y responde a las reseñas de Google desde un solo lugar. Conecta tu Perfil de Empresa de Google para comenzar.",
+    "placesIdLabel": "Google Places ID",
+    "connectButton": "Conectar",
+    "findPlacesIdAt": "Encuentra tu Places ID en",
+    "recentReviewsTitle": "Reseñas recientes",
+    "recentReviewsDesc": "A continuación se muestran datos de ejemplo. Conecta Google Reseñas para ver reseñas reales.",
+    "ratingTrendTitle": "Tendencia de calificación",
+    "basedOnReviews": "según {count} reseñas",
+    "ratingTrendUnavailable": "Esta función estará disponible cuando se conecte la API de Google Reseñas. Los datos de calificación incluirán tendencias históricas y comparación con la competencia."
+  },
+  "setup": {
+    "steps": {
+      "storeInfo": "Datos de la tienda",
+      "hours": "Horario",
+      "team": "Equipo",
+      "pos": "POS"
+    },
+    "skip": "Omitir",
+    "settingUp": "Configurando tu espacio de trabajo...",
+    "footer": {
+      "step": "Paso {current} / {total}",
+      "yourStore": "Tu tienda"
+    },
+    "toast": {
+      "complete": "¡Configuración completa!",
+      "error": "Algo salió mal, pero tu espacio de trabajo está listo."
+    },
+    "storeInfo": {
+      "title": "Cuéntanos sobre tu tienda.",
+      "subtitle": "Usaremos esto para personalizar tu panel y configurar tu espacio de trabajo.",
+      "storeNameLabel": "Nombre de la tienda",
+      "storeNamePlaceholder": "p. ej. Maple Coffee",
+      "addressLabel": "Dirección",
+      "addressPlaceholder": "p. ej. Calle Principal 123, Oakland CA",
+      "businessTypeLabel": "Tipo de negocio",
+      "types": {
+        "cafe": "Cafetería / Panadería",
+        "restaurant": "Restaurante",
+        "retail": "Tienda minorista",
+        "service": "Servicio / Reparación",
+        "other": "Otro"
+      }
+    },
+    "hours": {
+      "title": "¿Cuándo abres?",
+      "subtitle": "Esto ayuda a Mr. Merchiva a programar al personal y predecir la demanda.",
+      "openLabel": "Apertura",
+      "closeLabel": "Cierre",
+      "openDaysLabel": "Días de apertura",
+      "days": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mié",
+        "thu": "Jue",
+        "fri": "Vie",
+        "sat": "Sáb",
+        "sun": "Dom"
+      }
+    },
+    "team": {
+      "title": "Invita a tu equipo.",
+      "subtitle": "Agrega personal para que puedan fichar, ver horarios y usar el POS.",
+      "roleManager": "Gerente",
+      "roleStaff": "Personal",
+      "addAnother": "Agregar otro",
+      "sendInvite": "Enviar {count} invitación",
+      "sendInvites": "Enviar {count} invitaciones"
+    },
+    "pos": {
+      "title": "Conecta tu POS.",
+      "subtitle": "Merchiva sincroniza ventas, productos e inventario desde tu POS.",
+      "connectOAuth": "Conectar con OAuth",
+      "noPos": "Aún sin POS",
+      "setupLater": "Configurar manualmente más tarde",
+      "finishSetup": "Finalizar configuración"
+    }
+  },
+  "salesForecast": {
+    "dataExcellent": "Datos excelentes",
+    "dataGood": "Datos buenos",
+    "dataFair": "Datos aceptables",
+    "dataLimited": "Datos limitados",
+    "loadingData": "Cargando datos de predicción...",
+    "notEnoughData": "No hay datos suficientes para la predicción",
+    "notEnoughDataDesc": "Se necesitan al menos 7 días de datos de ventas para las predicciones. Actualmente se registran {count} días.",
+    "title": "Predicción de 7 días",
+    "noLocation": "Sin ubicación — clima no disponible",
+    "weatherUnavailable": "Datos del clima no disponibles",
+    "confidence": "{percent} % de confianza",
+    "today": "Hoy",
+    "factorBase": "Base:",
+    "factorWeather": "Clima:",
+    "factorHoliday": "Festivo:",
+    "factorTraffic": "Tráfico:",
+    "factorStaff": "Personal:",
+    "factorTrend": "Tendencia:",
+    "hourlyBreakdown": "Desglose por hora",
+    "predictedRevenuePerHour": "Ingresos previstos por hora",
+    "total": "Total",
+    "predicted": "Previsto",
+    "bestDay": "Mejor día",
+    "at": "a las",
+    "boostedBy": "Impulsado por {holiday}",
+    "highFootTraffic": "Alto flujo de clientes previsto",
+    "strongBaseline": "Fuerte base de {day}",
+    "weatherImpact": "Impacto del clima",
+    "enableLocation": "Habilita el acceso a la ubicación para ver predicciones basadas en el clima",
+    "maySee": "podría ver",
+    "dueToWeather": "debido al clima {weather}",
+    "favorableWeather": "Se prevé clima favorable toda la semana",
+    "daysClear": "{count}/7 días despejados",
+    "weatherPending": "Datos del clima pendientes",
+    "staffingAdvisory": "Aviso de personal",
+    "daysCount": "{count} día",
+    "daysCountPlural": "{count} días",
+    "mayBeUnderstaffed": "podría tener falta de personal",
+    "considerAddingShifts": "{days} — considera agregar turnos",
+    "noShiftData": "No hay datos de turnos disponibles. Programa turnos para habilitar las recomendaciones de personal.",
+    "staffingAdequate": "El personal parece adecuado durante los 7 días (promedio {avg} por día)"
+  },
+  "subscribe": {
+    "toastActivated": "Suscripción activada",
+    "toastCanceled": "Pago cancelado",
+    "toastCheckoutFailed": "Error en el pago",
+    "trialDaysLeftOne": "Queda 1 día de tu prueba gratuita",
+    "trialDaysLeftOther": "Quedan {count} días de tu prueba gratuita",
+    "trialEnded": "Tu prueba gratuita ha finalizado",
+    "titleTrial": "Estás en una prueba gratuita",
+    "titleSubscribe": "Suscríbete a Merchiva",
+    "trialDescription": "{trialLine}. Suscríbete ahora para mantener tu tienda funcionando sin interrupciones.",
+    "ownerDescription": "Se requiere una suscripción activa para seguir usando Merchiva.",
+    "memberDescription": "Tu organización necesita una suscripción activa para continuar.",
+    "monthly": "Mensual",
+    "perMonth": "/ mes",
+    "yearly": "Anual",
+    "perYear": "/ año",
+    "yearlyHint": "Ahorra 17 % — 2 meses gratis",
+    "featureAllFeatures": "Todas las funciones incluidas",
+    "featureUnlimitedMembers": "Miembros del equipo ilimitados",
+    "featurePrioritySupport": "Soporte prioritario",
+    "memberOwnerOnly": "Solo el propietario de la organización puede suscribirse. Pide al propietario de {org} que active una suscripción y luego actualiza la página.",
+    "yourOrganization": "tu organización",
+    "continueInTrial": "Continuar en la prueba",
+    "recommended": "Recomendado"
+  },
+  "bugReport": {
+    "title": "Reportar un error",
+    "drawerDescription": "Describe el problema que encontraste y, si quieres, adjunta una captura de pantalla.",
+    "whatWentWrong": "¿Qué salió mal?",
+    "titlePlaceholder": "Breve descripción del problema",
+    "detailsLabel": "Detalles (opcional)",
+    "detailsPlaceholder": "Pasos para reproducirlo, comportamiento esperado...",
+    "screenshotLabel": "Captura de pantalla",
+    "screenshotAlt": "Captura del error",
+    "captureScreenshot": "Capturar pantalla",
+    "submit": "Enviar reporte",
+    "screenshotCaptured": "Captura de pantalla tomada",
+    "screenshotFailed": "No se pudo capturar la pantalla",
+    "titleRequired": "Por favor, añade un título",
+    "saved": "Reporte de error guardado"
+  },
+  "myTasks": {
+    "title": "Tareas de hoy",
+    "doneCount": "{done} / {total} completadas",
+    "all": "Todas",
+    "allCompleted": "Todas las tareas completadas hoy.",
+    "evidenceBadge": "evidencia",
+    "done": "Hecho",
+    "moreCount": "+ {count} más",
+    "evidenceRequiredError": "Esta tarea requiere una foto o un video como evidencia",
+    "chatHeader": "✅ Tarea completada: {title}",
+    "chatAttachments": "📎 {count} adjunto(s)",
+    "partialChatFailure": "Tarea completada, pero {count} mensaje(s) de chat fallaron",
+    "completedSuccess": "Tarea completada",
+    "completeError": "No se pudo completar",
+    "evidenceLabel": "Fotos / videos de evidencia",
+    "evidenceAlt": "Evidencia",
+    "remove": "Quitar",
+    "uploadError": "Error al subir",
+    "uploading": "Subiendo…",
+    "noteLabel": "Nota",
+    "optional": "(opcional)",
+    "notePlaceholder": "¿Algo que señalar al gerente?",
+    "markDone": "Marcar como hecho"
+  },
+  "itemForecast": {
+    "title": "Pronóstico de IA por artículo",
+    "retrain": "Reentrenar",
+    "refresh": "Actualizar",
+    "loadingPredictions": "Cargando predicciones...",
+    "today": "Hoy",
+    "itemsTotal": "artículos en total",
+    "topItems": "Artículos principales: {day}",
+    "predictedUnits": "Unidades previstas a vender",
+    "totalItems": "Total: {count} artículos",
+    "predicted": "Previsto",
+    "unitsValue": "{count} unidades",
+    "allItems": "Todos los artículos: {day}",
+    "showLess": "Mostrar menos",
+    "showAllItems": "Mostrar los {count} artículos",
+    "modelNotTrained": "El modelo de IA aún no está entrenado",
+    "recordsReady": "Tienes {count} registros de artículo-día. Entrena el modelo de IA para obtener predicciones por artículo.",
+    "recordsNeeded": "Se necesitan al menos 100 registros de artículo-día del historial de pagos. Actualmente tienes {count}.",
+    "training": "Entrenando...",
+    "trainModel": "Entrenar modelo de IA",
+    "modelTrainedSummary": "Modelo entrenado: {items} artículos, {days} días, R²={r2}",
+    "lastTrainedSummary": "Último entrenamiento: {items} artículos en {days} días — MAE: {mae}, R²: {r2}",
+    "trainingFailed": "Error en el entrenamiento",
+    "predictionFailed": "Error en la predicción"
+  },
+  "scheduler": {
+    "auto": {
+      "button": "Programación automática",
+      "title": "Programación automática",
+      "description": "Genera asignaciones de turnos optimizadas según la disponibilidad, las restricciones y la equidad.",
+      "startDate": "Fecha de inicio",
+      "endDate": "Fecha de fin",
+      "maxHoursPerWeek": "Máx. h/semana",
+      "maxConsecutiveDays": "Máx. días consec.",
+      "minRestHours": "Descanso mín. (h)",
+      "generate": "Generar programación",
+      "statShifts": "Turnos",
+      "statTotalHours": "Horas totales",
+      "statAvgPerStaff": "Prom./empleado",
+      "statFairness": "Equidad",
+      "unfilledSlots": "Espacios sin cubrir ({count})",
+      "moreUnfilled": "+{count} más sin cubrir",
+      "schedulePreview": "Vista previa de la programación",
+      "selectAll": "Seleccionar todo",
+      "deselectAll": "Deseleccionar todo",
+      "colDate": "Fecha",
+      "colShift": "Turno",
+      "colTime": "Hora",
+      "colStaff": "Personal",
+      "colRoles": "Funciones",
+      "colScore": "Puntuación",
+      "colStatus": "Estado",
+      "statusOk": "OK",
+      "regenerate": "Regenerar",
+      "applySelected": "Aplicar seleccionados ({count})",
+      "noShiftsGenerated": "No se pudieron generar turnos. Revisa la disponibilidad de tu equipo y los presets de turnos.",
+      "generateFailed": "No se pudo generar la programación.",
+      "noShiftsSelected": "No hay turnos seleccionados para aplicar.",
+      "shiftsAdded": "{count} turno(s) añadido(s) a la programación.",
+      "applyFailed": "No se pudieron aplicar algunos turnos. Inténtalo de nuevo."
     }
   }
 }

@@ -130,7 +130,7 @@ export default function ApiSettingsPage() {
     if (organizationId) {
       localStorage.setItem(`api_key_${organizationId}`, JSON.stringify(data));
     }
-    toast.success("API key generated");
+    toast.success(t("apiSettings.toast.keyGenerated"));
   };
 
   const handleRevokeKey = () => {
@@ -139,24 +139,24 @@ export default function ApiSettingsPage() {
     if (organizationId) {
       localStorage.removeItem(`api_key_${organizationId}`);
     }
-    toast.success("API key revoked");
+    toast.success(t("apiSettings.toast.keyRevoked"));
   };
 
   const handleCopyKey = async () => {
     if (!apiKey) return;
     await navigator.clipboard.writeText(apiKey.key);
     setCopied(true);
-    toast.success("Copied to clipboard");
+    toast.success(t("apiSettings.toast.copied"));
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleAddWebhook = () => {
     if (!newUrl.trim()) {
-      toast.error("URL is required");
+      toast.error(t("apiSettings.toast.urlRequired"));
       return;
     }
     if (newEvents.length === 0) {
-      toast.error("Select at least one event");
+      toast.error(t("apiSettings.toast.selectEvent"));
       return;
     }
     const wh: WebhookConfig = {
@@ -169,12 +169,12 @@ export default function ApiSettingsPage() {
     saveWebhooks([...webhooks, wh]);
     setNewUrl("");
     setNewEvents([]);
-    toast.success("Webhook added");
+    toast.success(t("apiSettings.toast.webhookAdded"));
   };
 
   const handleDeleteWebhook = (id: string) => {
     saveWebhooks(webhooks.filter((w) => w.id !== id));
-    toast.success("Webhook removed");
+    toast.success(t("apiSettings.toast.webhookRemoved"));
   };
 
   const handleToggleWebhook = (id: string) => {
@@ -195,18 +195,18 @@ export default function ApiSettingsPage() {
   return (
     <PermissionGuard section="settings">
       <div className="">
-        <PageHeader title="API & Webhooks" subtitle="Manage API keys and webhook integrations" />
+        <PageHeader title={t("apiSettings.pageTitle")} subtitle={t("apiSettings.pageSubtitle")} />
 
         <div className="px-4 sm:px-6 pb-6">
           <Tabs defaultValue="keys" className="space-y-4">
             <TabsList>
               <TabsTrigger value="keys" className="gap-1.5">
                 <Key className="h-3.5 w-3.5" />
-                API Keys
+                {t("apiSettings.tabs.apiKeys")}
               </TabsTrigger>
               <TabsTrigger value="webhooks" className="gap-1.5">
                 <Webhook className="h-3.5 w-3.5" />
-                Webhooks
+                {t("apiSettings.tabs.webhooks")}
               </TabsTrigger>
             </TabsList>
 
@@ -214,9 +214,9 @@ export default function ApiSettingsPage() {
             <TabsContent value="keys" className="space-y-4">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">API Key</CardTitle>
+                  <CardTitle className="text-base">{t("apiSettings.apiKey.title")}</CardTitle>
                   <CardDescription>
-                    Use this key to authenticate requests to the Merchiva API.
+                    {t("apiSettings.apiKey.description")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -245,18 +245,18 @@ export default function ApiSettingsPage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">
-                          Created {new Date(apiKey.createdAt).toLocaleDateString()}
+                          {t("apiSettings.apiKey.created").replace("{date}", new Date(apiKey.createdAt).toLocaleDateString())}
                         </p>
                         <Button variant="outline" size="sm" className="text-destructive hover:text-destructive gap-1.5" onClick={handleRevokeKey}>
                           <Trash2 className="h-3.5 w-3.5" />
-                          Revoke
+                          {t("apiSettings.apiKey.revoke")}
                         </Button>
                       </div>
                     </div>
                   ) : (
                     <Button onClick={handleGenerateKey} className="gap-1.5">
                       <Plus className="h-4 w-4" />
-                      Generate API Key
+                      {t("apiSettings.apiKey.generate")}
                     </Button>
                   )}
                 </CardContent>
@@ -265,12 +265,12 @@ export default function ApiSettingsPage() {
               {/* Usage docs */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Usage</CardTitle>
-                  <CardDescription>How to authenticate with the Merchiva API</CardDescription>
+                  <CardTitle className="text-base">{t("apiSettings.usage.title")}</CardTitle>
+                  <CardDescription>{t("apiSettings.usage.description")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Authentication</p>
+                    <p className="text-sm font-medium">{t("apiSettings.usage.authentication")}</p>
                     <div className="bg-muted rounded-[0.3rem] p-3 border border-border">
                       <code className="text-xs font-mono text-foreground whitespace-pre">
                         {`Authorization: Bearer sk_live_****`}
@@ -278,14 +278,14 @@ export default function ApiSettingsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Available Endpoints</p>
+                    <p className="text-sm font-medium">{t("apiSettings.usage.availableEndpoints")}</p>
                     <div className="space-y-1">
                       {[
-                        { method: "GET", path: "/api/v1/products", desc: "List products" },
-                        { method: "GET", path: "/api/v1/inventory", desc: "List inventory items" },
-                        { method: "GET", path: "/api/v1/orders", desc: "List recent orders" },
-                        { method: "POST", path: "/api/v1/orders", desc: "Create order" },
-                        { method: "GET", path: "/api/v1/staff", desc: "List staff members" },
+                        { method: "GET", path: "/api/v1/products", desc: t("apiSettings.endpoints.listProducts") },
+                        { method: "GET", path: "/api/v1/inventory", desc: t("apiSettings.endpoints.listInventory") },
+                        { method: "GET", path: "/api/v1/orders", desc: t("apiSettings.endpoints.listOrders") },
+                        { method: "POST", path: "/api/v1/orders", desc: t("apiSettings.endpoints.createOrder") },
+                        { method: "GET", path: "/api/v1/staff", desc: t("apiSettings.endpoints.listStaff") },
                       ].map((ep) => (
                         <div key={ep.path + ep.method} className="flex items-center gap-2 text-sm">
                           <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0 w-12 justify-center shrink-0">
@@ -300,7 +300,7 @@ export default function ApiSettingsPage() {
                   <div className="flex items-start gap-2 p-2.5 rounded-[0.3rem] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
                     <ShieldCheck className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-800 dark:text-amber-200">
-                      This is a placeholder implementation. In production, API keys would be stored server-side with proper hashing and rate limiting.
+                      {t("apiSettings.usage.placeholderNotice")}
                     </p>
                   </div>
                 </CardContent>
@@ -312,14 +312,14 @@ export default function ApiSettingsPage() {
               {/* Add webhook */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Add Webhook</CardTitle>
+                  <CardTitle className="text-base">{t("apiSettings.addWebhook.title")}</CardTitle>
                   <CardDescription>
-                    Receive notifications when events occur in your store.
+                    {t("apiSettings.addWebhook.description")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label>Endpoint URL</Label>
+                    <Label>{t("apiSettings.addWebhook.endpointUrl")}</Label>
                     <Input
                       value={newUrl}
                       onChange={(e) => setNewUrl(e.target.value)}
@@ -327,7 +327,7 @@ export default function ApiSettingsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Events</Label>
+                    <Label>{t("apiSettings.addWebhook.events")}</Label>
                     <div className="flex flex-wrap gap-2">
                       {WEBHOOK_EVENTS.map((event) => (
                         <button
@@ -347,7 +347,7 @@ export default function ApiSettingsPage() {
                   </div>
                   <Button onClick={handleAddWebhook} size="sm" className="gap-1.5">
                     <Plus className="h-3.5 w-3.5" />
-                    Add Webhook
+                    {t("apiSettings.addWebhook.submit")}
                   </Button>
                 </CardContent>
               </Card>
@@ -356,7 +356,7 @@ export default function ApiSettingsPage() {
               {webhooks.length > 0 && (
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Configured Webhooks</CardTitle>
+                    <CardTitle className="text-base">{t("apiSettings.configured.title")}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {webhooks.map((wh) => (
@@ -368,7 +368,7 @@ export default function ApiSettingsPage() {
                           <Globe className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-sm font-mono truncate flex-1">{wh.url}</span>
                           <Badge variant={wh.active ? "default" : "outline"} className="text-[10px] shrink-0">
-                            {wh.active ? "Active" : "Paused"}
+                            {wh.active ? t("apiSettings.status.active") : t("apiSettings.status.paused")}
                           </Badge>
                         </div>
                         <div className="flex flex-wrap gap-1">
@@ -386,7 +386,7 @@ export default function ApiSettingsPage() {
                             onClick={() => handleTestWebhook(wh)}
                           >
                             <TestTube className="h-3 w-3" />
-                            Test
+                            {t("apiSettings.webhookActions.test")}
                           </Button>
                           <Button
                             variant="outline"
@@ -394,7 +394,7 @@ export default function ApiSettingsPage() {
                             className="h-7 text-xs"
                             onClick={() => handleToggleWebhook(wh.id)}
                           >
-                            {wh.active ? "Pause" : "Enable"}
+                            {wh.active ? t("apiSettings.webhookActions.pause") : t("apiSettings.webhookActions.enable")}
                           </Button>
                           <Button
                             variant="outline"
@@ -403,7 +403,7 @@ export default function ApiSettingsPage() {
                             onClick={() => handleDeleteWebhook(wh.id)}
                           >
                             <Trash2 className="h-3 w-3" />
-                            Delete
+                            {t("common.delete")}
                           </Button>
                         </div>
                       </div>
@@ -417,13 +417,13 @@ export default function ApiSettingsPage() {
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">Sample Payload</CardTitle>
+                      <CardTitle className="text-base">{t("apiSettings.samplePayload.title")}</CardTitle>
                       <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setTestPayload(null)}>
-                        Dismiss
+                        {t("apiSettings.samplePayload.dismiss")}
                       </Button>
                     </div>
                     <CardDescription>
-                      This is what would be sent for a <code className="font-mono text-xs">{testPayload.event}</code> event.
+                      {t("apiSettings.samplePayload.descriptionPrefix")}<code className="font-mono text-xs">{testPayload.event}</code>{t("apiSettings.samplePayload.descriptionSuffix")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -438,9 +438,9 @@ export default function ApiSettingsPage() {
                 <Card className="border-dashed">
                   <CardContent className="py-12 text-center space-y-2">
                     <Webhook className="h-8 w-8 mx-auto text-muted-foreground opacity-40" />
-                    <p className="text-sm font-medium">No webhooks configured</p>
+                    <p className="text-sm font-medium">{t("apiSettings.empty.title")}</p>
                     <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                      Add a webhook endpoint above to receive real-time notifications about store events.
+                      {t("apiSettings.empty.description")}
                     </p>
                   </CardContent>
                 </Card>

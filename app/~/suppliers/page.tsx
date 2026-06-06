@@ -235,13 +235,6 @@ async function updatePurchaseOrderStatus(id: string, status: POStatus): Promise<
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const PAYMENT_TERMS_LABELS: Record<PaymentTerms, string> = {
-  net30: "Net 30",
-  net60: "Net 60",
-  cod: "COD",
-  prepaid: "Prepaid",
-};
-
 const PO_STATUS_COLORS: Record<POStatus, string> = {
   draft: "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700",
   sent: "bg-blue-50 text-blue-700 border-blue-300",
@@ -409,7 +402,7 @@ export default function SuppliersPage() {
 
   const handleSaveSupplier = async () => {
     if (!supplierForm.name?.trim()) {
-      toast.error("Supplier name is required");
+      toast.error(t("suppliers.toastNameRequired"));
       return;
     }
     setSaving(true);
@@ -431,7 +424,7 @@ export default function SuppliersPage() {
       setSupplierDialogOpen(false);
     } catch (err) {
       console.error("Failed to save supplier:", err);
-      toast.error("Failed to save supplier");
+      toast.error(t("suppliers.toastSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -442,7 +435,7 @@ export default function SuppliersPage() {
       await deleteSupplier(id);
     } catch (err) {
       console.error("Failed to delete supplier:", err);
-      toast.error("Failed to delete supplier");
+      toast.error(t("suppliers.toastDeleteFailed"));
     }
   };
 
@@ -500,11 +493,11 @@ export default function SuppliersPage() {
 
   const handleCreatePO = async () => {
     if (!poForm.supplierId) {
-      toast.error("Please select a supplier");
+      toast.error(t("suppliers.toastSelectSupplier"));
       return;
     }
     if (poForm.items.length === 0 || !poForm.items[0].name) {
-      toast.error("Please add at least one item");
+      toast.error(t("suppliers.toastAddItem"));
       return;
     }
     setSaving(true);
@@ -521,7 +514,7 @@ export default function SuppliersPage() {
       setPoDialogOpen(false);
     } catch (err) {
       console.error("Failed to create PO:", err);
-      toast.error("Failed to create purchase order");
+      toast.error(t("suppliers.toastCreatePOFailed"));
     } finally {
       setSaving(false);
     }
@@ -532,20 +525,27 @@ export default function SuppliersPage() {
       await updatePurchaseOrderStatus(orderId, status);
     } catch (err) {
       console.error("Failed to update PO status:", err);
-      toast.error("Failed to update status");
+      toast.error(t("suppliers.toastUpdateStatusFailed"));
     }
   };
 
   // ─── Export ─────────────────────────────────────────────────────────────────
 
   const handleExportSuppliers = () => {
-    const headers = ["Name", "Contact", "Email", "Phone", "Payment Terms", "Rating"];
+    const headers = [
+      t("suppliers.csvName"),
+      t("suppliers.csvContact"),
+      t("suppliers.labelEmail"),
+      t("suppliers.labelPhone"),
+      t("suppliers.labelPaymentTerms"),
+      t("suppliers.labelRating"),
+    ];
     const rows = suppliers.map((s) => [
       s.name,
       s.contactName,
       s.email,
       s.phone,
-      PAYMENT_TERMS_LABELS[s.paymentTerms],
+      t(`suppliers.terms.${s.paymentTerms}`),
       String(s.rating),
     ]);
     downloadCSV("suppliers", headers, rows);
@@ -582,13 +582,13 @@ export default function SuppliersPage() {
                 className="gap-1.5 hidden sm:flex"
               >
                 <Download className="h-3.5 w-3.5" />
-                Export
+                {t("suppliers.export")}
               </Button>
               {canEdit && (
                 <Button onClick={openAddSupplier} className="gap-2">
                   <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Add Supplier</span>
-                  <span className="sm:hidden">Add</span>
+                  <span className="hidden sm:inline">{t("suppliers.addSupplier")}</span>
+                  <span className="sm:hidden">{t("suppliers.add")}</span>
                 </Button>
               )}
             </div>
@@ -604,17 +604,17 @@ export default function SuppliersPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 px-4 sm:px-6">
           <SummaryCard
             icon={Truck}
-            label="Total Suppliers"
+            label={t("suppliers.totalSuppliers")}
             value={String(totalSuppliers)}
           />
           <SummaryCard
             icon={ShoppingCart}
-            label="Active Purchase Orders"
+            label={t("suppliers.activePurchaseOrders")}
             value={String(activeOrders)}
           />
           <SummaryCard
             icon={FileText}
-            label="PO Value This Month"
+            label={t("suppliers.poValueThisMonth")}
             value={format(thisMonthTotal)}
           />
         </div>
@@ -624,10 +624,10 @@ export default function SuppliersPage() {
           <Tabs defaultValue="suppliers">
             <TabsList>
               <TabsTrigger value="suppliers" className="gap-2">
-                <Truck className="h-3.5 w-3.5" /> Suppliers
+                <Truck className="h-3.5 w-3.5" /> {t("suppliers.tabSuppliers")}
               </TabsTrigger>
               <TabsTrigger value="orders" className="gap-2">
-                <FileText className="h-3.5 w-3.5" /> Purchase Orders
+                <FileText className="h-3.5 w-3.5" /> {t("suppliers.tabPurchaseOrders")}
               </TabsTrigger>
             </TabsList>
 
@@ -637,7 +637,7 @@ export default function SuppliersPage() {
               <div className="relative max-w-sm">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search suppliers..."
+                  placeholder={t("suppliers.searchPlaceholder")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-8 h-8 text-sm"
@@ -650,8 +650,8 @@ export default function SuppliersPage() {
                   <Truck className="h-10 w-10 text-muted-foreground mb-3" />
                   <p className="text-sm text-muted-foreground">
                     {suppliers.length === 0
-                      ? "No suppliers yet. Add your first supplier to get started."
-                      : "No suppliers match your search."}
+                      ? t("suppliers.emptyNoSuppliers")
+                      : t("suppliers.emptyNoMatch")}
                   </p>
                   {suppliers.length === 0 && canEdit && (
                     <Button
@@ -659,7 +659,7 @@ export default function SuppliersPage() {
                       variant="outline"
                       className="mt-4 gap-2"
                     >
-                      <Plus className="h-4 w-4" /> Add Supplier
+                      <Plus className="h-4 w-4" /> {t("suppliers.addSupplier")}
                     </Button>
                   )}
                 </div>
@@ -687,7 +687,7 @@ export default function SuppliersPage() {
                                 variant="outline"
                                 className="text-[10px] rounded-[0.3rem] font-mono"
                               >
-                                {PAYMENT_TERMS_LABELS[supplier.paymentTerms]}
+                                {t(`suppliers.terms.${supplier.paymentTerms}`)}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
@@ -707,11 +707,11 @@ export default function SuppliersPage() {
                                 }
                               />
                               <span className="text-[11px] text-muted-foreground font-mono">
-                                {poCount} POs
+                                {t("suppliers.poCount").replace("{count}", String(poCount))}
                               </span>
                               {lastPO && (
                                 <span className="text-[11px] text-muted-foreground">
-                                  Last: {parseDate(lastPO)}
+                                  {t("suppliers.lastPo").replace("{date}", parseDate(lastPO))}
                                 </span>
                               )}
                             </div>
@@ -727,7 +727,7 @@ export default function SuppliersPage() {
                                 className="gap-1.5 text-xs h-7"
                               >
                                 <ShoppingCart className="h-3 w-3" />
-                                Create PO
+                                {t("suppliers.createPo")}
                               </Button>
                               <Button
                                 variant="ghost"
@@ -762,7 +762,7 @@ export default function SuppliersPage() {
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <FileText className="h-10 w-10 text-muted-foreground mb-3" />
                   <p className="text-sm text-muted-foreground">
-                    No purchase orders yet.
+                    {t("suppliers.emptyNoOrders")}
                   </p>
                   {canEdit && (
                     <Button
@@ -770,7 +770,7 @@ export default function SuppliersPage() {
                       variant="outline"
                       className="mt-4 gap-2"
                     >
-                      <Plus className="h-4 w-4" /> Create Purchase Order
+                      <Plus className="h-4 w-4" /> {t("suppliers.createPurchaseOrder")}
                     </Button>
                   )}
                 </div>
@@ -781,14 +781,14 @@ export default function SuppliersPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">PO #</TableHead>
-                        <TableHead className="text-xs">Supplier</TableHead>
-                        <TableHead className="text-xs">Date</TableHead>
-                        <TableHead className="text-xs text-right">Items</TableHead>
-                        <TableHead className="text-xs text-right">Total</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
+                        <TableHead className="text-xs">{t("suppliers.colPoNumber")}</TableHead>
+                        <TableHead className="text-xs">{t("suppliers.colSupplier")}</TableHead>
+                        <TableHead className="text-xs">{t("suppliers.colDate")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("suppliers.colItems")}</TableHead>
+                        <TableHead className="text-xs text-right">{t("suppliers.colTotal")}</TableHead>
+                        <TableHead className="text-xs">{t("suppliers.colStatus")}</TableHead>
                         {canEdit && (
-                          <TableHead className="text-xs text-right">Actions</TableHead>
+                          <TableHead className="text-xs text-right">{t("suppliers.colActions")}</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
@@ -811,7 +811,7 @@ export default function SuppliersPage() {
                                 {order.id.slice(0, 8).toUpperCase()}
                               </TableCell>
                               <TableCell className="text-xs">
-                                {supplier?.name ?? "Unknown"}
+                                {supplier?.name ?? t("suppliers.unknownSupplier")}
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground">
                                 {parseDate(order.createdAt)}
@@ -830,7 +830,7 @@ export default function SuppliersPage() {
                                     PO_STATUS_COLORS[order.status]
                                   )}
                                 >
-                                  {order.status}
+                                  {t(`suppliers.status.${order.status}`)}
                                 </Badge>
                               </TableCell>
                               {canEdit && (
@@ -845,7 +845,7 @@ export default function SuppliersPage() {
                                         }
                                         className="h-6 px-2 text-[11px] gap-1"
                                       >
-                                        <Send className="h-3 w-3" /> Send
+                                        <Send className="h-3 w-3" /> {t("suppliers.actionSend")}
                                       </Button>
                                     )}
                                     {order.status === "sent" && (
@@ -857,7 +857,7 @@ export default function SuppliersPage() {
                                         }
                                         className="h-6 px-2 text-[11px] gap-1"
                                       >
-                                        <CheckCircle2 className="h-3 w-3" /> Received
+                                        <CheckCircle2 className="h-3 w-3" /> {t("suppliers.actionReceived")}
                                       </Button>
                                     )}
                                     {(order.status === "draft" ||
@@ -870,7 +870,7 @@ export default function SuppliersPage() {
                                         }
                                         className="h-6 px-2 text-[11px] gap-1 text-destructive hover:text-destructive"
                                       >
-                                        <XCircle className="h-3 w-3" /> Cancel
+                                        <XCircle className="h-3 w-3" /> {t("common.cancel")}
                                       </Button>
                                     )}
                                   </div>
@@ -892,33 +892,33 @@ export default function SuppliersPage() {
           <DynamicUIElementContent className="max-w-md">
             <DynamicUIElementHeader>
               <DynamicUIElementTitle
-                mobileTitle={editingSupplier ? "Edit Supplier" : "Add Supplier"}
+                mobileTitle={editingSupplier ? t("suppliers.editSupplier") : t("suppliers.addSupplier")}
               >
-                {editingSupplier ? "Edit Supplier" : "Add Supplier"}
+                {editingSupplier ? t("suppliers.editSupplier") : t("suppliers.addSupplier")}
               </DynamicUIElementTitle>
               <DynamicUIElementDescription>
                 {editingSupplier
-                  ? "Update supplier information."
-                  : "Add a new supplier to your organization."}
+                  ? t("suppliers.editSupplierDesc")
+                  : t("suppliers.addSupplierDesc")}
               </DynamicUIElementDescription>
             </DynamicUIElementHeader>
 
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label className="text-xs">Name *</Label>
+                <Label className="text-xs">{t("suppliers.labelName")}</Label>
                 <Input
                   value={supplierForm.name ?? ""}
                   onChange={(e) =>
                     setSupplierForm((f) => ({ ...f, name: e.target.value }))
                   }
-                  placeholder="Supplier name"
+                  placeholder={t("suppliers.placeholderName")}
                   className="h-8 text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label className="text-xs">Contact Name</Label>
+                  <Label className="text-xs">{t("suppliers.labelContactName")}</Label>
                   <Input
                     value={supplierForm.contactName ?? ""}
                     onChange={(e) =>
@@ -929,7 +929,7 @@ export default function SuppliersPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Phone</Label>
+                  <Label className="text-xs">{t("suppliers.labelPhone")}</Label>
                   <Input
                     value={supplierForm.phone ?? ""}
                     onChange={(e) =>
@@ -942,7 +942,7 @@ export default function SuppliersPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Email</Label>
+                <Label className="text-xs">{t("suppliers.labelEmail")}</Label>
                 <Input
                   type="email"
                   value={supplierForm.email ?? ""}
@@ -955,7 +955,7 @@ export default function SuppliersPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Address</Label>
+                <Label className="text-xs">{t("suppliers.labelAddress")}</Label>
                 <Input
                   value={supplierForm.address ?? ""}
                   onChange={(e) =>
@@ -968,7 +968,7 @@ export default function SuppliersPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label className="text-xs">Payment Terms</Label>
+                  <Label className="text-xs">{t("suppliers.labelPaymentTerms")}</Label>
                   <Select
                     value={supplierForm.paymentTerms ?? "net30"}
                     onValueChange={(v) =>
@@ -982,15 +982,15 @@ export default function SuppliersPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="net30">Net 30</SelectItem>
-                      <SelectItem value="net60">Net 60</SelectItem>
-                      <SelectItem value="cod">COD</SelectItem>
-                      <SelectItem value="prepaid">Prepaid</SelectItem>
+                      <SelectItem value="net30">{t("suppliers.terms.net30")}</SelectItem>
+                      <SelectItem value="net60">{t("suppliers.terms.net60")}</SelectItem>
+                      <SelectItem value="cod">{t("suppliers.terms.cod")}</SelectItem>
+                      <SelectItem value="prepaid">{t("suppliers.terms.prepaid")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">Rating</Label>
+                  <Label className="text-xs">{t("suppliers.labelRating")}</Label>
                   <div className="pt-1">
                     <StarRating
                       value={supplierForm.rating ?? 3}
@@ -1001,13 +1001,13 @@ export default function SuppliersPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Notes</Label>
+                <Label className="text-xs">{t("suppliers.labelNotes")}</Label>
                 <textarea
                   value={supplierForm.notes ?? ""}
                   onChange={(e) =>
                     setSupplierForm((f) => ({ ...f, notes: e.target.value }))
                   }
-                  placeholder="Additional notes about this supplier..."
+                  placeholder={t("suppliers.placeholderSupplierNotes")}
                   rows={3}
                   className="w-full rounded-[0.3rem] border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-foreground/20"
                 />
@@ -1021,7 +1021,7 @@ export default function SuppliersPage() {
                   size="sm"
                   onClick={() => setSupplierDialogOpen(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -1030,7 +1030,7 @@ export default function SuppliersPage() {
                   className="gap-1.5"
                 >
                   {saving && <Spinner size={12} />}
-                  {editingSupplier ? "Update" : "Add Supplier"}
+                  {editingSupplier ? t("suppliers.update") : t("suppliers.addSupplier")}
                 </Button>
               </div>
             </div>
@@ -1041,18 +1041,18 @@ export default function SuppliersPage() {
         <DynamicUIElement open={poDialogOpen} onOpenChange={setPoDialogOpen}>
           <DynamicUIElementContent className="max-w-lg">
             <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle="Create Purchase Order">
-                Create Purchase Order
+              <DynamicUIElementTitle mobileTitle={t("suppliers.createPurchaseOrder")}>
+                {t("suppliers.createPurchaseOrder")}
               </DynamicUIElementTitle>
               <DynamicUIElementDescription>
-                Create a new draft purchase order.
+                {t("suppliers.createPoDesc")}
               </DynamicUIElementDescription>
             </DynamicUIElementHeader>
 
             <div className="space-y-4 py-4">
               {/* Supplier select */}
               <div className="space-y-2">
-                <Label className="text-xs">Supplier *</Label>
+                <Label className="text-xs">{t("suppliers.labelSupplier")}</Label>
                 <Select
                   value={poForm.supplierId}
                   onValueChange={(v) =>
@@ -1060,7 +1060,7 @@ export default function SuppliersPage() {
                   }
                 >
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select supplier" />
+                    <SelectValue placeholder={t("suppliers.selectSupplier")} />
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map((s) => (
@@ -1074,17 +1074,17 @@ export default function SuppliersPage() {
 
               {/* Line items */}
               <div className="space-y-2">
-                <Label className="text-xs">Items</Label>
+                <Label className="text-xs">{t("suppliers.labelItems")}</Label>
                 <div className="rounded-[0.3rem] border border-border overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-[10px] py-1">Item</TableHead>
-                        <TableHead className="text-[10px] py-1 w-16">Qty</TableHead>
-                        <TableHead className="text-[10px] py-1 w-16">Unit</TableHead>
-                        <TableHead className="text-[10px] py-1 w-20">Cost</TableHead>
+                        <TableHead className="text-[10px] py-1">{t("suppliers.poColItem")}</TableHead>
+                        <TableHead className="text-[10px] py-1 w-16">{t("suppliers.poColQty")}</TableHead>
+                        <TableHead className="text-[10px] py-1 w-16">{t("suppliers.poColUnit")}</TableHead>
+                        <TableHead className="text-[10px] py-1 w-20">{t("suppliers.poColCost")}</TableHead>
                         <TableHead className="text-[10px] py-1 w-20 text-right">
-                          Total
+                          {t("suppliers.poColTotal")}
                         </TableHead>
                         <TableHead className="text-[10px] py-1 w-8" />
                       </TableRow>
@@ -1098,7 +1098,7 @@ export default function SuppliersPage() {
                               onChange={(e) =>
                                 updatePORow(idx, "name", e.target.value)
                               }
-                              placeholder="Item name"
+                              placeholder={t("suppliers.placeholderItemName")}
                               className="h-7 text-xs border-0 shadow-none p-0 focus-visible:ring-0"
                             />
                           </TableCell>
@@ -1160,36 +1160,36 @@ export default function SuppliersPage() {
                   onClick={addPORow}
                   className="gap-1.5 text-xs h-7"
                 >
-                  <Plus className="h-3 w-3" /> Add Row
+                  <Plus className="h-3 w-3" /> {t("suppliers.addRow")}
                 </Button>
               </div>
 
               {/* Totals */}
               <div className="rounded-[0.3rem] bg-muted/50 border border-border p-3 space-y-1">
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">{t("suppliers.subtotal")}</span>
                   <span className="font-mono">{format(poSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Tax (10%)</span>
+                  <span className="text-muted-foreground">{t("suppliers.taxPercent").replace("{percent}", "10")}</span>
                   <span className="font-mono">{format(poTax)}</span>
                 </div>
                 <Separator className="my-1" />
                 <div className="flex justify-between text-sm font-semibold">
-                  <span>Total</span>
+                  <span>{t("suppliers.totalLabel")}</span>
                   <span className="font-mono">{format(poTotal)}</span>
                 </div>
               </div>
 
               {/* Notes */}
               <div className="space-y-2">
-                <Label className="text-xs">Notes</Label>
+                <Label className="text-xs">{t("suppliers.labelNotes")}</Label>
                 <textarea
                   value={poForm.notes}
                   onChange={(e) =>
                     setPoForm((f) => ({ ...f, notes: e.target.value }))
                   }
-                  placeholder="Additional notes..."
+                  placeholder={t("suppliers.placeholderPoNotes")}
                   rows={2}
                   className="w-full rounded-[0.3rem] border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-foreground/20"
                 />
@@ -1203,7 +1203,7 @@ export default function SuppliersPage() {
                   size="sm"
                   onClick={() => setPoDialogOpen(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -1212,7 +1212,7 @@ export default function SuppliersPage() {
                   className="gap-1.5"
                 >
                   {saving && <Spinner size={12} />}
-                  Create Draft
+                  {t("suppliers.createDraft")}
                 </Button>
               </div>
             </div>

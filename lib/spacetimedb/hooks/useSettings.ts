@@ -1,11 +1,16 @@
 "use client";
 // SpacetimeDB — settings
 
-import { useMemo, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
 import type { UserSettings } from "@/lib/db/settings";
+import {
+  parseAutonomyConfig,
+  type AutonomyConfig,
+} from "@/lib/merchiva/autonomy";
+import { setAssistantConfig } from "@/lib/spacetimedb/actions";
 
 export function useSettings() {
   const { organizationId } = usePermissions();
@@ -54,4 +59,30 @@ export function useSettings() {
     setSettings: ((_v: SetStateAction<UserSettings | null>) => {}) as Dispatch<SetStateAction<UserSettings | null>>,
     refresh: () => {},
   };
+}
+
+/**
+ * Mr. Merchiva autonomy config for the active org, parsed from the settings row.
+ * Falls back to DEFAULT_AUTONOMY_CONFIG when the column is absent (pre-publish)
+ * or the org has never configured it. `save` persists via the owner-only reducer.
+ */
+export function useAssistantConfig() {
+  const { organizationId } = usePermissions();
+  const [rawSettings, isReady] = useTable(tables.settings);
+
+  const config = useMemo<AutonomyConfig>(() => {
+    const row = organizationId
+      ? rawSettings.find((r) => r.organizationId === organizationId)
+      : undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = row ? (row as any).assistantConfig : null;
+    return parseAutonomyConfig(raw);
+  }, [rawSettings, organizationId]);
+
+  const save = useCallback(
+    (next: AutonomyConfig) => setAssistantConfig(next, organizationId ?? undefined),
+    [organizationId],
+  );
+
+  return { config, isReady, loading: !isReady, save };
 }

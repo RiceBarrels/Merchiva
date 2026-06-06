@@ -14,16 +14,18 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface InviteRow { email: string; role: string; }
 
-const STEPS = ["Store Info", "Hours", "Team", "POS"];
+const STEP_KEYS = ["storeInfo", "hours", "team", "pos"] as const;
 
 function Stepper({ step }: { step: number }) {
+  const t = useT();
   return (
     <div className="flex items-center gap-1.5 mb-6">
-      {STEPS.map((label, i, arr) => {
+      {STEP_KEYS.map((stepKey, i, arr) => {
+        const label = t(`setup.steps.${stepKey}`);
         const done = i < step;
         const active = i === step;
         return (
-          <div key={label} className="contents">
+          <div key={stepKey} className="contents">
             <div className="flex items-center gap-1.5">
               <div className={cn(
                 "w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-semibold font-mono",
@@ -50,44 +52,45 @@ function StoreInfoStep({ storeName, setStoreName, address, setAddress, businessT
   businessType: string; setBusinessType: (v: string) => void;
   onNext: () => void;
 }) {
+  const t = useT();
   const types = [
-    { id: "cafe", label: "Cafe / Bakery" },
-    { id: "restaurant", label: "Restaurant" },
-    { id: "retail", label: "Retail Shop" },
-    { id: "service", label: "Service / Repair" },
-    { id: "other", label: "Other" },
+    { id: "cafe", label: t("setup.storeInfo.types.cafe") },
+    { id: "restaurant", label: t("setup.storeInfo.types.restaurant") },
+    { id: "retail", label: t("setup.storeInfo.types.retail") },
+    { id: "service", label: t("setup.storeInfo.types.service") },
+    { id: "other", label: t("setup.storeInfo.types.other") },
   ];
   return (
     <div className="w-full max-w-md mx-auto">
       <Stepper step={0} />
       <div className="flex items-center gap-3 mb-2">
         <Store className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-[22px] font-semibold tracking-tight">Tell us about your store.</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight">{t("setup.storeInfo.title")}</h1>
       </div>
-      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">We&apos;ll use this to customize your dashboard and set up your workspace.</p>
+      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">{t("setup.storeInfo.subtitle")}</p>
       <div className="space-y-4">
         <div>
-          <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Store name</label>
-          <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="e.g. Maple Coffee" className="h-11" autoFocus />
+          <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">{t("setup.storeInfo.storeNameLabel")}</label>
+          <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder={t("setup.storeInfo.storeNamePlaceholder")} className="h-11" autoFocus />
         </div>
         <div>
-          <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Address</label>
-          <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 123 Main St, Oakland CA" className="h-11" />
+          <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">{t("setup.storeInfo.addressLabel")}</label>
+          <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t("setup.storeInfo.addressPlaceholder")} className="h-11" />
         </div>
         <div>
-          <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Business type</label>
+          <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">{t("setup.storeInfo.businessTypeLabel")}</label>
           <div className="grid grid-cols-2 gap-2">
-            {types.map((t) => (
-              <button key={t.id} onClick={() => setBusinessType(t.id)}
+            {types.map((type) => (
+              <button key={type.id} onClick={() => setBusinessType(type.id)}
                 className={cn("h-10 px-3 rounded-[0.3rem] border text-[13px] font-medium text-left transition-colors",
-                  businessType === t.id ? "bg-foreground text-background border-foreground" : "bg-background text-foreground border-border hover:bg-muted"
-                )}>{t.label}</button>
+                  businessType === type.id ? "bg-foreground text-background border-foreground" : "bg-background text-foreground border-border hover:bg-muted"
+                )}>{type.label}</button>
             ))}
           </div>
         </div>
       </div>
       <div className="flex justify-end mt-6">
-        <Button size="lg" className="gap-2" onClick={onNext} disabled={!storeName.trim()}>Next <ArrowRight className="h-4 w-4" /></Button>
+        <Button size="lg" className="gap-2" onClick={onNext} disabled={!storeName.trim()}>{t("common.next")} <ArrowRight className="h-4 w-4" /></Button>
       </div>
     </div>
   );
@@ -98,41 +101,42 @@ function HoursStep({ hours, setHours, onNext, onBack }: {
   setHours: (v: { open: string; close: string; days: boolean[] }) => void;
   onNext: () => void; onBack: () => void;
 }) {
-  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const t = useT();
+  const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   return (
     <div className="w-full max-w-md mx-auto">
       <Stepper step={1} />
       <div className="flex items-center gap-3 mb-2">
         <Clock className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-[22px] font-semibold tracking-tight">When are you open?</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight">{t("setup.hours.title")}</h1>
       </div>
-      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">This helps Mr. Merchiva schedule staff and predict demand.</p>
+      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">{t("setup.hours.subtitle")}</p>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Open</label>
+            <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">{t("setup.hours.openLabel")}</label>
             <Input type="time" value={hours.open} onChange={(e) => setHours({ ...hours, open: e.target.value })} className="h-11 font-mono" />
           </div>
           <div>
-            <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">Close</label>
+            <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">{t("setup.hours.closeLabel")}</label>
             <Input type="time" value={hours.close} onChange={(e) => setHours({ ...hours, close: e.target.value })} className="h-11 font-mono" />
           </div>
         </div>
         <div>
-          <label className="text-[12px] font-medium text-muted-foreground mb-2 block">Open days</label>
+          <label className="text-[12px] font-medium text-muted-foreground mb-2 block">{t("setup.hours.openDaysLabel")}</label>
           <div className="flex gap-1.5">
-            {dayLabels.map((d, i) => (
-              <button key={d} onClick={() => { const nd = [...hours.days]; nd[i] = !nd[i]; setHours({ ...hours, days: nd }); }}
+            {dayKeys.map((dayKey, i) => (
+              <button key={dayKey} onClick={() => { const nd = [...hours.days]; nd[i] = !nd[i]; setHours({ ...hours, days: nd }); }}
                 className={cn("flex-1 h-10 rounded-[0.3rem] border text-[12px] font-medium transition-colors",
                   hours.days[i] ? "bg-foreground text-background border-foreground" : "bg-background text-muted-foreground border-border hover:bg-muted"
-                )}>{d}</button>
+                )}>{t(`setup.hours.days.${dayKey}`)}</button>
             ))}
           </div>
         </div>
       </div>
       <div className="flex items-center justify-between mt-6">
-        <Button variant="outline" size="lg" className="gap-2" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back</Button>
-        <Button size="lg" className="gap-2" onClick={onNext}>Next <ArrowRight className="h-4 w-4" /></Button>
+        <Button variant="outline" size="lg" className="gap-2" onClick={onBack}><ArrowLeft className="h-4 w-4" /> {t("common.back")}</Button>
+        <Button size="lg" className="gap-2" onClick={onNext}>{t("common.next")} <ArrowRight className="h-4 w-4" /></Button>
       </div>
     </div>
   );
@@ -142,15 +146,19 @@ function InviteStep({ invites, setInvites, onNext, onBack, onSkip }: {
   invites: InviteRow[]; setInvites: (v: InviteRow[]) => void;
   onNext: () => void; onBack: () => void; onSkip: () => void;
 }) {
+  const t = useT();
   const filled = invites.filter((r) => r.email.includes("@")).length;
+  const sendLabel = filled === 1
+    ? t("setup.team.sendInvite").replace("{count}", String(filled))
+    : t("setup.team.sendInvites").replace("{count}", String(filled));
   return (
     <div className="w-full max-w-md mx-auto">
       <Stepper step={2} />
       <div className="flex items-center gap-3 mb-2">
         <UserPlus className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-[22px] font-semibold tracking-tight">Invite your team.</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight">{t("setup.team.title")}</h1>
       </div>
-      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">Add staff so they can clock in, view schedules, and use POS.</p>
+      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">{t("setup.team.subtitle")}</p>
       <div className="space-y-2">
         {invites.map((row, i) => (
           <div key={i} className="flex items-center gap-2">
@@ -159,8 +167,8 @@ function InviteStep({ invites, setInvites, onNext, onBack, onSkip }: {
               placeholder="name@email.com" type="email" className="h-10 flex-1" />
             <select value={row.role} onChange={(e) => { const n = [...invites]; n[i] = { ...n[i], role: e.target.value }; setInvites(n); }}
               className="h-10 rounded-[0.3rem] border border-border bg-background px-2 text-[12px] font-medium">
-              <option value="manager">Manager</option>
-              <option value="staff">Staff</option>
+              <option value="manager">{t("setup.team.roleManager")}</option>
+              <option value="staff">{t("setup.team.roleStaff")}</option>
             </select>
             <button onClick={() => setInvites(invites.filter((_, idx) => idx !== i))}
               className="h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center">
@@ -170,15 +178,15 @@ function InviteStep({ invites, setInvites, onNext, onBack, onSkip }: {
         ))}
         <button onClick={() => setInvites([...invites, { email: "", role: "staff" }])}
           className="h-9 px-3 rounded-[0.3rem] border border-dashed border-border text-[12px] text-muted-foreground hover:bg-muted inline-flex items-center gap-1.5 w-full justify-center">
-          <Plus className="h-3.5 w-3.5" /> Add another
+          <Plus className="h-3.5 w-3.5" /> {t("setup.team.addAnother")}
         </button>
       </div>
       <div className="flex items-center justify-between mt-6">
         <div className="flex gap-2">
-          <Button variant="outline" size="lg" className="gap-2" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back</Button>
-          <Button variant="ghost" size="lg" className="gap-1.5 text-muted-foreground" onClick={onSkip}><SkipForward className="h-[13px] w-[13px]" /> Skip</Button>
+          <Button variant="outline" size="lg" className="gap-2" onClick={onBack}><ArrowLeft className="h-4 w-4" /> {t("common.back")}</Button>
+          <Button variant="ghost" size="lg" className="gap-1.5 text-muted-foreground" onClick={onSkip}><SkipForward className="h-[13px] w-[13px]" /> {t("setup.skip")}</Button>
         </div>
-        <Button size="lg" className="gap-2" onClick={onNext}>{filled > 0 ? `Send ${filled} invite${filled !== 1 ? "s" : ""}` : "Next"} <ArrowRight className="h-4 w-4" /></Button>
+        <Button size="lg" className="gap-2" onClick={onNext}>{filled > 0 ? sendLabel : t("common.next")} <ArrowRight className="h-4 w-4" /></Button>
       </div>
     </div>
   );
@@ -187,20 +195,21 @@ function InviteStep({ invites, setInvites, onNext, onBack, onSkip }: {
 function PosStep({ onFinish, onBack, onSkip, finishing }: {
   onFinish: () => void; onBack: () => void; onSkip: () => void; finishing: boolean;
 }) {
+  const t = useT();
   const [selected, setSelected] = useState<string | null>(null);
   const posOptions = [
-    { id: "square", label: "Square", desc: "Connect via OAuth" },
-    { id: "clover", label: "Clover", desc: "Connect via OAuth" },
-    { id: "none", label: "No POS yet", desc: "Set up manually later" },
+    { id: "square", label: "Square", desc: t("setup.pos.connectOAuth") },
+    { id: "clover", label: "Clover", desc: t("setup.pos.connectOAuth") },
+    { id: "none", label: t("setup.pos.noPos"), desc: t("setup.pos.setupLater") },
   ];
   return (
     <div className="w-full max-w-md mx-auto">
       <Stepper step={3} />
       <div className="flex items-center gap-3 mb-2">
         <CreditCard className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-[22px] font-semibold tracking-tight">Connect your POS.</h1>
+        <h1 className="text-[22px] font-semibold tracking-tight">{t("setup.pos.title")}</h1>
       </div>
-      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">Merchiva syncs sales, products, and inventory from your POS.</p>
+      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">{t("setup.pos.subtitle")}</p>
       <div className="space-y-2">
         {posOptions.map((pos) => (
           <button key={pos.id} onClick={() => setSelected(pos.id)}
@@ -217,11 +226,11 @@ function PosStep({ onFinish, onBack, onSkip, finishing }: {
       </div>
       <div className="flex items-center justify-between mt-6">
         <div className="flex gap-2">
-          <Button variant="outline" size="lg" className="gap-2" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back</Button>
-          <Button variant="ghost" size="lg" className="gap-1.5 text-muted-foreground" onClick={onSkip}><SkipForward className="h-[13px] w-[13px]" /> Skip</Button>
+          <Button variant="outline" size="lg" className="gap-2" onClick={onBack}><ArrowLeft className="h-4 w-4" /> {t("common.back")}</Button>
+          <Button variant="ghost" size="lg" className="gap-1.5 text-muted-foreground" onClick={onSkip}><SkipForward className="h-[13px] w-[13px]" /> {t("setup.skip")}</Button>
         </div>
         <Button size="lg" className="gap-2" onClick={onFinish} disabled={finishing}>
-          {finishing ? <Spinner size={16} /> : <><Send className="h-3.5 w-3.5" /> Finish setup</>}
+          {finishing ? <Spinner size={16} /> : <><Send className="h-3.5 w-3.5" /> {t("setup.pos.finishSetup")}</>}
         </Button>
       </div>
     </div>
@@ -230,6 +239,7 @@ function PosStep({ onFinish, onBack, onSkip, finishing }: {
 
 export default function SetupPage() {
   const router = useRouter();
+  const t = useT();
   const [step, setStep] = useState(0);
   const [finishing, setFinishing] = useState(false);
   const [storeName, setStoreName] = useState("");
@@ -267,23 +277,23 @@ export default function SetupPage() {
           try { await r.addLocation({ organizationId: orgId, name: storeName.trim() || "Main", address: address.trim(), phone: null, isDefault: true, sortOrder: 0 }); } catch {}
         }
       }
-      toast.success("Setup complete!");
+      toast.success(t("setup.toast.complete"));
       router.replace("/~/dashboard");
     } catch {
       // The setup signal lives in SpacetimeDB (settings.updatedAt > createdAt
       // after updateSettings runs). If we got here, that reducer either
       // succeeded or threw — the layout will retry the gate on next mount.
-      toast.error("Something went wrong, but your workspace is ready.");
+      toast.error(t("setup.toast.error"));
       router.replace("/~/dashboard");
     }
-  }, [storeName, address, businessType, invites, router]);
+  }, [storeName, address, businessType, invites, router, t]);
 
   if (finishing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Spinner size={20} className="text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Setting up your workspace...</p>
+          <p className="text-sm text-muted-foreground">{t("setup.settingUp")}</p>
         </div>
       </div>
     );
@@ -302,8 +312,8 @@ export default function SetupPage() {
         {step === 3 && <PosStep onFinish={saveAndFinish} onBack={() => setStep(2)} onSkip={saveAndFinish} finishing={finishing} />}
       </div>
       <div className="h-10 border-t border-border flex items-center justify-between px-6 text-[11px] text-muted-foreground shrink-0">
-        <span className="inline-flex items-center gap-1.5"><MapPin className="h-3 w-3" />{storeName || "Your store"}</span>
-        <span className="font-mono">Step {step + 1} / {STEPS.length}</span>
+        <span className="inline-flex items-center gap-1.5"><MapPin className="h-3 w-3" />{storeName || t("setup.footer.yourStore")}</span>
+        <span className="font-mono">{t("setup.footer.step").replace("{current}", String(step + 1)).replace("{total}", String(STEP_KEYS.length))}</span>
       </div>
     </div>
   );

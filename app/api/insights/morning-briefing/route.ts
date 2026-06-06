@@ -128,6 +128,7 @@ WHAT TO CHECK (scan the data for each; include the ones that actually apply, wit
 - Pre-computed signals (\`insights\`): each has a type, title and severity — treat HIGH-severity insights as must-mention. Don't contradict them.
 - Low / out-of-stock inventory (\`lowStock\`, and \`inventory[].status\` = out|low|ok) — name the items and their stock vs min.
 - Today's coverage (\`todayShifts\`, \`team\`, \`openingHours\`, \`unassignedTodayShifts\`) — gaps, unassigned shifts, or nobody scheduled while open.
+- TODAY'S ATTENDANCE (\`attendance\`): who is currently clocked in (\`onShift\` — each has \`since\` clock-in time and an \`onBreak\` flag) and who has punched in at all today (\`punchedInToday\`, with \`firstIn\` time). Note who's working now and who's on break. If the store is open and \`onShiftCount\` is 0 while shifts are scheduled, FLAG that no one has clocked in.
 - Pending time-off requests (\`timeOffRequests\`) and pending shift trades (\`shiftTrades\`) awaiting the owner's approval — name who and the dates.
 - Sales (\`sales\`): yesterday vs the same weekday last week (\`yesterdayRevenue\` vs \`priorWeekSameDayRevenue\`), today's revenue so far (\`todayRevenueSoFar\`, with intraday \`todayHourly\`), and any notable swing or anomaly in \`recentDaily\`. Call out a significant jump or drop in %.
 - YESTERDAY'S TASK EVIDENCE (\`yesterdayTaskEvidence\`): which role tasks were completed yesterday, by whom, with notes/photos. Each item has \`evidenceStatus\` (complete | missing_required | not_required) — FLAG every \`missing_required\` by name.

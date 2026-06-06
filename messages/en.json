@@ -1281,7 +1281,8 @@
       "inviteCancelFailed": "Cancel failed"
     },
     "title": "Personnel",
-    "subtitle": "Schedule, team, roles, and training"
+    "subtitle": "Schedule, team, roles, and training",
+    "pendingRequests": "Pending requests"
   },
   "pos": {
     "tabs": {
@@ -1299,7 +1300,12 @@
       "customer": "Customer",
       "thankYou": "Thank you!",
       "print": "Print",
-      "newOrder": "New Order"
+      "newOrder": "New Order",
+      "paidAmount": "Paid {amount}",
+      "yourBusiness": "Your Business",
+      "tipPct": "Tip {pct}%",
+      "paid": "Paid",
+      "email": "Email"
     },
     "refund": {
       "title": "Refund",
@@ -1340,7 +1346,14 @@
       "noProducts": "No products",
       "addInProducts": "Add products in the Products page",
       "noResults": "No results",
-      "each": "each"
+      "each": "each",
+      "taxShort": "Tax",
+      "newOrder": "New order",
+      "searchMenu": "Search menu...",
+      "scan": "Scan",
+      "matchesFor": "Matches for \"{query}\"",
+      "noResultsFound": "No results found",
+      "noProductsInCategory": "No products in this category"
     },
     "customItem": {
       "title": "Custom item",
@@ -1386,6 +1399,90 @@
       "cardDeclined": "Card was declined",
       "paymentFailed": "Payment failed",
       "moduleUnavailable": "Payment module unavailable"
+    },
+    "discountReasons": {
+      "none": "Reason (optional)…",
+      "staff": "Staff discount",
+      "loyalty": "Loyalty reward",
+      "comp": "Comp / on the house",
+      "damaged": "Made incorrectly",
+      "manager": "Manager override"
+    },
+    "cart": {
+      "ticket": "Ticket",
+      "itemsCount": "{count} items",
+      "walkInPlaceholder": "Walk-in (tap to name)",
+      "empty": "Cart is empty",
+      "tapToStart": "Tap an item to start",
+      "pctOff": "{pct}% off",
+      "amountOff": "{amount} off",
+      "tipLabel": "Tip ({pct}%)",
+      "viewCart": "View Cart",
+      "drawerTitle": "Cart · {count} items"
+    },
+    "lineEditor": {
+      "title": "Edit line",
+      "mobileTitle": "Edit · {name}",
+      "perEach": "{price}/ea",
+      "quantity": "Quantity",
+      "notesLabel": "Notes for kitchen / bar",
+      "notesPlaceholder": "Allergies, prep instructions, name on cup...",
+      "lineDiscount": "Line discount",
+      "discNone": "None",
+      "discPct": "% off",
+      "discAmount": "{symbol} off",
+      "remove": "Remove",
+      "lineTotal": "Line total"
+    },
+    "pay": {
+      "methods": {
+        "card": "Card",
+        "cash": "Cash",
+        "mobilePay": "Mobile Pay",
+        "giftCard": "Gift Card",
+        "mobile": "Mobile",
+        "gift": "Gift"
+      },
+      "cardSubOffline": "Enter card — queued offline",
+      "cardSubAvailable": "Tap, insert, or swipe",
+      "cardSubNotConfigured": "Not configured",
+      "cashSub": "Open drawer",
+      "mobileSub": "Apple / Google Pay",
+      "giftSub": "Scan or enter code",
+      "backToOrder": "Back to order",
+      "checkout": "Checkout",
+      "tender": "Tender",
+      "cardNumberQueued": "Card number (queued for later)",
+      "queuedHint": "Payment will be queued and processed when back online",
+      "queuedHintShort": "Queued and processed when back online",
+      "pciWarning": "Demo/MVP only — card numbers stored locally are not PCI-compliant.",
+      "tip": "Tip",
+      "tipNone": "None",
+      "cashTendered": "Cash tendered",
+      "other": "Other",
+      "changeOwed": "Change owed",
+      "change": "Change",
+      "split": "Split",
+      "splitSingle": "Single",
+      "splitWays": "{n} ways",
+      "splitEach": "{amount} each",
+      "orderSummary": "Order summary",
+      "queueCardAmount": "Queue Card {amount}",
+      "chargeAmount": "Charge {amount}"
+    },
+    "offline": {
+      "banner": "Offline mode — Cash & Card Queue only"
+    },
+    "pending": {
+      "queuedOne": "{count} pending card payment queued",
+      "queuedOther": "{count} pending card payments queued",
+      "processOne": "Process {count} pending card",
+      "processOther": "Process {count} pending cards"
+    },
+    "toast": {
+      "paymentQueued": "Payment queued",
+      "paymentQueuedDesc": "Card ending {last4} — will process when online",
+      "pendingCardsCleared": "Pending cards cleared"
     }
   },
   "settings": {
@@ -1682,7 +1779,28 @@
       "KRW": "South Korean Won",
       "INR": "Indian Rupee",
       "SAR": "Saudi Riyal"
-    }
+    },
+    "toastGeolocationUnsupported": "Geolocation is not supported by your browser",
+    "toastLocationDetected": "Location detected",
+    "toastGeolocationFailed": "Could not get your location. Please enter coordinates manually.",
+    "exitStoreModeTitle": "Enter PIN to exit store mode",
+    "exitStoreModeMobileTitle": "Exit store mode",
+    "exitStoreModeDesc": "Enter an owner or manager punch-in code to disable store machine mode.",
+    "exitPinInvalid": "Invalid code",
+    "exitPinInvalidRole": "Invalid code. Must be an owner or manager code.",
+    "toastStoreModeDisabled": "Store mode disabled",
+    "disableStoreMode": "Disable Store Mode",
+    "manageDeviceTitle": "Manage Device",
+    "manageDeviceMobileTitle": "Manage device",
+    "manageDeviceDesc": "Rename or remove this store device.",
+    "toastDeviceRenamed": "Device renamed",
+    "toastDeviceRemoved": "Device removed",
+    "removeDevice": "Remove Device",
+    "forecastLocation": "Forecast Location",
+    "noPlaceId": "No Place ID",
+    "storeDevices": "Store Devices",
+    "unnamedDevice": "Unnamed device",
+    "deviceOff": "Off"
   },
   "lock": {
     "title": "Device Locked",
@@ -1818,7 +1936,12 @@
     "merchivaRemove": "Remove Mr. Merchiva",
     "merchivaOn": "Mr. Merchiva",
     "merchivaMentionHint": "Ask the AI assistant",
-    "noMatches": "No matches"
+    "noMatches": "No matches",
+    "online": "online",
+    "aiOpsAgent": "Your AI ops agent",
+    "mentionLower": "mention",
+    "sendKbd": "send",
+    "send": "Send"
   },
   "dashboard": {
     "greeting": {
@@ -1885,7 +2008,74 @@
       "addMore": "Add more",
       "choose": "Choose file",
       "complete": "Complete"
-    }
+    },
+    "attendance": {
+      "title": "Today's attendance",
+      "punchedIn": "punched in",
+      "onBreak": "on break",
+      "nobody": "No one has punched in yet.",
+      "allOut": "Everyone has clocked out."
+    },
+    "yesterdayTasks": {
+      "title": "Yesterday's tasks",
+      "done": "done",
+      "notDone": "not done",
+      "skipped": "skipped",
+      "none": "No tasks were due yesterday."
+    },
+    "widgets": {
+      "salesToday": {
+        "title": "Sales Today",
+        "predicted": "predicted",
+        "vsYesterday": "vs yesterday"
+      },
+      "inventoryAlerts": {
+        "title": "Inventory Alerts",
+        "allStocked": "All items are well stocked",
+        "outOfStock": "{count} out of stock",
+        "lowStock": "{count} low stock",
+        "outBadge": "Out",
+        "lowBadge": "Low"
+      },
+      "scheduleOverview": {
+        "title": "Schedule Overview",
+        "empty": "No shifts scheduled today",
+        "shiftToday": "shift today",
+        "shiftsToday": "shifts today",
+        "nextLabel": "Next:",
+        "atLabel": "at"
+      },
+      "todo": {
+        "title": "Todos",
+        "placeholder": "New todo...",
+        "empty": "No todos yet",
+        "more": "+{count} more"
+      },
+      "wasteCost": {
+        "title": "Waste Cost",
+        "details": "Details",
+        "today": "Today",
+        "thisWeek": "This week",
+        "thisMonth": "This month",
+        "empty": "No waste logged yet"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "empty": "No unread notifications"
+      },
+      "topProducts": {
+        "title": "Top Products",
+        "empty": "No product data yet"
+      },
+      "quickStats": {
+        "title": "Quick Stats",
+        "products": "Products",
+        "staffOnDuty": "Staff On Duty",
+        "inventoryItems": "Inventory Items",
+        "lowStock": "Low Stock"
+      }
+    },
+    "title": "Dashboard"
   },
   "inventory": {
     "title": "Inventory",
@@ -1905,7 +2095,8 @@
     "tabs": {
       "items": "Items",
       "transactions": "Transaction Log",
-      "losses": "Loss Tracking"
+      "losses": "Loss Tracking",
+      "restock": "Restock"
     },
     "filters": {
       "searchPlaceholder": "Search items or suppliers…",
@@ -1979,6 +2170,35 @@
       "saveFailed": "Failed to save item",
       "itemDeleted": "Item deleted",
       "deleteFailed": "Failed to delete item"
+    },
+    "restock": {
+      "emptyTitle": "All stocked up — no restocking needed",
+      "emptyHint": "Your inventory levels look healthy.",
+      "criticalItems": "Critical Items",
+      "highPriority": "High Priority",
+      "totalOrderValue": "Total Order Value",
+      "itemsToRestock": "Items to Restock",
+      "exportCsv": "Export Purchase Order (CSV)",
+      "csvDownloaded": "Purchase order CSV downloaded",
+      "exportPdf": "Export Purchase Order (PDF)",
+      "pdfDownloaded": "Purchase order PDF downloaded",
+      "pdfTitle": "Purchase Order",
+      "pdfSubtitle": "{count} items — Est. {cost}",
+      "stockLevel": "Stock level",
+      "dailyConsumption": "Daily consumption",
+      "perDay": "{rate} {unit}/day",
+      "daysUntilStockout": "Days until stockout",
+      "notApplicable": "N/A",
+      "daysValue": "{days} days",
+      "recommendedOrder": "Recommended order",
+      "estimatedCost": "Estimated cost",
+      "lastRestocked": "Last restocked",
+      "daysAgo": "{days} days ago",
+      "trend": {
+        "increasing": "increasing",
+        "decreasing": "decreasing",
+        "stable": "stable"
+      }
     }
   },
   "sales": {
@@ -2003,7 +2223,9 @@
     },
     "tabs": {
       "history": "Historical Analysis",
-      "hourly": "Today's Hourly"
+      "hourly": "Today's Hourly",
+      "forecast": "Forecast",
+      "aiItems": "AI Items"
     },
     "history": {
       "title": "30-Day Sales History",
@@ -2047,7 +2269,14 @@
     "filterTeam": "Team",
     "filterInventory": "Inventory",
     "filterOrder": "Orders",
-    "filterGeneral": "System"
+    "filterGeneral": "System",
+    "tradeOfferedToEveryone": "{name} is offering their shift to everyone",
+    "tradeWantsToTrade": "{name} wants to trade with you",
+    "tradeAcceptedAwaitingManager": "{name} accepted — awaiting manager approval",
+    "tradeFrom": "Trade from {name}",
+    "someone": "Someone",
+    "waitingForStaff": "Waiting for staff",
+    "requestedTimeOff": "{name} requested time off"
   },
   "push": {
     "promptTitle": "Get desktop alerts",
@@ -2390,6 +2619,117 @@
       "intern": "Intern",
       "internSub": "Learn & practice today",
       "active": "active"
+    },
+    "manager": {
+      "dayCount": "{count} day",
+      "dayCountPlural": "{count} days",
+      "curriculumSettings": "Curriculum settings",
+      "moduleLabel": "module",
+      "untitledDay": "Untitled day",
+      "allRoles": "All roles",
+      "required": "Required",
+      "selectOrAddDay": "Select or add a day to start authoring",
+      "unsaved": "unsaved",
+      "history": "History",
+      "previewAsIntern": "Preview as intern",
+      "publish": "Publish",
+      "editor": "Editor",
+      "words": "words",
+      "minRead": "min read",
+      "saved": "saved",
+      "lessonPlaceholder": "Write the day's lesson — headings, lists, links, quotes, inline images…",
+      "pickDayToEdit": "Pick a day from the curriculum to edit",
+      "preview": "Preview",
+      "howInternsSeeIt": "how interns will see it",
+      "desktop": "Desktop",
+      "mobile": "Mobile",
+      "emptyDay": "Empty day. Add content in the editor to see it here.",
+      "attachments": "Attachments",
+      "item": "item",
+      "items": "items",
+      "embedUrl": "Embed URL",
+      "selectDayForAttachments": "Select a day to add attachments.",
+      "video": "Video",
+      "photo": "Photo",
+      "note": "Note",
+      "remove": "Remove",
+      "dropFile": "Drop file",
+      "upload": "Upload"
+    },
+    "rubric": {
+      "knowsMaterial": "Knows the material",
+      "knowsMaterialHint": "Recall, confidence",
+      "practicalSkill": "Practical skill",
+      "practicalSkillHint": "Hands-on accuracy",
+      "speedFlow": "Speed & flow",
+      "speedFlowHint": "Pace at expected level",
+      "recovery": "Recovery",
+      "recoveryHint": "Handles mistakes well",
+      "stationDiscipline": "Station discipline",
+      "stationDisciplineHint": "Clean, organized"
+    },
+    "trainer": {
+      "pickADay": "Pick a day",
+      "dayN": "Day {n}",
+      "required": "Required",
+      "traineesPassed": "trainees passed",
+      "badge": "trainer",
+      "noContent": "This day has no published content yet.",
+      "objectives": "Objectives",
+      "trainees": "Trainees",
+      "filter": "Filter",
+      "noTraineesYet": "No trainees yet",
+      "gradingDay": "Grading · Day {n}",
+      "message": "Message",
+      "dm": "DM",
+      "rubricLabel": "Rubric",
+      "notesForTrainee": "Notes for trainee",
+      "visibleTo": "visible to {name}",
+      "notesPlaceholder": "What went well? What to practice next?",
+      "retry": "Retry",
+      "submitGrade": "Submit grade",
+      "willBeNotified": "{name} will be notified · saved to their training file",
+      "pickTrainee": "Pick a trainee from the list to start grading."
+    },
+    "intern": {
+      "objectiveFallback": "Objective {number}",
+      "progress": "progress",
+      "dayOfTotal": "Day {day} of {total}",
+      "doneCount": "{count} done",
+      "remainingCount": "{count} remaining",
+      "keepGoing": "Keep going",
+      "dayLabel": "Day {number}",
+      "practice": "Practice",
+      "required": "required",
+      "lockedUntilPrior": "locked until prior day passes",
+      "noContentYet": "No content yet for this day.",
+      "dayWithTitle": "Day {number} · {title}",
+      "tasksForToday": "Tasks for today",
+      "checkEachOff": "Check each off as you complete it.",
+      "noTasksYet": "No tasks yet — your manager will add objectives soon.",
+      "resources": "resources",
+      "note": "note",
+      "requestTrainerReview": "Request trainer review",
+      "trainerWillBeNotified": "Your trainer will be notified.",
+      "waitForTasks": "Wait for tasks to be assigned.",
+      "completeMoreTask": "Complete {count} more task to request review",
+      "completeMoreTasks": "Complete {count} more tasks to request review",
+      "awaitingReview": "awaiting review",
+      "liveGradingNote": "Your trainer will come over for live grading. Stay near the bar.",
+      "askTrainerQuestion": "Ask trainer a question"
+    },
+    "dayRail": {
+      "days": "days",
+      "noDaysYet": "No days yet",
+      "dayAbbrev": "DAY",
+      "optional": "optional",
+      "typeOrientation": "orientation",
+      "typeTheory": "theory",
+      "typePractice": "practice",
+      "typeSystem": "system",
+      "typeCompliance": "compliance",
+      "typeAssessment": "assessment",
+      "typeGeneral": "general"
     }
   },
   "pricing": {
@@ -2747,7 +3087,168 @@
     "menuReAsk": "Re-ask",
     "menuRegenerate": "Regenerate reply",
     "menuDelete": "Delete from history",
-    "menuCopied": "Copied to clipboard"
+    "menuCopied": "Copied to clipboard",
+    "kpi": {
+      "revenueToday": "Revenue · today",
+      "vsAvg": "vs avg",
+      "live": "live",
+      "orders": "Orders",
+      "today": "today",
+      "onShift": "On shift",
+      "skusAtRisk": "SKUs at risk",
+      "ofTracked": "of {count} tracked",
+      "nHigh": "{n} high"
+    },
+    "insight": {
+      "confidence": "confidence",
+      "hide": "Hide",
+      "why": "Why",
+      "basedOn": "based on",
+      "view": "View",
+      "dismiss": "Dismiss"
+    },
+    "embed": {
+      "daysCover": "~{days}d cover",
+      "current": "Current",
+      "minMax": "Min / Max",
+      "cover": "Cover",
+      "daysApprox": "~{days} days"
+    },
+    "shift": {
+      "invalidRole": "Not a job role in this org — approve will be rejected",
+      "jobRole": "Job role"
+    },
+    "order": {
+      "itemCount": "{count} item",
+      "itemCountPlural": "{count} items"
+    },
+    "builder": {
+      "elementCount": "{count} element",
+      "elementCountPlural": "{count} elements",
+      "moreCount": "+{count} more"
+    },
+    "actionsList": {
+      "tag": "ACTIONS",
+      "optionalCount": "+{count} optional"
+    },
+    "actionsAvailable": "Here are all AI actions currently available:",
+    "qa": {
+      "multiSelect": "Multi-select · {count} selected",
+      "other": "Other...",
+      "customReplyPlaceholder": "Type a custom reply...",
+      "submit": "Submit",
+      "pickAtLeastOne": "Pick at least one for each question",
+      "submitted": "Submitted"
+    },
+    "rolesList": {
+      "tag": "ROLES",
+      "count": "{count} roles",
+      "empty": "No roles yet"
+    },
+    "roleAdd": {
+      "tag": "NEW ROLE",
+      "responsibilities": "Responsibilities"
+    },
+    "status": {
+      "adding": "Adding...",
+      "deleting": "Deleting...",
+      "added": "Added",
+      "deleted": "Deleted"
+    },
+    "tasks": {
+      "loading": "Loading tasks...",
+      "deleteFailed": "Failed to delete task",
+      "tag": "TASKS",
+      "empty": "No tasks for this role",
+      "evidence": "Evidence"
+    },
+    "taskAdd": {
+      "tag": "NEW TASK",
+      "chooseChat": "Choose group chat",
+      "evidenceRequired": "Evidence required",
+      "evidencePrompt": "This task requires evidence — pick the group chat where it should be uploaded:",
+      "noGroupChats": "No group chats yet — create one from the Chat page first.",
+      "add": "Add",
+      "skip": "Skip"
+    },
+    "command": {
+      "deleteRoleFailed": "Failed to delete role",
+      "roleNotFound": "Role not found: {role}",
+      "addTaskFailed": "Failed to add task"
+    },
+    "taskDelete": {
+      "tag": "DELETE",
+      "failed": "Delete failed"
+    },
+    "dataCategory": {
+      "inventory": {
+        "label": "Inventory",
+        "desc": "Stock levels, low items, suppliers"
+      },
+      "sales": {
+        "label": "Sales",
+        "desc": "Revenue, orders, trends"
+      },
+      "staffing": {
+        "label": "Staffing",
+        "desc": "Shifts, schedule, team"
+      },
+      "products": {
+        "label": "Products",
+        "desc": "Catalog, pricing, performance"
+      },
+      "all": {
+        "label": "Everything",
+        "desc": "All store data"
+      }
+    },
+    "yourStore": "your store",
+    "untitledGroup": "Untitled group",
+    "newConversation": "New conversation",
+    "chatTitle": "Chat",
+    "voiceUnsupported": "Your browser doesn't support voice input.",
+    "approve": {
+      "notTeamMember": "\"{name}\" is not a team member. Add them first or pick from: {names}",
+      "noTeamMembers": "(no team members yet)",
+      "noValidRole": "No valid job role for shift. Got {got} — pick one of: {roles}.",
+      "noRolesDefined": "(no roles defined yet)"
+    },
+    "builderChips": {
+      "heroSection": "Add a hero section",
+      "contactForm": "Add a contact form",
+      "mobileFriendly": "Make this page mobile-friendly",
+      "deleteFooter": "Delete the footer",
+      "pricingTable": "Add a pricing table"
+    },
+    "pick": {
+      "titleActive": "Click any element in the canvas · Esc to cancel",
+      "titleIdle": "Pick an element to attach",
+      "clicking": "Click element…",
+      "element": "Element"
+    },
+    "schedule": {
+      "title": "Today's schedule",
+      "shifts": "shifts",
+      "hrs": "hrs",
+      "open": "Open",
+      "onShift": "on shift · {count}",
+      "live": "live",
+      "upNext": "up next",
+      "inMinutes": "in {n}m",
+      "inHours": "in {n}h",
+      "noShifts": "No shifts scheduled today"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "new": "new",
+      "needDecision": "need a decision",
+      "markAllRead": "Mark all read",
+      "review": "Review",
+      "dismiss": "Dismiss",
+      "empty": "No new notifications"
+    },
+    "collapsePanel": "Collapse panel",
+    "openPanel": "Open Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2777,7 +3278,9 @@
       "fit": "Fit to screen",
       "notFound": "Design not found",
       "layers": "Layers",
-      "properties": "Properties"
+      "properties": "Properties",
+      "undo": "Undo",
+      "redo": "Redo"
     },
     "ai": {
       "title": "Generate with AI",
@@ -3593,6 +4096,655 @@
         "para": "Connect your POS. We learn your sales for seven days, then start telling you what to order — to the case, by the day. Median forecast error: 7.2%.",
         "walkthrough": "Book a 20-min walkthrough"
       }
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Export and review business data",
+    "recordsCount": "{count} records",
+    "exportCsv": "Export CSV",
+    "exportPdf": "Export PDF",
+    "thisMonth": "This Month",
+    "lastMonth": "Last Month",
+    "last90Days": "Last 90 Days",
+    "tabSales": "Sales",
+    "tabStaffHours": "Staff Hours",
+    "tabInventory": "Inventory",
+    "tabProducts": "Products",
+    "totalRevenue": "Total Revenue",
+    "avgDailyRevenue": "Avg Daily Revenue",
+    "perDayAverage": "Per day average",
+    "bestDay": "Best Day",
+    "forecastAccuracy": "Forecast Accuracy",
+    "predictedVsActual": "Predicted vs actual",
+    "noSalesData": "No sales data for this period",
+    "salesRecords": "Sales Records",
+    "recordsForPeriod": "{count} records -- {period}",
+    "colDate": "Date",
+    "colActual": "Actual",
+    "colPredicted": "Predicted",
+    "colWeather": "Weather",
+    "colHoliday": "Holiday",
+    "yes": "Yes",
+    "showingRecords": "Showing 50 of {count} records. Export for full data.",
+    "totalScheduledHours": "Total Scheduled Hours",
+    "numberOfStaff": "Number of Staff",
+    "uniqueStaffScheduled": "Unique staff scheduled",
+    "avgHoursPerStaff": "Avg Hours / Staff",
+    "averagePerPerson": "Average per person",
+    "noShifts": "No shifts for this period",
+    "shiftRecords": "Shift Records",
+    "shiftsForPeriod": "{count} shifts -- {period}",
+    "colStaffName": "Staff Name",
+    "colStart": "Start",
+    "colEnd": "End",
+    "colHours": "Hours",
+    "colType": "Type",
+    "showingShifts": "Showing 50 of {count} shifts. Export for full data.",
+    "totalItems": "Total Items",
+    "trackedInventoryItems": "Tracked inventory items",
+    "lowOutOfStock": "Low / Out of Stock",
+    "needsAttention": "Needs attention",
+    "totalValue": "Total Value",
+    "stockTimesCostPerUnit": "Stock x cost/unit",
+    "avgLossRate": "Avg Loss Rate",
+    "acrossAllItems": "Across all items",
+    "noInventoryItems": "No inventory items tracked",
+    "inventoryItems": "Inventory Items",
+    "itemsCount": "{count} items",
+    "colCategory": "Category",
+    "colStock": "Stock",
+    "colMin": "Min",
+    "colMax": "Max",
+    "colUnit": "Unit",
+    "colCostPerUnit": "Cost/Unit",
+    "colValue": "Value",
+    "colSupplier": "Supplier",
+    "colLossPct": "Loss %",
+    "colStatus": "Status",
+    "outOfStock": "Out of Stock",
+    "lowStock": "Low Stock",
+    "inStock": "In Stock",
+    "showingItems": "Showing 50 of {count} items. Export for full data.",
+    "totalProducts": "Total Products",
+    "activeProducts": "Active products",
+    "allProductsCombined": "All products combined",
+    "avgMargin": "Avg Margin",
+    "averageProfitMargin": "Average profit margin",
+    "underperforming": "Underperforming",
+    "needsReview": "Needs review",
+    "noProducts": "No products tracked",
+    "productPerformance": "Product Performance",
+    "productsCount": "{count} products",
+    "colPrice": "Price",
+    "colCost": "Cost",
+    "colMargin": "Margin",
+    "colThisMonth": "This Mo.",
+    "colLastMonth": "Last Mo.",
+    "colRevenue": "Revenue",
+    "colTrend": "Trend",
+    "colAlert": "Alert",
+    "showingProducts": "Showing 50 of {count} products. Export for full data.",
+    "salesReportTitle": "Sales Report",
+    "staffHoursReportTitle": "Staff Hours Report",
+    "inventoryReportTitle": "Inventory Report",
+    "productPerformanceReportTitle": "Product Performance Report"
+  },
+  "customers": {
+    "summary": {
+      "totalCustomers": "Total Customers",
+      "newThisMonth": "New This Month",
+      "avgOrderValue": "Avg Order Value",
+      "totalRevenue": "Total Revenue"
+    },
+    "searchPlaceholder": "Search by name or email...",
+    "filterPlaceholder": "Filter",
+    "tagFilter": {
+      "all": "All Tags"
+    },
+    "tags": {
+      "vip": "VIP",
+      "regular": "Regular",
+      "new": "New",
+      "atRisk": "At Risk"
+    },
+    "sortPlaceholder": "Sort",
+    "sort": {
+      "totalSpent": "Total Spent",
+      "orders": "Orders",
+      "lastOrder": "Last Order"
+    },
+    "emptyFiltered": "No customers match your filters.",
+    "empty": "No customers yet. They will appear here once they sign up on your site.",
+    "col": {
+      "phone": "Phone",
+      "orders": "Orders",
+      "totalSpent": "Total Spent",
+      "avgOrder": "Avg Order",
+      "lastOrder": "Last Order",
+      "tags": "Tags",
+      "status": "Status"
+    },
+    "noName": "No name",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "detail": {
+      "customer": "Customer",
+      "title": "Customer Details",
+      "srDescription": "Customer detail view",
+      "customerInfo": "Customer Info",
+      "memberSince": "Member since {date}",
+      "orderHistory": "Order History",
+      "noOrders": "No orders yet."
+    },
+    "orderCol": {
+      "date": "Date",
+      "items": "Items",
+      "total": "Total"
+    },
+    "export": {
+      "pdfTitle": "Customer Report",
+      "pdfSubtitle": "{count} customers"
+    }
+  },
+  "suppliers": {
+    "export": "Export",
+    "addSupplier": "Add Supplier",
+    "add": "Add",
+    "totalSuppliers": "Total Suppliers",
+    "activePurchaseOrders": "Active Purchase Orders",
+    "poValueThisMonth": "PO Value This Month",
+    "tabSuppliers": "Suppliers",
+    "tabPurchaseOrders": "Purchase Orders",
+    "searchPlaceholder": "Search suppliers...",
+    "emptyNoSuppliers": "No suppliers yet. Add your first supplier to get started.",
+    "emptyNoMatch": "No suppliers match your search.",
+    "poCount": "{count} POs",
+    "lastPo": "Last: {date}",
+    "createPo": "Create PO",
+    "emptyNoOrders": "No purchase orders yet.",
+    "createPurchaseOrder": "Create Purchase Order",
+    "colPoNumber": "PO #",
+    "colSupplier": "Supplier",
+    "colDate": "Date",
+    "colItems": "Items",
+    "colTotal": "Total",
+    "colStatus": "Status",
+    "colActions": "Actions",
+    "unknownSupplier": "Unknown",
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "received": "Received",
+      "cancelled": "Cancelled"
+    },
+    "actionSend": "Send",
+    "actionReceived": "Received",
+    "editSupplier": "Edit Supplier",
+    "editSupplierDesc": "Update supplier information.",
+    "addSupplierDesc": "Add a new supplier to your organization.",
+    "labelName": "Name *",
+    "placeholderName": "Supplier name",
+    "labelContactName": "Contact Name",
+    "labelPhone": "Phone",
+    "labelEmail": "Email",
+    "labelAddress": "Address",
+    "labelPaymentTerms": "Payment Terms",
+    "terms": {
+      "net30": "Net 30",
+      "net60": "Net 60",
+      "cod": "COD",
+      "prepaid": "Prepaid"
+    },
+    "labelRating": "Rating",
+    "labelNotes": "Notes",
+    "placeholderSupplierNotes": "Additional notes about this supplier...",
+    "update": "Update",
+    "createPoDesc": "Create a new draft purchase order.",
+    "labelSupplier": "Supplier *",
+    "selectSupplier": "Select supplier",
+    "labelItems": "Items",
+    "poColItem": "Item",
+    "poColQty": "Qty",
+    "poColUnit": "Unit",
+    "poColCost": "Cost",
+    "poColTotal": "Total",
+    "placeholderItemName": "Item name",
+    "addRow": "Add Row",
+    "subtotal": "Subtotal",
+    "taxPercent": "Tax ({percent}%)",
+    "totalLabel": "Total",
+    "placeholderPoNotes": "Additional notes...",
+    "createDraft": "Create Draft",
+    "csvName": "Name",
+    "csvContact": "Contact",
+    "toastNameRequired": "Supplier name is required",
+    "toastSaveFailed": "Failed to save supplier",
+    "toastDeleteFailed": "Failed to delete supplier",
+    "toastSelectSupplier": "Please select a supplier",
+    "toastAddItem": "Please add at least one item",
+    "toastCreatePOFailed": "Failed to create purchase order",
+    "toastUpdateStatusFailed": "Failed to update status"
+  },
+  "apiSettings": {
+    "toast": {
+      "keyGenerated": "API key generated",
+      "keyRevoked": "API key revoked",
+      "copied": "Copied to clipboard",
+      "urlRequired": "URL is required",
+      "selectEvent": "Select at least one event",
+      "webhookAdded": "Webhook added",
+      "webhookRemoved": "Webhook removed"
+    },
+    "pageTitle": "API & Webhooks",
+    "pageSubtitle": "Manage API keys and webhook integrations",
+    "tabs": {
+      "apiKeys": "API Keys",
+      "webhooks": "Webhooks"
+    },
+    "apiKey": {
+      "title": "API Key",
+      "description": "Use this key to authenticate requests to the Merchiva API.",
+      "created": "Created {date}",
+      "revoke": "Revoke",
+      "generate": "Generate API Key"
+    },
+    "usage": {
+      "title": "Usage",
+      "description": "How to authenticate with the Merchiva API",
+      "authentication": "Authentication",
+      "availableEndpoints": "Available Endpoints",
+      "placeholderNotice": "This is a placeholder implementation. In production, API keys would be stored server-side with proper hashing and rate limiting."
+    },
+    "endpoints": {
+      "listProducts": "List products",
+      "listInventory": "List inventory items",
+      "listOrders": "List recent orders",
+      "createOrder": "Create order",
+      "listStaff": "List staff members"
+    },
+    "addWebhook": {
+      "title": "Add Webhook",
+      "description": "Receive notifications when events occur in your store.",
+      "endpointUrl": "Endpoint URL",
+      "events": "Events",
+      "submit": "Add Webhook"
+    },
+    "configured": {
+      "title": "Configured Webhooks"
+    },
+    "status": {
+      "active": "Active",
+      "paused": "Paused"
+    },
+    "webhookActions": {
+      "test": "Test",
+      "pause": "Pause",
+      "enable": "Enable"
+    },
+    "samplePayload": {
+      "title": "Sample Payload",
+      "dismiss": "Dismiss",
+      "descriptionPrefix": "This is what would be sent for a ",
+      "descriptionSuffix": " event."
+    },
+    "empty": {
+      "title": "No webhooks configured",
+      "description": "Add a webhook endpoint above to receive real-time notifications about store events."
+    }
+  },
+  "punchIn": {
+    "toastCodeMustBe4Digits": "Code must be 4 digits",
+    "toastCodeSet": "Code set",
+    "toastFailed": "Failed",
+    "errorPinNotRecognized": "PIN not recognized",
+    "toastSelectAnAction": "Select an action",
+    "stepAuthenticate": "01 · AUTHENTICATE",
+    "enterYourPin": "Enter your PIN",
+    "punchInOrOutHint": "Punch in or out by keying your employee PIN.",
+    "pinLabel": "PIN",
+    "statusError": "▲ ERROR",
+    "statusReady": "READY",
+    "statusEntered": "{count}/4 ENTERED",
+    "statusVerifying": "VERIFYING…",
+    "keyboardHint": "PRESS DIGITS OR USE KEYBOARD",
+    "clear": "Clear",
+    "employee": "EMPLOYEE",
+    "action": "ACTION",
+    "selectAnAction": "SELECT AN ACTION",
+    "optionEndShiftTitle": "End shift",
+    "optionEndShiftSub": "Punch out",
+    "optionStartBreakTitle": "Start break",
+    "optionStartBreakSub": "Meal / rest",
+    "fieldTime": "TIME",
+    "fieldDate": "DATE",
+    "fieldState": "STATE",
+    "stateOff": "OFF",
+    "stateBreak": "BREAK",
+    "stateOn": "ON",
+    "confirm": "Confirm",
+    "punchRecorded": "PUNCH RECORDED",
+    "successWelcome": "Welcome, {name}.",
+    "successGoodbye": "Goodbye, {name}.",
+    "successBreakStarted": "Break started.",
+    "successWelcomeBack": "Welcome back, {name}.",
+    "successInSub": "Your shift is now open.",
+    "successOutSub": "Your shift has been closed.",
+    "successBreakStartSub": "Clock paused — end your break when ready.",
+    "successBreakEndSub": "Break ended — shift is active again.",
+    "fieldInAt": "IN AT",
+    "fieldOutAt": "OUT AT",
+    "fieldBreakAt": "BREAK AT",
+    "fieldResumed": "RESUMED",
+    "fieldTerminal": "TERMINAL",
+    "fieldLocation": "LOCATION",
+    "fieldConfId": "CONF. ID",
+    "tapToDismiss": "TAP TO DISMISS · AUTO-RESET IN 5S",
+    "onShift": "ON SHIFT",
+    "noActiveShifts": "No active shifts.",
+    "recentPunches": "RECENT PUNCHES",
+    "live": "LIVE",
+    "noPunchesToday": "No punches today",
+    "stepOnShiftNow": "02 · ON SHIFT NOW",
+    "activeCount": "active",
+    "onBreak": "on break",
+    "active": "active",
+    "stepRecentPunches": "03 · RECENT PUNCHES",
+    "today": "Today",
+    "colTime": "Time",
+    "colWho": "Who",
+    "colAction": "Action",
+    "colDuration": "Duration",
+    "durOnBreak": "on break",
+    "durOpen": "open",
+    "dialogMobileTitle": "Punch-in code",
+    "dialogChangeTitle": "Change your punch-in code",
+    "dialogSetTitle": "Set your punch-in code",
+    "dialogChangeDesc": "Update the 4-digit code you enter at this store.",
+    "dialogSetDesc": "Pick a 4-digit code you'll remember. You'll enter it every time you punch in.",
+    "newCodeLabel": "New code",
+    "codePlaceholder": "4 digits",
+    "saveCode": "Save code"
+  },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Manage your Merchiva subscription",
+    "ownerOnly": "Only the organization owner can manage billing.",
+    "currentPlan": "Current plan",
+    "yearly": "Yearly",
+    "monthly": "Monthly",
+    "nextRenewal": "Next renewal: {date}",
+    "freePlan": "Free",
+    "upgradePrompt": "Upgrade to Pro to unlock all features.",
+    "manageSubscription": "Manage subscription",
+    "manageSubscriptionDesc": "Change plan, payment method, invoices, and cancellation.",
+    "openPortal": "Open portal",
+    "upgradeToPro": "Upgrade to Pro",
+    "perMonth": "/ month",
+    "perYear": "/ year",
+    "yearlySaveHint": "Save 17% — 2 months free",
+    "recommended": "Recommended",
+    "featureAllFeatures": "All current features included",
+    "featureUnlimitedTeam": "Unlimited team members",
+    "featurePrioritySupport": "Priority support",
+    "toastSubscriptionActivated": "Subscription activated",
+    "toastCheckoutCanceled": "Checkout canceled",
+    "toastCheckoutFailed": "Checkout failed",
+    "toastPortalOpenFailed": "Could not open portal",
+    "toastPortalError": "Portal error"
+  },
+  "reviews": {
+    "pageTitle": "Reviews & Reputation",
+    "pageSubtitle": "Monitor and manage your online reviews",
+    "googleIntegrationTitle": "Google Reviews Integration",
+    "plannedBadge": "Planned",
+    "googleIntegrationDesc": "Monitor and respond to Google reviews from one place. Connect your Google Business Profile to get started.",
+    "placesIdLabel": "Google Places ID",
+    "connectButton": "Connect",
+    "findPlacesIdAt": "Find your Places ID at",
+    "recentReviewsTitle": "Recent Reviews",
+    "recentReviewsDesc": "Sample data shown below. Connect Google Reviews to see real reviews.",
+    "ratingTrendTitle": "Rating Trend",
+    "basedOnReviews": "based on {count} reviews",
+    "ratingTrendUnavailable": "This feature will be available when Google Reviews API is connected. Rating data will include historical trends and comparison with competitors."
+  },
+  "setup": {
+    "steps": {
+      "storeInfo": "Store Info",
+      "hours": "Hours",
+      "team": "Team",
+      "pos": "POS"
+    },
+    "skip": "Skip",
+    "settingUp": "Setting up your workspace...",
+    "footer": {
+      "step": "Step {current} / {total}",
+      "yourStore": "Your store"
+    },
+    "toast": {
+      "complete": "Setup complete!",
+      "error": "Something went wrong, but your workspace is ready."
+    },
+    "storeInfo": {
+      "title": "Tell us about your store.",
+      "subtitle": "We'll use this to customize your dashboard and set up your workspace.",
+      "storeNameLabel": "Store name",
+      "storeNamePlaceholder": "e.g. Maple Coffee",
+      "addressLabel": "Address",
+      "addressPlaceholder": "e.g. 123 Main St, Oakland CA",
+      "businessTypeLabel": "Business type",
+      "types": {
+        "cafe": "Cafe / Bakery",
+        "restaurant": "Restaurant",
+        "retail": "Retail Shop",
+        "service": "Service / Repair",
+        "other": "Other"
+      }
+    },
+    "hours": {
+      "title": "When are you open?",
+      "subtitle": "This helps Mr. Merchiva schedule staff and predict demand.",
+      "openLabel": "Open",
+      "closeLabel": "Close",
+      "openDaysLabel": "Open days",
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
+    },
+    "team": {
+      "title": "Invite your team.",
+      "subtitle": "Add staff so they can clock in, view schedules, and use POS.",
+      "roleManager": "Manager",
+      "roleStaff": "Staff",
+      "addAnother": "Add another",
+      "sendInvite": "Send {count} invite",
+      "sendInvites": "Send {count} invites"
+    },
+    "pos": {
+      "title": "Connect your POS.",
+      "subtitle": "Merchiva syncs sales, products, and inventory from your POS.",
+      "connectOAuth": "Connect via OAuth",
+      "noPos": "No POS yet",
+      "setupLater": "Set up manually later",
+      "finishSetup": "Finish setup"
+    }
+  },
+  "salesForecast": {
+    "dataExcellent": "Excellent data",
+    "dataGood": "Good data",
+    "dataFair": "Fair data",
+    "dataLimited": "Limited data",
+    "loadingData": "Loading forecast data...",
+    "notEnoughData": "Not enough data for forecasting",
+    "notEnoughDataDesc": "Need at least 7 days of sales data for predictions. Currently tracking {count} days.",
+    "title": "7-Day Forecast",
+    "noLocation": "No location — weather unavailable",
+    "weatherUnavailable": "Weather data unavailable",
+    "confidence": "{percent}% confidence",
+    "today": "Today",
+    "factorBase": "Base:",
+    "factorWeather": "Weather:",
+    "factorHoliday": "Holiday:",
+    "factorTraffic": "Traffic:",
+    "factorStaff": "Staff:",
+    "factorTrend": "Trend:",
+    "hourlyBreakdown": "Hourly Breakdown",
+    "predictedRevenuePerHour": "Predicted revenue per hour",
+    "total": "Total",
+    "predicted": "Predicted",
+    "bestDay": "Best Day",
+    "at": "at",
+    "boostedBy": "Boosted by {holiday}",
+    "highFootTraffic": "High expected foot traffic",
+    "strongBaseline": "Strong {day} baseline",
+    "weatherImpact": "Weather Impact",
+    "enableLocation": "Enable location access to see weather-based predictions",
+    "maySee": "may see",
+    "dueToWeather": "due to {weather} weather",
+    "favorableWeather": "Favorable weather expected all week",
+    "daysClear": "{count}/7 days clear",
+    "weatherPending": "Weather data pending",
+    "staffingAdvisory": "Staffing Advisory",
+    "daysCount": "{count} day",
+    "daysCountPlural": "{count} days",
+    "mayBeUnderstaffed": "may be understaffed",
+    "considerAddingShifts": "{days} — consider adding shifts",
+    "noShiftData": "No shift data available. Schedule shifts to enable staffing recommendations.",
+    "staffingAdequate": "Staffing looks adequate across all 7 days (avg {avg} per day)"
+  },
+  "subscribe": {
+    "toastActivated": "Subscription activated",
+    "toastCanceled": "Checkout canceled",
+    "toastCheckoutFailed": "Checkout failed",
+    "trialDaysLeftOne": "1 day left in your free trial",
+    "trialDaysLeftOther": "{count} days left in your free trial",
+    "trialEnded": "Your free trial has ended",
+    "titleTrial": "You're on a free trial",
+    "titleSubscribe": "Subscribe to Merchiva",
+    "trialDescription": "{trialLine}. Subscribe now to keep your store running without interruption.",
+    "ownerDescription": "An active subscription is required to keep using Merchiva.",
+    "memberDescription": "Your organization needs an active subscription to continue.",
+    "monthly": "Monthly",
+    "perMonth": "/ month",
+    "yearly": "Yearly",
+    "perYear": "/ year",
+    "yearlyHint": "Save 17% — 2 months free",
+    "featureAllFeatures": "All features included",
+    "featureUnlimitedMembers": "Unlimited team members",
+    "featurePrioritySupport": "Priority support",
+    "memberOwnerOnly": "Only the organization owner can subscribe. Please ask the owner of {org} to activate a subscription, then refresh.",
+    "yourOrganization": "your organization",
+    "continueInTrial": "Continue in trial",
+    "recommended": "Recommended"
+  },
+  "bugReport": {
+    "title": "Report a Bug",
+    "drawerDescription": "Describe the issue you ran into and optionally attach a screenshot.",
+    "whatWentWrong": "What went wrong?",
+    "titlePlaceholder": "Brief description of the issue",
+    "detailsLabel": "Details (optional)",
+    "detailsPlaceholder": "Steps to reproduce, expected behavior...",
+    "screenshotLabel": "Screenshot",
+    "screenshotAlt": "Bug screenshot",
+    "captureScreenshot": "Capture Screenshot",
+    "submit": "Submit Report",
+    "screenshotCaptured": "Screenshot captured",
+    "screenshotFailed": "Failed to capture screenshot",
+    "titleRequired": "Please add a title",
+    "saved": "Bug report saved"
+  },
+  "myTasks": {
+    "title": "Today’s tasks",
+    "doneCount": "{done} / {total} done",
+    "all": "All",
+    "allCompleted": "All tasks completed today.",
+    "evidenceBadge": "evidence",
+    "done": "Done",
+    "moreCount": "+ {count} more",
+    "evidenceRequiredError": "This task requires a photo or video as evidence",
+    "chatHeader": "✅ Task completed: {title}",
+    "chatAttachments": "📎 {count} attachment(s)",
+    "partialChatFailure": "Task completed, but {count} chat message(s) failed",
+    "completedSuccess": "Task completed",
+    "completeError": "Failed to complete",
+    "evidenceLabel": "Evidence photos / videos",
+    "evidenceAlt": "Evidence",
+    "remove": "Remove",
+    "uploadError": "Upload failed",
+    "uploading": "Uploading…",
+    "noteLabel": "Note",
+    "optional": "(optional)",
+    "notePlaceholder": "Anything to flag for the manager?",
+    "markDone": "Mark done"
+  },
+  "itemForecast": {
+    "title": "Per-Item AI Forecast",
+    "retrain": "Retrain",
+    "refresh": "Refresh",
+    "loadingPredictions": "Loading predictions...",
+    "today": "Today",
+    "itemsTotal": "items total",
+    "topItems": "Top Items: {day}",
+    "predictedUnits": "Predicted units to sell",
+    "totalItems": "Total: {count} items",
+    "predicted": "Predicted",
+    "unitsValue": "{count} units",
+    "allItems": "All Items: {day}",
+    "showLess": "Show less",
+    "showAllItems": "Show all {count} items",
+    "modelNotTrained": "AI Model Not Trained Yet",
+    "recordsReady": "You have {count} item-day records. Train the AI model to get per-item predictions.",
+    "recordsNeeded": "Need at least 100 item-day records from payment history. Currently have {count}.",
+    "training": "Training...",
+    "trainModel": "Train AI Model",
+    "modelTrainedSummary": "Model trained: {items} items, {days} days, R²={r2}",
+    "lastTrainedSummary": "Last trained: {items} items across {days} days — MAE: {mae}, R²: {r2}",
+    "trainingFailed": "Training failed",
+    "predictionFailed": "Prediction failed"
+  },
+  "scheduler": {
+    "auto": {
+      "button": "Auto Schedule",
+      "title": "Auto Schedule",
+      "description": "Generate optimized shift assignments based on availability, constraints, and fairness.",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "maxHoursPerWeek": "Max hrs/week",
+      "maxConsecutiveDays": "Max consec. days",
+      "minRestHours": "Min rest (hrs)",
+      "generate": "Generate Schedule",
+      "statShifts": "Shifts",
+      "statTotalHours": "Total Hours",
+      "statAvgPerStaff": "Avg/Staff",
+      "statFairness": "Fairness",
+      "unfilledSlots": "Unfilled Slots ({count})",
+      "moreUnfilled": "+{count} more unfilled",
+      "schedulePreview": "Schedule Preview",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "colDate": "Date",
+      "colShift": "Shift",
+      "colTime": "Time",
+      "colStaff": "Staff",
+      "colRoles": "Roles",
+      "colScore": "Score",
+      "colStatus": "Status",
+      "statusOk": "OK",
+      "regenerate": "Regenerate",
+      "applySelected": "Apply Selected ({count})",
+      "noShiftsGenerated": "No shifts could be generated. Check your team's availability and shift presets.",
+      "generateFailed": "Failed to generate schedule.",
+      "noShiftsSelected": "No shifts selected to apply.",
+      "shiftsAdded": "{count} shift(s) added to the schedule.",
+      "applyFailed": "Failed to apply some shifts. Please try again."
     }
   }
 }

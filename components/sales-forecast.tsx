@@ -31,6 +31,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/currency";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { useT } from "@/lib/i18n/context";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -63,18 +64,18 @@ function confidenceColor(c: number): string {
 }
 
 function qualityBadge(q: ForecastResult["dataQuality"]): {
-  label: string;
+  labelKey: string;
   variant: "default" | "secondary" | "outline" | "destructive";
 } {
   switch (q) {
     case "excellent":
-      return { label: "Excellent data", variant: "default" };
+      return { labelKey: "salesForecast.dataExcellent", variant: "default" };
     case "good":
-      return { label: "Good data", variant: "secondary" };
+      return { labelKey: "salesForecast.dataGood", variant: "secondary" };
     case "fair":
-      return { label: "Fair data", variant: "outline" };
+      return { labelKey: "salesForecast.dataFair", variant: "outline" };
     case "poor":
-      return { label: "Limited data", variant: "destructive" };
+      return { labelKey: "salesForecast.dataLimited", variant: "destructive" };
   }
 }
 
@@ -104,6 +105,7 @@ function timestampToMs(v: unknown): number {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function SalesForecast() {
+  const t = useT();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const [rawSales] = useSalesRecords();
@@ -275,7 +277,7 @@ export function SalesForecast() {
         <div className="flex items-center gap-2">
           <Spinner size={16} className="text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
-            Loading forecast data...
+            {t("salesForecast.loadingData")}
           </span>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
@@ -304,13 +306,19 @@ export function SalesForecast() {
           <BarChart3 className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
           <div>
             <p className="font-semibold text-sm">
-              Not enough data for forecasting
+              {t("salesForecast.notEnoughData")}
             </p>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-              Need at least 7 days of sales data for predictions. Currently
-              tracking{" "}
-              {new Set(salesHistory.filter((r) => r.hour === undefined).map((r) => r.date)).size}{" "}
-              days.
+              {t("salesForecast.notEnoughDataDesc").replace(
+                "{count}",
+                String(
+                  new Set(
+                    salesHistory
+                      .filter((r) => r.hour === undefined)
+                      .map((r) => r.date),
+                  ).size,
+                ),
+              )}
             </p>
           </div>
         </CardContent>
@@ -350,26 +358,29 @@ export function SalesForecast() {
       {/* Section header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">7-Day Forecast</h3>
+          <h3 className="text-sm font-semibold">{t("salesForecast.title")}</h3>
           <Badge variant={qb.variant} className="text-[10px] px-1.5 py-0">
-            {qb.label}
+            {t(qb.labelKey)}
           </Badge>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {!geoCoords && (
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              No location — weather unavailable
+              {t("salesForecast.noLocation")}
             </span>
           )}
           {weatherError && geoCoords && (
             <span className="flex items-center gap-1 text-amber-600">
               <AlertCircle className="h-3 w-3" />
-              Weather data unavailable
+              {t("salesForecast.weatherUnavailable")}
             </span>
           )}
           <span className="font-mono">
-            {forecast.overallConfidence}% confidence
+            {t("salesForecast.confidence").replace(
+              "{percent}",
+              String(forecast.overallConfidence),
+            )}
           </span>
         </div>
       </div>
@@ -393,7 +404,7 @@ export function SalesForecast() {
               {/* Day name + date */}
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {isToday ? "Today" : day.dayOfWeek.slice(0, 3)}
+                  {isToday ? t("salesForecast.today") : day.dayOfWeek.slice(0, 3)}
                 </span>
                 {weatherIcon(day.factors.weatherLabel)}
               </div>
@@ -423,37 +434,37 @@ export function SalesForecast() {
               {/* Compact factor breakdown */}
               <div className="mt-2 space-y-0.5 text-[10px] text-muted-foreground leading-tight">
                 <div className="flex items-center gap-1">
-                  <span>Base:</span>
+                  <span>{t("salesForecast.factorBase")}</span>
                   <span className="font-mono">
                     {format(day.factors.baseLine, { decimals: 0 })}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>Weather:</span>
+                  <span>{t("salesForecast.factorWeather")}</span>
                   <span className="font-mono">
                     {formatMultiplier(day.factors.weatherMultiplier)}
                   </span>
                 </div>
                 {day.factors.holidayName && (
                   <div className="flex items-center gap-1 text-amber-600">
-                    <span>Holiday:</span>
+                    <span>{t("salesForecast.factorHoliday")}</span>
                     <span className="truncate">
                       {formatMultiplier(day.factors.holidayMultiplier)}
                     </span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
-                  <span>Traffic:</span>
+                  <span>{t("salesForecast.factorTraffic")}</span>
                   <span>{day.factors.footTrafficLevel}</span>
                 </div>
                 {day.factors.staffCount > 0 && (
                   <div className="flex items-center gap-1">
-                    <span>Staff:</span>
+                    <span>{t("salesForecast.factorStaff")}</span>
                     <span>{day.factors.staffCount}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
-                  <span>Trend:</span>
+                  <span>{t("salesForecast.factorTrend")}</span>
                   <span className="font-mono">
                     {formatMultiplier(day.factors.trendMultiplier)}
                   </span>
@@ -471,7 +482,7 @@ export function SalesForecast() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm">
-                  Hourly Breakdown:{" "}
+                  {t("salesForecast.hourlyBreakdown")}:{" "}
                   {selected.dayOfWeek},{" "}
                   {new Date(selected.date + "T12:00:00").toLocaleDateString(
                     "en-US",
@@ -479,11 +490,11 @@ export function SalesForecast() {
                   )}
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Predicted revenue per hour
+                  {t("salesForecast.predictedRevenuePerHour")}
                 </CardDescription>
               </div>
               <span className="text-xs font-mono text-muted-foreground">
-                Total: {format(selected.predicted, { decimals: 0 })}
+                {t("salesForecast.total")}: {format(selected.predicted, { decimals: 0 })}
               </span>
             </div>
           </CardHeader>
@@ -517,7 +528,7 @@ export function SalesForecast() {
                     border: "1px solid #e7e5e4",
                     fontSize: "11px",
                   }}
-                  formatter={(v) => [format(Number(v), { decimals: 0 }), "Predicted"]}
+                  formatter={(v) => [format(Number(v), { decimals: 0 }), t("salesForecast.predicted")]}
                 />
                 <Bar
                   dataKey="predicted"
@@ -538,24 +549,30 @@ export function SalesForecast() {
           <CardContent className="p-3 space-y-1.5">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-emerald-500" />
-              <span className="text-xs font-semibold">Best Day</span>
+              <span className="text-xs font-semibold">{t("salesForecast.bestDay")}</span>
             </div>
             <p className="text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">
                 {bestDay.dayOfWeek}
               </span>{" "}
-              at{" "}
+              {t("salesForecast.at")}{" "}
               <span className="font-mono font-semibold text-foreground">
                 {format(bestDay.predicted, { decimals: 0 })}
               </span>
             </p>
             <p className="text-xs text-muted-foreground">
               {bestDay.factors.holidayName
-                ? `Boosted by ${bestDay.factors.holidayName}`
+                ? t("salesForecast.boostedBy").replace(
+                    "{holiday}",
+                    bestDay.factors.holidayName,
+                  )
                 : bestDay.factors.footTrafficLevel === "high" ||
                     bestDay.factors.footTrafficLevel === "very_high"
-                  ? "High expected foot traffic"
-                  : `Strong ${bestDay.dayOfWeek} baseline`}
+                  ? t("salesForecast.highFootTraffic")
+                  : t("salesForecast.strongBaseline").replace(
+                      "{day}",
+                      bestDay.dayOfWeek,
+                    )}
             </p>
           </CardContent>
         </Card>
@@ -565,11 +582,11 @@ export function SalesForecast() {
           <CardContent className="p-3 space-y-1.5">
             <div className="flex items-center gap-2">
               {weatherIcon(worstWeatherDay.factors.weatherLabel)}
-              <span className="text-xs font-semibold">Weather Impact</span>
+              <span className="text-xs font-semibold">{t("salesForecast.weatherImpact")}</span>
             </div>
             {!geoCoords ? (
               <p className="text-xs text-muted-foreground">
-                Enable location access to see weather-based predictions
+                {t("salesForecast.enableLocation")}
               </p>
             ) : (
               <>
@@ -579,22 +596,34 @@ export function SalesForecast() {
                       <span className="font-semibold text-foreground">
                         {worstWeatherDay.dayOfWeek}
                       </span>{" "}
-                      may see{" "}
+                      {t("salesForecast.maySee")}{" "}
                       <span className="font-mono">
                         {formatMultiplier(
                           worstWeatherDay.factors.weatherMultiplier,
                         )}
                       </span>{" "}
-                      due to {worstWeatherDay.factors.weatherLabel} weather
+                      {t("salesForecast.dueToWeather").replace(
+                        "{weather}",
+                        worstWeatherDay.factors.weatherLabel,
+                      )}
                     </>
                   ) : (
-                    "Favorable weather expected all week"
+                    t("salesForecast.favorableWeather")
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {weather && weather.length > 0
-                    ? `${weather.filter((w) => w.condition === "sunny" || w.condition === "cloudy").length}/7 days clear`
-                    : "Weather data pending"}
+                    ? t("salesForecast.daysClear").replace(
+                        "{count}",
+                        String(
+                          weather.filter(
+                            (w) =>
+                              w.condition === "sunny" ||
+                              w.condition === "cloudy",
+                          ).length,
+                        ),
+                      )
+                    : t("salesForecast.weatherPending")}
                 </p>
               </>
             )}
@@ -606,31 +635,38 @@ export function SalesForecast() {
           <CardContent className="p-3 space-y-1.5">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs font-semibold">Staffing Advisory</span>
+              <span className="text-xs font-semibold">{t("salesForecast.staffingAdvisory")}</span>
             </div>
             {understaffedDays.length > 0 ? (
               <>
                 <p className="text-sm text-muted-foreground">
                   <span className="text-amber-600 font-semibold">
-                    {understaffedDays.length} day
-                    {understaffedDays.length > 1 ? "s" : ""}
+                    {(understaffedDays.length > 1
+                      ? t("salesForecast.daysCountPlural")
+                      : t("salesForecast.daysCount")
+                    ).replace("{count}", String(understaffedDays.length))}
                   </span>{" "}
-                  may be understaffed
+                  {t("salesForecast.mayBeUnderstaffed")}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {understaffedDays.map((d) => d.dayOfWeek.slice(0, 3)).join(", ")}{" "}
-                  — consider adding shifts
+                  {t("salesForecast.considerAddingShifts").replace(
+                    "{days}",
+                    understaffedDays
+                      .map((d) => d.dayOfWeek.slice(0, 3))
+                      .join(", "),
+                  )}
                 </p>
               </>
             ) : avgStaff === 0 ? (
               <p className="text-xs text-muted-foreground">
-                No shift data available. Schedule shifts to enable staffing
-                recommendations.
+                {t("salesForecast.noShiftData")}
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Staffing looks adequate across all 7 days (avg{" "}
-                {Math.round(avgStaff)} per day)
+                {t("salesForecast.staffingAdequate").replace(
+                  "{avg}",
+                  String(Math.round(avgStaff)),
+                )}
               </p>
             )}
           </CardContent>

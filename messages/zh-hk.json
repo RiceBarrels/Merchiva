@@ -60,12 +60,14 @@
     "display": "顯示屏",
     "api": "API",
     "reviews": "評價",
+    "notifications": "通知",
     "group": {
       "operations": "運營",
       "sales": "銷售與財務",
       "growth": "增長",
       "advanced": "高級"
-    }
+    },
+    "usage": "AI 用量"
   },
   "login": {
     "title": "登錄 Merchiva",
@@ -917,7 +919,13 @@
       "roleTasksDefaultDesc": "今日班次崗位任務。",
       "addRole": "添加崗位",
       "tasksLabel": "任務",
-      "noTasks": "暫無任務"
+      "noTasks": "暫無任務",
+      "taskPlaceholder": "任務",
+      "anyTime": "任何時間",
+      "taskDescription": "說明",
+      "requiresEvidence": "需要相片佐證",
+      "notifiesChats": "通知 {count} 個聊天",
+      "editTask": "編輯任務"
     },
     "requests": {
       "title": "申請",
@@ -1273,7 +1281,8 @@
       "inviteCancelFailed": "撤回失敗"
     },
     "title": "人事",
-    "subtitle": "排班、團隊、角色與培訓"
+    "subtitle": "排班、團隊、角色與培訓",
+    "pendingRequests": "待處理申請"
   },
   "pos": {
     "tabs": {
@@ -1291,7 +1300,12 @@
       "customer": "顧客",
       "thankYou": "謝謝惠顧！",
       "print": "打印",
-      "newOrder": "新訂單"
+      "newOrder": "新訂單",
+      "paidAmount": "已付 {amount}",
+      "yourBusiness": "你的商號",
+      "tipPct": "小費 {pct}%",
+      "paid": "已付",
+      "email": "電郵"
     },
     "refund": {
       "title": "退款",
@@ -1332,7 +1346,14 @@
       "noProducts": "暫無商品",
       "addInProducts": "請到商品頁添加",
       "noResults": "沒有結果",
-      "each": "每件"
+      "each": "每件",
+      "taxShort": "税",
+      "newOrder": "新訂單",
+      "searchMenu": "搜尋菜單...",
+      "scan": "掃描",
+      "matchesFor": "「{query}」的結果",
+      "noResultsFound": "找不到結果",
+      "noProductsInCategory": "此類別沒有產品"
     },
     "customItem": {
       "title": "自定義商品",
@@ -1378,6 +1399,90 @@
       "cardDeclined": "銀行卡被拒絕",
       "paymentFailed": "付款失敗",
       "moduleUnavailable": "支付模塊不可用"
+    },
+    "discountReasons": {
+      "none": "原因（可選）…",
+      "staff": "員工折扣",
+      "loyalty": "會員獎賞",
+      "comp": "招待／免費",
+      "damaged": "製作出錯",
+      "manager": "經理特批"
+    },
+    "cart": {
+      "ticket": "單據",
+      "itemsCount": "{count} 件項目",
+      "walkInPlaceholder": "即場顧客（點擊命名）",
+      "empty": "購物車是空的",
+      "tapToStart": "點擊項目開始",
+      "pctOff": "減 {pct}%",
+      "amountOff": "減 {amount}",
+      "tipLabel": "小費（{pct}%）",
+      "viewCart": "查看購物車",
+      "drawerTitle": "購物車 · {count} 件項目"
+    },
+    "lineEditor": {
+      "title": "編輯項目",
+      "mobileTitle": "編輯 · {name}",
+      "perEach": "{price}/件",
+      "quantity": "數量",
+      "notesLabel": "廚房／吧枱備註",
+      "notesPlaceholder": "過敏、製作指示、杯上名字...",
+      "lineDiscount": "項目折扣",
+      "discNone": "無",
+      "discPct": "% 折扣",
+      "discAmount": "減 {symbol}",
+      "remove": "移除",
+      "lineTotal": "項目合計"
+    },
+    "pay": {
+      "methods": {
+        "card": "銀行卡",
+        "cash": "現金",
+        "mobilePay": "流動支付",
+        "giftCard": "禮品卡",
+        "mobile": "流動",
+        "gift": "禮品卡"
+      },
+      "cardSubOffline": "輸入卡號 — 已離線排隊",
+      "cardSubAvailable": "拍卡、插卡或刷卡",
+      "cardSubNotConfigured": "未設定",
+      "cashSub": "打開錢箱",
+      "mobileSub": "Apple／Google Pay",
+      "giftSub": "掃描或輸入代碼",
+      "backToOrder": "返回訂單",
+      "checkout": "結帳",
+      "tender": "收款",
+      "cardNumberQueued": "卡號（稍後排隊處理）",
+      "queuedHint": "付款將排隊，重新連線後處理",
+      "queuedHintShort": "已排隊，重新連線後處理",
+      "pciWarning": "僅供示範／MVP — 本地儲存的卡號不符合 PCI 規範。",
+      "tip": "小費",
+      "tipNone": "無",
+      "cashTendered": "實收現金",
+      "other": "其他",
+      "changeOwed": "應找零",
+      "change": "找零",
+      "split": "分單",
+      "splitSingle": "單人",
+      "splitWays": "{n} 份",
+      "splitEach": "每份 {amount}",
+      "orderSummary": "訂單摘要",
+      "queueCardAmount": "排隊卡付 {amount}",
+      "chargeAmount": "收款 {amount}"
+    },
+    "offline": {
+      "banner": "離線模式 — 僅限現金及銀行卡排隊"
+    },
+    "pending": {
+      "queuedOne": "{count} 筆待處理銀行卡付款已排隊",
+      "queuedOther": "{count} 筆待處理銀行卡付款已排隊",
+      "processOne": "處理 {count} 筆待處理銀行卡",
+      "processOther": "處理 {count} 筆待處理銀行卡"
+    },
+    "toast": {
+      "paymentQueued": "付款已排隊",
+      "paymentQueuedDesc": "卡號尾數 {last4} — 連線後處理",
+      "pendingCardsCleared": "待處理銀行卡已清除"
     }
   },
   "settings": {
@@ -1658,7 +1763,44 @@
     },
     "groupStoreAccount": "店鋪與賬户",
     "currentStore": "當前店鋪",
-    "currentAccount": "當前賬户"
+    "currentAccount": "當前賬户",
+    "toastCurrencySaved": "貨幣已更新",
+    "toastSaveFailed": "儲存失敗",
+    "currencyName": {
+      "USD": "美元",
+      "EUR": "歐元",
+      "GBP": "英鎊",
+      "CNY": "人民幣",
+      "JPY": "日圓",
+      "HKD": "港幣",
+      "TWD": "新臺幣",
+      "CAD": "加元",
+      "AUD": "澳元",
+      "KRW": "韓元",
+      "INR": "印度盧比",
+      "SAR": "沙特里亞爾"
+    },
+    "toastGeolocationUnsupported": "你的瀏覽器不支援地理定位",
+    "toastLocationDetected": "已偵測位置",
+    "toastGeolocationFailed": "無法取得你的位置。請手動輸入座標。",
+    "exitStoreModeTitle": "輸入 PIN 以退出店舖模式",
+    "exitStoreModeMobileTitle": "退出店舖模式",
+    "exitStoreModeDesc": "輸入東主或經理的打卡碼以停用店舖機器模式。",
+    "exitPinInvalid": "無效代碼",
+    "exitPinInvalidRole": "無效代碼。必須為東主或經理代碼。",
+    "toastStoreModeDisabled": "店舖模式已停用",
+    "disableStoreMode": "停用店舖模式",
+    "manageDeviceTitle": "管理裝置",
+    "manageDeviceMobileTitle": "管理裝置",
+    "manageDeviceDesc": "重新命名或移除此店舖裝置。",
+    "toastDeviceRenamed": "已重新命名裝置",
+    "toastDeviceRemoved": "已移除裝置",
+    "removeDevice": "移除裝置",
+    "forecastLocation": "預測位置",
+    "noPlaceId": "沒有 Place ID",
+    "storeDevices": "店舖裝置",
+    "unnamedDevice": "未命名裝置",
+    "deviceOff": "關閉"
   },
   "lock": {
     "title": "設備已鎖定",
@@ -1794,7 +1936,12 @@
     "merchivaRemove": "移除 Mr. Merchiva",
     "merchivaOn": "Mr. Merchiva",
     "merchivaMentionHint": "詢問 AI 助手",
-    "noMatches": "無匹配"
+    "noMatches": "無匹配",
+    "online": "在線",
+    "aiOpsAgent": "你的 AI 營運助手",
+    "mentionLower": "提及",
+    "sendKbd": "發送",
+    "send": "發送"
   },
   "dashboard": {
     "greeting": {
@@ -1861,7 +2008,74 @@
       "addMore": "繼續添加",
       "choose": "選擇文件",
       "complete": "完成"
-    }
+    },
+    "attendance": {
+      "title": "今日打卡",
+      "punchedIn": "已打卡",
+      "onBreak": "休息中",
+      "nobody": "仲未有人打卡。",
+      "allOut": "所有人都已收工打卡。"
+    },
+    "yesterdayTasks": {
+      "title": "昨日任務",
+      "done": "已完成",
+      "notDone": "未完成",
+      "skipped": "已略過",
+      "none": "尋日冇到期嘅任務。"
+    },
+    "widgets": {
+      "salesToday": {
+        "title": "今日銷售",
+        "predicted": "預測",
+        "vsYesterday": "對比昨日"
+      },
+      "inventoryAlerts": {
+        "title": "庫存警示",
+        "allStocked": "所有項目存量充足",
+        "outOfStock": "{count} 項缺貨",
+        "lowStock": "{count} 項存量偏低",
+        "outBadge": "缺貨",
+        "lowBadge": "偏低"
+      },
+      "scheduleOverview": {
+        "title": "班表概覽",
+        "empty": "今日未有排更",
+        "shiftToday": "個今日更次",
+        "shiftsToday": "個今日更次",
+        "nextLabel": "下一個：",
+        "atLabel": "於"
+      },
+      "todo": {
+        "title": "待辦事項",
+        "placeholder": "新待辦事項⋯",
+        "empty": "暫無待辦事項",
+        "more": "再多 {count} 項"
+      },
+      "wasteCost": {
+        "title": "損耗成本",
+        "details": "詳情",
+        "today": "今日",
+        "thisWeek": "本週",
+        "thisMonth": "本月",
+        "empty": "暫無損耗記錄"
+      },
+      "notifications": {
+        "title": "通知",
+        "empty": "暫無未讀通知"
+      },
+      "topProducts": {
+        "title": "熱門產品",
+        "empty": "暫無產品資料"
+      },
+      "quickStats": {
+        "title": "快速統計",
+        "products": "產品",
+        "staffOnDuty": "當值員工",
+        "inventoryItems": "庫存項目",
+        "lowStock": "存量偏低"
+      }
+    },
+    "title": "儀表板"
   },
   "inventory": {
     "title": "庫存",
@@ -1881,7 +2095,8 @@
     "tabs": {
       "items": "商品",
       "transactions": "交易記錄",
-      "losses": "損耗跟蹤"
+      "losses": "損耗跟蹤",
+      "restock": "補貨"
     },
     "filters": {
       "searchPlaceholder": "搜索商品或供應商…",
@@ -1955,6 +2170,35 @@
       "saveFailed": "保存商品失敗",
       "itemDeleted": "商品已刪除",
       "deleteFailed": "刪除商品失敗"
+    },
+    "restock": {
+      "emptyTitle": "存貨充足 — 無需補貨",
+      "emptyHint": "你的庫存水平狀況良好。",
+      "criticalItems": "緊急項目",
+      "highPriority": "高優先",
+      "totalOrderValue": "訂單總值",
+      "itemsToRestock": "待補貨項目",
+      "exportCsv": "匯出採購單 (CSV)",
+      "csvDownloaded": "已下載採購單 CSV",
+      "exportPdf": "匯出採購單 (PDF)",
+      "pdfDownloaded": "已下載採購單 PDF",
+      "pdfTitle": "採購單",
+      "pdfSubtitle": "{count} 個項目 — 預計 {cost}",
+      "stockLevel": "庫存水平",
+      "dailyConsumption": "每日消耗量",
+      "perDay": "{rate} {unit}/日",
+      "daysUntilStockout": "距離缺貨日數",
+      "notApplicable": "不適用",
+      "daysValue": "{days} 日",
+      "recommendedOrder": "建議訂購量",
+      "estimatedCost": "預計成本",
+      "lastRestocked": "上次補貨",
+      "daysAgo": "{days} 日前",
+      "trend": {
+        "increasing": "上升",
+        "decreasing": "下降",
+        "stable": "穩定"
+      }
     }
   },
   "sales": {
@@ -1979,7 +2223,9 @@
     },
     "tabs": {
       "history": "歷史分析",
-      "hourly": "今日分時"
+      "hourly": "今日分時",
+      "forecast": "預測",
+      "aiItems": "AI 商品"
     },
     "history": {
       "title": "30 天銷售歷史",
@@ -2014,7 +2260,23 @@
     "justNow": "剛剛",
     "minutesAgo": "{n}分鐘前",
     "hoursAgo": "{n}小時前",
-    "daysAgo": "{n}天前"
+    "daysAgo": "{n}天前",
+    "unreadCount": "{n} 則未讀",
+    "dismiss": "忽略",
+    "filterAll": "全部",
+    "filterShift": "班次",
+    "filterTimeOff": "請假",
+    "filterTeam": "團隊",
+    "filterInventory": "庫存",
+    "filterOrder": "訂單",
+    "filterGeneral": "系統",
+    "tradeOfferedToEveryone": "{name} 正向所有人開放轉讓其班次",
+    "tradeWantsToTrade": "{name} 想與你換班",
+    "tradeAcceptedAwaitingManager": "{name} 已接受 — 等待經理批准",
+    "tradeFrom": "來自 {name} 的換班",
+    "someone": "某人",
+    "waitingForStaff": "等待員工回應",
+    "requestedTimeOff": "{name} 申請請假"
   },
   "push": {
     "promptTitle": "接收桌面提醒",
@@ -2166,48 +2428,6 @@
       "rateNote": "* 使用默認時薪 $15/小時。實際費率將在員工設置中配置。"
     }
   },
-  "bookings": {
-    "title": "預約",
-    "subtitle": "管理預約和排隊",
-    "reservations": "預約",
-    "walkInQueue": "排隊等位",
-    "totalToday": "今日總數",
-    "confirmed": "已確認",
-    "upcoming": "即將到來",
-    "totalAll": "所有預約",
-    "allStatuses": "所有狀態",
-    "statusPending": "待確認",
-    "statusConfirmed": "已確認",
-    "statusCancelled": "已取消",
-    "statusCompleted": "已完成",
-    "today": "今天",
-    "noReservations": "沒有預約",
-    "time": "時間",
-    "name": "姓名",
-    "partySize": "人數",
-    "phone": "電話",
-    "status": "狀態",
-    "actions": "操作",
-    "confirm": "確認",
-    "currentlyWaiting": "正在等待",
-    "avgWait": "平均等待",
-    "seatedToday": "今日已入座",
-    "addToQueue": "加入排隊",
-    "addToQueueDesc": "將到店客人加入等待隊列",
-    "noQueueEntries": "排隊中暫無客人",
-    "resolved": "已處理",
-    "seat": "入座",
-    "namePlaceholder": "客户姓名",
-    "estWait": "預計等待",
-    "phonePlaceholder": "手機號碼",
-    "notes": "備註",
-    "notesPlaceholder": "特殊要求等",
-    "add": "添加",
-    "queueSeated": "已入座",
-    "queueCancelled": "已取消",
-    "queueNo_show": "未到場",
-    "queueNoshow": "未到場"
-  },
   "marketing": {
     "title": "營銷與優惠券",
     "subtitle": "管理優惠券、營銷活動和分析數據",
@@ -2268,6 +2488,48 @@
       "couponOrders": "使用優惠券的訂單",
       "noData": "暫無優惠券數據。"
     }
+  },
+  "bookings": {
+    "title": "預約",
+    "subtitle": "管理預約和排隊",
+    "reservations": "預約",
+    "walkInQueue": "排隊等位",
+    "totalToday": "今日總數",
+    "confirmed": "已確認",
+    "upcoming": "即將到來",
+    "totalAll": "所有預約",
+    "allStatuses": "所有狀態",
+    "statusPending": "待確認",
+    "statusConfirmed": "已確認",
+    "statusCancelled": "已取消",
+    "statusCompleted": "已完成",
+    "today": "今天",
+    "noReservations": "沒有預約",
+    "time": "時間",
+    "name": "姓名",
+    "partySize": "人數",
+    "phone": "電話",
+    "status": "狀態",
+    "actions": "操作",
+    "confirm": "確認",
+    "currentlyWaiting": "正在等待",
+    "avgWait": "平均等待",
+    "seatedToday": "今日已入座",
+    "addToQueue": "加入排隊",
+    "addToQueueDesc": "將到店客人加入等待隊列",
+    "noQueueEntries": "排隊中暫無客人",
+    "resolved": "已處理",
+    "seat": "入座",
+    "namePlaceholder": "客户姓名",
+    "estWait": "預計等待",
+    "phonePlaceholder": "手機號碼",
+    "notes": "備註",
+    "notesPlaceholder": "特殊要求等",
+    "add": "添加",
+    "queueSeated": "已入座",
+    "queueCancelled": "已取消",
+    "queueNo_show": "未到場",
+    "queueNoshow": "未到場"
   },
   "training": {
     "title": "培訓與清單",
@@ -2357,34 +2619,118 @@
       "intern": "實習員工",
       "internSub": "今日學習與實踐",
       "active": "當前"
+    },
+    "manager": {
+      "dayCount": "{count} 日",
+      "dayCountPlural": "{count} 日",
+      "curriculumSettings": "課程設定",
+      "moduleLabel": "單元",
+      "untitledDay": "未命名日子",
+      "allRoles": "所有職位",
+      "required": "必修",
+      "selectOrAddDay": "選擇或新增日子以開始編寫",
+      "unsaved": "未儲存",
+      "history": "歷史記錄",
+      "previewAsIntern": "以實習生身份預覽",
+      "publish": "發佈",
+      "editor": "編輯器",
+      "words": "字",
+      "minRead": "分鐘閱讀",
+      "saved": "已儲存",
+      "lessonPlaceholder": "撰寫當日課程 — 標題、清單、連結、引言、內嵌圖片…",
+      "pickDayToEdit": "從課程中揀選一日進行編輯",
+      "preview": "預覽",
+      "howInternsSeeIt": "實習生所見的樣子",
+      "desktop": "桌面",
+      "mobile": "流動裝置",
+      "emptyDay": "空白日子。在編輯器中加入內容即可在此顯示。",
+      "attachments": "附件",
+      "item": "項",
+      "items": "項",
+      "embedUrl": "內嵌網址",
+      "selectDayForAttachments": "選擇一日以加入附件。",
+      "video": "影片",
+      "photo": "相片",
+      "note": "備註",
+      "remove": "移除",
+      "dropFile": "拖放檔案",
+      "upload": "上載"
+    },
+    "rubric": {
+      "knowsMaterial": "掌握內容",
+      "knowsMaterialHint": "記憶、信心",
+      "practicalSkill": "實務技能",
+      "practicalSkillHint": "實際操作準確度",
+      "speedFlow": "速度與流暢度",
+      "speedFlowHint": "達到預期水平的節奏",
+      "recovery": "應變能力",
+      "recoveryHint": "妥善處理錯誤",
+      "stationDiscipline": "崗位紀律",
+      "stationDisciplineHint": "清潔、整齊"
+    },
+    "trainer": {
+      "pickADay": "選擇日子",
+      "dayN": "第 {n} 天",
+      "required": "必修",
+      "traineesPassed": "名學員已通過",
+      "badge": "導師",
+      "noContent": "這天尚未發佈任何內容。",
+      "objectives": "學習目標",
+      "trainees": "學員",
+      "filter": "篩選",
+      "noTraineesYet": "暫無學員",
+      "gradingDay": "評核 · 第 {n} 天",
+      "message": "訊息",
+      "dm": "私訊",
+      "rubricLabel": "評分準則",
+      "notesForTrainee": "給學員的備註",
+      "visibleTo": "{name} 可見",
+      "notesPlaceholder": "哪些做得好？接下來要練習甚麼？",
+      "retry": "重試",
+      "submitGrade": "提交評分",
+      "willBeNotified": "將通知 {name} · 已存入其培訓檔案",
+      "pickTrainee": "從清單選擇一名學員開始評核。"
+    },
+    "intern": {
+      "objectiveFallback": "目標 {number}",
+      "progress": "進度",
+      "dayOfTotal": "第 {day} 天，共 {total} 天",
+      "doneCount": "已完成 {count} 項",
+      "remainingCount": "尚餘 {count} 項",
+      "keepGoing": "繼續加油",
+      "dayLabel": "第 {number} 天",
+      "practice": "練習",
+      "required": "必修",
+      "lockedUntilPrior": "完成前一天後解鎖",
+      "noContentYet": "這天暫無內容。",
+      "dayWithTitle": "第 {number} 天 · {title}",
+      "tasksForToday": "今日任務",
+      "checkEachOff": "完成後逐項勾選。",
+      "noTasksYet": "暫無任務 — 你的經理很快會新增目標。",
+      "resources": "資源",
+      "note": "備註",
+      "requestTrainerReview": "申請導師評核",
+      "trainerWillBeNotified": "將通知你的導師。",
+      "waitForTasks": "請等待分配任務。",
+      "completeMoreTask": "再完成 {count} 項任務即可申請評核",
+      "completeMoreTasks": "再完成 {count} 項任務即可申請評核",
+      "awaitingReview": "等待評核",
+      "liveGradingNote": "你的導師會過來即場評核，請留在吧枱附近。",
+      "askTrainerQuestion": "向導師提問"
+    },
+    "dayRail": {
+      "days": "天",
+      "noDaysYet": "暫無日子",
+      "dayAbbrev": "天",
+      "optional": "選修",
+      "typeOrientation": "迎新",
+      "typeTheory": "理論",
+      "typePractice": "實作",
+      "typeSystem": "系統",
+      "typeCompliance": "合規",
+      "typeAssessment": "評核",
+      "typeGeneral": "一般"
     }
-  },
-  "display": {
-    "kitchen": "廚房",
-    "menuBoard": "菜單板",
-    "kpiDashboard": "KPI 儀表板",
-    "noOrders": "沒有待處理訂單",
-    "waitingForOrders": "等待新訂單...",
-    "orderCompleted": "訂單已完成",
-    "orderCompleteFailed": "完成訂單失敗",
-    "noItems": "沒有項目",
-    "complete": "完成",
-    "noProducts": "沒有產品可顯示",
-    "uncategorized": "未分類",
-    "todaysSales": "今日銷售額",
-    "ordersToday": "今日訂單",
-    "avgOrderValue": "平均訂單價值",
-    "staffOnDuty": "在岡員工",
-    "lowStockAlerts": "低庫存警報",
-    "needsAttention": "需要注意",
-    "allGood": "一切正常",
-    "pendingOrders": "待處理訂單",
-    "queueLength": "排隊長度",
-    "noWait": "無需等待",
-    "inventoryItems": "庫存項目",
-    "fullscreen": "全屏",
-    "darkMode": "暗色模式",
-    "lightMode": "淺色模式"
   },
   "pricing": {
     "title": "智能定價",
@@ -2456,6 +2802,33 @@
       "placeIdPlaceholder": "例如 ChIJN1t_tDeuEmsR...",
       "monitor": "監控"
     }
+  },
+  "display": {
+    "kitchen": "廚房",
+    "menuBoard": "菜單板",
+    "kpiDashboard": "KPI 儀表板",
+    "noOrders": "沒有待處理訂單",
+    "waitingForOrders": "等待新訂單...",
+    "orderCompleted": "訂單已完成",
+    "orderCompleteFailed": "完成訂單失敗",
+    "noItems": "沒有項目",
+    "complete": "完成",
+    "noProducts": "沒有產品可顯示",
+    "uncategorized": "未分類",
+    "todaysSales": "今日銷售額",
+    "ordersToday": "今日訂單",
+    "avgOrderValue": "平均訂單價值",
+    "staffOnDuty": "在岡員工",
+    "lowStockAlerts": "低庫存警報",
+    "needsAttention": "需要注意",
+    "allGood": "一切正常",
+    "pendingOrders": "待處理訂單",
+    "queueLength": "排隊長度",
+    "noWait": "無需等待",
+    "inventoryItems": "庫存項目",
+    "fullscreen": "全屏",
+    "darkMode": "暗色模式",
+    "lightMode": "淺色模式"
   },
   "merchiva": {
     "name": "Mr. Merchiva",
@@ -2714,7 +3087,168 @@
     "menuReAsk": "重新提問",
     "menuRegenerate": "重新生成回覆",
     "menuDelete": "從記錄中刪除",
-    "menuCopied": "已複製到剪貼板"
+    "menuCopied": "已複製到剪貼板",
+    "kpi": {
+      "revenueToday": "營業額 · 今日",
+      "vsAvg": "對比平均",
+      "live": "即時",
+      "orders": "訂單",
+      "today": "今日",
+      "onShift": "當值中",
+      "skusAtRisk": "存量偏低 SKU",
+      "ofTracked": "／ 共 {count} 項追蹤",
+      "nHigh": "{n} 項高"
+    },
+    "insight": {
+      "confidence": "信心度",
+      "hide": "隱藏",
+      "why": "原因",
+      "basedOn": "依據",
+      "view": "檢視",
+      "dismiss": "關閉"
+    },
+    "embed": {
+      "daysCover": "約可撐 {days} 日",
+      "current": "目前",
+      "minMax": "最低 / 最高",
+      "cover": "可撐",
+      "daysApprox": "約 {days} 日"
+    },
+    "shift": {
+      "invalidRole": "並非本機構的職位 — 批准將被拒絕",
+      "jobRole": "職位"
+    },
+    "order": {
+      "itemCount": "{count} 項",
+      "itemCountPlural": "{count} 項"
+    },
+    "builder": {
+      "elementCount": "{count} 個元素",
+      "elementCountPlural": "{count} 個元素",
+      "moreCount": "再多 {count} 個"
+    },
+    "actionsList": {
+      "tag": "操作",
+      "optionalCount": "另 {count} 項可選"
+    },
+    "actionsAvailable": "以下是目前可用的所有 AI 操作：",
+    "qa": {
+      "multiSelect": "多選 · 已選 {count} 項",
+      "other": "其他⋯",
+      "customReplyPlaceholder": "輸入自訂回覆⋯",
+      "submit": "提交",
+      "pickAtLeastOne": "每題至少揀選一項",
+      "submitted": "已提交"
+    },
+    "rolesList": {
+      "tag": "職位",
+      "count": "{count} 個職位",
+      "empty": "暫無職位"
+    },
+    "roleAdd": {
+      "tag": "新增職位",
+      "responsibilities": "職責"
+    },
+    "status": {
+      "adding": "新增中⋯",
+      "deleting": "刪除中⋯",
+      "added": "已新增",
+      "deleted": "已刪除"
+    },
+    "tasks": {
+      "loading": "正在載入任務⋯",
+      "deleteFailed": "刪除任務失敗",
+      "tag": "任務",
+      "empty": "此職位暫無任務",
+      "evidence": "佐證"
+    },
+    "taskAdd": {
+      "tag": "新增任務",
+      "chooseChat": "選擇群組聊天",
+      "evidenceRequired": "需要佐證",
+      "evidencePrompt": "此任務需要佐證 — 請選擇上載佐證的群組聊天：",
+      "noGroupChats": "暫無群組聊天 — 請先在聊天頁面建立一個。",
+      "add": "新增",
+      "skip": "略過"
+    },
+    "command": {
+      "deleteRoleFailed": "刪除職位失敗",
+      "roleNotFound": "找不到職位：{role}",
+      "addTaskFailed": "新增任務失敗"
+    },
+    "taskDelete": {
+      "tag": "刪除",
+      "failed": "刪除失敗"
+    },
+    "dataCategory": {
+      "inventory": {
+        "label": "庫存",
+        "desc": "存量、低存量項目、供應商"
+      },
+      "sales": {
+        "label": "銷售",
+        "desc": "營業額、訂單、趨勢"
+      },
+      "staffing": {
+        "label": "排班",
+        "desc": "更次、班表、團隊"
+      },
+      "products": {
+        "label": "產品",
+        "desc": "目錄、定價、表現"
+      },
+      "all": {
+        "label": "全部",
+        "desc": "所有店舖資料"
+      }
+    },
+    "yourStore": "你的店舖",
+    "untitledGroup": "未命名群組",
+    "newConversation": "新對話",
+    "chatTitle": "聊天",
+    "voiceUnsupported": "你的瀏覽器不支援語音輸入。",
+    "approve": {
+      "notTeamMember": "「{name}」並非團隊成員。請先加入，或從以下選擇：{names}",
+      "noTeamMembers": "（暫無團隊成員）",
+      "noValidRole": "更次未有有效職位。收到 {got} — 請選擇其一：{roles}。",
+      "noRolesDefined": "（暫未定義職位）"
+    },
+    "builderChips": {
+      "heroSection": "新增主視覺區塊",
+      "contactForm": "新增聯絡表格",
+      "mobileFriendly": "令此頁面適合流動裝置",
+      "deleteFooter": "刪除頁尾",
+      "pricingTable": "新增定價表"
+    },
+    "pick": {
+      "titleActive": "在畫布點選任何元素 · 按 Esc 取消",
+      "titleIdle": "選擇要附加的元素",
+      "clicking": "點選元素⋯",
+      "element": "元素"
+    },
+    "schedule": {
+      "title": "今日班表",
+      "shifts": "更次",
+      "hrs": "小時",
+      "open": "空缺",
+      "onShift": "當值中 · {count}",
+      "live": "即時",
+      "upNext": "下一個",
+      "inMinutes": "{n} 分鐘後",
+      "inHours": "{n} 小時後",
+      "noShifts": "今日未有排更"
+    },
+    "notifications": {
+      "title": "通知",
+      "new": "新",
+      "needDecision": "需要決定",
+      "markAllRead": "全部標為已讀",
+      "review": "查看",
+      "dismiss": "關閉",
+      "empty": "暫無新通知"
+    },
+    "collapsePanel": "收起面板",
+    "openPanel": "開啟 Mr. Merchiva"
   },
   "design": {
     "list": {
@@ -2744,7 +3278,9 @@
       "fit": "適應屏幕",
       "notFound": "未找到該設計",
       "layers": "圖層",
-      "properties": "屬性"
+      "properties": "屬性",
+      "undo": "復原",
+      "redo": "重做"
     },
     "ai": {
       "title": "用 AI 生成",
@@ -2803,7 +3339,8 @@
       "database": "數據庫",
       "blogs": "博客",
       "coupons": "優惠券",
-      "users": "用户"
+      "users": "用户",
+      "usage": "用量"
     },
     "home": {
       "title": "管理控制台",
@@ -2830,6 +3367,11 @@
         "tag": "WorkOS",
         "title": "用户與管理員",
         "body": "通過 WorkOS metadata 提升新管理員或撤銷權限。"
+      },
+      "usage": {
+        "tag": "AI",
+        "title": "AI 用量",
+        "body": "檢視各機構的 token 用量與費用，並設定每月配額。"
       }
     },
     "database": {
@@ -2884,8 +3426,14 @@
         "missingFields": "標題和 slug 必填。",
         "created": "文章已創建。",
         "updated": "文章已更新。",
-        "deleted": "文章已刪除。"
-      }
+        "deleted": "文章已刪除。",
+        "seedDone": "已匯入 {count} 篇網誌文章。",
+        "seedPartial": "成功 {succeeded} 篇，失敗 {failed} 篇。",
+        "seedFailed": "匯入失敗。",
+        "notAuthenticated": "未驗證。"
+      },
+      "seedButton": "匯入 30 篇種子網誌",
+      "seeding": "匯入中…"
     },
     "coupons": {
       "title": "Stripe 優惠券",
@@ -2983,6 +3531,102 @@
       "lowStock": "哪些商品庫存不足？",
       "whosOn": "現在誰在上班？",
       "coverage": "本週排班有空缺嗎？"
+    }
+  },
+  "usage": {
+    "title": "AI 用量",
+    "subtitle": "所有 AI 功能的 token 用量與費用",
+    "inputTokens": "輸入 tokens",
+    "outputTokens": "輸出 tokens",
+    "totalCost": "總費用",
+    "thisMonth": "本月",
+    "calls": "AI 呼叫",
+    "aiRequests": "請求次數",
+    "quota": "配額",
+    "costLimit": "費用上限",
+    "tokenLimit": "Token 上限",
+    "dailyCost": "每日費用",
+    "empty": "尚無 AI 用量",
+    "cost": "費用",
+    "byFeature": "依功能分類",
+    "activityLog": "活動記錄",
+    "allFeatures": "所有功能",
+    "noRecords": "本月尚無使用記錄",
+    "noDescription": "（無詳情）"
+  },
+  "adminsUsage": {
+    "title": "AI 用量",
+    "subtitle": "所有機構的 AI token 用量與費用。可為每個機構設定每月配額。",
+    "totalCost": "總費用",
+    "orgs": "機構數",
+    "loading": "正在載入用量…",
+    "empty": "本月尚無用量記錄。",
+    "org": "機構",
+    "cost": "費用",
+    "tokenQuota": "Token 上限/月",
+    "costQuota": "費用上限/月",
+    "save": "儲存",
+    "quotaNote": "留空表示無限制。配額僅供提示，顯示於各機構的用量面板中。",
+    "invalidNumber": "請輸入有效數字",
+    "quotaSaved": "配額已儲存",
+    "quotaFailed": "儲存配額失敗"
+  },
+  "multiStore": {
+    "subBadge": "子店",
+    "parentLabel": "母店鋪",
+    "parentNone": "無（建立為獨立店鋪）",
+    "parentHelpRoot": "建立一個獨立店鋪，擁有自己的庫存與預測。",
+    "parentHelpSub": "子店鋪與母店共用人員、產品、傾偈、設計和網站。庫存與預測維持獨立。",
+    "drawerAddHint": "建立新店鋪或關聯為子店鋪",
+    "products": {
+      "filterShowingAll": "所有店鋪",
+      "filterShowingCurrent": "僅本店",
+      "soldAtLabel": "販售店鋪",
+      "allStores": "群組內所有店鋪",
+      "allStoresHint": "預設 — 所有店鋪皆販售",
+      "thisStore": "目前",
+      "soldAtHelp": "取消勾選某店鋪即可在該店鋪隱藏此產品。庫存仍依店鋪獨立管理。",
+      "tableHead": "販售店鋪",
+      "cellAll": "全部",
+      "cellNone": "無",
+      "cellCount": "{count} 家",
+      "savedToast": "已更新此產品的販售店鋪",
+      "saveFailedToast": "更新失敗",
+      "dialogTitle": "此產品在哪些店鋪販售？"
+    },
+    "settings": {
+      "cardTitle": "多店鋪",
+      "cardMetaSolo": "獨立店鋪",
+      "cardMetaParent": "擁有 {count} 個子店鋪",
+      "cardMetaSub": "{parent} 的子店鋪",
+      "title": "多店鋪管理",
+      "description": "將店鋪歸入母店以共用人員、產品、聊天、設計和網站。",
+      "currentRole": "本店鋪",
+      "roleSolo": "獨立 — 不屬於任何母子店鋪群組。",
+      "roleParent": "擁有 {count} 個子店鋪。",
+      "roleSub": "{parent} 的子店鋪。",
+      "groupHeader": "共用群組內的店鋪",
+      "groupEmpty": "無關聯店鋪。",
+      "parentBadge": "母店",
+      "thisStore": "目前",
+      "policyHeader": "共用政策",
+      "policySharedTitle": "店鋪間共用",
+      "policySharedList": "人員、產品、聊天、設計、網站",
+      "policyIsolatedTitle": "各店獨立",
+      "policyIsolatedList": "庫存、銷售預測",
+      "detachHeader": "脫離母店",
+      "detachHelp": "將此子店鋪變回獨立店鋪。共用資源仍留在母店 — 此店鋪只保留自己的資料。",
+      "detachButton": "脫離",
+      "detachConfirm": "確定將此店鋪從母店脫離嗎？共用的人員、產品和網站將不再顯示於此。",
+      "detachSuccess": "已脫離母店",
+      "detachFailed": "脫離失敗",
+      "attachHeader": "關聯至母店鋪",
+      "attachHelp": "將此店鋪設為你擁有的另一個店鋪的子店鋪。關聯後將與母店共用人員、產品、聊天、設計和網站。",
+      "attachPlaceholder": "選擇母店鋪",
+      "attachButton": "關聯",
+      "attachConfirm": "確定將此店鋪關聯為子店鋪嗎？",
+      "attachSuccess": "已關聯為子店鋪",
+      "attachFailed": "關聯失敗"
     }
   },
   "landing": {
@@ -3452,6 +4096,655 @@
         "para": "接入你的 POS。我們學習你七天的銷售，然後開始告訴你該訂什麼——精確到箱、精確到天。預測誤差中位數：7.2%。",
         "walkthrough": "預約 20 分鐘講解"
       }
+    }
+  },
+  "reports": {
+    "title": "報表",
+    "subtitle": "匯出及檢視業務數據",
+    "recordsCount": "{count} 筆記錄",
+    "exportCsv": "匯出 CSV",
+    "exportPdf": "匯出 PDF",
+    "thisMonth": "本月",
+    "lastMonth": "上月",
+    "last90Days": "過去 90 日",
+    "tabSales": "銷售",
+    "tabStaffHours": "員工工時",
+    "tabInventory": "庫存",
+    "tabProducts": "產品",
+    "totalRevenue": "總收入",
+    "avgDailyRevenue": "平均每日收入",
+    "perDayAverage": "每日平均",
+    "bestDay": "最佳一日",
+    "forecastAccuracy": "預測準確度",
+    "predictedVsActual": "預測對比實際",
+    "noSalesData": "此期間沒有銷售數據",
+    "salesRecords": "銷售記錄",
+    "recordsForPeriod": "{count} 筆記錄 -- {period}",
+    "colDate": "日期",
+    "colActual": "實際",
+    "colPredicted": "預測",
+    "colWeather": "天氣",
+    "colHoliday": "假期",
+    "yes": "是",
+    "showingRecords": "顯示 {count} 筆記錄中的 50 筆。匯出以取得完整數據。",
+    "totalScheduledHours": "已排班總工時",
+    "numberOfStaff": "員工人數",
+    "uniqueStaffScheduled": "已排班員工人數",
+    "avgHoursPerStaff": "平均工時／員工",
+    "averagePerPerson": "每人平均",
+    "noShifts": "此期間沒有班次",
+    "shiftRecords": "班次記錄",
+    "shiftsForPeriod": "{count} 個班次 -- {period}",
+    "colStaffName": "員工姓名",
+    "colStart": "開始",
+    "colEnd": "結束",
+    "colHours": "工時",
+    "colType": "類型",
+    "showingShifts": "顯示 {count} 個班次中的 50 個。匯出以取得完整數據。",
+    "totalItems": "項目總數",
+    "trackedInventoryItems": "已追蹤庫存項目",
+    "lowOutOfStock": "低庫存／缺貨",
+    "needsAttention": "需要注意",
+    "totalValue": "總價值",
+    "stockTimesCostPerUnit": "庫存 x 單位成本",
+    "avgLossRate": "平均損耗率",
+    "acrossAllItems": "全部項目",
+    "noInventoryItems": "沒有追蹤庫存項目",
+    "inventoryItems": "庫存項目",
+    "itemsCount": "{count} 個項目",
+    "colCategory": "類別",
+    "colStock": "庫存",
+    "colMin": "最低",
+    "colMax": "最高",
+    "colUnit": "單位",
+    "colCostPerUnit": "單位成本",
+    "colValue": "價值",
+    "colSupplier": "供應商",
+    "colLossPct": "損耗 %",
+    "colStatus": "狀態",
+    "outOfStock": "缺貨",
+    "lowStock": "低庫存",
+    "inStock": "有庫存",
+    "showingItems": "顯示 {count} 個項目中的 50 個。匯出以取得完整數據。",
+    "totalProducts": "產品總數",
+    "activeProducts": "啟用中產品",
+    "allProductsCombined": "全部產品合計",
+    "avgMargin": "平均毛利",
+    "averageProfitMargin": "平均利潤率",
+    "underperforming": "表現欠佳",
+    "needsReview": "需要檢視",
+    "noProducts": "沒有追蹤產品",
+    "productPerformance": "產品表現",
+    "productsCount": "{count} 件產品",
+    "colPrice": "售價",
+    "colCost": "成本",
+    "colMargin": "毛利",
+    "colThisMonth": "本月",
+    "colLastMonth": "上月",
+    "colRevenue": "收入",
+    "colTrend": "趨勢",
+    "colAlert": "警示",
+    "showingProducts": "顯示 {count} 件產品中的 50 件。匯出以取得完整數據。",
+    "salesReportTitle": "銷售報表",
+    "staffHoursReportTitle": "員工工時報表",
+    "inventoryReportTitle": "庫存報表",
+    "productPerformanceReportTitle": "產品表現報表"
+  },
+  "customers": {
+    "summary": {
+      "totalCustomers": "客戶總數",
+      "newThisMonth": "本月新增",
+      "avgOrderValue": "平均訂單金額",
+      "totalRevenue": "總收入"
+    },
+    "searchPlaceholder": "按姓名或電郵搜尋...",
+    "filterPlaceholder": "篩選",
+    "tagFilter": {
+      "all": "所有標籤"
+    },
+    "tags": {
+      "vip": "VIP",
+      "regular": "常客",
+      "new": "新客",
+      "atRisk": "有流失風險"
+    },
+    "sortPlaceholder": "排序",
+    "sort": {
+      "totalSpent": "消費總額",
+      "orders": "訂單",
+      "lastOrder": "最近訂單"
+    },
+    "emptyFiltered": "沒有客戶符合你的篩選條件。",
+    "empty": "暫無客戶。客戶在你的網站註冊後便會在此顯示。",
+    "col": {
+      "phone": "電話",
+      "orders": "訂單",
+      "totalSpent": "消費總額",
+      "avgOrder": "平均訂單",
+      "lastOrder": "最近訂單",
+      "tags": "標籤",
+      "status": "狀態"
+    },
+    "noName": "未命名",
+    "status": {
+      "active": "活躍",
+      "inactive": "不活躍"
+    },
+    "detail": {
+      "customer": "客戶",
+      "title": "客戶詳情",
+      "srDescription": "客戶詳情檢視",
+      "customerInfo": "客戶資料",
+      "memberSince": "加入日期 {date}",
+      "orderHistory": "訂單記錄",
+      "noOrders": "暫無訂單。"
+    },
+    "orderCol": {
+      "date": "日期",
+      "items": "項目",
+      "total": "總計"
+    },
+    "export": {
+      "pdfTitle": "客戶報表",
+      "pdfSubtitle": "{count} 位客戶"
+    }
+  },
+  "suppliers": {
+    "export": "匯出",
+    "addSupplier": "新增供應商",
+    "add": "新增",
+    "totalSuppliers": "供應商總數",
+    "activePurchaseOrders": "進行中採購單",
+    "poValueThisMonth": "本月採購單金額",
+    "tabSuppliers": "供應商",
+    "tabPurchaseOrders": "採購單",
+    "searchPlaceholder": "搜尋供應商⋯",
+    "emptyNoSuppliers": "暫無供應商。新增第一個供應商即可開始。",
+    "emptyNoMatch": "沒有符合搜尋的供應商。",
+    "poCount": "{count} 張採購單",
+    "lastPo": "最近：{date}",
+    "createPo": "建立採購單",
+    "emptyNoOrders": "暫無採購單。",
+    "createPurchaseOrder": "建立採購單",
+    "colPoNumber": "採購單編號",
+    "colSupplier": "供應商",
+    "colDate": "日期",
+    "colItems": "項目",
+    "colTotal": "總計",
+    "colStatus": "狀態",
+    "colActions": "操作",
+    "unknownSupplier": "未知",
+    "status": {
+      "draft": "草稿",
+      "sent": "已傳送",
+      "received": "已收貨",
+      "cancelled": "已取消"
+    },
+    "actionSend": "傳送",
+    "actionReceived": "已收貨",
+    "editSupplier": "編輯供應商",
+    "editSupplierDesc": "更新供應商資料。",
+    "addSupplierDesc": "為你的機構新增供應商。",
+    "labelName": "名稱 *",
+    "placeholderName": "供應商名稱",
+    "labelContactName": "聯絡人姓名",
+    "labelPhone": "電話",
+    "labelEmail": "電郵",
+    "labelAddress": "地址",
+    "labelPaymentTerms": "付款條款",
+    "terms": {
+      "net30": "30 日內付款",
+      "net60": "60 日內付款",
+      "cod": "貨到付款",
+      "prepaid": "預付"
+    },
+    "labelRating": "評分",
+    "labelNotes": "備註",
+    "placeholderSupplierNotes": "有關此供應商的其他備註…",
+    "update": "更新",
+    "createPoDesc": "建立新的採購單草稿。",
+    "labelSupplier": "供應商 *",
+    "selectSupplier": "選擇供應商",
+    "labelItems": "項目",
+    "poColItem": "項目",
+    "poColQty": "數量",
+    "poColUnit": "單位",
+    "poColCost": "成本",
+    "poColTotal": "總計",
+    "placeholderItemName": "項目名稱",
+    "addRow": "新增一行",
+    "subtotal": "小計",
+    "taxPercent": "稅項 ({percent}%)",
+    "totalLabel": "總計",
+    "placeholderPoNotes": "其他備註…",
+    "createDraft": "建立草稿",
+    "csvName": "名稱",
+    "csvContact": "聯絡人",
+    "toastNameRequired": "請填寫供應商名稱",
+    "toastSaveFailed": "儲存供應商失敗",
+    "toastDeleteFailed": "刪除供應商失敗",
+    "toastSelectSupplier": "請選擇供應商",
+    "toastAddItem": "請至少新增一個項目",
+    "toastCreatePOFailed": "建立採購單失敗",
+    "toastUpdateStatusFailed": "更新狀態失敗"
+  },
+  "apiSettings": {
+    "toast": {
+      "keyGenerated": "已產生 API 金鑰",
+      "keyRevoked": "已撤銷 API 金鑰",
+      "copied": "已複製到剪貼簿",
+      "urlRequired": "請填寫 URL",
+      "selectEvent": "請至少選擇一個事件",
+      "webhookAdded": "已新增 Webhook",
+      "webhookRemoved": "已移除 Webhook"
+    },
+    "pageTitle": "API 與 Webhook",
+    "pageSubtitle": "管理 API 金鑰及 Webhook 整合",
+    "tabs": {
+      "apiKeys": "API 金鑰",
+      "webhooks": "Webhook"
+    },
+    "apiKey": {
+      "title": "API 金鑰",
+      "description": "使用此金鑰驗證對 Merchiva API 的請求。",
+      "created": "建立於 {date}",
+      "revoke": "撤銷",
+      "generate": "產生 API 金鑰"
+    },
+    "usage": {
+      "title": "用法",
+      "description": "如何使用 Merchiva API 進行驗證",
+      "authentication": "驗證",
+      "availableEndpoints": "可用端點",
+      "placeholderNotice": "這是預留實作。在正式環境中，API 金鑰會儲存於伺服器端，並配合適當的雜湊處理及速率限制。"
+    },
+    "endpoints": {
+      "listProducts": "列出產品",
+      "listInventory": "列出庫存項目",
+      "listOrders": "列出近期訂單",
+      "createOrder": "建立訂單",
+      "listStaff": "列出員工"
+    },
+    "addWebhook": {
+      "title": "新增 Webhook",
+      "description": "當你的店舖發生事件時接收通知。",
+      "endpointUrl": "端點 URL",
+      "events": "事件",
+      "submit": "新增 Webhook"
+    },
+    "configured": {
+      "title": "已設定的 Webhook"
+    },
+    "status": {
+      "active": "啟用中",
+      "paused": "已暫停"
+    },
+    "webhookActions": {
+      "test": "測試",
+      "pause": "暫停",
+      "enable": "啟用"
+    },
+    "samplePayload": {
+      "title": "範例 Payload",
+      "dismiss": "關閉",
+      "descriptionPrefix": "這是以下事件會傳送的內容：",
+      "descriptionSuffix": "。"
+    },
+    "empty": {
+      "title": "尚未設定 Webhook",
+      "description": "於上方新增 Webhook 端點，即可接收有關店舖事件的即時通知。"
+    }
+  },
+  "punchIn": {
+    "toastCodeMustBe4Digits": "密碼必須為 4 位數字",
+    "toastCodeSet": "已設定密碼",
+    "toastFailed": "失敗",
+    "errorPinNotRecognized": "無法辨識 PIN",
+    "toastSelectAnAction": "請選擇操作",
+    "stepAuthenticate": "01 · 驗證",
+    "enterYourPin": "輸入你的 PIN",
+    "punchInOrOutHint": "輸入員工 PIN 以打卡上班或下班。",
+    "pinLabel": "PIN",
+    "statusError": "▲ 錯誤",
+    "statusReady": "就緒",
+    "statusEntered": "已輸入 {count}/4",
+    "statusVerifying": "驗證中…",
+    "keyboardHint": "按數字鍵或使用鍵盤",
+    "clear": "清除",
+    "employee": "員工",
+    "action": "操作",
+    "selectAnAction": "選擇操作",
+    "optionEndShiftTitle": "結束更次",
+    "optionEndShiftSub": "打卡下班",
+    "optionStartBreakTitle": "開始休息",
+    "optionStartBreakSub": "用餐／小休",
+    "fieldTime": "時間",
+    "fieldDate": "日期",
+    "fieldState": "狀態",
+    "stateOff": "下班",
+    "stateBreak": "休息",
+    "stateOn": "上班",
+    "confirm": "確認",
+    "punchRecorded": "已記錄打卡",
+    "successWelcome": "歡迎，{name}。",
+    "successGoodbye": "再見，{name}。",
+    "successBreakStarted": "已開始休息。",
+    "successWelcomeBack": "歡迎回來，{name}。",
+    "successInSub": "你的更次現已開始。",
+    "successOutSub": "你的更次已結束。",
+    "successBreakStartSub": "已暫停計時 — 準備好時請結束休息。",
+    "successBreakEndSub": "休息已結束 — 更次再次啟用。",
+    "fieldInAt": "上班時間",
+    "fieldOutAt": "下班時間",
+    "fieldBreakAt": "休息時間",
+    "fieldResumed": "已恢復",
+    "fieldTerminal": "終端機",
+    "fieldLocation": "位置",
+    "fieldConfId": "確認編號",
+    "tapToDismiss": "輕觸關閉 · 5 秒後自動重設",
+    "onShift": "當值中",
+    "noActiveShifts": "沒有進行中的更次。",
+    "recentPunches": "近期打卡",
+    "live": "即時",
+    "noPunchesToday": "今日沒有打卡記錄",
+    "stepOnShiftNow": "02 · 現正當值",
+    "activeCount": "當值",
+    "onBreak": "休息中",
+    "active": "當值",
+    "stepRecentPunches": "03 · 近期打卡",
+    "today": "今日",
+    "colTime": "時間",
+    "colWho": "員工",
+    "colAction": "操作",
+    "colDuration": "時長",
+    "durOnBreak": "休息中",
+    "durOpen": "進行中",
+    "dialogMobileTitle": "打卡密碼",
+    "dialogChangeTitle": "更改你的打卡密碼",
+    "dialogSetTitle": "設定你的打卡密碼",
+    "dialogChangeDesc": "更新你在此店舖輸入的 4 位數字密碼。",
+    "dialogSetDesc": "選一個你記得住的 4 位數字密碼。你每次打卡時都要輸入它。",
+    "newCodeLabel": "新密碼",
+    "codePlaceholder": "4 位數字",
+    "saveCode": "儲存密碼"
+  },
+  "billing": {
+    "title": "帳單",
+    "subtitle": "管理你的 Merchiva 訂閱",
+    "ownerOnly": "只有機構擁有人可以管理帳單。",
+    "currentPlan": "目前方案",
+    "yearly": "按年",
+    "monthly": "按月",
+    "nextRenewal": "下次續訂：{date}",
+    "freePlan": "免費",
+    "upgradePrompt": "升級至 Pro 以解鎖所有功能。",
+    "manageSubscription": "管理訂閱",
+    "manageSubscriptionDesc": "更改方案、付款方式、發票及取消訂閱。",
+    "openPortal": "開啟入口",
+    "upgradeToPro": "升級至 Pro",
+    "perMonth": "/ 月",
+    "perYear": "/ 年",
+    "yearlySaveHint": "慳 17% — 免費送 2 個月",
+    "recommended": "推薦",
+    "featureAllFeatures": "包含所有現有功能",
+    "featureUnlimitedTeam": "無限團隊成員",
+    "featurePrioritySupport": "優先支援",
+    "toastSubscriptionActivated": "訂閱已啟用",
+    "toastCheckoutCanceled": "已取消結帳",
+    "toastCheckoutFailed": "結帳失敗",
+    "toastPortalOpenFailed": "無法開啟入口",
+    "toastPortalError": "入口錯誤"
+  },
+  "reviews": {
+    "pageTitle": "評價與聲譽",
+    "pageSubtitle": "監察及管理你的網上評價",
+    "googleIntegrationTitle": "Google 評價整合",
+    "plannedBadge": "計劃中",
+    "googleIntegrationDesc": "在同一處監察及回覆 Google 評價。連接你的 Google Business Profile 即可開始。",
+    "placesIdLabel": "Google Places ID",
+    "connectButton": "連接",
+    "findPlacesIdAt": "在此尋找你的 Places ID",
+    "recentReviewsTitle": "最近評價",
+    "recentReviewsDesc": "以下顯示樣本資料。連接 Google 評價以查看真實評價。",
+    "ratingTrendTitle": "評分趨勢",
+    "basedOnReviews": "根據 {count} 則評價",
+    "ratingTrendUnavailable": "此功能將在連接 Google 評價 API 後可用。評分資料將包括歷史趨勢及與競爭對手的比較。"
+  },
+  "setup": {
+    "steps": {
+      "storeInfo": "店舖資料",
+      "hours": "營業時間",
+      "team": "團隊",
+      "pos": "POS"
+    },
+    "skip": "略過",
+    "settingUp": "正在設定你的工作區…",
+    "footer": {
+      "step": "步驟 {current} / {total}",
+      "yourStore": "你的店舖"
+    },
+    "toast": {
+      "complete": "設定完成！",
+      "error": "出現問題，但你的工作區已準備就緒。"
+    },
+    "storeInfo": {
+      "title": "告訴我們關於你的店舖。",
+      "subtitle": "我們會用這些資料自訂你的儀表板並設定你的工作區。",
+      "storeNameLabel": "店舖名稱",
+      "storeNamePlaceholder": "例如 Maple Coffee",
+      "addressLabel": "地址",
+      "addressPlaceholder": "例如 123 Main St, Oakland CA",
+      "businessTypeLabel": "業務類型",
+      "types": {
+        "cafe": "咖啡店 / 麵包店",
+        "restaurant": "餐廳",
+        "retail": "零售店",
+        "service": "服務 / 維修",
+        "other": "其他"
+      }
+    },
+    "hours": {
+      "title": "你的營業時間？",
+      "subtitle": "這有助 Mr. Merchiva 安排員工排班及預測需求。",
+      "openLabel": "開店",
+      "closeLabel": "關店",
+      "openDaysLabel": "營業日子",
+      "days": {
+        "mon": "一",
+        "tue": "二",
+        "wed": "三",
+        "thu": "四",
+        "fri": "五",
+        "sat": "六",
+        "sun": "日"
+      }
+    },
+    "team": {
+      "title": "邀請你的團隊。",
+      "subtitle": "加入員工，讓他們可以打卡、查看排班及使用 POS。",
+      "roleManager": "經理",
+      "roleStaff": "員工",
+      "addAnother": "新增另一個",
+      "sendInvite": "發送 {count} 個邀請",
+      "sendInvites": "發送 {count} 個邀請"
+    },
+    "pos": {
+      "title": "連接你的 POS。",
+      "subtitle": "Merchiva 會從你的 POS 同步銷售、產品及庫存。",
+      "connectOAuth": "透過 OAuth 連接",
+      "noPos": "暫無 POS",
+      "setupLater": "稍後手動設定",
+      "finishSetup": "完成設定"
+    }
+  },
+  "salesForecast": {
+    "dataExcellent": "資料極佳",
+    "dataGood": "資料良好",
+    "dataFair": "資料一般",
+    "dataLimited": "資料有限",
+    "loadingData": "正在載入預測資料…",
+    "notEnoughData": "資料不足，無法預測",
+    "notEnoughDataDesc": "預測需要至少 7 日的銷售資料。目前已追蹤 {count} 日。",
+    "title": "7 日預測",
+    "noLocation": "沒有位置 — 無法提供天氣",
+    "weatherUnavailable": "天氣資料無法提供",
+    "confidence": "{percent}% 信心度",
+    "today": "今日",
+    "factorBase": "基準：",
+    "factorWeather": "天氣：",
+    "factorHoliday": "假期：",
+    "factorTraffic": "人流：",
+    "factorStaff": "員工：",
+    "factorTrend": "趨勢：",
+    "hourlyBreakdown": "每小時細分",
+    "predictedRevenuePerHour": "每小時預測收入",
+    "total": "總計",
+    "predicted": "預測",
+    "bestDay": "最佳日子",
+    "at": "於",
+    "boostedBy": "受 {holiday} 帶動",
+    "highFootTraffic": "預期人流高",
+    "strongBaseline": "{day} 基準強勁",
+    "weatherImpact": "天氣影響",
+    "enableLocation": "啟用位置存取以查看以天氣為基礎的預測",
+    "maySee": "可能會見到",
+    "dueToWeather": "由於 {weather} 天氣",
+    "favorableWeather": "預期整週天氣良好",
+    "daysClear": "{count}/7 日天朗",
+    "weatherPending": "天氣資料待定",
+    "staffingAdvisory": "人手建議",
+    "daysCount": "{count} 日",
+    "daysCountPlural": "{count} 日",
+    "mayBeUnderstaffed": "可能人手不足",
+    "considerAddingShifts": "{days} — 考慮加更",
+    "noShiftData": "沒有可用的更表資料。安排更表以啟用人手建議。",
+    "staffingAdequate": "7 日的人手看來都足夠（平均每日 {avg}）"
+  },
+  "subscribe": {
+    "toastActivated": "訂閱已啟用",
+    "toastCanceled": "已取消結帳",
+    "toastCheckoutFailed": "結帳失敗",
+    "trialDaysLeftOne": "免費試用尚餘 1 天",
+    "trialDaysLeftOther": "免費試用尚餘 {count} 天",
+    "trialEnded": "你的免費試用已結束",
+    "titleTrial": "你正在免費試用中",
+    "titleSubscribe": "訂閱 Merchiva",
+    "trialDescription": "{trialLine}。立即訂閱，讓你的店舖運作不中斷。",
+    "ownerDescription": "需要有效訂閱才能繼續使用 Merchiva。",
+    "memberDescription": "你的機構需要有效訂閱才能繼續使用。",
+    "monthly": "按月",
+    "perMonth": "/ 月",
+    "yearly": "按年",
+    "perYear": "/ 年",
+    "yearlyHint": "節省 17% — 免費兩個月",
+    "featureAllFeatures": "包含所有功能",
+    "featureUnlimitedMembers": "無限團隊成員",
+    "featurePrioritySupport": "優先支援",
+    "memberOwnerOnly": "只有機構擁有人才能訂閱。請聯絡 {org} 的擁有人啟用訂閱，然後重新整理。",
+    "yourOrganization": "你的機構",
+    "continueInTrial": "繼續試用",
+    "recommended": "推薦"
+  },
+  "bugReport": {
+    "title": "回報問題",
+    "drawerDescription": "描述你遇到的問題，並可選擇附上截圖。",
+    "whatWentWrong": "出了甚麼問題？",
+    "titlePlaceholder": "問題的簡短描述",
+    "detailsLabel": "詳情（選填）",
+    "detailsPlaceholder": "重現步驟、預期行為……",
+    "screenshotLabel": "截圖",
+    "screenshotAlt": "問題截圖",
+    "captureScreenshot": "擷取截圖",
+    "submit": "提交回報",
+    "screenshotCaptured": "已擷取截圖",
+    "screenshotFailed": "擷取截圖失敗",
+    "titleRequired": "請輸入標題",
+    "saved": "問題回報已儲存"
+  },
+  "myTasks": {
+    "title": "今日任務",
+    "doneCount": "已完成 {done} / {total}",
+    "all": "全部",
+    "allCompleted": "今日所有任務已完成。",
+    "evidenceBadge": "證據",
+    "done": "完成",
+    "moreCount": "+ 另外 {count} 項",
+    "evidenceRequiredError": "此任務需要照片或影片作為證據",
+    "chatHeader": "✅ 任務已完成：{title}",
+    "chatAttachments": "📎 {count} 個附件",
+    "partialChatFailure": "任務已完成，但 {count} 則聊天訊息傳送失敗",
+    "completedSuccess": "任務已完成",
+    "completeError": "完成失敗",
+    "evidenceLabel": "證據照片／影片",
+    "evidenceAlt": "證據",
+    "remove": "移除",
+    "uploadError": "上傳失敗",
+    "uploading": "上傳中…",
+    "noteLabel": "備註",
+    "optional": "（選填）",
+    "notePlaceholder": "有甚麼要向經理反映嗎？",
+    "markDone": "標記為完成"
+  },
+  "itemForecast": {
+    "title": "逐項 AI 預測",
+    "retrain": "重新訓練",
+    "refresh": "重新整理",
+    "loadingPredictions": "正在載入預測……",
+    "today": "今天",
+    "itemsTotal": "項商品總計",
+    "topItems": "熱門商品：{day}",
+    "predictedUnits": "預測銷售數量",
+    "totalItems": "共 {count} 項商品",
+    "predicted": "預測",
+    "unitsValue": "{count} 件",
+    "allItems": "所有商品：{day}",
+    "showLess": "收起",
+    "showAllItems": "顯示全部 {count} 項商品",
+    "modelNotTrained": "AI 模型尚未訓練",
+    "recordsReady": "你有 {count} 筆商品日記錄。訓練 AI 模型即可取得逐項預測。",
+    "recordsNeeded": "需要付款紀錄中至少 100 筆商品日記錄，目前有 {count} 筆。",
+    "training": "訓練中……",
+    "trainModel": "訓練 AI 模型",
+    "modelTrainedSummary": "模型已訓練：{items} 項商品、{days} 天、R²={r2}",
+    "lastTrainedSummary": "上次訓練：{items} 項商品、橫跨 {days} 天 — MAE：{mae}、R²：{r2}",
+    "trainingFailed": "訓練失敗",
+    "predictionFailed": "預測失敗"
+  },
+  "scheduler": {
+    "auto": {
+      "button": "自動排班",
+      "title": "自動排班",
+      "description": "根據可用時間、限制條件及公平性生成最佳化的班次安排。",
+      "startDate": "開始日期",
+      "endDate": "結束日期",
+      "maxHoursPerWeek": "每週最多時數",
+      "maxConsecutiveDays": "最多連續天數",
+      "minRestHours": "最少休息（小時）",
+      "generate": "生成排班",
+      "statShifts": "班次",
+      "statTotalHours": "總時數",
+      "statAvgPerStaff": "人均",
+      "statFairness": "公平度",
+      "unfilledSlots": "未補空缺（{count}）",
+      "moreUnfilled": "+{count} 個未補空缺",
+      "schedulePreview": "排班預覽",
+      "selectAll": "全選",
+      "deselectAll": "取消全選",
+      "colDate": "日期",
+      "colShift": "班次",
+      "colTime": "時間",
+      "colStaff": "員工",
+      "colRoles": "角色",
+      "colScore": "評分",
+      "colStatus": "狀態",
+      "statusOk": "正常",
+      "regenerate": "重新生成",
+      "applySelected": "套用所選（{count}）",
+      "noShiftsGenerated": "無法生成班次。請檢查團隊的可用時間及班次預設。",
+      "generateFailed": "生成排班失敗。",
+      "noShiftsSelected": "未選擇要套用的班次。",
+      "shiftsAdded": "已將 {count} 個班次加入排班。",
+      "applyFailed": "部分班次套用失敗，請再試一次。"
     }
   }
 }
