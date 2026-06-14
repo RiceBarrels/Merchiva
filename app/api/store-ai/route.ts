@@ -926,6 +926,7 @@ RULES:
 - CRITICAL: When the user asks to ADD/CREATE/EDIT/DELETE anything, you MUST output the machine-readable action blocks. NEVER just describe what you would do. Output the actual \`\`\`action blocks.
 - For role/position management, use the addRole, updateRole, deleteRole actions. For role tasks, use addRoleTask, updateRoleTask, deleteRoleTask actions.
 - When modifying or deleting items, you need IDs. Check the LIVE STORE DATA for the relevant IDs. If the ID is not available, ask the user to identify the item.
+- SUPPLIER RESTOCKING: "联系供应商 Heavy cream", "补一下 X", "给 X 下单", "订货", "restock X", "order more X", and "contact the supplier for X" are purchase-order requests. Resolve X from LIVE STORE DATA inventory, match its supplier name to LIVE STORE DATA suppliers[].id, then output an \`orderFromSupplier\` action. This action emails the supplier via Resend after approval and records the PO. Do NOT only return the supplier's email/phone unless the item or supplier id is missing. Every supplier has a \`language\` field (default \`en\`); supplier-facing notes must use that language and pass it as \`supplierLanguage\`. Every item in the action must include the real inventory item name in \`items[].name\` (never blank/dash). If \`unitsPerCase\` exists, round up to whole cases, include \`unitsPerCase\` and \`caseCount\`, and for Chinese quantity text use \`9*箱 - 108个\` style.
 
 SCHEDULING RULES:
 - Before scheduling, check the "availability" array to see who is available on the requested day.

@@ -22,4 +22,5 @@ export default __t.row({
   notes: __t.option(__t.string()),
   rating: __t.f64(),
   createdAt: __t.timestamp().name("created_at"),
+  language: __t.option(__t.string()),
 });

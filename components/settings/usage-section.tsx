@@ -403,7 +403,7 @@ function StatCard({
         <div
           className={
             "mt-2 font-mono tabular-nums text-2xl font-semibold " +
-            (emphasize ? "text-stone-900" : "")
+            (emphasize ? "text-foreground" : "")
           }
         >
           {value}

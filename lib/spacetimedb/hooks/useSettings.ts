@@ -48,6 +48,7 @@ export function useSettings() {
       countryCode:         r.countryCode ?? null,
       paymentTaxRate:      r.paymentTaxRate != null ? Number(r.paymentTaxRate) : null,
       paymentCurrency:     r.paymentCurrency ?? null,
+      betaFeatures:        r.betaFeatures ?? null,
     };
   }, [rawSettings, organizationId]);
 

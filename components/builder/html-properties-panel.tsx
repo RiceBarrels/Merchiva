@@ -626,7 +626,7 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
                     className={cn(
                       "h-6 px-1.5 rounded-[0.2rem] border text-[10px] font-mono transition-colors",
                       active
-                        ? "border-stone-800 dark:border-stone-100 bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900"
+                        ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted",
                     )}
                   >
@@ -1238,7 +1238,7 @@ function SegmentedControl<T extends string>({
             className={cn(
               "flex-1 h-[24px] inline-flex items-center justify-center text-[10.5px] font-medium border-r border-border last:border-r-0 transition-colors",
               active
-                ? "bg-stone-800 dark:bg-stone-100 text-white dark:text-stone-900"
+                ? "bg-primary text-primary-foreground"
                 : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted",
             )}
           >

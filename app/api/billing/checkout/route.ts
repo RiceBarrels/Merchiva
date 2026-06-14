@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe, resolveProPriceId } from "@/lib/stripe";
+import { stripe, proPriceEnvNames, resolveProPriceId } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
 interface CheckoutBody {
   orgId?: string;
   interval?: "month" | "year";
-  // Optional existing customer id (when org already has one). When omitted,
-  // Stripe creates a new customer for this session and we attach the orgId
-  // via metadata so the webhook + sync can map back to the org.
+  // Optional existing customer id when org already has one. In subscription
+  // mode, Stripe creates a customer automatically when this is omitted.
   stripeCustomerId?: string | null;
   customerEmail?: string;
   // Where Stripe sends the user back after checkout. Defaults to the billing
@@ -37,7 +36,7 @@ export async function POST(req: NextRequest) {
     const priceId = resolveProPriceId(interval);
     if (!priceId) {
       return NextResponse.json(
-        { error: `Stripe price for ${interval} not configured (STRIPE_PRO_${interval.toUpperCase()}_PRICE_ID)` },
+        { error: `Stripe price for ${interval} not configured (${proPriceEnvNames(interval)})` },
         { status: 500 },
       );
     }
@@ -51,14 +50,12 @@ export async function POST(req: NextRequest) {
     const session = await stripe().checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
-      // Existing customer wins; otherwise create one and tag it with our orgId
-      // via metadata so the webhook can map back.
+      // Existing customer wins; otherwise subscription mode creates one.
       ...(body.stripeCustomerId
         ? { customer: body.stripeCustomerId }
-        : {
-            customer_creation: "always",
-            customer_email: body.customerEmail || undefined,
-          }),
+        : body.customerEmail
+          ? { customer_email: body.customerEmail }
+          : {}),
       // Always attach orgId twice: once on the session (for cleanup after
       // success_url) and once on the subscription (so webhook events can
       // resolve the org without needing to fetch the session).

@@ -353,7 +353,7 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
 
     viewSuppliers: tool({
       description:
-        "Supplier records (id, name, contact, email, phone). orderFromSupplier needs the supplier id — match an inventory item's supplier NAME to a supplier here to get the id.",
+        "Supplier records (id, name, contact, email, phone, language). orderFromSupplier needs the supplier id and language — match an inventory item's supplier NAME to a supplier here to get the id.",
       inputSchema: z.object({}),
       execute: exec("viewSuppliers", async (conn) => ({
         suppliers: orgRows(conn, "supplier", organizationId).map((s) => ({
@@ -362,6 +362,7 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
           contactName: opt(s.contactName),
           email: opt(s.email),
           phone: opt(s.phone),
+          language: opt(s.language) ?? "en",
         })),
       })),
     }),
@@ -403,6 +404,7 @@ You start with only a brief STORE OVERVIEW (below). Before answering data questi
 - Scheduling ("排班"): call viewTeam, viewScheduleHistory, viewUpcomingShifts and viewAvailability (and viewShiftPresets if presets are referenced) BEFORE emitting addShift blocks.
 - Roles / tasks: call viewRoles to get role ids and task ids.
 - Inventory / restock: call viewInventory (lowOnly:true for shortages) and viewSuppliers.
+- Supplier restock actions must pass suppliers[].language as supplierLanguage, include every item name, and include unitsPerCase/caseCount when ordering full cases.
 - Pricing / products: call viewProducts.
 - Sales / trends / anomalies: call viewSales.
 Fetch only what the request needs — don't call every tool. NEVER invent ids, names, or numbers; if a tool returns an error, tell the user the live data is unavailable. After fetching, give your answer and any action blocks as usual.`;

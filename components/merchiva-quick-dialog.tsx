@@ -171,7 +171,7 @@ const mdComponents: Record<
   h2: ({ children, ...props }) => <h2 className="text-[14.5px] font-semibold mb-1" {...props}>{children}</h2>,
   h3: ({ children, ...props }) => <h3 className="text-[13.5px] font-semibold mb-1" {...props}>{children}</h3>,
   blockquote: ({ children, ...props }) => <blockquote className="border-l-2 border-stone-300 dark:border-stone-700 pl-3 text-stone-600 dark:text-stone-300 my-1.5" {...props}>{children}</blockquote>,
-  a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-stone-700 dark:text-stone-300 hover:text-stone-900" {...props}>{children}</a>,
+  a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-stone-700 dark:text-stone-300 hover:text-foreground" {...props}>{children}</a>,
   hr: (props) => <hr className="border-stone-200 dark:border-stone-700 my-2" {...props} />,
 };
 
@@ -192,7 +192,7 @@ function MerchivaRow({ time, children }: { time?: string; children: React.ReactN
       <MerchivaAvatar size={26} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[12px] font-semibold tracking-tight text-stone-900 dark:text-stone-100">Mr. Merchiva</span>
+          <span className="text-[12px] font-semibold tracking-tight text-foreground">Mr. Merchiva</span>
           {time && (
             <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-stone-400">{time}</span>
           )}
@@ -442,7 +442,7 @@ export function QuickDialogPanel({
         >
           {/* User question */}
           <div className="flex justify-end mb-3">
-            <div className="max-w-[280px] rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 px-3 py-2 text-[13px] leading-[1.5] whitespace-pre-wrap break-words">
+            <div className="max-w-[280px] rounded-lg bg-primary text-primary-foreground px-3 py-2 text-[13px] leading-[1.5] whitespace-pre-wrap break-words">
               {asking}
               {askedAt && (
                 <div className="font-mono text-[9.5px] mt-1 text-right opacity-60">{askedAt}</div>

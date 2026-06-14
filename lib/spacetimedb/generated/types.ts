@@ -537,6 +537,8 @@ export const Settings = __t.object("Settings", {
   autoCommitSchedules: __t.option(__t.bool()),
   openingHours: __t.option(__t.string()),
   countryCode: __t.option(__t.string()),
+  assistantConfig: __t.option(__t.string()),
+  betaFeatures: __t.option(__t.string()),
 });
 export type Settings = __Infer<typeof Settings>;
 
@@ -743,6 +745,7 @@ export const Supplier = __t.object("Supplier", {
   notes: __t.option(__t.string()),
   rating: __t.f64(),
   createdAt: __t.timestamp(),
+  language: __t.option(__t.string()),
 });
 export type Supplier = __Infer<typeof Supplier>;
 

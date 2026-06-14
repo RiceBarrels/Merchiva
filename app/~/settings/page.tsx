@@ -49,6 +49,7 @@ import {
   Plus,
   Coins,
   Loader2,
+  Palette,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSettings, type UserSettings } from "@/lib/db/settings";
 import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
+import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { usePushNotifications } from "@/lib/spacetimedb/hooks/usePushNotifications";
 import { tauriNotificationsPref, requestTauriNotificationPermission } from "@/lib/spacetimedb/hooks/useTauriNotifications";
 import { useIsNativeShell } from "@/lib/native-shell";
@@ -101,6 +103,7 @@ import { toast } from "sonner";
 import { useT, useI18n } from "@/lib/i18n/context";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
+import { BETA_FEATURES } from "@/lib/beta-features";
 import { LocationManager } from "@/components/location-manager";
 import { useLocations } from "@/lib/spacetimedb/hooks";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -122,6 +125,7 @@ export default function SettingsPage() {
   const canEditTeam = can("team", "edit");
   // Settings data via SpacetimeDB migration hook
   const { settings, setSettings, loading } = useSettings();
+  const { betaFeatures, savingKey: savingBetaFeature, setFeature: setBetaFeature } = useBetaFeatures();
   // Fallback: the organization's own name, for orgs whose settings.businessName was never set
   const [orgRows] = useTable(tables.organization);
   const orgName = (orgRows || []).find((o) => o.id.toString() === organizationId)?.name ?? "";
@@ -137,7 +141,7 @@ export default function SettingsPage() {
   const [gettingLocation, setGettingLocation] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved]   = useState(false);
-
+  const [betaFeaturesDialog, setBetaFeaturesDialog] = useState(false);
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -1608,6 +1612,41 @@ export default function SettingsPage() {
           </DynamicUIElementContent>
         </DynamicUIElement>
 
+        {/* ─── Beta Features DynamicUIElement ────────────────────────────── */}
+        <DynamicUIElement open={betaFeaturesDialog} onOpenChange={setBetaFeaturesDialog}>
+          <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle mobileTitle={t("settings.betaFeaturesMobileTitle")}>{t("settings.betaFeaturesTitle")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>{t("settings.betaFeaturesDesc")}</DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+            <div>
+              {BETA_FEATURES.map((feature, index) => {
+                const Icon =
+                  feature.key === "pos" ? MonitorSmartphone :
+                  feature.key === "website" ? Globe :
+                  Palette;
+                return (
+                  <SToggleRow
+                    key={feature.key}
+                    icon={<Icon className="h-4 w-4 text-foreground" />}
+                    title={t(feature.labelKey)}
+                    meta={t(feature.descriptionKey)}
+                    checked={betaFeatures[feature.key]}
+                    disabled={savingBetaFeature === feature.key}
+                    isFirst={index === 0}
+                    onChange={() => {
+                      void setBetaFeature(feature.key, !betaFeatures[feature.key])
+                        .then(() => toast.success(t("settings.toastBetaFeaturesSaved")))
+                        .catch((err) => {
+                          toast.error(err instanceof Error ? err.message : t("settings.toastSaveFailed"));
+                        });
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </DynamicUIElementContent>
+        </DynamicUIElement>
         {/* ─── Edit Member (role + permissions) ──────────────────────────── */}
         <EditMemberDialog
           member={editingMember}
@@ -1781,6 +1820,7 @@ export default function SettingsPage() {
     checked,
     onChange,
     isFirst,
+    disabled,
   }: {
     icon: React.ReactNode;
     title: string;
@@ -1788,15 +1828,21 @@ export default function SettingsPage() {
     checked: boolean;
     onChange: () => void;
     isFirst?: boolean;
+    disabled?: boolean;
   }) => (
-    <div className={`flex items-center gap-3 px-[18px] py-3.5 w-full ${isFirst ? "" : "border-t border-border"}`}>
+    <div className={`flex items-center gap-3 px-[18px] py-3.5 w-full ${isFirst ? "" : "border-t border-border"} ${disabled ? "opacity-60" : ""}`}>
       <IconTile>{icon}</IconTile>
       <div className="flex-1">
         <p className="text-sm font-medium text-foreground">{title}</p>
         {meta && <p className="text-xs text-muted-foreground mt-0.5">{meta}</p>}
       </div>
       <button
-        onClick={() => { hapticSuccess(); onChange(); }}
+        onClick={() => {
+          if (disabled) return;
+          hapticSuccess();
+          onChange();
+        }}
+        disabled={disabled}
         className={`relative inline-flex h-5 w-[34px] items-center rounded-full shrink-0 transition-colors ${checked ? "bg-foreground" : "bg-muted border border-border"}`}
         aria-label={`Toggle ${title}`}
       >
@@ -2169,6 +2215,13 @@ export default function SettingsPage() {
           title={t("settings.groupData")}
           meta={t("settings.exportData")}
           onClick={() => setSubPanel("data")}
+          card
+        />
+        <SRow
+          icon={<Info className="h-4 w-4 text-foreground" />}
+          title={t("settings.betaFeatures")}
+          meta={t("settings.betaFeaturesAbout")}
+          onClick={() => setBetaFeaturesDialog(true)}
           card
         />
         <SRow
@@ -2878,5 +2931,3 @@ export default function SettingsPage() {
     </>
   );
 }
-
-

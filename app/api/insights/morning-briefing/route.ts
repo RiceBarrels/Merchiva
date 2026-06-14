@@ -43,7 +43,7 @@ const briefingSchema = z.object({
   content: z
     .string()
     .describe(
-      "HTML body — bullet items as <ul> with <li> children (typically 3 to 10, as many as the data warrants), each one concrete observation or recommendation grounded in the LIVE STORE DATA. Lead with the most urgent item. You may use <strong>, <em>, <code>, and short <h3> headers to group related items (inventory, staffing, sales, tasks, promotions). NO <script>, <style>, <iframe>, <img>, inline event handlers, or javascript: URLs. NO markdown, NO action blocks, NO JSON.",
+      "HTML body — bullet items as <ul> with <li> children (typically 3 to 10, as many as the data warrants), each one concrete observation or recommendation grounded in the LIVE STORE DATA. Lead with the most urgent item. Every <li> should include data-icon with a Lucide icon component name and data-tone with critical|warning|info|success|neutral. You may use <strong>, <em>, <code>, and short <h3> headers to group related items (inventory, staffing, sales, tasks, promotions). NO <script>, <style>, <iframe>, <img>, inline event handlers, or javascript: URLs. NO markdown, NO action blocks, NO JSON.",
     ),
   actions: z
     .array(briefingActionSchema)
@@ -129,9 +129,13 @@ WHAT TO CHECK (scan the data for each; include the ones that actually apply, wit
 - Low / out-of-stock inventory (\`lowStock\`, and \`inventory[].status\` = out|low|ok) — name the items and their stock vs min.
 - Today's coverage (\`todayShifts\`, \`team\`, \`openingHours\`, \`unassignedTodayShifts\`) — gaps, unassigned shifts, or nobody scheduled while open.
 - TODAY'S ATTENDANCE (\`attendance\`): who is currently clocked in (\`onShift\` — each has \`since\` clock-in time and an \`onBreak\` flag) and who has punched in at all today (\`punchedInToday\`, with \`firstIn\` time). Note who's working now and who's on break. If the store is open and \`onShiftCount\` is 0 while shifts are scheduled, FLAG that no one has clocked in.
+- ATTENDANCE EXCEPTIONS — surface EACH by name when present:
+  • \`attendance.lateArrivals\`: each has \`name\`, \`scheduledStart\`, \`actualIn\` (null = not clocked in yet), \`minutesLate\`, \`status\` ("late" = clocked in late; "absent" = scheduled but still no punch-in this far past start). Call out who is late / hasn't shown up and by how many minutes.
+  • \`attendance.lateDepartures\` (晚下班 / overtime): each has \`name\`, \`scheduledEnd\`, \`actualOut\` (null = still on shift), \`minutesOver\`, \`stillOn\` (true = still clocked in past their scheduled end — possibly overtime or forgot to punch out). Flag who is still on past end or clocked out late.
 - Pending time-off requests (\`timeOffRequests\`) and pending shift trades (\`shiftTrades\`) awaiting the owner's approval — name who and the dates.
 - Sales (\`sales\`): yesterday vs the same weekday last week (\`yesterdayRevenue\` vs \`priorWeekSameDayRevenue\`), today's revenue so far (\`todayRevenueSoFar\`, with intraday \`todayHourly\`), and any notable swing or anomaly in \`recentDaily\`. Call out a significant jump or drop in %.
 - YESTERDAY'S TASK EVIDENCE (\`yesterdayTaskEvidence\`): which role tasks were completed yesterday, by whom, with notes/photos. Each item has \`evidenceStatus\` (complete | missing_required | not_required) — FLAG every \`missing_required\` by name.
+- TODAY'S TASKS (\`todayTasks\`): summarize \`completed\` / \`total\`. If \`todayTasks.overduePending\` > 0, you MUST output every item in \`todayTasks.overdue\` by task name, staff name, due time, and whether it requires evidence. These are time-sensitive and should not be hidden behind the generic task compliance bullet.
 - Task compliance (\`taskCompliance\`): \`completedYesterday\` / \`skippedYesterday\`, \`missingRequiredEvidence\` (required photo proof not submitted), and \`overduePending\` (overdue, still not done) — list \`overdueExamples\`.
 - Expiring promotions/coupons (\`expiringCoupons\`) — codes lapsing within ~7 days.
 - Underperforming products (\`products\` with an \`alert\`).
@@ -142,6 +146,11 @@ STYLE:
 - Friendly but not chatty — the owner wants signal fast.
 - Prefer concrete numbers and names pulled from LIVE STORE DATA over vague claims. Never invent numbers.
 - Lead with the most urgent item; group related items under short <h3> headers when there's a lot.
+- Choose a Lucide icon and tone for EVERY <li> using attributes the UI will render as cards:
+  • \`data-icon\`: exact Lucide component name from this allowlist: \`AlertTriangle\`, \`Package\`, \`Users\`, \`Bell\`, \`Calendar\`, \`CalendarPlus\`, \`ArrowRightLeft\`, \`Camera\`, \`Clock\`, \`CheckCheck\`.
+  • \`data-tone\`: one of \`critical\`, \`warning\`, \`info\`, \`success\`, \`neutral\`.
+  • Use \`Package\` for inventory/restock, \`Users\` for staffing/attendance, \`Bell\` for notifications, \`Calendar\` for holidays/dates, \`Clock\` for overdue/timed tasks, \`Camera\` for evidence/photos, \`ArrowRightLeft\` for shift trades, \`AlertTriangle\` for urgent/high-severity alerts, \`CheckCheck\` for all-clear/completed.
+  • Use \`critical\` for urgent/high-severity/out-of-stock/no-coverage/absent, \`warning\` for late/minimum/pending/upcoming issues, \`info\` for neutral awareness, and \`success\` only for genuinely resolved/all-clear items.
 - If everything genuinely looks normal, say so in one bullet — don't pad.
 
 ONE-CLICK ACTIONS (optional \`actions\` array — the owner approves each with one click):
@@ -156,7 +165,7 @@ RULES: never propose deletes, edits, pricing changes, or any action not in this 
 
 OUTPUT FORMAT:
 - \`summary\`: a plain-text one-line headline (≤80 chars), no HTML, no markdown.
-- \`content\`: HTML — bullets in <ul> with <li> children (you may use a few <h3> group headers). Allowed tags: <ul>, <ol>, <li>, <p>, <strong>, <em>, <code>, <h3>, <br>. Forbidden: <script>, <style>, <iframe>, <img>, inline event handlers (onclick, onload, …), javascript: URLs, markdown syntax (no \`*\`, \`#\`, or backticks), \`\`\`action\`\`\` blocks, and JSON/code blocks. This is a read-only briefing — do NOT emit actions or commands.
+- \`content\`: HTML — bullets in <ul> with <li> children (you may use a few <h3> group headers). Every <li> MUST include \`data-icon="LucideName"\` and \`data-tone="critical|warning|info|success|neutral"\`. Example: \`<li data-icon="Package" data-tone="critical"><strong>Heavy Cream out of stock:</strong> 0 / 10 units.</li>\`. Allowed tags: <ul>, <ol>, <li>, <p>, <strong>, <em>, <code>, <h3>, <br>. Allowed attributes: \`data-icon\` and \`data-tone\` on <li>. Forbidden: <script>, <style>, <iframe>, <img>, inline event handlers (onclick, onload, …), javascript: URLs, markdown syntax (no \`*\`, \`#\`, or backticks), \`\`\`action\`\`\` blocks, and JSON/code blocks. This is a read-only briefing — do NOT emit actions or commands.
 
 LIVE STORE DATA:
 ${JSON.stringify(context, null, 2)}`;

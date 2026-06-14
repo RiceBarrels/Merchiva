@@ -28,15 +28,61 @@ interface OrderBody {
   notes?: string | null;
   replyTo?: string | null;
   currency?: string;
+  supplierLanguage?: string | null;
 }
 
-function summarize(items: SupplierPOItem[], total: number, currency: string): string {
+type SupplierSummaryLanguage = "en" | "zh" | "es" | "fr" | "ar" | "hi";
+
+function normalizeSupplierLanguage(language?: string | null): SupplierSummaryLanguage {
+  const key = String(language || "en").toLowerCase().split(/[-_]/)[0];
+  return key === "zh" || key === "es" || key === "fr" || key === "ar" || key === "hi" ? key : "en";
+}
+
+function num(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function rawItemName(item: SupplierPOItem): string {
+  return String(item.name || item.itemName || item.productName || item.inventoryItemName || item.item || "").trim();
+}
+
+function itemName(item: SupplierPOItem): string {
+  return rawItemName(item) || "Item";
+}
+
+function quantityLabel(item: SupplierPOItem, language: SupplierSummaryLanguage): string {
+  const qty = num(item.quantity) ?? 0;
+  const unitsPerCase = num(item.unitsPerCase);
+  const caseCount = num(item.caseCount) ?? (unitsPerCase && unitsPerCase > 0 ? Math.ceil(qty / unitsPerCase) : null);
+  if (caseCount && unitsPerCase && unitsPerCase > 0) {
+    if (language === "zh") return `${caseCount}*箱 - ${qty}个`;
+    if (language === "es") return `${caseCount} cajas - ${qty} unidades`;
+    if (language === "fr") return `${caseCount} cartons - ${qty} unités`;
+    if (language === "ar") return `${caseCount} صناديق - ${qty} وحدة`;
+    if (language === "hi") return `${caseCount} केस - ${qty} यूनिट`;
+    return `${caseCount} cases - ${qty} units`;
+  }
+  return `${qty}${item.unit ? " " + item.unit : ""}`;
+}
+
+function pendingQuoteLabel(language: SupplierSummaryLanguage): string {
+  if (language === "zh") return "等待供应商报价";
+  if (language === "es") return "cotización pendiente";
+  if (language === "fr") return "devis en attente";
+  if (language === "ar") return "بانتظار عرض السعر";
+  if (language === "hi") return "quote लंबित";
+  return "pending supplier quote";
+}
+
+function summarize(items: SupplierPOItem[], total: number, currency: string, language: SupplierSummaryLanguage): string {
   const head = items
     .slice(0, 4)
-    .map((i) => `${i.name} ×${i.quantity}${i.unit ? " " + i.unit : ""}`)
+    .map((i) => `${itemName(i)} ${quantityLabel(i, language)}`)
     .join(", ");
   const more = items.length > 4 ? ` +${items.length - 4} more` : "";
-  return `${head}${more} — est. ${currency}${total.toFixed(2)}`;
+  const amount = total > 0 ? `${currency}${total.toFixed(2)}` : pendingQuoteLabel(language);
+  return `${head}${more} — est. ${amount}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -57,6 +103,7 @@ export async function POST(req: NextRequest) {
     items,
     notes,
     replyTo,
+    supplierLanguage,
   } = body;
 
   if (!organizationId || !supplierId || !Array.isArray(items) || items.length === 0) {
@@ -65,12 +112,16 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
+  if (items.some((item) => !rawItemName(item))) {
+    return NextResponse.json({ error: "Every supplier order item must include a name" }, { status: 400 });
+  }
 
   const currency = body.currency || "$";
   const subtotal = Number(body.subtotal ?? 0);
   const tax = Number(body.tax ?? 0);
   const total = Number(body.total ?? subtotal + tax);
-  const summary = summarize(items, total, currency);
+  const language = normalizeSupplierLanguage(supplierLanguage);
+  const summary = summarize(items, total, currency, language);
 
   // Reply-to: when inbound email is configured (Phase 2), route the supplier's
   // reply to the webhook via a signed thread token so Mr. Merchiva can carry on
@@ -98,6 +149,7 @@ export async function POST(req: NextRequest) {
         currency,
         notes: notes ?? null,
         replyTo: effectiveReplyTo,
+        language,
       });
       emailed = true;
     } catch (err) {

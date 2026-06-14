@@ -8,6 +8,14 @@ export interface PendingAction {
   id: string;
   action: Record<string, unknown>;
   status: "pending" | "approved" | "rejected";
+  // Autonomy gate decision, computed when the action is attached to a message:
+  //   "auto"    — executes immediately (low-risk under the org's autonomy config)
+  //   "propose" — shows Approve/Cancel; runs only on user confirm
+  //   "deny"    — the actor lacks the required permission; never runs
+  // Absent ⇒ treat as "auto" for backward compatibility with persisted history.
+  decision?: "auto" | "propose" | "deny";
+  // Short rationale for a propose/deny decision, shown on the card.
+  reason?: string;
 }
 
 export interface QAItem {

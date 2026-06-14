@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n/context";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,136 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 
 interface InviteRow { email: string; role: string; }
 
+interface GoogleAddressPlace {
+  address: string;
+  locationLatitude: string | null;
+  locationLongitude: string | null;
+  googlePlacesId: string | null;
+}
+
+interface GooglePlace {
+  id?: string;
+  formattedAddress?: string;
+  location?: unknown;
+  fetchFields: (request: { fields: string[] }) => Promise<void>;
+}
+
+interface GooglePlacePrediction {
+  placeId?: string;
+  toPlace: () => GooglePlace;
+}
+
+interface GooglePlaceSelectEvent extends Event {
+  placePrediction?: GooglePlacePrediction;
+  place?: GooglePlace;
+}
+
+type PlaceAutocompleteElementInstance = HTMLElement & {
+  placeholder?: string;
+};
+
+type PlaceAutocompleteElementConstructor = new (options?: Record<string, unknown>) => PlaceAutocompleteElementInstance;
+
+interface GooglePlacesLibrary {
+  PlaceAutocompleteElement: PlaceAutocompleteElementConstructor;
+}
+
+interface GoogleMapsNamespace {
+  maps: {
+    importLibrary: (library: "places") => Promise<unknown>;
+  };
+}
+
 const STEP_KEYS = ["storeInfo", "hours", "team", "pos"] as const;
+const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || "";
+const GOOGLE_MAPS_SCRIPT_ID = "merchiva-google-maps-js";
+
+let googleMapsPromise: Promise<GoogleMapsNamespace | null> | null = null;
+
+function getGoogleMapsNamespace(): GoogleMapsNamespace | null {
+  if (typeof window === "undefined") return null;
+  const maybeGoogle = (window as Window & { google?: unknown }).google;
+  if (!maybeGoogle || typeof maybeGoogle !== "object") return null;
+
+  const maps = (maybeGoogle as Record<string, unknown>).maps;
+  if (!maps || typeof maps !== "object") return null;
+
+  const importLibrary = (maps as Record<string, unknown>).importLibrary;
+  if (typeof importLibrary !== "function") return null;
+
+  return {
+    maps: {
+      importLibrary: (library: "places") => (importLibrary as (library: "places") => Promise<unknown>)(library),
+    },
+  };
+}
+
+function loadGoogleMaps(): Promise<GoogleMapsNamespace | null> {
+  if (typeof window === "undefined" || !GOOGLE_PLACES_API_KEY) return Promise.resolve(null);
+
+  const ready = getGoogleMapsNamespace();
+  if (ready) return Promise.resolve(ready);
+  if (googleMapsPromise) return googleMapsPromise;
+
+  googleMapsPromise = new Promise((resolve) => {
+    const finish = () => resolve(getGoogleMapsNamespace());
+    const existing = document.getElementById(GOOGLE_MAPS_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", finish, { once: true });
+      existing.addEventListener("error", () => resolve(null), { once: true });
+      return;
+    }
+
+    const params = new URLSearchParams({
+      key: GOOGLE_PLACES_API_KEY,
+      v: "weekly",
+      loading: "async",
+    });
+    const script = document.createElement("script");
+    script.id = GOOGLE_MAPS_SCRIPT_ID;
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    script.async = true;
+    script.defer = true;
+    script.addEventListener("load", finish, { once: true });
+    script.addEventListener("error", () => resolve(null), { once: true });
+    document.head.appendChild(script);
+  });
+
+  return googleMapsPromise;
+}
+
+function getPlacesLibrary(value: unknown): GooglePlacesLibrary | null {
+  if (!value || typeof value !== "object") return null;
+  const placeAutocompleteElement = (value as Record<string, unknown>).PlaceAutocompleteElement;
+  if (typeof placeAutocompleteElement !== "function") return null;
+  return {
+    PlaceAutocompleteElement: placeAutocompleteElement as PlaceAutocompleteElementConstructor,
+  };
+}
+
+function getCoordinateStrings(location: unknown): Pick<GoogleAddressPlace, "locationLatitude" | "locationLongitude"> {
+  if (!location || typeof location !== "object") {
+    return { locationLatitude: null, locationLongitude: null };
+  }
+
+  const record = location as Record<string, unknown>;
+  const lat = record.lat;
+  const lng = record.lng;
+
+  if (typeof lat === "function" && typeof lng === "function") {
+    const latValue = (lat as (this: unknown) => unknown).call(location);
+    const lngValue = (lng as (this: unknown) => unknown).call(location);
+    return {
+      locationLatitude: typeof latValue === "number" && Number.isFinite(latValue) ? String(latValue) : null,
+      locationLongitude: typeof lngValue === "number" && Number.isFinite(lngValue) ? String(lngValue) : null,
+    };
+  }
+
+  return {
+    locationLatitude: typeof lat === "number" && Number.isFinite(lat) ? String(lat) : null,
+    locationLongitude: typeof lng === "number" && Number.isFinite(lng) ? String(lng) : null,
+  };
+}
 
 function Stepper({ step }: { step: number }) {
   const t = useT();
@@ -46,9 +175,128 @@ function Stepper({ step }: { step: number }) {
   );
 }
 
-function StoreInfoStep({ storeName, setStoreName, address, setAddress, businessType, setBusinessType, onNext }: {
+function GoogleAddressInput({
+  value,
+  onChange,
+  onPlaceSelect,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onPlaceSelect: (place: GoogleAddressPlace) => void;
+  placeholder: string;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const valueRef = useRef(value);
+  const [status, setStatus] = useState<"loading" | "ready" | "fallback">(
+    GOOGLE_PLACES_API_KEY ? "loading" : "fallback"
+  );
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    if (!GOOGLE_PLACES_API_KEY) return;
+
+    let disposed = false;
+    let element: PlaceAutocompleteElementInstance | null = null;
+    let selectListener: EventListener | null = null;
+
+    loadGoogleMaps()
+      .then(async (google) => {
+        if (disposed) return;
+
+        const library = google ? getPlacesLibrary(await google.maps.importLibrary("places")) : null;
+        const host = hostRef.current;
+        if (!library || !host) {
+          setStatus("fallback");
+          return;
+        }
+
+        if (valueRef.current.trim()) {
+          setStatus("fallback");
+          return;
+        }
+
+        element = new library.PlaceAutocompleteElement();
+        element.placeholder = placeholder;
+        element.style.display = "block";
+        element.style.width = "100%";
+
+        selectListener = (event: Event) => {
+          const { placePrediction, place: selectedPlace } = event as GooglePlaceSelectEvent;
+          const place = placePrediction?.toPlace() ?? selectedPlace;
+          if (!place) return;
+
+          void place.fetchFields({ fields: ["id", "formattedAddress", "location"] }).then(() => {
+            if (disposed) return;
+
+            const nextAddress = place.formattedAddress?.trim();
+            if (!nextAddress) return;
+
+            const coordinates = getCoordinateStrings(place.location);
+            onChange(nextAddress);
+            onPlaceSelect({
+              address: nextAddress,
+              googlePlacesId: place.id ?? placePrediction?.placeId ?? null,
+              locationLatitude: coordinates.locationLatitude,
+              locationLongitude: coordinates.locationLongitude,
+            });
+          }).catch(() => {
+            if (!disposed) setStatus("fallback");
+          });
+        };
+
+        element.addEventListener("gmp-select", selectListener);
+        element.addEventListener("gmp-placeselect", selectListener);
+        host.replaceChildren(element);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (!disposed) setStatus("fallback");
+      });
+
+    return () => {
+      disposed = true;
+      if (element && selectListener) {
+        element.removeEventListener("gmp-select", selectListener);
+        element.removeEventListener("gmp-placeselect", selectListener);
+      }
+      element?.remove();
+    };
+  }, [onChange, onPlaceSelect, placeholder]);
+
+  if (status === "fallback") {
+    return (
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="h-11"
+      />
+    );
+  }
+
+  return (
+    <div className="relative">
+      {status === "loading" && (
+        <Input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="h-11"
+        />
+      )}
+      <div ref={hostRef} className={cn("min-h-11", status === "loading" && "hidden")} />
+    </div>
+  );
+}
+
+function StoreInfoStep({ storeName, setStoreName, address, setAddress, onAddressPlaceSelect, businessType, setBusinessType, onNext }: {
   storeName: string; setStoreName: (v: string) => void;
   address: string; setAddress: (v: string) => void;
+  onAddressPlaceSelect: (place: GoogleAddressPlace) => void;
   businessType: string; setBusinessType: (v: string) => void;
   onNext: () => void;
 }) {
@@ -75,7 +323,12 @@ function StoreInfoStep({ storeName, setStoreName, address, setAddress, businessT
         </div>
         <div>
           <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">{t("setup.storeInfo.addressLabel")}</label>
-          <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t("setup.storeInfo.addressPlaceholder")} className="h-11" />
+          <GoogleAddressInput
+            value={address}
+            onChange={setAddress}
+            onPlaceSelect={onAddressPlaceSelect}
+            placeholder={t("setup.storeInfo.addressPlaceholder")}
+          />
         </div>
         <div>
           <label className="text-[12px] font-medium text-muted-foreground mb-1.5 block">{t("setup.storeInfo.businessTypeLabel")}</label>
@@ -244,6 +497,7 @@ export default function SetupPage() {
   const [finishing, setFinishing] = useState(false);
   const [storeName, setStoreName] = useState("");
   const [address, setAddress] = useState("");
+  const [addressPlace, setAddressPlace] = useState<GoogleAddressPlace | null>(null);
   const [businessType, setBusinessType] = useState("cafe");
   const [hours, setHours] = useState({ open: "07:00", close: "21:00", days: [true, true, true, true, true, true, false] });
   const [invites, setInvites] = useState<InviteRow[]>([{ email: "", role: "staff" }]);
@@ -251,8 +505,25 @@ export default function SetupPage() {
   useEffect(() => {
     const token = localStorage.getItem("stdb_token");
     if (!token) { router.replace("/login"); return; }
-    try { const raw = localStorage.getItem("merchiva_setup_org"); if (raw) setStoreName(raw); } catch {}
+    let storeNameTimer: number | null = null;
+    try {
+      const raw = localStorage.getItem("merchiva_setup_org");
+      if (raw) storeNameTimer = window.setTimeout(() => setStoreName(raw), 0);
+    } catch {}
+    return () => {
+      if (storeNameTimer !== null) window.clearTimeout(storeNameTimer);
+    };
   }, [router]);
+
+  const handleAddressChange = useCallback((nextAddress: string) => {
+    setAddress(nextAddress);
+    setAddressPlace((place) => (place?.address === nextAddress ? place : null));
+  }, []);
+
+  const handleAddressPlaceSelect = useCallback((place: GoogleAddressPlace) => {
+    setAddress(place.address);
+    setAddressPlace(place);
+  }, []);
 
   const saveAndFinish = useCallback(async () => {
     setFinishing(true);
@@ -262,19 +533,23 @@ export default function SetupPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const r = (conn as any).reducers;
         const orgId = getActiveOrgId();
+        const cleanAddress = address.trim();
+        const selectedAddressPlace = addressPlace?.address.trim() === cleanAddress ? addressPlace : null;
         if (storeName.trim()) { try { await r.updateOrg({ organizationId: orgId, name: storeName.trim() }); } catch {} }
         try {
           await r.updateSettings({
             organizationId: orgId, businessName: storeName.trim() || null, businessType: businessType || null,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, paymentTaxRate: 0, paymentCurrency: "USD",
-            locationLatitude: null, locationLongitude: null, googlePlacesId: null,
+            locationLatitude: selectedAddressPlace?.locationLatitude ?? null,
+            locationLongitude: selectedAddressPlace?.locationLongitude ?? null,
+            googlePlacesId: selectedAddressPlace?.googlePlacesId ?? null,
           });
         } catch {}
         for (const inv of invites.filter((r) => r.email.includes("@"))) {
           try { await r.inviteToOrg({ organizationId: orgId, email: inv.email.trim(), role: inv.role }); } catch {}
         }
-        if (address.trim()) {
-          try { await r.addLocation({ organizationId: orgId, name: storeName.trim() || "Main", address: address.trim(), phone: null, isDefault: true, sortOrder: 0 }); } catch {}
+        if (cleanAddress) {
+          try { await r.addLocation({ organizationId: orgId, name: storeName.trim() || "Main", address: cleanAddress, phone: null, isDefault: true, sortOrder: 0 }); } catch {}
         }
       }
       toast.success(t("setup.toast.complete"));
@@ -286,7 +561,7 @@ export default function SetupPage() {
       toast.error(t("setup.toast.error"));
       router.replace("/~/dashboard");
     }
-  }, [storeName, address, businessType, invites, router, t]);
+  }, [storeName, address, addressPlace, businessType, invites, router, t]);
 
   if (finishing) {
     return (
@@ -306,7 +581,7 @@ export default function SetupPage() {
         <span className="text-[13px] font-semibold tracking-tight">Merchiva</span>
       </div>
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 overflow-y-auto">
-        {step === 0 && <StoreInfoStep storeName={storeName} setStoreName={setStoreName} address={address} setAddress={setAddress} businessType={businessType} setBusinessType={setBusinessType} onNext={() => setStep(1)} />}
+        {step === 0 && <StoreInfoStep storeName={storeName} setStoreName={setStoreName} address={address} setAddress={handleAddressChange} onAddressPlaceSelect={handleAddressPlaceSelect} businessType={businessType} setBusinessType={setBusinessType} onNext={() => setStep(1)} />}
         {step === 1 && <HoursStep hours={hours} setHours={setHours} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
         {step === 2 && <InviteStep invites={invites} setInvites={setInvites} onNext={() => setStep(3)} onBack={() => setStep(1)} onSkip={() => setStep(3)} />}
         {step === 3 && <PosStep onFinish={saveAndFinish} onBack={() => setStep(2)} onSkip={saveAndFinish} finishing={finishing} />}

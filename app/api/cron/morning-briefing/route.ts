@@ -6,6 +6,7 @@ import {
   getAdminOrgsForUser,
   serviceSaveDailyBriefing,
   serviceCreateNotification,
+  serviceAppendAiChatMessage,
 } from "@/lib/spacetimedb/service-client";
 import { buildBriefingContext, briefingProblemKeys } from "@/lib/insights/build-context";
 
@@ -48,6 +49,18 @@ function dateInTimezone(tz: string, now: Date): string {
   }
 }
 
+function timeInTimezone(tz: string, now: Date, locale: string): string {
+  try {
+    return new Intl.DateTimeFormat(locale || "en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(now);
+  } catch {
+    return now.toISOString().slice(11, 16);
+  }
+}
+
 // ─── Localized notification copy ────────────────────────────────────────────────
 // Fired only when a NEW problem appears since the previous hourly run.
 
@@ -59,6 +72,47 @@ const NOTIF_COPY: Record<string, { title: string; body: (n: number) => string }>
   ar: { title: "مشكلة جديدة تتطلب انتباهك", body: (n) => `رصد Mr. Merchiva ${n} مشكلة جديدة منذ آخر فحص.` },
   hi: { title: "नई समस्या पर ध्यान दें", body: (n) => `Mr. Merchiva ने पिछली जाँच के बाद से ${n} नई समस्याएँ देखीं।` },
 };
+
+const CHAT_COPY: Record<
+  string,
+  { title: string; body: (total: number, newCount: number, summary: string) => string }
+> = {
+  en: {
+    title: "Hourly patrol",
+    body: (total, newCount, summary) =>
+      `Hourly patrol found ${total} current ${total === 1 ? "issue" : "issues"}${newCount > 0 ? `, including ${newCount} new since the last check` : ""}.\n\n${summary}`,
+  },
+  zh: {
+    title: "每小时巡查",
+    body: (total, newCount, summary) =>
+      `每小时巡查发现 ${total} 个当前异常${newCount > 0 ? `，其中 ${newCount} 个是上次检查后新出现的` : ""}。\n\n${summary}`,
+  },
+  es: {
+    title: "Revisión por hora",
+    body: (total, newCount, summary) =>
+      `La revisión por hora encontró ${total} ${total === 1 ? "problema activo" : "problemas activos"}${newCount > 0 ? `, incluyendo ${newCount} nuevo(s) desde la última revisión` : ""}.\n\n${summary}`,
+  },
+  fr: {
+    title: "Ronde horaire",
+    body: (total, newCount, summary) =>
+      `La ronde horaire a trouvé ${total} ${total === 1 ? "problème actif" : "problèmes actifs"}${newCount > 0 ? `, dont ${newCount} nouveau(x) depuis la dernière vérification` : ""}.\n\n${summary}`,
+  },
+  ar: {
+    title: "الفحص كل ساعة",
+    body: (total, newCount, summary) =>
+      `وجد الفحص كل ساعة ${total} مشكلة حالية${newCount > 0 ? `، منها ${newCount} مشكلة جديدة منذ آخر فحص` : ""}.\n\n${summary}`,
+  },
+  hi: {
+    title: "हर घंटे की जाँच",
+    body: (total, newCount, summary) =>
+      `हर घंटे की जाँच में ${total} मौजूदा समस्याएँ मिलीं${newCount > 0 ? `, जिनमें ${newCount} पिछली जाँच के बाद नई हैं` : ""}।\n\n${summary}`,
+  },
+};
+
+function normalizedLocale(locale: string): string {
+  const key = locale.toLowerCase().split(/[-_]/)[0];
+  return key in NOTIF_COPY ? key : "en";
+}
 
 // ─── Route ──────────────────────────────────────────────────────────────────────
 
@@ -158,15 +212,26 @@ export async function POST(req: NextRequest) {
   };
 
   // Every org that has at least one ACTIVE owner/manager gets scanned this run.
-  // (Derived from membership, not from prefs — the dashboard card shows for all
-  //  admins, so every managed store should have a fresh hourly snapshot.)
+  // UI messages go to active owner/managers; push notifications are still gated
+  // by briefing prefs below.
   const orgLocale = new Map<string, string>();
+  const messageByOrg = new Map<
+    string,
+    { userId: (typeof enabledPrefs)[number]["userId"]; locale: string }[]
+  >();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const m of orgMembers as any[]) {
     if (m.status !== "active") continue;
     if (m.role !== "owner" && m.role !== "manager") continue;
     const orgId = m.organizationId as string;
-    if (!orgLocale.has(orgId)) orgLocale.set(orgId, localeOf(m.userId));
+    const locale = localeOf(m.userId);
+    if (!orgLocale.has(orgId)) orgLocale.set(orgId, locale);
+    const arr = messageByOrg.get(orgId) ?? [];
+    const userHex = m.userId?.toHexString?.() ?? String(m.userId);
+    if (!arr.some((recipient) => recipient.userId.toHexString() === userHex)) {
+      arr.push({ userId: m.userId, locale });
+      messageByOrg.set(orgId, arr);
+    }
   }
 
   // Enabled admins per org — these (and only these) get a push notification when
@@ -191,6 +256,7 @@ export async function POST(req: NextRequest) {
 
   let generated = 0;
   let notified = 0;
+  let chatMessages = 0;
   let skipped = 0;
   const errors: string[] = [];
 
@@ -245,6 +311,7 @@ export async function POST(req: NextRequest) {
         orgId,
         date,
         locale,
+        now.getTime(),
       );
       const currentKeys = briefingProblemKeys(context);
 
@@ -280,9 +347,34 @@ export async function POST(req: NextRequest) {
       // Notify enabled admins only when a NEW problem appeared this hour.
       const prevSet = new Set(prevKeys);
       const newCount = currentKeys.filter((k) => !prevSet.has(k)).length;
+      const messageAdmins = messageByOrg.get(orgId) ?? [];
+      if (currentKeys.length > 0 && messageAdmins.length > 0) {
+        for (const admin of messageAdmins) {
+          const localeKey = normalizedLocale(admin.locale);
+          const copy = CHAT_COPY[localeKey] ?? CHAT_COPY.en;
+          const summary = (data.summary || "").trim() || copy.title;
+          const targetHex = admin.userId.toHexString?.() ?? String(admin.userId);
+          try {
+            await serviceAppendAiChatMessage(conn, {
+              organizationId: orgId,
+              targetIdentity: admin.userId,
+              title: copy.title,
+              message: copy.body(currentKeys.length, newCount, summary),
+              time: timeInTimezone(tz, now, admin.locale),
+              messageId: `hourly-patrol:${orgId}:${date}:${curHour}:${targetHex}`,
+            });
+            chatMessages++;
+          } catch (err) {
+            errors.push(
+              `chat ${orgId}@${curHour}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          }
+        }
+      }
       if (newCount > 0) {
-        for (const admin of notifyByOrg.get(orgId) ?? []) {
-          const copy = NOTIF_COPY[admin.locale] ?? NOTIF_COPY.en;
+        const admins = notifyByOrg.get(orgId) ?? [];
+        for (const admin of admins) {
+          const copy = NOTIF_COPY[normalizedLocale(admin.locale)] ?? NOTIF_COPY.en;
           await serviceCreateNotification(conn, {
             organizationId: orgId,
             targetIdentity: admin.pref.userId,
@@ -302,7 +394,7 @@ export async function POST(req: NextRequest) {
   }
 
   console.log(
-    `[cron/morning-briefing] orgs=${orgLocale.size} generated=${generated} notified=${notified} skipped=${skipped} errors=${errors.length}`,
+    `[cron/morning-briefing] orgs=${orgLocale.size} generated=${generated} notified=${notified} chatMessages=${chatMessages} skipped=${skipped} errors=${errors.length}`,
   );
 
   return NextResponse.json({
@@ -311,6 +403,7 @@ export async function POST(req: NextRequest) {
     orgs: orgLocale.size,
     generated,
     notified,
+    chatMessages,
     skipped,
     errors,
   });
@@ -321,6 +414,6 @@ export async function GET() {
   return NextResponse.json({
     name: "Merchiva Briefing Cron",
     schedule: "Hourly — scans every active-admin org each hour, regardless of who is online",
-    triggers: "Service-side briefing refresh; notifies enabled managers only when a NEW problem appears",
+    triggers: "Service-side briefing refresh; sends current issues into Mr. Merchiva UI and notifies enabled managers only when a NEW problem appears",
   });
 }

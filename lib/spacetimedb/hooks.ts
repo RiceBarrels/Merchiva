@@ -46,11 +46,12 @@ const __maybeRoleTaskAssignmentTable: any =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (tables as any).roleTaskAssignment ?? { __missing: true, schema: { name: "role_task_assignment" } };
 export function useRoleTaskAssignments() {
+  const result = useTable(__maybeRoleTaskAssignmentTable);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if ((__maybeRoleTaskAssignmentTable as any).__missing) {
     return [[] as unknown[], false] as ReturnType<typeof useTable>;
   }
-  return useTable(__maybeRoleTaskAssignmentTable);
+  return result;
 }
 
 // ── Payments ─────────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ export function useLocations() { return useTable(tables.location); }
 
 // ── Suppliers ───────────────────────────────────────────────────────────────
 export function useSuppliers() { return useTable(tables.supplier); }
+export function useSupplierMessages() { return useTable(tables.supplierMessage); }
 
 // ── Purchase Orders ─────────────────────────────────────────────────────────
 export function usePurchaseOrders() { return useTable(tables.purchaseOrder); }

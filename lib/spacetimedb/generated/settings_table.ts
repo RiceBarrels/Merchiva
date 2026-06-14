@@ -33,4 +33,6 @@ export default __t.row({
   autoCommitSchedules: __t.option(__t.bool()).name("auto_commit_schedules"),
   openingHours: __t.option(__t.string()).name("opening_hours"),
   countryCode: __t.option(__t.string()).name("country_code"),
+  assistantConfig: __t.option(__t.string()).name("assistant_config"),
+  betaFeatures: __t.option(__t.string()).name("beta_features"),
 });

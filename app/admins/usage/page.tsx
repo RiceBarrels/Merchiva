@@ -133,7 +133,7 @@ export default function AdminUsagePage() {
         <select
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="h-9 rounded border border-stone-300 bg-white px-3 font-mono text-[12px] text-stone-900"
+          className="h-9 rounded border border-stone-300 bg-white px-3 font-mono text-[12px] text-foreground"
         >
           {months.map((m) => (
             <option key={m} value={m}>
@@ -187,12 +187,12 @@ export default function AdminUsagePage() {
                   return (
                     <tr key={o.organizationId} className="border-b border-stone-100 last:border-0">
                       <td className="px-4 py-2.5">
-                        <div className="font-medium text-stone-900">{o.name}</div>
+                        <div className="font-medium text-foreground">{o.name}</div>
                         <div className="font-mono text-[10px] text-stone-400">{o.organizationId.slice(0, 12)}…</div>
                       </td>
                       <td className="px-4 py-2.5 text-right font-mono tabular-nums">{fmtTokens(o.inputTokens)}</td>
                       <td className="px-4 py-2.5 text-right font-mono tabular-nums">{fmtTokens(o.outputTokens)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono tabular-nums font-semibold text-stone-900">{fmtCost(o.cost)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono tabular-nums font-semibold text-foreground">{fmtCost(o.cost)}</td>
                       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-stone-500">{o.calls}</td>
                       <td className="px-4 py-2.5">
                         <input
@@ -220,7 +220,7 @@ export default function AdminUsagePage() {
                         <button
                           onClick={() => saveQuota(o.organizationId)}
                           disabled={saving === o.organizationId}
-                          className="rounded border border-stone-300 bg-white px-3 py-1.5 text-[12px] font-medium text-stone-900 hover:bg-stone-50 disabled:opacity-50"
+                          className="rounded border border-stone-300 bg-white px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-stone-50 disabled:opacity-50"
                         >
                           {saving === o.organizationId ? "…" : t("adminsUsage.save")}
                         </button>

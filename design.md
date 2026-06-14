@@ -334,7 +334,7 @@ focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50
 ### Hover
 
 - Buttons: bg opacity shift (variant-specific)
-- Nav items: `hover:bg-stone-100 hover:text-stone-900`
+- Nav items: `hover:bg-muted hover:text-foreground`
 - Table rows: `hover:bg-muted/50`
 
 ### Disabled

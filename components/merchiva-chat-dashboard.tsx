@@ -29,15 +29,19 @@ import { getUpcomingHolidays, inferCountryFromLocale, parseOpeningHours } from "
 import { toast } from "sonner";
 import { parseAllSkills, executeAction, getActionCatalog } from "@/lib/merchiva/skills/registry";
 import { extractActionBlocks } from "@/lib/merchiva/skills/actions";
+import { gateAction, type GateDecision } from "@/lib/merchiva/autonomy";
+import { useAssistantConfig } from "@/lib/spacetimedb/hooks/useSettings";
+import { captureUndoSnapshot, buildInverse, isUndoable, type UndoSnapshot } from "@/lib/merchiva/undo";
 import { useAiJobs } from "@/lib/spacetimedb/hooks";
 import { consumeAiJob, deleteAiJob, markNotificationRead } from "@/lib/spacetimedb/actions";
 import { getStoredToken } from "@/lib/spacetimedb/client";
 import { useAuth } from "@/lib/auth/context";
-import type { ChatMessage, TaskDeleteCmd } from "@/lib/merchiva/skills/types";
+import type { ChatMessage, TaskDeleteCmd, PendingAction } from "@/lib/merchiva/skills/types";
 import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { MerchivaLogo } from "@/components/logo";
 import { MerchivaCallModal } from "@/components/merchiva-call-modal";
+import type { InventoryItem, Permissions } from "@/lib/types";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -51,6 +55,52 @@ import {
 const M_ACC = "var(--m-acc)";
 const M_ACC_SOFT = "var(--m-acc-soft)";
 const M_ACC_BD = "var(--m-acc-bd)";
+
+type RowIdLike = unknown;
+type TimestampLike = { microsSinceUnixEpoch?: bigint | number | string } | null | undefined;
+type RoleCacheRow = { id?: RowIdLike; name?: string; color?: string; icon?: string; description?: string };
+type TaskCacheRow = { id?: RowIdLike; roleId?: RowIdLike; title?: string };
+type RoleTaskConnection = {
+  db?: {
+    staffRole?: { iter?: () => Iterable<RoleCacheRow> };
+    roleTask?: { iter?: () => Iterable<TaskCacheRow> };
+  };
+};
+type AiChatSessionRow = {
+  id?: RowIdLike;
+  organizationId?: string;
+  updatedAt?: TimestampLike;
+  archived?: boolean;
+  messages?: string;
+};
+type AiJobRow = {
+  id?: RowIdLike;
+  organizationId?: string;
+  sessionId?: string;
+  status?: string;
+  prompt?: string;
+  partialText?: string;
+  resultText?: string;
+  finalText?: string;
+  error?: string;
+};
+type SettingsCacheRow = { organizationId?: string; openingHours?: string | null; countryCode?: string | null };
+
+function rowIdString(id: RowIdLike): string {
+  const value = id as { toHexString?: () => string } | null | undefined;
+  return typeof value === "object" && value?.toHexString ? value.toHexString() : String(id ?? "");
+}
+
+function timestampMicros(value: TimestampLike): number {
+  return value && typeof value === "object" && "microsSinceUnixEpoch" in value
+    ? Number(value.microsSinceUnixEpoch ?? 0)
+    : 0;
+}
+
+function tupleRows<T>(value: unknown): T[] {
+  if (Array.isArray(value) && Array.isArray(value[0])) return value[0] as T[];
+  return Array.isArray(value) ? (value as T[]) : [];
+}
 
 // Triage acks are wrapped in this sentinel so the client can peel them off the
 // front of a reply and render them as their own chat bubble. Both transports —
@@ -865,6 +915,34 @@ function RolePreviewStrip({ action }: { action: Record<string, unknown> }) {
 // field grid truncated the `items` array to one cut-off line; this lays the
 // order out line-by-line (item × qty, unit cost) with a resolved supplier name
 // and totals so the user can actually review what they're approving.
+function numOrNull(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function supplierOrderItemName(it: Record<string, unknown>, notes = ""): string {
+  const direct = [it.name, it.itemName, it.productName, it.inventoryItemName, it.item]
+    .map((v) => (v == null ? "" : String(v).trim()))
+    .find((v) => v && v !== "—");
+  if (direct) return direct;
+
+  const fromZhNote = notes.match(/^([^，,。.\n]+?)\s*(?:补货|補貨|restock|reorder|order)/i)?.[1]?.trim();
+  if (fromZhNote) return fromZhNote;
+  return "—";
+}
+
+function supplierOrderQuantityLabel(it: Record<string, unknown>): string | null {
+  const qty = numOrNull(it.quantity ?? it.qty);
+  if (qty == null) return null;
+  const unitsPerCase = numOrNull(it.unitsPerCase);
+  const caseCount = numOrNull(it.caseCount) ?? (unitsPerCase && unitsPerCase > 0 ? Math.ceil(qty / unitsPerCase) : null);
+  if (caseCount && unitsPerCase && unitsPerCase > 0) {
+    return `${caseCount}*箱 - ${qty}个`;
+  }
+  const unit = it.unit ? String(it.unit) : "";
+  return `× ${qty}${unit && ` ${unit}`}`;
+}
+
 function SupplierOrderPreview({ action, supplierNameById }: {
   action: Record<string, unknown>;
   supplierNameById?: Map<string, string>;
@@ -878,19 +956,15 @@ function SupplierOrderPreview({ action, supplierNameById }: {
   const items = Array.isArray(action.items)
     ? (action.items as Array<Record<string, unknown>>)
     : [];
-  const num = (v: unknown): number | null => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  };
-  const subtotal = num(action.subtotal);
-  const tax = num(action.tax);
+  const subtotal = numOrNull(action.subtotal);
+  const tax = numOrNull(action.tax);
   // Fall back to summing unitCost × quantity when no explicit total was given.
   const computed = items.reduce((s, it) => {
-    const q = num(it.quantity) ?? 0;
-    const c = num(it.unitCost) ?? 0;
+    const q = numOrNull(it.quantity) ?? 0;
+    const c = numOrNull(it.unitCost) ?? 0;
     return s + q * c;
   }, 0);
-  const total = num(action.total) ?? (subtotal != null ? subtotal + (tax ?? 0) : computed || null);
+  const total = numOrNull(action.total) ?? (subtotal != null ? subtotal + (tax ?? 0) : computed || null);
   const notes = action.notes ? String(action.notes) : "";
   const money = (n: number) => `$${n.toFixed(2)}`;
 
@@ -906,16 +980,15 @@ function SupplierOrderPreview({ action, supplierNameById }: {
       {items.length > 0 ? (
         <div className="divide-y divide-border/60">
           {items.map((it, i) => {
-            const name = String(it.name ?? it.itemName ?? "—");
-            const qty = num(it.quantity);
-            const unit = it.unit ? String(it.unit) : "";
-            const unitCost = num(it.unitCost);
+            const name = supplierOrderItemName(it, notes);
+            const qtyLabel = supplierOrderQuantityLabel(it);
+            const unitCost = numOrNull(it.unitCost);
             return (
               <div key={i} className="flex items-baseline gap-2 px-2.5 py-1.5">
                 <span className="text-[12.5px] font-medium truncate flex-1">{name}</span>
-                {qty != null && (
+                {qtyLabel && (
                   <span className="text-[12px] font-mono text-stone-600 dark:text-stone-300 shrink-0">
-                    × {qty}{unit && ` ${unit}`}
+                    {qtyLabel}
                   </span>
                 )}
                 {unitCost != null && (
@@ -1033,12 +1106,16 @@ function BuilderEditPreview({ action }: { action: Record<string, unknown> }) {
   );
 }
 
-function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, validRoleNamesLower, supplierNameById }: {
+function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, decision, reason, validRoleNamesLower, supplierNameById }: {
   action: Record<string, unknown>;
   onApprove: () => void;
   onReject: () => void;
   status: "pending" | "approved" | "rejected";
   alreadyExecuted?: boolean;
+  // Autonomy gate decision. Absent ⇒ "auto" (legacy persisted actions).
+  decision?: GateDecision;
+  // Why the action was proposed/denied (shown on the card).
+  reason?: string;
   // Passed through to ShiftPreviewStrip so addShift cards can flag invalid
   // staffRoles before the user clicks approve and trips the validator.
   validRoleNamesLower?: Set<string>;
@@ -1054,7 +1131,11 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   const displayLabel = actionLabel.startsWith("merchiva.actions.") ? actionName : actionLabel;
   const [executing, setExecuting] = useState(false);
   const autoRan = useRef(!!alreadyExecuted);
+  const dec: GateDecision = decision ?? "auto";
   const isHighRisk = meta?.risk === "high";
+  const needsApproval = dec === "propose";
+  const denied = dec === "deny";
+  const canUndo = isUndoable(actionName);
   const isShiftAction = actionName === "addShift" || actionName === "updateShift";
   const isRoleAction = actionName === "addRole" || actionName === "updateRole";
   const isBuilderAdd = actionName === "addBuilderElement";
@@ -1063,11 +1144,15 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   const isSupplierOrder = actionName === "orderFromSupplier" || actionName === "createPurchaseOrder";
 
   useEffect(() => {
-    if (status !== "pending" || autoRan.current || isHighRisk) return;
+    // Only "auto" decisions self-execute. "propose" waits for a click; "deny"
+    // never runs.
+    if (status !== "pending" || autoRan.current || dec !== "auto") return;
     autoRan.current = true;
-    setExecuting(true);
-    Promise.resolve(onApprove()).finally(() => setExecuting(false));
-  }, [status, onApprove, isHighRisk]);
+    queueMicrotask(() => {
+      setExecuting(true);
+      Promise.resolve(onApprove()).finally(() => setExecuting(false));
+    });
+  }, [status, onApprove, dec]);
 
   const displayFields = (meta?.fields ?? Object.keys(action).filter((k) => k !== "action"))
     .filter((k) => action[k] != null);
@@ -1076,9 +1161,18 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
     ? "border-emerald-200 bg-emerald-50/50"
     : status === "rejected"
     ? "border-red-200 bg-red-50/50"
+    : denied
+    ? "border-stone-200 dark:border-stone-700 bg-stone-100/60 dark:bg-stone-900/40 opacity-75"
     : isHighRisk
     ? "border-amber-200 bg-amber-50/30"
     : "border-border bg-stone-50/60 dark:bg-stone-950/60";
+
+  // Graceful i18n fallback for the autonomy strings: a missing merchiva.* key
+  // resolves to the path itself (starts with "merchiva."), so fall back to English.
+  const tx = (key: string, fallback: string) => {
+    const v = t(key);
+    return v.startsWith("merchiva.") ? fallback : v;
+  };
 
   return (
     <div className={cn("rounded-[0.3rem] border p-3 mt-2", borderColor)}>
@@ -1088,6 +1182,7 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
           "h-6 px-2 rounded-[0.2rem] inline-flex items-center gap-1.5",
           status === "approved" ? "bg-emerald-100 border border-emerald-200 text-emerald-700" :
           status === "rejected" ? "bg-red-100 border border-red-200 text-red-700" :
+          denied ? "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500" :
           isHighRisk ? "bg-amber-100 border border-amber-200 text-amber-700" :
           "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300"
         )}>
@@ -1096,9 +1191,14 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
             {displayLabel}
           </span>
         </span>
-        {isHighRisk && status === "pending" && (
-          <span className="text-[10px] font-mono text-amber-600 inline-flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" /> {t("merchiva.ui.needsConfirmation")}
+        {denied && (
+          <span className="text-[10px] font-mono text-stone-400 dark:text-stone-500 inline-flex items-center gap-1">
+            <X className="h-3 w-3" /> {tx("merchiva.ui.noPermission", "No permission")}
+          </span>
+        )}
+        {needsApproval && status === "pending" && (
+          <span className={cn("text-[10px] font-mono inline-flex items-center gap-1", isHighRisk ? "text-amber-600" : "text-stone-500")}>
+            <AlertTriangle className="h-3 w-3" /> {tx("merchiva.ui.needsApproval", "Needs your OK")}
           </span>
         )}
         {executing && (
@@ -1147,8 +1247,14 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
         </div>
       )}
 
-      {/* Approve / Reject buttons */}
-      {status === "pending" && !executing && isHighRisk && (
+      {/* Why this needs approval (reason from the autonomy gate) */}
+      {needsApproval && status === "pending" && reason && (
+        <p className="text-[10.5px] text-muted-foreground mb-2">{reason}</p>
+      )}
+
+      {/* Approve / Reject buttons — shown for any "propose" decision (medium or
+          high risk), not just high-risk as before. */}
+      {status === "pending" && !executing && needsApproval && (
         <div className="flex items-center gap-2 mt-2">
           <button
             onClick={() => { setExecuting(true); Promise.resolve(onApprove()).finally(() => setExecuting(false)); }}
@@ -1164,11 +1270,18 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
           </button>
         </div>
       )}
+      {/* Executed: real Undo when the action is reversible, otherwise a note. */}
       {status === "approved" && !executing && (
-        <button onClick={onReject}
-          className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 mt-1">
-          {t("merchiva.ui.undo")}
-        </button>
+        canUndo ? (
+          <button onClick={onReject}
+            className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 mt-1">
+            {t("merchiva.ui.undo")}
+          </button>
+        ) : (
+          <p className="text-[10.5px] text-muted-foreground/70 mt-1 italic">
+            {tx("merchiva.ui.cannotUndo", "Can't be undone")}
+          </p>
+        )
       )}
     </div>
   );
@@ -1768,8 +1881,8 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
   const t = useT();
   const rejRoles = new Set(rejectedRoles ?? []);
   const rejTasks = new Set(rejectedTasks ?? []);
-  const safeRoles = roles ?? [];
-  const safeTasks = tasks ?? [];
+  const safeRoles = useMemo(() => roles ?? [], [roles]);
+  const safeTasks = useMemo(() => tasks ?? [], [tasks]);
 
   type RoleStatus = "pending" | "adding" | "added" | "rejected" | "deleting";
   type TaskStatus = RoleStatus | "needs-chat";
@@ -1782,27 +1895,25 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
   const [taskChats, setTaskChats] = useState<Record<number, string[]>>({});
   const autoRan = useRef(!!alreadyExecuted);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getDbRoles = useCallback((): any[] => {
+  const getDbRoles = useCallback((): RoleCacheRow[] => {
     try {
-      const c = getConnection();
-      if (!c) return staffRolesRef.current;
-      return Array.from((c as any).db.staffRole.iter());
+      const c = getConnection() as RoleTaskConnection | null;
+      const rows = c?.db?.staffRole?.iter?.();
+      if (!rows) return staffRolesRef.current;
+      return Array.from(rows);
     } catch { return staffRolesRef.current; }
   }, [staffRolesRef]);
 
   const findRoleByName = useCallback((name: string) => {
     const lower = name.toLowerCase();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return getDbRoles().find((r: any) => r?.name?.toLowerCase() === lower);
+    return getDbRoles().find((r) => String(r?.name ?? "").toLowerCase() === lower);
   }, [getDbRoles]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getDbTasks = useCallback((): any[] => {
+  const getDbTasks = useCallback((): TaskCacheRow[] => {
     try {
-      const c = getConnection();
-      if (!c) return [];
-      return Array.from((c as any).db.roleTask.iter());
+      const c = getConnection() as RoleTaskConnection | null;
+      const rows = c?.db?.roleTask?.iter?.();
+      return rows ? Array.from(rows) : [];
     } catch { return []; }
   }, []);
 
@@ -1812,7 +1923,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
     setRoleStatuses((prev) => ({ ...prev, [i]: "deleting" }));
     try {
       const found = findRoleByName(role.title);
-      if (found) await execDeleteStaffRole(String(found.id));
+      if (found) await execDeleteStaffRole(rowIdString(found.id));
       setRoleStatuses((prev) => ({ ...prev, [i]: "rejected" }));
       onRejectRole?.(i);
     } catch (err) {
@@ -1828,12 +1939,12 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
     setTaskStatuses((prev) => ({ ...prev, [i]: "deleting" }));
     try {
       const role = findRoleByName(task.role);
-      const roleId = role ? String(role.id) : null;
+      const roleId = role ? rowIdString(role.id) : null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const dbTask = getDbTasks().find((t: any) =>
         t?.title === task.title && (roleId ? String(t?.roleId) === roleId : true)
       );
-      if (dbTask) await execDeleteRoleTask(String(dbTask.id));
+      if (dbTask) await execDeleteRoleTask(rowIdString(dbTask.id));
       setTaskStatuses((prev) => ({ ...prev, [i]: "rejected" }));
       onRejectTask?.(i);
     } catch (err) {
@@ -1901,7 +2012,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
             setTaskStatuses((prev) => ({ ...prev, [i]: "pending" }));
             continue;
           }
-          const roleId = String(found.id);
+          const roleId = rowIdString(found.id);
           const titleLower = task.title.toLowerCase();
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const duplicate = getDbTasks().find((t: any) =>
@@ -1951,7 +2062,7 @@ function CommandGroup({ roles, tasks, staffRolesRef, groupChats, alreadyExecuted
         setTaskStatuses((prev) => ({ ...prev, [i]: "needs-chat" }));
         return;
       }
-      const roleId = String(found.id);
+      const roleId = rowIdString(found.id);
       const titleLower = task.title.toLowerCase();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const duplicate = getDbTasks().find((t: any) =>
@@ -2032,21 +2143,19 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
   );
   const autoRan = useRef(!!alreadyExecuted);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getDbRoles = (): any[] => {
+  const getDbRoles = (): RoleCacheRow[] => {
     try {
-      const c = getConnection();
-      if (!c) return [];
-      return Array.from((c as any).db.staffRole.iter());
+      const c = getConnection() as RoleTaskConnection | null;
+      const rows = c?.db?.staffRole?.iter?.();
+      return rows ? Array.from(rows) : [];
     } catch { return []; }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getDbTasks = (): any[] => {
+  const getDbTasks = (): TaskCacheRow[] => {
     try {
-      const c = getConnection();
-      if (!c) return [];
-      return Array.from((c as any).db.roleTask.iter());
+      const c = getConnection() as RoleTaskConnection | null;
+      const rows = c?.db?.roleTask?.iter?.();
+      return rows ? Array.from(rows) : [];
     } catch { return []; }
   };
 
@@ -2060,16 +2169,14 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
         setStatuses((prev) => ({ ...prev, [i]: "deleting" }));
         try {
           const roleLower = del.role.toLowerCase();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const role = getDbRoles().find((r: any) => r?.name?.toLowerCase() === roleLower);
-          const roleId = role ? String(role.id) : null;
+          const role = getDbRoles().find((r) => String(r?.name ?? "").toLowerCase() === roleLower);
+          const roleId = role ? rowIdString(role.id) : null;
           const titleLower = del.title.toLowerCase();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const dbTask = getDbTasks().find((t: any) =>
-            t?.title?.toLowerCase() === titleLower && (roleId ? String(t?.roleId) === roleId : true)
+          const dbTask = getDbTasks().find((task) =>
+            String(task?.title ?? "").toLowerCase() === titleLower && (roleId ? rowIdString(task?.roleId) === roleId : true)
           );
           if (dbTask) {
-            await execDeleteRoleTask(String(dbTask.id));
+            await execDeleteRoleTask(rowIdString(dbTask.id));
             setStatuses((prev) => ({ ...prev, [i]: "deleted" }));
           } else {
             console.warn(`[TaskDeleteGroup] Task not found: "${del.title}" in role "${del.role}"`);
@@ -2231,6 +2338,155 @@ function parseSessionMessages(raw: string | undefined | null): ChatMessage[] {
   } catch { return []; }
 }
 
+type SupplierContextRow = {
+  id: string;
+  name: string;
+  contactName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  language?: string | null;
+};
+
+function normalizeLookupText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isSupplierRestockRequest(text: string): boolean {
+  return /联系.*供应商|聯絡.*供應商|联络.*供应商|联系.*供應商|补货|補貨|订货|訂貨|下单|下單|采购|採購|restock|order\s+more|reorder|contact\s+(the\s+)?supplier/i.test(text);
+}
+
+function findRequestedInventoryItem(text: string, items: InventoryItem[]): InventoryItem | null {
+  const haystack = normalizeLookupText(text);
+  const ranked = items
+    .map((item) => {
+      const name = normalizeLookupText(item.name);
+      if (!name) return { item, score: 0 };
+      if (haystack.includes(name)) return { item, score: name.length + 100 };
+      const words = name.split(" ").filter((w) => w.length > 1);
+      const matched = words.filter((w) => haystack.includes(w)).length;
+      return { item, score: matched > 0 && matched === words.length ? matched * 10 : 0 };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return ranked[0]?.item ?? null;
+}
+
+function findSupplierForItem(item: InventoryItem, suppliers: SupplierContextRow[]): SupplierContextRow | null {
+  const itemSupplier = normalizeLookupText(item.supplier || "");
+  if (!itemSupplier) return null;
+  return suppliers.find((s) => normalizeLookupText(s.name) === itemSupplier)
+    ?? suppliers.find((s) => {
+      const name = normalizeLookupText(s.name);
+      return !!name && (name.includes(itemSupplier) || itemSupplier.includes(name));
+    })
+    ?? null;
+}
+
+type RestockPlan = {
+  quantity: number;
+  rawNeed: number;
+  unitsPerCase: number;
+  caseCount: number | null;
+};
+
+function computeRestockPlan(item: InventoryItem): RestockPlan {
+  const target = Number.isFinite(item.maxStock) && item.maxStock > 0 ? item.maxStock : item.minStock;
+  const rawNeed = Math.max(0, target - item.currentStock);
+  let quantity = rawNeed > 0 ? rawNeed : Math.max(item.minOrderQty ?? 0, item.unitsPerCase ?? 0, 1);
+  const unitsPerCase = Number(item.unitsPerCase ?? 0);
+  if (unitsPerCase > 0) quantity = Math.ceil(quantity / unitsPerCase) * unitsPerCase;
+  const minOrderQty = Number(item.minOrderQty ?? 0);
+  if (minOrderQty > 0) quantity = Math.max(quantity, minOrderQty);
+  const finalQuantity = Math.max(1, Math.ceil(quantity));
+  return {
+    quantity: finalQuantity,
+    rawNeed,
+    unitsPerCase,
+    caseCount: unitsPerCase > 0 ? Math.ceil(finalQuantity / unitsPerCase) : null,
+  };
+}
+
+function supplierLanguageBase(value: unknown): "en" | "zh" | "es" | "fr" | "ar" | "hi" {
+  const key = String(value ?? "en").trim().toLowerCase().split(/[-_]/)[0];
+  return key === "zh" || key === "es" || key === "fr" || key === "ar" || key === "hi" ? key : "en";
+}
+
+function buildRestockNotes(item: InventoryItem, plan: RestockPlan, language: unknown): string {
+  const lang = supplierLanguageBase(language);
+  const need = Math.max(0, Math.ceil(plan.rawNeed));
+  const unit = item.unit || (lang === "zh" ? "个" : "units");
+  const looseQuantity = lang === "zh" ? `${plan.quantity}${unit}` : `${plan.quantity} ${unit}`;
+  const casePart = plan.caseCount && plan.unitsPerCase > 0
+    ? {
+        en: `${plan.caseCount} cases - ${plan.quantity} units`,
+        zh: `${plan.caseCount}*箱 - ${plan.quantity}个`,
+        es: `${plan.caseCount} cajas - ${plan.quantity} unidades`,
+        fr: `${plan.caseCount} cartons - ${plan.quantity} unités`,
+        ar: `${plan.caseCount} صناديق - ${plan.quantity} وحدة`,
+        hi: `${plan.caseCount} केस - ${plan.quantity} यूनिट`,
+      }[lang]
+    : looseQuantity;
+  if (lang === "zh") {
+    return `${item.name} 补货，需求${need}${unit}，下单 ${casePart}。请确认库存、价格和最早送达时间。`;
+  }
+  if (lang === "es") {
+    return `Reabastecer ${item.name}: se necesitan ${need} ${unit}; pedir ${casePart}. Confirme disponibilidad, precio actual y fecha de entrega más cercana.`;
+  }
+  if (lang === "fr") {
+    return `Réapprovisionnement ${item.name} : besoin de ${need} ${unit}; commander ${casePart}. Merci de confirmer la disponibilité, le prix actuel et la première date de livraison.`;
+  }
+  if (lang === "ar") {
+    return `إعادة طلب ${item.name}: نحتاج ${need} ${unit}؛ اطلب ${casePart}. يرجى تأكيد التوفر والسعر الحالي وأقرب موعد تسليم.`;
+  }
+  if (lang === "hi") {
+    return `${item.name} रीस्टॉक: ${need} ${unit} चाहिए; ${casePart} ऑर्डर करें। कृपया उपलब्धता, मौजूदा कीमत और सबसे जल्दी डिलीवरी समय की पुष्टि करें।`;
+  }
+  return `Restock ${item.name}: need ${need} ${unit}; order ${casePart}. Please confirm availability, current pricing, and earliest delivery.`;
+}
+
+function buildSupplierRestockFallbackAction(
+  userText: string,
+  items: InventoryItem[],
+  suppliers: SupplierContextRow[],
+): Record<string, unknown> | null {
+  if (!isSupplierRestockRequest(userText)) return null;
+  const item = findRequestedInventoryItem(userText, items);
+  if (!item) return null;
+  const supplier = findSupplierForItem(item, suppliers);
+  if (!supplier) return null;
+
+  const plan = computeRestockPlan(item);
+  const quantity = plan.quantity;
+  const unitCost = Number(item.costPerUnit ?? 0);
+  const subtotal = unitCost > 0 ? quantity * unitCost : 0;
+  const supplierLanguage = supplier.language ?? "en";
+  const notes = buildRestockNotes(item, plan, supplierLanguage);
+
+  const action: Record<string, unknown> = {
+    action: "orderFromSupplier",
+    supplierId: supplier.id,
+    supplierLanguage,
+    items: [{
+      name: item.name,
+      itemName: item.name,
+      quantity,
+      unit: plan.unitsPerCase > 0 ? "个" : item.unit || undefined,
+      unitCost: unitCost > 0 ? unitCost : undefined,
+      unitsPerCase: plan.unitsPerCase > 0 ? plan.unitsPerCase : undefined,
+      caseCount: plan.caseCount ?? undefined,
+      caseUnit: plan.unitsPerCase > 0 ? "箱" : undefined,
+      eachUnit: plan.unitsPerCase > 0 ? "个" : item.unit || undefined,
+    }],
+    notes,
+  };
+  if (subtotal > 0) {
+    action.subtotal = subtotal;
+    action.tax = 0;
+    action.total = subtotal;
+  }
+  return action;
+}
+
 function expandHistoryFromMessages(
   messages: ChatMessage[],
 ): Array<{ role: "user" | "assistant"; content: string }> {
@@ -2348,11 +2604,41 @@ export function MerchivaChat({
   header?: boolean;
   builderContext?: BuilderModeContext;
 } = {}) {
-  const { currentOrg, organizationId, isOwner, role: orgRole, permissions: userPermissions } = usePermissions();
+  const { currentOrg, organizationId, isOwner, role: orgRole, permissions: userPermissions, can } = usePermissions();
   const { getToken } = useAuth();
   const { locale } = useI18n();
   const t = useT();
   const builderMode = !!builderContext;
+  // Mr. Merchiva autonomy config for the active org (defaults to low-risk auto /
+  // sensitive proposed). Drives the per-action gate below.
+  const { config: autonomyConfig } = useAssistantConfig();
+  // Undo snapshots for executed actions, keyed by PendingAction id. Lives in a
+  // ref (not message state) because messages get JSON-serialized to SpacetimeDB
+  // and snapshots aren't serializable. Captured before execute; consumed on Undo.
+  const undoSnapshots = useRef<Map<string, UndoSnapshot>>(new Map());
+
+  // Graceful i18n fallback: a missing merchiva.* key resolves to the path itself.
+  const tx = useCallback((key: string, fallback: string) => {
+    const v = t(key);
+    return v.startsWith("merchiva.") ? fallback : v;
+  }, [t]);
+  const canForGate = useCallback(
+    (section: string, action: "view" | "edit" | "invite") => can(section as keyof Permissions, action),
+    [can],
+  );
+
+  // Stamp each parsed action with its autonomy gate decision (auto/propose/deny)
+  // using the org's config + the current actor's permissions. The card uses this
+  // instead of the old hardcoded "auto unless high-risk" rule.
+  const decorateActions = useCallback(
+    (actions: PendingAction[]): PendingAction[] =>
+      actions.map((a) => {
+        const name = String((a.action as Record<string, unknown>).action ?? "");
+        const g = gateAction(name, a.action as Record<string, unknown>, autonomyConfig, canForGate);
+        return { ...a, decision: g.decision, reason: g.reason };
+      }),
+    [autonomyConfig, canForGate],
+  );
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [thinkingPhase, setThinkingPhase] = useState("");
@@ -2362,19 +2648,14 @@ export function MerchivaChat({
 
   // Session management
   // useAiChatSessions() returns [rows[], boolean] from useTable
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sessionsTuple = useAiChatSessions() as any;
-  const sessionRows: any[] = Array.isArray(sessionsTuple) && Array.isArray(sessionsTuple[0]) ? sessionsTuple[0] : (Array.isArray(sessionsTuple) ? sessionsTuple : []);
+  const sessionsTuple = useAiChatSessions() as unknown;
+  const sessionRows = useMemo(() => tupleRows<AiChatSessionRow>(sessionsTuple), [sessionsTuple]);
   const sessionsReady = Array.isArray(sessionsTuple) && sessionsTuple[1] === true;
   const mySessions = useMemo(() => {
     if (!organizationId || !sessionRows) return [];
     return sessionRows
-      .filter((s: any) => s && s.organizationId === organizationId)
-      .sort((a: any, b: any) => {
-        const ta = typeof a.updatedAt === "object" && "microsSinceUnixEpoch" in a.updatedAt ? Number(a.updatedAt.microsSinceUnixEpoch) : 0;
-        const tb = typeof b.updatedAt === "object" && "microsSinceUnixEpoch" in b.updatedAt ? Number(b.updatedAt.microsSinceUnixEpoch) : 0;
-        return tb - ta;
-      });
+      .filter((s) => s && s.organizationId === organizationId)
+      .sort((a, b) => timestampMicros(b.updatedAt) - timestampMicros(a.updatedAt));
   }, [sessionRows, organizationId]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const sessionInitDone = useRef(false);
@@ -2400,10 +2681,10 @@ export function MerchivaChat({
     }
     if (!organizationId || !sessionsReady) return;
     if (mySessions.length > 0) {
-      const latest = mySessions.find((s: any) => !s.archived) ?? mySessions[0];
-      const sid = latest.id.toHexString ? latest.id.toHexString() : String(latest.id);
+      const latest = mySessions.find((s) => !s.archived) ?? mySessions[0];
+      const sid = rowIdString(latest.id);
       setActiveSessionId(sid);
-      setMessages(parseSessionMessages(latest.messages));
+      setMessages(parseSessionMessages(latest.messages ?? ""));
       sessionInitDone.current = true;
     } else if (getConnection()) {
       execCreateSession(t("merchiva.newConversation")).catch(() => {});
@@ -2416,9 +2697,9 @@ export function MerchivaChat({
     if (builderMode) return;
     if (activeSessionId || !sessionInitDone.current || mySessions.length === 0) return;
     const latest = mySessions[0];
-    const sid = latest.id.toHexString ? latest.id.toHexString() : String(latest.id);
+    const sid = rowIdString(latest.id);
     setActiveSessionId(sid);
-    setMessages(parseSessionMessages(latest.messages));
+    setMessages(parseSessionMessages(latest.messages ?? ""));
   }, [mySessions, activeSessionId, builderMode]);
 
   // Save messages on change — to SpacetimeDB session or to localStorage (builder mode)
@@ -2550,17 +2831,19 @@ export function MerchivaChat({
           contactName: r.contactName ?? "",
           email: r.email ?? "",
           phone: r.phone ?? "",
+          language: r.language ?? "en",
         })),
     [rawSupplierRows, organizationId],
   );
   const [rawNotifs] = useNotifications();
   // Settings row for this org — opening hours + country code for holiday lookup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [settingsRows] = useSettingsRows() as any;
+  const settingsRowsTuple = useSettingsRows() as unknown;
+  const settingsRows = useMemo(() => tupleRows<SettingsCacheRow>(settingsRowsTuple), [settingsRowsTuple]);
    
-  const orgSettings = useMemo(() => (Array.isArray(settingsRows)
-    ? settingsRows.find((s: any) => s?.organizationId === organizationId)
-    : undefined), [settingsRows, organizationId]);
+  const orgSettings = useMemo(
+    () => settingsRows.find((s) => s?.organizationId === organizationId),
+    [settingsRows, organizationId],
+  );
   // useStaffRoles() returns the [rows, ready] tuple from useTable — destructure
   // first, then filter. Treating the tuple as the row array (the prior code)
   // silently made `staffRoles` always [], which (a) blanked the role list the
@@ -2668,7 +2951,7 @@ export function MerchivaChat({
       // Supplier records — orderFromSupplier needs the `id`. Match an inventory
       // item's `supplier` NAME to a supplier here to get the id before ordering.
       suppliers: suppliers.map((s) => ({
-        id: s.id, name: s.name, contactName: s.contactName, email: s.email, phone: s.phone,
+        id: s.id, name: s.name, contactName: s.contactName, email: s.email, phone: s.phone, language: s.language ?? "en",
       })),
       todayShifts: shifts.filter((s) => s.date === today).map((s) => ({
         id: s.id, name: s.staffName, role: s.staffRoles.join(", "), start: s.startTime, end: s.endTime, type: s.shiftType,
@@ -2911,12 +3194,8 @@ export function MerchivaChat({
   // The /api/store-ai/enqueue endpoint creates ai_job rows that the server
   // streams chunks into. Subscribe here so partial text shows live and final
   // results get parsed + executed even if the user closed and reopened the tab.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiJobsTuple = useAiJobs() as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const aiJobRows: any[] = Array.isArray(aiJobsTuple) && Array.isArray(aiJobsTuple[0])
-    ? aiJobsTuple[0]
-    : (Array.isArray(aiJobsTuple) ? aiJobsTuple : []);
+  const aiJobsTuple = useAiJobs() as unknown;
+  const aiJobRows = useMemo(() => tupleRows<AiJobRow>(aiJobsTuple), [aiJobsTuple]);
   const renderedJobIdsRef = useRef<Set<string>>(new Set());
   const finalizedJobIdsRef = useRef<Set<string>>(new Set());
   // Bumped when the tab becomes visible again, so the notification-suppression
@@ -2932,12 +3211,11 @@ export function MerchivaChat({
 
   useEffect(() => {
     if (!organizationId || !activeSessionId) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const myJobs = aiJobRows.filter((j: any) => j && j.organizationId === organizationId && j.sessionId === activeSessionId);
+    const myJobs = aiJobRows.filter((j) => j && j.organizationId === organizationId && j.sessionId === activeSessionId);
     if (myJobs.length === 0) return;
 
     for (const job of myJobs) {
-      const jobId = job.id?.toHexString ? job.id.toHexString() : String(job.id);
+      const jobId = rowIdString(job.id);
       const msgId = `job-${jobId}`;
       const isDone = job.status === "done" || job.status === "failed";
 
@@ -3040,14 +3318,21 @@ export function MerchivaChat({
       }
 
       const parsed = parseAllSkills(finalText);
+      const fallbackAction = parsed.actions.length === 0
+        ? buildSupplierRestockFallbackAction(String(job.prompt ?? ""), invItems, suppliers)
+        : null;
+      const parsedActions: PendingAction[] = fallbackAction
+        ? [{ id: `fallback-${Date.now()}`, action: fallbackAction, status: "pending" as const }]
+        : parsed.actions;
       if (organizationId && parsed.memoryUpdates.length > 0) {
         for (const update of parsed.memoryUpdates) saveMemoryField(organizationId, update.field, update.value);
       }
-      const hasStructured = parsed.actions.length > 0 || parsed.rolesAdd.length > 0 ||
+      const hasStructured = parsedActions.length > 0 || parsed.rolesAdd.length > 0 ||
         parsed.tasksAdd.length > 0 || parsed.tasksDelete.length > 0 || parsed.questions.length > 0 || parsed.actionsList;
       const displayText = parsed.cleanText || (
         parsed.actionsList && parsed.actions.length === 0
           ? t("merchiva.actionsAvailable")
+          : fallbackAction ? tx("merchiva.supplierOrderPrepared", "Prepared a supplier order for approval.")
           : hasStructured ? "" : finalText.trim()
       );
       setMessages((prev) => prev.map((m) => (
@@ -3056,7 +3341,7 @@ export function MerchivaChat({
               ...m,
               from: parsed.actionsList && parsed.actions.length === 0 ? "system" : m.from,
               text: displayText,
-              actions: parsed.actions.length > 0 ? parsed.actions : undefined,
+              actions: parsedActions.length > 0 ? decorateActions(parsedActions) : undefined,
               actionsList: parsed.actionsList || undefined,
               questions: parsed.questions.length > 0 ? parsed.questions : undefined,
               rolesAdd: parsed.rolesAdd.length > 0 ? parsed.rolesAdd : undefined,
@@ -3074,7 +3359,7 @@ export function MerchivaChat({
       // doesn't grow unbounded. Failures here are non-fatal.
       setTimeout(() => { deleteAiJob(jobId).catch(() => {}); }, 60_000);
     }
-  }, [aiJobRows, organizationId, activeSessionId, locale, t]);
+  }, [aiJobRows, organizationId, activeSessionId, locale, t, tx, invItems, suppliers, decorateActions]);
 
   // Suppress the "Mr. Merchiva replied" bell entry while the user is actively
   // looking at this chat. Those notifications are fired server-side on every
@@ -3341,15 +3626,6 @@ export function MerchivaChat({
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let fullReply = "";
-      const cmdRe = /\/(?:tasks|roles)\s+(?:add|delete|list)\s+(?:'[^']*'?|"[^"]*"?|`[^`]*`?|\{[^}]*\}?)/g;
-
-      function stripActionBlocks(text: string): string {
-        // Use the same brace-counting extractor as parseActions so display and
-        // parsing agree — keeps nested-object action blocks (e.g. builder elements
-        // with style/props sub-objects) from leaking into the visible message.
-        const { cleanText } = extractActionBlocks(text);
-        return cleanText.replace(cmdRe, "").trim();
-      }
 
       // We intentionally do NOT update the main streaming bubble per chunk —
       // the user asked to drop the token-by-token flicker. The ack bubble
@@ -3448,6 +3724,12 @@ export function MerchivaChat({
 
       setThinkingPhase(getThinkingLabel(text, "process", t));
       const parsed = parseAllSkills(reply);
+      const fallbackAction = parsed.actions.length === 0
+        ? buildSupplierRestockFallbackAction(fullText, invItems, suppliers)
+        : null;
+      const parsedActions: PendingAction[] = fallbackAction
+        ? [{ id: `fallback-${Date.now()}`, action: fallbackAction, status: "pending" as const }]
+        : parsed.actions;
       console.log("[Mr. Merchiva] Parsed:", { actions: parsed.actions.length, actionsList: parsed.actionsList, tasks: parsed.tasksAdd.length, deletes: parsed.tasksDelete.length, roles: parsed.rolesAdd.length, questions: parsed.questions.length });
 
       // Handle memory update commands from AI
@@ -3459,12 +3741,13 @@ export function MerchivaChat({
 
       // If AI response was only commands/actions with no visible text,
       // show the raw reply so user can see what AI said
-      const hasStructured = parsed.actions.length > 0 || parsed.rolesAdd.length > 0 ||
+      const hasStructured = parsedActions.length > 0 || parsed.rolesAdd.length > 0 ||
         parsed.tasksAdd.length > 0 || parsed.tasksDelete.length > 0 || parsed.questions.length > 0 ||
         parsed.actionsList;
       const displayText = parsed.cleanText || (
         parsed.actionsList && parsed.actions.length === 0
           ? t("merchiva.actionsAvailable")
+          : fallbackAction ? tx("merchiva.supplierOrderPrepared", "Prepared a supplier order for approval.")
           : hasStructured ? "" : reply.trim()
       );
 
@@ -3474,7 +3757,7 @@ export function MerchivaChat({
           ...m,
           from: parsed.actionsList && parsed.actions.length === 0 ? "system" : m.from,
           text: displayText,
-          actions: parsed.actions.length > 0 ? parsed.actions : undefined,
+          actions: parsedActions.length > 0 ? decorateActions(parsedActions) : undefined,
           actionsList: parsed.actionsList || undefined,
           questions: parsed.questions.length > 0 ? parsed.questions : undefined,
           rolesAdd: parsed.rolesAdd.length > 0 ? parsed.rolesAdd : undefined,
@@ -3504,7 +3787,7 @@ export function MerchivaChat({
       setSending(false);
       setThinkingPhase("");
     }
-  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, attachedElements, toggleDataMention, isOwner, orgRole, userPermissions, locale, t, activeSessionId]);
+  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, attachedElements, isOwner, orgRole, userPermissions, locale, t, tx, activeSessionId, invItems, suppliers, decorateActions, getToken]);
 
   const handleApprove = useCallback(async (msgId: string, actionId: string) => {
     // Read action data from current messages state BEFORE updating
@@ -3577,11 +3860,18 @@ export function MerchivaChat({
       };
     }));
 
+    // Snapshot the state needed to undo this, taken BEFORE the write lands.
+    // Stored in a ref (not message state) so the later Undo can reverse it.
+    const actionName = String(actionData.action ?? "");
+    const snapshot = captureUndoSnapshot(actionName, actionData as Record<string, unknown>);
+
     try {
       await executeAction(actionData);
       console.log("[Approve] Success:", actionData.action);
+      if (snapshot) undoSnapshots.current.set(actionId, snapshot);
     } catch (err) {
       console.error("[Approve] Failed:", err);
+      undoSnapshots.current.delete(actionId);
       // Revert to pending on failure
       setMessages((prev) => prev.map((m) => {
         if (m.id !== msgId) return m;
@@ -3595,7 +3885,34 @@ export function MerchivaChat({
     }
   }, [messages, team, staffRoles, t]);
 
-  const handleReject = useCallback((msgId: string, actionId: string) => {
+  // Reject serves two roles:
+  //   • declining a still-pending proposal → just mark it rejected (no write ran)
+  //   • undoing an already-executed action → run the real inverse, then mark it
+  const handleReject = useCallback(async (msgId: string, actionId: string) => {
+    const msg = messages.find((m) => m.id === msgId);
+    const pa = msg?.actions?.find((a) => a.id === actionId);
+    const wasExecuted = pa?.status === "approved";
+
+    if (wasExecuted) {
+      const snapshot = undoSnapshots.current.get(actionId);
+      const inverse = snapshot
+        ? buildInverse((pa?.action ?? {}) as Record<string, unknown>, snapshot)
+        : null;
+      if (!inverse) {
+        toast.error(tx("merchiva.ui.cannotUndo", "This action can't be undone."));
+        return;
+      }
+      try {
+        await inverse.run();
+        undoSnapshots.current.delete(actionId);
+        toast.success(tx("merchiva.ui.undoneToast", "Undone."));
+      } catch (err) {
+        console.error("[Undo] Failed:", err);
+        toast.error(tx("merchiva.ui.undoFailed", "Couldn't undo — please review manually."));
+        return; // keep it marked executed; the write is still live
+      }
+    }
+
     setMessages((prev) => prev.map((m) => {
       if (m.id !== msgId) return m;
       return {
@@ -3605,7 +3922,7 @@ export function MerchivaChat({
         ),
       };
     }));
-  }, []);
+  }, [messages, tx]);
 
   // Context-menu actions on chat bubbles. We don't persist on copy because no
   // state changes; delete/re-ask both mutate the message list and rely on the
@@ -3857,6 +4174,8 @@ export function MerchivaChat({
                         key={act.id}
                         action={act.action}
                         status={act.status}
+                        decision={act.decision}
+                        reason={act.reason}
                         alreadyExecuted={msg.executed}
                         onApprove={() => handleApprove(msg.id, act.id)}
                         onReject={() => handleReject(msg.id, act.id)}
@@ -4518,6 +4837,7 @@ function MobileKpiRow() {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MobileMerchivaChat() {
   const { currentOrg, organizationId } = usePermissions();
   const t = useT();
@@ -4663,7 +4983,7 @@ export function MobileMerchivaDashboard() {
     <div className="pb-8 space-y-4">
       <style>{`@keyframes ddBlink { 0%,50% { opacity: 1; } 50.01%,100% { opacity: 0; } }`}</style>
       <MobileKpiRow />
-      <MobileMerchivaChat />
+      {/* <MobileMerchivaChat /> */}
       <div className="px-4 space-y-4">
         <TodayScheduleCard />
         <NotificationsCard />

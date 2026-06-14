@@ -306,6 +306,7 @@ export interface Supplier {
   notes: string | null;
   rating: number;
   createdAt: string;
+  language: string | null;
 }
 
 // ─── Purchase Orders ────────────────────────────────────────────────────────

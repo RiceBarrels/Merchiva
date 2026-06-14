@@ -70,9 +70,12 @@ export interface AutonomyConfig {
 }
 
 /**
- * Default: assistant on, low-risk auto, everything sensitive proposed — the
- * "敏感操作需批准" posture chosen as the product default. Conservative caps so a
- * fresh org never silently spends or refunds a large amount.
+ * Default posture: low-risk actions auto-execute; medium and high are proposed
+ * for one-click approval ("敏感操作需批准"). This is intentionally MORE cautious
+ * than the legacy hardcoded policy (which silently auto-ran medium-risk writes
+ * too). `enabled` acts as a kill switch — flip it false to pause autonomy and
+ * route everything to approval. Conservative caps keep a fresh org from silently
+ * spending or refunding a large amount.
  */
 export const DEFAULT_AUTONOMY_CONFIG: AutonomyConfig = {
   enabled: true,

@@ -367,7 +367,7 @@ export default function AdminsCouponsPage() {
                 return (
                   <tr key={c.id} className="hover:bg-stone-50">
                     <td className="px-3 py-2">
-                      <div className="font-medium text-stone-900">{c.name ?? c.id}</div>
+                      <div className="font-medium text-foreground">{c.name ?? c.id}</div>
                       <div className="font-mono text-[11px] text-stone-500">{c.id}</div>
                     </td>
                     <td className="px-3 py-2 font-mono">{formatDiscount(c)}</td>
@@ -386,7 +386,7 @@ export default function AdminsCouponsPage() {
                           {matched.map((p) => (
                             <code
                               key={p.id}
-                              className="rounded bg-stone-100 px-2 py-0.5 font-mono text-[11px] text-stone-900"
+                              className="rounded bg-stone-100 px-2 py-0.5 font-mono text-[11px] text-foreground"
                             >
                               {p.code}
                             </code>

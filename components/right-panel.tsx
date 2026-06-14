@@ -160,8 +160,10 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
   const draggingRef = useRef(false);
   const leftSidebarOpenRef = useRef(false);
 
-  isOpenRef.current = isOpen;
-  draggingRef.current = dragging;
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    draggingRef.current = dragging;
+  }, [dragging, isOpen]);
 
   useEffect(() => {
     function onTouchStart(e: TouchEvent) {
@@ -336,6 +338,7 @@ export function RightPanelMobileProvider({ children }: { children: React.ReactNo
 
 export function MobileRightPanel() {
   const { isOpen, close, progress, dragging, transitionStyle } = useRightPanelMobile();
+  const appPromoOffset = "var(--merchiva-app-promo-height, 0px)";
 
   const panelScale = 0.92 + progress * 0.08;
   const panelTranslateX = 30 - progress * 30;
@@ -397,6 +400,7 @@ export function MobileRightPanel() {
       aria-hidden={isHidden}
       className="fixed inset-y-0 right-0 z-10 flex flex-col overflow-hidden bg-background"
       style={{
+        top: appPromoOffset,
         width: getRpanelWidth(),
         transform: `translateX(${panelTranslateX}px) scale(${panelScale})`,
         opacity: panelOpacity,

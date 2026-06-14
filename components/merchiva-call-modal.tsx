@@ -651,7 +651,7 @@ export function MerchivaCallModal({
         {state === "error" && (
           <button
             onClick={() => startListening()}
-            className="h-9 px-4 rounded-[0.3rem] bg-white text-stone-900 text-[13px] font-medium hover:bg-stone-200"
+            className="h-9 px-4 rounded-[0.3rem] bg-primary-foreground text-primary dark:bg-primary dark:text-primary-foreground text-[13px] font-medium hover:bg-primary-foreground/90 dark:hover:bg-primary/90"
           >
             {t("merchiva.call.retry")}
           </button>

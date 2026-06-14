@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
+import { betaFeatureForPath, betaFeaturesFromSettingsRow } from "@/lib/beta-features";
 
 import { tables } from "@/lib/spacetimedb/generated";
 import { getConnection, setActiveOrgId } from "@/lib/spacetimedb/client";
@@ -339,6 +340,34 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // hasn't streamed in yet (or we're offline) we fail open, never locking a
   // legitimate user out. Returns null while undetermined.
   const pathname = usePathname();
+  const activeBetaFeatures = useMemo(() => {
+    if (!effectiveAuth) return null;
+    const row = settingsRows.find(
+      (r: { organizationId: string }) => r.organizationId === effectiveAuth.organizationId,
+    );
+    return betaFeaturesFromSettingsRow(row, effectiveAuth.organizationId);
+  }, [effectiveAuth, settingsRows]);
+
+  useEffect(() => {
+    if (!effectiveAuth || needsName) return;
+    if (setupComplete !== true) return;
+    if (!settingsReady || !activeBetaFeatures) return;
+    const requiredFeature = betaFeatureForPath(pathname);
+    if (!requiredFeature || activeBetaFeatures[requiredFeature]) return;
+
+    toast.info(t("settings.betaFeatureDisabledToast"));
+    setupRouter.replace("/~/settings");
+  }, [
+    activeBetaFeatures,
+    effectiveAuth,
+    needsName,
+    pathname,
+    settingsReady,
+    setupComplete,
+    setupRouter,
+    t,
+  ]);
+
   const subscriptionBlocked = useMemo<boolean | null>(() => {
     if (!effectiveAuth) return null;
     if (!orgsReady) return null;

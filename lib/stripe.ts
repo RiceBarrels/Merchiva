@@ -22,23 +22,23 @@ export interface ProPriceIds {
 }
 
 export function getProPriceIds(): ProPriceIds {
-  const monthly = process.env.STRIPE_PRO_MONTHLY_PRICE_ID ?? "";
-  const yearly = process.env.STRIPE_PRO_YEARLY_PRICE_ID ?? "";
+  const monthly =
+    process.env.STRIPE_PRO_MONTHLY_PRICE_ID ?? process.env.STRIPE_PRO_MONTH_PRICE_ID ?? "";
+  const yearly =
+    process.env.STRIPE_PRO_YEARLY_PRICE_ID ?? process.env.STRIPE_PRO_YEAR_PRICE_ID ?? "";
   return { monthly, yearly };
+}
+
+export function proPriceEnvNames(interval: "month" | "year"): string {
+  return interval === "year"
+    ? "STRIPE_PRO_YEARLY_PRICE_ID or STRIPE_PRO_YEAR_PRICE_ID"
+    : "STRIPE_PRO_MONTHLY_PRICE_ID or STRIPE_PRO_MONTH_PRICE_ID";
 }
 
 export function resolveProPriceId(interval: "month" | "year"): string {
   const ids = getProPriceIds();
   return interval === "year" ? ids.yearly : ids.monthly;
 }
-
-/**
- * Look up org -> stripeCustomerId mapping. We CAN store this on the org row in
- * SpacetimeDB, but the webhook (no user context) needs it too. To bridge,
- * we record the orgId in Stripe customer metadata when we create the customer
- * (in /api/billing/checkout). The webhook reads stripeEvent.data.object.customer
- * → stripe.customers.retrieve → metadata.orgId.
- */
 
 export interface SubscriptionSnapshot {
   stripeCustomerId: string;

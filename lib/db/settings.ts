@@ -21,6 +21,7 @@ export interface UserSettings {
   countryCode: string | null;
   paymentTaxRate: number | null;
   paymentCurrency: string | null;
+  betaFeatures: string | null;
 }
 
 export async function getSettings(): Promise<UserSettings | null> {
@@ -53,6 +54,7 @@ export async function getSettings(): Promise<UserSettings | null> {
         countryCode: r.countryCode ?? null,
         paymentTaxRate: r.paymentTaxRate != null ? Number(r.paymentTaxRate) : null,
         paymentCurrency: r.paymentCurrency ?? null,
+        betaFeatures: r.betaFeatures ?? null,
       };
     }
   }

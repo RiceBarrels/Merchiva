@@ -182,6 +182,10 @@ const settingsTable = table(
     // null/missing means "use the app default" (low-risk auto, sensitive
     // proposed). Kept at the END for safe migration.
     assistantConfig: t.option(t.string()).default(undefined),
+    // JSON-encoded BetaFeaturesConfig. Default null/missing means all beta
+    // surfaces are hidden until enabled in /~/settings. Kept at the END for
+    // safe migration.
+    betaFeatures: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1026,6 +1030,7 @@ const supplierTable = table(
     notes: t.option(t.string()),
     rating: t.number(),                   // 1-5 performance rating
     createdAt: t.timestamp(),
+    language: t.option(t.string()).default(undefined), // supplier communication language; reducers default new rows to "en"
   }
 );
 
@@ -1965,6 +1970,7 @@ export const createOrg = spacetimedb.reducer(
       openingHours: undefined,
       countryCode: undefined,
       assistantConfig: undefined,
+      betaFeatures: undefined,
     });
   }
 );
@@ -4765,6 +4771,7 @@ export const addSupplier = spacetimedb.reducer(
     address: t.option(t.string()),
     paymentTerms: t.option(t.string()),
     notes: t.option(t.string()),
+    language: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -4781,6 +4788,7 @@ export const addSupplier = spacetimedb.reducer(
       notes: args.notes,
       rating: 5,
       createdAt: ctx.timestamp,
+      language: args.language ?? 'en',
     });
   }
 );
@@ -4797,6 +4805,7 @@ export const updateSupplier = spacetimedb.reducer(
     paymentTerms: t.option(t.string()),
     notes: t.option(t.string()),
     rating: t.number(),
+    language: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -4815,6 +4824,7 @@ export const updateSupplier = spacetimedb.reducer(
       paymentTerms: args.paymentTerms,
       notes: args.notes,
       rating: args.rating,
+      language: args.language ?? sup.language ?? 'en',
     });
   }
 );
@@ -6080,6 +6090,25 @@ export const setAssistantConfig = spacetimedb.reducer(
   }
 );
 
+/** Set org-level beta feature flags. */
+export const setBetaFeatures = spacetimedb.reducer(
+  { organizationId: t.string(), config: t.string() },
+  (ctx, { organizationId, config }) => {
+    const member = findActiveMember(ctx, organizationId);
+    const perms = JSON.parse(member.permissions);
+    if (!perms.settings?.view) unauthorized('No settings permission');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      betaFeatures: config,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
 // Owner/manager sets the store's weekly opening hours and (optionally) the
 // country code used to look up public holidays. `openingHours` is a JSON
 // string the client validates; we pass it through without re-parsing here.
@@ -6478,6 +6507,35 @@ export const deleteBlogPost = spacetimedb.reducer(
   }
 );
 
+type ServiceAiChatMessage = {
+  id: string;
+  from: 'merchiva';
+  text: string;
+  time: string;
+};
+
+function parseStoredAiChatMessages(raw: string): unknown[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function storedMessageId(message: unknown): string | null {
+  if (message == null || typeof message !== 'object' || !('id' in message)) return null;
+  const id = (message as { id?: unknown }).id;
+  return typeof id === 'string' ? id : null;
+}
+
+function timestampSortValue(timestamp: unknown): number {
+  if (timestamp != null && typeof timestamp === 'object' && 'microsSinceUnixEpoch' in timestamp) {
+    return Number((timestamp as { microsSinceUnixEpoch: bigint | number }).microsSinceUnixEpoch);
+  }
+  return 0;
+}
+
 /** Service-side: upsert today's daily briefing for an org. */
 export const serviceSaveDailyBriefing = spacetimedb.reducer(
   {
@@ -6541,6 +6599,63 @@ export const serviceCreateNotification = spacetimedb.reducer(
       link: link ?? undefined,
       read: false,
       createdAt: ctx.timestamp,
+    });
+  }
+);
+
+/** Service-side: append an automated Mr. Merchiva message for an arbitrary user. */
+export const serviceAppendAiChatMessage = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    targetIdentity: t.identity(),
+    title: t.string(),
+    message: t.string(),
+    time: t.string(),
+    messageId: t.option(t.string()),
+  },
+  (ctx, { organizationId, targetIdentity, title, message, time, messageId }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+
+    const id = messageId ?? `service-${ctx.newUuidV4().toString()}`;
+    const nextMessage: ServiceAiChatMessage = {
+      id,
+      from: 'merchiva',
+      text: message,
+      time,
+    };
+
+    const sessions = [...ctx.db.aiChatSession.byUserId.filter(targetIdentity)]
+      .filter((row: { organizationId: string; archived: boolean }) =>
+        row.organizationId === organizationId && !row.archived
+      )
+      .sort((a: { updatedAt: unknown }, b: { updatedAt: unknown }) =>
+        timestampSortValue(b.updatedAt) - timestampSortValue(a.updatedAt)
+      );
+
+    if (sessions.length === 0) {
+      ctx.db.aiChatSession.insert({
+        id: ctx.newUuidV4(),
+        organizationId,
+        userId: targetIdentity,
+        title,
+        messages: JSON.stringify([nextMessage]),
+        summary: undefined,
+        archived: false,
+        createdAt: ctx.timestamp,
+        updatedAt: ctx.timestamp,
+      });
+      return;
+    }
+
+    const existing = sessions[0];
+    const messages = parseStoredAiChatMessages(existing.messages);
+    if (messages.some((stored) => storedMessageId(stored) === id)) return;
+
+    ctx.db.aiChatSession.id.update({
+      ...existing,
+      title: existing.title || title,
+      messages: JSON.stringify([...messages, nextMessage].slice(-50)),
+      updatedAt: ctx.timestamp,
     });
   }
 );

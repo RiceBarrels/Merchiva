@@ -86,6 +86,16 @@ function register(def: ActionDefinition) {
   registry.set(def.name, def);
 }
 
+function normalizeSupplierLanguage(value: unknown): "en" | "zh" | "es" | "fr" | "ar" | "hi" {
+  const key = String(value ?? "en").trim().toLowerCase().split(/[-_]/)[0];
+  return key === "zh" || key === "es" || key === "fr" || key === "ar" || key === "hi" ? key : "en";
+}
+
+function finiteNumber(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 // ─── Scheduling ────────────────────────────────────────────────────────────────
 
 register({
@@ -811,6 +821,7 @@ register({
     address: { type: "string", required: false, description: "Address" },
     paymentTerms: { type: "string", required: false, description: "Payment terms" },
     notes: { type: "string", required: false, description: "Notes" },
+    language: { type: "string", required: false, description: "Supplier communication language: en, zh, es, fr, ar, or hi. Defaults to en." },
   },
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
@@ -823,6 +834,7 @@ register({
       address: p.address ? String(p.address) : null,
       paymentTerms: p.paymentTerms ? String(p.paymentTerms) : null,
       notes: p.notes ? String(p.notes) : null,
+      language: normalizeSupplierLanguage(p.language),
     });
   },
   toastMessage: (p) => `Supplier added: ${p.name ?? p.supplierName}`,
@@ -838,15 +850,36 @@ register({
     contactName: { type: "string", required: false, description: "New contact" },
     email: { type: "string", required: false, description: "New email" },
     phone: { type: "string", required: false, description: "New phone" },
+    address: { type: "string", required: false, description: "New address" },
+    paymentTerms: { type: "string", required: false, description: "Payment terms" },
+    notes: { type: "string", required: false, description: "Supplier notes" },
+    rating: { type: "number", required: false, description: "Supplier rating 1-5" },
+    language: { type: "string", required: false, description: "Supplier communication language: en, zh, es, fr, ar, or hi" },
   },
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
-    const data: Record<string, unknown> = {};
-    if (p.name) data.name = String(p.name);
-    if (p.contactName) data.contactName = String(p.contactName);
-    if (p.email) data.email = String(p.email);
-    if (p.phone) data.phone = String(p.phone);
+    const conn = getConnection();
+    if (!conn) throw new Error("Not connected to SpacetimeDB");
+    const supplierId = String(p.supplierId ?? "");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existing = [...(conn.db as any).supplier.iter()].find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s: any) => s.id?.toString?.() === supplierId,
+    );
+    if (!existing) throw new Error("Supplier not found");
+
+    const data: Record<string, unknown> = {
+      name: p.name ? String(p.name) : String(existing.name ?? ""),
+      contactName: p.contactName != null ? String(p.contactName) : existing.contactName ?? null,
+      email: p.email != null ? String(p.email) : existing.email ?? null,
+      phone: p.phone != null ? String(p.phone) : existing.phone ?? null,
+      address: p.address != null ? String(p.address) : existing.address ?? null,
+      paymentTerms: p.paymentTerms != null ? String(p.paymentTerms) : existing.paymentTerms ?? null,
+      notes: p.notes != null ? String(p.notes) : existing.notes ?? null,
+      rating: Number(p.rating ?? existing.rating ?? 5),
+      language: p.language ? normalizeSupplierLanguage(p.language) : normalizeSupplierLanguage(existing.language),
+    };
     await updateSupplier(String(p.supplierId), data);
   },
   toastMessage: (p) => `Supplier updated: ${p.name ?? p.supplierId}`,
@@ -900,11 +933,13 @@ register({
     "Order inventory from a supplier: email them the purchase order AND record it. Use this (not createPurchaseOrder) when restocking. supplierId MUST match a supplier in LIVE STORE DATA; if the low-stock item's `supplier` name has no matching supplier record (no id), ask to add the supplier first via addSupplier. If the supplier has no email on file, the order is still saved as a draft and managers are notified. " +
     "WHEN A STOCK ITEM IS LOW, don't just say 'tell me if you want me to order' — EMIT this action so the manager gets an Approve/Reject card to confirm contacting the supplier. " +
     "INTENT = ORDER: requests like '联系供应商 X' / 'contact the supplier for X' / '给 X 下单' / '订货' / 'order more X' / 'restock X' / '补货' ALL mean PLACE AN ORDER. Resolve X (an inventory item) → find its `supplier` name → the matching supplier record's id, compute the restock quantity (see QUANTITIES), and EMIT this action. Do NOT just print the supplier's name / email / phone and tell the user to reach out themselves — emailing the PO is exactly what this action does. Showing contact info instead of emitting the action is wrong. The ONLY time you ask first is when you're missing a hard requirement: no matching supplier id (then offer addSupplier), or the item/quantity is genuinely ambiguous. " +
-    "QUANTITIES: order enough to reach the item's max stock, but if the item has `unitsPerCase` set, round the quantity UP to a whole multiple of it (order full cases), and never order below `minOrderQty` when set. Show case math in your text (e.g. 'need 80 → 7 cases × 12 = 84').",
+    "LANGUAGE + ITEM NAMES: use the supplier record's `language` field (default en) for supplier-facing notes/email content. Every item object MUST include the inventory item's actual name in `name` (also ok to duplicate as `itemName`); never use a dash/blank placeholder. " +
+    "QUANTITIES: order enough to reach the item's max stock, but if the item has `unitsPerCase` set, round the quantity UP to a whole multiple of it (order full cases), and never order below `minOrderQty` when set. Include `unitsPerCase` and `caseCount` on the line item. In Chinese UI text, show case math as `9*箱 - 108个` for 9 cases of 12 units.",
   category: "suppliers",
   parameters: {
     supplierId: { type: "string", required: true, description: "Supplier ID from LIVE STORE DATA" },
-    items: { type: "array", required: true, description: "[{name, quantity, unit?, unitCost?}]" },
+    supplierLanguage: { type: "string", required: false, description: "Supplier language from LIVE STORE DATA suppliers[].language; defaults to en" },
+    items: { type: "array", required: true, description: "[{name, itemName?, quantity, unit?, unitCost?, unitsPerCase?, caseCount?, caseUnit?, eachUnit?}]. name is required and must be the real item name." },
     subtotal: { type: "number", required: false, description: "Subtotal (defaults to sum of unitCost*quantity)" },
     tax: { type: "number", required: false, description: "Tax amount" },
     total: { type: "number", required: false, description: "Total (defaults to subtotal+tax)" },
@@ -939,15 +974,32 @@ register({
 
     const items = Array.isArray(p.items)
       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (p.items as any[]).map((it) => ({
-          name: String(it.name ?? it.itemName ?? ""),
-          quantity: Number(it.quantity ?? it.qty ?? 0),
-          unit: it.unit ? String(it.unit) : undefined,
-          unitCost:
-            it.unitCost != null ? Number(it.unitCost) : it.cost != null ? Number(it.cost) : undefined,
-        }))
+        (p.items as any[]).map((it) => {
+          const name = String(it.name ?? it.itemName ?? it.productName ?? it.inventoryItemName ?? it.item ?? "").trim();
+          const quantity = finiteNumber(it.quantity ?? it.qty, 0);
+          const unitsPerCase = it.unitsPerCase != null ? finiteNumber(it.unitsPerCase) : undefined;
+          const caseCount = it.caseCount != null
+            ? finiteNumber(it.caseCount)
+            : unitsPerCase && unitsPerCase > 0 && quantity > 0
+              ? Math.ceil(quantity / unitsPerCase)
+              : undefined;
+          return {
+            name,
+            itemName: name,
+            quantity,
+            unit: it.unit ? String(it.unit) : undefined,
+            unitCost:
+              it.unitCost != null ? Number(it.unitCost) : it.cost != null ? Number(it.cost) : undefined,
+            unitsPerCase,
+            caseCount,
+            caseUnit: it.caseUnit ? String(it.caseUnit) : caseCount ? "箱" : undefined,
+            eachUnit: it.eachUnit ? String(it.eachUnit) : caseCount ? "个" : undefined,
+          };
+        })
       : [];
     if (items.length === 0) throw new Error("No items to order");
+    const unnamed = items.find((it) => !it.name);
+    if (unnamed) throw new Error("Every supplier order item must include the item name.");
 
     const subtotal = Number(
       p.subtotal ?? items.reduce((s, it) => s + (it.unitCost ?? 0) * it.quantity, 0),
@@ -969,6 +1021,7 @@ register({
         contactName: supplier.contactName ?? null,
         orgName: org?.name ?? null,
         items,
+        supplierLanguage: normalizeSupplierLanguage(p.supplierLanguage ?? supplier.language),
         subtotal,
         tax,
         total,
@@ -1789,6 +1842,13 @@ When you want to perform an action, output a JSON block wrapped in \`\`\`action 
 Scheduling rules:
 - Every shift you create needs at least one role in \`staffRoles\` — pick from the active \`roles\` in LIVE STORE DATA (use the exact name).
 - Before scheduling shifts for any team member whose \`hasPunchInCode\` is false in LIVE STORE DATA, STOP and ASK the user what 4-digit punch-in code they want to set for that person. Don't invent one. Once the user tells you, call \`setPunchInCode\` first, then add the shifts.
+
+Supplier ordering rules:
+- When the user asks to contact a supplier, restock, reorder, order more, 补货, 订货, 下单, or 联系供应商 for an inventory item, output \`orderFromSupplier\`.
+- \`orderFromSupplier\` emails the supplier through Resend after approval and records the purchase order. Do not just show supplier contact info when the user asked you to contact them.
+- Resolve the inventory item by name, match its \`supplier\` name to an entry in LIVE STORE DATA \`suppliers[]\`, use that supplier's \`id\`, and order enough to reach max stock while respecting case size/minimum order.
+- Every supplier has a \`language\` field (default \`en\`). Use it for supplier-facing notes and pass it as \`supplierLanguage\`.
+- Every line item must include the real item name in \`name\`; never output a blank name or dash. When \`unitsPerCase\` is set, include \`unitsPerCase\` and \`caseCount\`; for Chinese quantity text use \`9*箱 - 108个\` style.
 
 Available actions:
 ${sections.join("\n\n")}

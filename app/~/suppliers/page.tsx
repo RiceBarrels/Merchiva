@@ -1,7 +1,24 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Truck, Plus, Search, Star, Pencil, Trash2, ShoppingCart, Send, CheckCircle2, XCircle, FileText, Download } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  Download,
+  FileText,
+  Inbox,
+  Mail,
+  Pencil,
+  Plus,
+  Search,
+  Send,
+  ShoppingCart,
+  Star,
+  Trash2,
+  Truck,
+  XCircle,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -37,7 +54,11 @@ import { Separator } from "@/components/ui/separator";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { usePermissions } from "@/lib/context/permissions";
-import { useSuppliers as useSupplierRows, usePurchaseOrders as usePORows } from "@/lib/spacetimedb/hooks";
+import {
+  usePurchaseOrders as usePORows,
+  useSupplierMessages as useSupplierMessageRows,
+  useSuppliers as useSupplierRows,
+} from "@/lib/spacetimedb/hooks";
 import {
   addSupplier as stdbAddSupplier,
   updateSupplier as stdbUpdateSupplier,
@@ -56,6 +77,27 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type PaymentTerms = "net30" | "net60" | "cod" | "prepaid";
+const SUPPLIER_LANGUAGES = [
+  { value: "en", fallback: "English" },
+  { value: "zh", fallback: "中文" },
+  { value: "es", fallback: "Español" },
+  { value: "fr", fallback: "Français" },
+  { value: "ar", fallback: "العربية" },
+  { value: "hi", fallback: "हिन्दी" },
+] as const;
+type SupplierLanguage = (typeof SUPPLIER_LANGUAGES)[number]["value"];
+
+function normalizeSupplierLanguage(value: unknown): SupplierLanguage {
+  const key = String(value ?? "en").trim().toLowerCase().split(/[-_]/)[0];
+  return SUPPLIER_LANGUAGES.some((l) => l.value === key) ? (key as SupplierLanguage) : "en";
+}
+
+function supplierLanguageLabel(t: (key: string) => string, value: unknown): string {
+  const language = normalizeSupplierLanguage(value);
+  const translated = t(`suppliers.languages.${language}`);
+  if (!translated.startsWith("suppliers.languages.")) return translated;
+  return SUPPLIER_LANGUAGES.find((l) => l.value === language)?.fallback ?? "English";
+}
 
 interface Supplier {
   id: string;
@@ -69,6 +111,7 @@ interface Supplier {
   notes: string;
   rating: number; // 1-5
   createdAt: string;
+  language: SupplierLanguage;
 }
 
 type POStatus = "draft" | "sent" | "received" | "cancelled";
@@ -92,6 +135,21 @@ interface PurchaseOrder {
   notes: string;
   sentAt: string | null;
   receivedAt: string | null;
+  createdAt: string;
+}
+
+type SupplierMessageDirection = "outbound" | "inbound" | "system";
+
+interface SupplierMessage {
+  id: string;
+  organizationId: string;
+  supplierId: string;
+  poId: string | null;
+  direction: SupplierMessageDirection;
+  channel: string;
+  subject: string;
+  body: string;
+  status: string;
   createdAt: string;
 }
 
@@ -127,6 +185,7 @@ function mapSupplier(r: any): Supplier {
     notes: r.notes ?? "",
     rating: Number(r.rating ?? 0),
     createdAt: tsToIso(r.createdAt),
+    language: normalizeSupplierLanguage(r.language),
   };
 }
 
@@ -144,6 +203,23 @@ function mapPurchaseOrder(r: any): PurchaseOrder {
     notes: r.notes ?? "",
     sentAt: r.sentAt ? tsToIso(r.sentAt) : null,
     receivedAt: r.receivedAt ? tsToIso(r.receivedAt) : null,
+    createdAt: tsToIso(r.createdAt),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSupplierMessage(r: any): SupplierMessage {
+  const direction = String(r.direction ?? "system");
+  return {
+    id: r.id?.toString?.() ?? String(r.id),
+    organizationId: String(r.organizationId),
+    supplierId: String(r.supplierId),
+    poId: r.poId ? String(r.poId) : null,
+    direction: direction === "inbound" || direction === "outbound" ? direction : "system",
+    channel: r.channel ?? "",
+    subject: r.subject ?? "",
+    body: r.body ?? "",
+    status: r.status ?? "",
     createdAt: tsToIso(r.createdAt),
   };
 }
@@ -176,6 +252,20 @@ function usePurchaseOrders(organizationId: string | null): { orders: PurchaseOrd
   return { orders, loading: !ready };
 }
 
+function useSupplierMessages(organizationId: string | null): { messages: SupplierMessage[]; loading: boolean } {
+  const [rows, ready] = useSupplierMessageRows() as [unknown[], boolean];
+  const messages = useMemo(
+    () =>
+      (rows ?? [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((r: any) => r && r.organizationId === organizationId)
+        .map(mapSupplierMessage)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [rows, organizationId],
+  );
+  return { messages, loading: !ready };
+}
+
 // Thin wrappers over the real reducer actions. They normalize the form payload
 // to exactly the fields each reducer declares (extra keys like `rating` on add
 // or `status` on PO are NOT reducer args) and keep the success toasts the
@@ -190,6 +280,7 @@ async function addSupplier(data: any): Promise<void> {
     address: data.address ?? null,
     paymentTerms: data.paymentTerms ?? null,
     notes: data.notes ?? null,
+    language: normalizeSupplierLanguage(data.language),
   });
   toast.success("Supplier added");
 }
@@ -206,6 +297,7 @@ async function updateSupplier(id: string, data: any): Promise<void> {
     paymentTerms: data.paymentTerms ?? null,
     notes: data.notes ?? null,
     rating: Number(data.rating ?? 0),
+    language: normalizeSupplierLanguage(data.language),
   });
   toast.success("Supplier updated");
 }
@@ -242,12 +334,40 @@ const PO_STATUS_COLORS: Record<POStatus, string> = {
   cancelled: "bg-red-50 text-red-700 border-red-300",
 };
 
+const MESSAGE_STATUS_COLORS: Record<string, string> = {
+  sent: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  received: "border-stone-300 bg-stone-50 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300",
+  failed: "border-red-300 bg-red-50 text-red-700",
+  needs_review: "border-amber-300 bg-amber-50 text-amber-800",
+};
+
 function parseDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+}
+
+function parseDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function messageStatusLabel(t: (key: string) => string, status: string): string {
+  const key = status || "unknown";
+  const translated = t(`suppliers.messageStatus.${key}`);
+  return translated.startsWith("suppliers.messageStatus.") ? key : translated;
+}
+
+function messageSubject(t: (key: string) => string, message: SupplierMessage): string {
+  return message.subject || t("suppliers.aiEmailSubjectFallback");
 }
 
 // ─── Star Rating Component ──────────────────────────────────────────────────
@@ -327,6 +447,7 @@ export default function SuppliersPage() {
   // Data
   const { suppliers, loading: suppliersLoading } = useSuppliers(organizationId);
   const { orders, loading: ordersLoading } = usePurchaseOrders(organizationId);
+  const { messages: supplierMessages, loading: messagesLoading } = useSupplierMessages(organizationId);
 
   // Supplier dialog state
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
@@ -369,6 +490,24 @@ export default function SuppliersPage() {
       .filter((o) => new Date(o.createdAt) >= startOfMonth)
       .reduce((sum, o) => sum + o.total, 0);
   }, [orders]);
+  const supplierById = useMemo(() => new Map(suppliers.map((s) => [s.id, s])), [suppliers]);
+  const aiSentEmails = useMemo(
+    () => supplierMessages.filter((m) => m.channel === "email" && m.direction === "outbound"),
+    [supplierMessages],
+  );
+  const needsReviewMessages = useMemo(
+    () =>
+      supplierMessages.filter(
+        (m) =>
+          m.channel === "email" &&
+          (m.status === "needs_review" || (m.direction === "inbound" && m.body.includes("[Flagged:"))),
+      ),
+    [supplierMessages],
+  );
+  const failedAiEmails = useMemo(
+    () => aiSentEmails.filter((m) => m.status === "failed").length,
+    [aiSentEmails],
+  );
 
   // Get last PO date for a supplier
   const getLastPODate = (supplierId: string): string | null => {
@@ -390,6 +529,7 @@ export default function SuppliersPage() {
     setSupplierForm({
       paymentTerms: "net30",
       rating: 3,
+      language: "en",
     });
     setSupplierDialogOpen(true);
   };
@@ -419,6 +559,7 @@ export default function SuppliersPage() {
           paymentTerms: supplierForm.paymentTerms ?? "net30",
           notes: supplierForm.notes ?? "",
           rating: supplierForm.rating ?? 3,
+          language: supplierForm.language ?? "en",
         });
       }
       setSupplierDialogOpen(false);
@@ -537,6 +678,7 @@ export default function SuppliersPage() {
       t("suppliers.csvContact"),
       t("suppliers.labelEmail"),
       t("suppliers.labelPhone"),
+      t("suppliers.labelLanguage"),
       t("suppliers.labelPaymentTerms"),
       t("suppliers.labelRating"),
     ];
@@ -545,6 +687,7 @@ export default function SuppliersPage() {
       s.contactName,
       s.email,
       s.phone,
+      supplierLanguageLabel(t, s.language),
       t(`suppliers.terms.${s.paymentTerms}`),
       String(s.rating),
     ]);
@@ -552,7 +695,7 @@ export default function SuppliersPage() {
   };
 
   // Loading state
-  if (suppliersLoading || ordersLoading) {
+  if (suppliersLoading || ordersLoading || messagesLoading) {
     return (
       <PermissionGuard section="inventory">
         <PageHeader title={t("nav.suppliers")} />
@@ -619,15 +762,23 @@ export default function SuppliersPage() {
           />
         </div>
 
-        {/* Tabs: Suppliers / Purchase Orders */}
+        {/* Tabs: Suppliers / Purchase Orders / AI Emails */}
         <div className="px-4 sm:px-6">
           <Tabs defaultValue="suppliers">
-            <TabsList>
+            <TabsList className="h-auto flex-wrap">
               <TabsTrigger value="suppliers" className="gap-2">
                 <Truck className="h-3.5 w-3.5" /> {t("suppliers.tabSuppliers")}
               </TabsTrigger>
               <TabsTrigger value="orders" className="gap-2">
                 <FileText className="h-3.5 w-3.5" /> {t("suppliers.tabPurchaseOrders")}
+              </TabsTrigger>
+              <TabsTrigger value="ai-emails" className="gap-2">
+                <Bot className="h-3.5 w-3.5" /> {t("suppliers.tabAiEmails")}
+                {needsReviewMessages.length > 0 && (
+                  <span className="ml-1 rounded-[0.25rem] border border-amber-300 bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] text-amber-800">
+                    {needsReviewMessages.length}
+                  </span>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -688,6 +839,12 @@ export default function SuppliersPage() {
                                 className="text-[10px] rounded-[0.3rem] font-mono"
                               >
                                 {t(`suppliers.terms.${supplier.paymentTerms}`)}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] rounded-[0.3rem] font-mono"
+                              >
+                                {supplierLanguageLabel(t, supplier.language)}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
@@ -884,6 +1041,136 @@ export default function SuppliersPage() {
                 </div>
               )}
             </TabsContent>
+
+            {/* ─── AI Supplier Emails Tab ───────────────────────────────────── */}
+            <TabsContent value="ai-emails" className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-[0.3rem] border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{t("suppliers.aiEmailsSent")}</span>
+                  </div>
+                  <div className="mt-1 font-mono text-lg font-semibold">{aiSentEmails.length}</div>
+                </div>
+                <div className="rounded-[0.3rem] border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-700" />
+                    <span className="text-xs text-muted-foreground">{t("suppliers.aiEmailsNeedReview")}</span>
+                  </div>
+                  <div className="mt-1 font-mono text-lg font-semibold">{needsReviewMessages.length}</div>
+                </div>
+                <div className="rounded-[0.3rem] border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-red-700" />
+                    <span className="text-xs text-muted-foreground">{t("suppliers.aiEmailsFailed")}</span>
+                  </div>
+                  <div className="mt-1 font-mono text-lg font-semibold">{failedAiEmails}</div>
+                </div>
+              </div>
+
+              {aiSentEmails.length === 0 && needsReviewMessages.length === 0 && (
+                <div className="flex flex-col items-center justify-center rounded-[0.3rem] border border-dashed border-border py-16 text-center">
+                  <Inbox className="mb-3 h-10 w-10 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">{t("suppliers.aiEmailsEmpty")}</p>
+                </div>
+              )}
+
+              {needsReviewMessages.length > 0 && (
+                <div className="rounded-[0.3rem] border border-amber-200 bg-amber-50/45">
+                  <div className="flex items-start gap-3 border-b border-amber-200 px-3 py-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-amber-900">{t("suppliers.needsReviewTitle")}</p>
+                      <p className="text-xs text-amber-800/80">{t("suppliers.needsReviewDesc")}</p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-amber-200">
+                    {needsReviewMessages.map((message) => {
+                      const supplier = supplierById.get(message.supplierId);
+                      return (
+                        <div key={message.id} className="px-3 py-3">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold">
+                                  {supplier?.name ?? t("suppliers.unknownSupplier")}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "rounded-[0.3rem] text-[10px]",
+                                    MESSAGE_STATUS_COLORS[message.status] ?? MESSAGE_STATUS_COLORS.received,
+                                  )}
+                                >
+                                  {messageStatusLabel(t, message.status)}
+                                </Badge>
+                              </div>
+                              <p className="mt-0.5 truncate text-xs text-amber-900/75">
+                                {messageSubject(t, message)}
+                              </p>
+                            </div>
+                            <span className="shrink-0 font-mono text-[11px] text-amber-900/65">
+                              {parseDateTime(message.createdAt)}
+                            </span>
+                          </div>
+                          <p className="mt-2 whitespace-pre-wrap text-[13px] leading-5 text-stone-800">
+                            {message.body}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {aiSentEmails.length > 0 && (
+                <div className="rounded-[0.3rem] border border-border">
+                  <div className="flex items-start gap-3 border-b border-border px-3 py-3">
+                    <Bot className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{t("suppliers.aiSentTitle")}</p>
+                      <p className="text-xs text-muted-foreground">{t("suppliers.aiSentDesc")}</p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {aiSentEmails.map((message) => {
+                      const supplier = supplierById.get(message.supplierId);
+                      return (
+                        <div key={message.id} className="px-3 py-3">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold">
+                                  {supplier?.name ?? t("suppliers.unknownSupplier")}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "rounded-[0.3rem] text-[10px]",
+                                    MESSAGE_STATUS_COLORS[message.status] ?? MESSAGE_STATUS_COLORS.received,
+                                  )}
+                                >
+                                  {messageStatusLabel(t, message.status)}
+                                </Badge>
+                              </div>
+                              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                {messageSubject(t, message)}
+                              </p>
+                            </div>
+                            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                              {parseDateTime(message.createdAt)}
+                            </span>
+                          </div>
+                          <p className="mt-2 whitespace-pre-wrap text-[13px] leading-5 text-stone-700 dark:text-stone-300">
+                            {message.body}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -952,6 +1239,27 @@ export default function SuppliersPage() {
                   placeholder="supplier@example.com"
                   className="h-8 text-sm"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">{t("suppliers.labelLanguage")}</Label>
+                <Select
+                  value={supplierForm.language ?? "en"}
+                  onValueChange={(v) =>
+                    setSupplierForm((f) => ({ ...f, language: normalizeSupplierLanguage(v) }))
+                  }
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPLIER_LANGUAGES.map((language) => (
+                      <SelectItem key={language.value} value={language.value}>
+                        {supplierLanguageLabel(t, language.value)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">

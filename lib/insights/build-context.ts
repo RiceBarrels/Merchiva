@@ -97,6 +97,23 @@ function localTimeOf(v: any, tz: string): string | null {
   }
 }
 
+/** "HH:MM" (24h) → minutes since midnight, or null if unparseable. */
+function hmToMin(s: any): number | null {
+  if (typeof s !== "string") return null;
+  const m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const mm = Number(m[2]);
+  if (!Number.isFinite(h) || !Number.isFinite(mm)) return null;
+  return h * 60 + mm;
+}
+
+/** Minutes since midnight → zero-padded "HH:MM" (24h). */
+function minToHm(min: number): string {
+  const m = ((Math.round(min) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
 /** Shift a "YYYY-MM-DD" string by `delta` days (UTC arithmetic on the date). */
 function addDaysIso(dateStr: string, delta: number): string {
   const d = new Date(`${dateStr}T00:00:00Z`);
@@ -188,6 +205,25 @@ export interface BriefingContext {
     onShift: { name: string; since: string | null; onBreak: boolean }[];
     punchedInCount: number;
     punchedInToday: { name: string; firstIn: string | null }[];
+    // Shift-vs-punch correlation as of `nowMs` (org timezone). `late` = clocked
+    // in later than the scheduled start + grace; `absent` = scheduled, start +
+    // grace already passed, still no punch-in.
+    lateArrivals: {
+      name: string;
+      scheduledStart: string;
+      actualIn: string | null;
+      minutesLate: number;
+      status: "late" | "absent";
+    }[];
+    // `晚下班` — past their scheduled end + grace. `stillOn` = still clocked in
+    // (working overtime / forgot to punch out); otherwise they punched out late.
+    lateDepartures: {
+      name: string;
+      scheduledEnd: string;
+      actualOut: string | null;
+      minutesOver: number;
+      stillOn: boolean;
+    }[];
   };
 
   inventory: {
@@ -227,6 +263,22 @@ export interface BriefingContext {
     tasks: { title: string; startTime: string | null; endTime: string | null; requiresEvidence: boolean }[];
   }[];
 
+  todayTasks: {
+    total: number;
+    completed: number;
+    pending: number;
+    skipped: number;
+    overduePending: number;
+    overdue: {
+      task: string;
+      staff: string;
+      dueDate: string;
+      dueTime: string | null;
+      requiresEvidence: boolean;
+      status: string;
+    }[];
+  };
+
   yesterdayTaskEvidence: TaskEvidenceItem[];
   taskCompliance: {
     completedYesterday: number;
@@ -247,6 +299,7 @@ const INVENTORY_CAP = 50;
 const PRODUCTS_CAP = 30;
 const UPCOMING_SHIFTS_CAP = 40;
 const EVIDENCE_CAP = 25;
+const TASK_EXAMPLE_CAP = 12;
 const AVAILABILITY_CAP = 20;
 
 // ─── Builder ──────────────────────────────────────────────────────────────────
@@ -256,6 +309,9 @@ export function buildBriefingContext(
   organizationId: string,
   today: string,
   locale = "en",
+  // Current instant (epoch ms) — used to flag lateness / overtime / overdue
+  // relative to "now" in the store's timezone. Defaults to the current time.
+  nowMs: number = Date.now(),
 ): BriefingContext {
   const orgId = organizationId;
   const yesterday = addDaysIso(today, -1);
@@ -345,12 +401,26 @@ export function buildBriefingContext(
     name: resolveMemberName(mid),
     firstIn: localTimeOf(ms, tz),
   }));
-  const attendance = {
-    onShiftCount: attendanceOnShift.length,
-    onShift: attendanceOnShift,
-    punchedInCount: punchedInToday.length,
-    punchedInToday,
-  };
+  // Member ids currently on an open shift, and each member's last "out" today —
+  // used below (after shifts are known) to flag late departures / overtime.
+  const onShiftMemberIds = new Set(
+    orgPunchEvents
+      .filter((e: any) => e.action === "in" && !e.closed)
+      .map((e: any) => idStr(e.memberId)),
+  );
+  const lastOutByMember = new Map<string, number>();
+  for (const e of orgPunchEvents) {
+    if (e.action !== "out") continue;
+    if (localDateOf(e.at, tz) !== today) continue;
+    const mid = idStr(e.memberId);
+    const ms = tsToMs(e.at);
+    if (!Number.isFinite(ms)) continue;
+    if (!lastOutByMember.has(mid) || ms > (lastOutByMember.get(mid) as number)) {
+      lastOutByMember.set(mid, ms);
+    }
+  }
+  // `attendance` (incl. late-arrival / late-departure correlation) is built
+  // after the shifts block below, once today's scheduled shifts are known.
 
   // ── Inventory (status derived: out / low / ok) ──
   const inventory = (rows.inventoryItems ?? [])
@@ -414,6 +484,93 @@ export function buildBriefingContext(
   const shiftPresets = (rows.shiftPresets ?? [])
     .filter((p: any) => p.organizationId === orgId)
     .map((p: any) => ({ name: p.name, startTime: p.startTime, endTime: p.endTime }));
+
+  // ── Attendance vs schedule: late arrivals & late departures (晚下班) ──
+  // Correlate today's ASSIGNED shifts (those with a memberId) against punches.
+  // Per member we compare against their EARLIEST start (lateness) and LATEST
+  // end (overtime) so split shifts don't produce false positives.
+  const LATE_GRACE_MIN = 10; // clocked in this many minutes past start → late
+  const OVERTIME_GRACE_MIN = 15; // still on / out this many past end → 晚下班
+  const nowLocalMin = hmToMin(localTimeOf(nowMs, tz));
+  type SchedAgg = { name: string; startMin: number | null; endMin: number | null };
+  const schedByMember = new Map<string, SchedAgg>();
+  for (const s of todayShiftRows as any[]) {
+    const mid = idStr(s.memberId);
+    if (!mid) continue; // unassigned shift — no one to hold accountable
+    const startMin = hmToMin(s.startTime);
+    const endMin = hmToMin(s.endTime);
+    const cur = schedByMember.get(mid) ?? {
+      name: s.staffName || resolveMemberName(mid),
+      startMin: null,
+      endMin: null,
+    };
+    if (startMin != null && (cur.startMin == null || startMin < cur.startMin)) cur.startMin = startMin;
+    if (endMin != null && (cur.endMin == null || endMin > cur.endMin)) cur.endMin = endMin;
+    schedByMember.set(mid, cur);
+  }
+  const lateArrivals: BriefingContext["attendance"]["lateArrivals"] = [];
+  const lateDepartures: BriefingContext["attendance"]["lateDepartures"] = [];
+  for (const [mid, sched] of schedByMember) {
+    // Late arrival / no-show-so-far.
+    if (sched.startMin != null) {
+      const inMs = firstInByMember.get(mid);
+      const inMin = inMs != null ? hmToMin(localTimeOf(inMs, tz)) : null;
+      if (inMin != null) {
+        if (inMin > sched.startMin + LATE_GRACE_MIN) {
+          lateArrivals.push({
+            name: sched.name,
+            scheduledStart: minToHm(sched.startMin),
+            actualIn: minToHm(inMin),
+            minutesLate: inMin - sched.startMin,
+            status: "late",
+          });
+        }
+      } else if (nowLocalMin != null && nowLocalMin > sched.startMin + LATE_GRACE_MIN) {
+        lateArrivals.push({
+          name: sched.name,
+          scheduledStart: minToHm(sched.startMin),
+          actualIn: null,
+          minutesLate: nowLocalMin - sched.startMin,
+          status: "absent",
+        });
+      }
+    }
+    // Late departure / overtime.
+    if (sched.endMin != null) {
+      const stillOn = onShiftMemberIds.has(mid);
+      if (stillOn) {
+        if (nowLocalMin != null && nowLocalMin > sched.endMin + OVERTIME_GRACE_MIN) {
+          lateDepartures.push({
+            name: sched.name,
+            scheduledEnd: minToHm(sched.endMin),
+            actualOut: null,
+            minutesOver: nowLocalMin - sched.endMin,
+            stillOn: true,
+          });
+        }
+      } else {
+        const outMs = lastOutByMember.get(mid);
+        const outMin = outMs != null ? hmToMin(localTimeOf(outMs, tz)) : null;
+        if (outMin != null && outMin > sched.endMin + OVERTIME_GRACE_MIN) {
+          lateDepartures.push({
+            name: sched.name,
+            scheduledEnd: minToHm(sched.endMin),
+            actualOut: minToHm(outMin),
+            minutesOver: outMin - sched.endMin,
+            stillOn: false,
+          });
+        }
+      }
+    }
+  }
+  const attendance: BriefingContext["attendance"] = {
+    onShiftCount: attendanceOnShift.length,
+    onShift: attendanceOnShift,
+    punchedInCount: punchedInToday.length,
+    punchedInToday,
+    lateArrivals,
+    lateDepartures,
+  };
 
   // ── Pending time-off + shift trades (detailed, not just counts) ──
   const pendingTimeOffRows = (rows.timeOff ?? []).filter(
@@ -543,6 +700,11 @@ export function buildBriefingContext(
   );
   const yesterdayTaskEvidence: TaskEvidenceItem[] = [];
   const overdueExamples: { task: string; staff: string; dueDate: string | null }[] = [];
+  const overdueTodayTasks: BriefingContext["todayTasks"]["overdue"] = [];
+  let todayTaskTotal = 0;
+  let todayTaskCompleted = 0;
+  let todayTaskPending = 0;
+  let todayTaskSkipped = 0;
   let completedYesterday = 0;
   let skippedYesterday = 0;
   let overduePending = 0;
@@ -552,6 +714,33 @@ export function buildBriefingContext(
     const completedDate = localDateOf(a.completedAt, tz);
     const dueDate = localDateOf(a.dueAt, tz);
     const requiresEvidence = taskRequiresEvidenceById.get(idStr(a.taskId)) ?? false;
+    const taskName = taskTitleById.get(idStr(a.taskId)) || "Task";
+    const staffName = resolveMemberName(a.memberId);
+    const dueMs = tsToMs(a.dueAt);
+    const dueTime = localTimeOf(a.dueAt, tz);
+
+    if (dueDate === today) {
+      todayTaskTotal++;
+      if (status === "completed") todayTaskCompleted++;
+      else if (status === "skipped") todayTaskSkipped++;
+      else todayTaskPending++;
+
+      if (
+        status === "pending" &&
+        Number.isFinite(dueMs) &&
+        dueMs <= nowMs &&
+        overdueTodayTasks.length < TASK_EXAMPLE_CAP
+      ) {
+        overdueTodayTasks.push({
+          task: taskName,
+          staff: staffName,
+          dueDate,
+          dueTime,
+          requiresEvidence,
+          status,
+        });
+      }
+    }
 
     if (status === "completed" && completedDate === yesterday) {
       completedYesterday++;
@@ -573,8 +762,8 @@ export function buildBriefingContext(
       if (evidenceStatus === "missing_required") missingRequiredEvidence++;
       if (yesterdayTaskEvidence.length < EVIDENCE_CAP) {
         yesterdayTaskEvidence.push({
-          task: taskTitleById.get(idStr(a.taskId)) || "Task",
-          staff: resolveMemberName(a.memberId),
+          task: taskName,
+          staff: staffName,
           status,
           evidenceStatus,
           note: a.note ?? null,
@@ -591,12 +780,14 @@ export function buildBriefingContext(
       missingRequiredEvidence++;
     }
 
-    if (status === "pending" && dueDate && dueDate <= today) {
+    // Overdue = pending and its due INSTANT has already passed (org-tz aware via
+    // nowMs). Time-aware so a task due at 17:00 isn't flagged "overdue" at 09:00.
+    if (status === "pending" && dueDate && Number.isFinite(dueMs) && dueMs <= nowMs) {
       overduePending++;
       if (overdueExamples.length < 10) {
         overdueExamples.push({
-          task: taskTitleById.get(idStr(a.taskId)) || "Task",
-          staff: resolveMemberName(a.memberId),
+          task: taskName,
+          staff: staffName,
           dueDate,
         });
       }
@@ -647,6 +838,14 @@ export function buildBriefingContext(
     coupons,
     expiringCoupons,
     roles,
+    todayTasks: {
+      total: todayTaskTotal,
+      completed: todayTaskCompleted,
+      pending: todayTaskPending,
+      skipped: todayTaskSkipped,
+      overduePending: overdueTodayTasks.length,
+      overdue: overdueTodayTasks,
+    },
     yesterdayTaskEvidence,
     taskCompliance: {
       completedYesterday,
@@ -685,8 +884,17 @@ export function briefingProblemKeys(ctx: BriefingContext): string[] {
   if (openToday && ctx.todayShifts.length === 0 && ctx.team.length > 0) keys.push("coverage:none");
 
   for (const o of ctx.taskCompliance.overdueExamples) keys.push(`overdue:${o.task}:${o.staff}`);
+  for (const o of ctx.todayTasks.overdue) {
+    keys.push(`today-task-overdue:${o.task}:${o.staff}:${o.dueTime ?? o.dueDate}`);
+  }
   for (const e of ctx.yesterdayTaskEvidence) {
     if (e.evidenceStatus === "missing_required") keys.push(`evidence:${e.task}:${e.staff}`);
+  }
+  // Attendance exceptions — late arrival / no-show and 晚下班 / overtime. Keyed
+  // by person + status so an ongoing issue doesn't re-notify, but a NEW one does.
+  for (const a of ctx.attendance.lateArrivals) keys.push(`${a.status}:${a.name}`);
+  for (const d of ctx.attendance.lateDepartures) {
+    keys.push(`${d.stillOn ? "overtime" : "lateout"}:${d.name}`);
   }
   for (const r of ctx.timeOffRequests) keys.push(`timeoff:${r.staffName}:${r.startDate}`);
   for (const s of ctx.shiftTrades) keys.push(`trade:${s.requester}:${s.type}`);

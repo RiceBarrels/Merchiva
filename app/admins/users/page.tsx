@@ -144,7 +144,7 @@ export default function AdminsUsersPage() {
             ) : (
               users.map((u) => (
                 <tr key={u.id} className="hover:bg-stone-50">
-                  <td className="px-3 py-2 font-mono text-[12px] text-stone-900">{u.email}</td>
+                  <td className="px-3 py-2 font-mono text-[12px] text-foreground">{u.email}</td>
                   <td className="px-3 py-2 text-stone-800">
                     {[u.firstName, u.lastName].filter(Boolean).join(" ") || (
                       <span className="text-stone-400">—</span>

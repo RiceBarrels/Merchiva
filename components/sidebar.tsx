@@ -52,6 +52,8 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
+import type { BetaFeatureKey } from "@/lib/beta-features";
+import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { RightPanel, MobileRightPanel, RightPanelMobileProvider, useRightPanelMobile } from "@/components/right-panel";
 import { PageTransition } from "@/components/page-transition";
@@ -69,6 +71,7 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permissionKey?: keyof Permissions;
+  betaFeature?: BetaFeatureKey;
 };
 
 // Punch-in is only shown in store-machine mode; see `visibleNavItems` below.
@@ -81,7 +84,7 @@ type NavItemExt = NavItem & { mobileOnly?: boolean; children?: SubNavItem[] };
 
 const navItems: NavItemExt[] = [
   { labelKey: "nav.home",      href: "/~/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
-  { labelKey: "nav.pos",       href: "/~/pos",         icon: MonitorSmartphone, permissionKey: "pos"     },
+  { labelKey: "nav.pos",       href: "/~/pos",         icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
   { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory",
     children: [
       { labelKey: "nav.suppliers", href: "/~/suppliers" },
@@ -103,13 +106,13 @@ const navItems: NavItemExt[] = [
       { labelKey: "personnel.tabs.roles",    href: "/~/personnel/roles" },
       { labelKey: "personnel.tabs.training", href: "/~/personnel/training" },
     ] },
-  { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales",
+  { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website",
     children: [
       { labelKey: "nav.marketing", href: "/~/marketing" },
     ] },
   { labelKey: "nav.chat",      href: "/~/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
-  { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website"   },
-  { labelKey: "nav.design",    href: "/~/design",      icon: Palette,         permissionKey: "website"   },
+  { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website", betaFeature: "website" },
+  { labelKey: "nav.design",    href: "/~/design",      icon: Palette,         permissionKey: "website", betaFeature: "design" },
   { labelKey: "nav.punchIn",   href: "/~/punch-in",    icon: KeyRound },
 ];
 
@@ -861,6 +864,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const isCapacitor = useIsCapacitor();
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
+  const { betaFeatures } = useBetaFeatures();
   const unreadCount = useUnreadCount();
   // Which sections (keyed by parent href) are expanded to show sub-pages.
   const [expandedHrefs, setExpandedHrefs] = useState<Set<string>>(() => new Set());
@@ -914,6 +918,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
     // Hide public-facing/SEO surfaces (storefront builder, marketing) inside
     // the native Capacitor shell.
     if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(item.href)) return false;
+    if (item.betaFeature && !betaFeatures[item.betaFeature]) return false;
     if (!item.permissionKey) return true;
     return can(item.permissionKey, "view");
   });
@@ -1296,6 +1301,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   const safeAreaInsets = getSafeAreaInsets();
   const screenRadius = getScreenCornerRadius();
+  const appPromoOffset = "var(--merchiva-app-promo-height, 0px)";
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -1307,13 +1313,16 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   // Close on navigation
   useEffect(() => {
-    setIsOpen(false);
+    const timeout = window.setTimeout(() => setIsOpen(false), 0);
+    return () => window.clearTimeout(timeout);
   }, [pathname]);
 
   // Close sidebar when a dialog opens to avoid transform conflicts
   useEffect(() => {
-    if (hasDialog && isOpen) setIsOpen(false);
-  }, [hasDialog]);
+    if (!hasDialog || !isOpen) return;
+    const timeout = window.setTimeout(() => setIsOpen(false), 0);
+    return () => window.clearTimeout(timeout);
+  }, [hasDialog, isOpen]);
 
   // Attach touch listeners with passive:false on touchmove for preventDefault
   useEffect(() => {
@@ -1497,6 +1506,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <div
             className="fixed inset-y-0 left-0 w-[280px] z-10"
             style={{
+              top: appPromoOffset,
               transform: `translateX(${sidebarTranslateX}px) scale(${sidebarScale})`,
               opacity: sidebarOpacity,
               transformOrigin: "left center",

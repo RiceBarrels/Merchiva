@@ -9,9 +9,44 @@ import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight, DownloadIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import { MerchivaLogo } from "./logo";
+
+const APP_PROMO_DISMISSED_KEY = "isAppAsked";
+const APP_PROMO_DISMISSED_EVENT = "merchiva-app-promo-dismissed";
+
+function subscribeToClientMounted() {
+  return () => {};
+}
+
+function getClientMountedSnapshot() {
+  return true;
+}
+
+function getServerMountedSnapshot() {
+  return false;
+}
+
+function getAppPromoDismissedSnapshot() {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(APP_PROMO_DISMISSED_KEY) === "true";
+}
+
+function subscribeToAppPromoDismissed(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === APP_PROMO_DISMISSED_KEY) callback();
+  };
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(APP_PROMO_DISMISSED_EVENT, callback);
+
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(APP_PROMO_DISMISSED_EVENT, callback);
+  };
+}
 
 // Custom title bar for the Tauri desktop shell. On the web build it doubles
 // as a "get the desktop app" promo strip (dismissible). Drag is handled by
@@ -20,22 +55,25 @@ import { MerchivaLogo } from "./logo";
 export function NativeTitleBar() {
   const isNative = useIsNativeShell();
   const pathname = usePathname();
-  const [isAppAsked, setIsAppAsked] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const isAppAsked = useSyncExternalStore(
+    subscribeToAppPromoDismissed,
+    getAppPromoDismissedSnapshot,
+    getAppPromoDismissedSnapshot,
+  );
+  const isMounted = useSyncExternalStore(
+    subscribeToClientMounted,
+    getClientMountedSnapshot,
+    getServerMountedSnapshot,
+  );
   const [canBack, setCanBack] = useState(false);
   const [canFwd, setCanFwd] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [isMac, setIsMac] = useState(false);
+  const isMac = isMounted && getNativeShellPlatform() === "macos";
 
-  useEffect(() => {
-    setIsAppAsked(localStorage.getItem("isAppAsked") === "true");
-    setIsMounted(true);
-    setIsMac(getNativeShellPlatform() === "macos");
+  const dismissAppPromo = useCallback(() => {
+    localStorage.setItem(APP_PROMO_DISMISSED_KEY, "true");
+    window.dispatchEvent(new Event(APP_PROMO_DISMISSED_EVENT));
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("isAppAsked", `${isAppAsked}`);
-  }, [isAppAsked]);
 
   const refreshState = useCallback(() => {
     const e = getNativeShell();
@@ -49,11 +87,12 @@ export function NativeTitleBar() {
 
   useEffect(() => {
     if (!isNative) return;
-    refreshState();
+    const initialRefresh = window.setTimeout(refreshState, 0);
     const onNav = () => setTimeout(refreshState, 100);
     window.addEventListener("popstate", onNav);
     const interval = setInterval(refreshState, 500);
     return () => {
+      window.clearTimeout(initialRefresh);
       window.removeEventListener("popstate", onNav);
       clearInterval(interval);
     };
@@ -71,9 +110,24 @@ export function NativeTitleBar() {
 
   // The Mr. Merchiva quick-dialog overlay window is chrome-less — never draw
   // the title bar (or the desktop-app promo strip) inside it.
+  const showAppPromo = isMounted && !isNative && !isAppAsked && pathname !== "/quick-overlay";
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (showAppPromo) {
+      root.style.setProperty("--merchiva-app-promo-height", "3rem");
+    } else {
+      root.style.removeProperty("--merchiva-app-promo-height");
+    }
+
+    return () => {
+      root.style.removeProperty("--merchiva-app-promo-height");
+    };
+  }, [showAppPromo]);
+
   if (pathname === "/quick-overlay") return null;
 
-  if (isMounted && !isNative && !isAppAsked) {
+  if (showAppPromo) {
     return (
       <div className="z-9999 h-12 select-none border-b border-border flex items-center gap-3 bg-foreground/95 text-background px-4">
         <div className="flex h-full items-center text-sm font-black pt-1">
@@ -87,7 +141,7 @@ export function NativeTitleBar() {
           variant="ghost"
           size="icon"
           className="hover:bg-background/10 hover:text-background"
-          onClick={() => setIsAppAsked(true)}
+          onClick={dismissAppPromo}
         >
           <XIcon />
         </Button>

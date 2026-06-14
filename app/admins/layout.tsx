@@ -86,7 +86,7 @@ export default function AdminsLayout({ children }: { children: React.ReactNode }
           </p>
           <Link
             href="/~/dashboard"
-            className="mt-6 inline-block rounded border border-stone-300 bg-white px-4 py-2 text-[13px] font-medium text-stone-900 hover:bg-stone-50"
+            className="mt-6 inline-block rounded border border-stone-300 bg-white px-4 py-2 text-[13px] font-medium text-foreground hover:bg-stone-50"
           >
             {t("admins.backToApp")}
           </Link>
@@ -114,7 +114,7 @@ function AdminShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900">
+    <div className="min-h-screen bg-stone-50 text-foreground">
       <header className="sticky top-0 z-30 border-b border-stone-200 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
@@ -134,7 +134,7 @@ function AdminShell({
             <span className="hidden font-mono text-[11px] text-stone-500 sm:inline">{adminEmail}</span>
             <Link
               href="/~/dashboard"
-              className="rounded border border-stone-300 bg-white px-3 py-1.5 text-[12px] font-medium text-stone-900 hover:bg-stone-50"
+              className="rounded border border-stone-300 bg-white px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-stone-50"
             >
               {t("admins.exit")}
             </Link>
@@ -154,7 +154,7 @@ function AdminShell({
                   "rounded px-3 py-1.5 text-[13px] font-medium transition-colors " +
                   (active
                     ? "bg-stone-900 text-white"
-                    : "text-stone-600 hover:bg-stone-100 hover:text-stone-900")
+                    : "text-stone-600 hover:bg-stone-100 hover:text-foreground")
                 }
               >
                 {t(`admins.nav.${item.key}`)}

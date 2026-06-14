@@ -1487,6 +1487,19 @@
   },
   "settings": {
     "title": "Settings",
+    "betaFeatures": "Beta features",
+    "betaFeaturesAbout": "POS, Website & Customers, Design",
+    "betaFeaturesMobileTitle": "Beta features",
+    "betaFeaturesTitle": "Beta features",
+    "betaFeaturesDesc": "Beta features are hidden by default. Turn on the tools you want to test for this store.",
+    "betaFeaturePOS": "POS",
+    "betaFeaturePOSDesc": "Show the point-of-sale register and payment workflow.",
+    "betaFeatureWebsite": "Website & Customers",
+    "betaFeatureWebsiteDesc": "Show the customer list, marketing tools, website builder, and published site tools.",
+    "betaFeatureDesign": "Design",
+    "betaFeatureDesignDesc": "Show the design canvas for posters, social posts, and signs.",
+    "betaFeatureDisabledToast": "Turn this beta feature on in Settings first.",
+    "toastBetaFeaturesSaved": "Beta features updated",
     "yourBusiness": "Your Business",
     "membersSuffix": "members",
     "yourName": "Your Name",
@@ -1502,6 +1515,7 @@
     "notSet": "Not set",
     "groupWorkspace": "Workspace",
     "groupTeamAccess": "Team & access",
+    "groupSecurity": "Security",
     "groupNotifications": "Notifications",
     "groupPreferences": "Preferences",
     "groupDevice": "Device",
@@ -2866,6 +2880,7 @@
       "inventoryAlerts": "Inventory alerts"
     },
     "errorNoResponse": "Sorry, the AI service is temporarily unavailable. Please try again later.",
+    "supplierOrderPrepared": "Prepared a supplier order for approval.",
     "allClear": "All clear — no issues found.",
     "startCall": "Start voice call",
     "call": {
@@ -3595,6 +3610,8 @@
       "dialogTitle": "Where is this product sold?"
     },
     "settings": {
+      "betaFeatures": "Beta features",
+      "betaFeaturesAbout": "Enable experimental features",
       "cardTitle": "Multi-store",
       "cardMetaSolo": "Standalone store",
       "cardMetaParent": "Parent of {count} sub-store(s)",
@@ -4258,6 +4275,23 @@
     "poValueThisMonth": "PO Value This Month",
     "tabSuppliers": "Suppliers",
     "tabPurchaseOrders": "Purchase Orders",
+    "tabAiEmails": "AI Emails",
+    "aiEmailsEmpty": "No AI supplier emails yet.",
+    "aiEmailsSent": "AI emails sent",
+    "aiEmailsNeedReview": "Needs review",
+    "aiEmailsFailed": "Failed sends",
+    "needsReviewTitle": "Needs manager/owner check",
+    "needsReviewDesc": "Supplier replies that Mr. Merchiva flagged before committing.",
+    "aiSentTitle": "AI-sent supplier emails",
+    "aiSentDesc": "Outbound supplier emails sent by Mr. Merchiva and automatic purchase-order follow-ups.",
+    "aiEmailSubjectFallback": "Supplier email",
+    "messageStatus": {
+      "sent": "Sent",
+      "received": "Received",
+      "failed": "Failed",
+      "needs_review": "Needs review",
+      "unknown": "Unknown"
+    },
     "searchPlaceholder": "Search suppliers...",
     "emptyNoSuppliers": "No suppliers yet. Add your first supplier to get started.",
     "emptyNoMatch": "No suppliers match your search.",
@@ -4290,6 +4324,7 @@
     "labelContactName": "Contact Name",
     "labelPhone": "Phone",
     "labelEmail": "Email",
+    "labelLanguage": "Language",
     "labelAddress": "Address",
     "labelPaymentTerms": "Payment Terms",
     "terms": {
@@ -4297,6 +4332,14 @@
       "net60": "Net 60",
       "cod": "COD",
       "prepaid": "Prepaid"
+    },
+    "languages": {
+      "en": "English",
+      "zh": "Chinese",
+      "es": "Spanish",
+      "fr": "French",
+      "ar": "Arabic",
+      "hi": "Hindi"
     },
     "labelRating": "Rating",
     "labelNotes": "Notes",

@@ -458,7 +458,7 @@ function SegmentedControl({
           className={cn(
             "flex-1 text-[10.5px] font-medium transition-colors px-1",
             o.value === value
-              ? "bg-stone-800 text-white dark:bg-stone-100 dark:text-stone-900"
+              ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >

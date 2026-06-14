@@ -44,7 +44,7 @@ const decisionSchema = z.object({
   reply: z
     .string()
     .describe(
-      "The plain-text email reply to send back to the supplier, in the SAME language the supplier wrote in. No markdown. If escalate=true, keep it a brief, non-committal holding message (e.g. 'thanks, I'll confirm with our team and get back to you shortly') — do NOT agree to anything.",
+      "The plain-text email reply to send back to the supplier. Use the supplier's preferred language when set; otherwise use the same language the supplier wrote in. No markdown. If escalate=true, keep it a brief holding message that says you will double-check with a manager/owner and get back to them. Do NOT agree to anything.",
     ),
   escalate: z
     .boolean()
@@ -144,6 +144,8 @@ function buildSystemPrompt(ctx: SupplierThreadContext): string {
 
   return `You are Mr. Merchiva, the procurement agent for "${ctx.orgName}", replying to a message from the supplier "${ctx.supplier.name}"${ctx.supplier.contactName ? ` (contact: ${ctx.supplier.contactName})` : ""}.
 
+SUPPLIER PREFERRED LANGUAGE: ${ctx.supplier.language ? ctx.supplier.language : "not set"}
+
 PURCHASE ORDERS WITH THIS SUPPLIER:
 ${pos}
 
@@ -153,9 +155,9 @@ ${thread}
 YOUR JOB: write a short, professional reply to the supplier's latest message AND decide whether a human needs to step in.
 
 RULES:
-- Reply in the SAME language the supplier used. Be concise and courteous. Plain text only.
+- Use the supplier preferred language when set; otherwise reply in the SAME language the supplier used. Be concise and courteous. Plain text only.
 - You MAY handle routine things yourself: acknowledging confirmations, confirming a delivery date the supplier proposed that matches the order, answering simple questions about the order you already have.
-- You MUST escalate (escalate=true) and send only a non-committal holding reply for anything needing a human decision: price changes, out-of-stock or substitutions, quantity/MOQ changes, payment-term changes, delivery delays or problems, disputes, or anything that increases cost or deviates from the existing PO. When unsure, escalate.
+- You MUST escalate (escalate=true) and send only a non-committal holding reply for anything needing a human decision: price changes, out-of-stock or substitutions, quantity/MOQ changes, payment-term changes, delivery delays or problems, disputes, or anything that increases cost or deviates from the existing PO. When unsure, escalate and say you are double-checking with a manager/owner.
 - NEVER agree to a new price, a substitution, a larger order, or any new commitment beyond the existing PO. Those are always escalate=true.`;
 }
 
@@ -254,7 +256,7 @@ export async function POST(req: NextRequest) {
       channel: "email",
       subject: subject ?? null,
       body: supplierMsg,
-      status: "received",
+      status: "needs_review",
       escalate: true,
     });
     return NextResponse.json({ ok: true, escalated: true, aiError: true });
@@ -271,7 +273,7 @@ export async function POST(req: NextRequest) {
     body: decision.escalate && decision.problemSummary
       ? `${supplierMsg}\n\n[Flagged: ${decision.problemSummary}]`
       : supplierMsg,
-    status: "received",
+    status: decision.escalate ? "needs_review" : "received",
     escalate: decision.escalate,
   });
 

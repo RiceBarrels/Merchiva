@@ -910,7 +910,7 @@ function ViewButton({ active, onClick, icon, label }: { active: boolean; onClick
       onClick={onClick}
       className={cn(
         "h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 text-[11px] transition-colors",
-        active ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900" : "text-muted-foreground hover:bg-muted",
+        active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
       )}
     >
       {icon}

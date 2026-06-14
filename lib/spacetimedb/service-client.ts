@@ -334,7 +334,13 @@ export async function getAiReplyTarget(
 const supplierThreadSubscribed = new WeakSet<object>();
 
 export interface SupplierThreadContext {
-  supplier: { id: string; name: string; email: string | null; contactName: string | null };
+  supplier: {
+    id: string;
+    name: string;
+    email: string | null;
+    contactName: string | null;
+    language: string | null;
+  };
   orgName: string;
   // Oldest → newest, so the model reads the conversation in order.
   messages: Array<{ direction: string; body: string }>;
@@ -402,6 +408,7 @@ export async function getSupplierThreadContext(
       name: String(supplier.name ?? ""),
       email: supplier.email ?? null,
       contactName: supplier.contactName ?? null,
+      language: supplier.language ?? null,
     },
     orgName: String(org?.name ?? "our store"),
     messages,
@@ -454,6 +461,27 @@ export async function serviceCreateNotification(
     title: args.title,
     body: args.body,
     link: args.link ?? undefined,
+  });
+}
+
+export async function serviceAppendAiChatMessage(
+  conn: ServiceConn,
+  args: {
+    organizationId: string;
+    targetIdentity: Identity;
+    title: string;
+    message: string;
+    time: string;
+    messageId?: string | null;
+  },
+): Promise<void> {
+  conn.reducers.serviceAppendAiChatMessage({
+    organizationId: args.organizationId,
+    targetIdentity: args.targetIdentity,
+    title: args.title,
+    message: args.message,
+    time: args.time,
+    messageId: args.messageId ?? undefined,
   });
 }
 

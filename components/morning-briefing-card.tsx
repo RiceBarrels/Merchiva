@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -11,6 +11,7 @@ import {
   CalendarPlus,
   ArrowRightLeft,
   AlertTriangle,
+  Bell,
   Camera,
   CheckCheck,
   Check,
@@ -18,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   History,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,6 +111,269 @@ function slotTitle(date: string, hour: number | null | undefined): string {
 }
 
 type AgentState = "working" | "done" | "idle" | "attention";
+type BriefingCardTone = "critical" | "warning" | "info" | "success" | "neutral";
+
+interface BriefingCardItem {
+  id: string;
+  title: string;
+  detail?: string;
+  section?: string;
+  icon: LucideIcon;
+  tone: BriefingCardTone;
+}
+
+const BRIEFING_ICON_MAP: Record<string, LucideIcon> = {
+  alerttriangle: AlertTriangle,
+  warning: AlertTriangle,
+  package: Package,
+  box: Package,
+  inventory: Package,
+  users: Users,
+  user: Users,
+  staffing: Users,
+  bell: Bell,
+  notification: Bell,
+  calendar: Calendar,
+  holiday: Calendar,
+  calendarplus: CalendarPlus,
+  schedule: CalendarPlus,
+  arrowrightleft: ArrowRightLeft,
+  trade: ArrowRightLeft,
+  camera: Camera,
+  evidence: Camera,
+  checkcheck: CheckCheck,
+  check: Check,
+  clock: Clock,
+};
+
+const BRIEFING_TONE_STYLES: Record<
+  BriefingCardTone,
+  { card: string; pip: string; icon: string; badge: string }
+> = {
+  critical: {
+    card: "border-rose-200 bg-rose-50/70 dark:border-rose-900/60 dark:bg-rose-950/30",
+    pip: "bg-rose-500 ring-2 ring-rose-500/20",
+    icon: "text-rose-600 dark:text-rose-400",
+    badge: "border-rose-200 bg-rose-100/70 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300",
+  },
+  warning: {
+    card: "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20",
+    pip: "bg-amber-500 ring-2 ring-amber-500/15",
+    icon: "text-amber-700 dark:text-amber-400",
+    badge: "border-amber-200 bg-amber-100/70 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
+  },
+  info: {
+    card: "border-sky-200 bg-sky-50/60 dark:border-sky-900/50 dark:bg-sky-950/20",
+    pip: "bg-sky-500 ring-2 ring-sky-500/15",
+    icon: "text-sky-700 dark:text-sky-400",
+    badge: "border-sky-200 bg-sky-100/70 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-300",
+  },
+  success: {
+    card: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20",
+    pip: "bg-emerald-500 ring-2 ring-emerald-500/15",
+    icon: "text-emerald-700 dark:text-emerald-400",
+    badge: "border-emerald-200 bg-emerald-100/70 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
+  },
+  neutral: {
+    card: "border-border bg-muted/40",
+    pip: "bg-stone-400",
+    icon: "text-muted-foreground",
+    badge: "border-border bg-background/60 text-muted-foreground",
+  },
+};
+
+function normalizeMetaKey(value: string | null | undefined): string {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeCardText(value: string | null | undefined): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function resolveBriefingIcon(text: string, requestedIcon?: string | null): LucideIcon {
+  const requested = BRIEFING_ICON_MAP[normalizeMetaKey(requestedIcon)];
+  if (requested) return requested;
+
+  const n = text.toLowerCase();
+  if (/stock|inventory|sku|reorder|restock|cream|milk|\bunits?\b|\bmin\s*\d|\bminimum\b/.test(n)) return Package;
+  if (/holiday|juneteenth|calendar|date/.test(n)) return Calendar;
+  if (/notif|notification|unread|pending item|提醒|通知/.test(n)) return Bell;
+  if (/overdue|past due|due time|timed task|task overdue|过时|逾期|今日任务|任务/.test(n)) return Clock;
+  if (/evidence|photo|camera|proof|task evidence/.test(n)) return Camera;
+  if (/trade|swap/.test(n)) return ArrowRightLeft;
+  if (/staff|shift|clock|punch|attendance|late|absent|coverage|排班|打卡/.test(n)) return Users;
+  if (/insight|severity|urgent|critical|alert|attention|高危|紧急/.test(n)) return AlertTriangle;
+  if (/done|clear|normal|ok/.test(n)) return CheckCheck;
+  return AlertTriangle;
+}
+
+function resolveBriefingTone(text: string, requestedTone?: string | null): BriefingCardTone {
+  const requested = normalizeMetaKey(requestedTone);
+  if (["critical", "danger", "rose", "red", "high", "urgent"].includes(requested)) return "critical";
+  if (["warning", "warn", "amber", "yellow", "medium"].includes(requested)) return "warning";
+  if (["info", "blue", "sky"].includes(requested)) return "info";
+  if (["success", "green", "emerald", "ok", "clear"].includes(requested)) return "success";
+  if (["neutral", "muted", "gray", "grey", "low"].includes(requested)) return "neutral";
+
+  const n = text.toLowerCase();
+  if (/urgent|critical|high-severity|high severity|out of stock|no one clocked|absent|overdue|past due|过时|逾期|0\s*\/|高危|紧急/.test(n)) {
+    return "critical";
+  }
+  if (/minimum|below|late|attention|pending|unread|holiday|overtime|warning|needs? review/.test(n)) {
+    return "warning";
+  }
+  if (/clear|normal|completed|done|ok/.test(n)) return "success";
+  if (/insight|forecast|sales|holiday|notification/.test(n)) return "info";
+  return "neutral";
+}
+
+function splitBriefingText(li: Element): { title: string; detail?: string } {
+  const full = normalizeCardText(li.textContent);
+  const strong = normalizeCardText(li.querySelector("strong")?.textContent);
+  if (strong) {
+    const title = strong.replace(/[:：\-–—]\s*$/, "");
+    const detail = normalizeCardText(full.replace(strong, "").replace(/^[:：\-–—]\s*/, ""));
+    return { title: title || full, detail: detail || undefined };
+  }
+
+  const separator = full.match(/^(.{6,72}?)([:：]| – | — | - )\s+(.+)$/);
+  if (separator) {
+    return {
+      title: normalizeCardText(separator[1]).replace(/[:：\-–—]\s*$/, ""),
+      detail: normalizeCardText(separator[3]),
+    };
+  }
+
+  return { title: full };
+}
+
+function parseBriefingCards(html: string): BriefingCardItem[] {
+  if (typeof window === "undefined" || !html.trim()) return [];
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const cards: BriefingCardItem[] = [];
+  let section = "";
+  let index = 0;
+
+  const addListItem = (li: Element, currentSection: string) => {
+    const text = normalizeCardText(li.textContent);
+    if (!text) return;
+    const { title, detail } = splitBriefingText(li);
+    const icon = resolveBriefingIcon(
+      text,
+      li.getAttribute("data-icon") ||
+        li.getAttribute("data-lucide-icon") ||
+        li.getAttribute("data-lucide"),
+    );
+    const tone = resolveBriefingTone(
+      text,
+      li.getAttribute("data-tone") ||
+        li.getAttribute("data-color") ||
+        li.getAttribute("data-severity"),
+    );
+    cards.push({
+      id: `briefing-${index++}`,
+      title,
+      detail,
+      section: currentSection || undefined,
+      icon,
+      tone,
+    });
+  };
+
+  for (const child of Array.from(doc.body.children)) {
+    if (/^h[1-6]$/i.test(child.tagName)) {
+      section = normalizeCardText(child.textContent);
+      continue;
+    }
+    if (child.tagName.toLowerCase() === "ul" || child.tagName.toLowerCase() === "ol") {
+      for (const li of Array.from(child.children).filter((el) => el.tagName.toLowerCase() === "li")) {
+        addListItem(li, section);
+      }
+    }
+  }
+
+  if (cards.length === 0) {
+    for (const li of Array.from(doc.body.querySelectorAll("li"))) addListItem(li, "");
+  }
+
+  return cards;
+}
+
+function AiBriefingCards({ html }: { html: string }) {
+  const safeHtml = useMemo(() => sanitizeBriefingHtml(html), [html]);
+  const [cards, setCards] = useState<BriefingCardItem[]>([]);
+
+  useEffect(() => {
+    setCards(parseBriefingCards(safeHtml));
+  }, [safeHtml]);
+
+  if (cards.length === 0) {
+    return (
+      <div
+        className="merchiva-rich-text text-[13px] leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: safeHtml }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <MerchivaLogo size={11} />
+        <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+          AI briefing
+        </span>
+        <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-stone-900 px-1 font-mono text-[9.5px] text-white dark:bg-stone-100 dark:text-stone-900">
+          {cards.length}
+        </span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+      <ul className="space-y-1.5">
+        {cards.map((item) => (
+          <AiBriefingCardRow key={item.id} item={item} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AiBriefingCardRow({ item }: { item: BriefingCardItem }) {
+  const Icon = item.icon;
+  const tone = BRIEFING_TONE_STYLES[item.tone];
+
+  return (
+    <li
+      className={cn(
+        "flex items-start gap-2 rounded-[0.3rem] border px-2.5 py-2 text-[12px]",
+        tone.card,
+      )}
+    >
+      <span aria-hidden className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", tone.pip)} />
+      <Icon className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", tone.icon)} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-medium leading-snug">{item.title}</span>
+          {item.section && (
+            <span
+              className={cn(
+                "inline-flex shrink-0 rounded-[0.2rem] border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em]",
+                tone.badge,
+              )}
+            >
+              {item.section}
+            </span>
+          )}
+        </div>
+        {item.detail && (
+          <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            {item.detail}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
 
 function MerchivaMark({ state }: { state: AgentState }) {
   return (
@@ -572,10 +837,33 @@ export function MorningBriefingCard() {
     }
     const taskTitleById = new Map<string, string>();
     for (const tk of roleTasks as any[]) taskTitleById.set(tk.id.toString(), tk.title);
+    const memberNameById = new Map<string, string>();
+    for (const m of orgMembers as any[]) {
+      if (m.organizationId !== organizationId) continue;
+      memberNameById.set(String(m.id), m.displayName || m.email || "Staff");
+    }
+    for (const m of staffMembers as any[]) {
+      if (m.organizationId !== organizationId) continue;
+      memberNameById.set(String(m.id), m.name || "Staff");
+    }
+    const resolveMemberName = (id: unknown) => memberNameById.get(String(id)) || "Staff";
+
+    const overdueTodayTasks: { title: string; staff: string; dueTime: string | null; requiresEvidence: boolean }[] = [];
     const missingEvidence: string[] = [];
     for (const a of roleTaskAssignments as any[]) {
       if (a.organizationId !== organizationId) continue;
       const taskId = String(a.taskId ?? "");
+      if (a.status === "pending" && localDateOf(a.dueAt, tz) === today) {
+        const dueMs = tsToMs(a.dueAt);
+        if (Number.isFinite(dueMs) && dueMs <= Date.now()) {
+          overdueTodayTasks.push({
+            title: taskTitleById.get(taskId) || "Task",
+            staff: resolveMemberName(a.memberId),
+            dueTime: localTimeOf(a.dueAt, tz),
+            requiresEvidence: !!requiresEvidenceById.get(taskId),
+          });
+        }
+      }
       if (!requiresEvidenceById.get(taskId)) continue;
       if (localDateOf(a.dueAt, tz) !== yesterday) continue;
       const evid = (() => {
@@ -598,12 +886,28 @@ export function MorningBriefingCard() {
         ],
       });
     }
+    if (overdueTodayTasks.length > 0) {
+      const sample = overdueTodayTasks
+        .slice(0, 3)
+        .map((task) =>
+          `${task.dueTime ?? "due"} ${task.title}${task.requiresEvidence ? " · evidence" : ""}`,
+        )
+        .join(", ");
+      out.push({
+        id: "today-tasks-overdue",
+        severity: "high",
+        icon: Clock,
+        label: `${overdueTodayTasks.length} overdue task${overdueTodayTasks.length > 1 ? "s" : ""} today`,
+        sub: `${sample}${overdueTodayTasks.length > 3 ? ` +${overdueTodayTasks.length - 3}` : ""}`,
+        actions: [],
+      });
+    }
 
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
     const weight = (x: Severity) => (x === "high" ? 0 : x === "medium" ? 1 : 2);
     return out.sort((a, b) => weight(a.severity) - weight(b.severity));
-  }, [organizationId, today, timeOff, shiftTrades, inventoryItems, shifts, orgMembers, staffMembers, roleTasks, roleTaskAssignments, settingsRows]);
+  }, [organizationId, today, timeOff, shiftTrades, inventoryItems, shifts, orgMembers, staffMembers, staffRoles, roleTasks, roleTaskAssignments, settingsRows]);
 
   // Current local hour — drives the live pulse, "next scan" time, and which
   // timeline hours read as "not scanned yet" vs "scanned & clear".
@@ -781,6 +1085,7 @@ export function MorningBriefingCard() {
       organizationId ?? "",
       today,
       locale,
+      Date.now(),
     );
   }, [
     organizations, orgMembers, staffMembers, inventoryItems, shifts, timeOff,
@@ -1505,10 +1810,7 @@ export function MorningBriefingCard() {
 
             {/* ── The generated briefing write-up ── */}
             {displayedBriefing ? (
-              <div
-                className="merchiva-rich-text text-[13px] leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: sanitizeBriefingHtml(displayedBriefing.content) }}
-              />
+              <AiBriefingCards html={displayedBriefing.content} />
             ) : busyBriefing ? (
               <div className="flex items-center gap-2 py-1 text-[12px] text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

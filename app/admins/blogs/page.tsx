@@ -301,7 +301,7 @@ export default function AdminsBlogsPage() {
             <tbody className="divide-y divide-stone-100">
               {filtered.map((p) => (
                 <tr key={p.id.toString()} className="hover:bg-stone-50">
-                  <td className="px-3 py-2 text-stone-900">{p.title}</td>
+                  <td className="px-3 py-2 text-foreground">{p.title}</td>
                   <td className="px-3 py-2 font-mono text-[12px] text-stone-600">{p.slug}</td>
                   <td className="px-3 py-2">
                     <Badge variant={p.status === "published" ? "default" : "secondary"}>

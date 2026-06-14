@@ -59,7 +59,7 @@ export default async function BlogPostPage({ params }: PageProps) {
     <SiteShell active="blog">
       <BlogArticle>
         <div className="font-mono text-[11px] uppercase tracking-wider text-stone-500 mb-4">
-          <Link href={`/${locale}/blogs`} className="hover:text-stone-900 transition-colors">
+          <Link href={`/${locale}/blogs`} className="hover:text-foreground transition-colors">
             ← back to blog
           </Link>
         </div>
@@ -105,8 +105,8 @@ export default async function BlogPostPage({ params }: PageProps) {
               ol: (props) => <ol className="my-4 ml-5 list-decimal text-[16px] leading-[1.75] text-stone-800" {...props} />,
               li: (props) => <li className="my-1" {...props} />,
               blockquote: (props) => <blockquote className="my-6 border-l-2 border-stone-400 pl-4 italic text-stone-700" {...props} />,
-              code: (props) => <code className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[14px] text-stone-900" {...props} />,
-              pre: (props) => <pre className="my-6 overflow-x-auto rounded border border-stone-200 bg-stone-50 p-4 font-mono text-[13px] text-stone-900" {...props} />,
+              code: (props) => <code className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[14px] text-foreground" {...props} />,
+              pre: (props) => <pre className="my-6 overflow-x-auto rounded border border-stone-200 bg-stone-50 p-4 font-mono text-[13px] text-foreground" {...props} />,
               hr: () => <hr className="my-10 border-stone-200" />,
               img: (props) => (
                 // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text

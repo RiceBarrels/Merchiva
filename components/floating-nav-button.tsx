@@ -67,6 +67,9 @@ export function FloatingNavButton({
   // so mirror the same shift here to keep it glued to the content edge.
   const { progress: rpProgress, dragging: rpDragging } = useRightPanelMobile();
   const rpShift = -(rpProgress || 0) * getRpanelWidth();
+  const appPromoOffset = "var(--merchiva-app-promo-height, 0px)";
+  const buttonTop = `calc(${safeAreaTop}px + ${appPromoOffset})`;
+  const pillTop = `calc(${26 + safeAreaTop}px + ${appPromoOffset})`;
   const handleClick = () => {
     if (mode === "back") {
       onBack?.();
@@ -79,7 +82,7 @@ export function FloatingNavButton({
 
   const buttonBaseStyle: React.CSSProperties = {
     left: 0,
-    top: safeAreaTop,
+    top: buttonTop,
     zIndex,
     boxShadow: "0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)",
   };
@@ -115,7 +118,7 @@ export function FloatingNavButton({
             <motion.button
               onClick={handleClick}
               className="fixed left-0 p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999 shadow-[0_4px_14px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)]"
-              style={{ top: safeAreaTop, zIndex }}
+              style={{ top: buttonTop, zIndex }}
               initial={{ opacity: 0, scale: 0, rotate: -180 }}
               animate={{
                 opacity: 1 - dialogSwipe,
@@ -132,7 +135,7 @@ export function FloatingNavButton({
               <motion.div
                 key={title}
                 className="fixed"
-                style={{ top: 26 + safeAreaTop, left: 72, zIndex: zIndex + 1 }}
+                style={{ top: pillTop, left: 72, zIndex: zIndex + 1 }}
                 initial={{ opacity: 0, scale: 0.3, x: -30 }}
                 animate={{
                   opacity: 1 - dialogSwipe,
@@ -220,7 +223,7 @@ export function FloatingNavButton({
           <motion.div
             key={title}
             className="fixed"
-            style={{ top: 26 + safeAreaTop, left: 72, zIndex: zIndex + 1 }}
+            style={{ top: pillTop, left: 72, zIndex: zIndex + 1 }}
             initial={{ opacity: 0, scale: 0.3, x: -30 }}
             animate={{ opacity: pillOpacity, scale: pillScale, x: pillX }}
             exit={{ opacity: 0, scale: 0.3, x: -30 }}

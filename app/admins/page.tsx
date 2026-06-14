@@ -40,7 +40,7 @@ export default function AdminsHomePage() {
             <p className="mt-1 text-[13px] leading-relaxed text-stone-600">
               {t(`admins.tiles.${tile.key}.body`)}
             </p>
-            <div className="mt-3 font-mono text-[11px] text-stone-500 group-hover:text-stone-900">
+            <div className="mt-3 font-mono text-[11px] text-stone-500 group-hover:text-foreground">
               {t("admins.home.open")} →
             </div>
           </Link>

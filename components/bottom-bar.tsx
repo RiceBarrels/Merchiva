@@ -12,6 +12,8 @@ import {
 import { usePermissions } from "@/lib/context/permissions";
 import { useUnreadCount } from "@/components/notification-center";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
+import type { BetaFeatureKey } from "@/lib/beta-features";
+import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { hapticLight, hapticMedium } from "@/lib/haptics";
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
@@ -32,6 +34,7 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permissionKey?: keyof Permissions;
+  betaFeature?: BetaFeatureKey;
   mobileOnly?: boolean;
 }
 
@@ -43,13 +46,13 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.personnel", href: "/~/personnel",       icon: Users,           permissionKey: "staffing" },
   { labelKey: "nav.products",  href: "/~/products",        icon: ShoppingBag,     permissionKey: "products" },
   { labelKey: "nav.reports",   href: "/~/reports",         icon: FileBarChart,    permissionKey: "sales" },
-  { labelKey: "nav.customers", href: "/~/customers",       icon: UserRoundSearch, permissionKey: "sales" },
-  { labelKey: "nav.pos",       href: "/~/pos",             icon: MonitorSmartphone, permissionKey: "pos" },
+  { labelKey: "nav.customers", href: "/~/customers",       icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website" },
+  { labelKey: "nav.pos",       href: "/~/pos",             icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
   { labelKey: "nav.punchIn",   href: "/~/punch-in",        icon: KeyRound },
   { labelKey: "nav.chat",      href: "/~/chat",            icon: MessageSquare,   permissionKey: "staffing" },
   { labelKey: "nav.notifications", href: "/~/notifications", icon: Bell },
-  { labelKey: "nav.website",   href: "/~/builder",         icon: Globe,           permissionKey: "website" },
-  { labelKey: "nav.design",    href: "/~/design",          icon: Palette,         permissionKey: "website" },
+  { labelKey: "nav.website",   href: "/~/builder",         icon: Globe,           permissionKey: "website", betaFeature: "website" },
+  { labelKey: "nav.design",    href: "/~/design",          icon: Palette,         permissionKey: "website", betaFeature: "design" },
   { labelKey: "nav.membership", href: "/~/membership",     icon: Crown },
   { labelKey: "nav.settings",  href: "/~/settings",        icon: Settings },
 ];
@@ -63,6 +66,7 @@ export function BottomBar() {
   const pathname = usePathname();
   const { can } = usePermissions();
   const [storeMachine] = useStoreMachineMode();
+  const { betaFeatures } = useBetaFeatures();
   const safeArea = getSafeAreaInsets();
   const [moreOpen, setMoreOpen] = useState(false);
   const unreadCount = useUnreadCount();
@@ -72,6 +76,7 @@ export function BottomBar() {
   const permitted = NAV_ITEMS.filter((item) => {
     if (item.href === "/~/punch-in" && !storeMachine) return false;
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
+    if (item.betaFeature && !betaFeatures[item.betaFeature]) return false;
     if (!item.permissionKey) return true;
     return can(item.permissionKey, "view");
   });

@@ -110,7 +110,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
                   fontWeight: isActive ? 600 : 500,
                   letterSpacing: -0.1,
                 }}
-                className="hover:!text-stone-900 dark:text-stone-100 transition-colors"
+                className="hover:!text-foreground dark:text-stone-100 transition-colors"
               >
                 {t(`landing.nav.${x.navKey}`)}
               </Link>
