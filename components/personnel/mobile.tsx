@@ -376,6 +376,16 @@ export function MobileSchedule({
       );
     });
   }, [rawTrades, orgId, selectedShift]);
+  const activeCoverStatuses = ["pending", "accepted"];
+  const existingCoverRequest = selectedShift
+    ? (rawTrades as any[]).some(
+        (tr) =>
+          tr.organizationId === orgId &&
+          String(tr.shiftId ?? "") === selectedShift.id &&
+          String(tr.type ?? "") === "cover" &&
+          activeCoverStatuses.includes(String(tr.status ?? "")),
+      )
+    : false;
 
   const coverPool = useMemo(
     () =>
@@ -400,6 +410,10 @@ export function MobileSchedule({
         }),
     [rawTrades, orgId, allShifts],
   );
+
+          ["pending", "accepted"].includes(String(tr.status ?? "")),
+      )
+    : false;
 
   // "On now" — based on actual current clock time.
   const nowMin = useMemo(() => {
@@ -619,6 +633,7 @@ export function MobileSchedule({
               key={s.id}
               type="button"
               onClick={() => { setSelectedShiftId(s.id); setShowPeoplePicker(false); }}
+              onClick={() => setSelectedShiftId(s.id)}
               className={cn(
                 "w-full flex items-center gap-2.5 px-4 py-3 bg-background text-left active:bg-muted/60",
                 i < dayShifts.length - 1 && "border-b border-border",
