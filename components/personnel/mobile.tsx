@@ -399,9 +399,6 @@ export function MobileSchedule({
     [rawTrades, orgId, allShifts],
   );
 
-          ["pending", "accepted"].includes(String(tr.status ?? "")),
-      )
-    : false;
 
   // "On now" — based on actual current clock time.
   const nowMin = useMemo(() => {
