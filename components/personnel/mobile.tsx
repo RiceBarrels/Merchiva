@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowRight, Award, Ban, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardCheck, FileEdit, HelpCircle, Inbox, Mail, MoreVertical, Pencil, Play, Plus, Search, Shield, Trash2, UserPlus, X } from "lucide-react";
+import { ArrowRight, Award, Ban, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardCheck, Clock, FileEdit, HelpCircle, Inbox, Mail, MoreVertical, Pencil, Play, Plus, Search, Shield, Trash2, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import { defaultPermissions } from "@/lib/db/team";
-import { removeMember } from "@/lib/spacetimedb/actions";
+import { createShiftTrade, removeMember, updateTradeStatus } from "@/lib/spacetimedb/actions";
 import type { Permissions } from "@/lib/types";
 import {
   InviteMemberDialog,
@@ -25,10 +25,7 @@ import {
   useStaffRoles,
   useTimeOffRequests,
 } from "@/lib/spacetimedb/hooks";
-import {
-  managerApproveShiftTrade,
-  updateTimeOffStatus,
-} from "@/lib/spacetimedb/actions";
+import { updateTimeOffStatus } from "@/lib/spacetimedb/actions";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import {
   Drawer,
@@ -38,6 +35,14 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
+import {
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementDescription,
+  DynamicUIElementFooter,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+} from "@/components/ui/dynamic-ui-element";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -274,7 +279,8 @@ export function MobileSchedule({
 
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
   const [selDate, setSelDate] = useState<string>(() => isoDate(new Date()));
-  void myMemberId;
+  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  const [coverBusy, setCoverBusy] = useState(false);
 
   const week = useMemo(
     () =>
@@ -343,6 +349,24 @@ export function MobileSchedule({
 
   const dayHours = dayShifts.reduce((acc, s) => acc + shiftHours(s), 0);
 
+  const selectedShift = selectedShiftId
+    ? allShifts.find((s) => s.id === selectedShiftId) ?? null
+    : null;
+  const selectedDayShifts = selectedShift
+    ? allShifts
+        .filter((s) => s.date === selectedShift.date)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    : [];
+  const existingCoverRequest = selectedShift
+    ? (rawTrades as any[]).some(
+        (tr) =>
+          tr.organizationId === orgId &&
+          String(tr.shiftId ?? "") === selectedShift.id &&
+          String(tr.type ?? "") === "cover" &&
+          ["pending", "accepted"].includes(String(tr.status ?? "")),
+      )
+    : false;
+
   // "On now" — based on actual current clock time.
   const nowMin = useMemo(() => {
     const n = new Date();
@@ -378,6 +402,33 @@ export function MobileSchedule({
 
   const selDay = new Date(selDate + "T00:00:00");
   const weekLabel = `${week[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${week[6].toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+
+  const selectedShiftName = selectedShift
+    ? members.find((m) => m.id === selectedShift.memberId)?.displayName ?? selectedShift.staffName ?? "—"
+    : "";
+  const canFindCover = !!selectedShift && !!myMemberId && selectedShift.memberId === myMemberId;
+
+  async function requestCover() {
+    if (!selectedShift || !myMemberId || existingCoverRequest) return;
+    setCoverBusy(true);
+    try {
+      await createShiftTrade({
+        organizationId: orgId,
+        shiftId: selectedShift.id,
+        requesterId: myMemberId,
+        broadcastToAll: true,
+        targetId: "",
+        targetShiftId: null,
+        type: "cover",
+        comments: "",
+      });
+      toast.success("Shift added to the cover pool");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not request cover");
+    } finally {
+      setCoverBusy(false);
+    }
+  }
 
   return (
     <div>
@@ -496,10 +547,12 @@ export function MobileSchedule({
               return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
             })();
           return (
-            <div
+            <button
               key={s.id}
+              type="button"
+              onClick={() => setSelectedShiftId(s.id)}
               className={cn(
-                "flex items-center gap-2.5 px-4 py-3 bg-background",
+                "w-full flex items-center gap-2.5 px-4 py-3 bg-background text-left active:bg-muted/60",
                 i < dayShifts.length - 1 && "border-b border-border",
               )}
             >
@@ -539,11 +592,94 @@ export function MobileSchedule({
                   –{formatTimeShort(s.endTime)}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })
       )}
       <div className="h-4" />
+
+      <DynamicUIElement open={!!selectedShift} onOpenChange={(open) => !open && setSelectedShiftId(null)}>
+        <DynamicUIElementContent className="sm:max-w-md" noPadding>
+          {selectedShift && (
+            <>
+              <DynamicUIElementHeader className="px-4 pt-4 pb-3 border-b border-border">
+                <DynamicUIElementTitle mobileTitle="Shift details">
+                  {selectedShiftName}
+                </DynamicUIElementTitle>
+                <DynamicUIElementDescription>
+                  {shortDate(selectedShift.date)} · {formatTimeLong(selectedShift.startTime)}–{formatTimeLong(selectedShift.endTime)}
+                </DynamicUIElementDescription>
+              </DynamicUIElementHeader>
+
+              <div className="px-4 py-4 space-y-4">
+                <div className="rounded-[0.3rem] border border-border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar name={selectedShiftName} size={36} />
+                      <div className="min-w-0">
+                        <div className="text-[14px] font-semibold truncate">{selectedShiftName}</div>
+                        <div className="text-[11.5px] text-muted-foreground">
+                          {selectedShift.staffRoles.length > 0 ? selectedShift.staffRoles.join(" · ") : selectedShift.shiftType}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge mono>{shiftHours(selectedShift).toFixed(1)}h</Badge>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Everyone working that day
+                  </div>
+                  <div className="relative pl-4 space-y-0">
+                    <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
+                    {selectedDayShifts.map((shift) => {
+                      const member = members.find((m) => m.id === shift.memberId);
+                      const name = member?.displayName ?? shift.staffName ?? "—";
+                      const active = shift.id === selectedShift.id;
+                      return (
+                        <div key={shift.id} className="relative pb-3 last:pb-0">
+                          <span
+                            className={cn(
+                              "absolute -left-[14px] top-1.5 h-3 w-3 rounded-full border-2 border-background",
+                              active ? "bg-foreground" : "bg-muted-foreground",
+                            )}
+                          />
+                          <div className={cn("rounded-[0.3rem] border p-2.5", active ? "border-foreground bg-muted/40" : "border-border bg-background")}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Avatar name={name} size={26} />
+                                <span className="text-[13px] font-medium truncate">{name}</span>
+                              </div>
+                              <span className="font-mono tabular-nums text-[11.5px] text-muted-foreground shrink-0">
+                                {formatTimeShort(shift.startTime)}–{formatTimeShort(shift.endTime)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {canFindCover && (
+                <DynamicUIElementFooter className="px-4 py-3 border-t border-border">
+                  <button
+                    type="button"
+                    disabled={coverBusy || existingCoverRequest}
+                    onClick={requestCover}
+                    className="w-full h-10 rounded-[0.3rem] bg-foreground text-background inline-flex items-center justify-center gap-2 text-[13px] font-semibold disabled:opacity-50"
+                  >
+                    {coverBusy ? <Spinner size={16} /> : <Clock className="h-4 w-4" strokeWidth={1.75} />}
+                    {existingCoverRequest ? "Already in cover pool" : "Find cover"}
+                  </button>
+                </DynamicUIElementFooter>
+              )}
+            </>
+          )}
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </div>
   );
 }
@@ -1257,7 +1393,7 @@ export function MobileRequestsSheet({
   const approveTD = async (id: string) => {
     setBusyFor(id, true);
     try {
-      await managerApproveShiftTrade(id, "", true);
+      await updateTradeStatus(id, "accepted");
     } catch (err) {
       console.error("[Personnel mobile] approve trade failed", err);
     } finally {
@@ -1267,7 +1403,7 @@ export function MobileRequestsSheet({
   const denyTD = async (id: string) => {
     setBusyFor(id, true);
     try {
-      await managerApproveShiftTrade(id, "", false);
+      await updateTradeStatus(id, "denied");
     } catch (err) {
       console.error("[Personnel mobile] deny trade failed", err);
     } finally {
