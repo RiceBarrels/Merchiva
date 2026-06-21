@@ -104,7 +104,7 @@ function SubscribeInner() {
   // Once the org has a paid/active subscription there's no reason to sit on the
   // paywall — send them into the app. (Trial users stay so they can upgrade.)
   useEffect(() => {
-    if (access.isSubscribed) router.replace("/~/dashboard");
+    if (access.isSubscribed) router.replace("/~/");
   }, [access.isSubscribed, router]);
 
   const handleSubscribe = useCallback(
@@ -215,7 +215,7 @@ function SubscribeInner() {
         <div className="flex items-center justify-center gap-4 pt-2 text-[12px] text-muted-foreground">
           {access.inTrial && (
             <button
-              onClick={() => router.replace("/~/dashboard")}
+              onClick={() => router.replace("/~/")}
               className="underline underline-offset-4 hover:text-foreground"
             >
               {t("subscribe.continueInTrial")}

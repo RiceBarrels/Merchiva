@@ -83,7 +83,7 @@ type SubNavItem = { labelKey: string; href: string };
 type NavItemExt = NavItem & { mobileOnly?: boolean; children?: SubNavItem[] };
 
 const navItems: NavItemExt[] = [
-  { labelKey: "nav.home",      href: "/~/dashboard",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { labelKey: "nav.home",      href: "/~/",  icon: LayoutDashboard, permissionKey: "dashboard" },
   { labelKey: "nav.pos",       href: "/~/pos",         icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
   { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory",
     children: [
@@ -1223,7 +1223,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // any deep links straight to the dashboard.
   useEffect(() => {
     if (isCapacitor && isCapacitorHiddenPath(pathname)) {
-      router.replace("/~/dashboard");
+      router.replace("/~/");
     }
   }, [isCapacitor, pathname, router]);
 

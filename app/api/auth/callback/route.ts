@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=missing_code", req.url));
   }
 
-  let redirectTo = "/~/dashboard";
+  let redirectTo = "/~/";
   // `desktop` covers both the legacy Electron shell (kept for backwards-compat
   // with already-installed binaries) and the current Tauri shell — both register
   // the same merchiva:// scheme.

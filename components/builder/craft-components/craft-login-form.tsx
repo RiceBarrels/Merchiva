@@ -92,7 +92,7 @@ CraftLoginForm.craft = {
   displayName: "Login Form",
   props: {
     title: "Sign In",
-    redirectUrl: "/~/dashboard",
+    redirectUrl: "/~/",
   },
   related: {},
 };

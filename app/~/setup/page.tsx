@@ -553,13 +553,13 @@ export default function SetupPage() {
         }
       }
       toast.success(t("setup.toast.complete"));
-      router.replace("/~/dashboard");
+      router.replace("/~/");
     } catch {
       // The setup signal lives in SpacetimeDB (settings.updatedAt > createdAt
       // after updateSettings runs). If we got here, that reducer either
       // succeeded or threw — the layout will retry the gate on next mount.
       toast.error(t("setup.toast.error"));
-      router.replace("/~/dashboard");
+      router.replace("/~/");
     }
   }, [storeName, address, addressPlace, businessType, invites, router, t]);
 
