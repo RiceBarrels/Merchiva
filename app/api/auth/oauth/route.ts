@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     // merchiva:// custom protocol instead of the web /auth-callback page so
     // the Electron desktop app can pick up the tokens from the system browser.
     const statePayload = {
-      redirectTo: redirectTo || "/~/dashboard",
+      redirectTo: redirectTo || "/~/",
       client: client === "electron" ? "electron" : "web",
     };
 

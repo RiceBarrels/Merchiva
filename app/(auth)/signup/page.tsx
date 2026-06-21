@@ -61,7 +61,7 @@ function SignupForm() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/~/dashboard";
+  const next = searchParams.get("next") || "/~/";
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -183,7 +183,7 @@ function SignupForm() {
       try {
         const parsedUser = JSON.parse(user);
         addAccountToStorage(access_token, refresh_token, parsedUser);
-        window.location.href = redirect_to || "/~/dashboard";
+        window.location.href = redirect_to || "/~/";
       } catch {
         setError(t("login.oauthFailed"));
       }
@@ -191,7 +191,7 @@ function SignupForm() {
     return unsubscribe;
   }, [t]);
 
-  const loginHref = `/login${next !== "/~/dashboard" ? `?next=${encodeURIComponent(next)}` : ""}`;
+  const loginHref = `/login${next !== "/~/" ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   /* ── Verify screen ──────────────────────────────── */
 

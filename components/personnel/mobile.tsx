@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowRight, Award, Ban, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardCheck, FileEdit, HelpCircle, Inbox, Mail, MoreVertical, Pencil, Play, Plus, Search, Shield, Trash2, UserPlus, X } from "lucide-react";
+import { ArrowRight, Award, Ban, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardCheck, Clock, FileEdit, HelpCircle, Inbox, Mail, MoreVertical, Pencil, Play, Plus, Search, Shield, Trash2, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import { defaultPermissions } from "@/lib/db/team";
-import { removeMember } from "@/lib/spacetimedb/actions";
+import { createShiftTrade, removeMember, updateShift, updateTradeStatus } from "@/lib/spacetimedb/actions";
 import type { Permissions } from "@/lib/types";
 import {
   InviteMemberDialog,
@@ -25,10 +25,7 @@ import {
   useStaffRoles,
   useTimeOffRequests,
 } from "@/lib/spacetimedb/hooks";
-import {
-  managerApproveShiftTrade,
-  updateTimeOffStatus,
-} from "@/lib/spacetimedb/actions";
+import { updateTimeOffStatus } from "@/lib/spacetimedb/actions";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import {
   Drawer,
@@ -38,6 +35,17 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  DynamicUIElement,
+  DynamicUIElementContent,
+  DynamicUIElementDescription,
+  DynamicUIElementFooter,
+  DynamicUIElementHeader,
+  DynamicUIElementTitle,
+} from "@/components/ui/dynamic-ui-element";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -274,7 +282,12 @@ export function MobileSchedule({
 
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
   const [selDate, setSelDate] = useState<string>(() => isoDate(new Date()));
-  void myMemberId;
+  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [poolBusyId, setPoolBusyId] = useState<string | null>(null);
+  const [showPeoplePicker, setShowPeoplePicker] = useState(false);
+  const [changeBusyId, setChangeBusyId] = useState<string | null>(null);
+  const { isOwner, role: orgRole, can } = usePermissions();
 
   const week = useMemo(
     () =>
@@ -343,6 +356,51 @@ export function MobileSchedule({
 
   const dayHours = dayShifts.reduce((acc, s) => acc + shiftHours(s), 0);
 
+  const selectedShift = selectedShiftId
+    ? allShifts.find((s) => s.id === selectedShiftId) ?? null
+    : null;
+  const selectedDayShifts = selectedShift
+    ? allShifts
+        .filter((s) => s.date === selectedShift.date)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    : [];
+  const existingCoverRequest = useMemo(() => {
+    if (!selectedShift) return false;
+    return (rawTrades as any[]).some((tr) => {
+      const status = String(tr.status ?? "");
+      return (
+        tr.organizationId === orgId &&
+        String(tr.shiftId ?? "") === selectedShift.id &&
+        String(tr.type ?? "") === "cover" &&
+        (status === "pending" || status === "accepted")
+      );
+    });
+  }, [rawTrades, orgId, selectedShift]);
+
+  const coverPool = useMemo(
+    () =>
+      (rawTrades as any[])
+        .filter(
+          (tr) =>
+            tr.organizationId === orgId &&
+            String(tr.type ?? "") === "cover" &&
+            String(tr.status ?? "") === "pending" &&
+            !!tr.broadcastToAll,
+        )
+        .map((tr) => ({
+          id: tr.id?.toString?.() ?? String(tr.id),
+          shiftId: String(tr.shiftId ?? ""),
+          requesterId: String(tr.requesterId ?? ""),
+        }))
+        .filter((tr) => allShifts.some((shift) => shift.id === tr.shiftId))
+        .sort((a, b) => {
+          const sa = allShifts.find((shift) => shift.id === a.shiftId);
+          const sb = allShifts.find((shift) => shift.id === b.shiftId);
+          return `${sa?.date ?? ""}${sa?.startTime ?? ""}`.localeCompare(`${sb?.date ?? ""}${sb?.startTime ?? ""}`);
+        }),
+    [rawTrades, orgId, allShifts],
+  );
+
   // "On now" — based on actual current clock time.
   const nowMin = useMemo(() => {
     const n = new Date();
@@ -378,6 +436,67 @@ export function MobileSchedule({
 
   const selDay = new Date(selDate + "T00:00:00");
   const weekLabel = `${week[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${week[6].toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+
+  const selectedShiftName = selectedShift
+    ? members.find((m) => m.id === selectedShift.memberId)?.displayName ?? selectedShift.staffName ?? "—"
+    : "";
+  const canFindCover = !!selectedShift && !!myMemberId && selectedShift.memberId === myMemberId;
+  const canChangePeople = !!selectedShift && (isOwner || orgRole === "manager" || can("staffing", "edit"));
+
+  async function requestCover() {
+    if (!selectedShift || !myMemberId || existingCoverRequest) return;
+    setCoverBusy(true);
+    try {
+      await createShiftTrade({
+        organizationId: orgId,
+        shiftId: selectedShift.id,
+        requesterId: myMemberId,
+        broadcastToAll: true,
+        targetId: "",
+        targetShiftId: null,
+        type: "cover",
+        comments: "",
+      });
+      toast.success("Shift added to the cover pool");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not request cover");
+    } finally {
+      setCoverBusy(false);
+    }
+  }
+
+  async function acceptCoverPoolTrade(tradeId: string) {
+    if (!myMemberId) {
+      toast.error("No active team member found");
+      return;
+    }
+    setPoolBusyId(tradeId);
+    try {
+      await updateTradeStatus(tradeId, "accepted");
+      toast.success("Cover request accepted — waiting for manager approval");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not accept cover request");
+    } finally {
+      setPoolBusyId(null);
+    }
+  }
+
+  async function changeShiftPerson(member: MemberRow) {
+    if (!selectedShift) return;
+    setChangeBusyId(member.id);
+    try {
+      await updateShift(selectedShift.id, {
+        memberId: member.id,
+        staffName: member.displayName,
+      });
+      toast.success("Shift person updated");
+      setShowPeoplePicker(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update shift person");
+    } finally {
+      setChangeBusyId(null);
+    }
+  }
 
   return (
     <div>
@@ -496,10 +615,12 @@ export function MobileSchedule({
               return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
             })();
           return (
-            <div
+            <button
               key={s.id}
+              type="button"
+              onClick={() => { setSelectedShiftId(s.id); setShowPeoplePicker(false); }}
               className={cn(
-                "flex items-center gap-2.5 px-4 py-3 bg-background",
+                "w-full flex items-center gap-2.5 px-4 py-3 bg-background text-left active:bg-muted/60",
                 i < dayShifts.length - 1 && "border-b border-border",
               )}
             >
@@ -539,11 +660,175 @@ export function MobileSchedule({
                   –{formatTimeShort(s.endTime)}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })
       )}
+      <Section title="Cover pool" count={coverPool.length} kicker="Open cover requests that anyone on the team can accept. Manager approval is still required after acceptance.">
+        {coverPool.length === 0 ? (
+          <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
+            No open cover requests.
+          </div>
+        ) : (
+          coverPool.map((request) => {
+            const shift = allShifts.find((s) => s.id === request.shiftId);
+            if (!shift) return null;
+            const requester = members.find((m) => m.id === request.requesterId);
+            const assigned = members.find((m) => m.id === shift.memberId);
+            const isOwnRequest = request.requesterId === myMemberId;
+            return (
+              <Card key={request.id} size="sm" className="mx-3.5 mb-2 rounded-[0.3rem] py-0 shadow-none">
+                <div className="flex items-center gap-3 px-3 py-3">
+                  <Avatar name={assigned?.displayName ?? shift.staffName} size={32} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13.5px] font-semibold truncate">
+                      {assigned?.displayName ?? shift.staffName}
+                    </div>
+                    <div className="font-mono tabular-nums text-[11px] text-muted-foreground">
+                      {shortDate(shift.date)} · {formatTimeShort(shift.startTime)}–{formatTimeShort(shift.endTime)}
+                    </div>
+                    <div className="text-[10.5px] text-muted-foreground truncate">
+                      Requested by {requester?.displayName ?? "team member"}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isOwnRequest ? "outline" : "default"}
+                    disabled={isOwnRequest || poolBusyId === request.id}
+                    onClick={() => acceptCoverPoolTrade(request.id)}
+                    className="h-8 rounded-[0.3rem] px-2.5 text-[12px]"
+                  >
+                    {poolBusyId === request.id ? <Spinner size={12} /> : isOwnRequest ? "Mine" : "Accept"}
+                  </Button>
+                </div>
+              </Card>
+            );
+          })
+        )}
+      </Section>
       <div className="h-4" />
+
+      <DynamicUIElement open={!!selectedShift} onOpenChange={(open) => { if (!open) { setSelectedShiftId(null); setShowPeoplePicker(false); } }}>
+        <DynamicUIElementContent className="sm:max-w-md" noPadding>
+          {selectedShift && (
+            <>
+              <DynamicUIElementHeader className="px-4 pt-4 pb-3 border-b border-border">
+                <DynamicUIElementTitle mobileTitle="Shift details">
+                  {selectedShiftName}
+                </DynamicUIElementTitle>
+                <DynamicUIElementDescription>
+                  {shortDate(selectedShift.date)} · {formatTimeLong(selectedShift.startTime)}–{formatTimeLong(selectedShift.endTime)}
+                </DynamicUIElementDescription>
+              </DynamicUIElementHeader>
+
+              <div className="px-4 py-4 space-y-4">
+                <div className="rounded-[0.3rem] border border-border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Avatar name={selectedShiftName} size={36} />
+                      <div className="min-w-0">
+                        <div className="text-[14px] font-semibold truncate">{selectedShiftName}</div>
+                        <div className="text-[11.5px] text-muted-foreground">
+                          {selectedShift.staffRoles.length > 0 ? selectedShift.staffRoles.join(" · ") : selectedShift.shiftType}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge mono>{shiftHours(selectedShift).toFixed(1)}h</Badge>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Everyone working that day
+                  </div>
+                  <div className="relative pl-4 space-y-0">
+                    <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
+                    {selectedDayShifts.map((shift) => {
+                      const member = members.find((m) => m.id === shift.memberId);
+                      const name = member?.displayName ?? shift.staffName ?? "—";
+                      const active = shift.id === selectedShift.id;
+                      return (
+                        <div key={shift.id} className="relative pb-3 last:pb-0">
+                          <span
+                            className={cn(
+                              "absolute -left-[14px] top-1.5 h-3 w-3 rounded-full border-2 border-background",
+                              active ? "bg-foreground" : "bg-muted-foreground",
+                            )}
+                          />
+                          <div className={cn("rounded-[0.3rem] border p-2.5", active ? "border-foreground bg-muted/40" : "border-border bg-background")}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Avatar name={name} size={26} />
+                                <span className="text-[13px] font-medium truncate">{name}</span>
+                              </div>
+                              <span className="font-mono tabular-nums text-[11.5px] text-muted-foreground shrink-0">
+                                {formatTimeShort(shift.startTime)}–{formatTimeShort(shift.endTime)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {canChangePeople && (
+                <div className="px-4 pb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPeoplePicker((v) => !v)}
+                    className="w-full h-9 rounded-[0.3rem] text-[12.5px]"
+                  >
+                    Change people
+                  </Button>
+                  {showPeoplePicker && (
+                    <div className="mt-2 rounded-[0.3rem] border border-border overflow-hidden">
+                      {members.map((member) => (
+                        <button
+                          key={member.id}
+                          type="button"
+                          disabled={changeBusyId === member.id || selectedShift.memberId === member.id}
+                          onClick={() => changeShiftPerson(member)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background text-left border-t border-border first:border-t-0 disabled:opacity-50"
+                        >
+                          <Avatar name={member.displayName} size={26} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[12.5px] font-medium truncate">{member.displayName}</div>
+                            <div className="text-[10.5px] text-muted-foreground truncate">{member.role}</div>
+                          </div>
+                          {changeBusyId === member.id ? (
+                            <Spinner size={12} />
+                          ) : selectedShift.memberId === member.id ? (
+                            <Badge tone="ok">Current</Badge>
+                          ) : null}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {canFindCover && (
+                <DynamicUIElementFooter className="px-4 py-3 border-t border-border">
+                  <button
+                    type="button"
+                    disabled={coverBusy || existingCoverRequest}
+                    onClick={requestCover}
+                    className="w-full h-10 rounded-[0.3rem] bg-foreground text-background inline-flex items-center justify-center gap-2 text-[13px] font-semibold disabled:opacity-50"
+                  >
+                    {coverBusy ? <Spinner size={16} /> : <Clock className="h-4 w-4" strokeWidth={1.75} />}
+                    {existingCoverRequest ? "Already in cover pool" : "Find cover"}
+                  </button>
+                </DynamicUIElementFooter>
+              )}
+            </>
+          )}
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </div>
   );
 }
@@ -774,23 +1059,24 @@ export function MobileTeam({ orgId }: { orgId: string }) {
     <div>
       {/* Search + invite */}
       <div className="px-3.5 py-2.5 flex gap-2 bg-background border-b border-border">
-        <div className="flex-1 flex items-center gap-1.5 h-8 px-2.5 bg-muted/60 border border-border rounded-[0.3rem]">
-          <Search className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
-          <input
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" strokeWidth={1.75} />
+          <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("personnel.m.search")}
-            className="flex-1 bg-transparent border-0 outline-none text-[12.5px] text-foreground"
+            className="h-9 rounded-[0.3rem] bg-muted/50 pl-8 text-[12.5px]"
           />
         </div>
         {canInviteTeam && (
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => setInviteOpen(true)}
-            className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1"
+            className="h-9 rounded-[0.3rem] px-3 text-[12px]"
           >
             <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} /> {t("personnel.m.invite")}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -805,19 +1091,16 @@ export function MobileTeam({ orgId }: { orgId: string }) {
         ).map((f) => {
           const active = f.id === filter;
           return (
-            <button
+            <Button
               key={f.id}
               type="button"
+              size="xs"
+              variant={active ? "default" : "outline"}
               onClick={() => setFilter(f.id)}
-              className={cn(
-                "h-6 px-2.5 rounded-full border text-[11.5px] shrink-0 whitespace-nowrap",
-                active
-                  ? "bg-foreground text-background border-foreground font-semibold"
-                  : "bg-background text-stone-700 dark:text-stone-200 border-border font-medium",
-              )}
+              className="h-7 rounded-[0.3rem] px-2.5 text-[11.5px] shrink-0 whitespace-nowrap"
             >
               {f.label}
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -828,7 +1111,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
           {t("personnel.m.noMatches")}
         </div>
       ) : (
-        list.map((m, i) => {
+        list.map((m) => {
           const role = roles.find((r) =>
             m.role.toLowerCase().includes(r.name.toLowerCase()),
           );
@@ -839,7 +1122,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
           // surfaces edit/remove, for pending invites it surfaces resend/cancel.
           const canAction = canEditTeam && !isOwner;
           return (
-            <div key={m.id} className={cn("relative", i < list.length - 1 && "border-b border-border")}>
+            <Card key={m.id} size="sm" className="mx-3.5 mt-2 rounded-[0.3rem] py-0 shadow-none">
               <button
                 type="button"
                 disabled={!canAction}
@@ -849,7 +1132,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
                   else openEdit(m.id);
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 bg-background text-left",
+                  "w-full flex items-center gap-3 px-3 py-3 bg-card text-left rounded-[0.3rem]",
                   canAction ? "active:bg-muted/60" : "cursor-default",
                 )}
               >
@@ -885,28 +1168,32 @@ export function MobileTeam({ orgId }: { orgId: string }) {
 
               {/* Pending-invite action sheet (inline expander) */}
               {isInvite && actionsFor === m.id && invId && (
-                <div className="flex gap-2 px-4 pb-3 bg-background">
-                  <button
+                <CardContent className="grid grid-cols-2 gap-2 border-t border-border bg-muted/20 p-2.5">
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="outline"
                     disabled={busyId === invId}
                     onClick={() => doResend(invId)}
-                    className="flex-1 h-8 rounded-[0.3rem] border border-border text-[12px] inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="h-8 rounded-[0.3rem] text-[12px]"
                   >
                     {busyId === invId ? <Spinner size={12} /> : <Mail className="h-3 w-3" strokeWidth={1.75} />}
                     {t("personnel.m.resend")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    size="sm"
+                    variant="destructive"
                     disabled={busyId === invId}
                     onClick={() => doCancel(invId, m.email)}
-                    className="flex-1 h-8 rounded-[0.3rem] border border-destructive/40 text-destructive text-[12px] inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="h-8 rounded-[0.3rem] text-[12px]"
                   >
                     {busyId === invId ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
                     {t("personnel.m.cancel")}
-                  </button>
-                </div>
+                  </Button>
+                </CardContent>
               )}
-            </div>
+            </Card>
           );
         })
       )}
@@ -978,109 +1265,13 @@ export function MobileRoles({ orgId }: { orgId: string }) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  if (selectedId) {
-    const role = roles.find((r) => r.id === selectedId);
-    if (!role) {
-      setSelectedId(null);
-      return null;
-    }
-    const tasks = tasksByRole.get(role.id) ?? [];
-    const members = activeMembers.filter((m) =>
-      m.role.toLowerCase().includes(role.name.toLowerCase()),
-    );
-
-    return (
-      <div>
-        {/* Detail header */}
-        <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-border bg-background">
-          <button
-            type="button"
-            onClick={() => setSelectedId(null)}
-            className="w-8 h-8 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center"
-          >
-            <ChevronLeft className="h-[15px] w-[15px]" strokeWidth={1.75} />
-          </button>
-          <span
-            className="w-8 h-8 rounded-[0.3rem] inline-flex items-center justify-center text-background"
-            style={{ background: role.color }}
-          >
-            <Shield className="h-[15px] w-[15px]" strokeWidth={1.75} />
-          </span>
-          <div className="flex-1 min-w-0">
-            <div className="text-[15px] font-semibold tracking-[-0.01em] truncate">
-              {role.name}
-            </div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">
-              {tt("personnel.m.membersTasks")
-                .replace("{m}", String(members.length))
-                .replace("{t}", String(tasks.length))}
-            </div>
-          </div>
-          <Pencil className="h-[14px] w-[14px] text-muted-foreground" strokeWidth={1.75} />
-        </div>
-
-        {/* Members */}
-        <div className="px-3.5 pt-3 pb-3 bg-background border-b border-border">
-          <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            {tt("personnel.m.members").replace("{n}", String(members.length))}
-          </div>
-          {members.length === 0 ? (
-            <div className="text-[12px] text-muted-foreground py-1">{tt("personnel.m.noMembers")}</div>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {members.map((m) => (
-                <div
-                  key={m.id}
-                  className="inline-flex items-center gap-1.5 pr-2.5 pl-1 py-1 rounded-full border border-border bg-background"
-                >
-                  <Avatar name={m.displayName} size={20} />
-                  <span className="text-[12px] font-medium">
-                    {m.displayName.split(" ")[0]}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Tasks */}
-        <Section title={tt("personnel.m.taskList").replace("{n}", String(tasks.length))}>
-          {tasks.length === 0 ? (
-            <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-              {tt("personnel.m.noTasks")}
-            </div>
-          ) : (
-            tasks.map((t, i) => (
-              <div
-                key={t.id}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 bg-background",
-                  i < tasks.length - 1 ? "border-t border-border" : "border-t border-border",
-                )}
-              >
-                <span className="w-[18px] h-[18px] rounded-sm border-[1.5px] border-border bg-background shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-medium tracking-[-0.01em] text-foreground">
-                    {t.title}
-                  </div>
-                </div>
-                <span className="font-mono tabular-nums text-[11px] text-muted-foreground shrink-0">
-                  {t.startTime && t.endTime
-                    ? `${t.startTime.slice(0, 5)}–${t.endTime.slice(0, 5)}`
-                    : tt("personnel.m.anytime")}
-                </span>
-                <MoreVertical
-                  className="h-3 w-3 text-muted-foreground shrink-0"
-                  strokeWidth={1.75}
-                />
-              </div>
-            ))
-          )}
-        </Section>
-        <div className="h-4" />
-      </div>
-    );
-  }
+  const selectedRole = selectedId ? roles.find((r) => r.id === selectedId) ?? null : null;
+  const selectedTasks = selectedRole ? tasksByRole.get(selectedRole.id) ?? [] : [];
+  const selectedMembers = selectedRole
+    ? activeMembers.filter((m) =>
+        m.role.toLowerCase().includes(selectedRole.name.toLowerCase()),
+      )
+    : [];
 
   return (
     <div>
@@ -1131,6 +1322,106 @@ export function MobileRoles({ orgId }: { orgId: string }) {
         )}
       </Section>
       <div className="h-4" />
+
+      <DynamicUIElement
+        open={!!selectedRole}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      >
+        <DynamicUIElementContent className="sm:max-w-md" noPadding>
+          {selectedRole && (
+            <>
+              <DynamicUIElementHeader className="px-4 pt-4 pb-3 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="w-9 h-9 rounded-[0.3rem] inline-flex items-center justify-center text-background shrink-0"
+                    style={{ background: selectedRole.color }}
+                  >
+                    <Shield className="h-4 w-4" strokeWidth={1.75} />
+                  </span>
+                  <div className="min-w-0">
+                    <DynamicUIElementTitle mobileTitle={selectedRole.name}>
+                      {selectedRole.name}
+                    </DynamicUIElementTitle>
+                    <DynamicUIElementDescription>
+                      {tt("personnel.m.membersTasks")
+                        .replace("{m}", String(selectedMembers.length))
+                        .replace("{t}", String(selectedTasks.length))}
+                    </DynamicUIElementDescription>
+                  </div>
+                </div>
+              </DynamicUIElementHeader>
+
+              <div className="px-4 py-4 space-y-4">
+                {selectedRole.description && (
+                  <div className="rounded-[0.3rem] border border-border bg-muted/20 px-3 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                    {selectedRole.description}
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    {tt("personnel.m.members").replace("{n}", String(selectedMembers.length))}
+                  </div>
+                  {selectedMembers.length === 0 ? (
+                    <div className="text-[12px] text-muted-foreground py-1">{tt("personnel.m.noMembers")}</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedMembers.map((m) => (
+                        <div
+                          key={m.id}
+                          className="inline-flex items-center gap-1.5 pr-2.5 pl-1 py-1 rounded-full border border-border bg-background"
+                        >
+                          <Avatar name={m.displayName} size={20} />
+                          <span className="text-[12px] font-medium">
+                            {m.displayName.split(" ")[0]}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    {tt("personnel.m.taskList").replace("{n}", String(selectedTasks.length))}
+                  </div>
+                  {selectedTasks.length === 0 ? (
+                    <div className="rounded-[0.3rem] border border-dashed border-border px-4 py-6 text-center text-[12.5px] text-muted-foreground">
+                      {tt("personnel.m.noTasks")}
+                    </div>
+                  ) : (
+                    <div className="rounded-[0.3rem] border border-border overflow-hidden">
+                      {selectedTasks.map((task, i) => (
+                        <div
+                          key={task.id}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-3 bg-background",
+                            i > 0 && "border-t border-border",
+                          )}
+                        >
+                          <span className="w-[18px] h-[18px] rounded-sm border-[1.5px] border-border bg-background shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13.5px] font-medium tracking-[-0.01em] text-foreground truncate">
+                              {task.title}
+                            </div>
+                          </div>
+                          <span className="font-mono tabular-nums text-[11px] text-muted-foreground shrink-0">
+                            {task.startTime && task.endTime
+                              ? `${task.startTime.slice(0, 5)}–${task.endTime.slice(0, 5)}`
+                              : tt("personnel.m.anytime")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </DynamicUIElementContent>
+      </DynamicUIElement>
     </div>
   );
 }
@@ -1257,7 +1548,7 @@ export function MobileRequestsSheet({
   const approveTD = async (id: string) => {
     setBusyFor(id, true);
     try {
-      await managerApproveShiftTrade(id, "", true);
+      await updateTradeStatus(id, "accepted");
     } catch (err) {
       console.error("[Personnel mobile] approve trade failed", err);
     } finally {
@@ -1267,7 +1558,7 @@ export function MobileRequestsSheet({
   const denyTD = async (id: string) => {
     setBusyFor(id, true);
     try {
-      await managerApproveShiftTrade(id, "", false);
+      await updateTradeStatus(id, "denied");
     } catch (err) {
       console.error("[Personnel mobile] deny trade failed", err);
     } finally {
