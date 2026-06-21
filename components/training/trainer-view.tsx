@@ -6,22 +6,21 @@ import {
   Award,
   CheckCircle2,
   Clock,
-  Filter,
   MessageSquare,
   RotateCcw,
+  Search,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   useOrgMembers,
-  useTrainingDayGrades,
   useTrainingDays,
   useTrainingObjectiveGrades,
   useTrainingObjectives,
 } from "@/lib/spacetimedb/hooks";
-import { gradeTrainingDay } from "@/lib/spacetimedb/actions";
+import { gradeTrainingObjective } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
-import { DayRail, type DayRailItem } from "./day-rail";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -46,6 +45,17 @@ interface MemberRow {
   id: string;
   displayName: string;
   role: string;
+}
+
+interface LessonRow extends ObjectiveRow {
+  lessonNumber: number;
+  dayNumber: number;
+  dayTitle: string;
+}
+
+interface GradeTarget {
+  traineeId: string;
+  lessonId: string;
 }
 
 function avatarColor(name: string): string {
@@ -75,12 +85,32 @@ function isHtmlContent(s: string): boolean {
   return /<\/?[a-z][\s\S]*>/i.test(s);
 }
 
+function plainTextFromHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function lessonTitle(lesson: LessonRow): string {
+  const raw = lesson.text.trim();
+  const text = isHtmlContent(raw) ? plainTextFromHtml(raw) : raw;
+  return text || `Lesson ${lesson.lessonNumber}`;
+}
+
 export function TrainingTrainerView({ orgId }: { orgId: string }) {
   const t = useT();
   const [rawDays] = useTrainingDays() as [unknown[], boolean];
   const [rawObjectives] = useTrainingObjectives() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
-  const [rawDayGrades] = useTrainingDayGrades() as [unknown[], boolean];
   const [rawObjGrades] = useTrainingObjectiveGrades() as [unknown[], boolean];
 
   const days = useMemo<DayRow[]>(
@@ -98,26 +128,28 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
     [rawDays, orgId],
   );
 
-  const objectivesByDay = useMemo<Map<string, ObjectiveRow[]>>(() => {
-    const map = new Map<string, ObjectiveRow[]>();
-    for (const r of rawObjectives as any[]) {
-      if (r.organizationId !== orgId) continue;
-      const mt = r.mediaType ?? null;
-      const obj: ObjectiveRow = {
-        id: r.id.toString(),
-        dayId: r.dayId,
-        text: r.text,
-        mediaUrl: r.mediaUrl ?? null,
-        mediaType: mt === "image" || mt === "video" ? mt : null,
-        sortOrder: r.sortOrder,
-      };
-      const list = map.get(obj.dayId) ?? [];
-      list.push(obj);
-      map.set(obj.dayId, list);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.sortOrder - b.sortOrder);
-    return map;
-  }, [rawObjectives, orgId]);
+  const lessons = useMemo<LessonRow[]>(() => {
+    const dayMap = new Map(days.map((d) => [d.id, d]));
+    return (rawObjectives as any[])
+      .filter((r) => r.organizationId === orgId && dayMap.has(r.dayId))
+      .map((r) => {
+        const day = dayMap.get(r.dayId)!;
+        const mt = r.mediaType ?? null;
+        return {
+          id: r.id.toString(),
+          dayId: r.dayId,
+          text: r.text,
+          mediaUrl: r.mediaUrl ?? null,
+          mediaType: mt === "image" || mt === "video" ? mt : null,
+          sortOrder: r.sortOrder,
+          lessonNumber: 0,
+          dayNumber: day.dayNumber,
+          dayTitle: day.title,
+        };
+      })
+      .sort((a, b) => a.dayNumber - b.dayNumber || a.sortOrder - b.sortOrder)
+      .map((lesson, index) => ({ ...lesson, lessonNumber: index + 1 }));
+  }, [rawObjectives, orgId, days]);
 
   const trainees = useMemo<MemberRow[]>(
     () =>
@@ -136,446 +168,362 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
     [rawMembers, orgId],
   );
 
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [traineeId, setTraineeId] = useState<string | null>(null);
+  const gradeByTarget = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const g of rawObjGrades as any[]) {
+      if (g.organizationId !== orgId) continue;
+      map.set(`${g.traineeId}:${g.objectiveId}`, g);
+    }
+    return map;
+  }, [rawObjGrades, orgId]);
 
-  useEffect(() => {
-    if (activeId && days.some((d) => d.id === activeId)) return;
-    setActiveId(days[0]?.id ?? null);
-  }, [days, activeId]);
-
-  useEffect(() => {
-    if (traineeId && trainees.some((m) => m.id === traineeId)) return;
-    setTraineeId(trainees[0]?.id ?? null);
-  }, [trainees, traineeId]);
-
-  const activeDay = days.find((d) => d.id === activeId) ?? null;
-  const activeObjectives = activeDay ? objectivesByDay.get(activeDay.id) ?? [] : [];
-  const activeTrainee = trainees.find((m) => m.id === traineeId) ?? null;
-
-  // Per-day completion (n/m) — count of objectives passed by EACH trainee on the day
-  const traineeProgressByDay = useMemo<Record<string, string>>(() => {
-    const out: Record<string, string> = {};
-    const totalTrainees = trainees.length || 0;
-    for (const d of days) {
-      const passed = (rawObjGrades as any[]).filter(
-        (g) =>
-          g.organizationId === orgId &&
-          g.status === "pass" &&
-          (objectivesByDay.get(d.id) ?? []).some((o) => o.id === g.objectiveId),
-      );
-      // Per-trainee — count distinct trainees who passed at least one objective in this day
-      const distinct = new Set<string>(passed.map((g) => g.traineeId));
-      out[d.id] = `${distinct.size}/${totalTrainees}`;
+  const pendingTargets = useMemo<GradeTarget[]>(() => {
+    const out: GradeTarget[] = [];
+    for (const trainee of trainees) {
+      for (const lesson of lessons) {
+        if (!gradeByTarget.has(`${trainee.id}:${lesson.id}`)) {
+          out.push({ traineeId: trainee.id, lessonId: lesson.id });
+        }
+      }
     }
     return out;
-  }, [days, objectivesByDay, rawObjGrades, orgId, trainees.length]);
+  }, [trainees, lessons, gradeByTarget]);
 
-  // Existing day grade for selected trainee + day
-  const existingDayGrade = useMemo(() => {
-    if (!activeDay || !traineeId) return null;
-    return (
-      (rawDayGrades as any[]).find(
-        (g) =>
-          g.organizationId === orgId &&
-          g.traineeId === traineeId &&
-          g.dayId === activeDay.id,
-      ) ?? null
-    );
-  }, [rawDayGrades, orgId, traineeId, activeDay]);
-
-  // Rubric — five 1-5 sliders that average into a 1-5 day rating
-  const [rubric, setRubric] = useState<number[]>([0, 0, 0, 0, 0]);
+  const [target, setTarget] = useState<GradeTarget | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const [notes, setNotes] = useState("");
-  const [verdict, setVerdict] = useState<"pass" | "retry" | null>(null);
+  const [verdict, setVerdict] = useState<"pass" | "fail" | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Re-seed when trainee or day changes
   useEffect(() => {
-    if (existingDayGrade) {
-      // Reverse-engineer a uniform rubric matching the stored rating
-      const r = Math.max(1, Math.min(5, Math.round(existingDayGrade.rating ?? 0)));
-      setRubric([r, r, r, r, r]);
-      setNotes(existingDayGrade.comment ?? "");
-      setVerdict(r >= 3 ? "pass" : "retry");
+    if (target && trainees.some((m) => m.id === target.traineeId) && lessons.some((l) => l.id === target.lessonId)) return;
+    const first = pendingTargets[0];
+    setTarget(first ?? (trainees[0] && lessons[0] ? { traineeId: trainees[0].id, lessonId: lessons[0].id } : null));
+  }, [target, trainees, lessons, pendingTargets]);
+
+  useEffect(() => {
+    if (selectedMemberId && trainees.some((m) => m.id === selectedMemberId)) return;
+    setSelectedMemberId(target?.traineeId ?? trainees[0]?.id ?? null);
+  }, [selectedMemberId, trainees, target]);
+
+  const activeTrainee = trainees.find((m) => m.id === target?.traineeId) ?? null;
+  const activeLesson = lessons.find((l) => l.id === target?.lessonId) ?? null;
+  const selectedMember = trainees.find((m) => m.id === selectedMemberId) ?? null;
+  const existingGrade = target ? gradeByTarget.get(`${target.traineeId}:${target.lessonId}`) ?? null : null;
+
+  useEffect(() => {
+    if (existingGrade) {
+      setVerdict(existingGrade.status === "pass" ? "pass" : "fail");
+      setNotes(existingGrade.comment ?? "");
     } else {
-      setRubric([0, 0, 0, 0, 0]);
-      setNotes("");
       setVerdict(null);
+      setNotes("");
     }
-  }, [existingDayGrade, traineeId, activeId]);
+  }, [existingGrade, target?.traineeId, target?.lessonId]);
 
-  const rubricItems = [
-    { id: 0, label: t("training.rubric.knowsMaterial"), hint: t("training.rubric.knowsMaterialHint") },
-    { id: 1, label: t("training.rubric.practicalSkill"), hint: t("training.rubric.practicalSkillHint") },
-    { id: 2, label: t("training.rubric.speedFlow"), hint: t("training.rubric.speedFlowHint") },
-    { id: 3, label: t("training.rubric.recovery"), hint: t("training.rubric.recoveryHint") },
-    { id: 4, label: t("training.rubric.stationDiscipline"), hint: t("training.rubric.stationDisciplineHint") },
-  ];
+  const filteredTrainees = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return trainees;
+    return trainees.filter((m) => m.displayName.toLowerCase().includes(q));
+  }, [trainees, query]);
 
-  const total = rubric.reduce((a, b) => a + b, 0);
-  const max = 25;
-  const avg = total === 0 ? 0 : total / rubric.length;
+  const selectedMemberLessons = useMemo(() => {
+    if (!selectedMember) return [];
+    return lessons.map((lesson) => ({
+      lesson,
+      grade: gradeByTarget.get(`${selectedMember.id}:${lesson.id}`) ?? null,
+    }));
+  }, [selectedMember, lessons, gradeByTarget]);
+
+  const completedCount = selectedMemberLessons.filter((item) => item.grade).length;
 
   const submit = useCallback(async () => {
-    if (!activeDay || !traineeId || !verdict) return;
-    const rating = Math.max(
-      1,
-      Math.min(5, Math.round(verdict === "pass" ? Math.max(avg, 3) : Math.min(avg || 1, 2))),
-    );
+    if (!target || !verdict) return;
     setBusy(true);
     try {
-      await gradeTrainingDay({
-        traineeId,
-        dayId: activeDay.id,
-        rating,
+      await gradeTrainingObjective({
+        traineeId: target.traineeId,
+        objectiveId: target.lessonId,
+        status: verdict,
         comment: notes.trim() || null,
       });
     } catch (err) {
-      console.error("[Training] submit grade failed", err);
+      console.error("[Training] submit lesson grade failed", err);
     } finally {
       setBusy(false);
     }
-  }, [activeDay, traineeId, verdict, avg, notes]);
-
-  const dayRailItems = useMemo<DayRailItem[]>(
-    () =>
-      days.map((d) => ({
-        id: d.id,
-        dayNumber: d.dayNumber,
-        title: d.title,
-        type: "practice" as const,
-      })),
-    [days],
-  );
-
-  const desc = activeDay?.description ?? "";
+  }, [target, verdict, notes]);
 
   return (
-    <div className="flex-1 min-h-0 flex">
-      <aside className="w-[260px] shrink-0 border-r border-border bg-background hidden lg:flex flex-col">
-        <DayRail
-          days={dayRailItems}
-          activeId={activeId}
-          onSelect={setActiveId}
-          role="trainer"
-          traineeProgress={traineeProgressByDay}
-        />
-      </aside>
-
-      <div className="flex-1 min-w-0 flex flex-col bg-background min-h-0">
-        <div className="border-b border-border px-4 lg:px-6 py-3 flex items-center gap-3 flex-wrap">
-          {activeDay && (
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded-[0.3rem] px-1.5 py-0.5">
-              D{String(activeDay.dayNumber).padStart(2, "0")}
-            </span>
-          )}
-          <div className="flex-1 min-w-[200px]">
-            <div className="text-[15px] font-semibold tracking-[-0.01em] truncate">
-              {activeDay?.title ?? t("training.trainer.pickADay")}
+    <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[420px_minmax(0,1fr)] bg-background">
+      <aside className="border-r border-border min-h-0 flex flex-col">
+        <section className="border-b border-border">
+          <div className="px-4 py-3 flex items-center gap-2">
+            <Award className="h-4 w-4 text-amber-700" strokeWidth={1.75} />
+            <div className="flex-1 min-w-0">
+              <div className="text-[13.5px] font-semibold leading-tight">待改分</div>
+              <div className="text-[10.5px] text-muted-foreground mt-0.5">
+                <span className="font-mono">{pendingTargets.length}</span> lesson grades waiting
+              </div>
             </div>
-            <div className="text-[11.5px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-[11px] w-[11px]" strokeWidth={1.75} />
-                {t("training.trainer.dayN").replace("{n}", String(activeDay?.dayNumber ?? "—"))}
-              </span>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1">
-                <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} />
-                {t("training.trainer.required")}
-              </span>
-              {activeDay && (
-                <>
-                  <span>·</span>
-                  <span>
-                    <span className="font-mono">{traineeProgressByDay[activeDay.id] ?? "0/0"}</span>{" "}
-                    {t("training.trainer.traineesPassed")}
+          </div>
+          <div className="max-h-[260px] overflow-y-auto divide-y divide-border">
+            {pendingTargets.length === 0 ? (
+              <div className="px-4 py-6 text-center text-[12px] text-muted-foreground">
+                No pending lesson grades.
+              </div>
+            ) : (
+              pendingTargets.map((item) => {
+                const trainee = trainees.find((m) => m.id === item.traineeId);
+                const lesson = lessons.find((l) => l.id === item.lessonId);
+                if (!trainee || !lesson) return null;
+                const active = target?.traineeId === item.traineeId && target.lessonId === item.lessonId;
+                return (
+                  <button
+                    key={`${item.traineeId}:${item.lessonId}`}
+                    type="button"
+                    onClick={() => {
+                      setTarget(item);
+                      setSelectedMemberId(item.traineeId);
+                    }}
+                    className={cn(
+                      "w-full px-4 py-3 text-left border-l-2 hover:bg-muted/60 transition-colors",
+                      active ? "bg-muted border-l-foreground" : "border-l-transparent",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={cn("w-7 h-7 rounded-full inline-flex items-center justify-center text-[10.5px] font-semibold", avatarColor(trainee.displayName))}>
+                        {initials(trainee.displayName)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12.5px] font-medium truncate">{trainee.displayName}</div>
+                        <div className="text-[10.5px] text-muted-foreground truncate">
+                          L{String(lesson.lessonNumber).padStart(2, "0")} · {lessonTitle(lesson)}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        <section className="flex-1 min-h-0 flex flex-col">
+          <div className="px-4 py-3 border-b border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
+              <div className="text-[13.5px] font-semibold">全部人员列表</div>
+              <div className="flex-1" />
+              <span className="font-mono text-[10px] text-muted-foreground">{trainees.length}</span>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" strokeWidth={1.75} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search staff"
+                className="h-8 w-full rounded-[0.3rem] border border-border bg-background pl-7 pr-2 text-[12px] outline-none focus:border-stone-400"
+              />
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 grid grid-cols-[170px_minmax(0,1fr)] divide-x divide-border">
+            <div className="overflow-y-auto divide-y divide-border">
+              {filteredTrainees.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setSelectedMemberId(m.id)}
+                  className={cn(
+                    "w-full px-3 py-2.5 text-left flex items-center gap-2 border-l-2 hover:bg-muted/50",
+                    selectedMemberId === m.id ? "bg-muted border-l-foreground" : "border-l-transparent",
+                  )}
+                >
+                  <span className={cn("w-7 h-7 rounded-full inline-flex items-center justify-center text-[10px] font-semibold shrink-0", avatarColor(m.displayName))}>
+                    {initials(m.displayName)}
                   </span>
+                  <span className="min-w-0 flex-1 text-[12px] font-medium truncate">{m.displayName}</span>
+                </button>
+              ))}
+            </div>
+            <div className="overflow-y-auto divide-y divide-border">
+              {!selectedMember ? (
+                <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">Pick a person to grade lessons.</div>
+              ) : (
+                <>
+                  <div className="px-3 py-2 bg-muted/40 text-[11px] text-muted-foreground">
+                    <span className="font-mono">{completedCount}/{lessons.length}</span> lessons graded
+                  </div>
+                  {selectedMemberLessons.map(({ lesson, grade }) => {
+                    const active = target?.traineeId === selectedMember.id && target.lessonId === lesson.id;
+                    return (
+                      <button
+                        key={lesson.id}
+                        type="button"
+                        onClick={() => setTarget({ traineeId: selectedMember.id, lessonId: lesson.id })}
+                        className={cn(
+                          "w-full px-3 py-2.5 text-left border-l-2 hover:bg-muted/50",
+                          active ? "bg-muted border-l-foreground" : "border-l-transparent",
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-muted-foreground">L{String(lesson.lessonNumber).padStart(2, "0")}</span>
+                          <span className="min-w-0 flex-1 text-[12px] font-medium truncate">{lessonTitle(lesson)}</span>
+                          {grade ? (
+                            <span className={cn("text-[10px] font-semibold", grade.status === "pass" ? "text-emerald-700" : "text-amber-700")}>
+                              {grade.status === "pass" ? t("training.pass") : t("training.trainer.retry")}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">待改</span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 text-[10.5px] text-muted-foreground truncate">Day {lesson.dayNumber} · {lesson.dayTitle}</div>
+                      </button>
+                    );
+                  })}
                 </>
               )}
             </div>
           </div>
-          <span
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[0.3rem] font-mono text-[10px] uppercase tracking-wider"
-            style={{
-              background: "#faf5ec",
-              border: "1px solid #ecd9b8",
-              color: "oklch(0.55 0.09 55)",
-            }}
-          >
+        </section>
+      </aside>
+
+      <main className="min-w-0 min-h-0 flex flex-col">
+        <div className="border-b border-border px-4 lg:px-6 py-3 flex items-center gap-3 flex-wrap">
+          {activeLesson && (
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded-[0.3rem] px-1.5 py-0.5">
+              L{String(activeLesson.lessonNumber).padStart(2, "0")}
+            </span>
+          )}
+          <div className="flex-1 min-w-[200px]">
+            <div className="text-[15px] font-semibold tracking-[-0.01em] truncate">
+              {activeLesson ? lessonTitle(activeLesson) : "Pick a lesson"}
+            </div>
+            <div className="text-[11.5px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-[11px] w-[11px]" strokeWidth={1.75} />
+                {activeLesson ? `Day ${activeLesson.dayNumber} · ${activeLesson.dayTitle}` : "No lesson selected"}
+              </span>
+              <span>·</span>
+              <span className="inline-flex items-center gap-1">
+                <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} />
+                Grade by lesson
+              </span>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[0.3rem] font-mono text-[10px] uppercase tracking-wider bg-muted border border-border text-muted-foreground">
             <Award className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.trainer.badge")}
           </span>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 lg:px-10 py-6">
-          <div className="max-w-[640px] mx-auto merchiva-quill-prose">
-            {desc.trim() ? (
-              isHtmlContent(desc) ? (
-                <div dangerouslySetInnerHTML={{ __html: desc }} />
-              ) : (
-                <p className="whitespace-pre-wrap leading-relaxed">{desc}</p>
-              )
-            ) : (
-              <p className="italic text-muted-foreground">
-                {t("training.trainer.noContent")}
-              </p>
-            )}
-
-            {activeObjectives.length > 0 && (
+          <div className="max-w-[760px] mx-auto space-y-5">
+            {activeLesson ? (
               <>
-                <h2>{t("training.trainer.objectives")}</h2>
-                <ul>
-                  {activeObjectives.map((o) => (
-                    <li key={o.id}>
-                      {isHtmlContent(o.text) ? (
-                        <span dangerouslySetInnerHTML={{ __html: o.text }} />
-                      ) : (
-                        o.text
+                <article className="rounded-[0.3rem] border border-border bg-background p-5 merchiva-quill-prose">
+                  <div className="mb-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Lesson content</div>
+                  {isHtmlContent(activeLesson.text) ? (
+                    <div dangerouslySetInnerHTML={{ __html: activeLesson.text }} />
+                  ) : (
+                    <p className="whitespace-pre-wrap leading-relaxed">{activeLesson.text}</p>
+                  )}
+                  {activeLesson.mediaUrl && activeLesson.mediaType === "image" && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={activeLesson.mediaUrl} alt="" className="mt-4 max-h-[320px] rounded-[0.3rem] border border-border object-contain" />
+                  )}
+                  {activeLesson.mediaUrl && activeLesson.mediaType === "video" && (
+                    <video src={activeLesson.mediaUrl} controls className="mt-4 max-h-[320px] w-full rounded-[0.3rem] border border-border" />
+                  )}
+                </article>
+
+                <section className="rounded-[0.3rem] border border-border bg-background overflow-hidden">
+                  <div className="px-4 py-3 flex items-center gap-2.5 bg-muted/30 border-b border-border">
+                    {activeTrainee && (
+                      <span className={cn("w-8 h-8 rounded-full inline-flex items-center justify-center text-[11px] font-semibold shrink-0", avatarColor(activeTrainee.displayName))}>
+                        {initials(activeTrainee.displayName)}
+                      </span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold leading-tight truncate">{activeTrainee?.displayName ?? "No trainee selected"}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">Give a grade for this lesson.</div>
+                    </div>
+                    <button type="button" className="h-7 px-2 rounded-[0.3rem] border border-border bg-background text-[11px] hover:bg-muted inline-flex items-center gap-1" title={t("training.trainer.message")}>
+                      <MessageSquare className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.trainer.dm")}
+                    </button>
+                  </div>
+
+                  <div className="px-4 py-3">
+                    <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Lesson result</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setVerdict("pass")}
+                        disabled={busy}
+                        className={cn(
+                          "flex-1 h-9 rounded-[0.3rem] border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50",
+                          verdict === "pass"
+                            ? "bg-emerald-600 text-white border-emerald-600"
+                            : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 hover:border-emerald-400 hover:text-emerald-700",
+                        )}
+                      >
+                        <CheckCircle2 className="h-[14px] w-[14px]" strokeWidth={1.75} /> {t("training.pass")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVerdict("fail")}
+                        disabled={busy}
+                        className={cn(
+                          "flex-1 h-9 rounded-[0.3rem] border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50",
+                          verdict === "fail"
+                            ? "bg-amber-500 text-white border-amber-500"
+                            : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 hover:border-amber-400 hover:text-amber-700",
+                        )}
+                      >
+                        <RotateCcw className="h-[14px] w-[14px]" strokeWidth={1.75} /> {t("training.trainer.retry")}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-3 border-t border-border">
+                    <div className="flex items-baseline gap-2 mb-1.5">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("training.trainer.notesForTrainee")}</span>
+                      <div className="flex-1" />
+                      {activeTrainee && (
+                        <span className="text-[10.5px] text-muted-foreground">{t("training.trainer.visibleTo").replace("{name}", activeTrainee.displayName.split(" ")[0])}</span>
                       )}
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={4}
+                      disabled={busy}
+                      placeholder={t("training.trainer.notesPlaceholder")}
+                      className="w-full rounded-[0.3rem] border border-border bg-background p-2.5 text-[12.5px] leading-relaxed outline-none focus:border-stone-400 resize-none disabled:opacity-50"
+                    />
+                  </div>
+
+                  <div className="px-4 py-3 border-t border-border bg-muted/20">
+                    <button
+                      type="button"
+                      onClick={submit}
+                      disabled={!target || !verdict || busy}
+                      className="w-full h-9 rounded-[0.3rem] bg-foreground text-background text-[12.5px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+                    >
+                      {t("training.trainer.submitGrade")}
+                      <ArrowRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
+                    </button>
+                  </div>
+                </section>
               </>
+            ) : (
+              <div className="rounded-[0.3rem] border border-border bg-muted/30 px-4 py-10 text-center text-[12.5px] text-muted-foreground">
+                Add lessons to the training curriculum before grading.
+              </div>
             )}
           </div>
         </div>
-      </div>
-
-      {/* Right rail: trainee roster + grading panel */}
-      <aside className="w-[400px] shrink-0 border-l border-border bg-background hidden xl:flex flex-col min-h-0">
-        <div className="px-4 pt-4 pb-3 border-b border-border flex items-center gap-2 shrink-0">
-          <div className="flex-1">
-            <div className="text-[13.5px] font-semibold leading-tight">{t("training.trainer.trainees")}</div>
-            <div className="text-[10.5px] text-muted-foreground mt-0.5">
-              <span className="font-mono">{trainees.length}</span> {t("training.role.active")}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="h-7 w-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted"
-            title={t("training.trainer.filter")}
-          >
-            <Filter className="h-3 w-3" strokeWidth={1.75} />
-          </button>
-        </div>
-
-        <div className="border-b border-border divide-y divide-border shrink-0 max-h-[240px] overflow-y-auto">
-          {trainees.length === 0 ? (
-            <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">
-              {t("training.trainer.noTraineesYet")}
-            </div>
-          ) : (
-            trainees.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setTraineeId(m.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2.5 flex items-center gap-2.5 border-l-2 transition-colors",
-                  traineeId === m.id
-                    ? "bg-muted border-l-foreground"
-                    : "border-l-transparent hover:bg-muted/50",
-                )}
-              >
-                <span
-                  className={cn(
-                    "w-7 h-7 rounded-full inline-flex items-center justify-center text-[10.5px] font-semibold shrink-0",
-                    avatarColor(m.displayName),
-                  )}
-                >
-                  {initials(m.displayName)}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12.5px] font-medium leading-tight truncate">
-                    {m.displayName}
-                  </div>
-                  <div className="text-[10.5px] text-muted-foreground mt-0.5">{m.role}</div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-
-        {activeTrainee && activeDay ? (
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <div className="px-4 pt-4 pb-3 flex items-center gap-2.5 bg-muted/30">
-              <span
-                className={cn(
-                  "w-8 h-8 rounded-full inline-flex items-center justify-center text-[11px] font-semibold shrink-0",
-                  avatarColor(activeTrainee.displayName),
-                )}
-              >
-                {initials(activeTrainee.displayName)}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-semibold leading-tight truncate">
-                  {activeTrainee.displayName}
-                </div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">
-                  {t("training.trainer.gradingDay").replace("{n}", String(activeDay.dayNumber))}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="h-7 px-2 rounded-[0.3rem] border border-border bg-background text-[11px] hover:bg-muted inline-flex items-center gap-1"
-                title={t("training.trainer.message")}
-              >
-                <MessageSquare className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.trainer.dm")}
-              </button>
-            </div>
-
-            {/* Rubric */}
-            <div className="border-y border-border">
-              <div className="px-4 py-2 flex items-center gap-2 bg-muted/60 border-b border-border">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {t("training.trainer.rubricLabel")}
-                </span>
-                <div className="flex-1" />
-                <span className="font-mono text-[11px] tabular-nums">
-                  <span className="text-foreground font-semibold">{total}</span>
-                  <span className="text-muted-foreground">/{max}</span>
-                </span>
-              </div>
-              {rubricItems.map((r) => (
-                <RubricRow
-                  key={r.id}
-                  label={r.label}
-                  hint={r.hint}
-                  value={rubric[r.id]}
-                  onChange={(v) =>
-                    setRubric((prev) => prev.map((x, i) => (i === r.id ? v : x)))
-                  }
-                  disabled={busy}
-                />
-              ))}
-            </div>
-
-            {/* Notes */}
-            <div className="px-4 py-3">
-              <div className="flex items-baseline gap-2 mb-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {t("training.trainer.notesForTrainee")}
-                </span>
-                <div className="flex-1" />
-                <span className="text-[10.5px] text-muted-foreground">
-                  {t("training.trainer.visibleTo").replace("{name}", activeTrainee.displayName.split(" ")[0])}
-                </span>
-              </div>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
-                disabled={busy}
-                placeholder={t("training.trainer.notesPlaceholder")}
-                className="w-full rounded-[0.3rem] border border-border bg-background p-2.5 text-[12.5px] leading-relaxed outline-none focus:border-stone-400 resize-none disabled:opacity-50"
-              />
-            </div>
-
-            {/* Verdict + submit */}
-            <div className="px-4 py-3 border-t border-border bg-muted/20">
-              <div className="flex items-center gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setVerdict("pass")}
-                  className={cn(
-                    "flex-1 h-9 rounded-[0.3rem] border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors",
-                    verdict === "pass"
-                      ? "bg-emerald-600 text-white border-emerald-600"
-                      : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 hover:border-emerald-400 hover:text-emerald-700",
-                  )}
-                >
-                  <CheckCircle2 className="h-[14px] w-[14px]" strokeWidth={1.75} /> {t("training.pass")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVerdict("retry")}
-                  className={cn(
-                    "flex-1 h-9 rounded-[0.3rem] border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors",
-                    verdict === "retry"
-                      ? "bg-amber-500 text-white border-amber-500"
-                      : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 hover:border-amber-400 hover:text-amber-700",
-                  )}
-                >
-                  <RotateCcw className="h-[14px] w-[14px]" strokeWidth={1.75} /> {t("training.trainer.retry")}
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={!verdict || total === 0 || busy}
-                className="w-full h-9 rounded-[0.3rem] bg-foreground text-background text-[12.5px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
-              >
-                {t("training.trainer.submitGrade")}
-                <ArrowRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
-              </button>
-              <div className="mt-1.5 text-[10.5px] text-muted-foreground text-center">
-                {t("training.trainer.willBeNotified").replace("{name}", activeTrainee.displayName.split(" ")[0])}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center px-4 text-[12.5px] text-muted-foreground text-center">
-            {t("training.trainer.pickTrainee")}
-          </div>
-        )}
-      </aside>
-    </div>
-  );
-}
-
-function RubricRow({
-  label,
-  hint,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  hint: string;
-  value: number;
-  onChange: (v: number) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="px-4 py-3 border-t border-border first:border-t-0">
-      <div className="flex items-baseline gap-2 mb-2">
-        <div className="text-[12.5px] font-medium flex-1">{label}</div>
-        <div className="font-mono text-[10.5px] text-muted-foreground">{hint}</div>
-      </div>
-      <div className="flex items-center gap-1.5">
-        {[1, 2, 3, 4, 5].map((n) => {
-          const filled = value >= n;
-          const isTop = value === n;
-          return (
-            <button
-              key={n}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(n)}
-              className={cn(
-                "flex-1 h-7 rounded-[0.3rem] border text-[11px] font-mono tabular-nums font-semibold transition-colors disabled:cursor-not-allowed",
-                filled
-                  ? isTop
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-stone-800 text-white border-stone-800"
-                  : "bg-background text-muted-foreground border-border hover:border-stone-400",
-              )}
-            >
-              {n}
-            </button>
-          );
-        })}
-        <div className="ml-2 w-[80px] text-right">
-          {value > 0 ? (
-            <span className="font-mono text-[11px] tabular-nums">
-              <span className="text-foreground font-semibold">{value}</span>
-              <span className="text-muted-foreground">/5</span>
-            </span>
-          ) : (
-            <span className="font-mono text-[10.5px] text-muted-foreground">—</span>
-          )}
-        </div>
-      </div>
+      </main>
     </div>
   );
 }
