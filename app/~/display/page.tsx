@@ -634,7 +634,7 @@ export default function DisplayPage() {
   }, []);
 
   const handleBack = useCallback(() => {
-    router.push("/dashboard");
+    router.push("/~/");
   }, [router]);
 
   const handleModeChange = useCallback((newMode: DisplayMode) => {

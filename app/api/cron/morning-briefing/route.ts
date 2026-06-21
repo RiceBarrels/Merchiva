@@ -381,7 +381,7 @@ export async function POST(req: NextRequest) {
             type: "briefing",
             title: copy.title,
             body: copy.body(newCount),
-            link: "/~/dashboard",
+            link: "/~/",
           });
           notified++;
         }

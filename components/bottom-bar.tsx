@@ -39,7 +39,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { labelKey: "nav.home",      href: "/~/dashboard",      icon: LayoutDashboard, permissionKey: "dashboard" },
+  { labelKey: "nav.home",      href: "/~/",      icon: LayoutDashboard, permissionKey: "dashboard" },
   { labelKey: "nav.inventory", href: "/~/inventory",       icon: Package,         permissionKey: "inventory" },
   { labelKey: "nav.wasteLog",  href: "/~/inventory/waste", icon: Trash2,          permissionKey: "inventory" },
   { labelKey: "nav.sales",     href: "/~/sales",           icon: TrendingUp,      permissionKey: "sales" },
@@ -59,7 +59,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in", "/~/chat"]);
 
-const PRIMARY_HREFS = ["/~/dashboard", "/~/personnel", "/~/chat", "/~/notifications"];
+const PRIMARY_HREFS = ["/~/", "/~/personnel", "/~/chat", "/~/notifications"];
 
 export function BottomBar() {
   const t = useT();
