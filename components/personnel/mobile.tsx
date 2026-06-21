@@ -617,8 +617,10 @@ export function MobileSchedule({
             <button
               key={s.id}
               type="button"
-              onClick={() => { setSelectedShiftId(s.id); setShowPeoplePicker(false); }}
-              onClick={() => setSelectedShiftId(s.id)}
+              onClick={() => {
+                setSelectedShiftId(s.id);
+                setShowPeoplePicker(false);
+              }}
               className={cn(
                 "w-full flex items-center gap-2.5 px-4 py-3 bg-background text-left active:bg-muted/60",
                 i < dayShifts.length - 1 && "border-b border-border",
