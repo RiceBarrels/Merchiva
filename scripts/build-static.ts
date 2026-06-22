@@ -26,6 +26,7 @@ import { join, relative, dirname } from "path";
 
 const ROOT = join(import.meta.dir, "..");
 const APP_DIR = join(ROOT, "app");
+const API_DIR = join(APP_DIR, "api");
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
@@ -72,6 +73,10 @@ function findFilesRecursive(dir: string, match: (name: string) => boolean): stri
 
 function isDynamicPath(p: string): boolean { return p.includes("["); }
 function rel(p: string) { return relative(ROOT, p); }
+function isApiPath(p: string): boolean {
+  const appRel = relative(APP_DIR, p);
+  return appRel === "api" || appRel.startsWith("api/");
+}
 
 function extractParams(filePath: string): string[] {
   const matches = filePath.match(/\[([a-zA-Z]+)\]/g);
@@ -234,6 +239,7 @@ function collectDynamicDirs(dir: string) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     if (!statSync(full).isDirectory()) continue;
+    if (full === API_DIR || isApiPath(full)) continue;
     if (entry.includes("[")) dynamicDirs.push(full);
     collectDynamicDirs(full);
   }
@@ -368,6 +374,9 @@ try {
 
 } catch (err) {
   console.error("\n❌ Build failed!\n");
+  if (err instanceof Error) {
+    console.error(err.message);
+  }
   process.exitCode = 1;
 } finally {
   if (!dryRun) {
