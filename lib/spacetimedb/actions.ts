@@ -31,6 +31,159 @@ function orgId(): string {
   return getActiveOrgId();
 }
 
+function rowIdString(id: unknown): string {
+  const value = id as { toHexString?: () => string; toString?: () => string } | null | undefined;
+  if (typeof value?.toHexString === "function") return value.toHexString();
+  return String(value ?? "");
+}
+
+function hasOwn(obj: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function finiteInventoryNumber(value: unknown, field: string): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    throw new Error(`Invalid inventory ${field}: ${String(value)}`);
+  }
+  return n;
+}
+
+function requiredInventoryText(value: unknown, field: string): string {
+  const text = String(value ?? "").trim();
+  if (!text) throw new Error(`Inventory ${field} cannot be blank`);
+  return text;
+}
+
+function finiteNumber(value: unknown, field: string): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    throw new Error(`Invalid ${field}: ${String(value)}`);
+  }
+  return n;
+}
+
+function requiredText(value: unknown, field: string): string {
+  const text = String(value ?? "").trim();
+  if (!text) throw new Error(`${field} cannot be blank`);
+  return text;
+}
+
+function jsonArrayOrNull(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    const text = value.trim();
+    return text ? text : null;
+  }
+  if (Array.isArray(value)) return JSON.stringify(value);
+  return null;
+}
+
+// updateInventoryItem is a full-row reducer. AI actions and undo operations often
+// send partial patches, so merge them with the subscribed cache before calling it.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) {
+  const organizationId = orgId();
+  const c = getConnection();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (c as any)?.db?.inventoryItem?.iter ? [...(c as any).db.inventoryItem.iter()] : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const current = rows.find((r: any) => r.organizationId === organizationId && rowIdString(r.id) === itemId);
+
+  const value = (key: string) => (hasOwn(data, key) ? data[key] : current?.[key]);
+  const required = [
+    "name",
+    "category",
+    "currentStock",
+    "minStock",
+    "maxStock",
+    "unit",
+    "costPerUnit",
+    "supplier",
+    "lastRestocked",
+    "lossRate",
+  ];
+  const missing = required.filter((key) => value(key) === undefined || value(key) === null);
+  if (missing.length > 0) {
+    throw new Error(`Cannot update inventory item without current ${missing.join(", ")} values`);
+  }
+
+  const minOrderQty = hasOwn(data, "minOrderQty") ? data.minOrderQty : current?.minOrderQty;
+  const unitsPerCase = hasOwn(data, "unitsPerCase") ? data.unitsPerCase : current?.unitsPerCase;
+  const description = hasOwn(data, "description") ? data.description : current?.description;
+  const unitContentAmount = hasOwn(data, "unitContentAmount") ? data.unitContentAmount : current?.unitContentAmount;
+  const unitContentUnit = hasOwn(data, "unitContentUnit") ? data.unitContentUnit : current?.unitContentUnit;
+
+  return {
+    organizationId,
+    itemId,
+    name: requiredInventoryText(value("name"), "name"),
+    category: String(value("category") ?? "General").trim() || "General",
+    currentStock: finiteInventoryNumber(value("currentStock"), "currentStock"),
+    minStock: finiteInventoryNumber(value("minStock"), "minStock"),
+    maxStock: finiteInventoryNumber(value("maxStock"), "maxStock"),
+    unit: requiredInventoryText(value("unit"), "unit"),
+    costPerUnit: finiteInventoryNumber(value("costPerUnit"), "costPerUnit"),
+    supplier: String(value("supplier") ?? ""),
+    lastRestocked: String(value("lastRestocked") ?? new Date().toISOString().slice(0, 10)),
+    lossRate: finiteInventoryNumber(value("lossRate"), "lossRate"),
+    minOrderQty: minOrderQty == null ? null : finiteInventoryNumber(minOrderQty, "minOrderQty"),
+    unitsPerCase: unitsPerCase == null ? null : finiteInventoryNumber(unitsPerCase, "unitsPerCase"),
+    description: description == null ? null : String(description),
+    unitContentAmount: unitContentAmount == null || unitContentAmount === "" ? null : finiteInventoryNumber(unitContentAmount, "unitContentAmount"),
+    unitContentUnit: unitContentUnit == null ? null : String(unitContentUnit).trim() || null,
+  };
+}
+
+// updateProduct is also a full-row reducer. Merge patches with the live row so
+// focused UI/actions like "change price" or "edit recipe" preserve every field.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildProductUpdatePayload(productId: string, data: Record<string, any>) {
+  const organizationId = orgId();
+  const c = getConnection();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (c as any)?.db?.product?.iter ? [...(c as any).db.product.iter()] : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const current = rows.find((r: any) => rowIdString(r.id) === productId);
+  const value = (...keys: string[]) => {
+    for (const key of keys) {
+      if (hasOwn(data, key)) return data[key];
+    }
+    for (const key of keys) {
+      if (current?.[key] !== undefined) return current[key];
+    }
+    return undefined;
+  };
+
+  const availableStoreIds = hasOwn(data, "availableStoreIds")
+    ? data.availableStoreIds
+    : current?.availableStoreIds;
+  const inventoryUsage = hasOwn(data, "inventoryUsage")
+    ? data.inventoryUsage
+    : current?.inventoryUsage;
+  const nameI18N = value("nameI18N", "nameI18n");
+
+  return {
+    organizationId,
+    productId,
+    name: requiredText(value("name"), "Product name"),
+    category: String(value("category") ?? "Other").trim() || "Other",
+    price: finiteNumber(value("price"), "product price"),
+    cost: finiteNumber(value("cost"), "product cost"),
+    trend: String(value("trend") ?? "stable"),
+    alert: String(value("alert") ?? "none"),
+    alertReason: value("alertReason") == null ? null : String(value("alertReason")),
+    imageUrl: value("imageUrl") == null ? null : String(value("imageUrl")),
+    description: value("description") == null ? null : String(value("description")),
+    nameI18N: nameI18N == null ? null : typeof nameI18N === "string" ? nameI18N : JSON.stringify(nameI18N),
+    options: value("options") == null ? null : String(value("options")),
+    availableStoreIds: Array.isArray(availableStoreIds)
+      ? JSON.stringify(availableStoreIds)
+      : (availableStoreIds ?? null),
+    inventoryUsage: jsonArrayOrNull(inventoryUsage),
+  };
+}
+
 async function offlineAware(
   reducerName: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,7 +222,7 @@ export async function addInventoryItem(data: any, _userId?: string): Promise<voi
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateInventoryItem(itemId: string, data: any): Promise<void> {
-  return offlineAware("updateInventoryItem", { organizationId: orgId(), itemId, ...data, ...operatorArgs() });
+  return offlineAware("updateInventoryItem", { ...buildInventoryUpdatePayload(itemId, data), ...operatorArgs() });
 }
 
 export async function deleteInventoryItem(itemId: string): Promise<void> {
@@ -85,6 +238,7 @@ export async function addInventoryTransaction(data: any): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addProduct(data: any, _userId?: string): Promise<void> {
+  const nameI18N = data.nameI18N ?? data.nameI18n;
   return offlineAware("addProduct", {
     organizationId: orgId(),
     name: data.name,
@@ -93,24 +247,18 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
     cost: data.cost ?? 0,
     imageUrl: data.imageUrl ?? null,
     description: data.description ?? null,
-    nameI18N: data.nameI18N ? JSON.stringify(data.nameI18N) : null,
+    nameI18N: nameI18N ? (typeof nameI18N === "string" ? nameI18N : JSON.stringify(nameI18N)) : null,
     options: data.options ?? null,
     availableStoreIds: Array.isArray(data.availableStoreIds)
       ? JSON.stringify(data.availableStoreIds)
       : (data.availableStoreIds ?? null),
+    inventoryUsage: jsonArrayOrNull(data.inventoryUsage),
   });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateProduct(productId: string, data: any): Promise<void> {
-  const payload = { ...data };
-  if (payload.nameI18N && typeof payload.nameI18N !== "string") {
-    payload.nameI18N = JSON.stringify(payload.nameI18N);
-  }
-  if (Array.isArray(payload.availableStoreIds)) {
-    payload.availableStoreIds = JSON.stringify(payload.availableStoreIds);
-  }
-  return offlineAware("updateProduct", { organizationId: orgId(), productId, ...payload });
+  return offlineAware("updateProduct", buildProductUpdatePayload(productId, data));
 }
 
 export async function deleteProduct(productId: string): Promise<void> {
@@ -406,6 +554,13 @@ export async function updateSettings(data: any): Promise<void> {
   return conn().reducers.updateSettings({ organizationId: orgId(), ...data });
 }
 
+export async function setSupplierInboundPrefix(prefix: string): Promise<void> {
+  return (conn().reducers as Record<string, (args: unknown) => void>).setSupplierInboundPrefix({
+    organizationId: orgId(),
+    prefix,
+  });
+}
+
 // Disconnect integrations — update settings with null tokens
 export async function disconnectSquare(_userId: string): Promise<void> {
   return conn().reducers.updateSettings({
@@ -418,6 +573,27 @@ export async function disconnectSquare(_userId: string): Promise<void> {
 
 export async function disconnectClover(_userId: string): Promise<void> {
   return conn().reducers.disconnectClover({ organizationId: orgId() });
+}
+
+export async function setScheduleIntegration(data: {
+  provider: string;
+  companyGuid?: string | null;
+  companyId?: string | null;
+  locationId?: string | null;
+}): Promise<void> {
+  return (conn().reducers as Record<string, (args: unknown) => void>).setScheduleIntegration({
+    organizationId: orgId(),
+    provider: data.provider,
+    companyGuid: data.companyGuid ?? undefined,
+    companyId: data.companyId ?? undefined,
+    locationId: data.locationId ?? undefined,
+  });
+}
+
+export async function disconnectScheduleIntegration(): Promise<void> {
+  return (conn().reducers as Record<string, (args: unknown) => void>).disconnectScheduleIntegration({
+    organizationId: orgId(),
+  });
 }
 
 // ─── Sites ────────────────────────────────────────────────────────────────────

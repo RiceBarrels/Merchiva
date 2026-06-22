@@ -35,4 +35,13 @@ export default __t.row({
   countryCode: __t.option(__t.string()).name("country_code"),
   assistantConfig: __t.option(__t.string()).name("assistant_config"),
   betaFeatures: __t.option(__t.string()).name("beta_features"),
+  scheduleProvider: __t.option(__t.string()).name("schedule_provider"),
+  scheduleConnected: __t.option(__t.bool()).name("schedule_connected"),
+  scheduleCompanyGuid: __t.option(__t.string()).name("schedule_company_guid"),
+  scheduleCompanyId: __t.option(__t.string()).name("schedule_company_id"),
+  scheduleLocationId: __t.option(__t.string()).name("schedule_location_id"),
+  scheduleLastSyncedAt: __t.option(__t.timestamp()).name("schedule_last_synced_at"),
+  scheduleLastSyncStatus: __t.option(__t.string()).name("schedule_last_sync_status"),
+  scheduleLastSyncSummary: __t.option(__t.string()).name("schedule_last_sync_summary"),
+  supplierInboundPrefix: __t.option(__t.string()).name("supplier_inbound_prefix"),
 });

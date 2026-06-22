@@ -3,6 +3,10 @@ import type { MerchivaSkill } from "../types";
 // Memory skill doesn't parse AI output — it manages context sent TO the AI
 export const memorySkill: MerchivaSkill<null> = {
   id: "memory",
+  title: "Memory",
+  description: "Persist durable store facts and user preferences from assistant output.",
+  category: "memory",
+  enabledByDefault: true,
   parse: (text: string) => ({ cleanText: text, data: null }),
   promptSegment: `MEMORY SYSTEM:
 You have access to persistent memory about this store and user:

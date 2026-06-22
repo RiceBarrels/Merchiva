@@ -49,6 +49,17 @@ export function useSettings() {
       paymentTaxRate:      r.paymentTaxRate != null ? Number(r.paymentTaxRate) : null,
       paymentCurrency:     r.paymentCurrency ?? null,
       betaFeatures:        r.betaFeatures ?? null,
+      scheduleProvider:    r.scheduleProvider ?? null,
+      scheduleConnected:   Boolean(r.scheduleConnected),
+      scheduleCompanyGuid: r.scheduleCompanyGuid ?? null,
+      scheduleCompanyId:   r.scheduleCompanyId ?? null,
+      scheduleLocationId:  r.scheduleLocationId ?? null,
+      scheduleLastSyncedAt: r.scheduleLastSyncedAt
+        ? r.scheduleLastSyncedAt.toDate?.().toISOString?.() ?? String(r.scheduleLastSyncedAt)
+        : null,
+      scheduleLastSyncStatus: r.scheduleLastSyncStatus ?? null,
+      scheduleLastSyncSummary: r.scheduleLastSyncSummary ?? null,
+      supplierInboundPrefix: r.supplierInboundPrefix ?? null,
     };
   }, [rawSettings, organizationId]);
 

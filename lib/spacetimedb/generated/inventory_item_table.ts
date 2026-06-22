@@ -28,4 +28,7 @@ export default __t.row({
   updatedAt: __t.timestamp().name("updated_at"),
   minOrderQty: __t.option(__t.f64()).name("min_order_qty"),
   unitsPerCase: __t.option(__t.f64()).name("units_per_case"),
+  description: __t.option(__t.string()),
+  unitContentAmount: __t.option(__t.f64()).name("unit_content_amount"),
+  unitContentUnit: __t.option(__t.string()).name("unit_content_unit"),
 });

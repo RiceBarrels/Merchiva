@@ -11,6 +11,11 @@ import {
   merchivaToolsEnabled,
   TOOLS_PROMPT_BLOCK,
 } from "@/lib/merchiva/tools";
+import {
+  buildMcpToolContext,
+  closeMcpClients,
+  type McpToolContext,
+} from "@/lib/merchiva/mcp/ai-tools";
 
 function getOpenRouter() {
   const key = process.env.OPENROUTER_API_KEY;
@@ -842,6 +847,7 @@ export function buildSystemPrompt(
   // When true, the model fetches live data via read-tools instead of receiving
   // the full JSON dump — we inline only a slim overview + the tools guide.
   toolsEnabled = false,
+  mcpPrompt = "",
 ): string {
   const skillPrompts = getAllPromptSegments();
   const currentDateAndTime = new Date().toLocaleString(lang);
@@ -898,6 +904,7 @@ CAPABILITIES:
 - Suggest actions that the user can approve
 
 ${skillPrompts}
+${mcpPrompt ? `\n${mcpPrompt}\n` : ""}
 
 CURRENT DATE AND TIME (use this for time-based analysis):
 ${currentDateAndTime}
@@ -927,6 +934,7 @@ RULES:
 - For role/position management, use the addRole, updateRole, deleteRole actions. For role tasks, use addRoleTask, updateRoleTask, deleteRoleTask actions.
 - When modifying or deleting items, you need IDs. Check the LIVE STORE DATA for the relevant IDs. If the ID is not available, ask the user to identify the item.
 - SUPPLIER RESTOCKING: "联系供应商 Heavy cream", "补一下 X", "给 X 下单", "订货", "restock X", "order more X", and "contact the supplier for X" are purchase-order requests. Resolve X from LIVE STORE DATA inventory, match its supplier name to LIVE STORE DATA suppliers[].id, then output an \`orderFromSupplier\` action. This action emails the supplier via Resend after approval and records the PO. Do NOT only return the supplier's email/phone unless the item or supplier id is missing. Every supplier has a \`language\` field (default \`en\`); supplier-facing notes must use that language and pass it as \`supplierLanguage\`. Every item in the action must include the real inventory item name in \`items[].name\` (never blank/dash). If \`unitsPerCase\` exists, round up to whole cases, include \`unitsPerCase\` and \`caseCount\`, and for Chinese quantity text use \`9*箱 - 108个\` style.
+- PRODUCT INVENTORY USAGE: when the user says a product consumes inventory ("Latte uses 80ml milk", "croissant uses 1 butter sheet"), update/create that product with \`inventoryUsage: [{inventoryItemId, inventoryItemName, quantity, unit}]\` using real inventory ids from LIVE STORE DATA / viewInventory. Do not store this only as prose.
 
 SCHEDULING RULES:
 - Before scheduling, check the "availability" array to see who is available on the requested day.
@@ -1212,7 +1220,30 @@ export async function POST(req: NextRequest) {
     // and we know which org to read.
     const orgId = typeof organizationId === "string" ? organizationId : undefined;
     const toolsEnabled = merchivaToolsEnabled() && !!orgId && !isBuilderMode;
-    const systemPrompt = buildSystemPrompt(context ?? {}, lang ?? "en", memCtx, userPerms, callMode, toolsEnabled);
+    const mcpContext = isBuilderMode
+      ? ({ tools: {}, clients: [], prompt: "", connected: [], errors: [] } satisfies McpToolContext)
+      : await buildMcpToolContext(body.mcpServers);
+    const systemPrompt = buildSystemPrompt(
+      context ?? {},
+      lang ?? "en",
+      memCtx,
+      userPerms,
+      callMode,
+      toolsEnabled,
+      mcpContext.prompt,
+    );
+    const toolOptions = () => {
+      const localTools = toolsEnabled && orgId
+        ? buildMerchivaTools({
+            organizationId: orgId,
+            today: (context as Record<string, unknown> | undefined)?.today as string | undefined,
+          })
+        : {};
+      const allTools = { ...localTools, ...mcpContext.tools };
+      return Object.keys(allTools).length > 0
+        ? { tools: allTools, stopWhen: stepCountIs(6) }
+        : {};
+    };
 
     // Conversation messages only — the system prompt is passed via the SDK's
     // `system` option (not as a messages[] entry) to avoid the prompt-injection
@@ -1343,6 +1374,7 @@ export async function POST(req: NextRequest) {
         console.log(
           `[store-ai] Reply (triage direct, ${triage.message.length} chars):\n${triage.message}`,
         );
+        await closeMcpClients(mcpContext.clients);
         const directStream = new ReadableStream<Uint8Array>({
           start(controller) {
             controller.enqueue(encoder.encode(triage.message));
@@ -1409,18 +1441,9 @@ export async function POST(req: NextRequest) {
                 messages: turnMessages,
                 maxOutputTokens: maxOutput,
                 temperature: callMode === "voice" ? 0.4 : 0.2,
-                // Read-tools: the model fetches live store data on demand. Writes
-                // stay as ```action``` blocks. stepCountIs caps the fetch→reason
-                // loop so a confused model can't spin forever.
-                ...(toolsEnabled && orgId
-                  ? {
-                      tools: buildMerchivaTools({
-                        organizationId: orgId,
-                        today: (context as Record<string, unknown> | undefined)?.today as string | undefined,
-                      }),
-                      stopWhen: stepCountIs(6),
-                    }
-                  : {}),
+                // Read-tools + user-connected MCP tools. Writes stay as
+                // ```action``` blocks. stepCountIs caps fetch->reason loops.
+                ...toolOptions(),
               });
 
               // Buffer the batch server-side rather than streaming chunk by
@@ -1481,6 +1504,8 @@ export async function POST(req: NextRequest) {
               e instanceof Error ? e.message : String(e),
             );
             controller.error(e);
+          } finally {
+            await closeMcpClients(mcpContext.clients);
           }
         },
       });
@@ -1497,15 +1522,9 @@ export async function POST(req: NextRequest) {
       messages: convoMsgs,
       maxOutputTokens: maxOutput,
       temperature: callMode === "voice" ? 0.4 : 0.2,
-      ...(toolsEnabled && orgId
-        ? {
-            tools: buildMerchivaTools({
-              organizationId: orgId,
-              today: (context as Record<string, unknown> | undefined)?.today as string | undefined,
-            }),
-            stopWhen: stepCountIs(6),
-          }
-        : {}),
+      ...toolOptions(),
+    }).finally(async () => {
+      await closeMcpClients(mcpContext.clients);
     });
     await recordAiUsage({
       organizationId: usageOrgId,

@@ -114,6 +114,7 @@ import DeleteTrainingDayReducer from "./delete_training_day_reducer";
 import DeleteTrainingObjectiveReducer from "./delete_training_objective_reducer";
 import DeleteWasteLogReducer from "./delete_waste_log_reducer";
 import DisconnectCloverReducer from "./disconnect_clover_reducer";
+import DisconnectScheduleIntegrationReducer from "./disconnect_schedule_integration_reducer";
 import DismissNotificationReducer from "./dismiss_notification_reducer";
 import FinalizeAiJobReducer from "./finalize_ai_job_reducer";
 import GradeTrainingDayReducer from "./grade_training_day_reducer";
@@ -147,7 +148,10 @@ import ServiceAppendAiChatMessageReducer from "./service_append_ai_chat_message_
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
 import ServiceLogSupplierMessageReducer from "./service_log_supplier_message_reducer";
 import ServiceRecordAiUsageReducer from "./service_record_ai_usage_reducer";
+import ServiceRecordScheduleSyncReducer from "./service_record_schedule_sync_reducer";
+import ServiceRepairInventoryItemReducer from "./service_repair_inventory_item_reducer";
 import ServiceSaveDailyBriefingReducer from "./service_save_daily_briefing_reducer";
+import ServiceSetScheduleIntegrationReducer from "./service_set_schedule_integration_reducer";
 import SetAiUsageQuotaReducer from "./set_ai_usage_quota_reducer";
 import SetAssistantConfigReducer from "./set_assistant_config_reducer";
 import SetAutoCommitSchedulesReducer from "./set_auto_commit_schedules_reducer";
@@ -156,6 +160,8 @@ import SetBriefingPrefReducer from "./set_briefing_pref_reducer";
 import SetConversationMerchivaReducer from "./set_conversation_merchiva_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
+import SetScheduleIntegrationReducer from "./set_schedule_integration_reducer";
+import SetSupplierInboundPrefixReducer from "./set_supplier_inbound_prefix_reducer";
 import SetTrainingFinalGradeReducer from "./set_training_final_grade_reducer";
 import SetUserAdminReducer from "./set_user_admin_reducer";
 import SkipRoleTaskReducer from "./skip_role_task_reducer";
@@ -1332,6 +1338,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_training_objective", DeleteTrainingObjectiveReducer),
   __reducerSchema("delete_waste_log", DeleteWasteLogReducer),
   __reducerSchema("disconnect_clover", DisconnectCloverReducer),
+  __reducerSchema("disconnect_schedule_integration", DisconnectScheduleIntegrationReducer),
   __reducerSchema("dismiss_notification", DismissNotificationReducer),
   __reducerSchema("finalize_ai_job", FinalizeAiJobReducer),
   __reducerSchema("grade_training_day", GradeTrainingDayReducer),
@@ -1365,7 +1372,10 @@ const reducersSchema = __reducers(
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
   __reducerSchema("service_log_supplier_message", ServiceLogSupplierMessageReducer),
   __reducerSchema("service_record_ai_usage", ServiceRecordAiUsageReducer),
+  __reducerSchema("service_record_schedule_sync", ServiceRecordScheduleSyncReducer),
+  __reducerSchema("service_repair_inventory_item", ServiceRepairInventoryItemReducer),
   __reducerSchema("service_save_daily_briefing", ServiceSaveDailyBriefingReducer),
+  __reducerSchema("service_set_schedule_integration", ServiceSetScheduleIntegrationReducer),
   __reducerSchema("set_ai_usage_quota", SetAiUsageQuotaReducer),
   __reducerSchema("set_assistant_config", SetAssistantConfigReducer),
   __reducerSchema("set_auto_commit_schedules", SetAutoCommitSchedulesReducer),
@@ -1374,6 +1384,8 @@ const reducersSchema = __reducers(
   __reducerSchema("set_conversation_merchiva", SetConversationMerchivaReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
+  __reducerSchema("set_schedule_integration", SetScheduleIntegrationReducer),
+  __reducerSchema("set_supplier_inbound_prefix", SetSupplierInboundPrefixReducer),
   __reducerSchema("set_training_final_grade", SetTrainingFinalGradeReducer),
   __reducerSchema("set_user_admin", SetUserAdminReducer),
   __reducerSchema("skip_role_task", SkipRoleTaskReducer),

@@ -10,6 +10,7 @@ import {
   merchivaToolsEnabled,
   TOOLS_PROMPT_BLOCK,
 } from "@/lib/merchiva/tools";
+import { buildMcpToolContext, closeMcpClients } from "@/lib/merchiva/mcp/ai-tools";
 import { callReducer } from "@/lib/spacetimedb/server-rpc";
 import {
   getServiceConn,
@@ -58,6 +59,7 @@ interface EnqueueBody {
   context?: Record<string, unknown>;
   lang?: string;
   memory?: { summary?: string; storeOverview?: string; userPreferences?: string };
+  mcpServers?: unknown;
   permissions?: {
     isOwner?: boolean;
     role?: string;
@@ -127,6 +129,7 @@ export async function POST(req: NextRequest) {
           context: context ?? {},
           lang: lang ?? "en",
           memory: memory ?? {},
+          mcpServers: body.mcpServers,
           permissions,
         });
       } catch (err) {
@@ -153,6 +156,7 @@ interface RunJobArgs {
   context: Record<string, unknown>;
   lang: string;
   memory: { summary?: string; storeOverview?: string; userPreferences?: string };
+  mcpServers?: unknown;
   permissions?: EnqueueBody["permissions"];
 }
 
@@ -225,49 +229,66 @@ async function runJob(args: RunJobArgs): Promise<void> {
     // Read-tools: same as the streaming route. Not for builder/HTML mode, and
     // only when the service connection + org id are available.
     const toolsEnabled = merchivaToolsEnabled() && !!args.organizationId && !isBuilderMode;
-    const systemPrompt = buildSystemPrompt(args.context, args.lang, args.memory, args.permissions, toolsEnabled);
+    const mcpContext = isBuilderMode
+      ? { tools: {}, clients: [], prompt: "", connected: [], errors: [] }
+      : await buildMcpToolContext(args.mcpServers);
+    const systemPrompt = buildSystemPrompt(
+      args.context,
+      args.lang,
+      args.memory,
+      args.permissions,
+      toolsEnabled,
+      mcpContext.prompt,
+    );
     const ackNote = triage.message
       ? `\n\nNOTE: An acknowledgment has ALREADY been sent: "${triage.message}". Skip greetings.`
       : "\n\nNOTE: Skip greetings; go straight to substantive answer or action blocks.";
 
     const useThinking = triage.needsDeepThinking === true;
-    const stream = streamText({
-      model: openrouter.chat(useThinking ? THINKING_MODEL : MODEL),
-      system: systemPrompt + ackNote,
-      messages: [
-        ...args.history.slice(-10).map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-        { role: "user" as const, content: args.message },
-      ],
-      maxOutputTokens: isBuilderMode ? 3500 : 1500,
-      temperature: 0.2,
-      ...(toolsEnabled
-        ? {
-            tools: buildMerchivaTools({
-              organizationId: args.organizationId,
-              today: (args.context as Record<string, unknown> | undefined)?.today as string | undefined,
-            }),
-            stopWhen: stepCountIs(6),
-          }
-        : {}),
-    });
+    const localTools = toolsEnabled
+      ? buildMerchivaTools({
+          organizationId: args.organizationId,
+          today: (args.context as Record<string, unknown> | undefined)?.today as string | undefined,
+        })
+      : {};
+    const allTools = { ...localTools, ...mcpContext.tools };
 
     let fullReply = "";
-    for await (const chunk of stream.textStream) {
-      fullReply += chunk;
-      flusher.push(chunk);
-      await flusher.maybeFlush();
+    let stream: ReturnType<typeof streamText> | null = null;
+    try {
+      stream = streamText({
+        model: openrouter.chat(useThinking ? THINKING_MODEL : MODEL),
+        system: systemPrompt + ackNote,
+        messages: [
+          ...args.history.slice(-10).map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          })),
+          { role: "user" as const, content: args.message },
+        ],
+        maxOutputTokens: isBuilderMode ? 3500 : 1500,
+        temperature: 0.2,
+        ...(Object.keys(allTools).length > 0
+          ? { tools: allTools, stopWhen: stepCountIs(6) }
+          : {}),
+      });
+
+      for await (const chunk of stream.textStream) {
+        fullReply += chunk;
+        flusher.push(chunk);
+        await flusher.maybeFlush();
+      }
+      await flusher.flush(true);
+      await recordAiUsage({
+        organizationId: args.organizationId,
+        feature: "store_ai_bg",
+        model: useThinking ? THINKING_MODEL : MODEL,
+        description: args.message,
+        ...normalizeUsage(await stream.usage),
+      });
+    } finally {
+      await closeMcpClients(mcpContext.clients);
     }
-    await flusher.flush(true);
-    await recordAiUsage({
-      organizationId: args.organizationId,
-      feature: "store_ai_bg",
-      model: useThinking ? THINKING_MODEL : MODEL,
-      description: args.message,
-      ...normalizeUsage(await stream.usage),
-    });
 
     // finalText mirrors the streamed partial: ack wrapped in the sentinel so
     // the client splits it into its own bubble on the final render too.
@@ -483,6 +504,7 @@ function buildSystemPrompt(
   memory: { summary?: string; storeOverview?: string; userPreferences?: string },
   permissions?: EnqueueBody["permissions"],
   toolsEnabled = false,
+  mcpPrompt = "",
 ): string {
   const skillPrompts = getAllPromptSegments();
   const langName = languageNameFor(lang);
@@ -508,6 +530,7 @@ ${memoryBlock}
 ${dataBlock}
 
 ${skillPrompts}
+${mcpPrompt ? `\n${mcpPrompt}\n` : ""}
 
 Output your reply as plain text plus \`\`\`action\`\`\` JSON blocks for any actions. The client will execute the actions when it receives the finalized job result.
 

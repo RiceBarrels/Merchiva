@@ -5,7 +5,7 @@ import { Mic, MicOff, PhoneOff, Volume2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { usePermissions } from "@/lib/context/permissions";
-import { NotchM } from "@/components/merchiva-chat-dashboard";
+import { loadStoredMcpServers } from "@/lib/merchiva/mcp/config";
 import { MerchivaLogo } from "./logo";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
@@ -239,6 +239,9 @@ export function MerchivaCallModal({
     async (userText: string): Promise<string> => {
       setState("thinking");
       const { history, storeContext, memory, permissions } = getContext();
+      const mcpServers = organizationId
+        ? loadStoredMcpServers(organizationId).filter((server) => server.enabled)
+        : [];
 
       const res = await fetch("/api/store-ai", {
         method: "POST",
@@ -253,6 +256,7 @@ export function MerchivaCallModal({
           mode: "voice",
           memory,
           permissions,
+          ...(mcpServers.length > 0 ? { mcpServers } : {}),
         }),
       });
       if (!res.ok || !res.body) {
@@ -335,7 +339,7 @@ export function MerchivaCallModal({
       await playLoop;
       return cleanForSpeech(raw);
     },
-    [getContext, locale, fetchTTS, playBlob],
+    [getContext, organizationId, locale, fetchTTS, playBlob],
   );
 
   const transcribe = useCallback(

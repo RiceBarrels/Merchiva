@@ -14,6 +14,8 @@ import {
   Webhook,
   ShieldCheck,
   Loader2,
+  Server,
+  PlugZap,
 } from "lucide-react";
 import {
   Card,
@@ -31,6 +33,8 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT } from "@/lib/i18n/context";
+import { loadStoredMcpServers, saveStoredMcpServers } from "@/lib/merchiva/mcp/config";
+import type { McpServerConfig, McpToolInfo } from "@/lib/merchiva/mcp/types";
 import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -46,6 +50,17 @@ interface WebhookConfig {
   events: string[];
   secret: string;
   active: boolean;
+}
+
+interface McpFormState {
+  label: string;
+  url: string;
+  authToken: string;
+}
+
+interface McpTestResult {
+  serverId: string;
+  tools: McpToolInfo[];
 }
 
 const WEBHOOK_EVENTS = [
@@ -101,6 +116,12 @@ export default function ApiSettingsPage() {
   const [newEvents, setNewEvents] = useState<string[]>([]);
   const [testPayload, setTestPayload] = useState<{ event: string; payload: object } | null>(null);
 
+  // MCP state
+  const [mcpServers, setMcpServers] = useState<McpServerConfig[]>([]);
+  const [mcpForm, setMcpForm] = useState<McpFormState>({ label: "", url: "", authToken: "" });
+  const [testingMcpId, setTestingMcpId] = useState<string | null>(null);
+  const [mcpTestResult, setMcpTestResult] = useState<McpTestResult | null>(null);
+
   // Load from localStorage
   useEffect(() => {
     if (!organizationId) return;
@@ -109,6 +130,7 @@ export default function ApiSettingsPage() {
       if (stored) setApiKey(JSON.parse(stored));
       const wh = localStorage.getItem(`webhooks_${organizationId}`);
       if (wh) setWebhooks(JSON.parse(wh));
+      setMcpServers(loadStoredMcpServers(organizationId));
     } catch { /* ignore */ }
   }, [organizationId]);
 
@@ -186,6 +208,65 @@ export default function ApiSettingsPage() {
     setTestPayload({ event, payload: samplePayload(event) });
   };
 
+  const saveMcpServers = useCallback(
+    (servers: McpServerConfig[]) => {
+      setMcpServers(servers);
+      saveStoredMcpServers(organizationId, servers);
+    },
+    [organizationId],
+  );
+
+  const handleAddMcpServer = () => {
+    if (!mcpForm.url.trim()) {
+      toast.error(t("apiSettings.toast.urlRequired"));
+      return;
+    }
+    const server: McpServerConfig = {
+      id: "mcp_" + generateHex(8),
+      label: mcpForm.label.trim() || "MCP Server",
+      url: mcpForm.url.trim(),
+      enabled: true,
+      authToken: mcpForm.authToken.trim() || undefined,
+    };
+    saveMcpServers([...mcpServers, server]);
+    setMcpForm({ label: "", url: "", authToken: "" });
+    setMcpTestResult(null);
+    toast.success(t("apiSettings.mcp.toastAdded"));
+  };
+
+  const handleDeleteMcpServer = (id: string) => {
+    saveMcpServers(mcpServers.filter((server) => server.id !== id));
+    if (mcpTestResult?.serverId === id) setMcpTestResult(null);
+    toast.success(t("apiSettings.mcp.toastRemoved"));
+  };
+
+  const handleToggleMcpServer = (id: string) => {
+    saveMcpServers(mcpServers.map((server) => (
+      server.id === id ? { ...server, enabled: !server.enabled } : server
+    )));
+  };
+
+  const handleTestMcpServer = async (server: McpServerConfig) => {
+    setTestingMcpId(server.id);
+    setMcpTestResult(null);
+    try {
+      const res = await fetch("/api/mcp/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ server }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "MCP connection failed");
+      const tools = Array.isArray(data.tools) ? data.tools : [];
+      setMcpTestResult({ serverId: server.id, tools });
+      toast.success(t("apiSettings.mcp.toastConnected").replace("{count}", String(tools.length)));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("apiSettings.mcp.toastFailed"));
+    } finally {
+      setTestingMcpId(null);
+    }
+  };
+
   const toggleEvent = (event: string) => {
     setNewEvents((prev) =>
       prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event],
@@ -207,6 +288,10 @@ export default function ApiSettingsPage() {
               <TabsTrigger value="webhooks" className="gap-1.5">
                 <Webhook className="h-3.5 w-3.5" />
                 {t("apiSettings.tabs.webhooks")}
+              </TabsTrigger>
+              <TabsTrigger value="mcp" className="gap-1.5">
+                <Server className="h-3.5 w-3.5" />
+                {t("apiSettings.tabs.mcp")}
               </TabsTrigger>
             </TabsList>
 
@@ -441,6 +526,136 @@ export default function ApiSettingsPage() {
                     <p className="text-sm font-medium">{t("apiSettings.empty.title")}</p>
                     <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                       {t("apiSettings.empty.description")}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* ─── MCP Tab ─────────────────────────────────────────────────── */}
+            <TabsContent value="mcp" className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{t("apiSettings.mcp.addTitle")}</CardTitle>
+                  <CardDescription>{t("apiSettings.mcp.addDescription")}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid gap-3 md:grid-cols-[180px_1fr]">
+                    <div className="space-y-1.5">
+                      <Label>{t("apiSettings.mcp.label")}</Label>
+                      <Input
+                        value={mcpForm.label}
+                        onChange={(e) => setMcpForm((prev) => ({ ...prev, label: e.target.value }))}
+                        placeholder="Search"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("apiSettings.mcp.url")}</Label>
+                      <Input
+                        value={mcpForm.url}
+                        onChange={(e) => setMcpForm((prev) => ({ ...prev, url: e.target.value }))}
+                        placeholder="https://mcp.example.com/mcp"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("apiSettings.mcp.token")}</Label>
+                    <Input
+                      type="password"
+                      value={mcpForm.authToken}
+                      onChange={(e) => setMcpForm((prev) => ({ ...prev, authToken: e.target.value }))}
+                      placeholder={t("apiSettings.mcp.tokenPlaceholder")}
+                    />
+                  </div>
+                  <div className="flex items-start gap-2 rounded-[0.3rem] border border-border bg-muted/40 p-2.5">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">{t("apiSettings.mcp.securityNote")}</p>
+                  </div>
+                  <Button onClick={handleAddMcpServer} size="sm" className="gap-1.5">
+                    <Plus className="h-3.5 w-3.5" />
+                    {t("apiSettings.mcp.addSubmit")}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {mcpServers.length > 0 ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">{t("apiSettings.mcp.configuredTitle")}</CardTitle>
+                    <CardDescription>{t("apiSettings.mcp.configuredDescription")}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {mcpServers.map((server) => (
+                      <div key={server.id} className="rounded-[0.3rem] border border-border p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <PlugZap className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{server.label}</p>
+                            <p className="truncate font-mono text-xs text-muted-foreground">{server.url}</p>
+                          </div>
+                          <Badge variant={server.enabled ? "default" : "outline"} className="text-[10px] shrink-0">
+                            {server.enabled ? t("apiSettings.status.active") : t("apiSettings.status.paused")}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={() => handleTestMcpServer(server)}
+                            disabled={testingMcpId === server.id}
+                          >
+                            {testingMcpId === server.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <TestTube className="h-3 w-3" />}
+                            {t("apiSettings.webhookActions.test")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleToggleMcpServer(server.id)}
+                          >
+                            {server.enabled ? t("apiSettings.webhookActions.pause") : t("apiSettings.webhookActions.enable")}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs text-destructive hover:text-destructive gap-1"
+                            onClick={() => handleDeleteMcpServer(server.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            {t("common.delete")}
+                          </Button>
+                        </div>
+                        {mcpTestResult?.serverId === server.id && (
+                          <div className="rounded-[0.3rem] bg-muted p-2.5">
+                            <p className="mb-1.5 text-xs font-medium">
+                              {t("apiSettings.mcp.toolsFound").replace("{count}", String(mcpTestResult.tools.length))}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {mcpTestResult.tools.slice(0, 24).map((tool) => (
+                                <Badge key={tool.name} variant="outline" className="font-mono text-[10px]">
+                                  {tool.name}
+                                </Badge>
+                              ))}
+                              {mcpTestResult.tools.length > 24 && (
+                                <Badge variant="outline" className="font-mono text-[10px]">
+                                  +{mcpTestResult.tools.length - 24}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center space-y-2">
+                    <Server className="mx-auto h-8 w-8 text-muted-foreground opacity-40" />
+                    <p className="text-sm font-medium">{t("apiSettings.mcp.emptyTitle")}</p>
+                    <p className="mx-auto max-w-sm text-xs text-muted-foreground">
+                      {t("apiSettings.mcp.emptyDescription")}
                     </p>
                   </CardContent>
                 </Card>

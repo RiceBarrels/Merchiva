@@ -3,11 +3,12 @@ import { askSkill } from "./ask";
 import { rolesSkill } from "./roles";
 import { tasksSkill } from "./tasks";
 import { memorySkill, parseMemoryCommands } from "./memory";
-import type { ChatMessage, PendingAction, QAItem, RoleAddCmd, TaskAddCmd, TaskDeleteCmd } from "./types";
+import type { ChatMessage, MerchivaSkill, PendingAction, QAItem, RoleAddCmd, TaskAddCmd, TaskDeleteCmd } from "./types";
 
 export type { ChatMessage, PendingAction, QAItem, RoleAddCmd, TaskAddCmd, TaskDeleteCmd };
 
-const skills = [actionsSkill, askSkill, rolesSkill, tasksSkill, memorySkill] as const;
+const coreSkills: MerchivaSkill[] = [actionsSkill, askSkill, rolesSkill, tasksSkill, memorySkill];
+const dynamicSkills = new Map<string, MerchivaSkill>();
 
 interface MemoryUpdate {
   field: "storeOverview" | "userPreferences";
@@ -25,6 +26,35 @@ interface ParsedResult {
   tasksDelete: TaskDeleteCmd[];
   tasksList: string | null;
   memoryUpdates: MemoryUpdate[];
+}
+
+export interface SkillCatalogItem {
+  id: string;
+  title: string;
+  description: string;
+  category: NonNullable<MerchivaSkill["category"]>;
+  enabledByDefault: boolean;
+}
+
+export function registerMerchivaSkill(skill: MerchivaSkill): void {
+  if (!skill.id || coreSkills.some((core) => core.id === skill.id)) {
+    throw new Error(`Cannot register Merchiva skill "${skill.id}"`);
+  }
+  dynamicSkills.set(skill.id, skill);
+}
+
+export function getRegisteredSkills(): MerchivaSkill[] {
+  return [...coreSkills, ...dynamicSkills.values()];
+}
+
+export function getSkillCatalog(): SkillCatalogItem[] {
+  return getRegisteredSkills().map((skill) => ({
+    id: skill.id,
+    title: skill.title ?? skill.id,
+    description: skill.description ?? "",
+    category: skill.category ?? "workflow",
+    enabledByDefault: skill.enabledByDefault !== false,
+  }));
 }
 
 export function parseAllSkills(text: string): ParsedResult {
@@ -120,7 +150,10 @@ export function parseAllSkills(text: string): ParsedResult {
 }
 
 export function getAllPromptSegments(): string {
-  return skills.map((s) => s.promptSegment).join("\n\n");
+  return getRegisteredSkills()
+    .filter((skill) => skill.enabledByDefault !== false)
+    .map((skill) => skill.promptSegment)
+    .join("\n\n");
 }
 
 export { executeAction } from "./actions";

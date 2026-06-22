@@ -24,12 +24,14 @@ import { CraftCanvas } from "@/components/builder/craft-components/craft-canvas"
 import { updateProduct } from "@/lib/spacetimedb/actions";
 import { getProductById } from "@/lib/db/products";
 import type { Product, SiteElement, SiteTheme } from "@/lib/types";
+import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { PermissionGuard } from "@/components/permission-guard";
 import { useT } from "@/lib/i18n/context";
 import { useCurrency } from "@/lib/currency";
 import { LOCALES } from "@/lib/i18n/config";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { ProductInventoryUsageEditor } from "@/components/inventory/product-inventory-usage-editor";
 
 // ─── Default theme for preview ────────────────────────────────────────────────
 
@@ -157,9 +159,11 @@ function DetailsTab({
   const [cost, setCost] = useState(product.cost);
   const [description, setDescription] = useState(product.description ?? "");
   const [imageUrl, setImageUrl] = useState((product.images ?? [])[0] ?? "");
+  const [inventoryUsage, setInventoryUsage] = useState(product.inventoryUsage ?? []);
   const [nameI18n, setNameI18n] = useState<Record<string, string>>(product.nameI18n ?? {});
   const [showI18n, setShowI18n] = useState(Object.keys(product.nameI18n ?? {}).length > 0);
   const [saving, setSaving] = useState(false);
+  const { items: inventoryItems } = useInventory(null);
 
   const handleI18nChange = (locale: string, value: string) => {
     setNameI18n((prev) => {
@@ -178,7 +182,16 @@ function DetailsTab({
     try {
       const images = imageUrl.trim() ? [imageUrl.trim()] : [];
       const i18n = Object.keys(nameI18n).length > 0 ? nameI18n : undefined;
-      await onSave({ name, category, price, cost, description: description || undefined, nameI18n: i18n, images: images.length ? images : undefined });
+      await onSave({
+        name,
+        category,
+        price,
+        cost,
+        description: description || undefined,
+        nameI18n: i18n,
+        images: images.length ? images : undefined,
+        inventoryUsage,
+      });
     } finally {
       setSaving(false);
     }
@@ -255,6 +268,11 @@ function DetailsTab({
           <img src={imageUrl} alt={t("products.detail.details.imageAlt")} className="mt-2 h-32 w-32 object-cover rounded border" />
         )}
       </div>
+      <ProductInventoryUsageEditor
+        inventoryItems={inventoryItems}
+        value={inventoryUsage}
+        onChange={setInventoryUsage}
+      />
       <div className="flex justify-end pt-2">
         <Button onClick={handleSave} disabled={saving} className="gap-2">
           {saving ? <Spinner size={16} /> : <Save className="h-4 w-4" />}
@@ -364,7 +382,7 @@ export default function ProductDetailPage({
         {/* Header */}
         <div className="flex items-center gap-3 px-4 sm:px-6 py-3 border-b bg-background shrink-0">
           <button
-            onClick={() => router.push("/products")}
+            onClick={() => router.push("/~/products")}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />

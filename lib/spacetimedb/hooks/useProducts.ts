@@ -12,8 +12,26 @@ import { useMemo } from "react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
-import type { Product } from "@/lib/types";
+import type { Product, ProductInventoryUsage } from "@/lib/types";
 import { parseAvailableStoreIds, isProductVisibleAtStore } from "@/lib/share-group";
+
+function parseInventoryUsage(value: string | null | undefined): ProductInventoryUsage[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => ({
+        inventoryItemId: String(item?.inventoryItemId ?? ""),
+        inventoryItemName: String(item?.inventoryItemName ?? ""),
+        quantity: Number(item?.quantity ?? 0),
+        unit: String(item?.unit ?? ""),
+      }))
+      .filter((item) => item.inventoryItemId && item.inventoryItemName && Number.isFinite(item.quantity));
+  } catch {
+    return [];
+  }
+}
 
 export function useProducts(_organizationId: string | null) {
   const { organizationId, shareGroupOrgIds } = usePermissions();
@@ -41,6 +59,7 @@ export function useProducts(_organizationId: string | null) {
         alertReason:        r.alertReason ?? undefined,
         imageUrl:           r.imageUrl ?? undefined,
         description:        r.description ?? undefined,
+        inventoryUsage:     parseInventoryUsage((r as unknown as { inventoryUsage?: string | null }).inventoryUsage ?? null),
         nameI18n:           r.nameI18N ? (() => { try { return JSON.parse(r.nameI18N!); } catch { return undefined; } })() : undefined,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         squareItemId:       (r as any).squareItemId ?? null,

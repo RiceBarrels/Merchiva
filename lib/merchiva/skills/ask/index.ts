@@ -38,6 +38,10 @@ function parseAskCommands(text: string): { cleanText: string; data: AskData | nu
 
 export const askSkill: MerchivaSkill<AskData> = {
   id: "ask",
+  title: "Ask",
+  description: "Render structured clarification questions as clickable choices.",
+  category: "workflow",
+  enabledByDefault: true,
   parse: parseAskCommands,
   promptSegment: `Q&A COMMAND:
 When you need the user to choose between options or answer a question, output a /ask command with a JSON array.

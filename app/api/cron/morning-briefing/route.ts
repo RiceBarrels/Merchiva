@@ -116,7 +116,7 @@ function normalizedLocale(locale: string): string {
 
 // ─── Route ──────────────────────────────────────────────────────────────────────
 
-export async function POST(req: NextRequest) {
+async function runHourlyPatrol(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
   if (cronSecret && auth !== `Bearer ${cronSecret}`) {
@@ -409,11 +409,10 @@ export async function POST(req: NextRequest) {
   });
 }
 
-// Vercel cron probes use GET to confirm registration; just echo metadata.
-export async function GET() {
-  return NextResponse.json({
-    name: "Merchiva Briefing Cron",
-    schedule: "Hourly — scans every active-admin org each hour, regardless of who is online",
-    triggers: "Service-side briefing refresh; sends current issues into Mr. Merchiva UI and notifies enabled managers only when a NEW problem appears",
-  });
+export async function GET(req: NextRequest) {
+  return runHourlyPatrol(req);
+}
+
+export async function POST(req: NextRequest) {
+  return runHourlyPatrol(req);
 }

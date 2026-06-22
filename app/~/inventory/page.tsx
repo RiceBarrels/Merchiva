@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Package, Plus, Search, TrendingDown, ArrowUpDown, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle, History, RefreshCw, Sparkles, ShoppingCart, AlertCircle, ArrowUp, ArrowDown, Minus as MinusIcon, Download } from "lucide-react";
+import { Package, Plus, Search, TrendingDown, ArrowUpDown, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle, History, RefreshCw, Sparkles, ShoppingCart, AlertCircle, ArrowUp, ArrowDown, Minus as MinusIcon, Download, FileText, Truck, Boxes, Scale, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -59,6 +60,7 @@ import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { INVENTORY_CONTENT_UNITS, formatInventoryContentAmount } from "@/lib/inventory-units";
 
 type StatusCfg = { label: string; icon: React.ElementType; color: string };
 
@@ -98,6 +100,7 @@ export default function InventoryPage() {
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<InventoryItem>>({});
+  const [dialogStep, setDialogStep] = useState(0);
 
   const CATEGORIES = [
     "All",
@@ -132,17 +135,21 @@ export default function InventoryPage() {
     setForm({
       status: "in_stock",
       unit: "units",
+      description: "",
       lossRate: 0,
       minStock: 10,
       maxStock: 100,
       currentStock: 0,
+      unitContentUnit: "g",
     });
+    setDialogStep(0);
     setDialogOpen(true);
   };
 
   const openEdit = (item: InventoryItem) => {
     setEditItem(item);
-    setForm({ ...item });
+    setForm({ ...item, unitContentUnit: item.unitContentUnit ?? "g" });
+    setDialogStep(0);
     setDialogOpen(true);
   };
 
@@ -168,6 +175,9 @@ export default function InventoryPage() {
           lastRestocked: new Date().toISOString().split("T")[0],
           minOrderQty: form.minOrderQty ?? null,
           unitsPerCase: form.unitsPerCase ?? null,
+          description: form.description?.trim() ? form.description.trim() : null,
+          unitContentAmount: form.unitContentAmount ?? null,
+          unitContentUnit: form.unitContentUnit ?? null,
         });
       }
       hapticSuccess();
@@ -195,6 +205,19 @@ export default function InventoryPage() {
   const lowStockCount = items.filter((i) => i.status === "low_stock").length;
   const outCount      = items.filter((i) => i.status === "out_of_stock").length;
   const totalValue    = items.reduce((s, i) => s + i.currentStock * i.costPerUnit, 0);
+  const inventoryDialogSteps = [
+    { label: t("inventory.dialog.steps.identity"), icon: FileText },
+    { label: t("inventory.dialog.steps.supplier"), icon: Truck },
+    { label: t("inventory.dialog.steps.stock"), icon: Boxes },
+    { label: t("inventory.dialog.steps.content"), icon: Scale },
+  ];
+  const currentDialogStep = Math.min(dialogStep, inventoryDialogSteps.length - 1);
+  const isLastDialogStep = currentDialogStep === inventoryDialogSteps.length - 1;
+  const contentPreview = formatInventoryContentAmount(form.unitContentAmount, form.unitContentUnit);
+  const caseContentPreview =
+    form.unitContentAmount && form.unitsPerCase && form.unitContentUnit
+      ? formatInventoryContentAmount(form.unitContentAmount * form.unitsPerCase, form.unitContentUnit)
+      : "";
 
   // Restock suggestions
   const restockSuggestions = useMemo(
@@ -306,6 +329,7 @@ export default function InventoryPage() {
                         <TableHead>
                           <SortButton label={t("inventory.tableHeaders.costPerUnit")} k="costPerUnit" current={sortKey} dir={sortDir} onClick={toggleSort} />
                         </TableHead>
+                        <TableHead>{t("inventory.tableHeaders.unitContent")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.lossRate")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.status")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.supplier")}</TableHead>
@@ -314,10 +338,9 @@ export default function InventoryPage() {
                     </TableHeader>
                     <TableBody>
                       {filtered.map((item) => {
-                        const pct = Math.min(
-                          100,
-                          Math.round((item.currentStock / item.maxStock) * 100)
-                        );
+                        const pct = item.maxStock > 0
+                          ? Math.min(100, Math.round((item.currentStock / item.maxStock) * 100))
+                          : 0;
                         const cfg = statusConfig[item.status];
                         const StatusIcon = cfg.icon;
                         return (
@@ -348,6 +371,9 @@ export default function InventoryPage() {
                               <span className="text-[10px] text-muted-foreground">{pct}%</span>
                             </TableCell>
                             <TableCell>{format(item.costPerUnit)}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {formatInventoryContentAmount(item.unitContentAmount, item.unitContentUnit) || "—"}
+                            </TableCell>
                             <TableCell>
                               <span
                                 className={item.lossRate > 8 ? "text-rose-600 font-medium" : "text-muted-foreground"}
@@ -389,7 +415,7 @@ export default function InventoryPage() {
                       })}
                       {filtered.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
+                          <TableCell colSpan={10} className="text-center text-muted-foreground py-10">
                             {t("inventory.noItems")}
                           </TableCell>
                         </TableRow>
@@ -630,8 +656,14 @@ export default function InventoryPage() {
         </Tabs>
 
         {/* Add/Edit DynamicUIElement */}
-        <DynamicUIElement open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DynamicUIElementContent className="max-w-lg">
+        <DynamicUIElement
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setDialogStep(0);
+          }}
+        >
+          <DynamicUIElementContent className="max-w-2xl">
             <DynamicUIElementHeader>
               <DynamicUIElementTitle>{editItem ? t("inventory.dialog.editTitle") : t("inventory.dialog.addTitle")}</DynamicUIElementTitle>
               <DynamicUIElementDescription>
@@ -640,141 +672,267 @@ export default function InventoryPage() {
                   : t("inventory.dialog.addDescription")}
               </DynamicUIElementDescription>
             </DynamicUIElementHeader>
-            <div className="grid gap-4 py-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.name")}</Label>
-                  <Input
-                    value={form.name ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder={t("inventory.dialog.namePlaceholder")}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.category")}</Label>
-                  <Input
-                    value={form.category ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    placeholder={t("inventory.dialog.categoryPlaceholder")}
-                  />
-                </div>
+            <div className="grid gap-4 py-2 md:grid-cols-[170px_1fr]">
+              <div className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+                {inventoryDialogSteps.map((step, index) => {
+                  const StepIcon = step.icon;
+                  const active = index === currentDialogStep;
+                  return (
+                    <button
+                      key={step.label}
+                      type="button"
+                      onClick={() => setDialogStep(index)}
+                      className={cn(
+                        "flex shrink-0 items-center gap-2 rounded-[0.3rem] border px-2.5 py-2 text-left text-[12px] transition-colors",
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <StepIcon className="h-3.5 w-3.5" />
+                      <span className="whitespace-nowrap font-medium">{step.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.currentStock")}</Label>
-                  <Input
-                    type="number"
-                    value={form.currentStock ?? 0}
-                    onChange={(e) => setForm((f) => ({ ...f, currentStock: Number(e.target.value) }))}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.minStock")}</Label>
-                  <Input
-                    type="number"
-                    value={form.minStock ?? 0}
-                    onChange={(e) => setForm((f) => ({ ...f, minStock: Number(e.target.value) }))}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.maxStock")}</Label>
-                  <Input
-                    type="number"
-                    value={form.maxStock ?? 0}
-                    onChange={(e) => setForm((f) => ({ ...f, maxStock: Number(e.target.value) }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.unit")}</Label>
-                  <Input
-                    value={form.unit ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                    placeholder={t("inventory.dialog.unitPlaceholder")}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.costPerUnit")}</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={form.costPerUnit ?? 0}
-                    onChange={(e) => setForm((f) => ({ ...f, costPerUnit: Number(e.target.value) }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.supplier")}</Label>
-                  <Combobox
-                    allowCustom
-                    options={supplierOptions}
-                    value={form.supplier ?? ""}
-                    onValueChange={(v) => setForm((f) => ({ ...f, supplier: v }))}
-                    placeholder={t("inventory.dialog.supplierPlaceholder")}
-                    searchPlaceholder={t("inventory.dialog.supplierPlaceholder")}
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.lossRate")}</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={form.lossRate ?? 0}
-                    onChange={(e) => setForm((f) => ({ ...f, lossRate: Number(e.target.value) }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.minOrderQty")}</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={form.minOrderQty ?? ""}
-                    placeholder={t("inventory.dialog.minOrderQtyPlaceholder")}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        minOrderQty: e.target.value === "" ? undefined : Number(e.target.value),
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("inventory.dialog.unitsPerCase")}</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={form.unitsPerCase ?? ""}
-                    placeholder={t("inventory.dialog.unitsPerCasePlaceholder")}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        unitsPerCase: e.target.value === "" ? undefined : Number(e.target.value),
-                      }))
-                    }
-                  />
-                </div>
+
+              <div className="min-h-[340px] rounded-[0.3rem] border border-border bg-muted/20 p-3">
+                {currentDialogStep === 0 && (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.name")}</Label>
+                        <Input
+                          value={form.name ?? ""}
+                          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                          placeholder={t("inventory.dialog.namePlaceholder")}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.category")}</Label>
+                        <Input
+                          value={form.category ?? ""}
+                          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                          placeholder={t("inventory.dialog.categoryPlaceholder")}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("inventory.dialog.description")}</Label>
+                      <Textarea
+                        rows={4}
+                        value={form.description ?? ""}
+                        onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                        placeholder={t("inventory.dialog.descriptionPlaceholder")}
+                        className="resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {currentDialogStep === 1 && (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label>{t("inventory.dialog.supplier")}</Label>
+                      <Combobox
+                        allowCustom
+                        options={supplierOptions}
+                        value={form.supplier ?? ""}
+                        onValueChange={(v) => setForm((f) => ({ ...f, supplier: v }))}
+                        placeholder={t("inventory.dialog.supplierPlaceholder")}
+                        searchPlaceholder={t("inventory.dialog.supplierPlaceholder")}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.costPerUnit")}</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={form.costPerUnit ?? 0}
+                          onChange={(e) => setForm((f) => ({ ...f, costPerUnit: Number(e.target.value) }))}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.minOrderQty")}</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={form.minOrderQty ?? ""}
+                          placeholder={t("inventory.dialog.minOrderQtyPlaceholder")}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              minOrderQty: e.target.value === "" ? undefined : Number(e.target.value),
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentDialogStep === 2 && (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.currentStock")}</Label>
+                        <Input
+                          type="number"
+                          value={form.currentStock ?? 0}
+                          onChange={(e) => setForm((f) => ({ ...f, currentStock: Number(e.target.value) }))}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.maxStock")}</Label>
+                        <Input
+                          type="number"
+                          value={form.maxStock ?? 0}
+                          onChange={(e) => setForm((f) => ({ ...f, maxStock: Number(e.target.value) }))}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.minStock")}</Label>
+                        <Input
+                          type="number"
+                          value={form.minStock ?? 0}
+                          onChange={(e) => setForm((f) => ({ ...f, minStock: Number(e.target.value) }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.unit")}</Label>
+                        <Input
+                          value={form.unit ?? ""}
+                          onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                          placeholder={t("inventory.dialog.unitPlaceholder")}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.unitsPerCase")}</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={form.unitsPerCase ?? ""}
+                          placeholder={t("inventory.dialog.unitsPerCasePlaceholder")}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              unitsPerCase: e.target.value === "" ? undefined : Number(e.target.value),
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentDialogStep === 3 && (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-[1fr_150px]">
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.unitContentAmount")}</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={form.unitContentAmount ?? ""}
+                          placeholder={t("inventory.dialog.unitContentAmountPlaceholder")}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              unitContentAmount: e.target.value === "" ? undefined : Number(e.target.value),
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t("inventory.dialog.unitContentUnit")}</Label>
+                        <Select
+                          value={form.unitContentUnit ?? "g"}
+                          onValueChange={(v) => setForm((f) => ({ ...f, unitContentUnit: v ?? "g" }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {INVENTORY_CONTENT_UNITS.map((u) => (
+                              <SelectItem key={u.value} value={u.value}>
+                                {u.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t("inventory.dialog.lossRate")}</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={form.lossRate ?? 0}
+                        onChange={(e) => setForm((f) => ({ ...f, lossRate: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="rounded-[0.3rem] border border-border bg-background p-3 text-sm">
+                      <p className="font-medium">{t("inventory.dialog.contentPreview")}</p>
+                      <p className="mt-1 text-muted-foreground">
+                        {contentPreview
+                          ? t("inventory.dialog.contentPreviewValue")
+                              .replace("{unit}", form.unit || "unit")
+                              .replace("{amount}", contentPreview)
+                          : t("inventory.dialog.contentPreviewEmpty")}
+                      </p>
+                      {caseContentPreview && (
+                        <p className="mt-1 text-[12px] text-muted-foreground">
+                          {t("inventory.dialog.caseContentPreview")
+                            .replace("{count}", String(form.unitsPerCase))
+                            .replace("{amount}", caseContentPreview)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex items-center justify-between gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setDialogStep((s) => Math.max(0, s - 1))}
+                disabled={currentDialogStep === 0 || saving}
+                className="gap-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {t("inventory.dialog.back")}
+              </Button>
+              <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 {t("inventory.dialog.cancel")}
               </Button>
-              <Button onClick={handleSave} disabled={saving}>
+              <Button
+                onClick={() => {
+                  if (!isLastDialogStep) {
+                    setDialogStep((s) => Math.min(inventoryDialogSteps.length - 1, s + 1));
+                    return;
+                  }
+                  void handleSave();
+                }}
+                disabled={saving}
+                className="gap-2"
+              >
                 {saving ? (
-                  <><Spinner size={16} className="mr-2" />{t("inventory.dialog.saving")}</>
-                ) : editItem ? (
-                  t("inventory.dialog.save")
+                  <><Spinner size={16} />{t("inventory.dialog.saving")}</>
+                ) : isLastDialogStep ? (
+                  editItem ? t("inventory.dialog.save") : t("inventory.dialog.add")
                 ) : (
-                  t("inventory.dialog.add")
+                  <>{t("inventory.dialog.next")}<ChevronRight className="h-4 w-4" /></>
                 )}
               </Button>
+              </div>
             </div>
           </DynamicUIElementContent>
         </DynamicUIElement>

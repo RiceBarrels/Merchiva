@@ -546,6 +546,7 @@ register({
     price: { type: "number", required: false, description: "Base price" },
     cost: { type: "number", required: false, description: "Cost price" },
     description: { type: "string", required: false, description: "Product description" },
+    inventoryUsage: { type: "array", required: false, description: "Inventory consumed per product sold: [{inventoryItemId, inventoryItemName, quantity, unit}]" },
     variants: { type: "array", required: false, description: "Product variants [{name, price, description}]" },
   },
   requiredPermission: { section: "products", action: "edit" },
@@ -575,6 +576,7 @@ register({
       description: p.description ? String(p.description) : null,
       nameI18N: null,
       options,
+      inventoryUsage: Array.isArray(p.inventoryUsage) ? p.inventoryUsage : [],
     });
   },
   toastMessage: (p) => `Product added: ${p.name ?? p.productName}`,
@@ -591,6 +593,7 @@ register({
     price: { type: "number", required: false, description: "New price" },
     cost: { type: "number", required: false, description: "New cost" },
     description: { type: "string", required: false, description: "New description" },
+    inventoryUsage: { type: "array", required: false, description: "Inventory consumed per product sold: [{inventoryItemId, inventoryItemName, quantity, unit}]" },
   },
   requiredPermission: { section: "products", action: "edit" },
   riskLevel: "medium",
@@ -601,6 +604,7 @@ register({
     if (p.price !== undefined) data.price = Number(p.price);
     if (p.cost !== undefined) data.cost = Number(p.cost);
     if (p.description !== undefined) data.description = String(p.description);
+    if (Array.isArray(p.inventoryUsage)) data.inventoryUsage = p.inventoryUsage;
     await updateProduct(String(p.productId), data);
   },
   toastMessage: (p) => `Product updated: ${p.name ?? p.productId}`,
@@ -636,6 +640,11 @@ register({
     unit: { type: "string", required: false, description: "Unit (pcs, kg, lb, etc.)" },
     costPerUnit: { type: "number", required: false, description: "Cost per unit" },
     supplier: { type: "string", required: false, description: "Supplier name" },
+    description: { type: "string", required: false, description: "Inventory item description" },
+    minOrderQty: { type: "number", required: false, description: "Supplier minimum order quantity" },
+    unitsPerCase: { type: "number", required: false, description: "Units per case/box" },
+    unitContentAmount: { type: "number", required: false, description: "Weight or volume inside one unit" },
+    unitContentUnit: { type: "string", required: false, description: "g, kg, oz, lb, ml, l, fl_oz, or gal" },
   },
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
@@ -650,6 +659,11 @@ register({
       costPerUnit: Number(p.costPerUnit ?? p.cost ?? 0),
       supplier: String(p.supplier ?? ""),
       lastRestocked: new Date().toISOString().slice(0, 10),
+      description: p.description ? String(p.description) : null,
+      minOrderQty: p.minOrderQty == null ? null : finiteNumber(p.minOrderQty),
+      unitsPerCase: p.unitsPerCase == null ? null : finiteNumber(p.unitsPerCase),
+      unitContentAmount: p.unitContentAmount == null ? null : finiteNumber(p.unitContentAmount),
+      unitContentUnit: p.unitContentUnit ? String(p.unitContentUnit) : null,
     });
   },
   toastMessage: (p) => `Inventory item added: ${p.name ?? p.itemName}`,
@@ -686,20 +700,36 @@ register({
   parameters: {
     itemId: { type: "string", required: true, description: "Inventory item ID" },
     name: { type: "string", required: false, description: "New name" },
+    category: { type: "string", required: false, description: "New category" },
+    currentStock: { type: "number", required: false, description: "New current stock" },
     minStock: { type: "number", required: false, description: "New min stock" },
     maxStock: { type: "number", required: false, description: "New max stock" },
     unit: { type: "string", required: false, description: "New unit" },
     costPerUnit: { type: "number", required: false, description: "New cost per unit" },
+    supplier: { type: "string", required: false, description: "New supplier name" },
+    description: { type: "string", required: false, description: "Inventory item description" },
+    minOrderQty: { type: "number", required: false, description: "Supplier minimum order quantity" },
+    unitsPerCase: { type: "number", required: false, description: "Units per case/box" },
+    unitContentAmount: { type: "number", required: false, description: "Weight or volume inside one unit" },
+    unitContentUnit: { type: "string", required: false, description: "g, kg, oz, lb, ml, l, fl_oz, or gal" },
   },
   requiredPermission: { section: "inventory", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
     const data: Record<string, unknown> = {};
     if (p.name) data.name = String(p.name);
-    if (p.minStock !== undefined) data.minStock = Number(p.minStock);
-    if (p.maxStock !== undefined) data.maxStock = Number(p.maxStock);
+    if (p.category) data.category = String(p.category);
+    if (p.currentStock != null) data.currentStock = finiteNumber(p.currentStock);
+    if (p.minStock != null) data.minStock = finiteNumber(p.minStock);
+    if (p.maxStock != null) data.maxStock = finiteNumber(p.maxStock);
     if (p.unit) data.unit = String(p.unit);
-    if (p.costPerUnit !== undefined) data.costPerUnit = Number(p.costPerUnit);
+    if (p.costPerUnit != null) data.costPerUnit = finiteNumber(p.costPerUnit);
+    if (p.supplier != null) data.supplier = String(p.supplier);
+    if (p.description !== undefined) data.description = p.description ? String(p.description) : null;
+    if (p.minOrderQty !== undefined) data.minOrderQty = p.minOrderQty == null ? null : finiteNumber(p.minOrderQty);
+    if (p.unitsPerCase !== undefined) data.unitsPerCase = p.unitsPerCase == null ? null : finiteNumber(p.unitsPerCase);
+    if (p.unitContentAmount !== undefined) data.unitContentAmount = p.unitContentAmount == null ? null : finiteNumber(p.unitContentAmount);
+    if (p.unitContentUnit !== undefined) data.unitContentUnit = p.unitContentUnit ? String(p.unitContentUnit) : null;
     await updateInventoryItem(String(p.itemId), data);
   },
   toastMessage: (p) => `Inventory item updated: ${p.name ?? p.itemId}`,

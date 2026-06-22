@@ -70,6 +70,7 @@ export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
 export interface InventoryItem {
   id: string;
   name: string;
+  description?: string;
   category: string;
   currentStock: number;
   minStock: number;
@@ -82,6 +83,8 @@ export interface InventoryItem {
   lossRate: number; // percentage
   minOrderQty?: number; // supplier minimum order (units); undefined = unset
   unitsPerCase?: number; // units per case/box; order in multiples of this
+  unitContentAmount?: number; // amount inside one unit/case/bottle/bag
+  unitContentUnit?: string; // g, kg, ml, l, oz, lb, fl_oz, gal
 }
 
 export interface InventoryTransaction {
@@ -402,6 +405,13 @@ export interface ChatMessage {
 
 export type ProductAlert = "none" | "underperforming" | "remove";
 
+export interface ProductInventoryUsage {
+  inventoryItemId: string;
+  inventoryItemName: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -418,6 +428,7 @@ export interface Product {
   alertReason?: string;
   imageUrl?: string;
   description?: string;
+  inventoryUsage?: ProductInventoryUsage[];
   nameI18n?: Record<string, string>;
   images?: string[];
   pageTemplate?: SiteElement[] | null;

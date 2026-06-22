@@ -45,6 +45,17 @@ function opt<T>(v: T | null | undefined): T | null {
   return v == null ? null : v;
 }
 
+function jsonArray(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v;
+  if (typeof v !== "string" || !v.trim()) return [];
+  try {
+    const parsed = JSON.parse(v);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 /** An identity column decodes to an object with toHexString(); always return a string. */
 function idHex(u: unknown): string {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -346,6 +357,8 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
             supplier: i.supplier,
             minOrderQty: opt(i.minOrderQty),
             unitsPerCase: opt(i.unitsPerCase),
+            unitContentAmount: opt(i.unitContentAmount),
+            unitContentUnit: opt(i.unitContentUnit),
           })),
         };
       }),
@@ -368,12 +381,18 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
     }),
 
     viewProducts: tool({
-      description: "Menu/products (id, name, price, category). Use the id for updatePrice / product edits.",
+      description: "Menu/products (id, name, price, category, inventoryUsage). Use the id for updatePrice / product edits.",
       inputSchema: z.object({}),
       execute: exec("viewProducts", async (conn) => ({
         products: orgRows(conn, "product", organizationId)
           .slice(0, 200)
-          .map((p) => ({ id: rowId(p), name: p.name, price: p.price, category: p.category })),
+          .map((p) => ({
+            id: rowId(p),
+            name: p.name,
+            price: p.price,
+            category: p.category,
+            inventoryUsage: jsonArray(p.inventoryUsage),
+          })),
       })),
     }),
 

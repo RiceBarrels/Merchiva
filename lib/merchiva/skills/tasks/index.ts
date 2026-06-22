@@ -76,6 +76,10 @@ function parseTasksCommands(text: string): { cleanText: string; data: TasksData 
 
 export const tasksSkill: MerchivaSkill<TasksData> = {
   id: "tasks",
+  title: "Legacy Tasks",
+  description: "Backward-compatible parser for role task command syntax.",
+  category: "legacy",
+  enabledByDefault: true,
   parse: parseTasksCommands,
   promptSegment: `LEGACY TASKS COMMANDS (prefer action blocks instead):
 - /tasks list '<RoleName>' — displays tasks for a role.

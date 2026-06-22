@@ -212,6 +212,9 @@ export const InventoryItem = __t.object("InventoryItem", {
   updatedAt: __t.timestamp(),
   minOrderQty: __t.option(__t.f64()),
   unitsPerCase: __t.option(__t.f64()),
+  description: __t.option(__t.string()),
+  unitContentAmount: __t.option(__t.f64()),
+  unitContentUnit: __t.option(__t.string()),
 });
 export type InventoryItem = __Infer<typeof InventoryItem>;
 
@@ -388,6 +391,7 @@ export const Product = __t.object("Product", {
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
   availableStoreIds: __t.option(__t.string()),
+  inventoryUsage: __t.option(__t.string()),
 });
 export type Product = __Infer<typeof Product>;
 
@@ -539,6 +543,15 @@ export const Settings = __t.object("Settings", {
   countryCode: __t.option(__t.string()),
   assistantConfig: __t.option(__t.string()),
   betaFeatures: __t.option(__t.string()),
+  scheduleProvider: __t.option(__t.string()),
+  scheduleConnected: __t.option(__t.bool()),
+  scheduleCompanyGuid: __t.option(__t.string()),
+  scheduleCompanyId: __t.option(__t.string()),
+  scheduleLocationId: __t.option(__t.string()),
+  scheduleLastSyncedAt: __t.option(__t.timestamp()),
+  scheduleLastSyncStatus: __t.option(__t.string()),
+  scheduleLastSyncSummary: __t.option(__t.string()),
+  supplierInboundPrefix: __t.option(__t.string()),
 });
 export type Settings = __Infer<typeof Settings>;
 

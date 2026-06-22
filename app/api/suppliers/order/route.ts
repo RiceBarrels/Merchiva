@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { sendSupplierPOEmail, type SupplierPOItem } from "@/lib/email/resend";
-import { encodeThreadToken, inboundDomain } from "@/lib/suppliers/thread-token";
+import { getServiceConn, getSupplierInboundAddressForOrg } from "@/lib/spacetimedb/service-client";
 
 export const runtime = "nodejs";
 
@@ -123,14 +123,15 @@ export async function POST(req: NextRequest) {
   const language = normalizeSupplierLanguage(supplierLanguage);
   const summary = summarize(items, total, currency, language);
 
-  // Reply-to: when inbound email is configured (Phase 2), route the supplier's
-  // reply to the webhook via a signed thread token so Mr. Merchiva can carry on
-  // the conversation. Otherwise fall back to the manager's address (Phase 1).
+  // Reply-to: route supplier replies to the store's fixed inbound inbox so
+  // Mr. Merchiva can carry on the conversation. Otherwise fall back to the
+  // manager's address.
   let effectiveReplyTo = replyTo ?? null;
-  const domain = inboundDomain();
-  if (domain) {
-    const token = encodeThreadToken(organizationId, supplierId);
-    if (token) effectiveReplyTo = `${token}@${domain}`;
+  try {
+    const conn = await getServiceConn();
+    effectiveReplyTo = (await getSupplierInboundAddressForOrg(conn, organizationId)) ?? effectiveReplyTo;
+  } catch (err) {
+    console.warn("[suppliers/order] fixed inbound address unavailable:", err);
   }
 
   // 1) Try to email the supplier. Best-effort: a failure (or missing address)

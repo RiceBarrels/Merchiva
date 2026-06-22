@@ -152,6 +152,10 @@ export function toPendingActions(actions: Record<string, unknown>[]): PendingAct
 
 export const actionsSkill: MerchivaSkill<ActionsData> = {
   id: "actions",
+  title: "Actions",
+  description: "Parse and execute structured action blocks emitted by Mr. Merchiva.",
+  category: "core",
+  enabledByDefault: true,
   parse: parseActions,
   get promptSegment() {
     return generateActionsPrompt();

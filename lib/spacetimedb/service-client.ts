@@ -15,6 +15,12 @@ import "server-only";
 import { DbConnection } from "./generated";
 import type { Identity } from "spacetimedb";
 import { buildBriefingContext, type BriefingContext } from "@/lib/insights/build-context";
+import {
+  normalizeSupplierInboundPrefix,
+  supplierInboundAddressForOrg,
+  supplierInboundPrefixForOrg,
+} from "@/lib/suppliers/inbound-address";
+import { inboundDomain } from "@/lib/suppliers/thread-token";
 
 const URI =
   process.env.NEXT_PUBLIC_SPACETIMEDB_URI ?? "wss://maincloud.spacetimedb.com";
@@ -347,6 +353,12 @@ export interface SupplierThreadContext {
   purchaseOrders: Array<{ status: string; items: string; total: number }>;
 }
 
+export interface ResolvedSupplierThreadContext extends SupplierThreadContext {
+  organizationId: string;
+  supplierId: string;
+  inboundPrefix: string;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowMs(r: any): number {
   const c = r?.createdAt;
@@ -371,6 +383,7 @@ export async function getSupplierThreadContext(
       "SELECT * FROM supplier_message",
       "SELECT * FROM purchase_order",
       "SELECT * FROM organization",
+      "SELECT * FROM settings",
     ]);
     supplierThreadSubscribed.add(conn);
   }
@@ -414,6 +427,73 @@ export async function getSupplierThreadContext(
     messages,
     purchaseOrders,
   };
+}
+
+function emailAddress(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const match = raw.match(/<([^>]+)>/);
+  const addr = (match ? match[1] : raw).trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr) ? addr : null;
+}
+
+export async function getSupplierThreadContextForInbound(
+  conn: ServiceConn,
+  inboundPrefix: string,
+  fromAddress?: string | null,
+): Promise<ResolvedSupplierThreadContext | null> {
+  if (!supplierThreadSubscribed.has(conn)) {
+    await subscribeAndWait(conn, [
+      "SELECT * FROM supplier",
+      "SELECT * FROM supplier_message",
+      "SELECT * FROM purchase_order",
+      "SELECT * FROM organization",
+      "SELECT * FROM settings",
+    ]);
+    supplierThreadSubscribed.add(conn);
+  }
+
+  const normalizedPrefix = normalizeSupplierInboundPrefix(inboundPrefix);
+  const settingsRows = [...conn.db.settings.iter()];
+  const org = [...conn.db.organization.iter()].find((o: any) => {
+    const organizationId = o.id?.toString?.();
+    const settings = settingsRows.find((s: any) => s.organizationId === organizationId);
+    return supplierInboundPrefixForOrg(settings?.supplierInboundPrefix ?? null, organizationId) === normalizedPrefix;
+  });
+  const organizationId = org?.id?.toString?.();
+  if (!organizationId) return null;
+
+  const sender = emailAddress(fromAddress);
+  const suppliers = [...conn.db.supplier.iter()].filter((s: any) => s.organizationId === organizationId);
+  const supplier = sender
+    ? suppliers.find((s: any) => emailAddress(s.email) === sender)
+    : suppliers.length === 1
+      ? suppliers[0]
+      : null;
+  if (!supplier) return null;
+
+  const supplierId = supplier.id?.toString?.();
+  if (!supplierId) return null;
+  const ctx = await getSupplierThreadContext(conn, organizationId, supplierId);
+  if (!ctx) return null;
+  return { ...ctx, organizationId, supplierId, inboundPrefix: normalizedPrefix };
+}
+
+export async function getSupplierInboundAddressForOrg(
+  conn: ServiceConn,
+  organizationId: string,
+): Promise<string | null> {
+  if (!supplierThreadSubscribed.has(conn)) {
+    await subscribeAndWait(conn, [
+      "SELECT * FROM supplier",
+      "SELECT * FROM supplier_message",
+      "SELECT * FROM purchase_order",
+      "SELECT * FROM organization",
+      "SELECT * FROM settings",
+    ]);
+    supplierThreadSubscribed.add(conn);
+  }
+  const settings = [...conn.db.settings.iter()].find((s: any) => s.organizationId === organizationId);
+  return supplierInboundAddressForOrg(settings?.supplierInboundPrefix ?? null, organizationId, inboundDomain());
 }
 
 // ─── Service reducer wrappers ──────────────────────────────────────────────────
@@ -511,6 +591,83 @@ export async function serviceLogSupplierMessage(
     body: args.body,
     status: args.status ?? undefined,
     escalate: args.escalate,
+  });
+}
+
+export async function serviceRepairInventoryItem(
+  conn: ServiceConn,
+  args: {
+    organizationId: string;
+    itemId: string;
+    name: string;
+    category: string;
+    currentStock: number;
+    minStock: number;
+    maxStock: number;
+    unit: string;
+    costPerUnit: number;
+    supplier: string;
+    lastRestocked: string;
+    lossRate: number;
+    minOrderQty?: number | null;
+    unitsPerCase?: number | null;
+  },
+): Promise<void> {
+  conn.reducers.serviceRepairInventoryItem({
+    organizationId: args.organizationId,
+    itemId: args.itemId,
+    name: args.name,
+    category: args.category,
+    currentStock: args.currentStock,
+    minStock: args.minStock,
+    maxStock: args.maxStock,
+    unit: args.unit,
+    costPerUnit: args.costPerUnit,
+    supplier: args.supplier,
+    lastRestocked: args.lastRestocked,
+    lossRate: args.lossRate,
+    minOrderQty: args.minOrderQty ?? undefined,
+    unitsPerCase: args.unitsPerCase ?? undefined,
+  });
+}
+
+export async function serviceSetScheduleIntegration(
+  conn: ServiceConn,
+  args: {
+    organizationId: string;
+    provider: string;
+    companyGuid?: string | null;
+    companyId?: string | null;
+    locationId?: string | null;
+    status?: string | null;
+    summary?: string | null;
+  },
+): Promise<void> {
+  conn.reducers.serviceSetScheduleIntegration({
+    organizationId: args.organizationId,
+    provider: args.provider,
+    companyGuid: args.companyGuid ?? undefined,
+    companyId: args.companyId ?? undefined,
+    locationId: args.locationId ?? undefined,
+    status: args.status ?? undefined,
+    summary: args.summary ?? undefined,
+  });
+}
+
+export async function serviceRecordScheduleSync(
+  conn: ServiceConn,
+  args: {
+    organizationId: string;
+    provider: string;
+    status: string;
+    summary: string;
+  },
+): Promise<void> {
+  conn.reducers.serviceRecordScheduleSync({
+    organizationId: args.organizationId,
+    provider: args.provider,
+    status: args.status,
+    summary: args.summary,
   });
 }
 

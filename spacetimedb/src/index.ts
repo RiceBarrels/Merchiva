@@ -186,6 +186,22 @@ const settingsTable = table(
     // surfaces are hidden until enabled in /~/settings. Kept at the END for
     // safe migration.
     betaFeatures: t.option(t.string()).default(undefined),
+    // External scheduling integration. Kept at the END for safe migrations.
+    // Provider examples: "7shifts", "homebase", "deputy", "when_i_work".
+    // Do not persist short-lived provider bearer tokens here; server routes
+    // mint them as needed using environment-held app credentials.
+    scheduleProvider: t.option(t.string()).default(undefined),
+    scheduleConnected: t.option(t.bool()).default(undefined),
+    scheduleCompanyGuid: t.option(t.string()).default(undefined),
+    scheduleCompanyId: t.option(t.string()).default(undefined),
+    scheduleLocationId: t.option(t.string()).default(undefined),
+    scheduleLastSyncedAt: t.option(t.timestamp()).default(undefined),
+    scheduleLastSyncStatus: t.option(t.string()).default(undefined),
+    scheduleLastSyncSummary: t.option(t.string()).default(undefined),
+    // Store-level fixed supplier inbox prefix. Email shape:
+    //   <supplierInboundPrefix>-inbound@merchiva.com
+    // Optional for existing stores; missing rows derive a stable m-<orgid> prefix.
+    supplierInboundPrefix: t.option(t.string()).default(undefined),
   }
 );
 
@@ -220,6 +236,12 @@ const inventoryItemTable = table(
     // supplier minimum. null = unset (order in raw units, no minimum).
     minOrderQty: t.option(t.number()).default(undefined),    // smallest quantity the supplier accepts (in units)
     unitsPerCase: t.option(t.number()).default(undefined),   // units per case/box; order in multiples of this
+    // Product/recipe planning metadata (appended — keep at the END for safe
+    // migrations). `unitContentAmount` is the amount inside one inventory unit:
+    // e.g. one bottle = 946 ml, one bag = 2.5 kg.
+    description: t.option(t.string()).default(undefined),
+    unitContentAmount: t.option(t.number()).default(undefined),
+    unitContentUnit: t.option(t.string()).default(undefined),
   }
 );
 
@@ -525,6 +547,9 @@ const productTable = table(
     // its originating organizationId). Empty array "[]" means "no store
     // currently sells it" (hidden everywhere). Added at end per migration rules.
     availableStoreIds: t.option(t.string()).default(undefined),
+    // JSON-encoded product recipe/stock consumption lines:
+    // [{ inventoryItemId, inventoryItemName, quantity, unit }]
+    inventoryUsage: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1971,6 +1996,15 @@ export const createOrg = spacetimedb.reducer(
       countryCode: undefined,
       assistantConfig: undefined,
       betaFeatures: undefined,
+      scheduleProvider: undefined,
+      scheduleConnected: undefined,
+      scheduleCompanyGuid: undefined,
+      scheduleCompanyId: undefined,
+      scheduleLocationId: undefined,
+      scheduleLastSyncedAt: undefined,
+      scheduleLastSyncStatus: undefined,
+      scheduleLastSyncSummary: undefined,
+      supplierInboundPrefix: defaultSupplierInboundPrefix(orgId.toString()),
     });
   }
 );
@@ -2417,6 +2451,45 @@ export const removeStoreDevice = spacetimedb.reducer(
 // SETTINGS REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function defaultSupplierInboundPrefix(organizationId: string): string {
+  const compact = organizationId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  return `m-${(compact || 'store').slice(0, 8)}`;
+}
+
+function normalizeSupplierInboundPrefix(prefix: string): string {
+  const raw = prefix.trim().toLowerCase();
+  const local = raw.includes('@') ? raw.split('@')[0] : raw;
+  const withoutSuffix = local.endsWith('-inbound') ? local.slice(0, -'-inbound'.length) : local;
+  return withoutSuffix
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function validateSupplierInboundPrefix(prefix: string): void {
+  if (!/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/.test(prefix)) {
+    throw new Error('Supplier inbox prefix must be 3-32 characters: lowercase letters, numbers, and hyphens only.');
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function settingsSupplierInboundPrefix(settings: any | undefined, organizationId: string): string {
+  return settings?.supplierInboundPrefix
+    ? normalizeSupplierInboundPrefix(settings.supplierInboundPrefix)
+    : defaultSupplierInboundPrefix(organizationId);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function supplierInboundPrefixAvailable(ctx: any, organizationId: string, prefix: string): boolean {
+  for (const org of ctx.db.organization.iter()) {
+    const orgId = org.id.toString();
+    if (orgId === organizationId) continue;
+    const settings = [...ctx.db.settings.byOrganizationId.filter(orgId)][0];
+    if (settingsSupplierInboundPrefix(settings, orgId) === prefix) return false;
+  }
+  return true;
+}
+
 /** Update org settings. Owner/manager with settings.view permission only. */
 export const updateSettings = spacetimedb.reducer(
   {
@@ -2454,6 +2527,34 @@ export const updateSettings = spacetimedb.reducer(
   }
 );
 
+export const setSupplierInboundPrefix = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    prefix: t.string(),
+  },
+  (ctx, { organizationId, prefix }) => {
+    const member = findActiveMember(ctx, organizationId);
+    const perms = JSON.parse(member.permissions);
+    if (!perms.settings?.view) unauthorized('No settings permission');
+
+    const normalized = normalizeSupplierInboundPrefix(prefix);
+    validateSupplierInboundPrefix(normalized);
+    if (!supplierInboundPrefixAvailable(ctx, organizationId, normalized)) {
+      throw new Error('Supplier inbox prefix is already taken.');
+    }
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      supplierInboundPrefix: normalized,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // INVENTORY REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2472,6 +2573,9 @@ export const addInventoryItem = spacetimedb.reducer(
     lastRestocked: t.string(),
     minOrderQty: t.option(t.number()),
     unitsPerCase: t.option(t.number()),
+    description: t.option(t.string()),
+    unitContentAmount: t.option(t.number()),
+    unitContentUnit: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2496,6 +2600,9 @@ export const addInventoryItem = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
       minOrderQty: args.minOrderQty,
       unitsPerCase: args.unitsPerCase,
+      description: args.description,
+      unitContentAmount: args.unitContentAmount,
+      unitContentUnit: args.unitContentUnit,
     });
   }
 );
@@ -2516,6 +2623,9 @@ export const updateInventoryItem = spacetimedb.reducer(
     lossRate: t.number(),
     minOrderQty: t.option(t.number()),
     unitsPerCase: t.option(t.number()),
+    description: t.option(t.string()),
+    unitContentAmount: t.option(t.number()),
+    unitContentUnit: t.option(t.string()),
     operatorMemberId: t.option(t.string()),
     operatorName: t.option(t.string()),
   },
@@ -2543,6 +2653,9 @@ export const updateInventoryItem = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
       minOrderQty: args.minOrderQty,
       unitsPerCase: args.unitsPerCase,
+      description: args.description,
+      unitContentAmount: args.unitContentAmount,
+      unitContentUnit: args.unitContentUnit,
     });
 
     if (stockDelta !== 0) {
@@ -2631,6 +2744,7 @@ export const addProduct = spacetimedb.reducer(
     nameI18n: t.option(t.string()),
     options: t.option(t.string()),
     availableStoreIds: t.option(t.string()),
+    inventoryUsage: t.option(t.string()),
   },
   (ctx, args) => {
     // Products are shared across the parent/child share group — accept any
@@ -2662,6 +2776,7 @@ export const addProduct = spacetimedb.reducer(
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
       availableStoreIds: args.availableStoreIds,
+      inventoryUsage: args.inventoryUsage,
     });
   }
 );
@@ -2682,6 +2797,7 @@ export const updateProduct = spacetimedb.reducer(
     nameI18n: t.option(t.string()),
     options: t.option(t.string()),
     availableStoreIds: t.option(t.string()),
+    inventoryUsage: t.option(t.string()),
   },
   (ctx, args) => {
     // organizationId is the caller's current store. The product itself might
@@ -2715,6 +2831,7 @@ export const updateProduct = spacetimedb.reducer(
       options: args.options,
       updatedAt: ctx.timestamp,
       availableStoreIds: args.availableStoreIds,
+      inventoryUsage: args.inventoryUsage,
     });
   }
 );
@@ -5274,6 +5391,113 @@ export const disconnectClover = spacetimedb.reducer(
   }
 );
 
+export const setScheduleIntegration = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    provider: t.string(),
+    companyGuid: t.option(t.string()),
+    companyId: t.option(t.string()),
+    locationId: t.option(t.string()),
+  },
+  (ctx, { organizationId, provider, companyGuid, companyId, locationId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      scheduleProvider: provider,
+      scheduleConnected: !!companyGuid,
+      scheduleCompanyGuid: companyGuid,
+      scheduleCompanyId: companyId,
+      scheduleLocationId: locationId,
+      scheduleLastSyncStatus: companyGuid ? 'connected' : 'selected',
+      scheduleLastSyncSummary: companyGuid ? `${provider} connected` : `${provider} selected`,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const disconnectScheduleIntegration = spacetimedb.reducer(
+  { organizationId: t.string() },
+  (ctx, { organizationId }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role === 'staff') unauthorized('Manager or owner required');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      scheduleProvider: undefined,
+      scheduleConnected: undefined,
+      scheduleCompanyGuid: undefined,
+      scheduleCompanyId: undefined,
+      scheduleLocationId: undefined,
+      scheduleLastSyncedAt: undefined,
+      scheduleLastSyncStatus: undefined,
+      scheduleLastSyncSummary: undefined,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const serviceSetScheduleIntegration = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    provider: t.string(),
+    companyGuid: t.option(t.string()),
+    companyId: t.option(t.string()),
+    locationId: t.option(t.string()),
+    status: t.option(t.string()),
+    summary: t.option(t.string()),
+  },
+  (ctx, { organizationId, provider, companyGuid, companyId, locationId, status, summary }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      scheduleProvider: provider,
+      scheduleConnected: !!companyGuid,
+      scheduleCompanyGuid: companyGuid,
+      scheduleCompanyId: companyId,
+      scheduleLocationId: locationId,
+      scheduleLastSyncStatus: status ?? (companyGuid ? 'connected' : 'selected'),
+      scheduleLastSyncSummary: summary ?? (companyGuid ? `${provider} connected` : `${provider} selected`),
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+export const serviceRecordScheduleSync = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    provider: t.string(),
+    status: t.string(),
+    summary: t.string(),
+  },
+  (ctx, { organizationId, provider, status, summary }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new Error('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      scheduleProvider: provider,
+      scheduleLastSyncedAt: ctx.timestamp,
+      scheduleLastSyncStatus: status,
+      scheduleLastSyncSummary: summary,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTERNAL HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -6493,6 +6717,53 @@ export const registerServiceIdentity = spacetimedb.reducer(
       identity: ctx.sender,
       label,
       registeredAt: ctx.timestamp,
+    });
+  }
+);
+
+export const serviceRepairInventoryItem = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    itemId: t.string(),
+    name: t.string(),
+    category: t.string(),
+    currentStock: t.number(),
+    minStock: t.number(),
+    maxStock: t.number(),
+    unit: t.string(),
+    costPerUnit: t.number(),
+    supplier: t.string(),
+    lastRestocked: t.string(),
+    lossRate: t.number(),
+    minOrderQty: t.option(t.number()),
+    unitsPerCase: t.option(t.number()),
+    description: t.option(t.string()),
+    unitContentAmount: t.option(t.number()),
+    unitContentUnit: t.option(t.string()),
+  },
+  (ctx, args) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+
+    const item = findItemInOrg(ctx.db.inventoryItem, args.organizationId, args.itemId);
+    ctx.db.inventoryItem.delete(item);
+    ctx.db.inventoryItem.insert({
+      ...item,
+      name: args.name,
+      category: args.category,
+      currentStock: args.currentStock,
+      minStock: args.minStock,
+      maxStock: args.maxStock,
+      unit: args.unit,
+      costPerUnit: args.costPerUnit,
+      supplier: args.supplier,
+      lastRestocked: args.lastRestocked,
+      lossRate: args.lossRate,
+      updatedAt: ctx.timestamp,
+      minOrderQty: args.minOrderQty,
+      unitsPerCase: args.unitsPerCase,
+      description: args.description,
+      unitContentAmount: args.unitContentAmount,
+      unitContentUnit: args.unitContentUnit,
     });
   }
 );

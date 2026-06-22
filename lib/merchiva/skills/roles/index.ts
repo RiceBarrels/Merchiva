@@ -53,10 +53,13 @@ function parseRolesCommands(text: string): { cleanText: string; data: RolesData 
 
 export const rolesSkill: MerchivaSkill<RolesData> = {
   id: "roles",
+  title: "Legacy Roles",
+  description: "Backward-compatible parser for role command syntax.",
+  category: "legacy",
+  enabledByDefault: true,
   parse: parseRolesCommands,
   promptSegment: `LEGACY ROLES COMMANDS (prefer action blocks instead):
 - /roles list — displays all current staff roles as visual cards.
 - /roles add '{"title":"...","des":"...","tasks":"...","icon":"...","color":"..."}' — legacy format, still supported.
 PREFERRED: Use action blocks for role management — addRole, updateRole, deleteRole, addRoleTask, updateRoleTask, deleteRoleTask.`,
 };
-

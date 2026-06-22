@@ -9,6 +9,20 @@ function esc(s: string): string {
   );
 }
 
+function cleanEmailDisplayName(name: string): string {
+  return name.replace(/[<>"\r\n,]/g, " ").replace(/\s+/g, " ").trim() || "Merchiva";
+}
+
+function isSimpleEmailAddress(email: string): boolean {
+  return /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+$/.test(email);
+}
+
+function supplierThreadFrom(orgName: string, replyTo?: string | null): string {
+  const email = replyTo?.trim();
+  if (!email || !isSimpleEmailAddress(email)) return FROM;
+  return `${cleanEmailDisplayName(orgName)} <${email}>`;
+}
+
 export interface SupplierPOItem {
   name: string;
   itemName?: string;
@@ -157,9 +171,9 @@ function formatSupplierQuantity(it: SupplierPOItem, language: SupplierEmailLangu
 
 /**
  * Send a purchase-order request to a supplier on behalf of the org. The
- * supplier's reply goes to `replyTo` (the manager's address) — Phase 1 keeps a
- * human in the loop for the conversation. Throws on send failure so the caller
- * can fall back to saving a draft + escalating.
+ * supplier's reply goes to `replyTo`, which should usually be the store's
+ * fixed inbound supplier inbox. Throws on send failure so the caller can fall
+ * back to saving a draft + escalating.
  */
 export async function sendSupplierPOEmail({
   to,
@@ -205,7 +219,7 @@ export async function sendSupplierPOEmail({
     : "";
   const totalLabel = total > 0 ? `${currency}${total.toFixed(2)}` : copy.pendingQuote;
   const { error } = await resend.emails.send({
-    from: FROM,
+    from: supplierThreadFrom(orgName, replyTo),
     to,
     ...(replyTo ? { replyTo } : {}),
     subject: copy.subject(orgName),
@@ -331,7 +345,7 @@ export async function sendSupplierReplyEmail({
   const resend = new Resend(process.env.RESEND_API_KEY);
   const safeBody = esc(body).replace(/\n/g, "<br/>");
   const { error } = await resend.emails.send({
-    from: FROM,
+    from: supplierThreadFrom(orgName, replyTo),
     to,
     ...(replyTo ? { replyTo } : {}),
     subject: subject || `Re: your message — ${orgName}`,

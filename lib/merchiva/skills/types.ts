@@ -1,5 +1,9 @@
 export interface MerchivaSkill<TParsed = unknown> {
   id: string;
+  title?: string;
+  description?: string;
+  category?: "core" | "workflow" | "memory" | "legacy";
+  enabledByDefault?: boolean;
   parse(text: string): { cleanText: string; data: TParsed | null };
   promptSegment: string;
 }

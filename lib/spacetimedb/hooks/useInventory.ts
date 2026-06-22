@@ -18,25 +18,32 @@ export function useInventory(_organizationId: string | null) {
     if (!organizationId) return [];
     return rawItems
       .filter((r) => r.organizationId === organizationId)
-      .map((r) => ({
-        id:           r.id.toString(),
-        name:         r.name,
-        category:     r.category,
-        currentStock: r.currentStock,
-        minStock:     r.minStock,
-        maxStock:     r.maxStock,
-        unit:         r.unit,
-        costPerUnit:  r.costPerUnit,
-        supplier:     r.supplier,
-        lastRestocked: r.lastRestocked,
-        lossRate:     r.lossRate,
-        minOrderQty:  r.minOrderQty ?? undefined,
-        unitsPerCase: r.unitsPerCase ?? undefined,
-        status: (
-          r.currentStock <= 0 ? "out_of_stock" :
-          r.currentStock <= r.minStock ? "low_stock" : "in_stock"
-        ) as InventoryItem["status"],
-      }));
+      .map((r) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const row = r as any;
+        return {
+          id:           r.id.toString(),
+          name:         r.name,
+          description:  row.description ?? undefined,
+          category:     r.category,
+          currentStock: r.currentStock,
+          minStock:     r.minStock,
+          maxStock:     r.maxStock,
+          unit:         r.unit,
+          costPerUnit:  r.costPerUnit,
+          supplier:     r.supplier,
+          lastRestocked: r.lastRestocked,
+          lossRate:     r.lossRate,
+          minOrderQty:  r.minOrderQty ?? undefined,
+          unitsPerCase: r.unitsPerCase ?? undefined,
+          unitContentAmount: row.unitContentAmount ?? undefined,
+          unitContentUnit: row.unitContentUnit ?? undefined,
+          status: (
+            r.currentStock <= 0 ? "out_of_stock" :
+            r.currentStock <= r.minStock ? "low_stock" : "in_stock"
+          ) as InventoryItem["status"],
+        };
+      });
   }, [rawItems, organizationId]);
 
   const transactions = useMemo<InventoryTransaction[]>(() => {

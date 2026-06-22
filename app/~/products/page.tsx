@@ -54,6 +54,7 @@ import { PageHeader } from "@/components/page-header";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
+import { useInventory } from "@/lib/spacetimedb/hooks/useInventory";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
 import { toast } from "sonner";
@@ -61,6 +62,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ImageUpload } from "@/components/image-upload";
 import { PageTabs } from "@/components/page-tabs";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { ProductInventoryUsageEditor } from "@/components/inventory/product-inventory-usage-editor";
 
 const alertConfig = {
   none:           { labelKey: "products.alerts.healthy",          icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -85,6 +87,7 @@ const BLANK: Partial<Product> = {
   rating: 5,
   trend: "stable",
   alert: "none",
+  inventoryUsage: [],
 };
 
 export default function ProductsPage() {
@@ -94,6 +97,7 @@ export default function ProductsPage() {
   const router = useRouter();
   // Data via SpacetimeDB migration hook
   const { products, refreshing, userId } = useProducts(organizationId);
+  const { items: inventoryItems } = useInventory(organizationId);
   // Multi-store mode is "on" when this org belongs to a share group of more
   // than one store — surface the "sold at" picker + the store column then.
   const multiStoreMode = shareGroupOrgs.length > 1;
@@ -228,7 +232,7 @@ export default function ProductsPage() {
       toast.success(t("products.toasts.added"));
       void newProd;
       setDialogOpen(false);
-      setForm(BLANK);
+      setForm({ ...BLANK, inventoryUsage: [] });
     } catch (err) {
       console.error(err);
       toast.error(t("products.toasts.addFailed"));
@@ -279,7 +283,7 @@ export default function ProductsPage() {
                 {t("products.flagged").replace("{count}", String(atRisk))}
               </Badge>
             )}
-            <Button onClick={() => { setForm(BLANK); setDialogOpen(true); }} className="gap-2">
+            <Button onClick={() => { setForm({ ...BLANK, inventoryUsage: [] }); setDialogOpen(true); }} className="gap-2">
               <Plus className="h-4 w-4" /> {t("products.addProduct")}
             </Button>
           </div>
@@ -438,7 +442,7 @@ export default function ProductsPage() {
                       <TableRow
                         key={p.id}
                         className="cursor-pointer"
-                        onClick={() => router.push(`/products/${p.id}`)}
+                        onClick={() => router.push(`/~/products/${p.id}`)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -616,6 +620,11 @@ export default function ProductsPage() {
               />
               <p className="text-[11px] text-muted-foreground text-right">{(form.description ?? "").length}/500</p>
             </div>
+            <ProductInventoryUsageEditor
+              inventoryItems={inventoryItems}
+              value={form.inventoryUsage}
+              onChange={(inventoryUsage) => setForm((f) => ({ ...f, inventoryUsage }))}
+            />
             {/* Sold at — multi-store visibility picker. Only shown when this
                 org belongs to a parent/child share group with more than one store. */}
             {multiStoreMode && (

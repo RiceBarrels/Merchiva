@@ -38,6 +38,7 @@ import { getStoredToken } from "@/lib/spacetimedb/client";
 import { useAuth } from "@/lib/auth/context";
 import type { ChatMessage, TaskDeleteCmd, PendingAction } from "@/lib/merchiva/skills/types";
 import { loadMemory, saveMemoryField } from "@/lib/merchiva/memory";
+import { loadStoredMcpServers, redactMcpServers } from "@/lib/merchiva/mcp/config";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { MerchivaLogo } from "@/components/logo";
 import { MerchivaCallModal } from "@/components/merchiva-call-modal";
@@ -137,8 +138,10 @@ function logMerchivaSend(label: string, payload: Record<string, unknown>) {
   console.log("history:", p.history);
   console.log("context:", p.context);
   console.log("permissions:", p.permissions);
-  // Redact the auth token before dumping the full payload to the console.
-  const redacted = "token" in payload ? { ...payload, token: "[redacted]" } : payload;
+  // Redact auth material before dumping the full payload to the console.
+  const redacted = { ...payload };
+  if ("token" in redacted) redacted.token = "[redacted]";
+  if ("mcpServers" in redacted) redacted.mcpServers = redactMcpServers(redacted.mcpServers);
   console.log("full payload:", redacted);
   console.groupEnd();
 }
@@ -3465,6 +3468,10 @@ export function MerchivaChat({
       const last10 = expandHistoryFromMessages(messages).slice(-10);
 
       const mem = organizationId ? loadMemory(organizationId) : { summary: "", storeOverview: "", userPreferences: "" };
+      const mcpServers = organizationId
+        ? loadStoredMcpServers(organizationId).filter((server) => server.enabled)
+        : [];
+      const mcpPayload = mcpServers.length > 0 ? { mcpServers } : {};
 
       setThinkingPhase(getThinkingLabel(text, "fetch", t));
 
@@ -3495,6 +3502,7 @@ export function MerchivaChat({
               storeOverview: mem.storeOverview || undefined,
               userPreferences: mem.userPreferences || undefined,
             },
+            ...mcpPayload,
             permissions: {
               isOwner,
               role: orgRole,
@@ -3550,6 +3558,7 @@ export function MerchivaChat({
             Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
           ),
         },
+        ...mcpPayload,
       };
       logMerchivaSend("stream", streamPayload);
       const res = await fetch("/api/store-ai", {
@@ -3696,6 +3705,7 @@ export function MerchivaChat({
                 Object.entries(userPermissions).map(([k, v]) => [k, { view: v?.view, edit: v?.edit }])
               ),
             },
+            ...mcpPayload,
           };
           logMerchivaSend("non-stream fallback", fallbackPayload);
           const fallbackRes = await fetch("/api/store-ai", {

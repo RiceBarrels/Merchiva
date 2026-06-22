@@ -5,20 +5,20 @@
 // parsed message) at:
 //     POST /api/suppliers/inbound?key=<INBOUND_WEBHOOK_SECRET>
 // configured as a catch-all on INBOUND_EMAIL_DOMAIN. The recipient local part
-// is a signed thread token that decodes to (orgId, supplierId).
+// is the store's fixed supplier inbox prefix: <prefix>-inbound.
 //
-// Flow: verify secret → parse → decode token → load thread context → ask Mr.
+// Flow: verify secret → parse → resolve store prefix + supplier email → ask Mr.
 // Merchiva to draft a reply + decide whether to escalate → email the supplier
 // back → log inbound + outbound messages (escalating problems to managers).
 
 import { NextRequest, NextResponse } from "next/server";
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateObject, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
-import { decodeThreadToken, tokenFromRecipient, inboundDomain } from "@/lib/suppliers/thread-token";
+import { inboundAddressFromPrefix, prefixFromRecipient } from "@/lib/suppliers/thread-token";
 import {
   getServiceConn,
-  getSupplierThreadContext,
+  getSupplierThreadContextForInbound,
   serviceLogSupplierMessage,
   type SupplierThreadContext,
 } from "@/lib/spacetimedb/service-client";
@@ -57,6 +57,125 @@ const decisionSchema = z.object({
     .describe("If escalate=true, one sentence describing the problem for the manager."),
 });
 
+type SupplierDecision = z.infer<typeof decisionSchema>;
+
+function extractFirstJsonObject(text: string): string | null {
+  if (!text) return null;
+  let s = text.trim();
+  const fenceMatch = s.match(/^```(?:json)?\s*\n?/i);
+  if (fenceMatch) s = s.slice(fenceMatch[0].length);
+  const start = s.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escape = true;
+      continue;
+    }
+    if (ch === "\"") {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) return s.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function recoverDecisionFromJsonText(text: string | undefined): SupplierDecision | null {
+  if (!text) return null;
+  const candidate = extractFirstJsonObject(text);
+  if (!candidate) return null;
+  try {
+    const parsed = JSON.parse(candidate);
+    const result = decisionSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function cleanPlainReply(text: string | undefined): string {
+  if (!text) return "";
+  const trimmed = text
+    .trim()
+    .replace(/^```(?:text|markdown)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
+  if (!trimmed || trimmed.startsWith("{")) return "";
+  return trimmed.slice(0, 4000);
+}
+
+function supplierLanguage(ctx: SupplierThreadContext): string {
+  return String(ctx.supplier.language || "en").trim().toLowerCase().split(/[-_]/)[0];
+}
+
+function holdingReply(ctx: SupplierThreadContext): string {
+  switch (supplierLanguage(ctx)) {
+    case "zh":
+      return "谢谢你的更新。我需要和经理/店主再次确认一下，然后尽快回复你。";
+    case "es":
+      return "Gracias por la actualización. Voy a confirmarlo con el gerente o propietario y te responderé pronto.";
+    case "fr":
+      return "Merci pour la mise à jour. Je vais vérifier avec le responsable ou le propriétaire et je vous répondrai rapidement.";
+    case "ar":
+      return "شكرًا على التحديث. سأتحقق من ذلك مع المدير أو المالك وأعود إليك قريبًا.";
+    case "hi":
+      return "अपडेट के लिए धन्यवाद। मैं इसे मैनेजर/ओनर से दोबारा कन्फर्म करके जल्द जवाब दूंगा।";
+    default:
+      return "Thank you for the update. I need to double-check this with the manager/owner and will get back to you shortly.";
+  }
+}
+
+function escalationReasonFromSupplierMessage(message: string): string | null {
+  const normalized = message.toLowerCase();
+  const checks: Array<[RegExp, string]> = [
+    [/(\$\s?\d|\d+\s?(usd|dollars?|cad|eur|gbp)|price|cost|charge|quote|total|invoice|payment|rate|increase|涨价|价格|费用|报价|发票|付款)/i, "Supplier mentioned price, payment, invoice, or cost changes."],
+    [/(out of stock|unavailable|substitut|replace|alternative|back.?order|short|shortage|缺货|替代|替换|没有库存)/i, "Supplier mentioned stock issues or a substitution."],
+    [/(minimum order|moq|case only|full case|quantity|qty|more than|less than|increase order|reduce order|最低订量|数量|箱起订|加订|减少)/i, "Supplier mentioned a quantity or MOQ change."],
+    [/(delay|late|problem|issue|cannot|can't|won't|cancel|reschedule|postpone|tomorrow instead|next week instead|延迟|问题|取消|改期|不能)/i, "Supplier mentioned a delivery problem or schedule change."],
+    [/(terms|net\s?\d+|credit|refund|dispute|contract|条款|账期|退款|争议)/i, "Supplier mentioned terms, credit, refund, or dispute details."],
+  ];
+  for (const [pattern, reason] of checks) {
+    if (pattern.test(normalized)) return reason;
+  }
+  return null;
+}
+
+function recoverDecisionFromPlainText(
+  rawText: string | undefined,
+  supplierMsg: string,
+  ctx: SupplierThreadContext,
+): SupplierDecision | null {
+  const jsonDecision = recoverDecisionFromJsonText(rawText);
+  if (jsonDecision) return jsonDecision;
+
+  const escalationReason = escalationReasonFromSupplierMessage(supplierMsg);
+  if (escalationReason) {
+    return {
+      reply: holdingReply(ctx),
+      escalate: true,
+      problemSummary: escalationReason,
+    };
+  }
+
+  const reply = cleanPlainReply(rawText);
+  if (!reply) return null;
+  return { reply, escalate: false };
+}
+
 // Pull the first present key from a loosely-typed inbound payload.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function pick(obj: Record<string, any>, keys: string[]): string | undefined {
@@ -76,17 +195,28 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-// Normalize the inbound payload to { to, subject, text } across providers.
+function addressField(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim()) return value;
+  if (value && typeof value === "object") {
+    const obj = value as { email?: unknown; address?: unknown };
+    if (typeof obj.email === "string" && obj.email.trim()) return obj.email;
+    if (typeof obj.address === "string" && obj.address.trim()) return obj.address;
+  }
+  return undefined;
+}
+
+// Normalize the inbound payload to { to, from, subject, text } across providers.
 // Resend's `email.received` webhook carries METADATA ONLY, so we fetch the body
 // from the Received Emails API. Other providers (Cloudflare/Postmark/Mailgun/
 // SendGrid) post the body inline, so we read it directly.
 async function extractInboundEmail(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: Record<string, any>,
-): Promise<{ to?: string; subject: string | null; text: string }> {
+): Promise<{ to?: string; from?: string; subject: string | null; text: string; bodyFetchError?: string }> {
   if (payload?.type === "email.received" && payload?.data?.email_id && process.env.RESEND_API_KEY) {
+    const emailId = String(payload.data.email_id);
     try {
-      const res = await fetch(`https://api.resend.com/emails/receiving/${payload.data.email_id}`, {
+      const res = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(emailId)}`, {
         headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
       });
       if (res.ok) {
@@ -98,27 +228,56 @@ async function extractInboundEmail(
             : typeof full.html === "string"
               ? stripHtml(full.html)
               : "";
-        return { to: toArr.join(","), subject: full.subject ?? null, text };
+        return { to: toArr.join(","), from: addressField(full.from) ?? addressField(payload.data?.from), subject: full.subject ?? null, text };
       }
-      console.error("[suppliers/inbound] Resend received-email fetch failed:", res.status);
+      const errorBody = await res.text().catch(() => "");
+      const detail = `Resend received-email fetch failed for ${emailId}: ${res.status}${errorBody ? ` ${errorBody.slice(0, 500)}` : ""}`;
+      console.error("[suppliers/inbound]", detail);
+      const toArr = Array.isArray(payload.data?.to) ? payload.data.to : [];
+      return {
+        to: toArr.join(","),
+        from: addressField(payload.data?.from),
+        subject: payload.data?.subject ?? null,
+        text: "",
+        bodyFetchError: detail,
+      };
     } catch (err) {
-      console.error("[suppliers/inbound] Resend received-email fetch error:", err);
+      const detail = `Resend received-email fetch error for ${emailId}: ${err instanceof Error ? err.message : String(err)}`;
+      console.error("[suppliers/inbound]", detail);
+      const toArr = Array.isArray(payload.data?.to) ? payload.data.to : [];
+      return {
+        to: toArr.join(","),
+        from: addressField(payload.data?.from),
+        subject: payload.data?.subject ?? null,
+        text: "",
+        bodyFetchError: detail,
+      };
     }
-    // Fall back to metadata so we can at least route + escalate to a human.
+  }
+
+  if (payload?.type === "email.received" && payload?.data?.email_id && !process.env.RESEND_API_KEY) {
     const toArr = Array.isArray(payload.data?.to) ? payload.data.to : [];
-    return { to: toArr.join(","), subject: payload.data?.subject ?? null, text: "" };
+    return {
+      to: toArr.join(","),
+      from: addressField(payload.data?.from),
+      subject: payload.data?.subject ?? null,
+      text: "",
+      bodyFetchError: "RESEND_API_KEY is not configured; cannot retrieve received email body.",
+    };
   }
 
   // Generic provider — body posted inline.
   const toRaw =
     payload.to ?? payload.recipient ?? payload.To ?? payload.envelope_to ?? payload.Destination;
   const to = Array.isArray(toRaw) ? toRaw.join(",") : typeof toRaw === "string" ? toRaw : undefined;
+  const fromRaw = payload.from ?? payload.sender ?? payload.From ?? payload.envelope_from ?? payload.ReturnPath;
+  const from = Array.isArray(fromRaw) ? fromRaw.join(",") : addressField(fromRaw);
   const subject = pick(payload, ["subject", "Subject"]) ?? null;
   const text =
     pick(payload, ["text", "body-plain", "stripped-text", "TextBody", "plain"]) ||
     pick(payload, ["html", "HtmlBody", "body-html"]) ||
     "";
-  return { to, subject, text };
+  return { to, from, subject, text };
 }
 
 function buildSystemPrompt(ctx: SupplierThreadContext): string {
@@ -190,18 +349,17 @@ export async function POST(req: NextRequest) {
     payload = {};
   }
 
-  const { to, subject, text } = await extractInboundEmail(payload);
+  const { to, from, subject, text, bodyFetchError } = await extractInboundEmail(payload);
 
-  // 3) Resolve the thread token from the recipient address. A bad/absent token
-  //    is answered 200 so the provider doesn't retry an unroutable message.
-  const token = tokenFromRecipient(to);
-  const decoded = token ? decodeThreadToken(token) : null;
-  if (!decoded) {
-    return NextResponse.json({ ok: true, ignored: "no_valid_thread_token" });
+  // 3) Resolve the store inbox prefix from the recipient address. A bad/absent
+  //    prefix is answered 200 so the provider doesn't retry unroutable mail.
+  const inboundPrefix = prefixFromRecipient(to);
+  if (!inboundPrefix) {
+    return NextResponse.json({ ok: true, ignored: "no_valid_store_inbox" });
   }
 
   const supplierMsg = (text ?? "").trim();
-  if (!supplierMsg) {
+  if (!supplierMsg && !bodyFetchError) {
     return NextResponse.json({ ok: true, ignored: "empty_body" });
   }
 
@@ -215,57 +373,92 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `service connection: ${msg}` }, { status: 500 });
   }
 
-  let ctx: SupplierThreadContext | null;
+  let routed: Awaited<ReturnType<typeof getSupplierThreadContextForInbound>>;
   try {
-    ctx = await getSupplierThreadContext(conn, decoded.orgId, decoded.supplierId);
+    routed = await getSupplierThreadContextForInbound(conn, inboundPrefix, from);
   } catch (err) {
     console.error("[suppliers/inbound] context load failed:", err);
     return NextResponse.json({ error: "context load failed" }, { status: 500 });
   }
-  if (!ctx) {
+  if (!routed) {
     return NextResponse.json({ ok: true, ignored: "supplier_not_found" });
   }
+  const ctx: SupplierThreadContext = routed;
+  const organizationId = routed.organizationId;
+  const supplierId = routed.supplierId;
 
-  // 5) Ask Mr. Merchiva for a reply + escalation decision. If the model fails,
-  //    fall back to logging the inbound message and escalating to a human.
-  let decision: { reply: string; escalate: boolean; problemSummary?: string };
+  if (!supplierMsg && bodyFetchError) {
+    await serviceLogSupplierMessage(conn, {
+      organizationId,
+      supplierId,
+      supplierName: ctx.supplier.name,
+      direction: "inbound",
+      channel: "email",
+      subject: subject ?? null,
+      body: `Supplier replied, but Merchiva could not retrieve the email body from Resend.\n\n${bodyFetchError}`,
+      status: "needs_review",
+      escalate: true,
+    });
+    return NextResponse.json({ ok: true, escalated: true, bodyFetchError: true });
+  }
+
+  // 5) Ask Mr. Merchiva for a reply + escalation decision. Some OpenRouter
+  //    models ignore structured output and return a plain email body; recover
+  //    that as a routine reply unless the supplier's actual message is risky.
+  let decision: SupplierDecision;
   try {
     const res = await generateObject({
       model: getOpenRouter().chat(MODEL),
       schema: decisionSchema,
       system: buildSystemPrompt(ctx),
-      prompt: `The supplier just sent this message:\n\n"""\n${supplierMsg}\n"""\n\nWrite your reply and decide whether to escalate.`,
+      prompt: `The supplier just sent this message:\n\n"""\n${supplierMsg}\n"""\n\nWrite your reply and decide whether to escalate. Return ONLY the JSON object requested by the schema, with no prose outside JSON.`,
       maxOutputTokens: 800,
       temperature: 0.3,
+      providerOptions: {
+        openai: { reasoningEffort: "minimal", reasoning_effort: "minimal" },
+        openrouter: { reasoning: { effort: "minimal", exclude: true } },
+      },
     });
     decision = res.object;
     await recordAiUsage({
-      organizationId: decoded.orgId,
+      organizationId,
       feature: "supplier_agent",
       model: MODEL,
       description: `Replied to ${ctx.supplier.name}: ${supplierMsg}`,
       ...normalizeUsage(res.usage),
     });
   } catch (err) {
-    console.error("[suppliers/inbound] AI failed; escalating:", err);
-    await serviceLogSupplierMessage(conn, {
-      organizationId: decoded.orgId,
-      supplierId: decoded.supplierId,
-      supplierName: ctx.supplier.name,
-      direction: "inbound",
-      channel: "email",
-      subject: subject ?? null,
-      body: supplierMsg,
-      status: "needs_review",
-      escalate: true,
-    });
-    return NextResponse.json({ ok: true, escalated: true, aiError: true });
+    const rawText = NoObjectGeneratedError.isInstance(err)
+      ? ((err as { text?: string }).text ?? "")
+      : "";
+    const recovered = recoverDecisionFromPlainText(rawText, supplierMsg, ctx);
+    if (recovered) {
+      console.warn(
+        "[suppliers/inbound] AI returned non-JSON; recovered supplier decision",
+        { escalated: recovered.escalate, rawTextLength: rawText.length },
+      );
+      decision = recovered;
+    } else {
+      console.error("[suppliers/inbound] AI failed; escalating:", err);
+      await serviceLogSupplierMessage(conn, {
+        organizationId,
+        supplierId,
+        supplierName: ctx.supplier.name,
+        direction: "inbound",
+        channel: "email",
+        subject: subject ?? null,
+        body: supplierMsg,
+        status: "needs_review",
+        escalate: true,
+      });
+      return NextResponse.json({ ok: true, escalated: true, aiError: true });
+    }
   }
 
   // 6) Log the inbound message (escalating to managers if it's a problem).
   await serviceLogSupplierMessage(conn, {
-    organizationId: decoded.orgId,
-    supplierId: decoded.supplierId,
+    organizationId,
+    supplierId,
     supplierName: ctx.supplier.name,
     direction: "inbound",
     channel: "email",
@@ -277,10 +470,10 @@ export async function POST(req: NextRequest) {
     escalate: decision.escalate,
   });
 
-  // 7) Email the AI's reply back to the supplier (thread continues via the same
-  //    tokenized reply-to), and log it.
+  // 7) Email the AI's reply back to the supplier. Replies continue through the
+  //    same fixed store inbox.
   let replied = false;
-  const domain = inboundDomain();
+  const replyTo = inboundAddressFromPrefix(inboundPrefix);
   if (ctx.supplier.email && decision.reply.trim()) {
     try {
       await sendSupplierReplyEmail({
@@ -288,12 +481,12 @@ export async function POST(req: NextRequest) {
         orgName: ctx.orgName,
         body: decision.reply,
         subject: subject ? `Re: ${subject}` : null,
-        replyTo: domain && token ? `${token}@${domain}` : null,
+        replyTo,
       });
       replied = true;
       await serviceLogSupplierMessage(conn, {
-        organizationId: decoded.orgId,
-        supplierId: decoded.supplierId,
+        organizationId,
+        supplierId,
         supplierName: ctx.supplier.name,
         direction: "outbound",
         channel: "email",

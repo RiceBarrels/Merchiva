@@ -2,6 +2,17 @@
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Product } from "@/lib/types";
 
+function parseInventoryUsage(value: unknown) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fromRow(row: any): Product {
   return {
@@ -19,7 +30,8 @@ function fromRow(row: any): Product {
     alert: row.alert,
     alertReason: row.alertReason ?? undefined,
     description: row.description ?? undefined,
-    nameI18n: row.nameI18n ? (() => { try { return JSON.parse(row.nameI18n); } catch { return undefined; } })() : undefined,
+    inventoryUsage: parseInventoryUsage(row.inventoryUsage),
+    nameI18n: (row.nameI18N ?? row.nameI18n) ? (() => { try { return JSON.parse(row.nameI18N ?? row.nameI18n); } catch { return undefined; } })() : undefined,
     images: row.images ?? undefined,
     pageTemplate: row.pageTemplate ?? null,
   };

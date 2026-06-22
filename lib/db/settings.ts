@@ -22,6 +22,15 @@ export interface UserSettings {
   paymentTaxRate: number | null;
   paymentCurrency: string | null;
   betaFeatures: string | null;
+  scheduleProvider: string | null;
+  scheduleConnected: boolean;
+  scheduleCompanyGuid: string | null;
+  scheduleCompanyId: string | null;
+  scheduleLocationId: string | null;
+  scheduleLastSyncedAt: string | null;
+  scheduleLastSyncStatus: string | null;
+  scheduleLastSyncSummary: string | null;
+  supplierInboundPrefix: string | null;
 }
 
 export async function getSettings(): Promise<UserSettings | null> {
@@ -55,6 +64,15 @@ export async function getSettings(): Promise<UserSettings | null> {
         paymentTaxRate: r.paymentTaxRate != null ? Number(r.paymentTaxRate) : null,
         paymentCurrency: r.paymentCurrency ?? null,
         betaFeatures: r.betaFeatures ?? null,
+        scheduleProvider: r.scheduleProvider ?? null,
+        scheduleConnected: Boolean(r.scheduleConnected),
+        scheduleCompanyGuid: r.scheduleCompanyGuid ?? null,
+        scheduleCompanyId: r.scheduleCompanyId ?? null,
+        scheduleLocationId: r.scheduleLocationId ?? null,
+        scheduleLastSyncedAt: r.scheduleLastSyncedAt ? String(r.scheduleLastSyncedAt) : null,
+        scheduleLastSyncStatus: r.scheduleLastSyncStatus ?? null,
+        scheduleLastSyncSummary: r.scheduleLastSyncSummary ?? null,
+        supplierInboundPrefix: r.supplierInboundPrefix ?? null,
       };
     }
   }

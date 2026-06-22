@@ -11,6 +11,8 @@ import {
   Unlink,
   ExternalLink,
   Save,
+  Mail,
+  Copy,
   MapPin,
   Camera,
   Check,
@@ -56,7 +58,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { upsertSettings, disconnectSquare, disconnectClover, setPunchInCode, updateOpeningHours, createOrg } from "@/lib/spacetimedb/actions";
+import {
+  upsertSettings,
+  disconnectSquare,
+  disconnectClover,
+  setPunchInCode,
+  updateOpeningHours,
+  createOrg,
+  setScheduleIntegration,
+  disconnectScheduleIntegration,
+  setSupplierInboundPrefix,
+} from "@/lib/spacetimedb/actions";
 import { CURRENCIES, getCurrencyInfo } from "@/lib/currency";
 import { parseOpeningHours, type WeeklyHours, type DayKey } from "@/lib/holidays";
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
@@ -107,6 +119,18 @@ import { BETA_FEATURES } from "@/lib/beta-features";
 import { LocationManager } from "@/components/location-manager";
 import { useLocations } from "@/lib/spacetimedb/hooks";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import {
+  SCHEDULE_PROVIDERS,
+  normalizeScheduleProvider,
+  scheduleProviderLabel,
+  type ScheduleProviderId,
+} from "@/lib/schedule-integrations";
+import {
+  isValidSupplierInboundPrefix,
+  normalizeSupplierInboundPrefix,
+  supplierInboundAddressForOrg,
+  supplierInboundPrefixForOrg,
+} from "@/lib/suppliers/inbound-address";
 
 interface SquareLocation {
   id: string;
@@ -246,6 +270,14 @@ export default function SettingsPage() {
   const [cloverSyncing, setCloverSyncing] = useState(false);
   const [cloverSyncResult, setCloverSyncResult] = useState<string | null>(null);
 
+  // Schedule software sync
+  const [selectedScheduleProvider, setSelectedScheduleProvider] = useState<ScheduleProviderId>("built_in");
+  const [scheduleSyncing, setScheduleSyncing] = useState(false);
+  const [scheduleSyncResult, setScheduleSyncResult] = useState<string | null>(null);
+  const [syncingConnectedSystems, setSyncingConnectedSystems] = useState(false);
+  const [supplierInboxPrefixInput, setSupplierInboxPrefixInput] = useState("");
+  const [savingSupplierInboxPrefix, setSavingSupplierInboxPrefix] = useState(false);
+
   // Payment settings
   const [paymentTaxRate, setPaymentTaxRate] = useState("0");
   const [paymentCurrency, setPaymentCurrency] = useState("USD");
@@ -317,6 +349,27 @@ export default function SettingsPage() {
   const myCode = typeof myMember?.punchInCode === "string" && myMember.punchInCode.length > 0
     ? myMember.punchInCode
     : null;
+  const scheduleSettings = settings as (UserSettings & {
+    scheduleProvider?: string | null;
+    scheduleConnected?: boolean | null;
+    scheduleCompanyGuid?: string | null;
+    scheduleCompanyId?: string | null;
+    scheduleLocationId?: string | null;
+    scheduleLastSyncedAt?: string | null;
+    scheduleLastSyncStatus?: string | null;
+    scheduleLastSyncSummary?: string | null;
+    supplierInboundPrefix?: string | null;
+  }) | null;
+  const configuredScheduleProvider = normalizeScheduleProvider(scheduleSettings?.scheduleProvider) ?? "built_in";
+  const connectedScheduleProvider = configuredScheduleProvider === "built_in" ? null : configuredScheduleProvider;
+  const scheduleConnected = Boolean(scheduleSettings?.scheduleConnected && connectedScheduleProvider);
+  const connectedScheduleLabel = scheduleProviderLabel(connectedScheduleProvider ?? configuredScheduleProvider);
+  const supplierInboxPrefix = organizationId
+    ? supplierInboundPrefixForOrg(settings?.supplierInboundPrefix ?? null, organizationId)
+    : "";
+  const supplierInboxAddress = organizationId
+    ? supplierInboundAddressForOrg(settings?.supplierInboundPrefix ?? null, organizationId) ?? ""
+    : "";
 
   useEffect(() => {
     const token = localStorage.getItem("stdb_token");
@@ -345,6 +398,7 @@ export default function SettingsPage() {
       setLocationLatitude(settings.locationLatitude ?? "");
       setLocationLongitude(settings.locationLongitude ?? "");
       setGooglePlacesId(settings.googlePlacesId ?? "");
+      setSupplierInboxPrefixInput(supplierInboxPrefix);
       if (settings.paymentTaxRate != null) setPaymentTaxRate(String(settings.paymentTaxRate));
       if (settings.paymentCurrency) setPaymentCurrency(settings.paymentCurrency);
       const parsed = parseOpeningHours(settings.openingHours ?? null);
@@ -365,7 +419,11 @@ export default function SettingsPage() {
         });
       }
     }
-  }, [settings, orgName]);
+  }, [settings, orgName, supplierInboxPrefix]);
+
+  useEffect(() => {
+    setSelectedScheduleProvider(configuredScheduleProvider);
+  }, [configuredScheduleProvider]);
 
   // Restore dialogs from URL (?dialogs=Team,Invite)
   const restoredRef = useRef(false);
@@ -440,6 +498,22 @@ export default function SettingsPage() {
         exchange_failed: t("settings.clErrTokenExchange"),
       };
       toast.error(messages[err!] ?? t("settings.clErrDefault"));
+    }
+
+    if (searchParams.get("schedule_connected")) {
+      toast.success(t("settings.toastScheduleConnected"));
+    }
+    if (searchParams.get("schedule_error")) {
+      const err = searchParams.get("schedule_error");
+      const messages: Record<string, string> = {
+        missing_org: t("settings.scheduleErrMissingOrg"),
+        provider_unavailable: t("settings.scheduleErrProviderUnavailable"),
+        missing_7shifts_client: t("settings.scheduleErrMissingClient"),
+        state_mismatch: t("settings.scheduleErrState"),
+        missing_7shifts_grant: t("settings.scheduleErrMissingGrant"),
+        save_failed: t("settings.scheduleErrSaveFailed"),
+      };
+      toast.error(messages[err!] ?? t("settings.scheduleErrDefault"));
     }
   }, [searchParams]);
 
@@ -662,6 +736,92 @@ export default function SettingsPage() {
     }
   };
 
+  const handleConnectSchedule = async () => {
+    if (!organizationId) return;
+    const provider = SCHEDULE_PROVIDERS.find((p) => p.id === selectedScheduleProvider);
+    if (!provider) return;
+    if (provider.id === "built_in") {
+      await setScheduleIntegration({ provider: provider.id });
+      setScheduleSyncResult(null);
+      toast.success(t("settings.builtInScheduleSelected"));
+      return;
+    }
+    if (provider.status !== "available") {
+      await setScheduleIntegration({ provider: provider.id });
+      toast.message(t("settings.scheduleProviderSaved"));
+      return;
+    }
+    window.location.href = `/api/schedule/connect?provider=${encodeURIComponent(provider.id)}&orgId=${encodeURIComponent(organizationId)}`;
+  };
+
+  const handleScheduleSync = async () => {
+    if (!organizationId) return;
+    setScheduleSyncing(true);
+    setScheduleSyncResult(null);
+    try {
+      const res = await fetch("/api/schedule/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setScheduleSyncResult(json.message ?? t("settings.scheduleSyncComplete"));
+        toast.success(t("settings.scheduleSyncComplete"));
+      } else {
+        setScheduleSyncResult(`${t("settings.errorPrefix")}: ${json.error}`);
+      }
+    } catch {
+      setScheduleSyncResult(t("settings.syncFailedGeneric"));
+    } finally {
+      setScheduleSyncing(false);
+    }
+  };
+
+  const handleDisconnectSchedule = async () => {
+    await disconnectScheduleIntegration();
+    setScheduleSyncResult(null);
+    setSelectedScheduleProvider("built_in");
+    toast.success(t("settings.scheduleDisconnected"));
+  };
+
+  const handleSaveSupplierInboxPrefix = async () => {
+    const normalized = normalizeSupplierInboundPrefix(supplierInboxPrefixInput);
+    if (!isValidSupplierInboundPrefix(normalized)) {
+      toast.error(t("settings.supplierInboxInvalid"));
+      return;
+    }
+    setSavingSupplierInboxPrefix(true);
+    try {
+      await setSupplierInboundPrefix(normalized);
+      setSupplierInboxPrefixInput(normalized);
+      toast.success(t("settings.supplierInboxSaved"));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg.includes("taken") ? t("settings.supplierInboxTaken") : msg);
+    } finally {
+      setSavingSupplierInboxPrefix(false);
+    }
+  };
+
+  const handleSyncConnectedSystems = async () => {
+    const jobs: Promise<void>[] = [];
+    if (settings?.squareConnected) jobs.push(handleSquareSync());
+    if (settings?.cloverConnected) jobs.push(handleCloverSync());
+    if (scheduleConnected) jobs.push(handleScheduleSync());
+    if (jobs.length === 0) {
+      toast.error(t("settings.noConnectedSystems"));
+      return;
+    }
+    setSyncingConnectedSystems(true);
+    try {
+      await Promise.all(jobs);
+      toast.success(t("settings.connectedSystemsSynced"));
+    } finally {
+      setSyncingConnectedSystems(false);
+    }
+  };
+
   const autolockLabel = (s: AutolockSeconds): string => {
     if (s === 0) return t("lock.never");
     if (s < 60) return `${s}s`;
@@ -862,7 +1022,7 @@ export default function SettingsPage() {
     if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
   }, [isTauri]);
   const [themeMode, applyThemeMode] = useThemeMode();
-  type SubPanel = "workspace" | "team" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
+  type SubPanel = "workspace" | "team" | "integrations" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
 
   // ─── Multi-store state ──────────────────────────────────────────────────
@@ -1762,7 +1922,10 @@ export default function SettingsPage() {
   const rolesCount = new Set(orgMembers.map((m) => m.role)).size;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const orgLocationCount = (locationRows as unknown as any[] | undefined)?.filter((l: any) => l.organizationId === organizationId).length ?? 0;
-  const integrationsCount = (settings?.squareConnected ? 1 : 0) + (settings?.cloverConnected ? 1 : 0);
+  const integrationsCount =
+    (settings?.squareConnected ? 1 : 0) +
+    (settings?.cloverConnected ? 1 : 0) +
+    (scheduleConnected ? 1 : 0);
 
   // ─── Helper: icon tile (32px, rounded-[0.3rem], stone-100 bg, 1px border) ──
   const IconTile = ({ children }: { children: React.ReactNode }) => (
@@ -2161,6 +2324,20 @@ export default function SettingsPage() {
         )}
         {isAdmin && (
           <SRow
+            icon={<Zap className="h-4 w-4 text-foreground" />}
+            title={t("settings.apiIntegrations")}
+            meta={
+              integrationsCount > 0
+                ? t("settings.connectedIntegrationsCount").replace("{count}", String(integrationsCount))
+                : t("settings.connectPOSAndSchedule")
+            }
+            onClick={() => setSubPanel("integrations")}
+            right={integrationsCount > 0 ? <SBadge tone="ok">{String(integrationsCount)}</SBadge> : undefined}
+            card
+          />
+        )}
+        {isAdmin && (
+          <SRow
             icon={<Building2 className="h-4 w-4 text-foreground" />}
             title={t("multiStore.settings.cardTitle")}
             meta={
@@ -2319,6 +2496,71 @@ export default function SettingsPage() {
               meta={t("settings.availabilityAndTimeOff")}
               onClick={() => setAvailDialog(true)}
             />
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
+      {/* ─── Integrations Sub-Panel ─────────────────────────── */}
+      <DynamicUIElement open={subPanel === "integrations"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.apiIntegrations")}>{t("settings.apiIntegrations")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.apiIntegrations")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div>
+            <SGroupHeader label={t("settings.supplierInbox")} />
+            <div className="px-[18px] py-3.5 space-y-3">
+              <div className="flex items-start gap-3">
+                <IconTile><Mail className="h-4 w-4 text-foreground" /></IconTile>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{t("settings.fixedSupplierEmail")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t("settings.fixedSupplierEmailMeta")}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 rounded border border-border bg-muted/30 px-2.5 py-2">
+                <span className="font-mono text-[12px] text-foreground truncate flex-1">{supplierInboxAddress}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2"
+                  onClick={async () => {
+                    if (!supplierInboxAddress) return;
+                    await navigator.clipboard?.writeText(supplierInboxAddress);
+                    toast.success(t("settings.copied"));
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    value={supplierInboxPrefixInput}
+                    onChange={(e) => setSupplierInboxPrefixInput(normalizeSupplierInboundPrefix(e.target.value))}
+                    placeholder="bjcafe"
+                    className="h-9 pr-[92px] font-mono text-[13px]"
+                  />
+                  <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-mono text-muted-foreground">
+                    -inbound
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9"
+                  onClick={handleSaveSupplierInboxPrefix}
+                  disabled={savingSupplierInboxPrefix}
+                >
+                  {savingSupplierInboxPrefix ? <Spinner size={14} /> : t("settings.save")}
+                </Button>
+              </div>
+              <p className="text-[11.5px] text-muted-foreground leading-relaxed">
+                {t("settings.supplierInboxHelp")}
+              </p>
+            </div>
+
+            <SGroupHeader label={t("settings.posSystems")} />
             <SRow
               icon={<Zap className="h-4 w-4 text-foreground" />}
               title={t("settings.square")}
@@ -2328,11 +2570,17 @@ export default function SettingsPage() {
                 else { window.location.href = "/api/square/oauth/authorize"; }
               }}
               right={
-                settings?.squareConnected
-                  ? <SBadge tone="ok">{t("settings.connected")}</SBadge>
-                  : undefined
+                squareSyncing
+                  ? <Spinner size={14} />
+                  : settings?.squareConnected
+                    ? <SBadge tone="ok">{t("settings.connected")}</SBadge>
+                    : undefined
               }
+              isFirst
             />
+            {squareSyncResult && (
+              <div className="px-[18px] pb-3 -mt-1 text-[11.5px] text-muted-foreground">{squareSyncResult}</div>
+            )}
             <SRow
               icon={<Zap className="h-4 w-4 text-foreground" />}
               title={t("settings.clover")}
@@ -2342,11 +2590,113 @@ export default function SettingsPage() {
                 else { window.location.href = "/api/clover/connect"; }
               }}
               right={
-                settings?.cloverConnected
-                  ? <SBadge tone="ok">{t("settings.connected")}</SBadge>
-                  : undefined
+                cloverSyncing
+                  ? <Spinner size={14} />
+                  : settings?.cloverConnected
+                    ? <SBadge tone="ok">{t("settings.connected")}</SBadge>
+                    : undefined
               }
             />
+            {cloverSyncResult && (
+              <div className="px-[18px] pb-3 -mt-1 text-[11.5px] text-muted-foreground">{cloverSyncResult}</div>
+            )}
+
+            <SGroupHeader label={t("settings.scheduleSoftware")} />
+            <div className="px-[18px] py-3.5 space-y-2">
+              {SCHEDULE_PROVIDERS.map((provider) => {
+                const selected = selectedScheduleProvider === provider.id;
+                const connected = scheduleConnected && connectedScheduleProvider === provider.id;
+                const builtInActive = provider.id === "built_in" && configuredScheduleProvider === "built_in";
+                return (
+                  <button
+                    key={provider.id}
+                    type="button"
+                    onClick={() => setSelectedScheduleProvider(provider.id)}
+                    className={cn(
+                      "w-full rounded border px-3 py-2.5 text-left transition-colors",
+                      selected ? "border-foreground bg-muted/40" : "border-border hover:bg-muted/40",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium truncate">{provider.label}</p>
+                          {builtInActive && <SBadge tone="ok">{t("settings.active")}</SBadge>}
+                          {connected && <SBadge tone="ok">{t("settings.connected")}</SBadge>}
+                          {provider.status !== "available" && <SBadge tone="warn">{t("settings.comingSoon")}</SBadge>}
+                        </div>
+                        <p className="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">{provider.description}</p>
+                      </div>
+                      {selected && <Check className="h-4 w-4 text-foreground shrink-0" />}
+                    </div>
+                  </button>
+                );
+              })}
+              <div className="flex gap-2 pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="flex-1"
+                  onClick={scheduleConnected ? handleScheduleSync : handleConnectSchedule}
+                  disabled={scheduleSyncing}
+                >
+                  {scheduleSyncing ? (
+                    <Spinner size={14} />
+                  ) : selectedScheduleProvider === "built_in" ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 mr-1.5" />
+                      {t("settings.useBuiltInSchedule")}
+                    </>
+                  ) : scheduleConnected ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      {t("settings.syncSchedule")}
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      {t("settings.connectSchedule")}
+                    </>
+                  )}
+                </Button>
+                {scheduleConnected && selectedScheduleProvider !== "built_in" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDisconnectSchedule}
+                  >
+                    <Unlink className="h-3.5 w-3.5 mr-1.5" />
+                    {t("settings.disconnect")}
+                  </Button>
+                )}
+              </div>
+              {(scheduleSyncResult || scheduleSettings?.scheduleLastSyncSummary) && (
+                <p className="text-[11.5px] text-muted-foreground leading-relaxed">
+                  {scheduleSyncResult || scheduleSettings?.scheduleLastSyncSummary}
+                </p>
+              )}
+              {scheduleConnected && (
+                <p className="text-[10.5px] font-mono text-muted-foreground">
+                  {connectedScheduleLabel}
+                  {scheduleSettings?.scheduleCompanyId ? ` · company ${scheduleSettings.scheduleCompanyId}` : ""}
+                </p>
+              )}
+            </div>
+
+            <div className="px-[18px] py-3.5 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full justify-center"
+                onClick={handleSyncConnectedSystems}
+                disabled={syncingConnectedSystems || squareSyncing || cloverSyncing || scheduleSyncing}
+              >
+                {syncingConnectedSystems ? <Spinner size={14} /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                {t("settings.syncConnectedSystems")}
+              </Button>
+            </div>
           </div>
         </DynamicUIElementContent>
       </DynamicUIElement>
