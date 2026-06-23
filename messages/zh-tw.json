@@ -1814,7 +1814,30 @@
     "noPlaceId": "無 Place ID",
     "storeDevices": "店面裝置",
     "unnamedDevice": "未命名裝置",
-    "deviceOff": "關閉"
+    "deviceOff": "關閉",
+    "settingsCategoryBusiness": "Business",
+    "settingsCategoryPeople": "People & access",
+    "settingsCategoryAutomation": "Automation & integrations",
+    "settingsCategoryDevice": "Device & preferences",
+    "settingsCategoryAccount": "Account, data & help",
+    "merchivaAi": "Merchiva AI",
+    "aiFullAuto": "Fully automatic",
+    "aiPartialAuto": "Partially automatic",
+    "aiApprovalRequired": "Approval required",
+    "aiSaved": "AI settings saved",
+    "restockTimeSaved": "Weekly restock time saved",
+    "merchivaAiMeta": "Control when Merchiva AI needs approval and when weekly restock runs.",
+    "aiPermissionLevel": "AI permission level",
+    "aiApprovalRequiredMeta": "Merchiva AI drafts every inventory, pricing, order, and staff change for review.",
+    "aiPartialAutoMeta": "Low-risk actions can run automatically; sensitive actions still need approval.",
+    "aiFullAutoMeta": "Allowed actions run automatically within configured permissions and caps.",
+    "weeklyRestock": "Weekly auto-restock",
+    "weeklyRestockTime": "Weekly auto-restock time",
+    "weeklyRestockTimeMeta": "Used by Merchiva AI when generating weekly supplier restock plans.",
+    "supplierInboxPrefixPlaceholder": "bjcafe",
+    "companyIdPrefix": "company {id}",
+    "switchStoreAccount": "Switch store or account",
+    "appVersion": "App version"
   },
   "lock": {
     "title": "裝置已鎖定",
@@ -1955,7 +1978,14 @@
     "aiOpsAgent": "您的 AI 營運助理",
     "mentionLower": "提及",
     "sendKbd": "傳送",
-    "send": "傳送"
+    "send": "傳送",
+    "mrMerchiva": "Mr. Merchiva",
+    "groupInfo": "Group info",
+    "groupName": "Group name",
+    "groupQr": "Group QR code",
+    "searchMessages": "Search chat",
+    "muteMessages": "Mute messages",
+    "pinChat": "Pin chat"
   },
   "dashboard": {
     "greeting": {
