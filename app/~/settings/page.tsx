@@ -52,6 +52,8 @@ import {
   Coins,
   Loader2,
   Palette,
+  Bot,
+  ShoppingCart,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,7 +76,7 @@ import { parseOpeningHours, type WeeklyHours, type DayKey } from "@/lib/holidays
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSettings, type UserSettings } from "@/lib/db/settings";
-import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
+import { useAssistantConfig, useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { usePushNotifications } from "@/lib/spacetimedb/hooks/usePushNotifications";
 import { tauriNotificationsPref, requestTauriNotificationPermission } from "@/lib/spacetimedb/hooks/useTauriNotifications";
@@ -116,6 +118,7 @@ import { useT, useI18n } from "@/lib/i18n/context";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { BETA_FEATURES } from "@/lib/beta-features";
+import type { AutonomyMode } from "@/lib/merchiva/autonomy";
 import { LocationManager } from "@/components/location-manager";
 import { useLocations } from "@/lib/spacetimedb/hooks";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -149,6 +152,7 @@ export default function SettingsPage() {
   const canEditTeam = can("team", "edit");
   // Settings data via SpacetimeDB migration hook
   const { settings, setSettings, loading } = useSettings();
+  const { config: assistantConfig, save: saveAssistantConfig } = useAssistantConfig();
   const { betaFeatures, savingKey: savingBetaFeature, setFeature: setBetaFeature } = useBetaFeatures();
   // Fallback: the organization's own name, for orgs whose settings.businessName was never set
   const [orgRows] = useTable(tables.organization);
@@ -169,6 +173,8 @@ export default function SettingsPage() {
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [assistantSaving, setAssistantSaving] = useState(false);
+  const [weeklyRestockTime, setWeeklyRestockTime] = useState("09:00");
 
   // Mobile drawer for switching store / account
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -333,6 +339,7 @@ export default function SettingsPage() {
   const [savingMyCode, setSavingMyCode] = useState(false);
   const stdb = useSpacetimeDB();
   const [memberRows] = useTable(tables.orgMember);
+  const [userRows] = useTable(tables.user);
   const myMember = (memberRows as unknown as Array<{
     id: { toString(): string };
     userId: { toString(): string };
@@ -349,6 +356,15 @@ export default function SettingsPage() {
   const myCode = typeof myMember?.punchInCode === "string" && myMember.punchInCode.length > 0
     ? myMember.punchInCode
     : null;
+
+  useEffect(() => {
+    if (!stdb?.identity) return;
+    const identity = stdb.identity.toString();
+    const me = (userRows as unknown as Array<{ identity: { toString(): string }; avatarUrl?: string | null }>).find(
+      (u) => u.identity.toString() === identity,
+    );
+    setAvatarUrl(me?.avatarUrl ?? null);
+  }, [stdb?.identity, userRows]);
   const scheduleSettings = settings as (UserSettings & {
     scheduleProvider?: string | null;
     scheduleConnected?: boolean | null;
@@ -661,8 +677,11 @@ export default function SettingsPage() {
       const [res] = await uploadFiles("avatar", { files: [file] });
       const url = res.ufsUrl;
 
+      await (stdb?.reducers as unknown as { updateProfile?: (args: { displayName?: string; avatarUrl?: string }) => Promise<void> })
+        .updateProfile?.({ avatarUrl: url });
       setAvatarUrl(url);
       hapticSuccess();
+      toast.success(t("settings.avatarSaved") || "Icon saved");
     } catch (err) {
       console.error("Avatar upload failed:", err);
     } finally {
@@ -1022,8 +1041,40 @@ export default function SettingsPage() {
     if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
   }, [isTauri]);
   const [themeMode, applyThemeMode] = useThemeMode();
-  type SubPanel = "workspace" | "team" | "integrations" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
+  type SubPanel = "workspace" | "team" | "integrations" | "ai" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
+  const assistantPermissionMode = !assistantConfig.enabled
+    ? "off"
+    : assistantConfig.mode === "full"
+      ? "full"
+      : assistantConfig.mode === "auto_low" || assistantConfig.mode === "auto_low_medium"
+        ? "partial"
+        : "off";
+
+  useEffect(() => {
+    if (!organizationId) return;
+    setWeeklyRestockTime(localStorage.getItem(`merchiva:weekly-restock:${organizationId}`) ?? "09:00");
+  }, [organizationId]);
+
+  const saveAssistantMode = async (mode: "off" | "partial" | "full") => {
+    const nextMode: AutonomyMode = mode === "full" ? "full" : mode === "partial" ? "auto_low" : "propose_only";
+    setAssistantSaving(true);
+    try {
+      await saveAssistantConfig({ ...assistantConfig, enabled: true, mode: nextMode });
+      hapticSuccess();
+      toast.success(t("settings.aiSaved") || "AI settings saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("settings.toastSaveFailed"));
+    } finally {
+      setAssistantSaving(false);
+    }
+  };
+
+  const saveWeeklyRestockTime = (value: string) => {
+    setWeeklyRestockTime(value);
+    if (organizationId) localStorage.setItem(`merchiva:weekly-restock:${organizationId}`, value);
+    toast.success(t("settings.restockTimeSaved") || "Weekly restock time saved");
+  };
 
   // ─── Multi-store state ──────────────────────────────────────────────────
   const rootOrg = msShareGroupOrgs.find((o) => !o.parentOrgId) ?? null;
@@ -2352,6 +2403,15 @@ export default function SettingsPage() {
             card
           />
         )}
+        {isAdmin && (
+          <SRow
+            icon={<Bot className="h-4 w-4 text-foreground" />}
+            title={t("settings.merchivaAi") || "Merchiva AI"}
+            meta={assistantPermissionMode === "full" ? (t("settings.aiFullAuto") || "Fully automatic") : assistantPermissionMode === "partial" ? (t("settings.aiPartialAuto") || "Partially automatic") : (t("settings.aiApprovalRequired") || "Approval required")}
+            onClick={() => setSubPanel("ai")}
+            card
+          />
+        )}
         <SRow
           icon={<Bell className="h-4 w-4 text-foreground" />}
           title={t("settings.groupNotifications")}
@@ -2702,6 +2762,61 @@ export default function SettingsPage() {
       </DynamicUIElement>
 
       {/* ─── Notifications Sub-Panel ─────────────────────────── */}
+      <DynamicUIElement open={subPanel === "ai"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.merchivaAi") || "Merchiva AI"}>{t("settings.merchivaAi") || "Merchiva AI"}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("settings.merchivaAiMeta") || "Control when Merchiva AI needs approval and when weekly restock runs."}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <SGroupHeader label={t("settings.aiPermissionLevel") || "AI permission level"} />
+              {[
+                { key: "off", title: t("settings.aiApprovalRequired") || "All actions need approval", meta: t("settings.aiApprovalRequiredMeta") || "Merchiva AI drafts every inventory, pricing, order, and staff change for review." },
+                { key: "partial", title: t("settings.aiPartialAuto") || "Partially automatic", meta: t("settings.aiPartialAutoMeta") || "Low-risk actions can run automatically; sensitive actions still need approval." },
+                { key: "full", title: t("settings.aiFullAuto") || "Fully automatic", meta: t("settings.aiFullAutoMeta") || "Allowed actions run automatically within configured permissions and caps." },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  disabled={assistantSaving}
+                  onClick={() => saveAssistantMode(option.key as "off" | "partial" | "full")}
+                  className={cn(
+                    "flex w-full items-start gap-3 rounded-[0.3rem] border p-3 text-left transition-colors",
+                    assistantPermissionMode === option.key ? "border-foreground bg-muted" : "border-border hover:bg-muted/60",
+                  )}
+                >
+                  <IconTile><Bot className="h-4 w-4 text-foreground" /></IconTile>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">{option.title}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">{option.meta}</span>
+                  </span>
+                  {assistantPermissionMode === option.key && <Check className="mt-1 h-4 w-4 text-emerald-600" />}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <SGroupHeader label={t("settings.weeklyRestock") || "Weekly auto-restock"} />
+              <div className="rounded-[0.3rem] border border-border p-3">
+                <div className="flex items-center gap-3">
+                  <IconTile><ShoppingCart className="h-4 w-4 text-foreground" /></IconTile>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{t("settings.weeklyRestockTime") || "Weekly auto-restock time"}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.weeklyRestockTimeMeta") || "Used by Merchiva AI when generating weekly supplier restock plans."}</p>
+                  </div>
+                  <Input
+                    type="time"
+                    value={weeklyRestockTime}
+                    onChange={(e) => saveWeeklyRestockTime(e.target.value)}
+                    className="w-[116px]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
       <DynamicUIElement open={subPanel === "notifications"} onOpenChange={(open) => !open && setSubPanel(null)}>
         <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
           <DynamicUIElementHeader>

@@ -4,7 +4,7 @@ import { uuid, cn } from "@/lib/utils";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, Plus, Users, ArrowLeft, Search, X, UserPlus, AlertTriangle, CheckCircle2, Paperclip, AtSign, ArrowUp } from "lucide-react";
+import { MessageSquare, Plus, Users, ArrowLeft, Search, X, UserPlus, AlertTriangle, CheckCircle2, Paperclip, AtSign, ArrowUp, MoreHorizontal, QrCode, BellOff, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -878,6 +878,7 @@ function ChatView({
 }) {
   const t = useT();
   const [menuMsg, setMenuMsg] = useState<ChatMessage | null>(null);
+  const [groupInfoOpen, setGroupInfoOpen] = useState(false);
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionSearch, setMentionSearch] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -983,27 +984,97 @@ function ChatView({
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
   }, []);
 
+  const memberNames = conv.members?.map((m) => getMemberName(m.userId)).filter(Boolean) ?? [];
+
   return (
     <>
-      {!hideHeader && <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
-        <div className="flex-1 min-w-0">
+      <div className={cn("flex items-center gap-3 border-b border-border shrink-0", hideHeader ? "px-3 py-3 sm:hidden" : "px-4 py-3")}>
+        {hideHeader && (
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <div className="flex-1 min-w-0 text-center sm:text-left">
           <p className="text-sm font-semibold truncate">{getConvDisplayName(conv)}</p>
           <p className="text-[11px] text-muted-foreground">
             {conv.type === "group" ? `${conv.members?.length ?? 0} ${t("chat.memberPlural").toLowerCase()}` : t("chat.directMessage")}
           </p>
         </div>
-        {conv.type === "group" && conv.merchivaEnabled && (
+        {!hideHeader && conv.type === "group" && conv.merchivaEnabled && (
           <span className="inline-flex items-center gap-1.5 h-8 px-2 text-xs text-muted-foreground" title={t("chat.merchivaOn")}>
             <MerchivaAvatar className="h-5 w-5" svg={11} />
             {t("chat.merchivaOn")}
           </span>
         )}
-        {conv.type === "group" && isManager && (
+        {conv.type === "group" && isManager && !hideHeader && (
           <Button size="sm" variant="outline" onClick={onAddMembers} className="gap-1 h-8 text-xs">
             <UserPlus className="h-3.5 w-3.5" /> {t("chat.add")}
           </Button>
         )}
-      </div>}
+        {conv.type === "group" ? (
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setGroupInfoOpen(true)} aria-label={t("chat.groupInfo") || "Group info"}>
+            <MoreHorizontal className="h-5 w-5" />
+          </Button>
+        ) : hideHeader ? <span className="h-9 w-9 shrink-0" /> : null}
+      </div>
+
+      <Drawer open={groupInfoOpen} onOpenChange={setGroupInfoOpen}>
+        <DrawerContent className="max-h-[92vh]">
+          <DrawerHeader>
+            <DrawerTitle>{t("chat.groupInfo") || "Chat info"}</DrawerTitle>
+          </DrawerHeader>
+          <div className="overflow-y-auto px-4 pb-6">
+            <div className="grid grid-cols-5 gap-4 py-3 sm:grid-cols-6">
+              {conv.members?.slice(0, 12).map((m) => {
+                const name = getMemberName(m.userId);
+                const av = getAvatar(m.userId);
+                return (
+                  <div key={m.userId} className="min-w-0 text-center">
+                    {av ? (
+                      <img src={av} alt={name} className="mx-auto h-12 w-12 rounded-[0.3rem] object-cover" />
+                    ) : (
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[0.3rem] border border-border bg-muted text-sm font-semibold text-muted-foreground">
+                        {name[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{name}</p>
+                  </div>
+                );
+              })}
+              {isManager && (
+                <button type="button" onClick={onAddMembers} className="flex h-12 w-12 items-center justify-center rounded-[0.3rem] border border-dashed border-border text-muted-foreground">
+                  <UserPlus className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            <div className="mt-4 divide-y divide-border border-y border-border">
+              <button className="flex w-full items-center justify-between py-4 text-left">
+                <span className="text-sm font-medium">{t("chat.groupName") || "Group name"}</span>
+                <span className="max-w-[60%] truncate text-sm text-muted-foreground">{getConvDisplayName(conv)}</span>
+              </button>
+              <button className="flex w-full items-center justify-between py-4 text-left">
+                <span className="text-sm font-medium">{t("chat.groupQr") || "Group QR code"}</span>
+                <QrCode className="h-5 w-5 text-muted-foreground" />
+              </button>
+              <button className="flex w-full items-center justify-between py-4 text-left">
+                <span className="text-sm font-medium">{t("chat.searchMessages") || "Search chat"}</span>
+                <Search className="h-5 w-5 text-muted-foreground" />
+              </button>
+              <button className="flex w-full items-center justify-between py-4 text-left">
+                <span className="text-sm font-medium">{t("chat.muteMessages") || "Mute messages"}</span>
+                <BellOff className="h-5 w-5 text-muted-foreground" />
+              </button>
+              <button className="flex w-full items-center justify-between py-4 text-left">
+                <span className="text-sm font-medium">{t("chat.pinChat") || "Pin chat"}</span>
+                <Pin className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
+            {memberNames.length > 0 && (
+              <p className="mt-3 text-xs text-muted-foreground">{memberNames.join(", ")}</p>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
       <div className="flex-1 overflow-y-auto p-4 flex flex-col">
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-8">{t("chat.noMessagesHello")}</p>
