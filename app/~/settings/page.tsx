@@ -681,7 +681,7 @@ export default function SettingsPage() {
         .updateProfile?.({ avatarUrl: url });
       setAvatarUrl(url);
       hapticSuccess();
-      toast.success(t("settings.avatarSaved") || "Icon saved");
+      toast.success(t("settings.avatarSaved"));
     } catch (err) {
       console.error("Avatar upload failed:", err);
     } finally {
@@ -1062,7 +1062,7 @@ export default function SettingsPage() {
     try {
       await saveAssistantConfig({ ...assistantConfig, enabled: true, mode: nextMode });
       hapticSuccess();
-      toast.success(t("settings.aiSaved") || "AI settings saved");
+      toast.success(t("settings.aiSaved"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("settings.toastSaveFailed"));
     } finally {
@@ -1073,7 +1073,7 @@ export default function SettingsPage() {
   const saveWeeklyRestockTime = (value: string) => {
     setWeeklyRestockTime(value);
     if (organizationId) localStorage.setItem(`merchiva:weekly-restock:${organizationId}`, value);
-    toast.success(t("settings.restockTimeSaved") || "Weekly restock time saved");
+    toast.success(t("settings.restockTimeSaved"));
   };
 
   // ─── Multi-store state ──────────────────────────────────────────────────
@@ -2072,6 +2072,12 @@ export default function SettingsPage() {
     </div>
   );
 
+  const SCategoryHeader = ({ children }: { children: React.ReactNode }) => (
+    <div className="px-[18px] pt-5 pb-1.5 lg:col-span-2 xl:col-span-3 lg:px-0 lg:pt-3 lg:pb-0">
+      <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{children}</p>
+    </div>
+  );
+
   // ─── Helper: Badge ─────────────────────────────────────────────
   const SBadge = ({
     children,
@@ -2141,16 +2147,16 @@ export default function SettingsPage() {
       <Drawer open={switcherOpen} onOpenChange={setSwitcherOpen}>
         <DrawerContent className="px-0 pb-[max(env(safe-area-inset-bottom),1rem)]">
           <DrawerHeader className="px-[18px] pt-2 pb-3">
-            <DrawerTitle className="text-base">{t("settings.groupStoreAccount") || "Store & Account"}</DrawerTitle>
+            <DrawerTitle className="text-base">{t("settings.groupStoreAccount")}</DrawerTitle>
             <DrawerDescription className="sr-only">
-              {t("settings.groupStoreAccount") || "Switch store or account"}
+              {t("settings.switchStoreAccount")}
             </DrawerDescription>
           </DrawerHeader>
           <div className="max-h-[60vh] overflow-y-auto">
             {/* Stores */}
             <div className="px-[18px] pt-2 pb-1.5">
               <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">
-                {t("nav.selectStore") || "Stores"}
+                {t("nav.selectStore")}
               </p>
             </div>
             <div className="bg-background border-y border-border">
@@ -2177,12 +2183,12 @@ export default function SettingsPage() {
                         <p className="text-[11px] text-muted-foreground mt-0.5">{t("multiStore.subBadge")}</p>
                       )}
                       {isCurrent && !org.parentOrgId && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentStore") || "Current"}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentStore")}</p>
                       )}
                     </div>
                     {isCurrent
                       ? <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                      : <span className="text-[11px] text-muted-foreground shrink-0">{t("common.switch") || "Switch"}</span>}
+                      : <span className="text-[11px] text-muted-foreground shrink-0">{t("common.switch")}</span>}
                   </button>
                 );
               })}
@@ -2275,7 +2281,7 @@ export default function SettingsPage() {
               <>
                 <div className="px-[18px] pt-4 pb-1.5">
                   <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    {t("accounts.title") || "Accounts"}
+                    {t("accounts.title")}
                   </p>
                 </div>
                 <div className="bg-background border-y border-border">
@@ -2299,12 +2305,12 @@ export default function SettingsPage() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">{acct.email}</p>
                           {isCurrent && (
-                            <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentAccount") || "Signed in"}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentAccount")}</p>
                           )}
                         </div>
                         {isCurrent
                           ? <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                          : <span className="text-[11px] text-muted-foreground shrink-0">{t("common.switch") || "Switch"}</span>}
+                          : <span className="text-[11px] text-muted-foreground shrink-0">{t("common.switch")}</span>}
                       </button>
                     );
                   })}
@@ -2327,7 +2333,7 @@ export default function SettingsPage() {
                   <UserPlus className="h-4 w-4 text-foreground" />
                 </IconTile>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{t("accounts.addAccount") || "Add account"}</p>
+                  <p className="text-sm font-medium text-foreground">{t("accounts.addAccount")}</p>
                 </div>
               </button>
               <button
@@ -2349,12 +2355,13 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
-          <DrawerClose className="sr-only">{t("common.cancel") || "Close"}</DrawerClose>
+          <DrawerClose className="sr-only">{t("common.cancel")}</DrawerClose>
         </DrawerContent>
       </Drawer>
 
       {/* ─── Category entries ────────────────────────────────── */}
       <div className="bg-background lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-3 lg:bg-transparent lg:mt-4 lg:p-0">
+        <SCategoryHeader>{t("settings.settingsCategoryBusiness")}</SCategoryHeader>
         <SRow
           icon={<Building2 className="h-4 w-4 text-foreground" />}
           title={t("settings.groupWorkspace")}
@@ -2363,6 +2370,7 @@ export default function SettingsPage() {
           isFirst
           card
         />
+        <SCategoryHeader>{t("settings.settingsCategoryPeople")}</SCategoryHeader>
         {isAdmin && (
           <SRow
             icon={<Users className="h-4 w-4 text-foreground" />}
@@ -2373,6 +2381,7 @@ export default function SettingsPage() {
             card
           />
         )}
+        <SCategoryHeader>{t("settings.settingsCategoryAutomation")}</SCategoryHeader>
         {isAdmin && (
           <SRow
             icon={<Zap className="h-4 w-4 text-foreground" />}
@@ -2406,12 +2415,13 @@ export default function SettingsPage() {
         {isAdmin && (
           <SRow
             icon={<Bot className="h-4 w-4 text-foreground" />}
-            title={t("settings.merchivaAi") || "Merchiva AI"}
-            meta={assistantPermissionMode === "full" ? (t("settings.aiFullAuto") || "Fully automatic") : assistantPermissionMode === "partial" ? (t("settings.aiPartialAuto") || "Partially automatic") : (t("settings.aiApprovalRequired") || "Approval required")}
+            title={t("settings.merchivaAi")}
+            meta={assistantPermissionMode === "full" ? (t("settings.aiFullAuto")) : assistantPermissionMode === "partial" ? (t("settings.aiPartialAuto")) : (t("settings.aiApprovalRequired"))}
             onClick={() => setSubPanel("ai")}
             card
           />
         )}
+        <SCategoryHeader>{t("settings.settingsCategoryDevice")}</SCategoryHeader>
         <SRow
           icon={<Bell className="h-4 w-4 text-foreground" />}
           title={t("settings.groupNotifications")}
@@ -2436,7 +2446,7 @@ export default function SettingsPage() {
         <SRow
           icon={<SettingsIcon className="h-4 w-4 text-foreground" />}
           title={t("settings.groupPreferences")}
-          meta={`${themeMode === "system" ? (t("settings.themeSystem") || "System") : themeMode === "light" ? (t("settings.themeLight") || "Light") : (t("settings.themeDark") || "Dark")} · ${LOCALE_LABELS[locale]}`}
+          meta={`${themeMode === "system" ? (t("settings.themeSystem")) : themeMode === "light" ? (t("settings.themeLight")) : (t("settings.themeDark"))} · ${LOCALE_LABELS[locale]}`}
           onClick={() => setSubPanel("preferences")}
           card
         />
@@ -2447,6 +2457,7 @@ export default function SettingsPage() {
           onClick={() => setSubPanel("device")}
           card
         />
+        <SCategoryHeader>{t("settings.settingsCategoryAccount")}</SCategoryHeader>
         <SRow
           icon={<Download className="h-4 w-4 text-foreground" />}
           title={t("settings.groupData")}
@@ -2464,7 +2475,7 @@ export default function SettingsPage() {
         <SRow
           icon={<Info className="h-4 w-4 text-foreground" />}
           title={t("settings.groupAbout")}
-          meta="beta-0.1.0"
+          meta={t("settings.appVersion")}
           onClick={() => setSubPanel("about")}
           card
         />
@@ -2598,7 +2609,7 @@ export default function SettingsPage() {
                   <Input
                     value={supplierInboxPrefixInput}
                     onChange={(e) => setSupplierInboxPrefixInput(normalizeSupplierInboundPrefix(e.target.value))}
-                    placeholder="bjcafe"
+                    placeholder={t("settings.supplierInboxPrefixPlaceholder")}
                     className="h-9 pr-[92px] font-mono text-[13px]"
                   />
                   <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-mono text-muted-foreground">
@@ -2740,7 +2751,7 @@ export default function SettingsPage() {
               {scheduleConnected && (
                 <p className="text-[10.5px] font-mono text-muted-foreground">
                   {connectedScheduleLabel}
-                  {scheduleSettings?.scheduleCompanyId ? ` · company ${scheduleSettings.scheduleCompanyId}` : ""}
+                  {scheduleSettings?.scheduleCompanyId ? ` · ${t("settings.companyIdPrefix").replace("{id}", scheduleSettings.scheduleCompanyId)}` : ""}
                 </p>
               )}
             </div>
@@ -2765,16 +2776,16 @@ export default function SettingsPage() {
       <DynamicUIElement open={subPanel === "ai"} onOpenChange={(open) => !open && setSubPanel(null)}>
         <DynamicUIElementContent>
           <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("settings.merchivaAi") || "Merchiva AI"}>{t("settings.merchivaAi") || "Merchiva AI"}</DynamicUIElementTitle>
-            <DynamicUIElementDescription>{t("settings.merchivaAiMeta") || "Control when Merchiva AI needs approval and when weekly restock runs."}</DynamicUIElementDescription>
+            <DynamicUIElementTitle mobileTitle={t("settings.merchivaAi")}>{t("settings.merchivaAi")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription>{t("settings.merchivaAiMeta")}</DynamicUIElementDescription>
           </DynamicUIElementHeader>
           <div className="space-y-5">
             <div className="space-y-2">
-              <SGroupHeader label={t("settings.aiPermissionLevel") || "AI permission level"} />
+              <SGroupHeader label={t("settings.aiPermissionLevel")} />
               {[
-                { key: "off", title: t("settings.aiApprovalRequired") || "All actions need approval", meta: t("settings.aiApprovalRequiredMeta") || "Merchiva AI drafts every inventory, pricing, order, and staff change for review." },
-                { key: "partial", title: t("settings.aiPartialAuto") || "Partially automatic", meta: t("settings.aiPartialAutoMeta") || "Low-risk actions can run automatically; sensitive actions still need approval." },
-                { key: "full", title: t("settings.aiFullAuto") || "Fully automatic", meta: t("settings.aiFullAutoMeta") || "Allowed actions run automatically within configured permissions and caps." },
+                { key: "off", title: t("settings.aiApprovalRequired"), meta: t("settings.aiApprovalRequiredMeta") },
+                { key: "partial", title: t("settings.aiPartialAuto"), meta: t("settings.aiPartialAutoMeta") },
+                { key: "full", title: t("settings.aiFullAuto"), meta: t("settings.aiFullAutoMeta") },
               ].map((option) => (
                 <button
                   key={option.key}
@@ -2796,13 +2807,13 @@ export default function SettingsPage() {
               ))}
             </div>
             <div className="space-y-2">
-              <SGroupHeader label={t("settings.weeklyRestock") || "Weekly auto-restock"} />
+              <SGroupHeader label={t("settings.weeklyRestock")} />
               <div className="rounded-[0.3rem] border border-border p-3">
                 <div className="flex items-center gap-3">
                   <IconTile><ShoppingCart className="h-4 w-4 text-foreground" /></IconTile>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{t("settings.weeklyRestockTime") || "Weekly auto-restock time"}</p>
-                    <p className="text-xs text-muted-foreground">{t("settings.weeklyRestockTimeMeta") || "Used by Merchiva AI when generating weekly supplier restock plans."}</p>
+                    <p className="text-sm font-medium text-foreground">{t("settings.weeklyRestockTime")}</p>
+                    <p className="text-xs text-muted-foreground">{t("settings.weeklyRestockTimeMeta")}</p>
                   </div>
                   <Input
                     type="time"
@@ -2826,19 +2837,19 @@ export default function SettingsPage() {
           <div>
             <SToggleRow
               icon={<Bell className="h-4 w-4 text-foreground" />}
-              title={t("settings.desktopNotifications") || "Desktop notifications"}
+              title={t("settings.desktopNotifications")}
               meta={
                 isTauri
                   ? (tauriPushEnabled
-                      ? (t("settings.desktopEnabled") || "Enabled on this device")
-                      : (t("settings.desktopDisabled") || "Push alerts when the app is closed"))
+                      ? (t("settings.desktopEnabled"))
+                      : (t("settings.desktopDisabled")))
                   : !push.supported
-                  ? (t("settings.desktopUnsupported") || "Not supported in this browser")
+                  ? (t("settings.desktopUnsupported"))
                   : push.permission === "denied"
-                  ? (t("settings.desktopBlocked") || "Blocked in browser settings")
+                  ? (t("settings.desktopBlocked"))
                   : push.isSubscribed
-                  ? (t("settings.desktopEnabled") || "Enabled on this device")
-                  : (t("settings.desktopDisabled") || "Push alerts when the app is closed")
+                  ? (t("settings.desktopEnabled"))
+                  : (t("settings.desktopDisabled"))
               }
               checked={isTauri ? tauriPushEnabled : push.isSubscribed}
               onChange={() => {
@@ -2938,16 +2949,16 @@ export default function SettingsPage() {
               icon={<Moon className="h-4 w-4 text-foreground" />}
               title={t("settings.darkMode")}
               meta={
-                themeMode === "system" ? (t("settings.themeSystem") || "Follow system")
-                : themeMode === "light" ? (t("settings.themeLight") || "Light")
-                : (t("settings.themeDark") || "Dark")
+                themeMode === "system" ? (t("settings.themeSystem"))
+                : themeMode === "light" ? (t("settings.themeLight"))
+                : (t("settings.themeDark"))
               }
               right={
                 <div className="flex gap-1 shrink-0">
                   {([
-                    { mode: "system" as ThemeMode, label: t("settings.themeSystem") || "System" },
-                    { mode: "light" as ThemeMode,  label: t("settings.themeLight")  || "Light"  },
-                    { mode: "dark" as ThemeMode,   label: t("settings.themeDark")   || "Dark"   },
+                    { mode: "system" as ThemeMode, label: t("settings.themeSystem") },
+                    { mode: "light" as ThemeMode,  label: t("settings.themeLight")  },
+                    { mode: "dark" as ThemeMode,   label: t("settings.themeDark")   },
                   ]).map(({ mode, label }) => (
                     <button
                       key={mode}
@@ -3128,7 +3139,7 @@ export default function SettingsPage() {
             <SRow
               icon={<Info className="h-4 w-4 text-foreground" />}
               title={t("settings.aboutAppName")}
-              right={<span className="text-xs text-muted-foreground font-mono tabular-nums">beta-0.1.0</span>}
+              right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{t("settings.appVersion")}</span>}
               isFirst
             />
             <SRow

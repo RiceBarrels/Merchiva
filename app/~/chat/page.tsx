@@ -50,8 +50,9 @@ function MerchivaChatEmbed({ compact = false, header = true }: { compact?: boole
 // (sidebar, group messages, @mention picker, member pickers): the brand "M"
 // mark on stone-900 — same as the pinned sidebar entry.
 function MerchivaAvatar({ className = "h-9 w-9", svg = 18 }: { className?: string; svg?: number }) {
+  const t = useT();
   return (
-    <div className={cn("shrink-0 flex items-center justify-center rounded-[0.3rem] bg-stone-900 text-white", className)} title="Mr. Merchiva">
+    <div className={cn("shrink-0 flex items-center justify-center rounded-[0.3rem] bg-stone-900 text-white", className)} title={t("chat.mrMerchiva")}>
       <svg width={svg} height={svg} viewBox="0 0 100 100" aria-hidden>
         <path d="M14 14 L40 14 L50 42 L60 14 L86 14 L86 86 L14 86 Z" fill="currentColor" />
       </svg>
@@ -444,7 +445,7 @@ export default function ChatPage() {
   };
 
   const getConvDisplayName = (conv: ChatConversation) => {
-    if (conv.id === "__merchiva__") return "Mr. Merchiva";
+    if (conv.id === "__merchiva__") return t("chat.mrMerchiva");
     if (conv.type === "group") return conv.name ?? t("chat.groupFallback");
     const other = conv.members?.find((m) => m.userId !== userId);
     return other ? getMemberName(other.userId) : t("chat.chatFallback");
@@ -490,7 +491,7 @@ export default function ChatPage() {
           <div className="flex-1 overflow-y-auto">
             {/* Mr. Merchiva — AI assistant pinned at top */}
             <button
-              onClick={() => setActiveConv({ id: "__merchiva__", organizationId: organizationId ?? "", type: "direct", name: "Mr. Merchiva", createdBy: null, createdAt: "", lastMessage: null, members: [] } as ChatConversation)}
+              onClick={() => setActiveConv({ id: "__merchiva__", organizationId: organizationId ?? "", type: "direct", name: t("chat.mrMerchiva"), createdBy: null, createdAt: "", lastMessage: null, members: [] } as ChatConversation)}
               className={`w-full text-left px-3 py-3 border-b border-border transition-colors ${
                 activeConv?.id === "__merchiva__" ? "bg-muted" : "hover:bg-muted/50"
               }`}
@@ -499,7 +500,7 @@ export default function ChatPage() {
                 <MerchivaAvatar />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">Mr. Merchiva</p>
+                    <p className="text-sm font-medium">{t("chat.mrMerchiva")}</p>
                     <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{t("chat.online")}</span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{t("chat.aiOpsAgent")}</p>
@@ -912,7 +913,7 @@ function ChatView({
         >
           <MerchivaAvatar />
           <div className="min-w-0">
-            <p className="text-sm font-medium">Mr. Merchiva</p>
+            <p className="text-sm font-medium">{t("chat.mrMerchiva")}</p>
             <p className="text-xs text-muted-foreground truncate">{t("chat.merchivaMentionHint")}</p>
           </div>
         </button>
@@ -996,8 +997,8 @@ function ChatView({
             top: "calc(env(safe-area-inset-top, 0px) + var(--merchiva-app-promo-height, 0px) + 16px)",
             zIndex: 201,
           }}
-          aria-label={t("chat.groupInfo") || "Group info"}
-          title={t("chat.groupInfo") || "Group info"}
+          aria-label={t("chat.groupInfo")}
+          title={t("chat.groupInfo")}
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>,
@@ -1008,7 +1009,7 @@ function ChatView({
   return (
     <>
       {mobileGroupInfoButton}
-      <div className={cn("flex items-center gap-3 border-b border-border shrink-0", hideHeader ? "px-3 py-3 sm:hidden" : "px-4 py-3")}>
+      <div className={cn("flex items-center gap-3 border-b border-border shrink-0", hideHeader ? "hidden" : "px-4 py-3")}>
         {hideHeader && (
           <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
@@ -1032,7 +1033,7 @@ function ChatView({
           </Button>
         )}
         {conv.type === "group" ? (
-          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setGroupInfoOpen(true)} aria-label={t("chat.groupInfo") || "Group info"}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setGroupInfoOpen(true)} aria-label={t("chat.groupInfo")}>
             <MoreHorizontal className="h-5 w-5" />
           </Button>
         ) : hideHeader ? <span className="h-9 w-9 shrink-0" /> : null}
@@ -1041,7 +1042,7 @@ function ChatView({
       <Drawer open={groupInfoOpen} onOpenChange={setGroupInfoOpen}>
         <DrawerContent className="max-h-[92vh]">
           <DrawerHeader>
-            <DrawerTitle>{t("chat.groupInfo") || "Chat info"}</DrawerTitle>
+            <DrawerTitle>{t("chat.groupInfo")}</DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-6">
             <div className="grid grid-cols-5 gap-4 py-3 sm:grid-cols-6">
@@ -1069,23 +1070,23 @@ function ChatView({
             </div>
             <div className="mt-4 divide-y divide-border border-y border-border">
               <button className="flex w-full items-center justify-between py-4 text-left">
-                <span className="text-sm font-medium">{t("chat.groupName") || "Group name"}</span>
+                <span className="text-sm font-medium">{t("chat.groupName")}</span>
                 <span className="max-w-[60%] truncate text-sm text-muted-foreground">{getConvDisplayName(conv)}</span>
               </button>
               <button className="flex w-full items-center justify-between py-4 text-left">
-                <span className="text-sm font-medium">{t("chat.groupQr") || "Group QR code"}</span>
+                <span className="text-sm font-medium">{t("chat.groupQr")}</span>
                 <QrCode className="h-5 w-5 text-muted-foreground" />
               </button>
               <button className="flex w-full items-center justify-between py-4 text-left">
-                <span className="text-sm font-medium">{t("chat.searchMessages") || "Search chat"}</span>
+                <span className="text-sm font-medium">{t("chat.searchMessages")}</span>
                 <Search className="h-5 w-5 text-muted-foreground" />
               </button>
               <button className="flex w-full items-center justify-between py-4 text-left">
-                <span className="text-sm font-medium">{t("chat.muteMessages") || "Mute messages"}</span>
+                <span className="text-sm font-medium">{t("chat.muteMessages")}</span>
                 <BellOff className="h-5 w-5 text-muted-foreground" />
               </button>
               <button className="flex w-full items-center justify-between py-4 text-left">
-                <span className="text-sm font-medium">{t("chat.pinChat") || "Pin chat"}</span>
+                <span className="text-sm font-medium">{t("chat.pinChat")}</span>
                 <Pin className="h-5 w-5 text-muted-foreground" />
               </button>
             </div>
@@ -1095,7 +1096,7 @@ function ChatView({
           </div>
         </DrawerContent>
       </Drawer>
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col">
+      <div className={cn("flex-1 overflow-y-auto flex flex-col", isMobile ? "px-3 py-2" : "p-4")}>
         {messages.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-8">{t("chat.noMessagesHello")}</p>
         )}
@@ -1112,7 +1113,7 @@ function ChatView({
           const prevSame = i > 0 && senderKey(messages[i - 1]) === myKey && !showTime;
           const isLast = !nextSame;
           const av = isMerchiva ? null : getAvatar(msg.senderId);
-          const name = isMerchiva ? "Mr. Merchiva" : getMemberName(msg.senderId);
+          const name = isMerchiva ? t("chat.mrMerchiva") : getMemberName(msg.senderId);
           const gap = prevSame ? "mt-0.5" : "mt-3";
           const msgReactions = reactions[msg.id] ?? [];
           // Group reactions by emoji
@@ -1150,14 +1151,14 @@ function ChatView({
                 ) : null}
                 <div className="relative">
                   {isMerchiva && !prevSame && (
-                    <p className="text-[10px] font-semibold text-stone-700 dark:text-stone-300 mb-0.5 ml-0.5">Mr. Merchiva</p>
+                    <p className="text-[10px] font-semibold text-stone-700 dark:text-stone-300 mb-0.5 ml-0.5">{t("chat.mrMerchiva")}</p>
                   )}
                   <div
                     onTouchStart={(e) => handleTouchStart(msg, e)}
                     onTouchEnd={handleTouchEnd}
                     onTouchMove={handleTouchMove}
                     onContextMenu={(e) => handleContextMenu(msg, e)}
-                    className={`max-w-[70vw] rounded-[0.3rem] px-3 py-2 text-sm select-none ${
+                    className={`max-w-[min(78vw,34rem)] rounded-[0.3rem] px-3 py-2 text-sm select-none ${
                       msg.content?.startsWith("[task:done] ")
                         ? (isMe
                           ? "bg-green-800 text-white border border-green-700"
@@ -1376,7 +1377,7 @@ function ChatView({
       })()}
       </AnimatePresence>
 
-      <div className="border-t border-border pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="border-t border-border bg-background pb-[env(safe-area-inset-bottom,0px)]">
         {/* Reply preview bar */}
         <AnimatePresence>
           {replyTo && (
@@ -1405,7 +1406,7 @@ function ChatView({
           <div ref={inputWrapRef} className="rounded-[0.3rem] border border-border bg-background focus-within:border-stone-400 transition-colors">
             <textarea
               ref={inputRef}
-              rows={2}
+              rows={isMobile ? 1 : 2}
               value={input}
               onChange={(e) => {
                 const val = e.target.value;
@@ -1428,11 +1429,11 @@ function ChatView({
               }}
               onKeyDown={onKeyDown}
               placeholder={t("chat.typePlaceholder")}
-              className="w-full resize-none bg-transparent border-0 outline-none px-3 pt-2.5 pb-1 text-sm leading-[1.5] placeholder:text-muted-foreground/60"
+              className={cn("w-full resize-none bg-transparent border-0 outline-none px-3 text-sm leading-[1.5] placeholder:text-muted-foreground/60", isMobile ? "pt-2 pb-0 min-h-9" : "pt-2.5 pb-1")}
               autoComplete="off"
             />
             <div className="flex items-center gap-1.5 px-2 pb-2 pt-1">
-              <label className="h-7 w-7 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center cursor-pointer transition-colors" title={t("chat.attach") ?? "Attach"}>
+              <label className="h-7 w-7 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center cursor-pointer transition-colors" title={t("chat.attach")}>
                 <Paperclip className="h-[14px] w-[14px]" />
                 <input type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" className="hidden" onChange={onFileUpload} />
               </label>
@@ -1450,7 +1451,7 @@ function ChatView({
                 <span className="text-[11px]">{t("chat.mentionLower")}</span>
               </button>
               <div className="flex-1" />
-              <kbd className="font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ {t("chat.sendKbd")}</kbd>
+              {!isMobile && <kbd className="font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ {t("chat.sendKbd")}</kbd>}
               <button
                 onClick={onSend}
                 disabled={sending || !input.trim()}

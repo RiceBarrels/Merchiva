@@ -1814,7 +1814,30 @@
     "noPlaceId": "لا يوجد معرّف مكان",
     "storeDevices": "أجهزة المتجر",
     "unnamedDevice": "جهاز بلا اسم",
-    "deviceOff": "متوقف"
+    "deviceOff": "متوقف",
+    "settingsCategoryBusiness": "Business",
+    "settingsCategoryPeople": "People & access",
+    "settingsCategoryAutomation": "Automation & integrations",
+    "settingsCategoryDevice": "Device & preferences",
+    "settingsCategoryAccount": "Account, data & help",
+    "merchivaAi": "Merchiva AI",
+    "aiFullAuto": "Fully automatic",
+    "aiPartialAuto": "Partially automatic",
+    "aiApprovalRequired": "Approval required",
+    "aiSaved": "AI settings saved",
+    "restockTimeSaved": "Weekly restock time saved",
+    "merchivaAiMeta": "Control when Merchiva AI needs approval and when weekly restock runs.",
+    "aiPermissionLevel": "AI permission level",
+    "aiApprovalRequiredMeta": "Merchiva AI drafts every inventory, pricing, order, and staff change for review.",
+    "aiPartialAutoMeta": "Low-risk actions can run automatically; sensitive actions still need approval.",
+    "aiFullAutoMeta": "Allowed actions run automatically within configured permissions and caps.",
+    "weeklyRestock": "Weekly auto-restock",
+    "weeklyRestockTime": "Weekly auto-restock time",
+    "weeklyRestockTimeMeta": "Used by Merchiva AI when generating weekly supplier restock plans.",
+    "supplierInboxPrefixPlaceholder": "bjcafe",
+    "companyIdPrefix": "company {id}",
+    "switchStoreAccount": "Switch store or account",
+    "appVersion": "App version"
   },
   "lock": {
     "title": "الجهاز مقفل",
@@ -1955,7 +1978,14 @@
     "aiOpsAgent": "وكيل العمليات بالذكاء الاصطناعي الخاص بك",
     "mentionLower": "إشارة",
     "sendKbd": "إرسال",
-    "send": "إرسال"
+    "send": "إرسال",
+    "mrMerchiva": "Mr. Merchiva",
+    "groupInfo": "Group info",
+    "groupName": "Group name",
+    "groupQr": "Group QR code",
+    "searchMessages": "Search chat",
+    "muteMessages": "Mute messages",
+    "pinChat": "Pin chat"
   },
   "dashboard": {
     "greeting": {
