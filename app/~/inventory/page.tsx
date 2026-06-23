@@ -314,7 +314,78 @@ export default function InventoryPage() {
                     <p className="text-sm mt-1">{t("inventory.emptyItems.hint")}</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-3 p-3 sm:hidden">
+                    {filtered.map((item) => {
+                      const pct = item.maxStock > 0
+                        ? Math.min(100, Math.round((item.currentStock / item.maxStock) * 100))
+                        : 0;
+                      const cfg = statusConfig[item.status];
+                      const StatusIcon = cfg.icon;
+                      return (
+                        <div key={item.id} className="rounded-[0.3rem] border border-border bg-background p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-foreground">{item.name}</p>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                <Badge variant="outline" className="text-[11px] font-normal">{item.category}</Badge>
+                                <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${cfg.color}`}>
+                                  <StatusIcon className="h-3 w-3" />
+                                  {cfg.label}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.stock")}</p>
+                              <p className={`mt-0.5 font-mono font-semibold ${cfg.color}`}>{item.currentStock} {item.unit} <span className="text-muted-foreground">/ {item.maxStock}</span></p>
+                            </div>
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.costPerUnit")}</p>
+                              <p className="mt-0.5 font-mono font-semibold">{format(item.costPerUnit)}</p>
+                            </div>
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.supplier")}</p>
+                              <p className="mt-0.5 truncate font-medium">{item.supplier || "—"}</p>
+                            </div>
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.unitContent")}</p>
+                              <p className="mt-0.5 font-medium">{formatInventoryContentAmount(item.unitContentAmount, item.unitContentUnit) || "—"}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+                              <span>{t("inventory.tableHeaders.level")}</span>
+                              <span>{pct}% · {t("inventory.tableHeaders.lossRate")} {item.lossRate}%</span>
+                            </div>
+                            <Progress
+                              value={pct}
+                              className={`h-2 ${
+                                item.status === "out_of_stock"
+                                  ? "[&>div]:bg-destructive"
+                                  : item.status === "low_stock"
+                                  ? "[&>div]:bg-amber-500"
+                                  : "[&>div]:bg-emerald-500"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {filtered.length === 0 && (
+                      <div className="py-10 text-center text-sm text-muted-foreground">{t("inventory.noItems")}</div>
+                    )}
+                  </div>
+                  <div className="hidden overflow-x-auto sm:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -423,6 +494,7 @@ export default function InventoryPage() {
                     </TableBody>
                   </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -441,7 +513,49 @@ export default function InventoryPage() {
                     {t("inventory.transactions.empty")}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-3 p-3 sm:hidden">
+                    {[...transactions]
+                      .sort((a, b) => {
+                        const ta = a.createdAt?.getTime() ?? new Date(a.date).getTime();
+                        const tb = b.createdAt?.getTime() ?? new Date(b.date).getTime();
+                        return tb - ta;
+                      })
+                      .map((tx) => (
+                        <div key={tx.id} className="rounded-[0.3rem] border border-border bg-background p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-foreground">{tx.itemName}</p>
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {tx.createdAt
+                                  ? tx.createdAt.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })
+                                  : tx.date}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={tx.type === "in" ? "outline" : tx.type === "loss" ? "destructive" : "secondary"}
+                              className="capitalize text-xs"
+                            >
+                              {tx.type}
+                            </Badge>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.quantity")}</p>
+                              <p className={cn("mt-0.5 font-mono font-semibold", tx.type === "in" ? "text-emerald-600" : tx.type === "loss" ? "text-destructive" : "")}>
+                                {tx.type === "in" ? "+" : tx.type === "out" || tx.type === "loss" ? "-" : "±"}{tx.quantity}
+                              </p>
+                            </div>
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.operator")}</p>
+                              <p className="mt-0.5 truncate font-medium">{tx.operatorName || t("inventory.transactions.systemOperator")}</p>
+                            </div>
+                          </div>
+                          {tx.note && <p className="mt-3 text-xs text-muted-foreground">{tx.note}</p>}
+                        </div>
+                      ))}
+                  </div>
+                  <div className="hidden overflow-x-auto sm:block">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -492,6 +606,7 @@ export default function InventoryPage() {
                     </TableBody>
                   </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
