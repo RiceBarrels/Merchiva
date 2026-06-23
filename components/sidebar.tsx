@@ -99,7 +99,7 @@ const navItems: NavItemExt[] = [
       { labelKey: "nav.reports",  href: "/~/reports" },
       { labelKey: "nav.finances", href: "/~/finances" },
     ] },
-  { labelKey: "nav.personnel", href: "/~/personnel",   icon: Users,           permissionKey: "staffing",
+  { labelKey: "nav.personnel", href: "/~/personnel/schedule", icon: Users,    permissionKey: "staffing",
     children: [
       { labelKey: "personnel.tabs.schedule", href: "/~/personnel/schedule" },
       { labelKey: "personnel.tabs.team",     href: "/~/personnel/team" },

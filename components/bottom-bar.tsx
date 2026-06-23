@@ -43,7 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.inventory", href: "/~/inventory",       icon: Package,         permissionKey: "inventory" },
   { labelKey: "nav.wasteLog",  href: "/~/inventory/waste", icon: Trash2,          permissionKey: "inventory" },
   { labelKey: "nav.sales",     href: "/~/sales",           icon: TrendingUp,      permissionKey: "sales" },
-  { labelKey: "nav.personnel", href: "/~/personnel",       icon: Users,           permissionKey: "staffing" },
+  { labelKey: "nav.personnel", href: "/~/personnel/schedule", icon: Users,        permissionKey: "staffing" },
   { labelKey: "nav.products",  href: "/~/products",        icon: ShoppingBag,     permissionKey: "products" },
   { labelKey: "nav.reports",   href: "/~/reports",         icon: FileBarChart,    permissionKey: "sales" },
   { labelKey: "nav.customers", href: "/~/customers",       icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website" },
