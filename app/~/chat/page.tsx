@@ -3,6 +3,7 @@
 import { uuid, cn } from "@/lib/utils";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { MessageSquare, Plus, Users, ArrowLeft, Search, X, UserPlus, AlertTriangle, CheckCircle2, Paperclip, AtSign, ArrowUp, MoreHorizontal, QrCode, BellOff, Pin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -985,9 +986,28 @@ function ChatView({
   }, []);
 
   const memberNames = conv.members?.map((m) => getMemberName(m.userId)).filter(Boolean) ?? [];
+  const mobileGroupInfoButton = typeof document !== "undefined" && hideHeader && isMobile && conv.type === "group"
+    ? createPortal(
+        <button
+          type="button"
+          onClick={() => setGroupInfoOpen(true)}
+          className="fixed right-4 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-[0_4px_14px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)] inline-flex items-center justify-center active:scale-95 transition-transform"
+          style={{
+            top: "calc(env(safe-area-inset-top, 0px) + var(--merchiva-app-promo-height, 0px) + 16px)",
+            zIndex: 201,
+          }}
+          aria-label={t("chat.groupInfo") || "Group info"}
+          title={t("chat.groupInfo") || "Group info"}
+        >
+          <MoreHorizontal className="h-5 w-5" />
+        </button>,
+        document.body,
+      )
+    : null;
 
   return (
     <>
+      {mobileGroupInfoButton}
       <div className={cn("flex items-center gap-3 border-b border-border shrink-0", hideHeader ? "px-3 py-3 sm:hidden" : "px-4 py-3")}>
         {hideHeader && (
           <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onBack}>
