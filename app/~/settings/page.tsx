@@ -677,7 +677,7 @@ export default function SettingsPage() {
       const [res] = await uploadFiles("avatar", { files: [file] });
       const url = res.ufsUrl;
 
-      await (stdb?.reducers as unknown as { updateProfile?: (args: { displayName?: string; avatarUrl?: string }) => Promise<void> })
+      await (stdb.getConnection()?.reducers as unknown as { updateProfile?: (args: { displayName?: string; avatarUrl?: string }) => Promise<void> })
         .updateProfile?.({ avatarUrl: url });
       setAvatarUrl(url);
       hapticSuccess();
