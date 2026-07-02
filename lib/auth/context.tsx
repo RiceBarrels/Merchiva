@@ -60,7 +60,9 @@ const ACCOUNTS_KEY = "merchiva_accounts";
 function decodeJwtExp(token: string): number | null {
   try {
     const payload = token.split(".")[1];
-    const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    let base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    base64 += "=".repeat((4 - base64.length % 4) % 4);
+    const decoded = JSON.parse(atob(base64));
     return decoded.exp ?? null;
   } catch {
     return null;
@@ -143,11 +145,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem(TOKEN_KEY);
     const userData = localStorage.getItem(USER_KEY);
     if (token && userData) {
-      setAccessToken(token);
       try {
         setUser(JSON.parse(userData));
+        setAccessToken(token);
       } catch {
         clearAuthTokens();
+        setUser(null);
+        setAccessToken(null);
       }
     }
 
@@ -282,13 +286,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearAuthTokens();
     setAccessToken(null);
     setUser(null);
-    window.location.href = "/?logout=1";
+    window.location.href = "/login?logout=1&next=%2F~%2F";
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       isLoaded,
-      isSignedIn: !!accessToken,
+      isSignedIn: !!accessToken && !!user,
       user,
       accessToken,
       accounts,

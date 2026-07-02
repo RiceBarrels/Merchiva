@@ -10,9 +10,8 @@ export async function GET(req: NextRequest) {
   }
 
   let redirectTo = "/~/";
-  // `desktop` covers both the legacy Electron shell (kept for backwards-compat
-  // with already-installed binaries) and the current Tauri shell — both register
-  // the same merchiva:// scheme.
+  // `desktop` covers the native shells, including legacy Electron state values
+  // and Capacitor's in-app browser flow. They all register merchiva://.
   let client: "web" | "desktop" = "web";
   if (state) {
     try {
@@ -20,7 +19,13 @@ export async function GET(req: NextRequest) {
         Buffer.from(state, "base64url").toString("utf-8"),
       );
       if (parsed.redirectTo) redirectTo = parsed.redirectTo;
-      if (parsed.client === "desktop" || parsed.client === "electron") client = "desktop";
+      if (
+        parsed.client === "desktop" ||
+        parsed.client === "electron" ||
+        parsed.client === "capacitor"
+      ) {
+        client = "desktop";
+      }
     } catch {}
   }
 
@@ -44,10 +49,10 @@ export async function GET(req: NextRequest) {
       redirect_to: redirectTo,
     });
 
-    // Desktop clients: hand the tokens back through the merchiva:// custom
-    // protocol. The OS routes the URL to the desktop app, which forwards the
-    // params to the renderer through the deep-link plugin. The browser tab
-    // serves a tiny landing that triggers the protocol jump and closes itself.
+    // Native clients: hand the tokens back through the merchiva:// custom
+    // protocol. The OS routes the URL to the app, which forwards the params to
+    // the renderer through the shell/deep-link plugin. The browser tab serves a
+    // tiny landing that triggers the protocol jump and closes itself.
     if (client === "desktop") {
       const protocolUrl = `merchiva://auth-callback?${params.toString()}`;
       const escaped = protocolUrl.replace(/"/g, "&quot;");

@@ -44,7 +44,6 @@ import AddMembersToConversationReducer from "./add_members_to_conversation_reduc
 import AddPageReducer from "./add_page_reducer";
 import AddPerkReducer from "./add_perk_reducer";
 import AddPointsReducer from "./add_points_reducer";
-import AddProductReducer from "./add_product_reducer";
 import AddQueueEntryReducer from "./add_queue_entry_reducer";
 import AddRoleTaskReducer from "./add_role_task_reducer";
 import AddSalesRecordReducer from "./add_sales_record_reducer";
@@ -97,7 +96,6 @@ import DeleteLocationReducer from "./delete_location_reducer";
 import DeleteMessageReducer from "./delete_message_reducer";
 import DeletePageReducer from "./delete_page_reducer";
 import DeletePerkReducer from "./delete_perk_reducer";
-import DeleteProductReducer from "./delete_product_reducer";
 import DeletePushSubscriptionReducer from "./delete_push_subscription_reducer";
 import DeleteQueueEntryReducer from "./delete_queue_entry_reducer";
 import DeleteRoleTaskReducer from "./delete_role_task_reducer";
@@ -123,6 +121,8 @@ import InviteToOrgReducer from "./invite_to_org_reducer";
 import LeaveOrgReducer from "./leave_org_reducer";
 import LogSupplierMessageReducer from "./log_supplier_message_reducer";
 import LoginWithPasswordReducer from "./login_with_password_reducer";
+import ManagerRecordPunchReducer from "./manager_record_punch_reducer";
+import ManagerSetPunchWindowReducer from "./manager_set_punch_window_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
 import RecordPunchReducer from "./record_punch_reducer";
@@ -182,7 +182,6 @@ import UpdateOrgParentReducer from "./update_org_parent_reducer";
 import UpdateOrgSubscriptionReducer from "./update_org_subscription_reducer";
 import UpdatePageReducer from "./update_page_reducer";
 import UpdatePerkReducer from "./update_perk_reducer";
-import UpdateProductReducer from "./update_product_reducer";
 import UpdateProfileReducer from "./update_profile_reducer";
 import UpdatePurchaseOrderStatusReducer from "./update_purchase_order_status_reducer";
 import UpdateQueueStatusReducer from "./update_queue_status_reducer";
@@ -230,7 +229,6 @@ import OrgMemberRow from "./org_member_table";
 import OrganizationRow from "./organization_table";
 import PaymentRow from "./payment_table";
 import PerkClaimRow from "./perk_claim_table";
-import ProductRow from "./product_table";
 import PunchEventRow from "./punch_event_table";
 import PurchaseOrderRow from "./purchase_order_table";
 import PushSubscriptionRow from "./push_subscription_table";
@@ -663,20 +661,6 @@ const tablesSchema = __schema({
       { name: 'perk_claim_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PerkClaimRow),
-  product: __table({
-    name: 'product',
-    indexes: [
-      { accessor: 'id', name: 'product_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byOrganizationId', name: 'product_organization_id_idx_btree', algorithm: 'btree', columns: [
-        'organizationId',
-      ] },
-    ],
-    constraints: [
-      { name: 'product_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, ProductRow),
   punchEvent: __table({
     name: 'punch_event',
     indexes: [
@@ -1268,7 +1252,6 @@ const reducersSchema = __reducers(
   __reducerSchema("add_page", AddPageReducer),
   __reducerSchema("add_perk", AddPerkReducer),
   __reducerSchema("add_points", AddPointsReducer),
-  __reducerSchema("add_product", AddProductReducer),
   __reducerSchema("add_queue_entry", AddQueueEntryReducer),
   __reducerSchema("add_role_task", AddRoleTaskReducer),
   __reducerSchema("add_sales_record", AddSalesRecordReducer),
@@ -1321,7 +1304,6 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_message", DeleteMessageReducer),
   __reducerSchema("delete_page", DeletePageReducer),
   __reducerSchema("delete_perk", DeletePerkReducer),
-  __reducerSchema("delete_product", DeleteProductReducer),
   __reducerSchema("delete_push_subscription", DeletePushSubscriptionReducer),
   __reducerSchema("delete_queue_entry", DeleteQueueEntryReducer),
   __reducerSchema("delete_role_task", DeleteRoleTaskReducer),
@@ -1347,6 +1329,8 @@ const reducersSchema = __reducers(
   __reducerSchema("leave_org", LeaveOrgReducer),
   __reducerSchema("log_supplier_message", LogSupplierMessageReducer),
   __reducerSchema("login_with_password", LoginWithPasswordReducer),
+  __reducerSchema("manager_record_punch", ManagerRecordPunchReducer),
+  __reducerSchema("manager_set_punch_window", ManagerSetPunchWindowReducer),
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
   __reducerSchema("record_punch", RecordPunchReducer),
@@ -1406,7 +1390,6 @@ const reducersSchema = __reducers(
   __reducerSchema("update_org_subscription", UpdateOrgSubscriptionReducer),
   __reducerSchema("update_page", UpdatePageReducer),
   __reducerSchema("update_perk", UpdatePerkReducer),
-  __reducerSchema("update_product", UpdateProductReducer),
   __reducerSchema("update_profile", UpdateProfileReducer),
   __reducerSchema("update_purchase_order_status", UpdatePurchaseOrderStatusReducer),
   __reducerSchema("update_queue_status", UpdateQueueStatusReducer),

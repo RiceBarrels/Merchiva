@@ -28,7 +28,7 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 }
 
 import type { StoredAccount } from "@/lib/auth/context";
-import { LayoutDashboard, Package, TrendingUp, Users, ShoppingBag, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette } from "lucide-react";
+import { LayoutDashboard, Package, TrendingUp, Users, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
@@ -88,11 +88,6 @@ const navItems: NavItemExt[] = [
   { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory",
     children: [
       { labelKey: "nav.suppliers", href: "/~/suppliers" },
-      { labelKey: "nav.wasteLog",  href: "/~/inventory/waste" },
-    ] },
-  { labelKey: "nav.products",  href: "/~/products",    icon: ShoppingBag,     permissionKey: "products",
-    children: [
-      { labelKey: "nav.pricing", href: "/~/pricing" },
     ] },
   { labelKey: "nav.sales",     href: "/~/sales",       icon: TrendingUp,      permissionKey: "sales",
     children: [

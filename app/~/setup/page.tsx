@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input";
 import { MerchivaLogo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Check, ArrowRight, ArrowLeft, Clock, MapPin, Store, UserPlus, Link2, SkipForward, Send, Plus, X, Mail, CreditCard } from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Clock, MapPin, Store, UserPlus, Link2, SkipForward, Send, Plus, X, Mail, CreditCard, CalendarClock } from "lucide-react";
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { SCHEDULE_PROVIDERS, type ScheduleProviderId } from "@/lib/schedule-integrations";
 
 interface InviteRow { email: string; role: string; }
+
+type SetupHours = { open: string; close: string; days: boolean[] };
 
 interface GoogleAddressPlace {
   address: string;
@@ -54,7 +57,8 @@ interface GoogleMapsNamespace {
   };
 }
 
-const STEP_KEYS = ["storeInfo", "hours", "team", "pos"] as const;
+const STEP_KEYS = ["storeInfo", "hours", "team", "schedule", "pos"] as const;
+const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || "";
 const GOOGLE_MAPS_SCRIPT_ID = "merchiva-google-maps-js";
 
@@ -293,6 +297,62 @@ function GoogleAddressInput({
   );
 }
 
+function ScheduleProviderCard({
+  provider,
+  selected,
+  onSelect,
+}: {
+  provider: (typeof SCHEDULE_PROVIDERS)[number];
+  selected: boolean;
+  onSelect: (provider: ScheduleProviderId) => void;
+}) {
+  const t = useT();
+  const comingSoon = provider.status !== "available";
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(provider.id)}
+      className={cn(
+        "w-full rounded-[0.3rem] border p-3 text-left transition-colors",
+        selected ? "border-foreground bg-muted/40" : "border-border bg-background hover:bg-muted/35",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className={cn(
+          "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.3rem] border",
+          selected ? "border-foreground bg-foreground text-background" : "border-border bg-muted text-muted-foreground",
+        )}>
+          <CalendarClock className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="text-[13px] font-semibold">{provider.label}</span>
+            {provider.id === "built_in" && (
+              <span className="rounded-[3px] bg-foreground px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-background">
+                {t("setup.schedule.recommended")}
+              </span>
+            )}
+            {comingSoon && (
+              <span className="rounded-[3px] bg-amber-100 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider text-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
+                {t("settings.comingSoon")}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-muted-foreground">{provider.description}</p>
+          {provider.id === "7shifts" && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 text-[10.5px] font-medium text-muted-foreground">
+              <Link2 className="h-3 w-3" />
+              {t("setup.schedule.connectAfterSetup")}
+            </p>
+          )}
+        </div>
+        {selected && <Check className="mt-2 h-4 w-4 shrink-0 text-foreground" />}
+      </div>
+    </button>
+  );
+}
+
 function StoreInfoStep({ storeName, setStoreName, address, setAddress, onAddressPlaceSelect, businessType, setBusinessType, onNext }: {
   storeName: string; setStoreName: (v: string) => void;
   address: string; setAddress: (v: string) => void;
@@ -350,12 +410,11 @@ function StoreInfoStep({ storeName, setStoreName, address, setAddress, onAddress
 }
 
 function HoursStep({ hours, setHours, onNext, onBack }: {
-  hours: { open: string; close: string; days: boolean[] };
-  setHours: (v: { open: string; close: string; days: boolean[] }) => void;
+  hours: SetupHours;
+  setHours: (v: SetupHours) => void;
   onNext: () => void; onBack: () => void;
 }) {
   const t = useT();
-  const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   return (
     <div className="w-full max-w-md mx-auto">
       <Stepper step={1} />
@@ -378,7 +437,7 @@ function HoursStep({ hours, setHours, onNext, onBack }: {
         <div>
           <label className="text-[12px] font-medium text-muted-foreground mb-2 block">{t("setup.hours.openDaysLabel")}</label>
           <div className="flex gap-1.5">
-            {dayKeys.map((dayKey, i) => (
+            {DAY_KEYS.map((dayKey, i) => (
               <button key={dayKey} onClick={() => { const nd = [...hours.days]; nd[i] = !nd[i]; setHours({ ...hours, days: nd }); }}
                 className={cn("flex-1 h-10 rounded-[0.3rem] border text-[12px] font-medium transition-colors",
                   hours.days[i] ? "bg-foreground text-background border-foreground" : "bg-background text-muted-foreground border-border hover:bg-muted"
@@ -445,6 +504,55 @@ function InviteStep({ invites, setInvites, onNext, onBack, onSkip }: {
   );
 }
 
+function ScheduleStep({
+  selectedProvider,
+  setSelectedProvider,
+  onNext,
+  onBack,
+}: {
+  selectedProvider: ScheduleProviderId;
+  setSelectedProvider: (provider: ScheduleProviderId) => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const t = useT();
+  const selected = SCHEDULE_PROVIDERS.find((provider) => provider.id === selectedProvider) ?? SCHEDULE_PROVIDERS[0];
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <Stepper step={3} />
+      <div className="flex items-center gap-3 mb-2">
+        <CalendarClock className="h-5 w-5 text-muted-foreground" />
+        <h1 className="text-[22px] font-semibold tracking-tight">{t("setup.schedule.title")}</h1>
+      </div>
+      <p className="text-[13px] text-muted-foreground leading-relaxed mb-6">{t("setup.schedule.subtitle")}</p>
+
+      <div className="space-y-2">
+        {SCHEDULE_PROVIDERS.map((provider) => (
+          <ScheduleProviderCard
+            key={provider.id}
+            provider={provider}
+            selected={selectedProvider === provider.id}
+            onSelect={setSelectedProvider}
+          />
+        ))}
+      </div>
+
+      {selectedProvider === "7shifts" && (
+        <div className="mt-3 rounded-[0.3rem] border border-border bg-muted/35 p-3 text-[11.5px] leading-relaxed text-muted-foreground">
+          {t("setup.schedule.oauthNote")}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mt-6">
+        <Button variant="outline" size="lg" className="gap-2" onClick={onBack}><ArrowLeft className="h-4 w-4" /> {t("common.back")}</Button>
+        <Button size="lg" className="gap-2" onClick={onNext}>
+          {selected.status === "available" ? t("common.next") : t("setup.schedule.saveChoice")} <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function PosStep({ onFinish, onBack, onSkip, finishing }: {
   onFinish: () => void; onBack: () => void; onSkip: () => void; finishing: boolean;
 }) {
@@ -457,7 +565,7 @@ function PosStep({ onFinish, onBack, onSkip, finishing }: {
   ];
   return (
     <div className="w-full max-w-md mx-auto">
-      <Stepper step={3} />
+      <Stepper step={4} />
       <div className="flex items-center gap-3 mb-2">
         <CreditCard className="h-5 w-5 text-muted-foreground" />
         <h1 className="text-[22px] font-semibold tracking-tight">{t("setup.pos.title")}</h1>
@@ -499,8 +607,9 @@ export default function SetupPage() {
   const [address, setAddress] = useState("");
   const [addressPlace, setAddressPlace] = useState<GoogleAddressPlace | null>(null);
   const [businessType, setBusinessType] = useState("cafe");
-  const [hours, setHours] = useState({ open: "07:00", close: "21:00", days: [true, true, true, true, true, true, false] });
+  const [hours, setHours] = useState<SetupHours>({ open: "07:00", close: "21:00", days: [true, true, true, true, true, true, false] });
   const [invites, setInvites] = useState<InviteRow[]>([{ email: "", role: "staff" }]);
+  const [scheduleProvider, setScheduleProvider] = useState<ScheduleProviderId>("built_in");
 
   useEffect(() => {
     const token = localStorage.getItem("stdb_token");
@@ -545,11 +654,22 @@ export default function SetupPage() {
             googlePlacesId: selectedAddressPlace?.googlePlacesId ?? null,
           });
         } catch {}
+        try {
+          await r.setScheduleIntegration({
+            organizationId: orgId,
+            provider: scheduleProvider,
+          });
+        } catch {}
         for (const inv of invites.filter((r) => r.email.includes("@"))) {
           try { await r.inviteToOrg({ organizationId: orgId, email: inv.email.trim(), role: inv.role }); } catch {}
         }
         if (cleanAddress) {
           try { await r.addLocation({ organizationId: orgId, name: storeName.trim() || "Main", address: cleanAddress, phone: null, isDefault: true, sortOrder: 0 }); } catch {}
+        }
+        if (scheduleProvider === "7shifts") {
+          toast.success(t("setup.toast.complete"));
+          window.location.href = `/api/schedule/connect?provider=7shifts&orgId=${encodeURIComponent(orgId)}`;
+          return;
         }
       }
       toast.success(t("setup.toast.complete"));
@@ -561,7 +681,7 @@ export default function SetupPage() {
       toast.error(t("setup.toast.error"));
       router.replace("/~/");
     }
-  }, [storeName, address, addressPlace, businessType, invites, router, t]);
+  }, [storeName, address, addressPlace, businessType, invites, scheduleProvider, router, t]);
 
   if (finishing) {
     return (
@@ -575,20 +695,31 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="h-14 border-b border-border flex items-center px-5 gap-2.5 shrink-0">
-        <MerchivaLogo size={24} fg="var(--background)" bg="var(--foreground)" rounded />
-        <span className="text-[13px] font-semibold tracking-tight">Merchiva</span>
+    <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:overflow-hidden">
+      <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border px-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <MerchivaLogo size={24} fg="var(--background)" bg="var(--foreground)" rounded />
+          <span className="truncate text-[13px] font-semibold tracking-tight">Merchiva</span>
+        </div>
+        <span className="hidden font-mono text-[11px] text-muted-foreground sm:block">
+          {t("setup.footer.step").replace("{current}", String(step + 1)).replace("{total}", String(STEP_KEYS.length))}
+        </span>
       </div>
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 overflow-y-auto">
-        {step === 0 && <StoreInfoStep storeName={storeName} setStoreName={setStoreName} address={address} setAddress={handleAddressChange} onAddressPlaceSelect={handleAddressPlaceSelect} businessType={businessType} setBusinessType={setBusinessType} onNext={() => setStep(1)} />}
-        {step === 1 && <HoursStep hours={hours} setHours={setHours} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-        {step === 2 && <InviteStep invites={invites} setInvites={setInvites} onNext={() => setStep(3)} onBack={() => setStep(1)} onSkip={() => setStep(3)} />}
-        {step === 3 && <PosStep onFinish={saveAndFinish} onBack={() => setStep(2)} onSkip={saveAndFinish} finishing={finishing} />}
+      <div className="flex flex-1 overflow-y-auto lg:min-h-0 lg:overflow-hidden">
+        <section className="flex min-h-[560px] flex-1 items-center justify-center px-5 py-8 sm:px-10 lg:min-h-0 lg:overflow-y-auto">
+          {step === 0 && <StoreInfoStep storeName={storeName} setStoreName={setStoreName} address={address} setAddress={handleAddressChange} onAddressPlaceSelect={handleAddressPlaceSelect} businessType={businessType} setBusinessType={setBusinessType} onNext={() => setStep(1)} />}
+          {step === 1 && <HoursStep hours={hours} setHours={setHours} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
+          {step === 2 && <InviteStep invites={invites} setInvites={setInvites} onNext={() => setStep(3)} onBack={() => setStep(1)} onSkip={() => setStep(3)} />}
+          {step === 3 && <ScheduleStep selectedProvider={scheduleProvider} setSelectedProvider={setScheduleProvider} onNext={() => setStep(4)} onBack={() => setStep(2)} />}
+          {step === 4 && <PosStep onFinish={saveAndFinish} onBack={() => setStep(3)} onSkip={saveAndFinish} finishing={finishing} />}
+        </section>
       </div>
-      <div className="h-10 border-t border-border flex items-center justify-between px-6 text-[11px] text-muted-foreground shrink-0">
-        <span className="inline-flex items-center gap-1.5"><MapPin className="h-3 w-3" />{storeName || t("setup.footer.yourStore")}</span>
-        <span className="font-mono">{t("setup.footer.step").replace("{current}", String(step + 1)).replace("{total}", String(STEP_KEYS.length))}</span>
+      <div className="flex h-10 shrink-0 items-center justify-between gap-3 border-t border-border px-4 text-[11px] text-muted-foreground sm:px-6">
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <MapPin className="h-3 w-3 shrink-0" />
+          <span className="truncate">{storeName || t("setup.footer.yourStore")}</span>
+        </span>
+        <span className="font-mono sm:hidden">{t("setup.footer.step").replace("{current}", String(step + 1)).replace("{total}", String(STEP_KEYS.length))}</span>
       </div>
     </div>
   );

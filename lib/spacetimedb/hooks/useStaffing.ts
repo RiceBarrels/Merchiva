@@ -1,7 +1,7 @@
 "use client";
 // SpacetimeDB — staffing, scheduling, availability, and chat
 
-import { useMemo, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo, type Dispatch, type SetStateAction } from "react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
@@ -21,16 +21,17 @@ export function useStaffing(
   // an org belonging to that group is visible. Falls back to a single-org
   // filter when share-group info hasn't loaded yet so behavior degrades
   // gracefully on the initial render.
-  const groupIds = shareGroupOrgIds.length
-    ? shareGroupOrgIds
-    : organizationId
-      ? [organizationId]
-      : [];
-  // Stable key for useMemo deps — array identity isn't stable across renders.
-  const groupKey = groupIds.join("|");
-  const inGroup = (orgId: string) => groupIds.includes(orgId);
+  const inGroup = useCallback((orgId: string) => {
+    const groupIds = shareGroupOrgIds.length
+      ? shareGroupOrgIds
+      : organizationId
+        ? [organizationId]
+        : [];
+    return groupIds.includes(orgId);
+  }, [organizationId, shareGroupOrgIds]);
 
   const [rawMembers,  membersReady]  = useTable(tables.orgMember);
+  const [rawUsers,    usersReady]    = useTable(tables.user);
   const [rawShifts,   shiftsReady]   = useTable(tables.shift);
   const [rawRoles,    rolesReady]    = useTable(tables.staffRole);
   const [rawPresets,  presetsReady]  = useTable(tables.shiftPreset);
@@ -39,8 +40,19 @@ export function useStaffing(
   const [rawTimeOff,  timeOffReady]  = useTable(tables.timeOffRequest);
   const [rawTrades,   tradesReady]   = useTable(tables.shiftTrade);
 
-  const isReady = membersReady && shiftsReady && rolesReady &&
+  const isReady = membersReady && usersReady && shiftsReady && rolesReady &&
     presetsReady && convosReady && availReady && timeOffReady && tradesReady;
+
+  const avatarByUserId = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const user of rawUsers) {
+      map.set(user.identity.toString(), user.avatarUrl ?? null);
+      if (typeof user.identity.toHexString === "function") {
+        map.set(user.identity.toHexString(), user.avatarUrl ?? null);
+      }
+    }
+    return map;
+  }, [rawUsers]);
 
   const team = useMemo<OrgMember[]>(() => {
     if (!organizationId) return [];
@@ -53,6 +65,7 @@ export function useStaffing(
         role:           r.role as OrgMember["role"],
         displayName:    r.displayName,
         email:          r.email,
+        avatarUrl:      avatarByUserId.get(r.userId.toString()) ?? avatarByUserId.get(r.userId.toHexString()) ?? null,
         // permissions is JSON in SpacetimeDB; parse it safely
         permissions:    (() => {
           try { return JSON.parse(r.permissions) as Permissions; }
@@ -61,7 +74,7 @@ export function useStaffing(
         status:         r.status as OrgMember["status"],
         punchInCode:    r.punchInCode ?? null,
       }));
-  }, [rawMembers, organizationId, groupKey]);
+  }, [rawMembers, organizationId, inGroup, avatarByUserId]);
 
   const shifts = useMemo<Shift[]>(() => {
     if (!organizationId) return [];
@@ -82,7 +95,7 @@ export function useStaffing(
         endTime:         r.endTime,
         predictedDemand: r.predictedDemand as Shift["predictedDemand"],
       }));
-  }, [rawShifts, organizationId, groupKey]);
+  }, [rawShifts, organizationId, inGroup]);
 
   const roles = useMemo<StaffRole[]>(() => {
     if (!organizationId) return [];
@@ -99,7 +112,7 @@ export function useStaffing(
           catch { return {}; }
         })(),
       }));
-  }, [rawRoles, organizationId, groupKey]);
+  }, [rawRoles, organizationId, inGroup]);
 
   const presets = useMemo<ShiftPreset[]>(() => {
     if (!organizationId) return [];
@@ -114,7 +127,7 @@ export function useStaffing(
         color:          r.color,
         sortOrder:      r.sortOrder,
       }));
-  }, [rawPresets, organizationId, groupKey]);
+  }, [rawPresets, organizationId, inGroup]);
 
   const chatOptions = useMemo<ChatConversation[]>(() => {
     if (!organizationId) return [];
@@ -128,7 +141,7 @@ export function useStaffing(
         createdBy:      r.createdBy ?? null,
         createdAt:      r.createdAt.toDate().toISOString(),
       }));
-  }, [rawConvos, organizationId, groupKey]);
+  }, [rawConvos, organizationId, inGroup]);
 
   const allAvailability = useMemo<StaffAvailability[]>(() => {
     if (!organizationId) return [];
@@ -155,7 +168,7 @@ export function useStaffing(
         endTime:        row.endTime ?? null,
         comments:       row.comments,
       }));
-  }, [rawAvail, organizationId, groupKey]);
+  }, [rawAvail, organizationId, inGroup]);
 
   const myAvailability = useMemo<StaffAvailability | null>(() => {
     return allAvailability[0] ?? null;
@@ -179,7 +192,7 @@ export function useStaffing(
         reviewedBy:     r.reviewedBy ?? null,
         reviewedAt:     r.reviewedAt ? r.reviewedAt.toDate().toISOString() : null,
       }));
-  }, [rawTimeOff, organizationId, groupKey]);
+  }, [rawTimeOff, organizationId, inGroup]);
 
   const orgTimeOffRequests = myTimeOffRequests;
 
@@ -203,7 +216,7 @@ export function useStaffing(
         comments:        r.comments,
         createdAt:       (r as Record<string, unknown>).createdAt ? String((r as Record<string, unknown>).createdAt) : new Date().toISOString(),
       }));
-  }, [rawTrades, organizationId, groupKey]);
+  }, [rawTrades, organizationId, inGroup]);
 
   return {
     team,

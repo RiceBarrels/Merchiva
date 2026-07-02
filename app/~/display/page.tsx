@@ -249,18 +249,31 @@ function KitchenDisplay({ darkMode }: { darkMode: boolean }) {
 function MenuBoard({ darkMode }: { darkMode: boolean }) {
   const t = useT();
   const { format } = useCurrency();
-  const products = useProducts();
+  const [products] = useProducts() as [unknown[], boolean];
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const autoScrollRef = useRef(true);
 
   const productList = useMemo(() => {
     if (!products) return [];
-    return Array.from(products).filter((p) => {
+    return Array.from(products)
+      .filter((p) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prod = p as any;
-      return prod.price > 0;
-    });
+        const prod = p as any;
+        return prod.retailEnabled === true && Number(prod.retailPrice ?? 0) > 0;
+      })
+      .map((p) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const prod = p as any;
+        return {
+          id: prod.id,
+          name: prod.name,
+          category: prod.category,
+          description: prod.retailDescription ?? prod.description,
+          imageUrl: prod.retailImageUrl,
+          price: Number(prod.retailPrice ?? 0),
+        };
+      });
   }, [products]);
 
   const categories = useMemo(() => {

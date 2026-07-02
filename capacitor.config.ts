@@ -11,8 +11,12 @@ const config: CapacitorConfig = {
   // },
   // for production
   server: {
-    iosScheme: 'merchiva',
-    androidScheme: 'merchiva',
+    // Keep the WebView origin separate from the merchiva:// auth/deep-link scheme.
+    iosScheme: 'capacitor',
+    androidScheme: 'https',
+    // Start at the static root shim. It decides whether the WebView should
+    // enter /~/ or /login after reading local auth state.
+    appStartPath: '/',
   },
   plugins: {
     SplashScreen: {

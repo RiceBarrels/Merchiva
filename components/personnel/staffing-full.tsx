@@ -1,6 +1,6 @@
 "use client";
 
-import { uuid } from "@/lib/utils";
+import { cn, uuid } from "@/lib/utils";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Coffee, Utensils, ChefHat, Truck, Package, Clipboard, Wrench, Headphones, Store, Banknote, Sparkles, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, ArrowLeft, ClipboardList, Pencil, Download, Wine, Bubbles, MoonStar, Sun, ReceiptText, HandPlatter, RefreshCw, Inbox, PanelRightOpen, PanelRightClose, Bell } from "lucide-react";
@@ -25,6 +25,8 @@ import {
   addStaffRole, updateStaffRole, deleteStaffRole,
   getRoleTasks, addRoleTask, updateRoleTask, deleteRoleTask,
   addShiftPreset, updateShiftPreset, deleteShiftPreset,
+  managerRecordPunch,
+  managerSetPunchWindow,
 } from "@/lib/spacetimedb/actions";
 import type { ShiftPreset } from "@/lib/types";
 import type { ChatConversation } from "@/lib/types";
@@ -41,11 +43,11 @@ import type {
 } from "@/lib/types";
 import { NotificationPanel } from "@/components/notification-panel";
 import { PageHeader } from "@/components/page-header";
-import { AutoScheduler } from "@/components/auto-scheduler";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
-import { useSpacetimeDB } from "spacetimedb/react";
+import { tables } from "@/lib/spacetimedb/generated";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
 
@@ -130,6 +132,38 @@ function initials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
+function StaffAvatar({
+  name,
+  avatarUrl,
+  size = 28,
+  className,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  size?: number;
+  className?: string;
+}) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className={cn("shrink-0 rounded-full border border-border bg-muted object-cover", className)}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn("shrink-0 rounded-full flex items-center justify-center font-bold", avatarBg(name), className)}
+      style={{ width: size, height: size, fontSize: Math.max(7, Math.round(size * 0.36)) }}
+    >
+      {initials(name)}
+    </div>
+  );
+}
+
 function formatTime(t: string): string {
   const [h, m] = t.split(":").map(Number);
   const period = h >= 12 ? "PM" : "AM";
@@ -191,7 +225,496 @@ function normalizeDayTimes(dt: unknown): typeof DEFAULT_DAY_TIMES {
 // Desktop Layout
 // ─────────────────────────────────────────────────────────────────────────────
 
-type DesktopTab = "schedule" | "myShifts" | "roles";
+type DesktopTab = "schedule" | "attendance" | "myShifts" | "roles";
+
+interface PunchEventRow {
+  id: { toString(): string };
+  organizationId: string;
+  memberId: string;
+  action: string;
+  at: { toDate?: () => Date; microsSinceUnixEpoch?: bigint };
+  closed: boolean;
+  pairEventId?: string | null;
+}
+
+interface AttendanceRow {
+  member: OrgMember;
+  inEvent: PunchEventRow | null;
+  outEvent: PunchEventRow | null;
+  openIn: PunchEventRow | null;
+  openBreak: PunchEventRow | null;
+  state: "off" | "on" | "break" | "complete";
+  startTime: string;
+  endTime: string;
+}
+
+function punchEventTime(e: PunchEventRow): Date {
+  if (e.at && typeof e.at.toDate === "function") return e.at.toDate();
+  if (typeof e.at?.microsSinceUnixEpoch === "bigint") {
+    return new Date(Number(e.at.microsSinceUnixEpoch / BigInt(1000)));
+  }
+  return new Date();
+}
+
+function formatClockDate(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function dateTimeFromInput(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00`);
+}
+
+function dayStartFromInput(date: string): Date {
+  return dateTimeFromInput(date, "00:00");
+}
+
+function nextDayStartFromInput(date: string): Date {
+  const d = dayStartFromInput(date);
+  d.setDate(d.getDate() + 1);
+  return d;
+}
+
+function timeToMinutes(time: string | null | undefined): number | null {
+  if (!time) return null;
+  const [h, m] = time.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+function minutesFromDay(date: string, value: Date): number {
+  return Math.round((value.getTime() - dayStartFromInput(date).getTime()) / 60000);
+}
+
+function minutesLabel(minutes: number): string {
+  const normalized = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+}
+
+function durationLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h <= 0) return `${m}m`;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function clampPercent(value: number, start: number, end: number): string {
+  const clamped = Math.max(start, Math.min(end, value));
+  return `${((clamped - start) / Math.max(1, end - start)) * 100}%`;
+}
+
+function AttendanceManagerPanel({
+  rows,
+  canManage,
+  date,
+  onDateChange,
+  busyMemberId,
+  savingMemberId,
+  onPunch,
+  onSaveWindow,
+  compact = false,
+  full = false,
+  showHeader = true,
+}: {
+  rows: AttendanceRow[];
+  canManage: boolean;
+  date: string;
+  onDateChange: (date: string) => void;
+  busyMemberId: string | null;
+  savingMemberId: string | null;
+  onPunch: (memberId: string, action: "in" | "out") => void;
+  onSaveWindow: (memberId: string, startTime: string, endTime: string) => void;
+  compact?: boolean;
+  full?: boolean;
+  showHeader?: boolean;
+}) {
+  const t = useT();
+  const [drafts, setDrafts] = useState<Record<string, { startTime: string; endTime: string }>>({});
+  const rowSyncKey = rows.map((row) => `${row.member.id}:${row.startTime}:${row.endTime}`).join("|");
+
+  useEffect(() => {
+    const next: Record<string, { startTime: string; endTime: string }> = {};
+    rows.forEach((row) => {
+      next[row.member.id] = { startTime: row.startTime, endTime: row.endTime };
+    });
+    setDrafts(next);
+  }, [rowSyncKey, rows]);
+
+  if (!canManage) return null;
+
+  const recordedCount = rows.filter((row) => row.inEvent).length;
+  const canQuickPunch = date === localDateKey(new Date());
+  const setDraft = (memberId: string, field: "startTime" | "endTime", value: string) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [memberId]: {
+        startTime: prev[memberId]?.startTime ?? "",
+        endTime: prev[memberId]?.endTime ?? "",
+        [field]: value,
+      },
+    }));
+  };
+
+  return (
+    <section className={cn("border-b border-border bg-background", compact ? "" : "border-t", full && "flex-1 min-h-0 flex flex-col")}>
+      {showHeader && (
+        <div className={cn("flex items-center justify-between gap-3", compact ? "px-4 py-2.5" : "px-6 py-3")}>
+          <div className="min-w-0">
+            <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.attendance.title")}</p>
+            <p className="text-[12px] text-muted-foreground">
+              {t("staffing.attendance.subtitle").replace("{active}", String(recordedCount)).replace("{total}", String(rows.length))}
+            </p>
+          </div>
+          <Input
+            type="date"
+            value={date}
+            onChange={(event) => onDateChange(event.target.value)}
+            className="h-8 w-[136px] shrink-0 px-2 text-[12px]"
+            aria-label={t("staffing.attendance.date")}
+          />
+        </div>
+      )}
+      {rows.length === 0 ? (
+        <p className={cn("text-[12px] text-muted-foreground", compact ? "px-4 pb-3" : "px-6 pb-3")}>{t("staffing.attendance.empty")}</p>
+      ) : (
+        <div className={cn("divide-y divide-border", compact ? "" : full ? "flex-1 overflow-y-auto" : "max-h-56 overflow-y-auto")}>
+          {rows.map((row) => {
+            const { member, openIn, openBreak, state } = row;
+            const memberId = member.id;
+            const action: "in" | "out" = openIn ? "out" : "in";
+            const busy = busyMemberId === memberId;
+            const saving = savingMemberId === memberId;
+            const since = openBreak ?? openIn;
+            const draft = drafts[memberId] ?? { startTime: "", endTime: "" };
+            const dirty = draft.startTime !== row.startTime || draft.endTime !== row.endTime;
+            return (
+              <div key={memberId} className={cn("flex items-center gap-2.5", compact ? "px-4 py-2.5 flex-wrap" : "px-6 py-2.5")}>
+                <StaffAvatar name={member.displayName} avatarUrl={member.avatarUrl} size={compact ? 28 : 30} />
+                <div className={cn("min-w-0 flex-1", compact ? "basis-[calc(100%-40px)]" : "")}>
+                  <p className="text-[13px] font-semibold text-foreground truncate leading-tight">{member.displayName}</p>
+                  <p className="text-[11px] text-muted-foreground leading-tight">
+                    {state === "complete" ? t("staffing.attendance.complete") : state === "break" ? t("staffing.attendance.break") : state === "on" ? t("staffing.attendance.on") : t("staffing.attendance.off")}
+                    {since ? ` · ${t("staffing.attendance.since")} ${formatClockDate(punchEventTime(since))}` : ""}
+                  </p>
+                </div>
+                <div className={cn("flex items-center gap-1.5", compact ? "ml-[38px]" : "")}>
+                  <Input
+                    type="time"
+                    value={draft.startTime}
+                    onChange={(event) => setDraft(memberId, "startTime", event.target.value)}
+                    className="h-8 w-[82px] px-1.5 text-[12px] font-mono tabular-nums"
+                    aria-label={t("staffing.attendance.start")}
+                  />
+                  <span className="text-[11px] text-muted-foreground">-</span>
+                  <Input
+                    type="time"
+                    value={draft.endTime}
+                    onChange={(event) => setDraft(memberId, "endTime", event.target.value)}
+                    className="h-8 w-[82px] px-1.5 text-[12px] font-mono tabular-nums"
+                    aria-label={t("staffing.attendance.end")}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 min-w-[68px] px-2.5 text-[12px]"
+                  disabled={!dirty || !draft.startTime || !!savingMemberId || !!busyMemberId}
+                  onClick={() => onSaveWindow(memberId, draft.startTime, draft.endTime)}
+                >
+                  {saving ? <Spinner size={14} /> : <><Check className="h-3.5 w-3.5" /> {t("staffing.attendance.save")}</>}
+                </Button>
+                {canQuickPunch && (
+                  <Button
+                    size="sm"
+                    variant={action === "out" ? "outline" : "default"}
+                    className="h-8 min-w-[78px] px-2.5 text-[12px]"
+                    disabled={!!busyMemberId || !!savingMemberId}
+                    onClick={() => onPunch(memberId, action)}
+                  >
+                    {busy ? <Spinner size={14} /> : action === "in" ? t("staffing.attendance.clockIn") : t("staffing.attendance.clockOut")}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AttendanceStatTile({ label, value, tone }: { label: string; value: number; tone?: "warn" | "ok" }) {
+  return (
+    <div className="border-r border-b border-border px-4 py-3 last:border-r-0">
+      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={cn(
+        "mt-0.5 font-mono text-2xl font-semibold tabular-nums",
+        tone === "warn" ? "text-amber-700" : tone === "ok" ? "text-emerald-700" : "text-foreground",
+      )}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function AttendanceRecordsWorkspace({
+  rows,
+  shifts,
+  date,
+  onDateChange,
+  canManage,
+  busyMemberId,
+  savingMemberId,
+  onPunch,
+  onSaveWindow,
+  compact = false,
+}: {
+  rows: AttendanceRow[];
+  shifts: Shift[];
+  date: string;
+  onDateChange: (date: string) => void;
+  canManage: boolean;
+  busyMemberId: string | null;
+  savingMemberId: string | null;
+  onPunch: (memberId: string, action: "in" | "out") => void;
+  onSaveWindow: (memberId: string, startTime: string, endTime: string) => void;
+  compact?: boolean;
+}) {
+  const t = useT();
+  const now = new Date();
+  const isToday = date === localDateKey(now);
+  const nowMinute = minutesFromDay(date, now);
+
+  const timelineRows = useMemo(() => {
+    const dayShifts = shifts.filter((shift) => shift.date === date);
+    return rows.map((row) => {
+      const memberShifts = dayShifts.filter((shift) => shift.memberId === row.member.id);
+      const shiftWindows = memberShifts
+        .map((shift) => {
+          const start = timeToMinutes(shift.startTime);
+          let end = timeToMinutes(shift.endTime);
+          if (start == null || end == null) return null;
+          if (end <= start) end += 1440;
+          return { start, end };
+        })
+        .filter(Boolean) as Array<{ start: number; end: number }>;
+      const scheduledStart = shiftWindows.length > 0 ? Math.min(...shiftWindows.map((shift) => shift.start)) : null;
+      const scheduledEnd = shiftWindows.length > 0 ? Math.max(...shiftWindows.map((shift) => shift.end)) : null;
+      const actualStart = row.inEvent ? minutesFromDay(date, punchEventTime(row.inEvent)) : null;
+      const actualEnd = row.outEvent
+        ? minutesFromDay(date, punchEventTime(row.outEvent))
+        : row.openIn && isToday
+          ? nowMinute
+          : null;
+      const overtimeMinutes =
+        scheduledEnd != null && actualEnd != null && actualEnd > scheduledEnd
+          ? actualEnd - scheduledEnd
+          : 0;
+
+      return {
+        row,
+        memberShifts,
+        scheduledStart,
+        scheduledEnd,
+        actualStart,
+        actualEnd,
+        overtimeMinutes,
+        missingClockOut: !!row.inEvent && !row.outEvent && !row.openIn,
+      };
+    });
+  }, [date, isToday, nowMinute, rows, shifts]);
+
+  const visibleTimelineRows = timelineRows.filter((item) => item.memberShifts.length > 0 || item.row.inEvent);
+  const recordedCount = rows.filter((row) => row.inEvent).length;
+  const activeCount = rows.filter((row) => row.openIn).length;
+  const overtimeCount = timelineRows.filter((row) => row.overtimeMinutes > 0).length;
+  const noRecordCount = rows.length - recordedCount;
+
+  const allPoints = visibleTimelineRows.flatMap((item) => [
+    item.scheduledStart,
+    item.scheduledEnd,
+    item.actualStart,
+    item.actualEnd,
+  ]).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  const rawStart = allPoints.length > 0 ? Math.min(...allPoints) : 8 * 60;
+  const rawEnd = allPoints.length > 0 ? Math.max(...allPoints) : 18 * 60;
+  const timelineStart = Math.max(0, Math.floor((rawStart - 60) / 60) * 60);
+  const timelineEnd = Math.min(1440, Math.max(timelineStart + 360, Math.ceil((rawEnd + 60) / 60) * 60));
+  const hourTicks = Array.from(
+    { length: Math.floor((timelineEnd - timelineStart) / 60) + 1 },
+    (_, index) => timelineStart + index * 60,
+  );
+
+  if (!canManage) return null;
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 lg:px-6">
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-foreground">{t("staffing.attendance.title")}</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">{t("staffing.attendance.managerOnly")}</p>
+        </div>
+        <Input
+          type="date"
+          value={date}
+          onChange={(event) => onDateChange(event.target.value)}
+          className="h-8 w-[136px] shrink-0 px-2 text-[12px]"
+          aria-label={t("staffing.attendance.date")}
+        />
+      </div>
+
+      <div className={cn("grid border-b border-border", compact ? "grid-cols-2" : "grid-cols-4")}>
+        <AttendanceStatTile label={t("staffing.attendance.recorded")} value={recordedCount} tone="ok" />
+        <AttendanceStatTile label={t("staffing.attendance.stillIn")} value={activeCount} />
+        <AttendanceStatTile label={t("staffing.attendance.overtime")} value={overtimeCount} tone={overtimeCount > 0 ? "warn" : undefined} />
+        <AttendanceStatTile label={t("staffing.attendance.noRecord")} value={noRecordCount} />
+      </div>
+
+      <section className="border-b border-border">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 lg:px-6">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t("staffing.attendance.timeline")}</p>
+          <div className="flex items-center gap-3 text-[10.5px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-5 rounded-sm bg-muted border border-border" />{t("staffing.attendance.scheduled")}</span>
+            <span className="inline-flex items-center gap-1"><span className="h-2 w-5 rounded-sm bg-foreground" />{t("staffing.attendance.actual")}</span>
+          </div>
+        </div>
+
+        {visibleTimelineRows.length === 0 ? (
+          <p className="px-4 pb-4 text-[12px] text-muted-foreground lg:px-6">{t("staffing.attendance.noTimeline")}</p>
+        ) : (
+          <div className={cn("overflow-x-auto", compact ? "max-h-[360px]" : "max-h-[42vh]")}>
+            <div className="min-w-[760px]">
+              <div className="grid grid-cols-[190px_1fr_104px] border-t border-border bg-muted/40">
+                <div />
+                <div className="relative h-7">
+                  {hourTicks.map((tick) => (
+                    <div
+                      key={tick}
+                      className="absolute top-0 h-full border-l border-border/70 pl-1 pt-1 text-[10px] font-mono text-muted-foreground"
+                      style={{ left: clampPercent(tick, timelineStart, timelineEnd) }}
+                    >
+                      {minutesLabel(tick)}
+                    </div>
+                  ))}
+                </div>
+                <div />
+              </div>
+
+              <div className="divide-y divide-border">
+                {visibleTimelineRows.map((item) => {
+                  const { row, scheduledStart, scheduledEnd, actualStart, actualEnd, overtimeMinutes } = item;
+                  const statusLabel = overtimeMinutes > 0
+                    ? t("staffing.attendance.overtime")
+                    : row.openIn
+                      ? t("staffing.attendance.on")
+                      : row.inEvent
+                        ? t("staffing.attendance.complete")
+                        : t("staffing.attendance.noRecord");
+                  return (
+                    <div key={row.member.id} className="grid grid-cols-[190px_1fr_104px] items-center">
+                      <div className="flex min-w-0 items-center gap-2.5 px-4 py-3">
+                        <StaffAvatar name={row.member.displayName} avatarUrl={row.member.avatarUrl} size={30} />
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-semibold text-foreground">{row.member.displayName}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {row.startTime ? `${t("staffing.attendance.clockedAt")} ${row.startTime}` : t("staffing.attendance.noRecord")}
+                            {row.endTime ? ` · ${t("staffing.attendance.clockedOutAt")} ${row.endTime}` : row.openIn ? ` · ${t("staffing.attendance.ongoing")}` : ""}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="relative h-14 px-1">
+                        {hourTicks.map((tick) => (
+                          <div
+                            key={tick}
+                            className="absolute top-0 h-full border-l border-border/50"
+                            style={{ left: clampPercent(tick, timelineStart, timelineEnd) }}
+                          />
+                        ))}
+                        {scheduledStart != null && scheduledEnd != null && (
+                          <div
+                            className="absolute top-3 h-2 rounded-sm border border-border bg-muted"
+                            style={{
+                              left: clampPercent(scheduledStart, timelineStart, timelineEnd),
+                              width: `max(8px, calc(${clampPercent(scheduledEnd, timelineStart, timelineEnd)} - ${clampPercent(scheduledStart, timelineStart, timelineEnd)}))`,
+                            }}
+                          />
+                        )}
+                        {actualStart != null && actualEnd != null && (
+                          <div
+                            className={cn("absolute top-7 h-3 rounded-sm", overtimeMinutes > 0 ? "bg-amber-500" : "bg-foreground")}
+                            style={{
+                              left: clampPercent(actualStart, timelineStart, timelineEnd),
+                              width: `max(8px, calc(${clampPercent(actualEnd, timelineStart, timelineEnd)} - ${clampPercent(actualStart, timelineStart, timelineEnd)}))`,
+                            }}
+                          />
+                        )}
+                        {actualStart != null && (
+                          <span
+                            className="absolute top-[21px] h-4 w-4 -translate-x-1/2 rounded-full border-2 border-background bg-foreground"
+                            style={{ left: clampPercent(actualStart, timelineStart, timelineEnd) }}
+                            title={row.startTime}
+                          />
+                        )}
+                        {actualEnd != null && row.outEvent && (
+                          <span
+                            className={cn("absolute top-[21px] h-4 w-4 -translate-x-1/2 rounded-full border-2 border-background", overtimeMinutes > 0 ? "bg-amber-500" : "bg-foreground")}
+                            style={{ left: clampPercent(actualEnd, timelineStart, timelineEnd) }}
+                            title={row.endTime}
+                          />
+                        )}
+                      </div>
+
+                      <div className="px-3 py-3 text-right">
+                        <span className={cn(
+                          "inline-flex rounded-[0.3rem] border px-2 py-1 text-[10.5px] font-semibold",
+                          overtimeMinutes > 0
+                            ? "border-amber-300 bg-amber-50 text-amber-800"
+                            : row.openIn
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                              : "border-border bg-muted text-muted-foreground",
+                        )}>
+                          {statusLabel}
+                        </span>
+                        {overtimeMinutes > 0 && (
+                          <p className="mt-1 text-[10.5px] font-mono text-amber-700">
+                            +{durationLabel(overtimeMinutes)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 lg:px-6">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t("staffing.attendance.records")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("staffing.attendance.editHint")}</p>
+        </div>
+        <AttendanceManagerPanel
+          rows={rows}
+          canManage={canManage}
+          date={date}
+          onDateChange={onDateChange}
+          busyMemberId={busyMemberId}
+          savingMemberId={savingMemberId}
+          onPunch={onPunch}
+          onSaveWindow={onSaveWindow}
+          showHeader={false}
+          full
+        />
+      </section>
+    </div>
+  );
+}
 
 interface StaffingDesktopProps {
   organizationId: string | null;
@@ -202,6 +725,12 @@ interface StaffingDesktopProps {
   role: string | null;
   userId: string | null;
   myMemberId: string | null;
+  attendanceRows: AttendanceRow[];
+  canManageAttendance: boolean;
+  managerPunchingId: string | null;
+  managerSavingAttendanceId: string | null;
+  handleManagerPunch: (memberId: string, action: "in" | "out") => void;
+  handleManagerSetPunchWindow: (memberId: string, startTime: string, endTime: string) => void;
   team: OrgMember[];
   shifts: Shift[];
   setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
@@ -262,7 +791,6 @@ interface StaffingDesktopProps {
     notifyChats: string[];
   }>>;
   refreshing: boolean;
-  autoSchedulerSlot?: React.ReactNode;
   /** Restrict which inner subtabs are shown. When set, the tab bar is hidden
    *  if only one entry remains. Used by the Personnel hub to split this page
    *  across its own top tabs (Schedule shows schedule/myShifts; Roles shows
@@ -283,6 +811,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     selectedRole, setSelectedRole, handleSelectRole, handleDeleteRole,
     setEditingRole, setRoleForm, setRoleDialog,
     setTaskDialog, setTaskForm, refreshing, myMemberId, selectedDay, setSelectedDay,
+    attendanceRows, canManageAttendance, managerPunchingId, managerSavingAttendanceId,
+    handleManagerPunch, handleManagerSetPunchWindow,
     subtabs: subtabsFilter,
   } = props;
 
@@ -376,9 +906,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 <React.Fragment key={member.id}>
                   {/* Name cell */}
                   <div className="border-b border-r border-border px-3 py-2.5 flex items-center gap-2.5 bg-background">
-                    <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(member.displayName)}`}>
-                      {initials(member.displayName)}
-                    </div>
+                    <StaffAvatar name={member.displayName} avatarUrl={member.avatarUrl} size={28} />
                     <div className="min-w-0">
                       <div className="text-[13px] font-medium text-foreground truncate leading-tight">{member.displayName}</div>
                       <div className="text-[11px] text-muted-foreground truncate leading-tight">{member.role ?? t("staffing.staff").toLowerCase()}</div>
@@ -866,9 +1394,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     <div className="flex flex-wrap gap-2">
                       {assignedMembers.map((m) => (
                         <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded-[0.3rem]">
-                          <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-bold ${avatarBg(m.displayName)}`}>
-                            {initials(m.displayName)}
-                          </div>
+                          <StaffAvatar name={m.displayName} avatarUrl={m.avatarUrl} size={20} />
                           <span className="text-[12px] font-medium text-foreground">{m.displayName}</span>
                         </div>
                       ))}
@@ -886,10 +1412,13 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   // ─── Desktop Return ───────────────────────────────────────
   const tabLabels: Record<DesktopTab, string> = {
     schedule: t("staffing.tabs.schedule"),
+    attendance: t("staffing.tabs.attendance"),
     myShifts: t("staffing.tabs.myShifts"),
     roles: t("staffing.tabs.roles"),
   };
-  const defaultDesktopTabs: DesktopTab[] = isStaff ? ["myShifts", "roles"] : ["schedule", "myShifts", "roles"];
+  const defaultDesktopTabs: DesktopTab[] = isStaff
+    ? ["myShifts", "roles"]
+    : ["schedule", ...(canManageAttendance ? ["attendance" as const] : []), "myShifts", "roles"];
   const desktopTabs: DesktopTab[] = subtabsFilter
     ? defaultDesktopTabs.filter((t) => subtabsFilter.includes(t))
     : defaultDesktopTabs;
@@ -928,7 +1457,6 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 ))}
               </div>
               <div className="ml-auto flex items-center gap-2">
-                {canEdit && props.autoSchedulerSlot}
                 {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
               </div>
             </div>
@@ -936,6 +1464,19 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
           {/* Tab content */}
           {dTab === "schedule" && !isStaff && <ScheduleGrid />}
+          {dTab === "attendance" && canManageAttendance && (
+            <AttendanceRecordsWorkspace
+              rows={attendanceRows}
+              shifts={shifts}
+              canManage={canManageAttendance}
+              date={selectedDay}
+              onDateChange={setSelectedDay}
+              busyMemberId={managerPunchingId}
+              savingMemberId={managerSavingAttendanceId}
+              onPunch={handleManagerPunch}
+              onSaveWindow={handleManagerSetPunchWindow}
+            />
+          )}
           {dTab === "myShifts" && <MyShiftsTab />}
           {dTab === "roles" && <RolesTab />}
         </div>
@@ -963,7 +1504,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const [myMemberId, setMyMemberId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<MainTab>("myShifts");
-  const [mobileSection, setMobileSection] = useState<"overview" | "schedule">("overview");
+  const [mobileSection, setMobileSection] = useState<"overview" | "schedule" | "attendance">("overview");
   const [scheduleView, setScheduleView] = useState<"day" | "people">("day");
 
   const [weekStart, setWeekStart] = useState(() => {
@@ -1066,6 +1607,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const isStaff   = role === "staff";
   const canEdit   = isOwner || can("staffing", "edit");
+  const canManageAttendance = isOwner || role === "manager";
 
   // ─── Desktop detection ────────────────────────────────────────────────────
   const [isDesktop, setIsDesktop] = useState(false);
@@ -1084,13 +1626,15 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     roles, setRoles,
     presets, setPresets,
     chatOptions, setChatOptions,
-    allAvailability,
     myAvailability, setMyAvailability,
     myTimeOffRequests, setMyTimeOffRequests,
     orgTimeOffRequests, setOrgTimeOffRequests,
     orgShiftTrades, setOrgShiftTrades,
     loading, refreshing,
   } = useStaffing(organizationId, userId, isStaff);
+  const [punchEvents] = useTable(tables.punchEvent);
+  const [managerPunchingId, setManagerPunchingId] = useState<string | null>(null);
+  const [managerSavingAttendanceId, setManagerSavingAttendanceId] = useState<string | null>(null);
 
   // ─── Effects ───────────────────────────────────────────────────────────────
 
@@ -1165,6 +1709,35 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     (s) => s.date >= isoDate(weekDates[0]) && s.date <= isoDate(weekDates[6])
   );
   const myShifts = weekShifts.filter((s) => s.memberId === myMemberId);
+  const activeMembers = useMemo(() => team.filter((m) => m.status === "active"), [team]);
+  const orgPunchEvents = useMemo(() => {
+    if (!organizationId) return [];
+    return (punchEvents as unknown as PunchEventRow[]).filter((event) => event.organizationId === organizationId);
+  }, [punchEvents, organizationId]);
+  const attendanceRows = useMemo<AttendanceRow[]>(() => {
+    return activeMembers.map((member) => {
+      const memberEvents = orgPunchEvents
+        .filter((event) => event.memberId === member.id)
+        .sort((a, b) => punchEventTime(a).getTime() - punchEventTime(b).getTime());
+      const dayEvents = memberEvents.filter((event) => localDateKey(punchEventTime(event)) === selectedDay);
+      const openIn = dayEvents.find((event) => event.action === "in" && !event.closed) ?? null;
+      const openBreak = memberEvents.find((event) => event.action === "break-start" && !event.closed) ?? null;
+      const inEvent = openIn ?? dayEvents.find((event) => event.action === "in") ?? null;
+      const outEvent = inEvent
+        ? memberEvents.find((event) => event.action === "out" && event.pairEventId === inEvent.id.toString()) ?? dayEvents.find((event) => event.action === "out") ?? null
+        : null;
+      return {
+        member,
+        inEvent,
+        outEvent,
+        openIn,
+        openBreak,
+        state: openIn ? (openBreak ? "break" : "on") : inEvent && outEvent ? "complete" : "off",
+        startTime: inEvent ? formatClockDate(punchEventTime(inEvent)) : "",
+        endTime: outEvent ? formatClockDate(punchEventTime(outEvent)) : "",
+      };
+    });
+  }, [activeMembers, orgPunchEvents, selectedDay]);
 
   const pendingCount = orgTimeOffRequests.filter((r) => r.status === "pending").length
     + orgShiftTrades.filter((t) => t.status === "pending" || (t.status === "accepted" && !t.managerApproved)).length;
@@ -1185,6 +1758,49 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     (memberId: string) => team.find((m) => m.id === memberId)?.displayName ?? t("staffing.unknown"),
     [team, t]
   );
+  const handleManagerPunch = useCallback(async (memberId: string, action: "in" | "out") => {
+    setManagerPunchingId(memberId);
+    try {
+      await managerRecordPunch(memberId, action);
+      hapticSuccess();
+      toast.success(action === "in" ? t("staffing.attendance.clockedIn") : t("staffing.attendance.clockedOut"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("punchIn.toastFailed"));
+    } finally {
+      setManagerPunchingId(null);
+    }
+  }, [t]);
+
+  const handleManagerSetPunchWindow = useCallback(async (memberId: string, startTime: string, endTime: string) => {
+    if (!startTime) {
+      toast.error(t("staffing.attendance.startRequired"));
+      return;
+    }
+
+    const startAt = dateTimeFromInput(selectedDay, startTime);
+    const endAt = endTime ? dateTimeFromInput(selectedDay, endTime) : null;
+    if (endAt && endAt <= startAt) {
+      toast.error(t("staffing.attendance.invalidWindow"));
+      return;
+    }
+
+    setManagerSavingAttendanceId(memberId);
+    try {
+      await managerSetPunchWindow(
+        memberId,
+        dayStartFromInput(selectedDay),
+        nextDayStartFromInput(selectedDay),
+        startAt,
+        endAt,
+      );
+      hapticSuccess();
+      toast.success(t("staffing.attendance.saved"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("punchIn.toastFailed"));
+    } finally {
+      setManagerSavingAttendanceId(null);
+    }
+  }, [selectedDay, t]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -2232,23 +2848,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const [batchDialog, setBatchDialog] = useState(false);
   const [batchForm, setBatchForm] = useState({ startTime: "09:00", endTime: "17:00", roleNames: [] as string[] });
 
-  // ─── Auto Schedule Apply Handler ─────────────────────���────────────────────
-  const handleAutoScheduleApply = useCallback(async (scheduledShifts: { memberId: string; memberName: string; date: string; shiftType: string; startTime: string; endTime: string; roles: string[] }[]) => {
-    for (const shift of scheduledShifts) {
-      await addShift({
-        memberId: shift.memberId,
-        staffName: shift.memberName,
-        staffRole: null,
-        staffRoles: JSON.stringify(shift.roles),
-        date: shift.date,
-        shiftType: shift.shiftType,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        predictedDemand: "medium",
-      });
-    }
-  }, []);
-
   // ─── Desktop early return ────────────────────────────────────────────────
   if (isDesktop) return (
     <>
@@ -2261,6 +2860,12 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
         role={role}
         userId={userId}
         myMemberId={myMemberId}
+        attendanceRows={attendanceRows}
+        canManageAttendance={canManageAttendance}
+        managerPunchingId={managerPunchingId}
+        managerSavingAttendanceId={managerSavingAttendanceId}
+        handleManagerPunch={handleManagerPunch}
+        handleManagerSetPunchWindow={handleManagerSetPunchWindow}
         team={team}
         shifts={shifts}
         setShifts={setShifts}
@@ -2300,21 +2905,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
         setTaskDialog={setTaskDialog}
         setTaskForm={setTaskForm}
         refreshing={refreshing}
-        autoSchedulerSlot={
-          organizationId ? (
-            <AutoScheduler
-              members={team}
-              shifts={shifts}
-              availability={allAvailability}
-              timeOff={orgTimeOffRequests}
-              presets={presets}
-              roles={roles}
-              salesHistory={[]}
-              organizationId={organizationId}
-              onApply={handleAutoScheduleApply}
-            />
-          ) : null
-        }
         subtabs={subtabs}
       />
       {/* ─── Dialogs still need to render (they are portals) ─── */}
@@ -2642,8 +3232,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const selectedDayLanes = computeLanes(selectedDayShifts);
 
   // ─── Mobile computed helpers ─────────────────────────────────────────────
-  const activeMembers = team.filter((m) => m.status === "active");
-
   // On-shift now: shifts that overlap with current time
   const nowOnShift = (() => {
     const now = new Date();
@@ -2711,20 +3299,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           right={
             <div className="flex items-center gap-1">
               {refreshing && <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-              {canEdit && organizationId && (
-                <AutoScheduler
-                  members={team}
-                  shifts={shifts}
-                  availability={allAvailability}
-                  timeOff={orgTimeOffRequests}
-                  presets={presets}
-                  roles={roles}
-                  salesHistory={[]}
-                  organizationId={organizationId}
-                  onApply={handleAutoScheduleApply}
-                  compact
-                />
-              )}
             </div>
           }
         />
@@ -2781,6 +3355,18 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               </div>
             </div>
 
+            <AttendanceManagerPanel
+              rows={attendanceRows}
+              canManage={canManageAttendance}
+              date={selectedDay}
+              onDateChange={setSelectedDay}
+              busyMemberId={managerPunchingId}
+              savingMemberId={managerSavingAttendanceId}
+              onPunch={handleManagerPunch}
+              onSaveWindow={handleManagerSetPunchWindow}
+              compact
+            />
+
             {/* ── Section: Currently on shift ── */}
             <div className="border-b border-border">
               <div className="flex items-center justify-between px-4 py-2.5">
@@ -2818,9 +3404,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         }}
                         className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-muted transition-colors"
                       >
-                        <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
-                          {initials(name)}
-                        </div>
+                        <StaffAvatar name={name} avatarUrl={member?.avatarUrl} size={28} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-medium text-foreground truncate leading-tight">{name}</p>
                           <p className="text-[11px] text-muted-foreground leading-tight">
@@ -2875,9 +3459,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         }}
                         className="flex items-center gap-3 px-4 py-2.5 w-full text-left hover:bg-muted transition-colors"
                       >
-                        <div className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(name)}`}>
-                          {initials(name)}
-                        </div>
+                        <StaffAvatar name={name} avatarUrl={member?.avatarUrl} size={28} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-medium text-foreground truncate leading-tight">{name}</p>
                           <p className="text-[11px] text-muted-foreground leading-tight">
@@ -3049,6 +3631,18 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               )}
             </div>
 
+            <AttendanceManagerPanel
+              rows={attendanceRows}
+              canManage={canManageAttendance}
+              date={selectedDay}
+              onDateChange={setSelectedDay}
+              busyMemberId={managerPunchingId}
+              savingMemberId={managerSavingAttendanceId}
+              onPunch={handleManagerPunch}
+              onSaveWindow={handleManagerSetPunchWindow}
+              compact
+            />
+
             {/* ── Day Timeline (swipe left/right to change day) ── */}
             <div
               ref={dayContentRef}
@@ -3107,7 +3701,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                     const matchedRoles = (shift.staffRoles ?? [])
                       .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
                       .filter(Boolean) as StaffRole[];
-                    const name = team.find((m) => m.id === shift.memberId)?.displayName ?? shift.staffName ?? t("staffing.staff");
+                    const member = team.find((m) => m.id === shift.memberId);
+                    const name = member?.displayName ?? shift.staffName ?? t("staffing.staff");
                     const firstName = name.split(" ")[0];
 
                     return (
@@ -3143,9 +3738,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         }}
                       >
                         <div className="flex-1 min-w-0 px-2 py-1 flex items-start gap-1.5">
-                          <div className={`h-[18px] w-[18px] shrink-0 rounded-full flex items-center justify-center text-[7px] font-bold ${avatarBg(name)}`}>
-                            {initials(name)}
-                          </div>
+                          <StaffAvatar name={name} avatarUrl={member?.avatarUrl} size={18} />
                           <div className="min-w-0 flex-1">
                             <p className="text-[12.5px] font-semibold text-foreground truncate leading-tight">{firstName}</p>
                             <p className="text-[10.5px] font-mono tabular-nums text-muted-foreground leading-tight">
@@ -4003,6 +4596,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                     ).map((s) => {
                       const key = `${c.memberId}:${s.id}`;
                       const selected = selectedTradeTarget?.shiftId === s.id;
+                      const coworkerMember = team.find((m) => m.id === c.memberId);
                       return (
                         <label
                           key={key}
@@ -4017,11 +4611,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                             onChange={() => setSelectedTradeTarget({ memberId: c.memberId, shiftId: s.id })}
                             className="accent-foreground shrink-0"
                           />
-                          <div
-                            className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(c.name)}`}
-                          >
-                            {initials(c.name)}
-                          </div>
+                          <StaffAvatar name={c.name} avatarUrl={coworkerMember?.avatarUrl} size={28} />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground leading-tight">{c.name}</p>
                             <p className="text-xs text-muted-foreground">
@@ -4091,11 +4681,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                           onChange={() => setSelectedCover(m.id)}
                           className="accent-foreground shrink-0"
                         />
-                        <div
-                          className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarBg(m.displayName)}`}
-                        >
-                          {initials(m.displayName)}
-                        </div>
+                        <StaffAvatar name={m.displayName} avatarUrl={m.avatarUrl} size={28} />
                         <p className="text-sm font-medium text-foreground">{m.displayName}</p>
                       </label>
                     ))
@@ -4536,9 +5122,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         .filter(Boolean) as StaffRole[];
                       return (
                         <div key={cs.id} className="flex items-center gap-2.5">
-                          <div className={`h-7 w-7 rounded-[0.3rem] flex items-center justify-center text-xs font-semibold shrink-0 ${avatarBg(name)}`}>
-                            {initials(name)}
-                          </div>
+                          <StaffAvatar name={name} avatarUrl={member?.avatarUrl} size={28} className="rounded-[0.3rem]" />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-foreground truncate">{name}</p>
                             <div className="flex items-center gap-1.5 flex-wrap">

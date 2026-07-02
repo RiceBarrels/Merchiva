@@ -20,4 +20,6 @@ export default {
   date: __t.string(),
   operatorMemberId: __t.option(__t.string()),
   operatorName: __t.option(__t.string()),
+  evidenceUrls: __t.option(__t.string()),
+  batchExpirationDate: __t.option(__t.string()),
 };

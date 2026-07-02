@@ -44,6 +44,35 @@ const GROUP_ICON_MAP: Record<string, React.ComponentType<{ className?: string; s
   "users-round": Users,
 };
 
+function PersonAvatar({
+  node,
+  color,
+  className,
+}: {
+  node: PersonNode;
+  color: string;
+  className?: string;
+}) {
+  if (node.avatarUrl) {
+    return (
+      <img
+        src={node.avatarUrl}
+        alt={node.name}
+        className={cn("rounded-full border border-border bg-muted object-cover shrink-0", className)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn("rounded-full inline-flex items-center justify-center font-semibold shrink-0", className)}
+      style={{ background: color + "20", color }}
+    >
+      {initials(node.name)}
+    </div>
+  );
+}
+
 // ─── Person card ───────────────────────────────────────────────────────────
 
 function PersonCard({
@@ -86,12 +115,7 @@ function PersonCard({
       )}>
         <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[0.5rem]" style={{ background: role.color }} />
         <div className="h-full flex items-center gap-2.5 pl-3 pr-2.5">
-          <div
-            className="h-9 w-9 rounded-full inline-flex items-center justify-center font-semibold text-[11px] shrink-0"
-            style={{ background: role.color + "20", color: role.color }}
-          >
-            {initials(node.name)}
-          </div>
+          <PersonAvatar node={node} color={role.color} className="h-9 w-9 text-[11px]" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <div className="text-[12.5px] font-semibold tracking-[-0.01em] truncate">{node.name}</div>

@@ -31,4 +31,11 @@ export default __t.row({
   description: __t.option(__t.string()),
   unitContentAmount: __t.option(__t.f64()).name("unit_content_amount"),
   unitContentUnit: __t.option(__t.string()).name("unit_content_unit"),
+  retailEnabled: __t.option(__t.bool()).name("retail_enabled"),
+  retailPrice: __t.option(__t.f64()).name("retail_price"),
+  retailDescription: __t.option(__t.string()).name("retail_description"),
+  retailImageUrl: __t.option(__t.string()).name("retail_image_url"),
+  retailUsageQty: __t.option(__t.f64()).name("retail_usage_qty"),
+  expirationDate: __t.option(__t.string()).name("expiration_date"),
+  expirationBatches: __t.option(__t.string()).name("expiration_batches"),
 });

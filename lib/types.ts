@@ -47,6 +47,7 @@ export interface OrgMember {
   role: OrgRole;
   displayName: string;
   email: string;
+  avatarUrl?: string | null;
   permissions: Permissions;
   status: MemberStatus;
   punchInCode?: string | null;
@@ -67,6 +68,11 @@ export interface OrgInvitation {
 
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
 
+export interface InventoryExpirationBatch {
+  expiresOn?: string | null; // ISO date string YYYY-MM-DD; empty/null = unknown
+  quantity: number;
+}
+
 export interface InventoryItem {
   id: string;
   name: string;
@@ -85,6 +91,12 @@ export interface InventoryItem {
   unitsPerCase?: number; // units per case/box; order in multiples of this
   unitContentAmount?: number; // amount inside one unit/case/bottle/bag
   unitContentUnit?: string; // g, kg, ml, l, oz, lb, fl_oz, gal
+  retailEnabled?: boolean; // true = sellable in POS/storefront
+  retailPrice?: number;
+  retailDescription?: string;
+  retailImageUrl?: string;
+  retailUsageQty?: number; // inventory quantity consumed by one sale
+  expirationBatches?: InventoryExpirationBatch[];
 }
 
 export interface InventoryTransaction {
@@ -98,6 +110,8 @@ export interface InventoryTransaction {
   operatorMemberId?: string;
   operatorName?: string;
   createdAt?: Date;
+  evidenceUrls?: { url: string; type: string }[];
+  batchExpirationDate?: string;
 }
 
 // ─── Sales ───────────────────────────────────────────────────────────────────

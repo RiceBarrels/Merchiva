@@ -117,7 +117,14 @@ function isGeneratedConflictFile(filePath: string, content: string): boolean {
 
 function ensureCapacitorEntryHtml(outDir: string) {
   const rootIndex = join(outDir, "index.html");
-  if (existsSync(rootIndex)) return;
+  const rootIndexExists = existsSync(rootIndex);
+  if (rootIndexExists) {
+    const existing = readFileSync(rootIndex, "utf-8");
+    const isGeneratedShim =
+      existing.includes("Open Merchiva") ||
+      existing.includes("workos_access_token");
+    if (!isGeneratedShim) return;
+  }
 
   const appEntry = join(outDir, "~", "index.html");
   if (!existsSync(appEntry)) return;
@@ -129,17 +136,45 @@ function ensureCapacitorEntryHtml(outDir: string) {
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta http-equiv="refresh" content="0;url=/~/">
     <title>Merchiva</title>
-    <script>location.replace("/~/" + location.search + location.hash);</script>
+    <script>
+      (function () {
+        var hasAuth = false;
+        function tokenIsFresh(token) {
+          try {
+            var payload = token.split(".")[1];
+            if (!payload) return false;
+            payload = payload.replace(/-/g, "+").replace(/_/g, "/");
+            payload += "=".repeat((4 - payload.length % 4) % 4);
+            var decoded = JSON.parse(atob(payload));
+            return !!decoded.exp && Date.now() / 1000 < decoded.exp - 15;
+          } catch (e) {
+            return false;
+          }
+        }
+        try {
+          if (new URLSearchParams(location.search).get("logout") === "1") {
+            localStorage.removeItem("workos_access_token");
+            localStorage.removeItem("workos_refresh_token");
+            localStorage.removeItem("workos_user");
+            localStorage.removeItem("stdb_token");
+          }
+          var token = localStorage.getItem("workos_access_token");
+          var user = localStorage.getItem("workos_user");
+          hasAuth = !!token && !!user && tokenIsFresh(token);
+        } catch (e) {}
+        var target = hasAuth ? "/~/" : "/login?next=%2F~%2F";
+        location.replace(target + location.hash);
+      })();
+    </script>
   </head>
   <body>
-    <a href="/~/">Open Merchiva</a>
+    <a href="/login?next=%2F~%2F">Open Merchiva</a>
   </body>
 </html>
 `,
   );
-  console.log("  created out/index.html → /~/");
+  console.log(`  ${rootIndexExists ? "updated" : "created"} out/index.html auth shim`);
 }
 
 function extractParams(filePath: string): string[] {
@@ -162,6 +197,11 @@ function findParentRoute(filePath: string): string {
 
 const BACKUP_DIR = join(ROOT, ".static-build-backup");
 const backedUpFiles: string[] = [];
+const generatedFiles: string[] = [];
+const swappedStatic: { staticPath: string; pagePath: string }[] = [];
+const dirsHidden: { original: string; hidden: string }[] = [];
+const ignoredToHide: { original: string; hidden: string }[] = [];
+let cleanedUp = false;
 
 function backupFile(filePath: string) {
   if (!existsSync(filePath)) return;
@@ -183,6 +223,37 @@ function restoreAll() {
   try { execSync(`rm -rf "${BACKUP_DIR}"`, { stdio: "ignore" }); } catch {}
 }
 
+function cleanupBuildArtifacts() {
+  if (cleanedUp) return;
+  cleanedUp = true;
+
+  for (const { original, hidden } of ignoredToHide) {
+    if (existsSync(hidden) && !existsSync(original)) renameSync(hidden, original);
+  }
+  for (const { original, hidden } of dirsHidden) {
+    if (existsSync(hidden) && !existsSync(original)) renameSync(hidden, original);
+  }
+  for (const { pagePath } of swappedStatic) {
+    if (existsSync(pagePath)) unlinkSync(pagePath);
+  }
+  restoreAll();
+  for (const filePath of generatedFiles) {
+    if (existsSync(filePath)) {
+      unlinkSync(filePath);
+      if (verbose) console.log(`  deleted: ${rel(filePath)}`);
+    }
+  }
+}
+
+function cleanupAndExit(signal: NodeJS.Signals) {
+  console.warn(`\n⚠ ${signal} received — restoring static-build file changes...`);
+  cleanupBuildArtifacts();
+  process.exit(signal === "SIGINT" ? 130 : 143);
+}
+
+process.once("SIGINT", cleanupAndExit);
+process.once("SIGTERM", cleanupAndExit);
+
 // ─── Step 1: Generate static pages ─────────────────────────────────────────
 
 console.log("\n📄 Step 1: Generate static pages for dynamic routes\n");
@@ -190,7 +261,6 @@ console.log("\n📄 Step 1: Generate static pages for dynamic routes\n");
 const allPages = findFilesRecursive(APP_DIR, (n) => n === "page.tsx" || n === "page.ts");
 const dynamicPages = allPages.filter((p) => isDynamicPath(p));
 let generated = 0;
-const generatedFiles: string[] = [];
 
 for (const pagePath of dynamicPages) {
   const dir = dirname(pagePath);
@@ -344,11 +414,7 @@ const apiRoutes = ignoredPaths.length === 0
   ? findFilesRecursive(join(APP_DIR, "api"), (n) => n === "route.ts")
   : [];
 
-const swappedStatic: { staticPath: string; pagePath: string }[] = [];
-const dirsHidden: { original: string; hidden: string }[] = [];
-
 // Find route.ts files inside ignored paths (only hide route handlers, not supporting files like core.ts)
-const ignoredToHide: { original: string; hidden: string }[] = [];
 for (const p of ignoredPaths) {
   if (!existsSync(p)) continue;
   if (statSync(p).isDirectory()) {
@@ -446,24 +512,7 @@ try {
 } finally {
   if (!dryRun) {
     console.log("🔄 Restoring original files...");
-    // Un-hide ignored paths from ignoreInStatic.json
-    for (const { original, hidden } of ignoredToHide) {
-      if (existsSync(hidden)) renameSync(hidden, original);
-    }
-    // Un-hide dynamic directories
-    for (const { original, hidden } of dirsHidden) {
-      if (existsSync(hidden)) renameSync(hidden, original);
-    }
-    // Delete swapped page.tsx files
-    for (const { pagePath } of swappedStatic) {
-      if (existsSync(pagePath)) unlinkSync(pagePath);
-    }
-    // Restore backed up originals
-    restoreAll();
-    // Delete generated static files (page.static.tsx, static-fallback.tsx, etc.)
-    for (const f of generatedFiles) {
-      if (existsSync(f)) { unlinkSync(f); if (verbose) console.log(`  deleted: ${rel(f)}`); }
-    }
+    cleanupBuildArtifacts();
     cleanupGeneratedConflictFiles();
     console.log("✅ All files restored.\n");
   }

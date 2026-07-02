@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useMemo, useEffect } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, ArrowRight, ArrowLeft, Check, Minus } from "lucide-react";
@@ -14,7 +14,12 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
 import { useAuth, addAccountToStorage } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
-import { getNativeShell, isNativeShell } from "@/lib/native-shell";
+import { isCapacitorNative } from "@/lib/capacitor";
+import {
+  openCapacitorAuth,
+  subscribeCapacitorAuthCallback,
+} from "@/lib/capacitor-auth";
+import { getNativeShell, isNativeShell, type AuthCallbackParams } from "@/lib/native-shell";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 /* ── Password strength ─────────────────────────────── */
@@ -77,6 +82,25 @@ function SignupForm() {
   const strengthLabel = strength.key ? t(`signup.${strength.key}`) : "";
   const rules = useMemo(() => getPasswordRules(password), [password]);
   const rulesPass = rules.length && rules.upper && rules.lower && rules.number && strength.score >= 3;
+
+  const completeNativeAuth = useCallback((params: AuthCallbackParams) => {
+    if (params.error) {
+      setError(params.error);
+      return;
+    }
+    const { access_token, refresh_token, user, redirect_to } = params;
+    if (!access_token || !refresh_token || !user) {
+      setError(t("login.oauthFailed"));
+      return;
+    }
+    try {
+      const parsedUser = JSON.parse(user);
+      addAccountToStorage(access_token, refresh_token, parsedUser);
+      window.location.href = redirect_to || "/~/";
+    } catch {
+      setError(t("login.oauthFailed"));
+    }
+  }, [t]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,14 +167,15 @@ function SignupForm() {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     try {
-      const native = isNativeShell();
+      const desktopNative = isNativeShell();
+      const capacitorNative = isCapacitorNative();
       const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
           redirectTo: next,
-          client: native ? "electron" : "web",
+          client: capacitorNative ? "capacitor" : desktopNative ? "electron" : "web",
         }),
       });
       const data = await res.json();
@@ -158,8 +183,10 @@ function SignupForm() {
         setError(data.error ?? t("login.oauthFailed"));
         return;
       }
-      if (native) {
+      if (desktopNative) {
         await getNativeShell()?.openExternalAuth(data.url);
+      } else if (capacitorNative) {
+        await openCapacitorAuth(data.url);
       } else {
         window.location.href = data.url;
       }
@@ -168,28 +195,18 @@ function SignupForm() {
     }
   };
 
-  // Receive the merchiva:// callback from the Electron main process and
-  // complete the sign-in flow client-side, same as the web /auth-callback.
+  // Receive the merchiva:// callback from native shells and complete the
+  // sign-in flow client-side, same as the web /auth-callback page.
   useEffect(() => {
     const bridge = getNativeShell();
     if (!bridge) return;
-    const unsubscribe = bridge.onAuthCallback((params) => {
-      if (params.error) { setError(params.error); return; }
-      const { access_token, refresh_token, user, redirect_to } = params;
-      if (!access_token || !refresh_token || !user) {
-        setError(t("login.oauthFailed"));
-        return;
-      }
-      try {
-        const parsedUser = JSON.parse(user);
-        addAccountToStorage(access_token, refresh_token, parsedUser);
-        window.location.href = redirect_to || "/~/";
-      } catch {
-        setError(t("login.oauthFailed"));
-      }
-    });
+    const unsubscribe = bridge.onAuthCallback(completeNativeAuth);
     return unsubscribe;
-  }, [t]);
+  }, [completeNativeAuth]);
+
+  useEffect(() => {
+    return subscribeCapacitorAuthCallback(completeNativeAuth);
+  }, [completeNativeAuth]);
 
   const loginHref = `/login${next !== "/~/" ? `?next=${encodeURIComponent(next)}` : ""}`;
 

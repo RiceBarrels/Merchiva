@@ -215,6 +215,13 @@ export const InventoryItem = __t.object("InventoryItem", {
   description: __t.option(__t.string()),
   unitContentAmount: __t.option(__t.f64()),
   unitContentUnit: __t.option(__t.string()),
+  retailEnabled: __t.option(__t.bool()),
+  retailPrice: __t.option(__t.f64()),
+  retailDescription: __t.option(__t.string()),
+  retailImageUrl: __t.option(__t.string()),
+  retailUsageQty: __t.option(__t.f64()),
+  expirationDate: __t.option(__t.string()),
+  expirationBatches: __t.option(__t.string()),
 });
 export type InventoryItem = __Infer<typeof InventoryItem>;
 
@@ -230,6 +237,9 @@ export const InventoryTransaction = __t.object("InventoryTransaction", {
   createdAt: __t.timestamp(),
   operatorMemberId: __t.option(__t.string()),
   operatorName: __t.option(__t.string()),
+  evidenceUrls: __t.option(__t.string()),
+  expirationDate: __t.option(__t.string()),
+  batchExpirationDate: __t.option(__t.string()),
 });
 export type InventoryTransaction = __Infer<typeof InventoryTransaction>;
 
@@ -367,33 +377,6 @@ export const PerkClaim = __t.object("PerkClaim", {
   expiresAt: __t.option(__t.timestamp()),
 });
 export type PerkClaim = __Infer<typeof PerkClaim>;
-
-export const Product = __t.object("Product", {
-  id: __t.uuid(),
-  organizationId: __t.string(),
-  name: __t.string(),
-  category: __t.string(),
-  price: __t.f64(),
-  cost: __t.f64(),
-  unitsSoldThisMonth: __t.i32(),
-  unitsSoldLastMonth: __t.i32(),
-  revenue: __t.f64(),
-  margin: __t.f64(),
-  rating: __t.f64(),
-  trend: __t.string(),
-  alert: __t.string(),
-  alertReason: __t.option(__t.string()),
-  imageUrl: __t.option(__t.string()),
-  description: __t.option(__t.string()),
-  nameI18N: __t.option(__t.string()),
-  options: __t.option(__t.string()),
-  squareItemId: __t.option(__t.string()),
-  createdAt: __t.timestamp(),
-  updatedAt: __t.timestamp(),
-  availableStoreIds: __t.option(__t.string()),
-  inventoryUsage: __t.option(__t.string()),
-});
-export type Product = __Infer<typeof Product>;
 
 export const PunchEvent = __t.object("PunchEvent", {
   id: __t.uuid(),

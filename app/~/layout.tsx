@@ -296,6 +296,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const effectiveAuth = authState ?? cachedAuthState;
 
   const setupRouter = useRouter();
+  const pathname = usePathname();
+  const isSetupPath = pathname === "/~/setup" || pathname.startsWith("/~/setup/");
   const needsName = effectiveAuth ? (!effectiveAuth.memberDisplayName || !effectiveAuth.memberDisplayName.trim()) : false;
 
   // True once the user has touched settings (setup wizard's updateSettings or
@@ -327,10 +329,10 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!effectiveAuth || needsName) return;
     if (setupComplete === null) return; // still loading the signal
-    if (!setupComplete) {
+    if (!setupComplete && !isSetupPath) {
       setupRouter.replace("/~/setup");
     }
-  }, [effectiveAuth, needsName, setupComplete, setupRouter]);
+  }, [effectiveAuth, isSetupPath, needsName, setupComplete, setupRouter]);
 
   // ── Subscription gate ────────────────────────────────────────────────────
   // An org may use the app while subscribed (Stripe active/trialing/past_due)
@@ -339,7 +341,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // positively read the org row and it's genuinely out of access — if the row
   // hasn't streamed in yet (or we're offline) we fail open, never locking a
   // legitimate user out. Returns null while undetermined.
-  const pathname = usePathname();
   const activeBetaFeatures = useMemo(() => {
     if (!effectiveAuth) return null;
     const row = settingsRows.find(
@@ -368,14 +369,23 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     t,
   ]);
 
+  const [subscriptionCheckAt, setSubscriptionCheckAt] = useState<number | null>(null);
+  useEffect(() => {
+    const updateNow = () => setSubscriptionCheckAt(Date.now());
+    updateNow();
+    const interval = window.setInterval(updateNow, 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const subscriptionBlocked = useMemo<boolean | null>(() => {
     if (!effectiveAuth) return null;
     if (!orgsReady) return null;
+    if (subscriptionCheckAt === null) return null;
     const rootOrgId = effectiveAuth.currentOrg.parentOrgId ?? effectiveAuth.organizationId;
     const orgRow = organizations.find((o) => o.id.toString() === rootOrgId);
     if (!orgRow) return null; // can't determine — fail open
-    return !evaluateSubscription(orgRow, Date.now()).allowed;
-  }, [effectiveAuth, orgsReady, organizations]);
+    return !evaluateSubscription(orgRow, subscriptionCheckAt).allowed;
+  }, [effectiveAuth, orgsReady, organizations, subscriptionCheckAt]);
 
   useEffect(() => {
     if (!effectiveAuth || needsName) return;
@@ -396,13 +406,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // Warm caches (auth restored from localStorage snapshot) skip the splash
   // entirely — there's nothing to wait for and flashing brand chrome on
   // every navigation is annoying.
-  const [splashStarted, setSplashStarted] = useState(false);
+  const [splashStarted] = useState(() => !isReady && !effectiveAuth);
   const [splashFinished, setSplashFinished] = useState(false);
-  useEffect(() => {
-    if (!isReady && !effectiveAuth && !splashStarted) {
-      setSplashStarted(true);
-    }
-  }, [isReady, effectiveAuth, splashStarted]);
 
   // Pick light vs dark splash based on the user's resolved theme — `dark`
   // class on <html> is the source of truth (applyThemeMode keeps it in sync).
@@ -448,6 +453,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       >
         {needsName ? (
           <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
+        ) : isSetupPath ? (
+          children
         ) : (
           <>
             <MobileShell>{children}</MobileShell>
@@ -496,12 +503,14 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
-      router.replace("/login");
+      const next = pathname?.startsWith("/~/") ? pathname : "/~/";
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
     }
-  }, [isLoaded, isSignedIn, router]);
+  }, [isLoaded, isSignedIn, pathname, router]);
 
   if (!isLoaded || !isSignedIn) {
     return (

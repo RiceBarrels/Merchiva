@@ -23,7 +23,7 @@ export default function PersonnelSchedulePage() {
 
       {/* Desktop */}
       <div className="hidden md:flex md:flex-col md:flex-1 min-h-0 overflow-hidden">
-        <StaffingFull subtabs={["schedule", "myShifts"]} />
+        <StaffingFull subtabs={["schedule", "attendance", "myShifts"]} />
       </div>
     </>
   );

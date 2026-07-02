@@ -242,6 +242,19 @@ const inventoryItemTable = table(
     description: t.option(t.string()).default(undefined),
     unitContentAmount: t.option(t.number()).default(undefined),
     unitContentUnit: t.option(t.string()).default(undefined),
+    // Retail metadata (appended only). A retail-enabled inventory item is
+    // sellable in POS/storefront; a normal inventory item is stock-only.
+    retailEnabled: t.option(t.bool()).default(undefined),
+    retailPrice: t.option(t.number()).default(undefined),
+    retailDescription: t.option(t.string()).default(undefined),
+    retailImageUrl: t.option(t.string()).default(undefined),
+    retailUsageQty: t.option(t.number()).default(undefined),
+    // Legacy single expiration date column. SpacetimeDB cannot drop columns via
+    // automatic migration; the app no longer reads/writes this field.
+    expirationDate: t.option(t.string()).default(undefined),
+    // JSON array of batch-level expiration quantities:
+    // [{ expiresOn: "YYYY-MM-DD" | null, quantity: number }].
+    expirationBatches: t.option(t.string()).default(undefined),
   }
 );
 
@@ -272,6 +285,12 @@ const inventoryTransactionTable = table(
     // web app (logged-in identity is already known via ctx.sender).
     operatorMemberId: t.option(t.string()).default(undefined),
     operatorName: t.option(t.string()).default(undefined),
+    // JSON array of uploaded note/evidence files: [{ url, type }].
+    evidenceUrls: t.option(t.string()).default(undefined),
+    // Legacy single expiration date column. The app now uses batchExpirationDate.
+    expirationDate: t.option(t.string()).default(undefined),
+    // Optional batch expiration date captured during stock adjustments.
+    batchExpirationDate: t.option(t.string()).default(undefined),
   }
 );
 
@@ -506,50 +525,6 @@ const shiftTradeTable = table(
     createdAt: t.timestamp(),
     broadcastToAll: t.bool().default(false),
     acceptedById: t.option(t.string()).default(undefined),
-  }
-);
-
-// ─── Products ─────────────────────────────────────────────────────────────────
-
-const productTable = table(
-  {
-    name: 'product',
-    public: true,
-    indexes: [
-      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
-    ],
-  },
-  {
-    id: t.uuid().primaryKey(),
-    organizationId: t.string(),
-    name: t.string(),
-    category: t.string(),
-    price: t.number(),
-    cost: t.number(),
-    unitsSoldThisMonth: t.i32(),
-    unitsSoldLastMonth: t.i32(),
-    revenue: t.number(),
-    margin: t.number(),
-    rating: t.number(),
-    trend: t.string(),          // "up" | "down" | "stable"
-    alert: t.string(),          // "none" | "underperforming" | "remove"
-    alertReason: t.option(t.string()),
-    imageUrl: t.option(t.string()),
-    description: t.option(t.string()),
-    nameI18n: t.option(t.string()),
-    options: t.option(t.string()),      // JSON: [{"name","price","des","imgUrl","color"}]
-    squareItemId: t.option(t.string()),
-    createdAt: t.timestamp(),
-    updatedAt: t.timestamp(),
-    // Multi-store: JSON-encoded array of org ids where this product is sold.
-    // null/missing = sold at every store in the share group (default). When
-    // set, only the listed stores can sell it (the product still belongs to
-    // its originating organizationId). Empty array "[]" means "no store
-    // currently sells it" (hidden everywhere). Added at end per migration rules.
-    availableStoreIds: t.option(t.string()).default(undefined),
-    // JSON-encoded product recipe/stock consumption lines:
-    // [{ inventoryItemId, inventoryItemName, quantity, unit }]
-    inventoryUsage: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1719,7 +1694,6 @@ const spacetimedb = schema({
   staffAvailability: staffAvailabilityTable,
   timeOffRequest: timeOffRequestTable,
   shiftTrade: shiftTradeTable,
-  product: productTable,
   payment: paymentTable,
   chatConversation: chatConversationTable,
   chatMember: chatMemberTable,
@@ -2295,6 +2269,21 @@ export const setPunchInCode = spacetimedb.reducer(
 // PUNCH CLOCK REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function canManagePunches(caller: { role: string; permissions: string }): boolean {
+  const perms = JSON.parse(caller.permissions);
+  return (
+    caller.role === 'owner' ||
+    caller.role === 'manager' ||
+    perms?.staffing?.edit === true ||
+    perms?.team?.edit === true ||
+    perms?.pos?.edit === true
+  );
+}
+
+function timestampMicros(timestamp: { microsSinceUnixEpoch?: bigint; __timestamp_micros_since_unix_epoch__?: bigint }): bigint {
+  return timestamp.microsSinceUnixEpoch ?? timestamp.__timestamp_micros_since_unix_epoch__ ?? 0n;
+}
+
 export const recordPunch = spacetimedb.reducer(
   {
     organizationId: t.string(),
@@ -2370,6 +2359,171 @@ export const recordPunch = spacetimedb.reducer(
       pairEventId: pairId,
       createdAt: ctx.timestamp,
     });
+  }
+);
+
+export const managerRecordPunch = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    memberId: t.string(),
+    action: t.string(), // "in" | "out"
+  },
+  (ctx, { organizationId, memberId, action }) => {
+    const caller = findActiveMember(ctx, organizationId);
+    if (!canManagePunches(caller)) unauthorized('No attendance edit permission');
+
+    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.id.toString() === memberId && m.status === 'active');
+    if (!target) throw new Error('Member not found');
+
+    const memberEvents = [...ctx.db.punchEvent.byMemberId.filter(memberId)]
+      .filter(e => e.organizationId === organizationId);
+    const openIn = memberEvents.find(e => e.action === 'in' && !e.closed);
+    const openBreak = memberEvents.find(e => e.action === 'break-start' && !e.closed);
+
+    if (action === 'in') {
+      if (openIn) throw new Error('Already on shift');
+      ctx.db.punchEvent.insert({
+        id: ctx.newUuidV4(),
+        organizationId,
+        memberId,
+        pin: 'manager',
+        action: 'in',
+        at: ctx.timestamp,
+        closed: false,
+        pairEventId: undefined,
+        createdAt: ctx.timestamp,
+      });
+      return;
+    }
+
+    if (action === 'out') {
+      if (!openIn) throw new Error('Not on shift');
+      const pairId = openIn.id.toString();
+      ctx.db.punchEvent.delete(openIn);
+      ctx.db.punchEvent.insert({ ...openIn, closed: true });
+      if (openBreak) {
+        ctx.db.punchEvent.delete(openBreak);
+        ctx.db.punchEvent.insert({ ...openBreak, closed: true });
+      }
+      ctx.db.punchEvent.insert({
+        id: ctx.newUuidV4(),
+        organizationId,
+        memberId,
+        pin: 'manager',
+        action: 'out',
+        at: ctx.timestamp,
+        closed: true,
+        pairEventId: pairId,
+        createdAt: ctx.timestamp,
+      });
+      return;
+    }
+
+    throw new Error('Invalid action: ' + action);
+  }
+);
+
+export const managerSetPunchWindow = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    memberId: t.string(),
+    dayStartAt: t.timestamp(),
+    dayEndAt: t.timestamp(),
+    startAt: t.timestamp(),
+    endAt: t.option(t.timestamp()),
+  },
+  (ctx, { organizationId, memberId, dayStartAt, dayEndAt, startAt, endAt }) => {
+    const caller = findActiveMember(ctx, organizationId);
+    if (!canManagePunches(caller)) unauthorized('No attendance edit permission');
+
+    const dayStartMicros = timestampMicros(dayStartAt);
+    const dayEndMicros = timestampMicros(dayEndAt);
+    const startMicros = timestampMicros(startAt);
+    const endMicros = endAt ? timestampMicros(endAt) : undefined;
+
+    if (dayEndMicros <= dayStartMicros) throw new Error('Invalid attendance date');
+    if (startMicros < dayStartMicros || startMicros >= dayEndMicros) throw new Error('Start time is outside selected date');
+    if (endMicros !== undefined && endMicros <= startMicros) throw new Error('End time must be after start time');
+
+    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.id.toString() === memberId && m.status === 'active');
+    if (!target) throw new Error('Member not found');
+
+    const memberEvents = [...ctx.db.punchEvent.byMemberId.filter(memberId)]
+      .filter(e => e.organizationId === organizationId);
+    const dayEvents = memberEvents
+      .filter(e => {
+        const micros = timestampMicros(e.at);
+        return micros >= dayStartMicros && micros < dayEndMicros;
+      })
+      .sort((a, b) => timestampMicros(a.at) < timestampMicros(b.at) ? -1 : 1);
+
+    const inEvent = dayEvents.find(e => e.action === 'in' && !e.closed)
+      ?? dayEvents.find(e => e.action === 'in');
+    const closed = endAt !== undefined;
+    let inEventId: string;
+
+    if (inEvent) {
+      inEventId = inEvent.id.toString();
+      ctx.db.punchEvent.delete(inEvent);
+      ctx.db.punchEvent.insert({
+        ...inEvent,
+        pin: inEvent.pin || 'manager',
+        at: startAt,
+        closed,
+      });
+    } else {
+      const id = ctx.newUuidV4();
+      inEventId = id.toString();
+      ctx.db.punchEvent.insert({
+        id,
+        organizationId,
+        memberId,
+        pin: 'manager',
+        action: 'in',
+        at: startAt,
+        closed,
+        pairEventId: undefined,
+        createdAt: ctx.timestamp,
+      });
+    }
+
+    const existingOut = memberEvents.find(e => e.action === 'out' && e.pairEventId === inEventId)
+      ?? dayEvents.find(e => e.action === 'out');
+
+    if (endAt !== undefined) {
+      if (existingOut) {
+        ctx.db.punchEvent.delete(existingOut);
+        ctx.db.punchEvent.insert({
+          ...existingOut,
+          pin: existingOut.pin || 'manager',
+          at: endAt,
+          closed: true,
+          pairEventId: inEventId,
+        });
+      } else {
+        ctx.db.punchEvent.insert({
+          id: ctx.newUuidV4(),
+          organizationId,
+          memberId,
+          pin: 'manager',
+          action: 'out',
+          at: endAt,
+          closed: true,
+          pairEventId: inEventId,
+          createdAt: ctx.timestamp,
+        });
+      }
+
+      const openBreak = memberEvents.find(e => e.action === 'break-start' && !e.closed);
+      if (openBreak) {
+        ctx.db.punchEvent.delete(openBreak);
+        ctx.db.punchEvent.insert({ ...openBreak, closed: true });
+      }
+    } else if (existingOut) {
+      ctx.db.punchEvent.delete(existingOut);
+    }
   }
 );
 
@@ -2576,6 +2730,12 @@ export const addInventoryItem = spacetimedb.reducer(
     description: t.option(t.string()),
     unitContentAmount: t.option(t.number()),
     unitContentUnit: t.option(t.string()),
+    retailEnabled: t.option(t.bool()),
+    retailPrice: t.option(t.number()),
+    retailDescription: t.option(t.string()),
+    retailImageUrl: t.option(t.string()),
+    retailUsageQty: t.option(t.number()),
+    expirationBatches: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2603,6 +2763,13 @@ export const addInventoryItem = spacetimedb.reducer(
       description: args.description,
       unitContentAmount: args.unitContentAmount,
       unitContentUnit: args.unitContentUnit,
+      retailEnabled: args.retailEnabled,
+      retailPrice: args.retailPrice,
+      retailDescription: args.retailDescription,
+      retailImageUrl: args.retailImageUrl,
+      retailUsageQty: args.retailUsageQty,
+      expirationDate: undefined,
+      expirationBatches: args.expirationBatches,
     });
   }
 );
@@ -2626,8 +2793,17 @@ export const updateInventoryItem = spacetimedb.reducer(
     description: t.option(t.string()),
     unitContentAmount: t.option(t.number()),
     unitContentUnit: t.option(t.string()),
+    retailEnabled: t.option(t.bool()),
+    retailPrice: t.option(t.number()),
+    retailDescription: t.option(t.string()),
+    retailImageUrl: t.option(t.string()),
+    retailUsageQty: t.option(t.number()),
+    expirationBatches: t.option(t.string()),
+    batchExpirationDate: t.option(t.string()),
     operatorMemberId: t.option(t.string()),
     operatorName: t.option(t.string()),
+    stockNote: t.option(t.string()),
+    evidenceUrls: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2656,9 +2832,17 @@ export const updateInventoryItem = spacetimedb.reducer(
       description: args.description,
       unitContentAmount: args.unitContentAmount,
       unitContentUnit: args.unitContentUnit,
+      retailEnabled: args.retailEnabled,
+      retailPrice: args.retailPrice,
+      retailDescription: args.retailDescription,
+      retailImageUrl: args.retailImageUrl,
+      retailUsageQty: args.retailUsageQty,
+      expirationDate: undefined,
+      expirationBatches: args.expirationBatches,
     });
 
     if (stockDelta !== 0) {
+      const stockNote = args.stockNote?.trim();
       ctx.db.inventoryTransaction.insert({
         id: ctx.newUuidV4(),
         organizationId: args.organizationId,
@@ -2666,11 +2850,16 @@ export const updateInventoryItem = spacetimedb.reducer(
         itemName: args.name,
         type: stockDelta > 0 ? 'in' : 'adjustment',
         quantity: Math.abs(stockDelta),
-        note: stockDelta > 0 ? 'Stock added via edit' : 'Stock adjusted via edit',
+        note: stockNote && stockNote.length > 0
+          ? stockNote
+          : stockDelta > 0 ? 'Stock added via edit' : 'Stock adjusted via edit',
         date: args.lastRestocked,
         createdAt: ctx.timestamp,
         operatorMemberId: args.operatorMemberId,
         operatorName: args.operatorName,
+        evidenceUrls: args.evidenceUrls,
+        expirationDate: undefined,
+        batchExpirationDate: args.batchExpirationDate,
       });
     }
 
@@ -2706,6 +2895,8 @@ export const addInventoryTransaction = spacetimedb.reducer(
     date: t.string(),
     operatorMemberId: t.option(t.string()),
     operatorName: t.option(t.string()),
+    evidenceUrls: t.option(t.string()),
+    batchExpirationDate: t.option(t.string()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
@@ -2724,132 +2915,10 @@ export const addInventoryTransaction = spacetimedb.reducer(
       createdAt: ctx.timestamp,
       operatorMemberId: args.operatorMemberId,
       operatorName: args.operatorName,
+      evidenceUrls: args.evidenceUrls,
+      expirationDate: undefined,
+      batchExpirationDate: args.batchExpirationDate,
     });
-  }
-);
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// PRODUCTS REDUCERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export const addProduct = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    name: t.string(),
-    category: t.string(),
-    price: t.number(),
-    cost: t.number(),
-    imageUrl: t.option(t.string()),
-    description: t.option(t.string()),
-    nameI18n: t.option(t.string()),
-    options: t.option(t.string()),
-    availableStoreIds: t.option(t.string()),
-    inventoryUsage: t.option(t.string()),
-  },
-  (ctx, args) => {
-    // Products are shared across the parent/child share group — accept any
-    // active membership in that group as long as they have products.edit.
-    const member = findShareGroupMember(ctx, args.organizationId);
-    const perms = JSON.parse(member.permissions);
-    if (!perms.products?.edit) unauthorized('No products edit permission');
-
-    ctx.db.product.insert({
-      id: ctx.newUuidV4(),
-      organizationId: args.organizationId,
-      name: args.name,
-      category: args.category,
-      price: args.price,
-      cost: args.cost,
-      unitsSoldThisMonth: 0,
-      unitsSoldLastMonth: 0,
-      revenue: 0,
-      margin: args.price > 0 ? ((args.price - args.cost) / args.price) * 100 : 0,
-      rating: 5,
-      trend: 'stable',
-      alert: 'none',
-      alertReason: undefined,
-      imageUrl: args.imageUrl,
-      description: args.description,
-      nameI18n: args.nameI18n,
-      options: args.options,
-      squareItemId: undefined,
-      createdAt: ctx.timestamp,
-      updatedAt: ctx.timestamp,
-      availableStoreIds: args.availableStoreIds,
-      inventoryUsage: args.inventoryUsage,
-    });
-  }
-);
-
-export const updateProduct = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    productId: t.string(),
-    name: t.string(),
-    category: t.string(),
-    price: t.number(),
-    cost: t.number(),
-    trend: t.string(),
-    alert: t.string(),
-    alertReason: t.option(t.string()),
-    imageUrl: t.option(t.string()),
-    description: t.option(t.string()),
-    nameI18n: t.option(t.string()),
-    options: t.option(t.string()),
-    availableStoreIds: t.option(t.string()),
-    inventoryUsage: t.option(t.string()),
-  },
-  (ctx, args) => {
-    // organizationId is the caller's current store. The product itself might
-    // live on a sibling/parent store in the share group — so look it up
-    // anywhere in the group, not just under the caller's org.
-    const member = findShareGroupMember(ctx, args.organizationId);
-    const perms = JSON.parse(member.permissions);
-    if (!perms.products?.edit) unauthorized('No products edit permission');
-
-    const groupIds = shareGroupOrgIds(ctx, args.organizationId);
-    const product = [...ctx.db.product.iter()]
-      .find((p: { id: { toString(): string }; organizationId: string }) =>
-        p.id.toString() === args.productId && groupIds.includes(p.organizationId)
-      );
-    if (!product) throw new Error('Product not found in share group');
-
-    ctx.db.product.delete(product);
-    ctx.db.product.insert({
-      ...product,
-      name: args.name,
-      category: args.category,
-      price: args.price,
-      cost: args.cost,
-      margin: args.price > 0 ? ((args.price - args.cost) / args.price) * 100 : 0,
-      trend: args.trend,
-      alert: args.alert,
-      alertReason: args.alertReason,
-      imageUrl: args.imageUrl,
-      description: args.description,
-      nameI18n: args.nameI18n,
-      options: args.options,
-      updatedAt: ctx.timestamp,
-      availableStoreIds: args.availableStoreIds,
-      inventoryUsage: args.inventoryUsage,
-    });
-  }
-);
-
-export const deleteProduct = spacetimedb.reducer(
-  { organizationId: t.string(), productId: t.string() },
-  (ctx, { organizationId, productId }) => {
-    const member = findShareGroupMember(ctx, organizationId);
-    const perms = JSON.parse(member.permissions);
-    if (!perms.products?.edit) unauthorized('No products edit permission');
-
-    const groupIds = shareGroupOrgIds(ctx, organizationId);
-    const product = [...ctx.db.product.iter()]
-      .find((p: { id: { toString(): string }; organizationId: string }) =>
-        p.id.toString() === productId && groupIds.includes(p.organizationId)
-      );
-    if (!product) throw new Error('Product not found in share group');
-    ctx.db.product.delete(product);
   }
 );
 
@@ -4756,6 +4825,9 @@ export const addWasteLog = spacetimedb.reducer(
           createdAt: ctx.timestamp,
           operatorMemberId: args.operatorMemberId,
           operatorName: args.operatorName,
+          evidenceUrls: undefined,
+          expirationDate: undefined,
+          batchExpirationDate: undefined,
         });
 
         if (wasAboveMin && newStock <= item.minStock) {
@@ -6740,6 +6812,12 @@ export const serviceRepairInventoryItem = spacetimedb.reducer(
     description: t.option(t.string()),
     unitContentAmount: t.option(t.number()),
     unitContentUnit: t.option(t.string()),
+    retailEnabled: t.option(t.bool()),
+    retailPrice: t.option(t.number()),
+    retailDescription: t.option(t.string()),
+    retailImageUrl: t.option(t.string()),
+    retailUsageQty: t.option(t.number()),
+    expirationBatches: t.option(t.string()),
   },
   (ctx, args) => {
     if (!isServiceCaller(ctx)) unauthorized('Service identity required');
@@ -6764,6 +6842,13 @@ export const serviceRepairInventoryItem = spacetimedb.reducer(
       description: args.description,
       unitContentAmount: args.unitContentAmount,
       unitContentUnit: args.unitContentUnit,
+      retailEnabled: args.retailEnabled,
+      retailPrice: args.retailPrice,
+      retailDescription: args.retailDescription,
+      retailImageUrl: args.retailImageUrl,
+      retailUsageQty: args.retailUsageQty,
+      expirationDate: undefined,
+      expirationBatches: args.expirationBatches,
     });
   }
 );

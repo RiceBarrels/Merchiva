@@ -12,6 +12,26 @@ function parseJsonField<T>(value: string | T, fallback: T): T {
   return value ?? fallback;
 }
 
+function rowKey(value: unknown): string {
+  if (value && typeof (value as { toHexString?: () => string }).toHexString === "function") {
+    return (value as { toHexString: () => string }).toHexString();
+  }
+  return String(value);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function avatarMapFromConnection(c: any): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (const user of c.db.user.iter()) {
+    const avatarUrl = user.avatarUrl ?? null;
+    map.set(user.identity.toString(), avatarUrl);
+    if (typeof user.identity?.toHexString === "function") {
+      map.set(user.identity.toHexString(), avatarUrl);
+    }
+  }
+  return map;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shiftFromRow(row: any): Shift {
   // staffRoles is stored as JSON string in SpacetimeDB
@@ -67,16 +87,18 @@ export async function getTeamForScheduling(
 ): Promise<OrgMember[]> {
   const c = getConnection();
   if (!c) return [];
+  const avatars = avatarMapFromConnection(c);
   const rows = (c as any).db.orgMember.iter();
   return Array.from(rows)
     .filter((r: any) => r.organizationId === organizationId && r.status === "active")
     .map((row: any) => ({
       id: row.id,
       organizationId: row.organizationId,
-      userId: typeof row.userId?.toHexString === "function" ? row.userId.toHexString() : String(row.userId),
+      userId: rowKey(row.userId),
       role: row.role,
       displayName: row.displayName ?? "",
       email: row.email ?? "",
+      avatarUrl: avatars.get(rowKey(row.userId)) ?? null,
       permissions: parseJsonField(row.permissions, {}),
       status: row.status,
     }))

@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Package, TrendingUp, Users, ShoppingBag,
+  LayoutDashboard, Package, TrendingUp, Users,
   MonitorSmartphone, KeyRound, MessageSquare, Globe, Crown,
-  Settings, MoreHorizontal, X, Trash2, FileBarChart, UserRoundSearch,
+  Settings, MoreHorizontal, X, FileBarChart, UserRoundSearch,
   Palette, Bell,
 } from "lucide-react";
 import { usePermissions } from "@/lib/context/permissions";
@@ -41,10 +41,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.home",      href: "/~/",      icon: LayoutDashboard, permissionKey: "dashboard" },
   { labelKey: "nav.inventory", href: "/~/inventory",       icon: Package,         permissionKey: "inventory" },
-  { labelKey: "nav.wasteLog",  href: "/~/inventory/waste", icon: Trash2,          permissionKey: "inventory" },
   { labelKey: "nav.sales",     href: "/~/sales",           icon: TrendingUp,      permissionKey: "sales" },
   { labelKey: "nav.personnel", href: "/~/personnel/schedule", icon: Users,        permissionKey: "staffing" },
-  { labelKey: "nav.products",  href: "/~/products",        icon: ShoppingBag,     permissionKey: "products" },
   { labelKey: "nav.reports",   href: "/~/reports",         icon: FileBarChart,    permissionKey: "sales" },
   { labelKey: "nav.customers", href: "/~/customers",       icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website" },
   { labelKey: "nav.pos",       href: "/~/pos",             icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },

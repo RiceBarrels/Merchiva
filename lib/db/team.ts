@@ -50,15 +50,36 @@ function parsePermissions(raw: unknown): Permissions {
   return { ...base, ...parsed } as Permissions;
 }
 
+function userKey(value: unknown): string {
+  if (value && typeof (value as { toHexString?: () => string }).toHexString === "function") {
+    return (value as { toHexString: () => string }).toHexString();
+  }
+  return String(value);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function memberFromRow(r: any): OrgMember {
+function avatarMapFromConnection(c: any): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (const user of c.db.user.iter()) {
+    const avatarUrl = user.avatarUrl ?? null;
+    map.set(user.identity.toString(), avatarUrl);
+    if (typeof user.identity?.toHexString === "function") {
+      map.set(user.identity.toHexString(), avatarUrl);
+    }
+  }
+  return map;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function memberFromRow(r: any, avatarByUserId?: Map<string, string | null>): OrgMember {
   return {
     id: r.id.toString(),
     organizationId: r.organizationId,
-    userId: String(r.userId),
+    userId: userKey(r.userId),
     role: r.role,
     displayName: r.displayName ?? "",
     email: r.email ?? "",
+    avatarUrl: avatarByUserId?.get(userKey(r.userId)) ?? null,
     permissions: parsePermissions(r.permissions),
     status: r.status,
   };
@@ -160,10 +181,11 @@ export async function getOrganizationId(userId: string): Promise<string | null> 
 export async function getMyOrgMember(userId: string): Promise<OrgMember | null> {
   const c = getConnection();
   if (!c) return null;
+  const avatars = avatarMapFromConnection(c);
   const rows = (c as any).db.orgMember.iter();
   for (const r of rows) {
-    if (String(r.userId) === userId && r.status === "active") {
-      return memberFromRow(r);
+    if ((String(r.userId) === userId || userKey(r.userId) === userId) && r.status === "active") {
+      return memberFromRow(r, avatars);
     }
   }
   return null;
@@ -172,10 +194,11 @@ export async function getMyOrgMember(userId: string): Promise<OrgMember | null> 
 export async function getTeamMembers(organizationId: string): Promise<OrgMember[]> {
   const c = getConnection();
   if (!c) return [];
+  const avatars = avatarMapFromConnection(c);
   const rows = (c as any).db.orgMember.iter();
   return Array.from(rows)
     .filter((r: any) => r.organizationId === organizationId)
-    .map(memberFromRow);
+    .map((r) => memberFromRow(r, avatars));
 }
 
 export async function addOwnerMember(

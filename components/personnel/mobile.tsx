@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import { defaultPermissions } from "@/lib/db/team";
-import { createShiftTrade, removeMember, updateShift, updateTradeStatus } from "@/lib/spacetimedb/actions";
+import { addShift, createShiftTrade, removeMember, updateShift, updateTradeStatus } from "@/lib/spacetimedb/actions";
 import type { Permissions } from "@/lib/types";
 import {
   InviteMemberDialog,
@@ -22,8 +22,10 @@ import {
   useRoleTasks,
   useShifts,
   useShiftTrades,
+  useShiftPresets,
   useStaffRoles,
   useTimeOffRequests,
+  useUsers,
 } from "@/lib/spacetimedb/hooks";
 import { updateTimeOffStatus } from "@/lib/spacetimedb/actions";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -38,6 +40,14 @@ import { useT } from "@/lib/i18n/context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -64,8 +74,10 @@ interface ShiftRow {
 
 interface MemberRow {
   id: string;
+  userId?: string;
   displayName: string;
   email: string;
+  avatarUrl?: string | null;
   role: string;
   status: string;
 }
@@ -83,6 +95,14 @@ interface RoleTaskRow {
   title: string;
   startTime: string | null;
   endTime: string | null;
+}
+
+interface ShiftPresetRow {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  color: string;
 }
 
 // ─── Date helpers ───────────────────────────────────────────────────────────
@@ -159,7 +179,18 @@ function initials(name: string): string {
     .join("");
 }
 
-function Avatar({ name, size = 32 }: { name: string; size?: number }) {
+function Avatar({ name, avatarUrl, size = 32 }: { name: string; avatarUrl?: string | null; size?: number }) {
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className="inline-flex rounded-full border border-border bg-muted object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   return (
     <span
       className={cn(
@@ -171,6 +202,29 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
       {initials(name)}
     </span>
   );
+}
+
+function rowIdentityKey(value: unknown): string {
+  if (value && typeof (value as { toHexString?: () => string }).toHexString === "function") {
+    return (value as { toHexString: () => string }).toHexString();
+  }
+  if (value && typeof (value as { toString?: () => string }).toString === "function") {
+    return (value as { toString: () => string }).toString();
+  }
+  return String(value ?? "");
+}
+
+function avatarMapFromUsers(rawUsers: unknown[]): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (const user of rawUsers as Array<{ identity?: unknown; avatarUrl?: string | null }>) {
+    if (!user.identity) continue;
+    const avatarUrl = user.avatarUrl ?? null;
+    const key = rowIdentityKey(user.identity);
+    if (key) map.set(key, avatarUrl);
+    const textKey = user.identity.toString();
+    if (textKey) map.set(textKey, avatarUrl);
+  }
+  return map;
 }
 
 function Badge({
@@ -276,9 +330,11 @@ export function MobileSchedule({
   const t = useT();
   const [rawShifts] = useShifts() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
+  const [rawUsers] = useUsers() as [unknown[], boolean];
   const [rawTimeOff] = useTimeOffRequests() as [unknown[], boolean];
   const [rawTrades] = useShiftTrades() as [unknown[], boolean];
   const [rawRoles] = useStaffRoles() as [unknown[], boolean];
+  const [rawPresets] = useShiftPresets() as [unknown[], boolean];
 
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
   const [selDate, setSelDate] = useState<string>(() => isoDate(new Date()));
@@ -288,6 +344,17 @@ export function MobileSchedule({
   const [showPeoplePicker, setShowPeoplePicker] = useState(false);
   const [changeBusyId, setChangeBusyId] = useState<string | null>(null);
   const { isOwner, role: orgRole, can } = usePermissions();
+  const canEditSchedule = isOwner || orgRole === "manager" || can("staffing", "edit");
+  const [addShiftOpen, setAddShiftOpen] = useState(false);
+  const [addShiftBusy, setAddShiftBusy] = useState(false);
+  const [addShiftForm, setAddShiftForm] = useState({
+    memberId: "",
+    date: isoDate(new Date()),
+    shiftType: "morning",
+    startTime: "09:00",
+    endTime: "17:00",
+    roleNames: [] as string[],
+  });
 
   const week = useMemo(
     () =>
@@ -299,28 +366,63 @@ export function MobileSchedule({
     [weekStart],
   );
 
+  const avatarByUserId = useMemo(() => avatarMapFromUsers(rawUsers), [rawUsers]);
+
   const members = useMemo<MemberRow[]>(
     () =>
       (rawMembers as any[])
         .filter((m) => m.organizationId === orgId && m.status === "active")
-        .map((m) => ({
-          id: m.id?.toString?.() ?? String(m.id),
-          displayName: String(m.displayName ?? "—"),
-          email: String(m.email ?? ""),
-          role: String(m.role ?? "staff"),
-          status: "active",
-        })),
-    [rawMembers, orgId],
+        .map((m) => {
+          const userId = rowIdentityKey(m.userId);
+          return {
+            id: m.id?.toString?.() ?? String(m.id),
+            userId,
+            displayName: String(m.displayName ?? "—"),
+            email: String(m.email ?? ""),
+            avatarUrl: avatarByUserId.get(userId) ?? null,
+            role: String(m.role ?? "staff"),
+            status: "active",
+          };
+        }),
+    [rawMembers, orgId, avatarByUserId],
+  );
+
+  const roles = useMemo<RoleRow[]>(
+    () =>
+      (rawRoles as any[])
+        .filter((r) => r.organizationId === orgId)
+        .map((r) => ({
+          id: r.id?.toString?.() ?? String(r.id),
+          name: String(r.name ?? ""),
+          color: String(r.color ?? "#a8a29e"),
+          description: String(r.description ?? ""),
+        }))
+        .filter((r) => r.name.trim())
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [rawRoles, orgId],
   );
 
   const roleMap = useMemo<Map<string, string>>(() => {
     const map = new Map<string, string>();
-    for (const r of rawRoles as any[]) {
-      if (r.organizationId !== orgId) continue;
-      map.set(String(r.name ?? "").toLowerCase(), String(r.color ?? "#a8a29e"));
-    }
+    for (const r of roles) map.set(r.name.toLowerCase(), r.color);
     return map;
-  }, [rawRoles, orgId]);
+  }, [roles]);
+
+  const shiftPresets = useMemo<ShiftPresetRow[]>(
+    () =>
+      (rawPresets as any[])
+        .filter((preset) => preset.organizationId === orgId)
+        .map((preset) => ({
+          id: preset.id?.toString?.() ?? String(preset.id),
+          name: String(preset.name ?? ""),
+          startTime: String(preset.startTime ?? "09:00"),
+          endTime: String(preset.endTime ?? "17:00"),
+          color: String(preset.color ?? "#44403c"),
+        }))
+        .filter((preset) => preset.name.trim())
+        .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.name.localeCompare(b.name)),
+    [rawPresets, orgId],
+  );
 
   const allShifts = useMemo<ShiftRow[]>(
     () =>
@@ -439,6 +541,9 @@ export function MobileSchedule({
   const selectedShiftName = selectedShift
     ? members.find((m) => m.id === selectedShift.memberId)?.displayName ?? selectedShift.staffName ?? "—"
     : "";
+  const selectedShiftMember = selectedShift
+    ? members.find((m) => m.id === selectedShift.memberId) ?? null
+    : null;
   const canFindCover = !!selectedShift && !!myMemberId && selectedShift.memberId === myMemberId;
   const canChangePeople = !!selectedShift && (isOwner || orgRole === "manager" || can("staffing", "edit"));
 
@@ -494,6 +599,44 @@ export function MobileSchedule({
       toast.error(err instanceof Error ? err.message : "Could not update shift person");
     } finally {
       setChangeBusyId(null);
+    }
+  }
+
+  async function saveMobileShift() {
+    const member = members.find((m) => m.id === addShiftForm.memberId);
+    if (!member) {
+      toast.error(t("staffing.shiftDialog.assignEmployee"));
+      return;
+    }
+    if (addShiftForm.roleNames.length === 0) {
+      toast.error(t("staffing.shiftDialog.rolesLabel"));
+      return;
+    }
+    if (addShiftForm.endTime <= addShiftForm.startTime) {
+      toast.error(t("staffing.attendance.invalidWindow"));
+      return;
+    }
+
+    setAddShiftBusy(true);
+    try {
+      await addShift({
+        memberId: member.id,
+        staffName: member.displayName,
+        staffRole: addShiftForm.roleNames[0] ?? null,
+        staffRoles: JSON.stringify(addShiftForm.roleNames),
+        date: addShiftForm.date,
+        shiftType: addShiftForm.shiftType,
+        startTime: addShiftForm.startTime,
+        endTime: addShiftForm.endTime,
+        predictedDemand: "medium",
+      });
+      toast.success(t("staffing.toasts.shiftAdded"));
+      setSelDate(addShiftForm.date);
+      setAddShiftOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("staffing.toasts.failedSaveShift"));
+    } finally {
+      setAddShiftBusy(false);
     }
   }
 
@@ -589,12 +732,25 @@ export function MobileSchedule({
             <span className="font-mono tabular-nums">{dayHours.toFixed(1)}h</span>
           </div>
         </div>
-        <span
-          className="h-7 px-2.5 rounded-[0.3rem] border border-dashed border-border text-[11.5px] text-muted-foreground italic inline-flex items-center gap-1 shrink-0"
-          title={t("personnel.m.addHint")}
-        >
-          <Plus className="h-3 w-3" strokeWidth={1.75} /> {t("personnel.m.add")}
-        </span>
+        {canEditSchedule && (
+          <button
+            type="button"
+            onClick={() => {
+              setAddShiftForm({
+                memberId: members[0]?.id ?? "",
+                date: selDate,
+                shiftType: "morning",
+                startTime: "09:00",
+                endTime: "17:00",
+                roleNames: roles[0]?.name ? [roles[0].name] : [],
+              });
+              setAddShiftOpen(true);
+            }}
+            className="h-8 px-3 rounded-[0.3rem] border border-border bg-foreground text-background text-[12px] font-semibold inline-flex items-center gap-1.5 shrink-0"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("staffing.header.addShiftShort")}
+          </button>
+        )}
       </div>
 
       {/* Day shift list */}
@@ -630,7 +786,7 @@ export function MobileSchedule({
                 className="w-[3px] self-stretch rounded-[1.5px]"
                 style={{ background: SHIFT_COLORS[s.shiftType] ?? "#78716c" }}
               />
-              <Avatar name={name} size={32} />
+              <Avatar name={name} avatarUrl={member?.avatarUrl} size={32} />
               <div className="flex-1 min-w-0">
                 <div className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em] truncate">
                   {name}
@@ -681,7 +837,7 @@ export function MobileSchedule({
             return (
               <Card key={request.id} size="sm" className="mx-3.5 mb-2 rounded-[0.3rem] py-0 shadow-none">
                 <div className="flex items-center gap-3 px-3 py-3">
-                  <Avatar name={assigned?.displayName ?? shift.staffName} size={32} />
+                  <Avatar name={assigned?.displayName ?? shift.staffName} avatarUrl={assigned?.avatarUrl} size={32} />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13.5px] font-semibold truncate">
                       {assigned?.displayName ?? shift.staffName}
@@ -711,6 +867,186 @@ export function MobileSchedule({
       </Section>
       <div className="h-4" />
 
+      <DynamicUIElement open={addShiftOpen} onOpenChange={setAddShiftOpen}>
+        <DynamicUIElementContent className="max-w-md" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("staffing.shiftDialog.createTitle")}>
+              {t("staffing.shiftDialog.createTitle")}
+            </DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">
+              {t("staffing.shiftDialog.createDescription")}
+            </DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+
+          <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-4 pt-2 pb-4 space-y-4">
+                <div className="flex items-center gap-3 py-2 border-b border-border">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    type="date"
+                    value={addShiftForm.date}
+                    onChange={(event) => setAddShiftForm((form) => ({ ...form, date: event.target.value }))}
+                    className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 py-2 border-b border-border">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    type="time"
+                    value={addShiftForm.startTime}
+                    onChange={(event) => setAddShiftForm((form) => ({ ...form, startTime: event.target.value }))}
+                    className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1"
+                  />
+                  <span className="text-muted-foreground">—</span>
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Input
+                    type="time"
+                    value={addShiftForm.endTime}
+                    onChange={(event) => setAddShiftForm((form) => ({ ...form, endTime: event.target.value }))}
+                    className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1"
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">
+                    ({shiftHours({ startTime: addShiftForm.startTime, endTime: addShiftForm.endTime }).toFixed(1)}{t("staffing.shiftDialog.hourSuffix")})
+                  </span>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("staffing.shiftDialog.timeTemplate")}
+                    </span>
+                  </div>
+                  {shiftPresets.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">{t("staffing.shiftDialog.noTemplatesYet")}</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {shiftPresets.map((preset) => {
+                        const active = addShiftForm.startTime === preset.startTime && addShiftForm.endTime === preset.endTime;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => setAddShiftForm((form) => ({
+                              ...form,
+                              startTime: preset.startTime,
+                              endTime: preset.endTime,
+                            }))}
+                            className={cn(
+                              "rounded px-2.5 py-1.5 text-center text-[11px] font-semibold transition-colors",
+                              active ? "text-white" : "bg-muted text-muted-foreground hover:bg-muted/80",
+                            )}
+                            style={active ? { backgroundColor: preset.color } : undefined}
+                          >
+                            <span className="block">{preset.name}</span>
+                            <span className={cn("block font-normal", active ? "text-white/70" : "text-muted-foreground/60")}>
+                              {formatTimeShort(preset.startTime)}-{formatTimeShort(preset.endTime)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="h-2 bg-muted/50" />
+
+              <div className="px-4 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.assignEmployee")}</Label>
+                    <Select
+                      value={addShiftForm.memberId}
+                      onValueChange={(value) => setAddShiftForm((form) => ({ ...form, memberId: value ?? "" }))}
+                    >
+                      <SelectTrigger className="mt-1 w-full border-0 border-b border-border rounded-none px-0 shadow-none focus:ring-0">
+                        <SelectValue placeholder={t("staffing.shiftDialog.selectPlaceholder")}>
+                          {members.find((member) => member.id === addShiftForm.memberId)?.displayName ?? t("staffing.shiftDialog.selectPlaceholder")}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {members.map((member) => (
+                          <SelectItem key={member.id} value={member.id}>{member.displayName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("storeAi.fields.shiftType")}</Label>
+                    <Select
+                      value={addShiftForm.shiftType}
+                      onValueChange={(value) => setAddShiftForm((form) => ({ ...form, shiftType: value ?? "morning" }))}
+                    >
+                      <SelectTrigger className="mt-1 w-full border-0 border-b border-border rounded-none px-0 shadow-none focus:ring-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["morning", "afternoon", "evening", "closing"] as const).map((type) => (
+                          <SelectItem key={type} value={type}>{t(`staffing.shiftTypes.${type}`)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.rolesLabel")}</Label>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {roles.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">{t("staffing.roles.noRolesYet")}</p>
+                    ) : (
+                      roles.map((role) => {
+                        const selected = addShiftForm.roleNames.includes(role.name);
+                        return (
+                          <button
+                            key={role.id}
+                            type="button"
+                            onClick={() => setAddShiftForm((form) => ({
+                              ...form,
+                              roleNames: selected
+                                ? form.roleNames.filter((name) => name !== role.name)
+                                : [...form.roleNames, role.name],
+                            }))}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium border rounded transition-colors",
+                              selected
+                                ? "border-foreground bg-foreground text-background"
+                                : "border-border text-muted-foreground hover:bg-muted",
+                            )}
+                          >
+                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: selected ? "white" : role.color }} />
+                            {role.name}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">{t("staffing.shiftDialog.shiftNotes")}</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("staffing.shiftDialog.shiftNotesHint")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-4 py-4 border-t border-border mt-auto">
+              <Button
+                onClick={saveMobileShift}
+                disabled={addShiftBusy || !addShiftForm.memberId || addShiftForm.roleNames.length === 0}
+                className="w-full h-12 text-sm font-semibold"
+              >
+                {addShiftBusy ? <Spinner size={16} /> : t("staffing.shiftDialog.createCta")}
+              </Button>
+            </div>
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
+
       <DynamicUIElement open={!!selectedShift} onOpenChange={(open) => { if (!open) { setSelectedShiftId(null); setShowPeoplePicker(false); } }}>
         <DynamicUIElementContent className="sm:max-w-md" noPadding>
           {selectedShift && (
@@ -728,7 +1064,7 @@ export function MobileSchedule({
                 <div className="rounded-[0.3rem] border border-border bg-muted/20 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar name={selectedShiftName} size={36} />
+                      <Avatar name={selectedShiftName} avatarUrl={selectedShiftMember?.avatarUrl} size={36} />
                       <div className="min-w-0">
                         <div className="text-[14px] font-semibold truncate">{selectedShiftName}</div>
                         <div className="text-[11.5px] text-muted-foreground">
@@ -761,7 +1097,7 @@ export function MobileSchedule({
                           <div className={cn("rounded-[0.3rem] border p-2.5", active ? "border-foreground bg-muted/40" : "border-border bg-background")}>
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0">
-                                <Avatar name={name} size={26} />
+                                <Avatar name={name} avatarUrl={member?.avatarUrl} size={26} />
                                 <span className="text-[13px] font-medium truncate">{name}</span>
                               </div>
                               <span className="font-mono tabular-nums text-[11.5px] text-muted-foreground shrink-0">
@@ -797,7 +1133,7 @@ export function MobileSchedule({
                           onClick={() => changeShiftPerson(member)}
                           className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background text-left border-t border-border first:border-t-0 disabled:opacity-50"
                         >
-                          <Avatar name={member.displayName} size={26} />
+                          <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size={26} />
                           <div className="flex-1 min-w-0">
                             <div className="text-[12.5px] font-medium truncate">{member.displayName}</div>
                             <div className="text-[10.5px] text-muted-foreground truncate">{member.role}</div>
@@ -916,6 +1252,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
   const canInviteTeam = can("team", "invite");
 
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
+  const [rawUsers] = useUsers() as [unknown[], boolean];
   const [rawInvitations] = useOrgInvitations() as [unknown[], boolean];
   const [rawRoles] = useStaffRoles() as [unknown[], boolean];
 
@@ -1001,18 +1338,25 @@ export function MobileTeam({ orgId }: { orgId: string }) {
     [rawRoles, orgId],
   );
 
+  const avatarByUserId = useMemo(() => avatarMapFromUsers(rawUsers), [rawUsers]);
+
   const members = useMemo<MemberRow[]>(
     () =>
       (rawMembers as any[])
         .filter((m) => m.organizationId === orgId)
-        .map((m) => ({
-          id: m.id?.toString?.() ?? String(m.id),
-          displayName: String(m.displayName ?? "—"),
-          email: String(m.email ?? ""),
-          role: String(m.role ?? "staff"),
-          status: String(m.status ?? "active"),
-        })),
-    [rawMembers, orgId],
+        .map((m) => {
+          const userId = rowIdentityKey(m.userId);
+          return {
+            id: m.id?.toString?.() ?? String(m.id),
+            userId,
+            displayName: String(m.displayName ?? "—"),
+            email: String(m.email ?? ""),
+            avatarUrl: avatarByUserId.get(userId) ?? null,
+            role: String(m.role ?? "staff"),
+            status: String(m.status ?? "active"),
+          };
+        }),
+    [rawMembers, orgId, avatarByUserId],
   );
 
   const invitations = useMemo(
@@ -1042,6 +1386,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
           id: `inv-${i.id?.toString?.() ?? i.id}`,
           displayName: String(i.email ?? "—").split("@")[0],
           email: String(i.email ?? ""),
+          avatarUrl: null,
           role: String(i.role ?? "staff"),
           status: "invited",
         }));
@@ -1138,7 +1483,7 @@ export function MobileTeam({ orgId }: { orgId: string }) {
                   canAction ? "active:bg-muted/60" : "cursor-default",
                 )}
               >
-                <Avatar name={m.displayName} size={32} />
+                <Avatar name={m.displayName} avatarUrl={m.avatarUrl} size={32} />
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-medium tracking-[-0.015em] truncate">
                     {m.displayName}
@@ -1219,6 +1564,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
   const [rawRoles] = useStaffRoles() as [unknown[], boolean];
   const [rawTasks] = useRoleTasks() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
+  const [rawUsers] = useUsers() as [unknown[], boolean];
 
   const roles = useMemo<RoleRow[]>(
     () =>
@@ -1251,18 +1597,25 @@ export function MobileRoles({ orgId }: { orgId: string }) {
     return map;
   }, [rawTasks, orgId]);
 
+  const avatarByUserId = useMemo(() => avatarMapFromUsers(rawUsers), [rawUsers]);
+
   const activeMembers = useMemo<MemberRow[]>(
     () =>
       (rawMembers as any[])
         .filter((m) => m.organizationId === orgId && m.status === "active")
-        .map((m) => ({
-          id: m.id?.toString?.() ?? String(m.id),
-          displayName: String(m.displayName ?? "—"),
-          email: String(m.email ?? ""),
-          role: String(m.role ?? "staff"),
-          status: "active",
-        })),
-    [rawMembers, orgId],
+        .map((m) => {
+          const userId = rowIdentityKey(m.userId);
+          return {
+            id: m.id?.toString?.() ?? String(m.id),
+            userId,
+            displayName: String(m.displayName ?? "—"),
+            email: String(m.email ?? ""),
+            avatarUrl: avatarByUserId.get(userId) ?? null,
+            role: String(m.role ?? "staff"),
+            status: "active",
+          };
+        }),
+    [rawMembers, orgId, avatarByUserId],
   );
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1375,7 +1728,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                           key={m.id}
                           className="inline-flex items-center gap-1.5 pr-2.5 pl-1 py-1 rounded-full border border-border bg-background"
                         >
-                          <Avatar name={m.displayName} size={20} />
+                          <Avatar name={m.displayName} avatarUrl={m.avatarUrl} size={20} />
                           <span className="text-[12px] font-medium">
                             {m.displayName.split(" ")[0]}
                           </span>
@@ -1449,6 +1802,7 @@ export function MobileRequestsSheet({
   const [rawTrades] = useShiftTrades() as [unknown[], boolean];
   const [rawShifts] = useShifts() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
+  const [rawUsers] = useUsers() as [unknown[], boolean];
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
   const setBusyFor = (id: string, on: boolean) => {
@@ -1460,17 +1814,23 @@ export function MobileRequestsSheet({
     });
   };
 
-  const members = useMemo<Map<string, string>>(() => {
-    const map = new Map<string, string>();
+  const avatarByUserId = useMemo(() => avatarMapFromUsers(rawUsers), [rawUsers]);
+
+  const members = useMemo<Map<string, { name: string; avatarUrl: string | null }>>(() => {
+    const map = new Map<string, { name: string; avatarUrl: string | null }>();
     for (const m of rawMembers as any[]) {
       if (m.organizationId !== orgId) continue;
       const id = m.id?.toString?.() ?? String(m.id);
-      const uid = m.userId?.toString?.() ?? String(m.userId ?? "");
-      map.set(id, String(m.displayName ?? "—"));
-      if (uid) map.set(uid, String(m.displayName ?? "—"));
+      const uid = rowIdentityKey(m.userId);
+      const member = {
+        name: String(m.displayName ?? "—"),
+        avatarUrl: avatarByUserId.get(uid) ?? null,
+      };
+      map.set(id, member);
+      if (uid) map.set(uid, member);
     }
     return map;
-  }, [rawMembers, orgId]);
+  }, [rawMembers, orgId, avatarByUserId]);
 
   const shifts = useMemo<Map<string, ShiftRow>>(() => {
     const map = new Map<string, ShiftRow>();
@@ -1495,19 +1855,22 @@ export function MobileRequestsSheet({
     () =>
       (rawTimeOff as any[])
         .filter((r) => r.organizationId === orgId && r.status === "pending")
-        .map((r) => ({
-          id: r.id?.toString?.() ?? String(r.id),
-          userId: r.userId?.toString?.() ?? "",
-          staffName:
-            members.get(r.userId?.toString?.() ?? "") ??
-            String(r.staffName ?? ""),
-          startDate: String(r.startDate ?? ""),
-          endDate: String(r.endDate ?? r.startDate ?? ""),
-          fullDays: !!r.fullDays,
-          startTime: r.startTime ?? null,
-          endTime: r.endTime ?? null,
-          comments: r.comments ?? null,
-        })),
+        .map((r) => {
+          const userId = rowIdentityKey(r.userId);
+          const member = members.get(userId);
+          return {
+            id: r.id?.toString?.() ?? String(r.id),
+            userId,
+            staffName: member?.name ?? String(r.staffName ?? ""),
+            avatarUrl: member?.avatarUrl ?? null,
+            startDate: String(r.startDate ?? ""),
+            endDate: String(r.endDate ?? r.startDate ?? ""),
+            fullDays: !!r.fullDays,
+            startTime: r.startTime ?? null,
+            endTime: r.endTime ?? null,
+            comments: r.comments ?? null,
+          };
+        }),
     [rawTimeOff, orgId, members],
   );
 
@@ -1615,7 +1978,7 @@ export function MobileRequestsSheet({
                     className="px-4 py-3 bg-background border-t border-border"
                   >
                     <div className="flex gap-2.5">
-                      <Avatar name={r.staffName} size={32} />
+                      <Avatar name={r.staffName} avatarUrl={r.avatarUrl} size={32} />
                       <div className="flex-1 min-w-0">
                         <div className="text-[13.5px] font-semibold tracking-[-0.01em] truncate">
                           {r.staffName}
@@ -1667,8 +2030,10 @@ export function MobileRequestsSheet({
             <Section title={tt("personnel.m.tradeOrCover")}>
               {pendingTD.map((t) => {
                 const shift = shifts.get(t.shiftId);
-                const reqName = members.get(t.requesterId);
-                const tgtName = t.targetId ? members.get(t.targetId) : null;
+                const reqMember = members.get(t.requesterId);
+                const tgtMember = t.targetId ? members.get(t.targetId) : null;
+                const reqName = reqMember?.name;
+                const tgtName = tgtMember?.name;
                 const isBusy = busy.has(t.id);
                 return (
                   <div
@@ -1689,7 +2054,7 @@ export function MobileRequestsSheet({
                     <div className="flex items-center gap-2 text-[12.5px]">
                       {reqName && (
                         <>
-                          <Avatar name={reqName} size={22} />
+                          <Avatar name={reqName} avatarUrl={reqMember?.avatarUrl} size={22} />
                           <span className="font-medium">{reqName.split(" ")[0]}</span>
                         </>
                       )}
@@ -1699,7 +2064,7 @@ export function MobileRequestsSheet({
                       />
                       {tgtName ? (
                         <>
-                          <Avatar name={tgtName} size={22} />
+                          <Avatar name={tgtName} avatarUrl={tgtMember?.avatarUrl} size={22} />
                           <span className="font-medium">{tgtName.split(" ")[0]}</span>
                         </>
                       ) : (

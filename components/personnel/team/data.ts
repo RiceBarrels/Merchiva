@@ -186,6 +186,7 @@ export interface PersonNode {
   name: string;           // displayName
   en: string;             // best-effort latinised initials source
   email: string;
+  avatarUrl?: string | null;
   role: string;           // matches a staffRole.name (case-insensitive) or "owner"|"manager"|"staff"
   orgRole: string;        // raw org_member.role
   status: string;         // active|disabled|invited|removed

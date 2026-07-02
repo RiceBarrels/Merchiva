@@ -75,6 +75,35 @@ const GROUP_KIND_LABEL: Record<string, string> = {
   custom: "自定义",
 };
 
+function PersonAvatar({
+  person,
+  color,
+  className,
+}: {
+  person: PersonNode;
+  color: string;
+  className?: string;
+}) {
+  if (person.avatarUrl) {
+    return (
+      <img
+        src={person.avatarUrl}
+        alt={person.name}
+        className={cn("rounded-full border border-border bg-muted object-cover shrink-0", className)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn("rounded-full inline-flex items-center justify-center font-semibold shrink-0", className)}
+      style={{ background: color + "20", color }}
+    >
+      {initials(person.name)}
+    </div>
+  );
+}
+
 interface InspectorProps {
   node: OrgNode | null;
   edges: EdgeLayout[];
@@ -149,12 +178,7 @@ export function Inspector({
             <PresetIcon className="h-4 w-4" strokeWidth={1.75} />
           </div>
         ) : (
-          <div
-            className="h-10 w-10 rounded-full inline-flex items-center justify-center font-semibold text-[12px] shrink-0"
-            style={{ background: (role?.color ?? "#78716c") + "20", color: role?.color ?? "#78716c" }}
-          >
-            {initials(node.name)}
-          </div>
+          <PersonAvatar person={node as PersonNode} color={role?.color ?? "#78716c"} className="h-10 w-10 text-[12px]" />
         )}
         <div className="min-w-0 flex-1">
           <Input
@@ -321,12 +345,7 @@ export function Inspector({
                         onClick={() => onSelect(m.id)}
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-[0.3rem] hover:bg-muted/40 text-left"
                       >
-                        <div
-                          className="h-6 w-6 rounded-full inline-flex items-center justify-center font-semibold text-[9.5px] shrink-0"
-                          style={{ background: (r?.color ?? "#78716c") + "20", color: r?.color ?? "#78716c" }}
-                        >
-                          {initials(m.name)}
-                        </div>
+                        <PersonAvatar person={m} color={r?.color ?? "#78716c"} className="h-6 w-6 text-[9.5px]" />
                         <div className="min-w-0 flex-1">
                           <div className="text-[12px] font-medium text-stone-800 dark:text-stone-100 truncate">{m.name}</div>
                           <div className="text-[10.5px] text-muted-foreground truncate">{r?.name ?? ""} · {m.email}</div>

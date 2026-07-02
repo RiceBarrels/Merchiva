@@ -32,12 +32,14 @@ export async function POST(req: NextRequest) {
     const appUrl =
       (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 
-    // `client === "electron"` makes /api/auth/callback redirect to the
-    // merchiva:// custom protocol instead of the web /auth-callback page so
-    // the Electron desktop app can pick up the tokens from the system browser.
+    // Native clients make /api/auth/callback redirect to the merchiva:// custom
+    // protocol instead of the web /auth-callback page so the shell can pick up
+    // the tokens from the external/in-app browser.
+    const useProtocolCallback =
+      client === "desktop" || client === "electron" || client === "capacitor";
     const statePayload = {
       redirectTo: redirectTo || "/~/",
-      client: client === "electron" ? "electron" : "web",
+      client: useProtocolCallback ? "desktop" : "web",
     };
 
     const authorizationUrl = workos.userManagement.getAuthorizationUrl({

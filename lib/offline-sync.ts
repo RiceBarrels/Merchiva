@@ -29,7 +29,6 @@ export function useOfflineSync(): {
   const [todos] = useTable(tables.todo);
   const [notifications] = useTable(tables.notification);
   const [wasteLogs] = useTable(tables.wasteLog);
-  const [products] = useTable(tables.product);
   const [staffMembers] = useTable(tables.staffMember);
   const [salesRecords] = useTable(tables.salesRecord);
   const [chatConversations] = useTable(tables.chatConversation);
@@ -66,7 +65,9 @@ export function useOfflineSync(): {
         todos: todos.map((t) => ({ ...t })),
         notifications: notifications.map((n) => ({ ...n })),
         wasteLogs: wasteLogs.map((w) => ({ ...w })),
-        products: products.map((p) => ({ ...p })),
+        products: inventoryItems
+          .filter((i) => (i as Record<string, unknown>).retailEnabled === true)
+          .map((i) => ({ ...i })),
         staffMembers: staffMembers.map((s) => ({ ...s })),
         salesRecords: salesRecords.map((s) => ({ ...s })),
         chatConversations: chatConversations.map((c) => ({ ...c })),
@@ -80,7 +81,7 @@ export function useOfflineSync(): {
     } finally {
       setIsCaching(false);
     }
-  }, [shifts, inventoryItems, todos, notifications, wasteLogs, products, staffMembers, salesRecords, chatConversations, chatMessages]);
+  }, [shifts, inventoryItems, todos, notifications, wasteLogs, staffMembers, salesRecords, chatConversations, chatMessages]);
 
   // Debounced cache writes when data changes
   useEffect(() => {

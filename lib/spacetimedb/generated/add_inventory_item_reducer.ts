@@ -26,4 +26,10 @@ export default {
   description: __t.option(__t.string()),
   unitContentAmount: __t.option(__t.f64()),
   unitContentUnit: __t.option(__t.string()),
+  retailEnabled: __t.option(__t.bool()),
+  retailPrice: __t.option(__t.f64()),
+  retailDescription: __t.option(__t.string()),
+  retailImageUrl: __t.option(__t.string()),
+  retailUsageQty: __t.option(__t.f64()),
+  expirationBatches: __t.option(__t.string()),
 };

@@ -12,14 +12,6 @@ import {
 
 export default {
   organizationId: __t.string(),
-  name: __t.string(),
-  category: __t.string(),
-  price: __t.f64(),
-  cost: __t.f64(),
-  imageUrl: __t.option(__t.string()),
-  description: __t.option(__t.string()),
-  nameI18N: __t.option(__t.string()),
-  options: __t.option(__t.string()),
-  availableStoreIds: __t.option(__t.string()),
-  inventoryUsage: __t.option(__t.string()),
+  memberId: __t.string(),
+  action: __t.string(),
 };

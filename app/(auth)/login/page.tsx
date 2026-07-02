@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, ShieldCheck, Sparkles, Fingerprint } from "lucide-react";
@@ -14,7 +14,12 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { useT } from "@/lib/i18n/context";
 import { useAuth, addAccountToStorage } from "@/lib/auth/context";
 import { apiUrl } from "@/lib/api-client";
-import { getNativeShell, isNativeShell } from "@/lib/native-shell";
+import { isCapacitorNative } from "@/lib/capacitor";
+import {
+  openCapacitorAuth,
+  subscribeCapacitorAuthCallback,
+} from "@/lib/capacitor-auth";
+import { getNativeShell, isNativeShell, type AuthCallbackParams } from "@/lib/native-shell";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 function LoginForm() {
@@ -23,13 +28,20 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/~/";
   const isAddAccount = searchParams.get("addAccount") === "1";
-  const { isLoaded, isSignedIn, signIn } = useAuth();
+  const { isLoaded, isSignedIn, signIn, getToken } = useAuth();
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && !isAddAccount) {
-      router.replace(next);
-    }
-  }, [isLoaded, isSignedIn, isAddAccount, router, next]);
+    if (!isLoaded || !isSignedIn || isAddAccount) return;
+    let cancelled = false;
+    void getToken().then((token) => {
+      if (!cancelled && token) {
+        router.replace(next);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, isAddAccount, router, next, getToken]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -53,33 +65,38 @@ function LoginForm() {
   const [magicCodeSent, setMagicCodeSent] = useState(false);
   const [magicCode, setMagicCode] = useState("");
 
-  // Electron 3rd-party OAuth: the system browser hits our API and we redirect
-  // to merchiva://auth-callback. The OS hands the URL to the Electron main
-  // process, which forwards the params here. We unpack and complete the
-  // sign-in just like the web /auth-callback page.
+  const completeNativeAuth = useCallback((params: AuthCallbackParams) => {
+    if (params.error) {
+      setError(params.error);
+      return;
+    }
+    const { access_token, refresh_token, user, redirect_to } = params;
+    if (!access_token || !refresh_token || !user) {
+      setError(t("login.oauthFailed"));
+      return;
+    }
+    try {
+      const parsedUser = JSON.parse(user);
+      addAccountToStorage(access_token, refresh_token, parsedUser);
+      window.location.href = redirect_to || "/~/";
+    } catch {
+      setError(t("login.oauthFailed"));
+    }
+  }, [t]);
+
+  // Native 3rd-party OAuth: the external/in-app browser hits our API and we
+  // redirect to merchiva://auth-callback. The native shell forwards the params
+  // here so we can complete sign-in like the web /auth-callback page.
   useEffect(() => {
     const bridge = getNativeShell();
     if (!bridge) return;
-    const unsubscribe = bridge.onAuthCallback((params) => {
-      if (params.error) {
-        setError(params.error);
-        return;
-      }
-      const { access_token, refresh_token, user, redirect_to } = params;
-      if (!access_token || !refresh_token || !user) {
-        setError(t("login.oauthFailed"));
-        return;
-      }
-      try {
-        const parsedUser = JSON.parse(user);
-        addAccountToStorage(access_token, refresh_token, parsedUser);
-        window.location.href = redirect_to || "/~/";
-      } catch {
-        setError(t("login.oauthFailed"));
-      }
-    });
+    const unsubscribe = bridge.onAuthCallback(completeNativeAuth);
     return unsubscribe;
-  }, [t]);
+  }, [completeNativeAuth]);
+
+  useEffect(() => {
+    return subscribeCapacitorAuthCallback(completeNativeAuth);
+  }, [completeNativeAuth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,16 +202,17 @@ function LoginForm() {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     try {
-      const native = isNativeShell();
+      const desktopNative = isNativeShell();
+      const capacitorNative = isCapacitorNative();
       const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // The desktop client tells the callback to bounce back via the
+        // Native clients tell the callback to bounce back via the
         // merchiva:// custom protocol instead of staying inside the web app.
         body: JSON.stringify({
           provider,
           redirectTo: next,
-          client: native ? "electron" : "web",
+          client: capacitorNative ? "capacitor" : desktopNative ? "electron" : "web",
         }),
       });
       const data = await res.json();
@@ -202,10 +220,12 @@ function LoginForm() {
         setError(data.error ?? t("login.oauthFailed"));
         return;
       }
-      if (native) {
+      if (desktopNative) {
         // Open the provider's auth page in the user's system browser; Google
         // and Apple reject embedded webviews. The result comes back via IPC.
         await getNativeShell()?.openExternalAuth(data.url);
+      } else if (capacitorNative) {
+        await openCapacitorAuth(data.url);
       } else {
         window.location.href = data.url;
       }
@@ -217,14 +237,15 @@ function LoginForm() {
   const handlePasskey = async () => {
     setError("");
     try {
-      const native = isNativeShell();
+      const desktopNative = isNativeShell();
+      const capacitorNative = isCapacitorNative();
       const res = await fetch(apiUrl("/api/auth/oauth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider: "passkey",
           redirectTo: next,
-          client: native ? "electron" : "web",
+          client: capacitorNative ? "capacitor" : desktopNative ? "electron" : "web",
           ...(email ? { loginHint: email } : {}),
           screenHint: "sign-in",
         }),
@@ -234,8 +255,10 @@ function LoginForm() {
         setError(data.error ?? t("login.passkeyFailed"));
         return;
       }
-      if (native) {
+      if (desktopNative) {
         await getNativeShell()?.openExternalAuth(data.url);
+      } else if (capacitorNative) {
+        await openCapacitorAuth(data.url);
       } else {
         window.location.href = data.url;
       }

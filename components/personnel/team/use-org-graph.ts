@@ -6,6 +6,7 @@ import {
   useOrgMembers,
   useStaffRoles,
   useOrgInvitations,
+  useUsers,
   useSpacetimeDB,
 } from "@/lib/spacetimedb/hooks";
 import { updateMember } from "@/lib/spacetimedb/actions";
@@ -81,6 +82,29 @@ function pickStaffRolePerms(raw: unknown): string[] {
   return [];
 }
 
+function rowIdentityKey(value: unknown): string {
+  if (value && typeof (value as { toHexString?: () => string }).toHexString === "function") {
+    return (value as { toHexString: () => string }).toHexString();
+  }
+  if (value && typeof (value as { toString?: () => string }).toString === "function") {
+    return (value as { toString: () => string }).toString();
+  }
+  return String(value ?? "");
+}
+
+function avatarMapFromUsers(rawUsers: unknown[]): Map<string, string | null> {
+  const map = new Map<string, string | null>();
+  for (const user of rawUsers as Array<{ identity?: unknown; avatarUrl?: string | null }>) {
+    if (!user.identity) continue;
+    const avatarUrl = user.avatarUrl ?? null;
+    const key = rowIdentityKey(user.identity);
+    if (key) map.set(key, avatarUrl);
+    const textKey = user.identity.toString();
+    if (textKey) map.set(textKey, avatarUrl);
+  }
+  return map;
+}
+
 export interface UseOrgGraphResult {
   nodes: OrgNode[];
   edges: EdgeLayout[];
@@ -118,6 +142,7 @@ export interface UseOrgGraphResult {
 
 export function useOrgGraph(orgId: string): UseOrgGraphResult {
   const [rawMembers] = useOrgMembers() as [any[], boolean];
+  const [rawUsers] = useUsers() as [unknown[], boolean];
   const [rawRoles] = useStaffRoles() as [any[], boolean];
   const [rawInvitations] = useOrgInvitations() as [any[], boolean];
   const stdb = useSpacetimeDB();
@@ -181,6 +206,8 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
 
   // ── Members → person nodes ──────────────────────────────────────────────
   const myUserId = stdb?.identity?.toString?.() ?? null;
+  const myUserKey = rowIdentityKey(stdb?.identity ?? myUserId);
+  const avatarByUserId = useMemo(() => avatarMapFromUsers(rawUsers), [rawUsers]);
 
   const persons = useMemo<PersonNode[]>(() => {
     const members = (rawMembers || []).filter(
@@ -193,6 +220,7 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
     const STRIP_Y = 80;
     return members.map((m) => {
       const id = m.id?.toString?.() ?? String(m.id);
+      const userId = rowIdentityKey(m.userId);
       const role = String(m.role ?? "staff").toLowerCase();
       const perm = parsePermissions(m.permissions);
       const layoutEntry = positions[id];
@@ -204,6 +232,7 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
         name: String(m.displayName ?? "—"),
         en: String(m.displayName ?? "—"),
         email: String(m.email ?? ""),
+        avatarUrl: avatarByUserId.get(userId) ?? null,
         role,
         orgRole: role,
         status: String(m.status ?? "active"),
@@ -213,10 +242,10 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
         perms: permsToFlat(perm),
         rawPermissions: m.permissions,
         punchInCode: m.punchInCode ?? null,
-        isMe: !!myUserId && m.userId?.toString?.() === myUserId,
+        isMe: !!myUserId && (userId === myUserId || userId === myUserKey || m.userId?.toString?.() === myUserId),
       };
     });
-  }, [rawMembers, orgId, layout.positions, myUserId]);
+  }, [rawMembers, orgId, layout.positions, myUserId, myUserKey, avatarByUserId]);
 
   // Pending invitations also appear as "person" nodes so the inviter can drag
   // them into groups before they accept.
@@ -232,6 +261,7 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
           name: String(i.email ?? "—").split("@")[0],
           en: String(i.email ?? "—").split("@")[0],
           email: String(i.email ?? ""),
+          avatarUrl: null,
           role: String(i.role ?? "staff").toLowerCase(),
           orgRole: String(i.role ?? "staff").toLowerCase(),
           status: "invited",

@@ -4,8 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from "react";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
-import { recordPunch, setPunchInCode } from "@/lib/spacetimedb/actions";
-import { PermissionGuard } from "@/components/permission-guard";
+import { managerRecordPunch, recordPunch, setPunchInCode } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { useDeviceName } from "@/lib/store-machine-mode";
 import { hapticSuccess, hapticLight } from "@/lib/haptics";
@@ -17,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -100,7 +99,7 @@ export default function PunchInPage() {
   const t = useT();
   const now = useTick();
   const stdb = useSpacetimeDB();
-  const { organizationId } = usePermissions();
+  const { organizationId, role, isOwner, can } = usePermissions();
   const [deviceName] = useDeviceName();
   const [orgMembers, membersReady] = useTable(tables.orgMember);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -109,6 +108,8 @@ export default function PunchInPage() {
   const hasPunchTable = !!punchEventTable;
 
   const identity = stdb?.identity;
+  const canManageAttendance = isOwner || role === "manager" || can("staffing", "edit") || can("team", "edit") || can("pos", "edit");
+  const canUsePunchClock = can("pos", "view") || canManageAttendance;
 
   // ─── Mobile side panel toggle ─────────────────────────────────────
   const [showPanel, setShowPanel] = useState(false);
@@ -126,8 +127,8 @@ export default function PunchInPage() {
   const [savingCode, setSavingCode] = useState(false);
 
   useEffect(() => {
-    if (membersReady && myMember && !myCode && !setCodeOpen) setSetCodeOpen(true);
-  }, [membersReady, myMember, myCode]);
+    if (canUsePunchClock && membersReady && myMember && !myCode && !setCodeOpen) setSetCodeOpen(true);
+  }, [canUsePunchClock, membersReady, myMember, myCode, setCodeOpen]);
 
   const handleSaveCode = async () => {
     if (!myMember) return;
@@ -156,6 +157,7 @@ export default function PunchInPage() {
   const [successAction, setSuccessAction] = useState<PunchAction | null>(null);
   const [successTime, setSuccessTime] = useState<Date | null>(null);
   const [memberState, setMemberState] = useState<"off" | "on" | "break">("off");
+  const [managerPunchingId, setManagerPunchingId] = useState<string | null>(null);
 
   useEffect(() => { if (!error) return; const t = setTimeout(() => { setError(null); setPin(""); }, 3500); return () => clearTimeout(t); }, [error]);
   useEffect(() => { if (stage !== "success") return; const t = setTimeout(() => handleCancel(), 5000); return () => clearTimeout(t); }, [stage]);
@@ -174,6 +176,21 @@ export default function PunchInPage() {
       return { id: inEv.id.toString(), memberId: inEv.memberId, name: member?.displayName ?? "Unknown", avatar: initials(member?.displayName ?? "?"), at: eventTime(inEv), onBreak };
     });
   }, [orgEvents, orgMembers]);
+
+  const attendanceRows = useMemo(() => {
+    if (!organizationId) return [];
+    const members = (orgMembers as unknown as MemberRow[])
+      .filter(m => m.organizationId === organizationId && m.status === "active")
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return members.map((member) => {
+      const active = onShift.find((shift) => shift.memberId === member.id.toString());
+      return {
+        member,
+        active,
+        state: active ? (active.onBreak ? "break" : "on") : "off",
+      };
+    });
+  }, [onShift, orgMembers, organizationId]);
 
   const recentPunches = useMemo(() => {
     return orgEvents.slice().sort((a, b) => eventTime(b).getTime() - eventTime(a).getTime()).slice(0, 15).map(e => {
@@ -244,6 +261,19 @@ export default function PunchInPage() {
     setStage("entry"); setPin(""); setMatched(null); setDetectedAction(null); setNeedsChoice(false); setError(null);
   }, []);
 
+  const handleManagerPunch = async (memberId: string, action: "in" | "out") => {
+    setManagerPunchingId(memberId);
+    try {
+      await managerRecordPunch(memberId, action);
+      hapticSuccess();
+      toast.success(action === "in" ? t("punchIn.managerClockedIn") : t("punchIn.managerClockedOut"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("punchIn.toastFailed"));
+    } finally {
+      setManagerPunchingId(null);
+    }
+  };
+
   // ─── Keyboard ───────────────────────────────────────────────────────
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -283,9 +313,59 @@ export default function PunchInPage() {
     return <span className={cn("inline-flex px-1.5 py-px rounded-[0.3rem] font-mono text-[10px] font-semibold tracking-wider", colors[action])}>{labels[action]}</span>;
   };
 
+  const renderManagerAttendancePanel = () => canManageAttendance ? (
+    <div className="border-t border-border">
+      <div className="px-4 py-2.5 lg:px-5 lg:py-3.5 flex items-center justify-between">
+        <div>
+          <div className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground">{t("punchIn.managerControls")}</div>
+          <div className="text-sm font-semibold mt-0.5">{t("punchIn.editAttendance")}</div>
+        </div>
+      </div>
+      <div className="divide-y divide-border">
+        {attendanceRows.map(({ member, active, state }) => {
+          const memberId = member.id.toString();
+          const busy = managerPunchingId === memberId;
+          const action: "in" | "out" = active ? "out" : "in";
+          return (
+            <div key={memberId} className="flex items-center gap-2.5 px-4 py-2.5 lg:px-5">
+              <div className={cn(
+                "w-7 h-7 rounded-[0.3rem] flex items-center justify-center font-mono text-[11px] font-semibold shrink-0",
+                active ? "bg-foreground text-background" : "bg-muted text-muted-foreground border border-border",
+              )}>{initials(member.displayName)}</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold truncate">{member.displayName}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {state === "break" ? t("punchIn.onBreak") : state === "on" ? t("punchIn.active") : t("punchIn.stateOff")}
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant={action === "out" ? "outline" : "default"}
+                className="h-8 min-w-[88px] px-2.5 text-[12px]"
+                disabled={!!managerPunchingId}
+                onClick={() => handleManagerPunch(memberId, action)}
+              >
+                {busy ? <Spinner size={14} /> : action === "in" ? t("punchIn.managerClockIn") : t("punchIn.managerClockOut")}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
+  if (!canUsePunchClock) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+        <ShieldAlert className="h-10 w-10 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">{t("components.permissionGuard.noAccess")}</p>
+      </div>
+    );
+  }
+
   return (
-    <PermissionGuard section="pos">
-      <div className="h-full flex flex-col bg-muted overflow-hidden">
+    <>
+    <div className="h-full flex flex-col bg-muted overflow-hidden">
 
         {/* ─── Main grid ─────────────────────────────────────── */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] min-h-0">
@@ -498,6 +578,8 @@ export default function PunchInPage() {
                     )}
                   </div>
 
+                  {renderManagerAttendancePanel()}
+
                   {/* Recent punches */}
                   <div className="border-t border-border">
                     <div className="px-4 py-2.5 flex items-center justify-between">
@@ -554,6 +636,8 @@ export default function PunchInPage() {
               )}
             </div>
 
+            {renderManagerAttendancePanel()}
+
             {/* Recent punches */}
             <div className="flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
@@ -596,28 +680,28 @@ export default function PunchInPage() {
           </aside>
         </div>
 
-      </div>
+    </div>
 
-      {/* ─── Set-code dialog (first-time setup) ──────────── */}
-      <DynamicUIElement open={setCodeOpen} onOpenChange={setSetCodeOpen}>
-        <DynamicUIElementContent>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("punchIn.dialogMobileTitle")}>{myCode ? t("punchIn.dialogChangeTitle") : t("punchIn.dialogSetTitle")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription>
-              {myCode ? t("punchIn.dialogChangeDesc") : t("punchIn.dialogSetDesc")}
-            </DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>{t("punchIn.newCodeLabel")}</Label>
-              <Input value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder={t("punchIn.codePlaceholder")} className="h-11 font-mono text-base tracking-[0.3em]" autoFocus onKeyDown={e => { if (e.key === "Enter") handleSaveCode(); }} />
-            </div>
-            <Button onClick={handleSaveCode} disabled={savingCode || codeInput.length < 4} className="w-full">
-              {savingCode ? <Spinner size={16} /> : t("punchIn.saveCode")}
-            </Button>
+    {/* ─── Set-code dialog (first-time setup) ──────────── */}
+    <DynamicUIElement open={setCodeOpen} onOpenChange={setSetCodeOpen}>
+      <DynamicUIElementContent>
+        <DynamicUIElementHeader>
+          <DynamicUIElementTitle mobileTitle={t("punchIn.dialogMobileTitle")}>{myCode ? t("punchIn.dialogChangeTitle") : t("punchIn.dialogSetTitle")}</DynamicUIElementTitle>
+          <DynamicUIElementDescription>
+            {myCode ? t("punchIn.dialogChangeDesc") : t("punchIn.dialogSetDesc")}
+          </DynamicUIElementDescription>
+        </DynamicUIElementHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>{t("punchIn.newCodeLabel")}</Label>
+            <Input value={codeInput} onChange={e => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder={t("punchIn.codePlaceholder")} className="h-11 font-mono text-base tracking-[0.3em]" autoFocus onKeyDown={e => { if (e.key === "Enter") handleSaveCode(); }} />
           </div>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
-    </PermissionGuard>
+          <Button onClick={handleSaveCode} disabled={savingCode || codeInput.length < 4} className="w-full">
+            {savingCode ? <Spinner size={16} /> : t("punchIn.saveCode")}
+          </Button>
+        </div>
+      </DynamicUIElementContent>
+    </DynamicUIElement>
+    </>
   );
 }

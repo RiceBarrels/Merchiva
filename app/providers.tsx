@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/context";
 import { I18nProvider } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/config";
+import { isCapacitorNative } from "@/lib/capacitor";
 
 export function Providers({
   children,
@@ -18,6 +19,11 @@ export function Providers({
   // live React tree — and any <SplashLoader> inside it — has mounted.
   useEffect(() => {
     document.body.classList.add("app-ready");
+    if (isCapacitorNative()) {
+      void import("@capacitor/splash-screen")
+        .then(({ SplashScreen }) => SplashScreen.hide())
+        .catch(() => {});
+    }
   }, []);
 
   return (

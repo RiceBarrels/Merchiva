@@ -702,7 +702,6 @@ export default function SuppliersPage() {
         <PageTabs tabs={[
           { label: t("nav.inventory"), href: "/~/inventory" },
           { label: t("nav.suppliers"), href: "/~/suppliers" },
-          { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
         ]} />
         <div className="flex h-[60vh] items-center justify-center">
           <Spinner size={24} className="text-muted-foreground" />
@@ -740,7 +739,6 @@ export default function SuppliersPage() {
         <PageTabs tabs={[
           { label: t("nav.inventory"), href: "/~/inventory" },
           { label: t("nav.suppliers"), href: "/~/suppliers" },
-          { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
         ]} />
 
         {/* Summary Cards */}

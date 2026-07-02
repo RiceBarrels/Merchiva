@@ -22,4 +22,7 @@ export default __t.row({
   createdAt: __t.timestamp().name("created_at"),
   operatorMemberId: __t.option(__t.string()).name("operator_member_id"),
   operatorName: __t.option(__t.string()).name("operator_name"),
+  evidenceUrls: __t.option(__t.string()).name("evidence_urls"),
+  expirationDate: __t.option(__t.string()).name("expiration_date"),
+  batchExpirationDate: __t.option(__t.string()).name("batch_expiration_date"),
 });

@@ -23,7 +23,8 @@ export function useInventoryTransactions() { return useTable(tables.inventoryTra
 export function useSalesRecords() { return useTable(tables.salesRecord); }
 
 // ── Products ─────────────────────────────────────────────────────────────────
-export function useProducts() { return useTable(tables.product); }
+// Product rows are now retail-enabled inventory items.
+export function useProducts() { return useTable(tables.inventoryItem); }
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 export function useSettingsRows() { return useTable(tables.settings); }

@@ -70,6 +70,8 @@ import {
   setScheduleIntegration,
   disconnectScheduleIntegration,
   setSupplierInboundPrefix,
+  updateDisplayName,
+  updateProfile,
 } from "@/lib/spacetimedb/actions";
 import { CURRENCIES, getCurrencyInfo } from "@/lib/currency";
 import { parseOpeningHours, type WeeklyHours, type DayKey } from "@/lib/holidays";
@@ -141,6 +143,15 @@ interface SquareLocation {
   address: string | null;
 }
 
+interface StoreDeviceRow {
+  id: { toString(): string };
+  organizationId: string;
+  deviceId: string;
+  name: string;
+  enabled: boolean;
+  lastSeenAt: { toDate?: () => Date };
+}
+
 export default function SettingsPage() {
   const t = useT();
   const { locale, setLocale } = useI18n();
@@ -173,6 +184,10 @@ export default function SettingsPage() {
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [profileDisplayName, setProfileDisplayName] = useState("");
+  const [personalName, setPersonalName] = useState("");
+  const [personalBirthday, setPersonalBirthday] = useState("");
+  const [savingPersonal, setSavingPersonal] = useState(false);
   const [assistantSaving, setAssistantSaving] = useState(false);
   const [weeklyRestockTime, setWeeklyRestockTime] = useState("09:00");
 
@@ -309,18 +324,15 @@ export default function SettingsPage() {
   const [exitPinError, setExitPinError] = useState("");
 
   // Store devices management
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const storeDeviceTable = (tables as any).storeDevice;
+  const storeDeviceTable = (tables as typeof tables & { storeDevice?: typeof tables.orgMember }).storeDevice;
   const [storeDeviceRows] = useTable(storeDeviceTable ?? tables.orgMember);
   const hasStoreDeviceTable = !!storeDeviceTable;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const orgDevices = useMemo(() => {
     if (!hasStoreDeviceTable || !organizationId) return [];
-    return (storeDeviceRows as unknown as any[]).filter((d) => d.organizationId === organizationId);
+    return (storeDeviceRows as unknown as StoreDeviceRow[]).filter((d) => d.organizationId === organizationId);
   }, [storeDeviceRows, organizationId, hasStoreDeviceTable]);
   const [manageDeviceDialog, setManageDeviceDialog] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [manageDeviceTarget, setManageDeviceTarget] = useState<any>(null);
+  const [manageDeviceTarget, setManageDeviceTarget] = useState<StoreDeviceRow | null>(null);
   const [manageDeviceNameInput, setManageDeviceNameInput] = useState("");
 
   // Punch-in code reset dialog (managers/team.edit resetting another member's code)
@@ -338,6 +350,7 @@ export default function SettingsPage() {
   const [myCodeInput, setMyCodeInput] = useState("");
   const [savingMyCode, setSavingMyCode] = useState(false);
   const stdb = useSpacetimeDB();
+  const identityString = stdb?.identity?.toString() ?? null;
   const [memberRows] = useTable(tables.orgMember);
   const [userRows] = useTable(tables.user);
   const myMember = (memberRows as unknown as Array<{
@@ -348,8 +361,8 @@ export default function SettingsPage() {
     punchInCode?: string;
   }>).find(
     (m) =>
-      stdb?.identity &&
-      m.userId.toString() === stdb.identity.toString() &&
+      identityString &&
+      m.userId.toString() === identityString &&
       m.organizationId === organizationId &&
       m.status === "active",
   );
@@ -358,13 +371,28 @@ export default function SettingsPage() {
     : null;
 
   useEffect(() => {
-    if (!stdb?.identity) return;
-    const identity = stdb.identity.toString();
-    const me = (userRows as unknown as Array<{ identity: { toString(): string }; avatarUrl?: string | null }>).find(
-      (u) => u.identity.toString() === identity,
+    if (!identityString) return;
+    const me = (userRows as unknown as Array<{
+      identity: { toString(): string };
+      email?: string | null;
+      displayName?: string | null;
+      avatarUrl?: string | null;
+    }>).find(
+      (u) => u.identity.toString() === identityString,
     );
+    const authName = [authUser?.firstName, authUser?.lastName].filter(Boolean).join(" ").trim();
+    const nextDisplayName = me?.displayName ?? authName;
+    setProfileDisplayName(nextDisplayName);
+    setPersonalName(nextDisplayName);
     setAvatarUrl(me?.avatarUrl ?? null);
-  }, [stdb?.identity, userRows]);
+    setUserEmail(me?.email ?? authUser?.email ?? "");
+  }, [identityString, userRows, authUser?.email, authUser?.firstName, authUser?.lastName]);
+
+  useEffect(() => {
+    const profileKey = authUser?.id ?? identityString;
+    if (!profileKey) return;
+    setPersonalBirthday(localStorage.getItem(`merchiva:personal:birthday:${profileKey}`) ?? "");
+  }, [authUser?.id, identityString]);
   const scheduleSettings = settings as (UserSettings & {
     scheduleProvider?: string | null;
     scheduleConnected?: boolean | null;
@@ -665,25 +693,58 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSavePersonalSettings = async () => {
+    const displayName = personalName.trim();
+    if (!displayName) {
+      toast.error(t("settings.personalNameRequired"));
+      return;
+    }
+
+    setSavingPersonal(true);
+    try {
+      await updateDisplayName(displayName);
+      const profileKey = authUser?.id ?? identityString;
+      if (profileKey) {
+        localStorage.setItem(`merchiva:personal:birthday:${profileKey}`, personalBirthday);
+      }
+      setProfileDisplayName(displayName);
+      hapticSuccess();
+      toast.success(t("settings.personalSaved"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("settings.toastSaveFailed"));
+    } finally {
+      setSavingPersonal(false);
+    }
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
 
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 4 * 1024 * 1024) return; // 4MB max
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("components.imageUpload.unsupportedType"));
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error(t("components.imageUpload.fileTooLarge"));
+      return;
+    }
 
     setUploadingAvatar(true);
     try {
       const [res] = await uploadFiles("avatar", { files: [file] });
       const url = res.ufsUrl;
 
-      await (stdb.getConnection()?.reducers as unknown as { updateProfile?: (args: { displayName?: string; avatarUrl?: string }) => Promise<void> })
-        .updateProfile?.({ avatarUrl: url });
+      await updateProfile({
+        displayName: profileDisplayName || personalName.trim() || userEmail || undefined,
+        avatarUrl: url,
+      });
       setAvatarUrl(url);
       hapticSuccess();
       toast.success(t("settings.avatarSaved"));
     } catch (err) {
       console.error("Avatar upload failed:", err);
+      toast.error(t("settings.avatarUploadFailed"));
     } finally {
       setUploadingAvatar(false);
     }
@@ -1041,7 +1102,7 @@ export default function SettingsPage() {
     if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
   }, [isTauri]);
   const [themeMode, applyThemeMode] = useThemeMode();
-  type SubPanel = "workspace" | "team" | "integrations" | "ai" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
+  type SubPanel = "workspace" | "personal" | "team" | "integrations" | "ai" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
   const assistantPermissionMode = !assistantConfig.enabled
     ? "off"
@@ -2371,6 +2432,14 @@ export default function SettingsPage() {
           card
         />
         <SCategoryHeader>{t("settings.settingsCategoryPeople")}</SCategoryHeader>
+        <SRow
+          icon={<UserCog className="h-4 w-4 text-foreground" />}
+          title={t("settings.personalSettings")}
+          meta={personalName || userEmail || t("settings.notSet")}
+          onClick={() => setSubPanel("personal")}
+          right={personalBirthday ? <SBadge tone="outline">{personalBirthday}</SBadge> : undefined}
+          card
+        />
         {isAdmin && (
           <SRow
             icon={<Users className="h-4 w-4 text-foreground" />}
@@ -2480,6 +2549,88 @@ export default function SettingsPage() {
           card
         />
       </div>
+
+      {/* ─── Personal Sub-Panel ─────────────────────────────── */}
+      <DynamicUIElement open={subPanel === "personal"} onOpenChange={(open) => !open && setSubPanel(null)}>
+        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
+          <DynamicUIElementHeader>
+            <DynamicUIElementTitle mobileTitle={t("settings.personalSettings")}>{t("settings.personalSettings")}</DynamicUIElementTitle>
+            <DynamicUIElementDescription className="hidden">{t("settings.personalSettingsMeta")}</DynamicUIElementDescription>
+          </DynamicUIElementHeader>
+          <div className="border-b border-border px-[18px] py-4">
+            <div className="flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={t("settings.avatar")} className="h-14 w-14 rounded-[0.3rem] border border-border bg-muted object-cover" />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-[0.3rem] border border-border bg-muted text-lg font-semibold text-muted-foreground">
+                    {(personalName || userEmail)?.[0]?.toUpperCase() ?? "?"}
+                  </div>
+                )}
+                <label
+                  className="absolute -bottom-1 -right-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-[0.3rem] border border-border bg-background"
+                  title={t("settings.changeAvatar")}
+                >
+                  {uploadingAvatar ? <Spinner size={12} className="text-muted-foreground" /> : <Camera className="h-3 w-3 text-muted-foreground" />}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                </label>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{personalName || t("settings.yourName")}</p>
+                <p className="truncate font-mono text-[11px] text-muted-foreground">{userEmail || t("settings.emailFallback")}</p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 px-[18px] py-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="personal-name" className="text-xs font-medium text-muted-foreground">
+                {t("settings.personalName")}
+              </Label>
+              <Input
+                id="personal-name"
+                value={personalName}
+                onChange={(e) => setPersonalName(e.target.value)}
+                placeholder={t("settings.personalNamePlaceholder")}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="personal-birthday" className="text-xs font-medium text-muted-foreground">
+                {t("settings.birthday")}
+              </Label>
+              <Input
+                id="personal-birthday"
+                type="date"
+                value={personalBirthday}
+                onChange={(e) => setPersonalBirthday(e.target.value)}
+                className="h-10"
+              />
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+                {t("settings.personalBirthdayNote")}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="personal-email" className="text-xs font-medium text-muted-foreground">
+                {t("settings.personalEmail")}
+              </Label>
+              <Input
+                id="personal-email"
+                value={userEmail || t("settings.emailFallback")}
+                disabled
+                className="h-10 font-mono text-xs"
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={handleSavePersonalSettings}
+              disabled={savingPersonal || !personalName.trim()}
+              className="h-10 w-full"
+            >
+              {savingPersonal ? <Spinner size={14} /> : t("settings.savePersonal")}
+            </Button>
+          </div>
+        </DynamicUIElementContent>
+      </DynamicUIElement>
 
       {/* ─── Workspace Sub-Panel ─────────────────────────────── */}
       <DynamicUIElement open={subPanel === "workspace"} onOpenChange={(open) => !open && setSubPanel(null)}>
@@ -3084,7 +3235,7 @@ export default function SettingsPage() {
             {isAdmin && orgDevices.length > 0 && (
               <>
                 <SGroupHeader label={t("settings.storeDevices")} />
-                {orgDevices.map((device: { id: { toString(): string }; deviceId: string; name: string; enabled: boolean; lastSeenAt: { toDate?: () => Date } }, i: number) => (
+                {orgDevices.map((device, i) => (
                   <SRow
                     key={device.id.toString()}
                     icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Package, Plus, Search, TrendingDown, ArrowUpDown, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle, History, RefreshCw, Sparkles, ShoppingCart, AlertCircle, ArrowUp, ArrowDown, Minus as MinusIcon, Download, FileText, Truck, Boxes, Scale, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRef, useState, useMemo } from "react";
+import { Package, Plus, Search, ArrowUpDown, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle, History, RefreshCw, Sparkles, ShoppingCart, AlertCircle, ArrowUp, ArrowDown, Minus as MinusIcon, Download, FileText, Truck, Boxes, Scale, ChevronLeft, ChevronRight, Upload, X, ShoppingBag } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -44,7 +45,7 @@ import {
   updateInventoryItem,
   deleteInventoryItem,
 } from "@/lib/spacetimedb/actions";
-import type { InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
+import type { InventoryExpirationBatch, InventoryItem, InventoryTransaction, InventoryStatus } from "@/lib/types";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
@@ -61,8 +62,11 @@ import { cn } from "@/lib/utils";
 import { PageTabs } from "@/components/page-tabs";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { INVENTORY_CONTENT_UNITS, formatInventoryContentAmount } from "@/lib/inventory-units";
+import { useUploadThing } from "@/lib/uploadthing";
 
 type StatusCfg = { label: string; icon: React.ElementType; color: string };
+type StockAdjustMode = "add" | "remove" | "set";
+type StockPhoto = { url: string; type: string };
 
 function useStatusConfig(t: (path: string) => string): Record<InventoryStatus, StatusCfg> {
   return {
@@ -72,11 +76,39 @@ function useStatusConfig(t: (path: string) => string): Record<InventoryStatus, S
   };
 }
 
+function normalizeExpirationBatches(batches: InventoryExpirationBatch[] | undefined): InventoryExpirationBatch[] {
+  const totals = new Map<string, number>();
+  for (const batch of batches ?? []) {
+    const expiresOn = String(batch.expiresOn ?? "").trim();
+    const quantity = Number(batch.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+    totals.set(expiresOn, (totals.get(expiresOn) ?? 0) + quantity);
+  }
+  return [...totals.entries()]
+    .sort(([a], [b]) => {
+      if (!a && !b) return 0;
+      if (!a) return 1;
+      if (!b) return -1;
+      return a.localeCompare(b);
+    })
+    .map(([expiresOn, quantity]) => ({ expiresOn: expiresOn || null, quantity }));
+}
+
+function expirationBatchTotal(batches: InventoryExpirationBatch[] | undefined): number {
+  return normalizeExpirationBatches(batches).reduce((sum, batch) => sum + batch.quantity, 0);
+}
+
+function formatBatchQuantity(quantity: number): string {
+  if (Number.isInteger(quantity)) return String(quantity);
+  return String(Number(quantity.toFixed(2)));
+}
+
 export default function InventoryPage() {
   const { organizationId } = usePermissions();
   const t = useT();
   const { format } = useCurrency();
   const statusConfig = useStatusConfig(t);
+  const stockPhotoInputRef = useRef<HTMLInputElement>(null);
   // Data via SpacetimeDB migration hook (backed by Supabase; swap useTable internals once generated client is ready)
   const { items, transactions, refreshing, userId, refresh: _refresh } = useInventory(organizationId);
 
@@ -91,6 +123,14 @@ export default function InventoryPage() {
     }
     return [...names].sort((a, b) => a.localeCompare(b)).map((n) => ({ value: n, label: n }));
   }, [supplierRows, organizationId]);
+  const categoryOptions = useMemo(() => {
+    const names = new Set<string>();
+    for (const item of items) {
+      const name = item.category?.trim();
+      if (name) names.add(name);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b)).map((n) => ({ value: n, label: n }));
+  }, [items]);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -101,11 +141,39 @@ export default function InventoryPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<InventoryItem>>({});
   const [dialogStep, setDialogStep] = useState(0);
+  const [stockDialogOpen, setStockDialogOpen] = useState(false);
+  const [stockItem, setStockItem] = useState<InventoryItem | null>(null);
+  const [stockMode, setStockMode] = useState<StockAdjustMode>("add");
+  const [stockAmount, setStockAmount] = useState("");
+  const [stockBatchExpiresOn, setStockBatchExpiresOn] = useState("");
+  const [stockNote, setStockNote] = useState("");
+  const [stockPhotos, setStockPhotos] = useState<StockPhoto[]>([]);
+  const [stockSaving, setStockSaving] = useState(false);
+  const { startUpload: startStockPhotoUpload, isUploading: uploadingStockPhoto } = useUploadThing("taskEvidence", {
+    onClientUploadComplete: (res) => {
+      const uploaded = (res ?? [])
+        .map((file) => ({
+          url: (file?.serverData?.url as string | undefined) ?? file?.ufsUrl,
+          type: (file?.serverData?.type as string | undefined) ?? file?.type ?? "image",
+        }))
+        .filter((file): file is StockPhoto => !!file.url);
+      if (uploaded.length > 0) {
+        setStockPhotos((prev) => {
+          const seen = new Set(prev.map((photo) => photo.url));
+          const merged = [...prev];
+          for (const photo of uploaded) {
+            if (!seen.has(photo.url)) merged.push(photo);
+          }
+          return merged.slice(0, 10);
+        });
+      }
+    },
+    onUploadError: (err) => {
+      toast.error(err.message || t("inventory.quickStock.uploadFailed"));
+    },
+  });
 
-  const CATEGORIES = [
-    "All",
-    ...Array.from(new Set(items.map((i) => i.category))),
-  ];
+  const CATEGORIES = ["All", ...categoryOptions.map((option) => option.value)];
 
   const filtered = items
     .filter(
@@ -141,16 +209,120 @@ export default function InventoryPage() {
       maxStock: 100,
       currentStock: 0,
       unitContentUnit: "g",
+      retailEnabled: false,
+      retailPrice: undefined,
+      retailDescription: "",
+      retailImageUrl: "",
+      retailUsageQty: 1,
+      expirationBatches: [],
+    });
+    setDialogStep(0);
+    setDialogOpen(true);
+  };
+
+  const openEditDetails = (item: InventoryItem) => {
+    setEditItem(item);
+    setForm({
+      ...item,
+      unitContentUnit: item.unitContentUnit ?? "g",
+      retailEnabled: item.retailEnabled ?? false,
+      retailPrice: item.retailPrice ?? undefined,
+      retailDescription: item.retailDescription ?? item.description ?? "",
+      retailImageUrl: item.retailImageUrl ?? "",
+      retailUsageQty: item.retailUsageQty ?? 1,
+      expirationBatches: item.expirationBatches && item.expirationBatches.length > 0
+        ? item.expirationBatches
+        : item.currentStock > 0
+          ? [{ expiresOn: null, quantity: item.currentStock }]
+          : [],
     });
     setDialogStep(0);
     setDialogOpen(true);
   };
 
   const openEdit = (item: InventoryItem) => {
-    setEditItem(item);
-    setForm({ ...item, unitContentUnit: item.unitContentUnit ?? "g" });
-    setDialogStep(0);
-    setDialogOpen(true);
+    setStockItem(item);
+    setStockMode("add");
+    setStockAmount("");
+    setStockBatchExpiresOn("");
+    setStockNote("");
+    setStockPhotos([]);
+    setStockDialogOpen(true);
+  };
+
+  const stockDeltaValue = Number(stockAmount);
+  const stockPreview =
+    stockItem && stockAmount.trim() !== "" && Number.isFinite(stockDeltaValue)
+      ? stockMode === "add"
+        ? stockItem.currentStock + stockDeltaValue
+        : stockMode === "remove"
+          ? stockItem.currentStock - stockDeltaValue
+          : stockDeltaValue
+      : null;
+
+  const handleStockAdjust = async () => {
+    if (!stockItem) return;
+    const note = stockNote.trim();
+    if (!note) {
+      toast.error(t("inventory.quickStock.noteRequired"));
+      return;
+    }
+    const amount = Number(stockAmount);
+    if (!Number.isFinite(amount) || amount < 0 || (stockMode !== "set" && amount <= 0)) {
+      toast.error(t("inventory.quickStock.invalidQuantity"));
+      return;
+    }
+    const nextStock =
+      stockMode === "add"
+        ? stockItem.currentStock + amount
+        : stockMode === "remove"
+          ? stockItem.currentStock - amount
+          : amount;
+
+    if (nextStock < 0) {
+      toast.error(t("inventory.quickStock.negativeStock"));
+      return;
+    }
+
+    setStockSaving(true);
+    try {
+      await updateInventoryItem(stockItem.id, {
+        currentStock: nextStock,
+        lastRestocked: stockMode === "add" ? new Date().toISOString().slice(0, 10) : stockItem.lastRestocked,
+        batchExpirationDate: stockBatchExpiresOn.trim() || null,
+        stockNote: note,
+        evidenceUrls: stockPhotos.length > 0 ? JSON.stringify(stockPhotos) : undefined,
+      });
+      hapticSuccess();
+      toast.success(t("inventory.toast.stockUpdated"));
+      setStockDialogOpen(false);
+      setStockItem(null);
+      setStockAmount("");
+      setStockBatchExpiresOn("");
+      setStockNote("");
+      setStockPhotos([]);
+    } catch (err) {
+      console.error(err);
+      toast.error(t("inventory.toast.saveFailed"));
+    } finally {
+      setStockSaving(false);
+    }
+  };
+
+  const handleStockPhotoFiles = async (files: FileList | null) => {
+    const picked = Array.from(files ?? [])
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, Math.max(0, 10 - stockPhotos.length));
+    if (picked.length === 0) {
+      toast.error(t("inventory.quickStock.uploadImagesOnly"));
+      return;
+    }
+    try {
+      await startStockPhotoUpload(picked);
+    } catch (err) {
+      console.error(err);
+      toast.error(t("inventory.quickStock.uploadFailed"));
+    }
   };
 
   const handleSave = async () => {
@@ -158,15 +330,55 @@ export default function InventoryPage() {
       toast.error(t("inventory.toast.nameRequired"));
       return;
     }
+    if (form.retailEnabled) {
+      const price = Number(form.retailPrice);
+      const usageQty = Number(form.retailUsageQty ?? 1);
+      if (!Number.isFinite(price) || price <= 0) {
+        toast.error(t("inventory.retail.invalidPrice"));
+        setDialogStep(4);
+        return;
+      }
+      if (!Number.isFinite(usageQty) || usageQty <= 0) {
+        toast.error(t("inventory.retail.invalidUsage"));
+        setDialogStep(4);
+        return;
+      }
+    }
+
+    const retailPayload = {
+      retailEnabled: !!form.retailEnabled,
+      retailPrice: form.retailEnabled ? form.retailPrice ?? null : null,
+      retailDescription: form.retailEnabled
+        ? (form.retailDescription?.trim() || form.description?.trim() || null)
+        : null,
+      retailImageUrl: form.retailEnabled ? (form.retailImageUrl?.trim() || null) : null,
+      retailUsageQty: form.retailEnabled ? form.retailUsageQty ?? 1 : null,
+    };
+    const normalizedBatches = normalizeExpirationBatches(form.expirationBatches);
+    const manualStockValue = Number(form.currentStock ?? 0);
+    const manualStock = Number.isFinite(manualStockValue) ? manualStockValue : 0;
+    const savedCurrentStock = normalizedBatches.length > 0 ? expirationBatchTotal(normalizedBatches) : manualStock;
+    const expirationBatches =
+      normalizedBatches.length > 0
+        ? normalizedBatches
+        : Number.isFinite(savedCurrentStock) && savedCurrentStock > 0
+          ? [{ expiresOn: null, quantity: savedCurrentStock }]
+          : [];
+
     setSaving(true);
     try {
       if (editItem) {
-        await updateInventoryItem(editItem.id, form);
+        await updateInventoryItem(editItem.id, {
+          ...form,
+          currentStock: savedCurrentStock,
+          expirationBatches,
+          ...retailPayload,
+        });
       } else {
         await addInventoryItem({
           name: form.name ?? "",
           category: form.category ?? "Other",
-          currentStock: form.currentStock ?? 0,
+          currentStock: savedCurrentStock,
           minStock: form.minStock ?? 10,
           maxStock: form.maxStock ?? 100,
           unit: form.unit ?? "units",
@@ -178,6 +390,8 @@ export default function InventoryPage() {
           description: form.description?.trim() ? form.description.trim() : null,
           unitContentAmount: form.unitContentAmount ?? null,
           unitContentUnit: form.unitContentUnit ?? null,
+          expirationBatches,
+          ...retailPayload,
         });
       }
       hapticSuccess();
@@ -205,11 +419,19 @@ export default function InventoryPage() {
   const lowStockCount = items.filter((i) => i.status === "low_stock").length;
   const outCount      = items.filter((i) => i.status === "out_of_stock").length;
   const totalValue    = items.reduce((s, i) => s + i.currentStock * i.costPerUnit, 0);
+  const retailLinkedCount = items.filter((item) => item.retailEnabled === true).length;
+  const stockOnlyCount = Math.max(0, items.length - retailLinkedCount);
+  const retailUsageNumber = Number(form.retailUsageQty ?? 1);
+  const retailCostPreview =
+    Number.isFinite(retailUsageNumber) && retailUsageNumber > 0
+      ? Math.round(Number(form.costPerUnit ?? 0) * retailUsageNumber * 100) / 100
+      : null;
   const inventoryDialogSteps = [
     { label: t("inventory.dialog.steps.identity"), icon: FileText },
     { label: t("inventory.dialog.steps.supplier"), icon: Truck },
     { label: t("inventory.dialog.steps.stock"), icon: Boxes },
     { label: t("inventory.dialog.steps.content"), icon: Scale },
+    { label: t("inventory.dialog.steps.retail"), icon: ShoppingCart },
   ];
   const currentDialogStep = Math.min(dialogStep, inventoryDialogSteps.length - 1);
   const isLastDialogStep = currentDialogStep === inventoryDialogSteps.length - 1;
@@ -218,6 +440,50 @@ export default function InventoryPage() {
     form.unitContentAmount && form.unitsPerCase && form.unitContentUnit
       ? formatInventoryContentAmount(form.unitContentAmount * form.unitsPerCase, form.unitContentUnit)
       : "";
+  const formBatchRows = form.expirationBatches ?? [];
+  const formBatchTotal = expirationBatchTotal(formBatchRows);
+  const formManualStockValue = Number(form.currentStock ?? 0);
+  const formStockValue = formBatchRows.length > 0
+    ? formBatchTotal
+    : Number.isFinite(formManualStockValue) ? formManualStockValue : 0;
+  const unknownExpirationLabel = t("inventory.expiration.unknown");
+  const formatBatchDate = (value?: string | null) => value?.trim() || unknownExpirationLabel;
+  const formatExpirationBatchList = (item: InventoryItem) => {
+    const batches = normalizeExpirationBatches(item.expirationBatches);
+    const displayBatches =
+      batches.length > 0
+        ? batches
+        : item.currentStock > 0
+          ? [{ expiresOn: null, quantity: item.currentStock }]
+          : [];
+    if (displayBatches.length === 0) return "—";
+    return displayBatches
+      .map((batch) => `${formatBatchDate(batch.expiresOn)} * ${formatBatchQuantity(batch.quantity)}`)
+      .join(", ");
+  };
+  const updateExpirationBatch = (index: number, patch: Partial<InventoryExpirationBatch>) => {
+    setForm((current) => {
+      const next = [...(current.expirationBatches ?? [])];
+      next[index] = { ...(next[index] ?? { expiresOn: null, quantity: 0 }), ...patch };
+      return { ...current, expirationBatches: next, currentStock: expirationBatchTotal(next) };
+    });
+  };
+  const addExpirationBatch = () => {
+    setForm((current) => {
+      const existing = current.expirationBatches ?? [];
+      const seedQuantity = existing.length === 0 ? Number(current.currentStock ?? 0) : 0;
+      return {
+        ...current,
+        expirationBatches: [...existing, { expiresOn: null, quantity: seedQuantity > 0 ? seedQuantity : 0 }],
+      };
+    });
+  };
+  const removeExpirationBatch = (index: number) => {
+    setForm((current) => {
+      const next = (current.expirationBatches ?? []).filter((_, i) => i !== index);
+      return { ...current, expirationBatches: next, currentStock: next.length > 0 ? expirationBatchTotal(next) : current.currentStock };
+    });
+  };
 
   // Restock suggestions
   const restockSuggestions = useMemo(
@@ -249,7 +515,6 @@ export default function InventoryPage() {
         <PageTabs tabs={[
           { label: t("nav.inventory"), href: "/~/inventory" },
           { label: t("nav.suppliers"), href: "/~/suppliers" },
-          { label: t("nav.wasteLog"), href: "/~/inventory/waste" },
         ]} />
         {/* Summary cards */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -262,13 +527,10 @@ export default function InventoryPage() {
         <Tabs defaultValue="items">
           <TabsList>
             <TabsTrigger value="items" className="gap-2">
-              <Package className="h-3.5 w-3.5" /> {t("inventory.tabs.items")}
+              <Package className="h-3.5 w-3.5" /> {t("inventory.tabs.catalog")}
             </TabsTrigger>
             <TabsTrigger value="transactions" className="gap-2">
               <History className="h-3.5 w-3.5" /> {t("inventory.tabs.transactions")}
-            </TabsTrigger>
-            <TabsTrigger value="losses" className="gap-2">
-              <TrendingDown className="h-3.5 w-3.5" /> {t("inventory.tabs.losses")}
             </TabsTrigger>
             <TabsTrigger value="restock" className="gap-2">
               <Sparkles className="h-3.5 w-3.5" /> {t("inventory.tabs.restock")}
@@ -276,7 +538,47 @@ export default function InventoryPage() {
           </TabsList>
 
           {/* Items */}
-          <TabsContent value="items" className="mt-4">
+          <TabsContent value="items" className="mt-4 space-y-3">
+            <div className="grid gap-3 lg:grid-cols-[1.5fr_1fr]">
+              <Card>
+                <CardContent className="grid gap-3 p-3 sm:grid-cols-2">
+                  <div className="rounded-[0.3rem] border border-border bg-background p-3">
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="h-4 w-4 text-emerald-600" />
+                      <p className="text-sm font-semibold">{t("inventory.retail.retailTitle")}</p>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {t("inventory.retail.retailDescription")}
+                    </p>
+                  </div>
+                  <div className="rounded-[0.3rem] border border-border bg-muted/40 p-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-semibold">{t("inventory.retail.inventoryTitle")}</p>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {t("inventory.retail.inventoryDescription")}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="grid h-full grid-cols-2 gap-3 p-3">
+                  <div className="rounded-[0.3rem] border border-border p-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("inventory.retail.retailCount")}
+                    </p>
+                    <p className="mt-1 font-mono text-2xl font-semibold">{retailLinkedCount}</p>
+                  </div>
+                  <div className="rounded-[0.3rem] border border-border p-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("inventory.retail.stockOnlyCount")}
+                    </p>
+                    <p className="mt-1 font-mono text-2xl font-semibold">{stockOnlyCount}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -322,6 +624,7 @@ export default function InventoryPage() {
                         : 0;
                       const cfg = statusConfig[item.status];
                       const StatusIcon = cfg.icon;
+                      const isRetail = item.retailEnabled === true;
                       return (
                         <div key={item.id} className="rounded-[0.3rem] border border-border bg-background p-3">
                           <div className="flex items-start justify-between gap-3">
@@ -329,6 +632,9 @@ export default function InventoryPage() {
                               <p className="truncate text-sm font-semibold text-foreground">{item.name}</p>
                               <div className="mt-1 flex flex-wrap items-center gap-1.5">
                                 <Badge variant="outline" className="text-[11px] font-normal">{item.category}</Badge>
+                                <Badge variant={isRetail ? "default" : "secondary"} className="text-[11px] font-normal">
+                                  {isRetail ? t("inventory.retail.retailBadge") : t("inventory.retail.inventoryBadge")}
+                                </Badge>
                                 <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${cfg.color}`}>
                                   <StatusIcon className="h-3 w-3" />
                                   {cfg.label}
@@ -361,11 +667,19 @@ export default function InventoryPage() {
                               <p className="text-muted-foreground">{t("inventory.tableHeaders.unitContent")}</p>
                               <p className="mt-0.5 font-medium">{formatInventoryContentAmount(item.unitContentAmount, item.unitContentUnit) || "—"}</p>
                             </div>
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.retailPrice")}</p>
+                              <p className="mt-0.5 font-mono font-semibold">{isRetail && item.retailPrice ? format(item.retailPrice) : "—"}</p>
+                            </div>
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.expirationBatches")}</p>
+                              <p className="mt-0.5 font-medium">{formatExpirationBatchList(item)}</p>
+                            </div>
                           </div>
                           <div className="mt-3">
                             <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
                               <span>{t("inventory.tableHeaders.level")}</span>
-                              <span>{pct}% · {t("inventory.tableHeaders.lossRate")} {item.lossRate}%</span>
+                              <span>{pct}%</span>
                             </div>
                             <Progress
                               value={pct}
@@ -392,19 +706,20 @@ export default function InventoryPage() {
                         <TableHead>
                           <SortButton label={t("inventory.tableHeaders.item")} k="name" current={sortKey} dir={sortDir} onClick={toggleSort} />
                         </TableHead>
+                        <TableHead>{t("inventory.tableHeaders.catalogType")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.category")}</TableHead>
                         <TableHead>
                           <SortButton label={t("inventory.tableHeaders.stock")} k="currentStock" current={sortKey} dir={sortDir} onClick={toggleSort} />
                         </TableHead>
                         <TableHead>{t("inventory.tableHeaders.level")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.retailPrice")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.expirationBatches")}</TableHead>
                         <TableHead>
                           <SortButton label={t("inventory.tableHeaders.costPerUnit")} k="costPerUnit" current={sortKey} dir={sortDir} onClick={toggleSort} />
                         </TableHead>
-                        <TableHead>{t("inventory.tableHeaders.unitContent")}</TableHead>
-                        <TableHead>{t("inventory.tableHeaders.lossRate")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.status")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.supplier")}</TableHead>
-                        <TableHead className="w-20" />
+                        <TableHead className="w-28" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -414,9 +729,15 @@ export default function InventoryPage() {
                           : 0;
                         const cfg = statusConfig[item.status];
                         const StatusIcon = cfg.icon;
+                        const isRetail = item.retailEnabled === true;
                         return (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell>
+                              <Badge variant={isRetail ? "default" : "secondary"} className="text-xs font-normal">
+                                {isRetail ? t("inventory.retail.retailBadge") : t("inventory.retail.inventoryBadge")}
+                              </Badge>
+                            </TableCell>
                             <TableCell>
                               <Badge variant="outline" className="text-xs font-normal">
                                 {item.category}
@@ -441,17 +762,15 @@ export default function InventoryPage() {
                               />
                               <span className="text-[10px] text-muted-foreground">{pct}%</span>
                             </TableCell>
-                            <TableCell>{format(item.costPerUnit)}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {formatInventoryContentAmount(item.unitContentAmount, item.unitContentUnit) || "—"}
+                            <TableCell className="font-medium">
+                              {isRetail && item.retailPrice ? format(item.retailPrice) : <span className="text-muted-foreground">—</span>}
                             </TableCell>
-                            <TableCell>
-                              <span
-                                className={item.lossRate > 8 ? "text-rose-600 font-medium" : "text-muted-foreground"}
-                              >
-                                {item.lossRate}%
+                            <TableCell className="text-sm">
+                              <span className="block max-w-56 whitespace-normal leading-snug">
+                                {formatExpirationBatchList(item)}
                               </span>
                             </TableCell>
+                            <TableCell>{format(item.costPerUnit)}</TableCell>
                             <TableCell>
                               <div className={`inline-flex items-center gap-1.5 text-xs font-medium ${cfg.color}`}>
                                 <StatusIcon className="h-3.5 w-3.5" />
@@ -486,7 +805,7 @@ export default function InventoryPage() {
                       })}
                       {filtered.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center text-muted-foreground py-10">
+                          <TableCell colSpan={11} className="text-center text-muted-foreground py-10">
                             {t("inventory.noItems")}
                           </TableCell>
                         </TableRow>
@@ -550,8 +869,28 @@ export default function InventoryPage() {
                               <p className="text-muted-foreground">{t("inventory.tableHeaders.operator")}</p>
                               <p className="mt-0.5 truncate font-medium">{tx.operatorName || t("inventory.transactions.systemOperator")}</p>
                             </div>
+                            <div className="rounded-[0.3rem] bg-muted p-2">
+                              <p className="text-muted-foreground">{t("inventory.tableHeaders.expirationBatches")}</p>
+                              <p className="mt-0.5 font-medium">{formatBatchDate(tx.batchExpirationDate)}</p>
+                            </div>
                           </div>
                           {tx.note && <p className="mt-3 text-xs text-muted-foreground">{tx.note}</p>}
+                          {tx.evidenceUrls && tx.evidenceUrls.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {tx.evidenceUrls.map((photo) => (
+                                <a
+                                  key={photo.url}
+                                  href={photo.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="block h-12 w-12 overflow-hidden rounded-[0.3rem] border border-border bg-muted"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={photo.url} alt={t("inventory.quickStock.photoAlt")} className="h-full w-full object-cover" />
+                                </a>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                   </div>
@@ -563,6 +902,7 @@ export default function InventoryPage() {
                         <TableHead>{t("inventory.tableHeaders.item")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.type")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.quantity")}</TableHead>
+                        <TableHead>{t("inventory.tableHeaders.expirationBatches")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.operator")}</TableHead>
                         <TableHead>{t("inventory.tableHeaders.note")}</TableHead>
                       </TableRow>
@@ -596,11 +936,34 @@ export default function InventoryPage() {
                             </span>
                           </TableCell>
                           <TableCell className="text-sm">
+                            {formatBatchDate(tx.batchExpirationDate)}
+                          </TableCell>
+                          <TableCell className="text-sm">
                             {tx.operatorName
                               ? <span className="inline-flex items-center gap-1.5 font-medium">{tx.operatorName}</span>
                               : <span className="text-muted-foreground">{t("inventory.transactions.systemOperator")}</span>}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{tx.note}</TableCell>
+                          <TableCell className="min-w-64 text-sm text-muted-foreground">
+                            <div className="space-y-2">
+                              {tx.note ? <p>{tx.note}</p> : null}
+                              {tx.evidenceUrls && tx.evidenceUrls.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {tx.evidenceUrls.map((photo) => (
+                                    <a
+                                      key={photo.url}
+                                      href={photo.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="block h-10 w-10 overflow-hidden rounded-[0.3rem] border border-border bg-muted"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={photo.url} alt={t("inventory.quickStock.photoAlt")} className="h-full w-full object-cover" />
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -608,58 +971,6 @@ export default function InventoryPage() {
                   </div>
                   </>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Loss tracking */}
-          <TabsContent value="losses" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">{t("inventory.losses.title")}</CardTitle>
-                <CardDescription>
-                  {t("inventory.losses.description")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-2">
-                {items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">{t("inventory.losses.empty")}</p>
-                ) : (
-                  [...items]
-                    .sort((a, b) => b.lossRate - a.lossRate)
-                    .map((item) => (
-                      <div key={item.id} className="space-y-1.5">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">{item.name}</span>
-                          <span
-                            className={`font-semibold ${
-                              item.lossRate > 8
-                                ? "text-destructive"
-                                : item.lossRate > 4
-                                ? "text-amber-600"
-                                : "text-emerald-600"
-                            }`}
-                          >
-                            {item.lossRate}{t("inventory.losses.lossSuffix")}
-                          </span>
-                        </div>
-                        <Progress
-                          value={Math.min(100, item.lossRate * 5)}
-                          className={`h-2 ${
-                            item.lossRate > 8
-                              ? "[&>div]:bg-destructive"
-                              : item.lossRate > 4
-                              ? "[&>div]:bg-amber-500"
-                              : "[&>div]:bg-emerald-500"
-                          }`}
-                        />
-                      </div>
-                    ))
-                )}
-                <Separator className="my-2" />
-                <p className="text-xs text-muted-foreground">
-                  {t("inventory.losses.footnote")}
-                </p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -770,6 +1081,204 @@ export default function InventoryPage() {
           </TabsContent>
         </Tabs>
 
+        {/* Quick stock adjustment */}
+        <DynamicUIElement
+          open={stockDialogOpen}
+          onOpenChange={(open) => {
+            setStockDialogOpen(open);
+            if (!open) {
+              setStockItem(null);
+              setStockAmount("");
+              setStockBatchExpiresOn("");
+              setStockNote("");
+              setStockPhotos([]);
+              setStockSaving(false);
+            }
+          }}
+        >
+          <DynamicUIElementContent className="max-w-md">
+            <DynamicUIElementHeader>
+              <DynamicUIElementTitle>{t("inventory.quickStock.title")}</DynamicUIElementTitle>
+              <DynamicUIElementDescription>
+                {stockItem
+                  ? t("inventory.quickStock.description").replace("{item}", stockItem.name)
+                  : t("inventory.quickStock.description").replace("{item}", "")}
+              </DynamicUIElementDescription>
+            </DynamicUIElementHeader>
+
+            {stockItem && (
+              <div className="space-y-4 py-1">
+                <div className="rounded-[0.3rem] border border-border bg-muted/30 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t("inventory.quickStock.currentStock")}
+                  </p>
+                  <div className="mt-1 flex items-end justify-between gap-3">
+                    <p className="font-mono text-3xl font-semibold tabular-nums text-foreground">
+                      {stockItem.currentStock}
+                    </p>
+                    <p className="pb-1 text-sm text-muted-foreground">{stockItem.unit}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1 rounded-[0.3rem] border border-border bg-muted p-1">
+                  {([
+                    ["add", t("inventory.quickStock.addMode"), Plus],
+                    ["remove", t("inventory.quickStock.removeMode"), MinusIcon],
+                    ["set", t("inventory.quickStock.setMode"), ArrowUpDown],
+                  ] as const).map(([mode, label, Icon]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        setStockMode(mode);
+                        setStockAmount("");
+                      }}
+                      className={cn(
+                        "inline-flex h-8 items-center justify-center gap-1 rounded-[0.3rem] px-2 text-[12px] font-medium transition-colors",
+                        stockMode === mode
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>
+                    {stockMode === "add"
+                      ? t("inventory.quickStock.addLabel")
+                      : stockMode === "remove"
+                        ? t("inventory.quickStock.removeLabel")
+                        : t("inventory.quickStock.setLabel")}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={stockAmount}
+                      onChange={(e) => setStockAmount(e.target.value)}
+                      placeholder={t("inventory.quickStock.quantityPlaceholder")}
+                      className="font-mono text-base tabular-nums"
+                    />
+                    <span className="min-w-12 text-sm text-muted-foreground">{stockItem.unit}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.quickStock.batchExpirationDateLabel")}</Label>
+                  <Input
+                    type="date"
+                    value={stockBatchExpiresOn}
+                    onChange={(e) => setStockBatchExpiresOn(e.target.value)}
+                  />
+                  <p className="text-[11.5px] text-muted-foreground">{t("inventory.quickStock.batchExpirationDateHint")}</p>
+                </div>
+
+                <div className="rounded-[0.3rem] border border-border bg-muted/30 p-3 text-xs">
+                  <p className="font-medium text-foreground">{t("inventory.expiration.batches")}</p>
+                  <p className="mt-1 leading-relaxed text-muted-foreground">
+                    {stockItem ? formatExpirationBatchList(stockItem) : "—"}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>{t("inventory.quickStock.noteLabel")}</Label>
+                  <Textarea
+                    rows={3}
+                    value={stockNote}
+                    onChange={(e) => setStockNote(e.target.value)}
+                    placeholder={t("inventory.quickStock.notePlaceholder")}
+                    className="resize-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>{t("inventory.quickStock.photosLabel")}</Label>
+                    <button
+                      type="button"
+                      onClick={() => stockPhotoInputRef.current?.click()}
+                      disabled={uploadingStockPhoto || stockPhotos.length >= 10}
+                      className="inline-flex h-7 items-center gap-1.5 rounded-[0.3rem] border border-border px-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    >
+                      {uploadingStockPhoto ? <Spinner size={12} /> : <Upload className="h-3 w-3" />}
+                      {t("inventory.quickStock.uploadPhoto")}
+                    </button>
+                    <input
+                      ref={stockPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(event) => {
+                        void handleStockPhotoFiles(event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                  </div>
+                  {stockPhotos.length > 0 ? (
+                    <div className="grid grid-cols-5 gap-2">
+                      {stockPhotos.map((photo) => (
+                        <div key={photo.url} className="relative aspect-square overflow-hidden rounded-[0.3rem] border border-border bg-muted">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={photo.url} alt={t("inventory.quickStock.photoAlt")} className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setStockPhotos((prev) => prev.filter((item) => item.url !== photo.url))}
+                            className="absolute right-1 top-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                            title={t("inventory.quickStock.removePhoto")}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11.5px] text-muted-foreground">{t("inventory.quickStock.photosHint")}</p>
+                  )}
+                </div>
+
+                <div className="rounded-[0.3rem] border border-border bg-background p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">{t("inventory.quickStock.newStock")}</span>
+                    <span className={cn(
+                      "font-mono text-lg font-semibold tabular-nums",
+                      stockPreview != null && stockPreview < 0 ? "text-destructive" : "text-foreground",
+                    )}>
+                      {stockPreview == null ? "—" : stockPreview} {stockItem.unit}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => {
+                      openEditDetails(stockItem);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    {t("inventory.quickStock.editDetails")}
+                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" type="button" onClick={() => setStockDialogOpen(false)}>
+                      {t("inventory.dialog.cancel")}
+                    </Button>
+                    <Button type="button" onClick={handleStockAdjust} disabled={stockSaving || uploadingStockPhoto}>
+                      {stockSaving ? <><Spinner size={16} />{t("inventory.quickStock.saving")}</> : t("inventory.quickStock.save")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DynamicUIElementContent>
+        </DynamicUIElement>
+
         {/* Add/Edit DynamicUIElement */}
         <DynamicUIElement
           open={dialogOpen}
@@ -825,10 +1334,14 @@ export default function InventoryPage() {
                       </div>
                       <div className="space-y-1.5">
                         <Label>{t("inventory.dialog.category")}</Label>
-                        <Input
+                        <Combobox
+                          allowCustom
+                          options={categoryOptions}
                           value={form.category ?? ""}
-                          onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                          onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}
                           placeholder={t("inventory.dialog.categoryPlaceholder")}
+                          searchPlaceholder={t("inventory.dialog.categoryPlaceholder")}
+                          className="w-full"
                         />
                       </div>
                     </div>
@@ -896,7 +1409,8 @@ export default function InventoryPage() {
                         <Label>{t("inventory.dialog.currentStock")}</Label>
                         <Input
                           type="number"
-                          value={form.currentStock ?? 0}
+                          value={formStockValue}
+                          disabled={formBatchRows.length > 0}
                           onChange={(e) => setForm((f) => ({ ...f, currentStock: Number(e.target.value) }))}
                         />
                       </div>
@@ -943,6 +1457,59 @@ export default function InventoryPage() {
                         />
                       </div>
                     </div>
+                    <div className="rounded-[0.3rem] border border-border bg-background p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <Label>{t("inventory.expiration.batches")}</Label>
+                          <p className="mt-1 text-[11.5px] text-muted-foreground">{t("inventory.expiration.empty")}</p>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={addExpirationBatch}>
+                          <Plus className="h-3.5 w-3.5" />
+                          {t("inventory.expiration.addBatch")}
+                        </Button>
+                      </div>
+                      {formBatchRows.length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          {formBatchRows.map((batch, index) => (
+                            <div key={index} className="grid grid-cols-[1fr_110px_32px] items-end gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[11px] text-muted-foreground">{t("inventory.expiration.date")}</Label>
+                                <Input
+                                  type="date"
+                                  value={batch.expiresOn ?? ""}
+                                  onChange={(e) => updateExpirationBatch(index, { expiresOn: e.target.value || null })}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[11px] text-muted-foreground">{t("inventory.expiration.quantity")}</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={batch.quantity}
+                                  onChange={(e) => updateExpirationBatch(index, { quantity: Number(e.target.value) })}
+                                  className="font-mono tabular-nums"
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeExpirationBatch(index)}
+                                title={t("inventory.expiration.removeBatch")}
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between rounded-[0.3rem] bg-muted px-3 py-2 text-xs">
+                            <span className="text-muted-foreground">{t("inventory.expiration.total")}</span>
+                            <span className="font-mono font-semibold">{formatBatchQuantity(formBatchTotal)} {form.unit ?? ""}</span>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 )}
 
@@ -984,15 +1551,6 @@ export default function InventoryPage() {
                         </Select>
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>{t("inventory.dialog.lossRate")}</Label>
-                      <Input
-                        type="number"
-                        step="0.1"
-                        value={form.lossRate ?? 0}
-                        onChange={(e) => setForm((f) => ({ ...f, lossRate: Number(e.target.value) }))}
-                      />
-                    </div>
                     <div className="rounded-[0.3rem] border border-border bg-background p-3 text-sm">
                       <p className="font-medium">{t("inventory.dialog.contentPreview")}</p>
                       <p className="mt-1 text-muted-foreground">
@@ -1010,6 +1568,119 @@ export default function InventoryPage() {
                         </p>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {currentDialogStep === 4 && (
+                  <div className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[0.3rem] border border-border bg-background p-3">
+                        <div className="flex items-center gap-2">
+                          <ShoppingBag className="h-4 w-4 text-emerald-600" />
+                          <p className="text-sm font-semibold">{t("inventory.retail.retailTitle")}</p>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {t("inventory.retail.retailDescription")}
+                        </p>
+                      </div>
+                      <div className="rounded-[0.3rem] border border-border bg-background p-3">
+                        <div className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <p className="text-sm font-semibold">{t("inventory.retail.inventoryTitle")}</p>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          {t("inventory.retail.inventoryDescription")}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 rounded-[0.3rem] border border-border bg-background p-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{t("inventory.retail.retailBadge")}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{t("inventory.retail.linkHint")}</p>
+                      </div>
+                      <Switch
+                        checked={!!form.retailEnabled}
+                        onCheckedChange={(checked) =>
+                          setForm((f) => ({
+                            ...f,
+                            retailEnabled: checked,
+                            retailUsageQty: checked ? f.retailUsageQty ?? 1 : f.retailUsageQty,
+                            retailDescription: checked ? f.retailDescription ?? f.description ?? "" : f.retailDescription,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    {form.retailEnabled && (
+                      <>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label>{t("inventory.retail.priceLabel")}</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={form.retailPrice ?? ""}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  retailPrice: e.target.value === "" ? undefined : Number(e.target.value),
+                                }))
+                              }
+                              placeholder={t("inventory.retail.pricePlaceholder")}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>{t("inventory.retail.usageLabel")}</Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={form.retailUsageQty ?? 1}
+                                onChange={(e) =>
+                                  setForm((f) => ({
+                                    ...f,
+                                    retailUsageQty: e.target.value === "" ? undefined : Number(e.target.value),
+                                  }))
+                                }
+                              />
+                              <span className="min-w-12 text-sm text-muted-foreground">{form.unit || "unit"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label>{t("inventory.retail.descriptionLabel")}</Label>
+                          <Textarea
+                            rows={3}
+                            value={form.retailDescription ?? ""}
+                            onChange={(e) => setForm((f) => ({ ...f, retailDescription: e.target.value }))}
+                            placeholder={t("inventory.retail.descriptionPlaceholder")}
+                            className="resize-none"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label>{t("inventory.retail.imageUrlLabel")}</Label>
+                          <Input
+                            value={form.retailImageUrl ?? ""}
+                            onChange={(e) => setForm((f) => ({ ...f, retailImageUrl: e.target.value }))}
+                            placeholder={t("inventory.retail.imageUrlPlaceholder")}
+                          />
+                        </div>
+
+                        <div className="rounded-[0.3rem] border border-border bg-background p-3 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-muted-foreground">{t("inventory.retail.costPreview")}</span>
+                            <span className="font-mono font-semibold">
+                              {retailCostPreview == null ? "—" : format(retailCostPreview)}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

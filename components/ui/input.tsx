@@ -212,7 +212,7 @@ function DatePickerContent({ current, today, onSelect, onClose }: {
   }, [today])
 
   return (
-    <div className="p-3">
+    <div className="p-3 min-w-xs">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -365,7 +365,7 @@ function TimePickerContent({ current, onSelect, onClose }: {
   const AMPM: ("AM" | "PM")[] = useMemo(() => ["AM", "PM"], [])
 
   return (
-    <div className="p-3">
+    <div className="p-3 min-w-xs">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

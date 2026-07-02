@@ -69,14 +69,155 @@ function requiredText(value: unknown, field: string): string {
   return text;
 }
 
-function jsonArrayOrNull(value: unknown): string | null {
-  if (value == null) return null;
+function jsonArrayString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return JSON.stringify(value);
+  return "[]";
+}
+
+function jsonArrayOrUndefined(value: unknown): string | undefined {
+  if (value == null) return undefined;
   if (typeof value === "string") {
     const text = value.trim();
-    return text ? text : null;
+    return text ? text : undefined;
   }
-  if (Array.isArray(value)) return JSON.stringify(value);
-  return null;
+  if (Array.isArray(value)) return value.length > 0 ? JSON.stringify(value) : undefined;
+  return undefined;
+}
+
+type ExpirationBatchPayload = {
+  expiresOn?: string | null;
+  quantity: number;
+};
+
+function normalizeBatchDate(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  return text ? text : null;
+}
+
+function sortExpirationBatches(batches: ExpirationBatchPayload[]): ExpirationBatchPayload[] {
+  return [...batches].sort((a, b) => {
+    const ad = normalizeBatchDate(a.expiresOn);
+    const bd = normalizeBatchDate(b.expiresOn);
+    if (!ad && !bd) return 0;
+    if (!ad) return 1;
+    if (!bd) return -1;
+    return ad.localeCompare(bd);
+  });
+}
+
+function normalizeExpirationBatches(value: unknown): ExpirationBatchPayload[] {
+  const parsed = typeof value === "string"
+    ? (() => {
+        try { return JSON.parse(value); } catch { return []; }
+      })()
+    : value;
+  if (!Array.isArray(parsed)) return [];
+
+  const totals = new Map<string, number>();
+  for (const entry of parsed) {
+    const item = entry as { expiresOn?: unknown; quantity?: unknown };
+    const key = normalizeBatchDate(item.expiresOn) ?? "";
+    const quantity = Number(item.quantity);
+    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+    totals.set(key, (totals.get(key) ?? 0) + quantity);
+  }
+
+  return sortExpirationBatches([...totals.entries()].map(([key, quantity]) => ({
+    expiresOn: key || null,
+    quantity,
+  })));
+}
+
+function expirationBatchTotal(batches: ExpirationBatchPayload[]): number {
+  return batches.reduce((sum, batch) => sum + batch.quantity, 0);
+}
+
+function stringifyExpirationBatches(value: unknown): string | null {
+  const batches = normalizeExpirationBatches(value);
+  return batches.length > 0 ? JSON.stringify(batches) : null;
+}
+
+function addToExpirationBatches(
+  value: unknown,
+  batchDate: unknown,
+  quantity: number,
+): ExpirationBatchPayload[] {
+  const batches = normalizeExpirationBatches(value);
+  if (!Number.isFinite(quantity) || quantity <= 0) return batches;
+  const key = normalizeBatchDate(batchDate) ?? "";
+  const existing = batches.find((batch) => (normalizeBatchDate(batch.expiresOn) ?? "") === key);
+  if (existing) existing.quantity += quantity;
+  else batches.push({ expiresOn: key || null, quantity });
+  return sortExpirationBatches(batches);
+}
+
+function subtractFromExpirationBatches(
+  value: unknown,
+  batchDate: unknown,
+  quantity: number,
+): ExpirationBatchPayload[] {
+  const batches = normalizeExpirationBatches(value);
+  if (!Number.isFinite(quantity) || quantity <= 0) return batches;
+
+  const key = normalizeBatchDate(batchDate) ?? "";
+  let remaining = quantity;
+  const candidates = key
+    ? batches.filter((batch) => (normalizeBatchDate(batch.expiresOn) ?? "") === key)
+    : [
+        ...batches.filter((batch) => !normalizeBatchDate(batch.expiresOn)),
+        ...batches.filter((batch) => normalizeBatchDate(batch.expiresOn)),
+      ];
+
+  for (const batch of candidates) {
+    if (remaining <= 0) break;
+    const consumed = Math.min(batch.quantity, remaining);
+    batch.quantity -= consumed;
+    remaining -= consumed;
+  }
+
+  return sortExpirationBatches(batches.filter((batch) => batch.quantity > 0));
+}
+
+function reconcileExpirationBatchesToStock(value: unknown, currentStock: number): ExpirationBatchPayload[] {
+  if (!Number.isFinite(currentStock) || currentStock <= 0) return [];
+  let batches = normalizeExpirationBatches(value);
+  const diff = currentStock - expirationBatchTotal(batches);
+  if (diff > 0) {
+    batches = addToExpirationBatches(batches, null, diff);
+  } else if (diff < 0) {
+    batches = subtractFromExpirationBatches(batches, null, Math.abs(diff));
+  }
+  return batches;
+}
+
+function initialExpirationBatches(value: unknown, batchDate: unknown, currentStock: number): string | null {
+  const explicit = normalizeExpirationBatches(value);
+  if (explicit.length > 0) return stringifyExpirationBatches(reconcileExpirationBatchesToStock(explicit, currentStock));
+  if (!Number.isFinite(currentStock) || currentStock <= 0) return null;
+  return stringifyExpirationBatches([{ expiresOn: normalizeBatchDate(batchDate), quantity: currentStock }]);
+}
+
+function optionBool(value: unknown): boolean | null {
+  if (value == null) return null;
+  return Boolean(value);
+}
+
+function optionNumber(value: unknown, field: string): number | null {
+  if (value == null || value === "") return null;
+  return finiteNumber(value, field);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function firstInventoryUsageLine(value: unknown): Record<string, any> | null {
+  const parsed = typeof value === "string"
+    ? (() => {
+        try { return JSON.parse(value); } catch { return null; }
+      })()
+    : value;
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
+  const line = parsed[0];
+  return line && typeof line === "object" ? line as Record<string, any> : null;
 }
 
 // updateInventoryItem is a full-row reducer. AI actions and undo operations often
@@ -113,13 +254,32 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
   const description = hasOwn(data, "description") ? data.description : current?.description;
   const unitContentAmount = hasOwn(data, "unitContentAmount") ? data.unitContentAmount : current?.unitContentAmount;
   const unitContentUnit = hasOwn(data, "unitContentUnit") ? data.unitContentUnit : current?.unitContentUnit;
+  const retailEnabled = hasOwn(data, "retailEnabled") ? data.retailEnabled : current?.retailEnabled;
+  const retailPrice = hasOwn(data, "retailPrice") ? data.retailPrice : current?.retailPrice;
+  const retailDescription = hasOwn(data, "retailDescription") ? data.retailDescription : current?.retailDescription;
+  const retailImageUrl = hasOwn(data, "retailImageUrl") ? data.retailImageUrl : current?.retailImageUrl;
+  const retailUsageQty = hasOwn(data, "retailUsageQty") ? data.retailUsageQty : current?.retailUsageQty;
+  const currentStock = finiteInventoryNumber(value("currentStock"), "currentStock");
+  const previousStock = current ? finiteInventoryNumber(current.currentStock, "currentStock") : currentStock;
+  const stockDelta = currentStock - previousStock;
+  const batchExpirationDate = normalizeBatchDate(data.batchExpirationDate);
+  const expirationBatches = hasOwn(data, "expirationBatches")
+    ? reconcileExpirationBatchesToStock(data.expirationBatches, currentStock)
+    : reconcileExpirationBatchesToStock(
+        stockDelta > 0
+          ? addToExpirationBatches(current?.expirationBatches, batchExpirationDate, stockDelta)
+          : stockDelta < 0
+            ? subtractFromExpirationBatches(current?.expirationBatches, batchExpirationDate, Math.abs(stockDelta))
+            : current?.expirationBatches,
+        currentStock,
+      );
 
   return {
     organizationId,
     itemId,
     name: requiredInventoryText(value("name"), "name"),
     category: String(value("category") ?? "General").trim() || "General",
-    currentStock: finiteInventoryNumber(value("currentStock"), "currentStock"),
+    currentStock,
     minStock: finiteInventoryNumber(value("minStock"), "minStock"),
     maxStock: finiteInventoryNumber(value("maxStock"), "maxStock"),
     unit: requiredInventoryText(value("unit"), "unit"),
@@ -132,55 +292,15 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
     description: description == null ? null : String(description),
     unitContentAmount: unitContentAmount == null || unitContentAmount === "" ? null : finiteInventoryNumber(unitContentAmount, "unitContentAmount"),
     unitContentUnit: unitContentUnit == null ? null : String(unitContentUnit).trim() || null,
-  };
-}
-
-// updateProduct is also a full-row reducer. Merge patches with the live row so
-// focused UI/actions like "change price" or "edit recipe" preserve every field.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildProductUpdatePayload(productId: string, data: Record<string, any>) {
-  const organizationId = orgId();
-  const c = getConnection();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows = (c as any)?.db?.product?.iter ? [...(c as any).db.product.iter()] : [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const current = rows.find((r: any) => rowIdString(r.id) === productId);
-  const value = (...keys: string[]) => {
-    for (const key of keys) {
-      if (hasOwn(data, key)) return data[key];
-    }
-    for (const key of keys) {
-      if (current?.[key] !== undefined) return current[key];
-    }
-    return undefined;
-  };
-
-  const availableStoreIds = hasOwn(data, "availableStoreIds")
-    ? data.availableStoreIds
-    : current?.availableStoreIds;
-  const inventoryUsage = hasOwn(data, "inventoryUsage")
-    ? data.inventoryUsage
-    : current?.inventoryUsage;
-  const nameI18N = value("nameI18N", "nameI18n");
-
-  return {
-    organizationId,
-    productId,
-    name: requiredText(value("name"), "Product name"),
-    category: String(value("category") ?? "Other").trim() || "Other",
-    price: finiteNumber(value("price"), "product price"),
-    cost: finiteNumber(value("cost"), "product cost"),
-    trend: String(value("trend") ?? "stable"),
-    alert: String(value("alert") ?? "none"),
-    alertReason: value("alertReason") == null ? null : String(value("alertReason")),
-    imageUrl: value("imageUrl") == null ? null : String(value("imageUrl")),
-    description: value("description") == null ? null : String(value("description")),
-    nameI18N: nameI18N == null ? null : typeof nameI18N === "string" ? nameI18N : JSON.stringify(nameI18N),
-    options: value("options") == null ? null : String(value("options")),
-    availableStoreIds: Array.isArray(availableStoreIds)
-      ? JSON.stringify(availableStoreIds)
-      : (availableStoreIds ?? null),
-    inventoryUsage: jsonArrayOrNull(inventoryUsage),
+    retailEnabled: optionBool(retailEnabled),
+    retailPrice: optionNumber(retailPrice, "retail price"),
+    retailDescription: retailDescription == null ? null : String(retailDescription),
+    retailImageUrl: retailImageUrl == null ? null : String(retailImageUrl),
+    retailUsageQty: optionNumber(retailUsageQty, "retail usage quantity"),
+    expirationBatches: stringifyExpirationBatches(expirationBatches),
+    batchExpirationDate,
+    stockNote: hasOwn(data, "stockNote") ? String(data.stockNote ?? "") : undefined,
+    evidenceUrls: hasOwn(data, "evidenceUrls") ? jsonArrayOrUndefined(data.evidenceUrls) : undefined,
   };
 }
 
@@ -217,7 +337,13 @@ function operatorArgs(): { operatorMemberId?: string; operatorName?: string } {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addInventoryItem(data: any, _userId?: string): Promise<void> {
-  return offlineAware("addInventoryItem", { organizationId: orgId(), ...data });
+  const currentStock = finiteInventoryNumber(data.currentStock ?? 0, "currentStock");
+  return offlineAware("addInventoryItem", {
+    organizationId: orgId(),
+    ...data,
+    currentStock,
+    expirationBatches: initialExpirationBatches(data.expirationBatches, data.batchExpirationDate, currentStock),
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -231,50 +357,102 @@ export async function deleteInventoryItem(itemId: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addInventoryTransaction(data: any): Promise<void> {
-  return offlineAware("addInventoryTransaction", { organizationId: orgId(), ...data, ...operatorArgs() });
+  return offlineAware("addInventoryTransaction", {
+    organizationId: orgId(),
+    ...data,
+    evidenceUrls: jsonArrayOrUndefined(data.evidenceUrls),
+    batchExpirationDate: normalizeBatchDate(data.batchExpirationDate),
+    ...operatorArgs(),
+  });
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addProduct(data: any, _userId?: string): Promise<void> {
-  const nameI18N = data.nameI18N ?? data.nameI18n;
-  return offlineAware("addProduct", {
+  const usage = firstInventoryUsageLine(data.inventoryUsage);
+  const inventoryItemId = String(data.inventoryItemId ?? usage?.inventoryItemId ?? "");
+  const retailPatch = {
+    retailEnabled: true,
+    retailPrice: finiteNumber(data.price ?? 0, "retail price"),
+    retailDescription: data.description == null ? null : String(data.description),
+    retailImageUrl: data.imageUrl == null ? null : String(data.imageUrl),
+    retailUsageQty: optionNumber(data.retailUsageQty ?? usage?.quantity ?? 1, "retail usage quantity"),
+  };
+
+  if (inventoryItemId) {
+    return updateInventoryItem(inventoryItemId, retailPatch);
+  }
+
+  return offlineAware("addInventoryItem", {
     organizationId: orgId(),
-    name: data.name,
-    category: data.category,
-    price: data.price ?? 0,
-    cost: data.cost ?? 0,
-    imageUrl: data.imageUrl ?? null,
-    description: data.description ?? null,
-    nameI18N: nameI18N ? (typeof nameI18N === "string" ? nameI18N : JSON.stringify(nameI18N)) : null,
-    options: data.options ?? null,
-    availableStoreIds: Array.isArray(data.availableStoreIds)
-      ? JSON.stringify(data.availableStoreIds)
-      : (data.availableStoreIds ?? null),
-    inventoryUsage: jsonArrayOrNull(data.inventoryUsage),
+    name: requiredText(data.name, "Product name"),
+    category: String(data.category ?? "Retail").trim() || "Retail",
+    currentStock: finiteInventoryNumber(data.currentStock ?? 0, "currentStock"),
+    minStock: finiteInventoryNumber(data.minStock ?? 0, "minStock"),
+    maxStock: finiteInventoryNumber(data.maxStock ?? 100, "maxStock"),
+    unit: String(data.unit ?? usage?.unit ?? "units").trim() || "units",
+    costPerUnit: finiteInventoryNumber(data.cost ?? data.costPerUnit ?? 0, "costPerUnit"),
+    supplier: String(data.supplier ?? ""),
+    lastRestocked: String(data.lastRestocked ?? new Date().toISOString().slice(0, 10)),
+    minOrderQty: null,
+    unitsPerCase: null,
+    description: data.description == null ? null : String(data.description),
+    unitContentAmount: null,
+    unitContentUnit: null,
+    expirationBatches: initialExpirationBatches(
+      data.expirationBatches,
+      data.batchExpirationDate,
+      finiteInventoryNumber(data.currentStock ?? 0, "currentStock"),
+    ),
+    ...retailPatch,
   });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateProduct(productId: string, data: any): Promise<void> {
-  return offlineAware("updateProduct", buildProductUpdatePayload(productId, data));
+  const usage = firstInventoryUsageLine(data.inventoryUsage);
+  const inventoryItemId = String(data.inventoryItemId ?? usage?.inventoryItemId ?? productId);
+  return updateInventoryItem(inventoryItemId, {
+    ...(hasOwn(data, "name") ? { name: data.name } : {}),
+    ...(hasOwn(data, "category") ? { category: data.category } : {}),
+    retailEnabled: hasOwn(data, "retailEnabled") ? data.retailEnabled : true,
+    ...(hasOwn(data, "price") ? { retailPrice: data.price } : {}),
+    ...(hasOwn(data, "description") ? { retailDescription: data.description } : {}),
+    ...(hasOwn(data, "imageUrl") ? { retailImageUrl: data.imageUrl } : {}),
+    ...(hasOwn(data, "retailUsageQty") || usage?.quantity != null
+      ? { retailUsageQty: data.retailUsageQty ?? usage?.quantity }
+      : {}),
+  });
 }
 
 export async function deleteProduct(productId: string): Promise<void> {
-  return offlineAware("deleteProduct", { organizationId: orgId(), productId });
+  return updateInventoryItem(productId, { retailEnabled: false });
 }
 
 // ─── Staffing: Shifts ─────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildShiftPayload(data: Record<string, any>): Record<string, any> {
+  const roleNames = Array.isArray(data.staffRoles)
+    ? data.staffRoles.filter((role) => typeof role === "string")
+    : [];
+  return {
+    ...data,
+    staffRole: data.staffRole ?? roleNames[0] ?? null,
+    staffRoles: jsonArrayString(data.staffRoles),
+    predictedDemand: data.predictedDemand ?? "medium",
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addShift(data: any, _userId?: string, _orgIdParam?: string): Promise<void> {
-  return offlineAware("addShift", { organizationId: orgId(), ...data });
+  return offlineAware("addShift", { organizationId: orgId(), ...buildShiftPayload(data) });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateShift(shiftId: string, data: any): Promise<void> {
-  return offlineAware("updateShift", { organizationId: orgId(), shiftId, ...data });
+  return offlineAware("updateShift", { organizationId: orgId(), shiftId, ...buildShiftPayload(data) });
 }
 
 export async function deleteShift(shiftId: string): Promise<void> {
@@ -1017,6 +1195,10 @@ export async function updateProfile(data: any): Promise<void> {
   return conn().reducers.updateProfile(data);
 }
 
+export async function updateDisplayName(displayName: string): Promise<void> {
+  return conn().reducers.updateDisplayName({ displayName });
+}
+
 // ─── Todos (no reducer — stub) ────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1038,6 +1220,35 @@ export async function recordPunch(code: string, action: string): Promise<void> {
     organizationId: orgId(),
     code,
     action,
+  });
+}
+
+export async function managerRecordPunch(memberId: string, action: "in" | "out"): Promise<void> {
+  return conn().reducers.managerRecordPunch({
+    organizationId: orgId(),
+    memberId,
+    action,
+  });
+}
+
+export async function managerSetPunchWindow(
+  memberId: string,
+  dayStartAt: Date,
+  dayEndAt: Date,
+  startAt: Date,
+  endAt?: Date | null,
+): Promise<void> {
+  const reducer = conn().reducers.managerSetPunchWindow;
+  if (typeof reducer !== "function") {
+    throw new Error('Reducer "managerSetPunchWindow" is not available. Run `spacetime publish` + `spacetime generate`.');
+  }
+  return reducer({
+    organizationId: orgId(),
+    memberId,
+    dayStartAt: Timestamp.fromDate(dayStartAt),
+    dayEndAt: Timestamp.fromDate(dayEndAt),
+    startAt: Timestamp.fromDate(startAt),
+    endAt: endAt ? Timestamp.fromDate(endAt) : undefined,
   });
 }
 

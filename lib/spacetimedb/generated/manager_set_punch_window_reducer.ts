@@ -12,5 +12,9 @@ import {
 
 export default {
   organizationId: __t.string(),
-  productId: __t.string(),
+  memberId: __t.string(),
+  dayStartAt: __t.timestamp(),
+  dayEndAt: __t.timestamp(),
+  startAt: __t.timestamp(),
+  endAt: __t.option(__t.timestamp()),
 };

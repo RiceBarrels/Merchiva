@@ -30,6 +30,35 @@ const GROUP_ICON_MAP: Record<string, React.ComponentType<{ className?: string; s
   "users-round": Users,
 };
 
+function PersonAvatar({
+  p,
+  color,
+  className,
+}: {
+  p: PersonNode;
+  color: string;
+  className?: string;
+}) {
+  if (p.avatarUrl) {
+    return (
+      <img
+        src={p.avatarUrl}
+        alt={p.name}
+        className={cn("rounded-full border border-border bg-muted object-cover shrink-0", className)}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={cn("rounded-full inline-flex items-center justify-center font-semibold shrink-0", className)}
+      style={{ background: color + "20", color }}
+    >
+      {initials(p.name)}
+    </span>
+  );
+}
+
 type SortKey = "name" | "role" | "group" | "status" | "joined";
 
 export function OrgListView({
@@ -336,12 +365,7 @@ function PersonCard({
     >
       <span className="w-1 shrink-0" style={{ background: color }} />
       <span className="flex-1 min-w-0 flex items-center gap-3 px-3.5 py-3">
-        <span
-          className="h-9 w-9 rounded-full inline-flex items-center justify-center font-semibold text-[11.5px] shrink-0"
-          style={{ background: color + "20", color }}
-        >
-          {initials(p.name)}
-        </span>
+        <PersonAvatar p={p} color={color} className="h-9 w-9 text-[11.5px]" />
         <span className="flex-1 min-w-0">
           <span className="flex items-center gap-1.5">
             <span className="text-[14px] font-medium tracking-[-0.015em] text-foreground truncate">{p.name}</span>
@@ -417,12 +441,7 @@ function PersonRow({
 
       <td className="px-3 py-2.5 align-middle">
         <div className="flex items-center gap-2.5">
-          <div
-            className="h-7 w-7 rounded-full inline-flex items-center justify-center font-semibold text-[10.5px] shrink-0"
-            style={{ background: (role?.color ?? "#78716c") + "20", color: role?.color ?? "#78716c" }}
-          >
-            {initials(p.name)}
-          </div>
+          <PersonAvatar p={p} color={role?.color ?? "#78716c"} className="h-7 w-7 text-[10.5px]" />
           <div className="min-w-0">
             <div className="text-[12.5px] font-medium text-foreground truncate">{p.name}</div>
             {p.isMe && (

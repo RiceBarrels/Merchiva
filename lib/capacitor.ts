@@ -1,27 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 type CapacitorGlobal = {
+  getPlatform?: () => string;
   isNativePlatform?: () => boolean;
 };
 
 export function isCapacitorNative(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    const cap = (window as unknown as { Capacitor?: CapacitorGlobal }).Capacitor;
-    return !!cap?.isNativePlatform?.();
+    const win = window as unknown as {
+      Capacitor?: CapacitorGlobal;
+      androidBridge?: unknown;
+      webkit?: { messageHandlers?: { bridge?: unknown } };
+    };
+    const protocol = window.location.protocol;
+    if (protocol === "capacitor:" || protocol === "ionic:" || protocol === "merchiva:") return true;
+    if (win.androidBridge || win.webkit?.messageHandlers?.bridge) return true;
+    const cap = win.Capacitor;
+    if (cap?.isNativePlatform?.()) return true;
+    const platform = cap?.getPlatform?.();
+    return platform === "ios" || platform === "android";
   } catch {
     return false;
   }
 }
 
 export function useIsCapacitor(): boolean {
-  const [isNative, setIsNative] = useState(false);
-  useEffect(() => {
-    setIsNative(isCapacitorNative());
-  }, []);
-  return isNative;
+  return useSyncExternalStore(
+    (notify) => {
+      const id = window.setTimeout(notify, 0);
+      return () => window.clearTimeout(id);
+    },
+    isCapacitorNative,
+    () => false,
+  );
 }
 
 // Routes hidden from the in-app navigation when running inside the native

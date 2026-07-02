@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/lib/auth/context";
 import { useT } from "@/lib/i18n/context";
 import { mutationQueue } from "@/lib/offline";
+import { isCapacitorNative } from "@/lib/capacitor";
 import type { ReactNode } from "react";
 
 interface SpacetimeProviderProps {
@@ -93,32 +94,47 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   // failure mode where the SDK silently waits forever on a stale handshake.
   useEffect(() => {
     if (!timedOut) return;
-    const ATTEMPTED_KEY = "stdb_recovery_tried";
+    const ATTEMPTED_KEY = "stdb_recovery_tried_at";
+    const RECOVERY_COOLDOWN_MS = 5 * 60 * 1000;
     if (typeof window === "undefined") return;
-    if (sessionStorage.getItem(ATTEMPTED_KEY)) return; // already retried this tab
-    sessionStorage.setItem(ATTEMPTED_KEY, "1");
-    console.warn("[SpacetimeDB] Connection timed out — clearing stdb_token + SDK caches and reloading once");
+    try {
+      const lastAttempt = Number(localStorage.getItem(ATTEMPTED_KEY) ?? "0");
+      if (Number.isFinite(lastAttempt) && Date.now() - lastAttempt < RECOVERY_COOLDOWN_MS) {
+        return;
+      }
+      localStorage.setItem(ATTEMPTED_KEY, String(Date.now()));
+    } catch {
+      return;
+    }
+    console.warn("[SpacetimeDB] Connection timed out — clearing stdb_token + SDK caches");
     try { localStorage.removeItem("stdb_token"); } catch {}
-    // Best-effort wipe any IndexedDB caches the SDK may keep. Names vary by
-    // SDK version; just enumerate and drop anything spacetime-prefixed.
-    if (typeof indexedDB !== "undefined" && typeof indexedDB.databases === "function") {
-      indexedDB.databases().then((dbs) => {
+    if (isCapacitorNative()) {
+      console.warn("[SpacetimeDB] Native WebView detected — skipping automatic hard reload");
+      return;
+    }
+
+    const clearIndexedDbCaches = async () => {
+      if (typeof indexedDB === "undefined" || typeof indexedDB.databases !== "function") return;
+      try {
+        const dbs = await indexedDB.databases();
         for (const db of dbs) {
           if (db.name && /spacetime/i.test(db.name)) {
             try { indexedDB.deleteDatabase(db.name); } catch {}
           }
         }
-      }).finally(() => window.location.reload()).catch(() => window.location.reload());
-    } else {
-      window.location.reload();
-    }
+      } catch (err) {
+        console.warn("[SpacetimeDB] IndexedDB cache enumeration failed:", err);
+      }
+    };
+
+    void clearIndexedDbCaches().finally(() => window.location.reload());
   }, [timedOut]);
 
   // Once connected successfully, clear the recovery flag so a future failure
   // gets one fresh attempt rather than being stuck in "already tried".
   useEffect(() => {
     if (connected && typeof window !== "undefined") {
-      try { sessionStorage.removeItem("stdb_recovery_tried"); } catch {}
+      try { localStorage.removeItem("stdb_recovery_tried_at"); } catch {}
     }
   }, [connected]);
 

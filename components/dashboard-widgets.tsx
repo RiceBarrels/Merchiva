@@ -794,7 +794,7 @@ export function ProductPerformanceWidget() {
       title={t("dashboard.widgets.topProducts.title")}
       action={
         <Link
-          href="/~/products"
+          href="/~/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           {t("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
