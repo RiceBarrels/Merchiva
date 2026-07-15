@@ -9,6 +9,8 @@ import {
   serviceAppendAiChatMessage,
 } from "@/lib/spacetimedb/service-client";
 import { buildBriefingContext, briefingProblemKeys } from "@/lib/insights/build-context";
+import { buildFallbackBriefing } from "@/lib/insights/fallback-briefing";
+import { sendWebPush } from "@/lib/push/send";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +32,25 @@ function hourInTimezone(tz: string, now: Date): number | null {
     const n = parseInt(h, 10);
     // Intl can emit "24" for midnight in some environments — normalize.
     return Number.isFinite(n) ? n % 24 : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Minutes since local midnight (0–1439) in the given IANA timezone. */
+function minutesInTimezone(tz: string, now: Date): number | null {
+  try {
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const parts = fmt.formatToParts(now);
+    const h = parseInt(parts.find((p) => p.type === "hour")?.value ?? "", 10);
+    const m = parseInt(parts.find((p) => p.type === "minute")?.value ?? "", 10);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return (h % 24) * 60 + m;
   } catch {
     return null;
   }
@@ -109,9 +130,98 @@ const CHAT_COPY: Record<
   },
 };
 
+// Sent to the affected EMPLOYEE (not the admins) when a new forgot-to-clock-out
+// incident appears — they're the one who can actually fix it.
+const CLOCKOUT_COPY: Record<
+  string,
+  { title: string; overdue: (end: string, mins: number) => string; stale: (hours: number) => string }
+> = {
+  en: {
+    title: "Forgot to clock out?",
+    overdue: (end, mins) => `Your shift ended at ${end} but you're still clocked in (${mins} min over). Please punch out, or ask a manager to correct the record.`,
+    stale: (hours) => `You've been clocked in for ${hours} hours with no scheduled shift. If you're done working, please punch out.`,
+  },
+  zh: {
+    title: "忘记打下班卡了吗？",
+    overdue: (end, mins) => `你的班次 ${end} 已结束，但你仍处于上班状态（已超出 ${mins} 分钟）。请打下班卡，或请经理修正记录。`,
+    stale: (hours) => `你已连续处于上班状态 ${hours} 小时且当天没有排班。如果已经下班，请打下班卡。`,
+  },
+  es: {
+    title: "¿Olvidaste fichar la salida?",
+    overdue: (end, mins) => `Tu turno terminó a las ${end} pero sigues fichado (${mins} min de más). Ficha la salida o pide a un gerente que corrija el registro.`,
+    stale: (hours) => `Llevas ${hours} horas fichado sin turno programado. Si ya terminaste, ficha la salida.`,
+  },
+  fr: {
+    title: "Oubli de pointage de sortie ?",
+    overdue: (end, mins) => `Votre service s'est terminé à ${end} mais vous êtes toujours pointé (${mins} min de plus). Pointez votre sortie ou demandez à un manager de corriger.`,
+    stale: (hours) => `Vous êtes pointé depuis ${hours} heures sans service prévu. Si vous avez terminé, pointez votre sortie.`,
+  },
+  ar: {
+    title: "هل نسيت تسجيل الانصراف؟",
+    overdue: (end, mins) => `انتهت وردية عملك في ${end} لكنك ما زلت مسجلاً في العمل (${mins} دقيقة إضافية). سجّل الانصراف أو اطلب من المدير تصحيح السجل.`,
+    stale: (hours) => `أنت مسجل في العمل منذ ${hours} ساعة دون وردية مجدولة. إذا انتهيت من العمل فسجّل الانصراف.`,
+  },
+  hi: {
+    title: "क्लॉक-आउट करना भूल गए?",
+    overdue: (end, mins) => `आपकी शिफ्ट ${end} बजे खत्म हो गई, लेकिन आप अभी भी क्लॉक-इन हैं (${mins} मिनट ऊपर)। कृपया क्लॉक-आउट करें या मैनेजर से रिकॉर्ड ठीक करने को कहें।`,
+    stale: (hours) => `आप ${hours} घंटे से क्लॉक-इन हैं और आज कोई शिफ्ट नहीं थी। यदि काम खत्म हो गया है तो कृपया क्लॉक-आउट करें।`,
+  },
+};
+
+// Sent to each on-shift employee when one of their role tasks' time window
+// starts — the "it's time, go do the task" nudge.
+const TASK_REMINDER_COPY: Record<
+  string,
+  { title: string; body: (task: string, time: string) => string }
+> = {
+  en: {
+    title: "Task due on your shift",
+    body: (task, time) => `"${task}" (${time}) is due now. Please complete it and upload evidence if required.`,
+  },
+  zh: {
+    title: "值班任务时间到了",
+    body: (task, time) => `「${task}」（${time}）现在该做了。请及时完成，需要凭证的话记得上传。`,
+  },
+  es: {
+    title: "Tarea pendiente en tu turno",
+    body: (task, time) => `"${task}" (${time}) toca ahora. Complétala y sube evidencia si se requiere.`,
+  },
+  fr: {
+    title: "Tâche à faire pendant votre service",
+    body: (task, time) => `« ${task} » (${time}) est à faire maintenant. Merci de la réaliser et d'ajouter une preuve si demandé.`,
+  },
+  ar: {
+    title: "حان وقت مهمة وردتك",
+    body: (task, time) => `حان الآن موعد "${task}" (${time}). يرجى إنجازها ورفع إثبات إذا كان مطلوبًا.`,
+  },
+  hi: {
+    title: "आपकी शिफ्ट का टास्क समय",
+    body: (task, time) => `"${task}" (${time}) का समय हो गया है। कृपया इसे पूरा करें और आवश्यक हो तो प्रमाण अपलोड करें।`,
+  },
+};
+
 function normalizedLocale(locale: string): string {
   const key = locale.toLowerCase().split(/[-_]/)[0];
   return key in NOTIF_COPY ? key : "en";
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function tsMs(ts: any): number {
+  if (!ts) return 0;
+  if (typeof ts === "number") return ts;
+  if (typeof ts === "object" && "microsSinceUnixEpoch" in ts) {
+    const micros = (ts as { microsSinceUnixEpoch: bigint | number }).microsSinceUnixEpoch;
+    return typeof micros === "bigint" ? Number(micros / 1000n) : Number(micros) / 1000;
+  }
+  return 0;
+}
+
+/** "HH:MM" → minutes since midnight, or null when unparseable. */
+function hhmmToMin(hhmm: string | null | undefined): number | null {
+  if (!hhmm) return null;
+  const [h, m] = String(hhmm).split(":").map((x) => parseInt(x, 10));
+  if (!Number.isFinite(h)) return null;
+  return h * 60 + (Number.isFinite(m) ? m : 0);
 }
 
 // ─── Route ──────────────────────────────────────────────────────────────────────
@@ -162,6 +272,8 @@ async function runHourlyPatrol(req: NextRequest) {
       "SELECT * FROM coupon",
       "SELECT * FROM settings",
       "SELECT * FROM punch_event",
+      // Web-push fan-out for on-shift task reminders.
+      "SELECT * FROM push_subscription",
     ]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -202,6 +314,7 @@ async function runHourlyPatrol(req: NextRequest) {
   const settings = allRows("settings");
   const punchEvents = allRows("punchEvent");
   const briefings = allRows("dailyBriefing");
+  const pushSubscriptions = allRows("pushSubscription");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const localeOf = (id: any): string => {
@@ -255,8 +368,11 @@ async function runHourlyPatrol(req: NextRequest) {
   };
 
   let generated = 0;
+  let fallbacks = 0;
   let notified = 0;
   let chatMessages = 0;
+  let clockOutReminders = 0;
+  let taskReminders = 0;
   let skipped = 0;
   const errors: string[] = [];
 
@@ -315,38 +431,71 @@ async function runHourlyPatrol(req: NextRequest) {
       );
       const currentKeys = briefingProblemKeys(context);
 
-      const res = await fetch(`${origin}/api/insights/morning-briefing`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context, lang: locale, dateStr: date, organizationId: orgId }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({}));
-        errors.push(`gen ${orgId}@${curHour}: ${e.error ?? res.status}`);
-        continue;
-      }
-      const data = (await res.json()) as {
+      // LLM generation — the snapshot must exist for EVERY hour no matter
+      // what, so any failure here degrades to the deterministic fallback
+      // instead of skipping the hour.
+      interface GenResult {
         summary: string;
         content: string;
         date: string;
         generatedBy: string;
         actions?: unknown[];
-      };
-      await serviceSaveDailyBriefing(conn, {
-        organizationId: orgId,
-        date: data.date,
-        content: data.content,
-        summary: data.summary,
-        generatedBy: data.generatedBy,
-        actions: data.actions && data.actions.length ? JSON.stringify(data.actions) : undefined,
-        problemKeys: JSON.stringify(currentKeys),
-        hour: curHour,
-      });
-      generated++;
+      }
+      let data: GenResult | null = null;
+      try {
+        const res = await fetch(`${origin}/api/insights/morning-briefing`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ context, lang: locale, dateStr: date, organizationId: orgId }),
+        });
+        if (res.ok) {
+          data = (await res.json()) as GenResult;
+        } else {
+          const e = await res.json().catch(() => ({}));
+          errors.push(`gen ${orgId}@${curHour}: ${e.error ?? res.status} (fallback used)`);
+        }
+      } catch (err) {
+        errors.push(
+          `gen ${orgId}@${curHour}: ${err instanceof Error ? err.message : String(err)} (fallback used)`,
+        );
+      }
+      let shouldSave = true;
+      if (!data) {
+        // A downgraded fallback must never clobber a snapshot that already
+        // exists for this hour (e.g. one the dashboard client generated).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const existing = (briefings as any[]).some(
+          (b) =>
+            b.organizationId === orgId &&
+            b.date === date &&
+            (b.hour == null ? -1 : Number(b.hour)) === curHour,
+        );
+        const fb = buildFallbackBriefing(currentKeys, locale, {
+          done: context.todayTasks.completed,
+          total: context.todayTasks.total,
+        });
+        data = { summary: fb.summary, content: fb.content, date, generatedBy: "auto-fallback", actions: [] };
+        if (existing) shouldSave = false;
+        else fallbacks++;
+      }
+      if (shouldSave) {
+        await serviceSaveDailyBriefing(conn, {
+          organizationId: orgId,
+          date: data.date,
+          content: data.content,
+          summary: data.summary,
+          generatedBy: data.generatedBy,
+          actions: data.actions && data.actions.length ? JSON.stringify(data.actions) : undefined,
+          problemKeys: JSON.stringify(currentKeys),
+          hour: curHour,
+        });
+        generated++;
+      }
 
       // Notify enabled admins only when a NEW problem appeared this hour.
       const prevSet = new Set(prevKeys);
-      const newCount = currentKeys.filter((k) => !prevSet.has(k)).length;
+      const newKeys = currentKeys.filter((k) => !prevSet.has(k));
+      const newCount = newKeys.length;
       const messageAdmins = messageByOrg.get(orgId) ?? [];
       if (currentKeys.length > 0 && messageAdmins.length > 0) {
         for (const admin of messageAdmins) {
@@ -388,13 +537,177 @@ async function runHourlyPatrol(req: NextRequest) {
       } else {
         skipped++;
       }
+
+      // Remind the affected employee directly on a NEW forgot-to-clock-out
+      // incident (keys are person+day scoped, so this fires once per incident).
+      const newKeySet = new Set(newKeys);
+      for (const o of context.attendance.overdueClockOuts ?? []) {
+        const key = `${o.kind === "stale" ? "stale-punch" : "overdue-out"}:${o.name}:${o.punchDate}`;
+        if (!newKeySet.has(key)) continue;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const member = (orgMembers as any[]).find(
+          (m) =>
+            m.organizationId === orgId &&
+            m.status === "active" &&
+            String(m.displayName ?? "").trim() === o.name.trim(),
+        );
+        if (!member?.userId) continue;
+        const copy =
+          CLOCKOUT_COPY[normalizedLocale(localeOf(member.userId))] ?? CLOCKOUT_COPY.en;
+        try {
+          await serviceCreateNotification(conn, {
+            organizationId: orgId,
+            targetIdentity: member.userId,
+            type: "punch",
+            title: copy.title,
+            body:
+              o.kind === "overdue"
+                ? copy.overdue(o.scheduledEnd ?? "?", o.minutesOver ?? 0)
+                : copy.stale(Math.max(1, Math.round(o.openForMinutes / 60))),
+            link: "/~/punch-in",
+          });
+          clockOutReminders++;
+        } catch (err) {
+          errors.push(
+            `clockout ${orgId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+
+      // ─── Task-time reminders ─────────────────────────────────────────────
+      // Everyone on shift TODAY whose shift roles include a task whose start
+      // time falls in the past hour gets a nudge (in-app + web push). The
+      // [start, start+60) window means exactly one hourly run fires per task;
+      // completed tasks and already-sent notifications are skipped.
+      try {
+        const nowMin = minutesInTimezone(tz, now);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const orgShifts = (shifts as any[]).filter(
+          (s) => s.organizationId === orgId && s.date === date,
+        );
+        if (nowMin != null && orgShifts.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const orgRoles = (staffRoles as any[]).filter((r) => r.organizationId === orgId);
+          const roleIdByName = new Map<string, string>();
+          for (const r of orgRoles) roleIdByName.set(String(r.name).toLowerCase(), r.id.toString());
+          const orgRoleIds = new Set(orgRoles.map((r) => r.id.toString()));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const tasksByRole = new Map<string, any[]>();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const tk of roleTasks as any[]) {
+            const rid = String(tk.roleId ?? "");
+            if (!orgRoleIds.has(rid)) continue;
+            const arr = tasksByRole.get(rid) ?? [];
+            arr.push(tk);
+            tasksByRole.set(rid, arr);
+          }
+
+          // Task ids already completed today (org-local date).
+          const completedToday = new Set<string>();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const a of roleTaskAssignments as any[]) {
+            if (a.organizationId !== orgId || a.status !== "completed") continue;
+            const ms = tsMs(a.completedAt);
+            if (!ms || dateInTimezone(tz, new Date(ms)) !== date) continue;
+            completedToday.add(String(a.taskId));
+          }
+
+          // Dedupe against reminders already inserted (e.g. an earlier run in
+          // the same hour, or a retried request).
+          const alreadyReminded = new Set<string>();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const n of notifications as any[]) {
+            if (n.organizationId !== orgId || n.type !== "task-reminder") continue;
+            const hex = n.targetId?.toHexString?.() ?? String(n.targetId);
+            alreadyReminded.add(`${hex}|${n.link ?? ""}`);
+          }
+
+          for (const s of orgShifts) {
+            if (!s.memberId) continue;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const member = (orgMembers as any[]).find(
+              (m) =>
+                m.organizationId === orgId &&
+                m.status === "active" &&
+                m.id?.toString?.() === String(s.memberId),
+            );
+            if (!member?.userId) continue;
+            const targetHex = member.userId?.toHexString?.() ?? String(member.userId);
+            const copy =
+              TASK_REMINDER_COPY[normalizedLocale(localeOf(member.userId))] ??
+              TASK_REMINDER_COPY.en;
+
+            let roleNames: string[] = [];
+            try {
+              const parsed = JSON.parse(s.staffRoles ?? "[]");
+              if (Array.isArray(parsed)) roleNames = parsed.map(String);
+            } catch { /* legacy rows */ }
+            if (s.staffRole) roleNames.push(String(s.staffRole));
+
+            for (const rn of new Set(roleNames.map((x) => x.toLowerCase()))) {
+              const rid = roleIdByName.get(rn);
+              if (!rid) continue;
+              for (const tk of tasksByRole.get(rid) ?? []) {
+                const start = hhmmToMin(tk.startTime);
+                if (start == null) continue; // untimed tasks: nothing to remind at
+                if (nowMin < start || nowMin >= start + 60) continue;
+                const taskId = tk.id?.toString?.() ?? String(tk.id);
+                if (completedToday.has(taskId)) continue;
+                const link = `/~/personnel?task=${taskId}&d=${date}`;
+                if (alreadyReminded.has(`${targetHex}|${link}`)) continue;
+                alreadyReminded.add(`${targetHex}|${link}`);
+                const timeLabel = `${String(tk.startTime).slice(0, 5)}${
+                  tk.endTime ? `–${String(tk.endTime).slice(0, 5)}` : ""
+                }`;
+                const title = copy.title;
+                const body = copy.body(String(tk.title ?? ""), timeLabel);
+                try {
+                  await serviceCreateNotification(conn, {
+                    organizationId: orgId,
+                    targetIdentity: member.userId,
+                    type: "task-reminder",
+                    title,
+                    body,
+                    link,
+                  });
+                  // Best-effort web push so staff off the app still see it.
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const subs = (pushSubscriptions as any[])
+                    .filter(
+                      (p) =>
+                        p.organizationId === orgId &&
+                        (p.targetId?.toHexString?.() ?? String(p.targetId)) === targetHex,
+                    )
+                    .map((p) => ({
+                      endpoint: p.endpoint as string,
+                      p256dh: p.p256Dh as string,
+                      auth: p.auth as string,
+                    }));
+                  if (subs.length > 0) {
+                    await sendWebPush(subs, { title, body, link, type: "task-reminder" });
+                  }
+                  taskReminders++;
+                } catch (err) {
+                  errors.push(
+                    `task-reminder ${orgId}: ${err instanceof Error ? err.message : String(err)}`,
+                  );
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        errors.push(
+          `task-reminders ${orgId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     } catch (err) {
       errors.push(`${orgId}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   console.log(
-    `[cron/morning-briefing] orgs=${orgLocale.size} generated=${generated} notified=${notified} chatMessages=${chatMessages} skipped=${skipped} errors=${errors.length}`,
+    `[cron/morning-briefing] orgs=${orgLocale.size} generated=${generated} fallbacks=${fallbacks} notified=${notified} chatMessages=${chatMessages} clockOutReminders=${clockOutReminders} taskReminders=${taskReminders} skipped=${skipped} errors=${errors.length}`,
   );
 
   return NextResponse.json({
@@ -402,8 +715,11 @@ async function runHourlyPatrol(req: NextRequest) {
     triggeredAt: now.toISOString(),
     orgs: orgLocale.size,
     generated,
+    fallbacks,
     notified,
     chatMessages,
+    clockOutReminders,
+    taskReminders,
     skipped,
     errors,
   });

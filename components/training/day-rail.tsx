@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, GripVertical, Lock, Plus } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, GripVertical, Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import type { TrainingRole } from "./role-switcher";
@@ -40,6 +40,7 @@ export function DayRail({
   traineeProgress,
   internDayNumber,
   onAddDay,
+  onReorder,
   title,
   subtitle,
 }: {
@@ -50,6 +51,7 @@ export function DayRail({
   traineeProgress?: Record<string, string>;
   internDayNumber?: number;
   onAddDay?: () => void;
+  onReorder?: (id: string, dir: -1 | 1) => void;
   title?: string;
   subtitle?: string;
 }) {
@@ -84,7 +86,7 @@ export function DayRail({
             {t("training.dayRail.noDaysYet")}
           </div>
         )}
-        {days.map((d) => {
+        {days.map((d, index) => {
           const active = d.id === activeId;
           const done =
             role === "intern" && internDayNumber != null && d.dayNumber < internDayNumber;
@@ -198,7 +200,61 @@ export function DayRail({
                   )}
                 </div>
               )}
-              {role === "manager" && (
+              {role === "manager" && onReorder && (
+                <div className="pt-0.5 shrink-0 opacity-0 group-hover:opacity-100 flex flex-col">
+                  {index > 0 && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      title={t("training.manager.moveUp")}
+                      aria-label={t("training.manager.moveUp")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReorder(d.id, -1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onReorder(d.id, -1);
+                        }
+                      }}
+                      className={cn(
+                        "rounded hover:bg-background/20",
+                        active ? "text-background/60" : "text-muted-foreground",
+                      )}
+                    >
+                      <ChevronUp className="h-[11px] w-[11px]" strokeWidth={1.75} />
+                    </span>
+                  )}
+                  {index < days.length - 1 && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      title={t("training.manager.moveDown")}
+                      aria-label={t("training.manager.moveDown")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReorder(d.id, 1);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onReorder(d.id, 1);
+                        }
+                      }}
+                      className={cn(
+                        "rounded hover:bg-background/20",
+                        active ? "text-background/60" : "text-muted-foreground",
+                      )}
+                    >
+                      <ChevronDown className="h-[11px] w-[11px]" strokeWidth={1.75} />
+                    </span>
+                  )}
+                </div>
+              )}
+              {role === "manager" && !onReorder && (
                 <div className="pt-0.5 shrink-0 opacity-0 group-hover:opacity-100">
                   <GripVertical
                     className={cn(

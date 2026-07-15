@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Camera, ImageIcon, ArrowRight, X, Clock, Film } from "lucide-react";
+import { CheckCircle2, ArrowRight, X, Film } from "lucide-react";
+import { TaskRow as TaskRowComp, parseNotifyChats } from "@/components/personnel/task-row";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,13 +20,12 @@ import { useRoleTasks, useRoleTaskAssignments, useStaffRoles } from "@/lib/space
 import { recordTaskCompletion, sendMessage } from "@/lib/spacetimedb/actions";
 import { usePermissions } from "@/lib/context/permissions";
 import { useT } from "@/lib/i18n/context";
-import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type RawRow = any;
 
-interface TaskRow {
+export interface CompletableTask {
   id: string;
   title: string;
   requiresEvidence: boolean;
@@ -34,16 +34,7 @@ interface TaskRow {
   notifyChats: string[];
 }
 
-function parseNotifyChats(raw: unknown): string[] {
-  if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === "string");
-  if (typeof raw === "string" && raw.length > 0) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
-    } catch { /* fall through */ }
-  }
-  return [];
-}
+type TaskRow = CompletableTask;
 
 function tsToMs(ts: RawRow): number {
   if (!ts) return 0;
@@ -155,36 +146,13 @@ export function MyTasksCard() {
       ) : (
         <div className="divide-y divide-border">
           {top.map((task) => (
-            <div key={task.id} className="px-4 py-3 flex items-center gap-3 min-h-[56px]">
-              <div className="h-[18px] w-[18px] rounded-full border-2 border-stone-300 dark:border-stone-600 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[13.5px] font-medium text-foreground truncate leading-tight">{task.title}</div>
-                <div className="flex items-center gap-1.5 mt-1">
-                  {task.startTime && (
-                    <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-muted text-muted-foreground text-[10px] font-mono">
-                      <Clock className="h-2.5 w-2.5" />
-                      {task.startTime}
-                      {task.endTime ? `–${task.endTime}` : ""}
-                    </span>
-                  )}
-                  {task.requiresEvidence && (
-                    <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-mono">
-                      <ImageIcon className="h-2.5 w-2.5" />
-                      {t("myTasks.evidenceBadge")}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className={cn("h-9 px-3 text-[12px] shrink-0")}
-                onClick={() => setCompleteFor(task)}
-              >
-                <Camera className="h-3.5 w-3.5 mr-1" />
-                {t("myTasks.done")}
-              </Button>
-            </div>
+            <TaskRowComp
+              key={task.id}
+              task={task}
+              completion={null}
+              onComplete={() => setCompleteFor(task)}
+              className="px-1"
+            />
           ))}
           {pending.length > top.length && (
             <div className="px-4 py-2.5 text-[11.5px] text-muted-foreground text-center bg-muted/30">
@@ -195,7 +163,7 @@ export function MyTasksCard() {
       )}
 
       {completeFor && (
-        <InlineComplete
+        <TaskCompleteDialog
           task={completeFor}
           organizationId={organizationId ?? ""}
           onClose={() => setCompleteFor(null)}
@@ -205,7 +173,10 @@ export function MyTasksCard() {
   );
 }
 
-function InlineComplete({
+/** Evidence-upload completion dialog. Records the completion and fans out to
+ *  the task's notify chats. Shared by the dashboard card and the personnel
+ *  roles views — anyone can complete a task from either place. */
+export function TaskCompleteDialog({
   task,
   organizationId,
   onClose,

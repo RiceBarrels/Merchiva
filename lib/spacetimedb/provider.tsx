@@ -227,7 +227,6 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           conn.subscriptionBuilder().subscribe([
             "SELECT * FROM coupon",
             "SELECT * FROM queue_entry",
-            "SELECT * FROM ai_chat_history",
             "SELECT * FROM ai_chat_session",
           ]);
         } catch {

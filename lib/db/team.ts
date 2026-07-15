@@ -16,6 +16,7 @@ export function defaultPermissions(): Permissions {
     team: { view: false, invite: false, edit: false },
     website: { view: false, edit: false },
     training_grading: { view: false, edit: false },
+    merchiva: { view: true },
   };
 }
 
@@ -31,6 +32,7 @@ export function ownerPermissions(): Permissions {
     team: { view: true, invite: true, edit: true },
     website: { view: true, edit: true },
     training_grading: { view: true, edit: true },
+    merchiva: { view: true },
   };
 }
 

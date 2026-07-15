@@ -24,6 +24,7 @@ import {
   saveAiChatSession as execSaveSession,
 } from "@/lib/spacetimedb/actions";
 import { getConnection } from "@/lib/spacetimedb/client";
+import { useSpacetimeDB } from "spacetimedb/react";
 import { useStaffRoles, useRoleTasks, useAiChatSessions, useTrainingDays, useTrainingObjectives, useSettingsRows, useSuppliers } from "@/lib/spacetimedb/hooks";
 import { getUpcomingHolidays, inferCountryFromLocale, parseOpeningHours } from "@/lib/holidays";
 import { toast } from "sonner";
@@ -70,6 +71,7 @@ type RoleTaskConnection = {
 type AiChatSessionRow = {
   id?: RowIdLike;
   organizationId?: string;
+  userId?: RowIdLike;
   updatedAt?: TimestampLike;
   archived?: boolean;
   messages?: string;
@@ -2598,15 +2600,38 @@ export interface BuilderModeContext {
   siteFeatures?: Record<string, boolean>;
 }
 
-export function MerchivaChat({
-  compact = false,
-  header = true,
-  builderContext,
-}: {
+interface MerchivaChatProps {
   compact?: boolean;
   header?: boolean;
   builderContext?: BuilderModeContext;
-} = {}) {
+}
+
+/** Permission gate: admins can disable Mr. Merchiva per member via the
+ *  `merchiva.view` permission. Owners always pass. */
+export function MerchivaChat(props: MerchivaChatProps = {}) {
+  const { isOwner, can } = usePermissions();
+  const t = useT();
+  const allowed = isOwner || can("merchiva", "view");
+  if (!allowed) {
+    const msg = t("merchiva.noAccess");
+    return (
+      <div className="flex-1 h-full flex items-center justify-center p-6 text-center bg-background">
+        <p className="text-[12.5px] text-muted-foreground max-w-[280px] leading-relaxed">
+          {msg.startsWith("merchiva.")
+            ? "Mr. Merchiva is disabled for your account. Ask a manager to enable it."
+            : msg}
+        </p>
+      </div>
+    );
+  }
+  return <MerchivaChatInner {...props} />;
+}
+
+function MerchivaChatInner({
+  compact = false,
+  header = true,
+  builderContext,
+}: MerchivaChatProps = {}) {
   const { currentOrg, organizationId, isOwner, role: orgRole, permissions: userPermissions, can } = usePermissions();
   const { getToken } = useAuth();
   const { locale } = useI18n();
@@ -2654,12 +2679,16 @@ export function MerchivaChat({
   const sessionsTuple = useAiChatSessions() as unknown;
   const sessionRows = useMemo(() => tupleRows<AiChatSessionRow>(sessionsTuple), [sessionsTuple]);
   const sessionsReady = Array.isArray(sessionsTuple) && sessionsTuple[1] === true;
+  // Sessions are strictly per-user: every member keeps their own Mr. Merchiva
+  // history, so filter by the connection identity, not just the org.
+  const stdb = useSpacetimeDB();
+  const myIdentityHex = stdb?.identity?.toHexString?.() ?? null;
   const mySessions = useMemo(() => {
-    if (!organizationId || !sessionRows) return [];
+    if (!organizationId || !sessionRows || !myIdentityHex) return [];
     return sessionRows
-      .filter((s) => s && s.organizationId === organizationId)
+      .filter((s) => s && s.organizationId === organizationId && rowIdString(s.userId) === myIdentityHex)
       .sort((a, b) => timestampMicros(b.updatedAt) - timestampMicros(a.updatedAt));
-  }, [sessionRows, organizationId]);
+  }, [sessionRows, organizationId, myIdentityHex]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const sessionInitDone = useRef(false);
   // Session-level circuit breaker for the background-enqueue path. If the
@@ -2682,7 +2711,7 @@ export function MerchivaChat({
       sessionInitDone.current = true;
       return;
     }
-    if (!organizationId || !sessionsReady) return;
+    if (!organizationId || !sessionsReady || !myIdentityHex) return;
     if (mySessions.length > 0) {
       const latest = mySessions.find((s) => !s.archived) ?? mySessions[0];
       const sid = rowIdString(latest.id);
@@ -2693,7 +2722,7 @@ export function MerchivaChat({
       execCreateSession(t("merchiva.newConversation")).catch(() => {});
       sessionInitDone.current = true;
     }
-  }, [organizationId, mySessions, sessionsReady, builderMode, builderStorageKey, t]);
+  }, [organizationId, mySessions, sessionsReady, myIdentityHex, builderMode, builderStorageKey, t]);
 
   // When sessions update and we just created one, pick the newest (skip in builder mode)
   useEffect(() => {

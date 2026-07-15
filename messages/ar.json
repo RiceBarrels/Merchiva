@@ -908,7 +908,13 @@
       "clockedOutAt": "خروج",
       "ongoing": "مستمر",
       "records": "السجلات",
-      "editHint": "عدّل أوقات الدخول والخروج مباشرة."
+      "editHint": "عدّل أوقات الدخول والخروج مباشرة.",
+      "missingOut": "بدون انصراف",
+      "editTitle": "تعديل السجل",
+      "today": "اليوم",
+      "worked": "المدة الفعلية",
+      "punchDays": "أيام الحضور",
+      "weekTotal": "هذا الأسبوع"
     },
     "myShifts": {
       "trade": "تبادل",
@@ -939,6 +945,7 @@
     },
     "roles": {
       "title": "الأدوار",
+      "overviewTitle": "جميع المهام",
       "noRolesYet": "لا توجد أدوار بعد",
       "tasksCountSingular": "{count} مهمة",
       "tasksCountPlural": "{count} مهام",
@@ -961,7 +968,12 @@
       "taskDescription": "الوصف",
       "requiresEvidence": "يتطلب دليلاً مصوراً",
       "notifiesChats": "يُخطر {count} محادثات",
-      "editTask": "تعديل المهمة"
+      "editTask": "تعديل المهمة",
+      "today": "اليوم",
+      "prevDay": "اليوم السابق",
+      "nextDay": "اليوم التالي",
+      "doneBy": "تم · {name} · {time}",
+      "notDone": "لم يُنجز"
     },
     "requests": {
       "title": "الطلبات",
@@ -1003,7 +1015,8 @@
       "descriptionPlaceholder": "ما الذي يقوم به هذا الدور؟",
       "permissionsLabel": "الصلاحيات",
       "saveCta": "حفظ",
-      "addCta": "إضافة دور"
+      "addCta": "إضافة دور",
+      "customColor": "لون مخصص"
     },
     "taskDialog": {
       "editTitle": "تعديل المهمة",
@@ -1146,7 +1159,9 @@
       "roles": "الأدوار والمهام",
       "rolesSub": "المسؤوليات وقوائم المهام",
       "training": "التدريب",
-      "trainingSub": "الدورات والتقدم والتقييم"
+      "trainingSub": "الدورات والتقدم والتقييم",
+      "pay": "الرواتب",
+      "paySub": "ساعات العمل والرواتب"
     },
     "team": {
       "title": "الفريق",
@@ -1220,7 +1235,8 @@
         "settings": "الإعدادات",
         "team": "الفريق",
         "website": "الموقع",
-        "trainingGrading": "التدريب والتقييم"
+        "trainingGrading": "التدريب والتقييم",
+        "merchiva": "Mr. Merchiva"
       },
       "toastInviteSent": "تم إرسال الدعوة",
       "toastInviteCreateFailed": "تعذّر إنشاء الدعوة",
@@ -1318,7 +1334,37 @@
     },
     "title": "الموظفون",
     "subtitle": "الجدولة والفريق والأدوار والتدريب",
-    "pendingRequests": "الطلبات المعلّقة"
+    "pendingRequests": "الطلبات المعلّقة",
+    "pay": {
+      "title": "الرواتب",
+      "subtitleManager": "الساعات والأجر من سجلات البصمة",
+      "subtitleSelf": "ساعاتك وأجرك التقديري",
+      "unitDay": "حسب اليوم",
+      "unitWeek": "حسب الأسبوع",
+      "unitMonth": "حسب الشهر",
+      "unitYear": "حسب السنة",
+      "from": "من",
+      "to": "إلى",
+      "totalHours": "الساعات",
+      "estPay": "الأجر التقديري",
+      "onClockNow": "على رأس العمل",
+      "missingRates": "بدون أجر ساعة",
+      "hourlyRate": "أجر الساعة",
+      "hours": "الساعات",
+      "breaks": "الاستراحات",
+      "onClock": "على رأس العمل",
+      "noRate": "بدون أجر ساعة",
+      "empty": "لا توجد سجلات بصمة في هذه الفترة",
+      "detailTitle": "تفاصيل الأجر",
+      "editRate": "تعديل",
+      "rateSaved": "تم حفظ أجر الساعة",
+      "rateSaveFailed": "فشل حفظ أجر الساعة",
+      "invalidRate": "أدخل رقمًا صالحًا غير سالب",
+      "ratePlaceholder": "مثال 18.50",
+      "askManagerForRate": "لم يتم تحديد أجر الساعة لك بعد — اطلب من المدير تحديده.",
+      "byDay": "حسب اليوم",
+      "noPunches": "لا توجد سجلات بصمة في هذه الفترة"
+    }
   },
   "pos": {
     "tabs": {
@@ -1742,6 +1788,7 @@
     "permTeam": "الفريق",
     "permWebsite": "الموقع",
     "permTrainingGrading": "تقييم التدريب",
+    "permMerchiva": "Mr. Merchiva",
     "actionView": "عرض",
     "actionEdit": "تعديل",
     "actionInvite": "دعوة",
@@ -1926,7 +1973,13 @@
     "supplierInboxPrefixPlaceholder": "bjcafe",
     "companyIdPrefix": "company {id}",
     "switchStoreAccount": "Switch store or account",
-    "appVersion": "App version"
+    "appVersion": "App version",
+    "storeImage": "صورة المتجر",
+    "storeImageHint": "تظهر أينما تختار متجرًا.",
+    "storeImageSaved": "تم تحديث صورة المتجر",
+    "storeImageFailed": "تعذّر تحديث صورة المتجر",
+    "storeImageRemove": "إزالة",
+    "storeImageUpload": "رفع صورة"
   },
   "lock": {
     "title": "الجهاز مقفل",
@@ -2148,6 +2201,13 @@
       "onBreak": "في استراحة",
       "nobody": "لم يسجّل أحد الدخول بعد.",
       "allOut": "سجّل الجميع الخروج."
+    },
+    "todayTasks": {
+      "title": "مهام اليوم",
+      "done": "مكتملة",
+      "pending": "معلقة",
+      "skipped": "متخطاة",
+      "none": "لا مهام مستحقة اليوم."
     },
     "yesterdayTasks": {
       "title": "مهام الأمس",
@@ -2648,7 +2708,9 @@
       "hourlyRate": "الأجر بالساعة",
       "grossPay": "الأجر الإجمالي",
       "total": "المجموع",
-      "rateNote": "* باستخدام السعر الافتراضي 15$/ساعة. سيتم تكوين الأسعار الفعلية في إعدادات الموظفين."
+      "rateNote": "* باستخدام السعر الافتراضي 15$/ساعة. سيتم تكوين الأسعار الفعلية في إعدادات الموظفين.",
+      "actualNote": "* الساعات مأخوذة من سجلات البصمة الفعلية. الأعضاء بدون أجر ساعة يُحتسبون بالقيمة الافتراضية {rate} — حدّد الأجور في شؤون الموظفين ← الرواتب.",
+      "noPunches": "لا توجد سجلات بصمة في هذه الفترة"
     }
   },
   "bookings": {
@@ -2877,7 +2939,21 @@
       "note": "ملاحظة",
       "remove": "إزالة",
       "dropFile": "أفلت الملف",
-      "upload": "رفع"
+      "upload": "رفع",
+      "embedUrlPrompt": "الصق رابط صورة أو فيديو",
+      "embedInvalidUrl": "لا يبدو هذا رابطًا صالحًا.",
+      "embedAdded": "تمت إضافة المحتوى المضمّن.",
+      "published": "تم نشر اليوم.",
+      "publishFailed": "تعذّر النشر. يرجى المحاولة مرة أخرى.",
+      "addDayFailed": "تعذّرت إضافة يوم. يرجى المحاولة مرة أخرى.",
+      "dayDeleted": "تم حذف اليوم.",
+      "deleteDayFailed": "تعذّر حذف اليوم. يرجى المحاولة مرة أخرى.",
+      "removeFailed": "تعذّرت الإزالة. يرجى المحاولة مرة أخرى.",
+      "uploadFailed": "فشل الرفع. يرجى المحاولة مرة أخرى.",
+      "fileTooLarge": "الملف كبير جدًا.",
+      "unsupportedFile": "نوع ملف غير مدعوم.",
+      "moveUp": "نقل لأعلى",
+      "moveDown": "نقل لأسفل"
     },
     "rubric": {
       "knowsMaterial": "يتقن المادة",
@@ -2912,7 +2988,31 @@
       "retry": "إعادة المحاولة",
       "submitGrade": "إرسال التقييم",
       "willBeNotified": "سيتم إشعار {name} · تم الحفظ في ملف تدريبه",
-      "pickTrainee": "اختر متدربًا من القائمة لبدء التقييم."
+      "pickTrainee": "اختر متدربًا من القائمة لبدء التقييم.",
+      "lessonFallback": "الدرس {n}",
+      "reviewQueue": "طلبات المراجعة",
+      "reviewWaiting": "{count} في الانتظار",
+      "noPendingReviews": "لا توجد طلبات مراجعة معلّقة.",
+      "allStaff": "جميع الموظفين",
+      "searchStaff": "البحث عن موظف",
+      "pickPerson": "اختر شخصًا لتقييم الدروس.",
+      "lessonsGraded": "تم تقييم {done}/{total} من الدروس",
+      "ungraded": "غير مقيَّم",
+      "pickLesson": "اختر درسًا",
+      "noLessonSelected": "لم يتم اختيار درس",
+      "gradeByLesson": "التقييم حسب الدرس",
+      "lessonContent": "محتوى الدرس",
+      "lessonResult": "نتيجة الدرس",
+      "giveGrade": "امنح تقييمًا لهذا الدرس.",
+      "noTraineeSelected": "لم يتم اختيار متدرب",
+      "signOffDay": "اعتماد",
+      "signedOff": "معتمد",
+      "reviewRequested": "تم طلب المراجعة",
+      "gradeSaved": "تم حفظ التقييم.",
+      "gradeFailed": "تعذّر حفظ التقييم. يرجى المحاولة مرة أخرى.",
+      "daySignedOffToast": "تم اعتماد اليوم — يمكن لـ {name} المتابعة.",
+      "daySignOffFailed": "تعذّر اعتماد اليوم. يرجى المحاولة مرة أخرى.",
+      "addLessonsFirst": "أضف دروسًا إلى منهج التدريب قبل التقييم."
     },
     "intern": {
       "objectiveFallback": "الهدف {number}",
@@ -2939,7 +3039,9 @@
       "completeMoreTasks": "أكمل {count} مهام إضافية لطلب المراجعة",
       "awaitingReview": "بانتظار المراجعة",
       "liveGradingNote": "سيأتي مدرّبك لإجراء التقييم المباشر. ابقَ بالقرب من البار.",
-      "askTrainerQuestion": "اطرح سؤالاً على المدرّب"
+      "askTrainerQuestion": "اطرح سؤالاً على المدرّب",
+      "lockedContent": "يُفتح هذا اليوم بعد أن يعتمد مدرّبك اليوم السابق.",
+      "reviewRequestFailed": "تعذّر إرسال طلب المراجعة. يرجى المحاولة مرة أخرى."
     },
     "dayRail": {
       "days": "أيام",
@@ -3472,7 +3574,8 @@
       "empty": "لا توجد إشعارات جديدة"
     },
     "collapsePanel": "طيّ اللوحة",
-    "openPanel": "فتح Mr. Merchiva"
+    "openPanel": "فتح Mr. Merchiva",
+    "noAccess": "تم تعطيل Mr. Merchiva لحسابك. اطلب من المدير تفعيله."
   },
   "design": {
     "list": {
@@ -4928,7 +5031,20 @@
     "memberOwnerOnly": "يمكن لمالك المؤسسة فقط الاشتراك. يُرجى الطلب من مالك {org} تفعيل الاشتراك، ثم قم بالتحديث.",
     "yourOrganization": "مؤسستك",
     "continueInTrial": "المتابعة في الفترة التجريبية",
-    "recommended": "موصى به"
+    "recommended": "موصى به",
+    "yourStores": "متاجرك",
+    "switchStoreHint": "بدّل إلى متجر آخر لفتحه أو إدارة خطته."
+  },
+  "storePicker": {
+    "title": "اختر متجرًا",
+    "description": "اختر المتجر الذي تريد فتحه. يعرض كل متجر خطته الحالية.",
+    "planPro": "Pro",
+    "planProMonthly": "Pro · شهري",
+    "planProYearly": "Pro · سنوي",
+    "planTrialOne": "تجريبي · بقي يوم واحد",
+    "planTrialOther": "تجريبي · بقي {count} من الأيام",
+    "planExpired": "منتهي",
+    "current": "حالي"
   },
   "bugReport": {
     "title": "الإبلاغ عن خطأ",
@@ -4968,7 +5084,9 @@
     "noteLabel": "ملاحظة",
     "optional": "(اختياري)",
     "notePlaceholder": "هل من شيء تريد تنبيه المدير إليه؟",
-    "markDone": "وضع علامة كمكتمل"
+    "markDone": "وضع علامة كمكتمل",
+    "viewSubmission": "عرض المحتوى المُرسل",
+    "noSubmission": "لم يتم إرسال صور أو ملاحظات."
   },
   "itemForecast": {
     "title": "توقعات AI لكل عنصر",

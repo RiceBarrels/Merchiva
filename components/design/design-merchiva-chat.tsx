@@ -37,7 +37,24 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export function DesignMerchivaChat({
+/** Permission gate: mirrors the main chat — members with `merchiva.view`
+ *  disabled can't use the design assistant either. Owners always pass. */
+export function DesignMerchivaChat(props: DesignMerchivaChatProps) {
+  const { isOwner, can } = usePermissions();
+  const t = useT();
+  if (!(isOwner || can("merchiva", "view"))) {
+    return (
+      <div className="flex-1 h-full flex items-center justify-center p-6 text-center bg-background">
+        <p className="text-[12.5px] text-muted-foreground max-w-[280px] leading-relaxed">
+          {t("merchiva.noAccess")}
+        </p>
+      </div>
+    );
+  }
+  return <DesignMerchivaChatInner {...props} />;
+}
+
+function DesignMerchivaChatInner({
   designId,
   designName,
   width,

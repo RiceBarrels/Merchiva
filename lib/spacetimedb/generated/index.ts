@@ -63,9 +63,7 @@ import AssignTierReducer from "./assign_tier_reducer";
 import CancelInvitationReducer from "./cancel_invitation_reducer";
 import ClaimFirstAdminReducer from "./claim_first_admin_reducer";
 import ClaimPerkReducer from "./claim_perk_reducer";
-import ClearAiChatHistoryReducer from "./clear_ai_chat_history_reducer";
 import ClearTrainingObjectiveGradeReducer from "./clear_training_objective_grade_reducer";
-import CommitScheduleProposalReducer from "./commit_schedule_proposal_reducer";
 import CompleteRoleTaskReducer from "./complete_role_task_reducer";
 import ConsumeAiJobReducer from "./consume_ai_job_reducer";
 import CreateAiChatSessionReducer from "./create_ai_chat_session_reducer";
@@ -134,14 +132,13 @@ import RefundPaymentReducer from "./refund_payment_reducer";
 import RegisterCustomerReducer from "./register_customer_reducer";
 import RegisterDeviceReducer from "./register_device_reducer";
 import RegisterServiceIdentityReducer from "./register_service_identity_reducer";
-import RejectScheduleProposalReducer from "./reject_schedule_proposal_reducer";
 import RemoveStoreDeviceReducer from "./remove_store_device_reducer";
-import SaveAiChatHistoryReducer from "./save_ai_chat_history_reducer";
+import RequestTrainingReviewReducer from "./request_training_review_reducer";
+import ResolveTrainingReviewReducer from "./resolve_training_review_reducer";
 import SaveAiChatSessionReducer from "./save_ai_chat_session_reducer";
 import SaveComponentReducer from "./save_component_reducer";
 import SaveDailyBriefingReducer from "./save_daily_briefing_reducer";
 import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
-import SaveScheduleProposalReducer from "./save_schedule_proposal_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
 import ServiceAppendAiChatMessageReducer from "./service_append_ai_chat_message_reducer";
@@ -154,15 +151,14 @@ import ServiceSaveDailyBriefingReducer from "./service_save_daily_briefing_reduc
 import ServiceSetScheduleIntegrationReducer from "./service_set_schedule_integration_reducer";
 import SetAiUsageQuotaReducer from "./set_ai_usage_quota_reducer";
 import SetAssistantConfigReducer from "./set_assistant_config_reducer";
-import SetAutoCommitSchedulesReducer from "./set_auto_commit_schedules_reducer";
 import SetBetaFeaturesReducer from "./set_beta_features_reducer";
 import SetBriefingPrefReducer from "./set_briefing_pref_reducer";
 import SetConversationMerchivaReducer from "./set_conversation_merchiva_reducer";
+import SetMemberHourlyRateReducer from "./set_member_hourly_rate_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
 import SetScheduleIntegrationReducer from "./set_schedule_integration_reducer";
 import SetSupplierInboundPrefixReducer from "./set_supplier_inbound_prefix_reducer";
-import SetTrainingFinalGradeReducer from "./set_training_final_grade_reducer";
 import SetUserAdminReducer from "./set_user_admin_reducer";
 import SkipRoleTaskReducer from "./skip_role_task_reducer";
 import ToggleTodoReducer from "./toggle_todo_reducer";
@@ -178,6 +174,7 @@ import UpdateMemberPermissionsReducer from "./update_member_permissions_reducer"
 import UpdateOpeningHoursReducer from "./update_opening_hours_reducer";
 import UpdateOrderStatusReducer from "./update_order_status_reducer";
 import UpdateOrgReducer from "./update_org_reducer";
+import UpdateOrgLogoReducer from "./update_org_logo_reducer";
 import UpdateOrgParentReducer from "./update_org_parent_reducer";
 import UpdateOrgSubscriptionReducer from "./update_org_subscription_reducer";
 import UpdatePageReducer from "./update_page_reducer";
@@ -204,7 +201,6 @@ import UpsertAvailabilityReducer from "./upsert_availability_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
-import AiChatHistoryRow from "./ai_chat_history_table";
 import AiChatSessionRow from "./ai_chat_session_table";
 import AiJobRow from "./ai_job_table";
 import AiUsageRow from "./ai_usage_table";
@@ -236,7 +232,6 @@ import QueueEntryRow from "./queue_entry_table";
 import RoleTaskRow from "./role_task_table";
 import RoleTaskAssignmentRow from "./role_task_assignment_table";
 import SalesRecordRow from "./sales_record_table";
-import ScheduleProposalRow from "./schedule_proposal_table";
 import SettingsRow from "./settings_table";
 import ShiftRow from "./shift_table";
 import ShiftPresetRow from "./shift_preset_table";
@@ -258,9 +253,9 @@ import TimeOffRequestRow from "./time_off_request_table";
 import TodoRow from "./todo_table";
 import TrainingDayRow from "./training_day_table";
 import TrainingDayGradeRow from "./training_day_grade_table";
-import TrainingFinalGradeRow from "./training_final_grade_table";
 import TrainingObjectiveRow from "./training_objective_table";
 import TrainingObjectiveGradeRow from "./training_objective_grade_table";
+import TrainingReviewRequestRow from "./training_review_request_table";
 import UserRow from "./user_table";
 import UserBriefingPrefRow from "./user_briefing_pref_table";
 import WasteLogRow from "./waste_log_table";
@@ -269,23 +264,6 @@ import WasteLogRow from "./waste_log_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
-  aiChatHistory: __table({
-    name: 'ai_chat_history',
-    indexes: [
-      { accessor: 'id', name: 'ai_chat_history_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byOrganizationId', name: 'ai_chat_history_organization_id_idx_btree', algorithm: 'btree', columns: [
-        'organizationId',
-      ] },
-      { accessor: 'byUserId', name: 'ai_chat_history_user_id_idx_btree', algorithm: 'btree', columns: [
-        'userId',
-      ] },
-    ],
-    constraints: [
-      { name: 'ai_chat_history_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, AiChatHistoryRow),
   aiChatSession: __table({
     name: 'ai_chat_session',
     indexes: [
@@ -780,20 +758,6 @@ const tablesSchema = __schema({
       { name: 'sales_record_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SalesRecordRow),
-  scheduleProposal: __table({
-    name: 'schedule_proposal',
-    indexes: [
-      { accessor: 'id', name: 'schedule_proposal_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byOrganizationId', name: 'schedule_proposal_organization_id_idx_btree', algorithm: 'btree', columns: [
-        'organizationId',
-      ] },
-    ],
-    constraints: [
-      { name: 'schedule_proposal_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, ScheduleProposalRow),
   settings: __table({
     name: 'settings',
     indexes: [
@@ -1142,23 +1106,6 @@ const tablesSchema = __schema({
       { name: 'training_day_grade_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, TrainingDayGradeRow),
-  trainingFinalGrade: __table({
-    name: 'training_final_grade',
-    indexes: [
-      { accessor: 'id', name: 'training_final_grade_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byOrganizationId', name: 'training_final_grade_organization_id_idx_btree', algorithm: 'btree', columns: [
-        'organizationId',
-      ] },
-      { accessor: 'byTraineeId', name: 'training_final_grade_trainee_id_idx_btree', algorithm: 'btree', columns: [
-        'traineeId',
-      ] },
-    ],
-    constraints: [
-      { name: 'training_final_grade_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, TrainingFinalGradeRow),
   trainingObjective: __table({
     name: 'training_objective',
     indexes: [
@@ -1196,6 +1143,26 @@ const tablesSchema = __schema({
       { name: 'training_objective_grade_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, TrainingObjectiveGradeRow),
+  trainingReviewRequest: __table({
+    name: 'training_review_request',
+    indexes: [
+      { accessor: 'byDayId', name: 'training_review_request_day_id_idx_btree', algorithm: 'btree', columns: [
+        'dayId',
+      ] },
+      { accessor: 'id', name: 'training_review_request_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'training_review_request_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byTraineeId', name: 'training_review_request_trainee_id_idx_btree', algorithm: 'btree', columns: [
+        'traineeId',
+      ] },
+    ],
+    constraints: [
+      { name: 'training_review_request_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, TrainingReviewRequestRow),
   user: __table({
     name: 'user',
     indexes: [
@@ -1271,9 +1238,7 @@ const reducersSchema = __reducers(
   __reducerSchema("cancel_invitation", CancelInvitationReducer),
   __reducerSchema("claim_first_admin", ClaimFirstAdminReducer),
   __reducerSchema("claim_perk", ClaimPerkReducer),
-  __reducerSchema("clear_ai_chat_history", ClearAiChatHistoryReducer),
   __reducerSchema("clear_training_objective_grade", ClearTrainingObjectiveGradeReducer),
-  __reducerSchema("commit_schedule_proposal", CommitScheduleProposalReducer),
   __reducerSchema("complete_role_task", CompleteRoleTaskReducer),
   __reducerSchema("consume_ai_job", ConsumeAiJobReducer),
   __reducerSchema("create_ai_chat_session", CreateAiChatSessionReducer),
@@ -1342,14 +1307,13 @@ const reducersSchema = __reducers(
   __reducerSchema("register_customer", RegisterCustomerReducer),
   __reducerSchema("register_device", RegisterDeviceReducer),
   __reducerSchema("register_service_identity", RegisterServiceIdentityReducer),
-  __reducerSchema("reject_schedule_proposal", RejectScheduleProposalReducer),
   __reducerSchema("remove_store_device", RemoveStoreDeviceReducer),
-  __reducerSchema("save_ai_chat_history", SaveAiChatHistoryReducer),
+  __reducerSchema("request_training_review", RequestTrainingReviewReducer),
+  __reducerSchema("resolve_training_review", ResolveTrainingReviewReducer),
   __reducerSchema("save_ai_chat_session", SaveAiChatSessionReducer),
   __reducerSchema("save_component", SaveComponentReducer),
   __reducerSchema("save_daily_briefing", SaveDailyBriefingReducer),
   __reducerSchema("save_push_subscription", SavePushSubscriptionReducer),
-  __reducerSchema("save_schedule_proposal", SaveScheduleProposalReducer),
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
   __reducerSchema("service_append_ai_chat_message", ServiceAppendAiChatMessageReducer),
@@ -1362,15 +1326,14 @@ const reducersSchema = __reducers(
   __reducerSchema("service_set_schedule_integration", ServiceSetScheduleIntegrationReducer),
   __reducerSchema("set_ai_usage_quota", SetAiUsageQuotaReducer),
   __reducerSchema("set_assistant_config", SetAssistantConfigReducer),
-  __reducerSchema("set_auto_commit_schedules", SetAutoCommitSchedulesReducer),
   __reducerSchema("set_beta_features", SetBetaFeaturesReducer),
   __reducerSchema("set_briefing_pref", SetBriefingPrefReducer),
   __reducerSchema("set_conversation_merchiva", SetConversationMerchivaReducer),
+  __reducerSchema("set_member_hourly_rate", SetMemberHourlyRateReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),
   __reducerSchema("set_schedule_integration", SetScheduleIntegrationReducer),
   __reducerSchema("set_supplier_inbound_prefix", SetSupplierInboundPrefixReducer),
-  __reducerSchema("set_training_final_grade", SetTrainingFinalGradeReducer),
   __reducerSchema("set_user_admin", SetUserAdminReducer),
   __reducerSchema("skip_role_task", SkipRoleTaskReducer),
   __reducerSchema("toggle_todo", ToggleTodoReducer),
@@ -1386,6 +1349,7 @@ const reducersSchema = __reducers(
   __reducerSchema("update_opening_hours", UpdateOpeningHoursReducer),
   __reducerSchema("update_order_status", UpdateOrderStatusReducer),
   __reducerSchema("update_org", UpdateOrgReducer),
+  __reducerSchema("update_org_logo", UpdateOrgLogoReducer),
   __reducerSchema("update_org_parent", UpdateOrgParentReducer),
   __reducerSchema("update_org_subscription", UpdateOrgSubscriptionReducer),
   __reducerSchema("update_page", UpdatePageReducer),

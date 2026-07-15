@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -57,6 +57,7 @@ import {
   createNotification,
 } from "@/lib/spacetimedb/actions";
 import { buildBriefingContext as buildBriefingContextShared, briefingProblemKeys } from "@/lib/insights/build-context";
+import { buildFallbackBriefing } from "@/lib/insights/fallback-briefing";
 import { parseOpeningHours, dayKeyForDate } from "@/lib/holidays";
 import { executeAction } from "@/lib/merchiva/skills/registry";
 import { useI18n, useT } from "@/lib/i18n/context";
@@ -485,7 +486,11 @@ export function MorningBriefingCard() {
   const { organizationId, isOwner, role: orgRole } = usePermissions();
   const isAdmin = isOwner || orgRole === "manager";
 
-  const [rawBriefings] = useDailyBriefings() as [unknown[], boolean];
+  // Second element is the SDK's `subscribeApplied` flag — true once the
+  // daily_briefing subscription has delivered its snapshot (NOT a "loading"
+  // spinner flag). The auto-gen safety net must wait for it, or a fresh page
+  // load sees an empty table and wrongly regenerates every time.
+  const [rawBriefings, briefingsReady] = useDailyBriefings() as [unknown[], boolean];
   const [shifts] = useShifts() as [unknown[], boolean];
   const [staffMembers] = useStaffMembers() as [unknown[], boolean];
   const [orgMembers] = useOrgMembers() as [unknown[], boolean];
@@ -962,21 +967,31 @@ export function MorningBriefingCard() {
       firstIn: localTimeOf(ms, tz),
     }));
 
-    // Yesterday's role-task completion (assignments due yesterday).
+    // Role-task completion — today's progress and yesterday's outcome.
     let dueY = 0;
     let doneY = 0;
     let skippedY = 0;
+    let dueT = 0;
+    let doneT = 0;
+    let skippedT = 0;
     for (const a of roleTaskAssignments as any[]) {
       if (a.organizationId !== organizationId) continue;
-      if (localDateOf(a.dueAt, tz) !== yesterday) continue;
-      dueY++;
-      if (a.status === "completed") doneY++;
-      else if (a.status === "skipped") skippedY++;
+      const dueDate = localDateOf(a.dueAt, tz);
+      if (dueDate === yesterday) {
+        dueY++;
+        if (a.status === "completed") doneY++;
+        else if (a.status === "skipped") skippedY++;
+      } else if (dueDate === today) {
+        dueT++;
+        if (a.status === "completed") doneT++;
+        else if (a.status === "skipped") skippedT++;
+      }
     }
     const notDoneY = Math.max(0, dueY - doneY - skippedY);
+    const pendingT = Math.max(0, dueT - doneT - skippedT);
     /* eslint-enable @typescript-eslint/no-explicit-any */
 
-    return { onShift, punchedInToday, dueY, doneY, skippedY, notDoneY };
+    return { onShift, punchedInToday, dueY, doneY, skippedY, notDoneY, dueT, doneT, skippedT, pendingT };
   }, [organizationId, today, tz, punchEvents, orgMembers, roleTaskAssignments]);
 
   // ── Horizontal hourly-scan timeline ("the pulse") ──────────────────────
@@ -1094,18 +1109,60 @@ export function MorningBriefingCard() {
     settingsRows, punchEvents, organizationId, today, locale,
   ]);
 
-  // ── Generate briefing — guarded to once per day per org ───────────────
-  const generateBriefing = useCallback(async () => {
+  // Hours of today that already have a snapshot — kept in a ref so the
+  // fallback path below can consult a fresh value without re-creating the
+  // generate callback on every briefing update.
+  const todayHoursRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    todayHoursRef.current = new Set(
+      (byDate.get(todayLocal()) ?? [])
+        .map((r) => r.hour)
+        .filter((h): h is number => h != null),
+    );
+  }, [byDate]);
+
+  // ── Generate briefing ──────────────────────────────────────────────────
+  // fallbackOnError (auto path): when the LLM route fails, still persist a
+  // deterministic no-AI snapshot so the hour is never left empty — but only
+  // if the hour has no snapshot yet, so a good one is never downgraded.
+  const generateBriefing = useCallback(async (opts?: { fallbackOnError?: boolean }) => {
     if (!organizationId || busyBriefing) return;
     setBusyBriefing(true);
     try {
       const context = buildBriefingContext();
-      const res = await fetch("/api/insights/morning-briefing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context, lang: locale, dateStr: today, organizationId }),
-      });
+      const problemKeys = briefingProblemKeys(context);
+      const saveFallback = async () => {
+        const hour = new Date().getHours();
+        if (todayHoursRef.current.has(hour)) return;
+        const fb = buildFallbackBriefing(problemKeys, locale, {
+          done: context.todayTasks.completed,
+          total: context.todayTasks.total,
+        });
+        await saveDailyBriefing({
+          date: today,
+          content: fb.content,
+          summary: fb.summary,
+          generatedBy: "auto-fallback",
+          problemKeys: JSON.stringify(problemKeys),
+          hour,
+        });
+      };
+      let res: Response;
+      try {
+        res = await fetch("/api/insights/morning-briefing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ context, lang: locale, dateStr: today, organizationId }),
+        });
+      } catch (e) {
+        if (opts?.fallbackOnError) await saveFallback();
+        throw e;
+      }
       if (!res.ok) {
+        if (opts?.fallbackOnError) {
+          await saveFallback();
+          return;
+        }
         const err = await res.json().catch(() => ({}));
         toast.error("Briefing failed", { description: err.error });
         return;
@@ -1124,7 +1181,7 @@ export function MorningBriefingCard() {
         generatedBy: data.generatedBy,
         actions: data.actions && data.actions.length ? JSON.stringify(data.actions) : undefined,
         // Keep problemKeys fresh so the hourly cron's new-problem diff is accurate.
-        problemKeys: JSON.stringify(briefingProblemKeys(context)),
+        problemKeys: JSON.stringify(problemKeys),
         // Snapshot this hour so the chat's time-rail can browse the day's runs.
         hour: new Date().getHours(),
       });
@@ -1135,10 +1192,64 @@ export function MorningBriefingCard() {
     }
   }, [organizationId, busyBriefing, buildBriefingContext, locale, today]);
 
-  // No client-side auto-generation. The hourly cron (/api/cron/morning-briefing)
+  // The hourly cron (/api/cron/morning-briefing) is the PRIMARY generator — it
   // scans every active-admin org each hour whether or not anyone is on the
-  // dashboard, so opening the page just subscribes and shows the latest snapshot.
-  // The header refresh button is the only manual (re)generate.
+  // dashboard. But every hour MUST get a snapshot, so this is the client-side
+  // safety net: if the dashboard is open and the current hour still has no
+  // snapshot a few minutes past the top of the hour (cron missed/failed, local
+  // dev without a cron runner, org created mid-hour), generate one from here.
+  // The reducer upserts on (org, date, hour), so overlapping with the cron is
+  // harmless. Capped at 2 attempts per hour so a failing API isn't hammered.
+  const autoGenAttempts = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    // Staff can't save briefings (reducer requires manager/owner) — admins only.
+    // Waiting for `briefingsReady` means an empty byDate really is "no snapshot
+    // for this hour yet", never "subscription still loading" — entering or
+    // refreshing the page must NOT re-generate when the hour already ran.
+    if (!organizationId || !briefingsReady || !isAdmin) return;
+    // Attempts are persisted per (org, date, hour) so page refreshes don't
+    // reset the budget; in-memory map is the private-mode fallback.
+    const readAttempts = (key: string): number => {
+      try {
+        const v = window.localStorage.getItem(`mbAutoGen:${key}`);
+        if (v != null) return Number(v) || 0;
+      } catch { /* storage unavailable */ }
+      return autoGenAttempts.current.get(key) ?? 0;
+    };
+    const writeAttempts = (key: string, n: number) => {
+      autoGenAttempts.current.set(key, n);
+      try { window.localStorage.setItem(`mbAutoGen:${key}`, String(n)); } catch { /* ignore */ }
+    };
+    // Prune markers from previous days so the store doesn't accumulate.
+    try {
+      const dateStr = todayLocal();
+      for (let i = window.localStorage.length - 1; i >= 0; i--) {
+        const k = window.localStorage.key(i);
+        if (k && k.startsWith("mbAutoGen:") && !k.includes(`:${dateStr}:`)) {
+          window.localStorage.removeItem(k);
+        }
+      }
+    } catch { /* ignore */ }
+    const check = () => {
+      const now = new Date();
+      if (now.getMinutes() < 3) return; // give the server cron a head start
+      const dateStr = todayLocal();
+      const hour = now.getHours();
+      if (busyBriefing) return;
+      // Snapshot already exists for this hour (cron, another tab, earlier
+      // visit) — nothing to do. This is the normal path on page entry.
+      const hasSnapshot = (byDate.get(dateStr) ?? []).some((r) => r.hour === hour);
+      if (hasSnapshot) return;
+      const key = `${organizationId}:${dateStr}:${hour}`;
+      const attempts = readAttempts(key);
+      if (attempts >= 2) return; // don't hammer a failing API — next hour retries
+      writeAttempts(key, attempts + 1);
+      void generateBriefing({ fallbackOnError: true });
+    };
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  }, [organizationId, briefingsReady, isAdmin, byDate, busyBriefing, generateBriefing]);
 
   // ── Quick-action dispatcher (re-uses Mr. Merchiva's reducer wrappers) ─
   const runAction = useCallback(
@@ -1619,6 +1730,59 @@ export function MorningBriefingCard() {
                         </li>
                       ))}
                     </ul>
+                  )}
+                </div>
+
+                {/* Today's tasks — live completion progress, always shown */}
+                <div>
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                      {t("dashboard.todayTasks.title") || "Today's tasks"}
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                    {todayStatus.dueT > 0 && (
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                        {todayStatus.doneT}/{todayStatus.dueT} {t("dashboard.todayTasks.done") || "completed"}
+                      </span>
+                    )}
+                  </div>
+                  {todayStatus.dueT === 0 ? (
+                    <p className="text-[11.5px] text-muted-foreground">
+                      {t("dashboard.todayTasks.none") || "No tasks due today."}
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11.5px]">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-[0.3rem] border px-2 py-1",
+                          todayStatus.doneT >= todayStatus.dueT
+                            ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+                            : "border-border bg-muted/40",
+                        )}
+                      >
+                        <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                        <span className="font-mono tabular-nums">
+                          {todayStatus.doneT}/{todayStatus.dueT}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {t("dashboard.todayTasks.done") || "completed"}
+                        </span>
+                      </span>
+                      {todayStatus.pendingT > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-amber-200 bg-amber-50/60 px-2 py-1 dark:border-amber-900/50 dark:bg-amber-950/20">
+                          <span className="font-mono tabular-nums">{todayStatus.pendingT}</span>
+                          <span className="text-amber-700 dark:text-amber-400">
+                            {t("dashboard.todayTasks.pending") || "pending"}
+                          </span>
+                        </span>
+                      )}
+                      {todayStatus.skippedT > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-border px-2 py-1 text-muted-foreground">
+                          <span className="font-mono tabular-nums">{todayStatus.skippedT}</span>
+                          <span>{t("dashboard.todayTasks.skipped") || "skipped"}</span>
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 

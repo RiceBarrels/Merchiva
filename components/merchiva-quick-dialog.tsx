@@ -583,7 +583,15 @@ export function QuickDialogPanel({
 // an OS-global shortcut. In the Tauri desktop shell the global overlay window
 // takes over, so this stays inert there.
 // ═══════════════════════════════════════════════════════════════════════════
+/** Permission gate: members with `merchiva.view` disabled get no palette and
+ *  no global shortcut. Owners always pass. */
 export function MerchivaQuickDialog() {
+  const { isOwner, can } = usePermissions();
+  if (!(isOwner || can("merchiva", "view"))) return null;
+  return <MerchivaQuickDialogInner />;
+}
+
+function MerchivaQuickDialogInner() {
   const native = useIsNativeShell();
   const router = useRouter();
   const { t } = useI18n();

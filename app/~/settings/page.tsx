@@ -72,7 +72,9 @@ import {
   setSupplierInboundPrefix,
   updateDisplayName,
   updateProfile,
+  updateOrgLogo,
 } from "@/lib/spacetimedb/actions";
+import { StoreLogo } from "@/components/store-picker";
 import { CURRENCIES, getCurrencyInfo } from "@/lib/currency";
 import { parseOpeningHours, type WeeklyHours, type DayKey } from "@/lib/holidays";
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
@@ -168,6 +170,7 @@ export default function SettingsPage() {
   // Fallback: the organization's own name, for orgs whose settings.businessName was never set
   const [orgRows] = useTable(tables.organization);
   const orgName = (orgRows || []).find((o) => o.id.toString() === organizationId)?.name ?? "";
+  const storeLogoUrl = (orgRows || []).find((o) => o.id.toString() === organizationId)?.logoUrl ?? null;
   const [userId, setUserId]     = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
 
@@ -184,6 +187,7 @@ export default function SettingsPage() {
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingStoreLogo, setUploadingStoreLogo] = useState(false);
   const [profileDisplayName, setProfileDisplayName] = useState("");
   const [personalName, setPersonalName] = useState("");
   const [personalBirthday, setPersonalBirthday] = useState("");
@@ -747,6 +751,48 @@ export default function SettingsPage() {
       toast.error(t("settings.avatarUploadFailed"));
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handleStoreLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !organizationId) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error(t("components.imageUpload.unsupportedType"));
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error(t("components.imageUpload.fileTooLarge"));
+      return;
+    }
+
+    setUploadingStoreLogo(true);
+    try {
+      const [res] = await uploadFiles("avatar", { files: [file] });
+      await updateOrgLogo(organizationId, res.ufsUrl);
+      hapticSuccess();
+      toast.success(t("settings.storeImageSaved"));
+    } catch (err) {
+      console.error("Store image upload failed:", err);
+      toast.error(t("settings.storeImageFailed"));
+    } finally {
+      setUploadingStoreLogo(false);
+    }
+  };
+
+  const handleStoreLogoRemove = async () => {
+    if (!organizationId) return;
+    setUploadingStoreLogo(true);
+    try {
+      await updateOrgLogo(organizationId, null);
+      hapticSuccess();
+      toast.success(t("settings.storeImageSaved"));
+    } catch (err) {
+      console.error("Store image remove failed:", err);
+      toast.error(t("settings.storeImageFailed"));
+    } finally {
+      setUploadingStoreLogo(false);
     }
   };
 
@@ -1624,6 +1670,7 @@ export default function SettingsPage() {
                     { key: "team" as const, label: t("settings.permTeam"), actions: ["view", "invite", "edit"] as const },
                     { key: "website" as const, label: t("settings.permWebsite"), actions: ["view", "edit"] as const },
                     { key: "training_grading" as const, label: t("settings.permTrainingGrading"), actions: ["view", "edit"] as const },
+                    { key: "merchiva" as const, label: t("settings.permMerchiva"), actions: ["view"] as const },
                   ]).map(({ key, label, actions }) => (
                     <div key={key} className="flex items-center gap-3 px-1 py-1.5 rounded hover:bg-muted/50">
                       <span className="text-sm flex-1">{label}</span>
@@ -2235,9 +2282,7 @@ export default function SettingsPage() {
                     }}
                     className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${i === 0 ? "" : "border-t border-border"}`}
                   >
-                    <IconTile>
-                      <Building2 className="h-4 w-4 text-foreground" />
-                    </IconTile>
+                    <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-9 w-9" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{org.name}</p>
                       {org.parentOrgId && (
@@ -3335,6 +3380,46 @@ export default function SettingsPage() {
               </p>
             </div>
 
+            {/* Store image */}
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {t("settings.storeImage")}
+              </p>
+              <div className="rounded-[0.3rem] border border-border bg-card p-3 flex items-center gap-3">
+                <StoreLogo name={currentOrg?.name ?? ""} logoUrl={storeLogoUrl} className="h-14 w-14 text-lg" />
+                <div className="flex-1 min-w-0 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.storeImageHint")}
+                  </p>
+                  {role === "owner" && (
+                    <div className="flex items-center gap-1.5">
+                      <label className="flex cursor-pointer items-center gap-1.5 rounded border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                        {uploadingStoreLogo ? <Spinner size={12} /> : null}
+                        {t("settings.storeImageUpload")}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingStoreLogo}
+                          onChange={handleStoreLogoUpload}
+                        />
+                      </label>
+                      {storeLogoUrl && (
+                        <button
+                          type="button"
+                          disabled={uploadingStoreLogo}
+                          onClick={handleStoreLogoRemove}
+                          className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                        >
+                          {t("settings.storeImageRemove")}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Share group list */}
             <div className="space-y-2">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -3356,6 +3441,7 @@ export default function SettingsPage() {
                       className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
                     >
                       {o.parentOrgId && <span className="text-muted-foreground/70">↳</span>}
+                      <StoreLogo name={o.name} logoUrl={o.logoUrl} className="h-7 w-7 text-[10px]" />
                       <span className="flex-1 truncate text-sm font-medium">{o.name}</span>
                       {!o.parentOrgId && (
                         <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px">

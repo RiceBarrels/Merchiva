@@ -45,6 +45,7 @@ const PERM_LABEL: Record<string, string> = {
   "settings.view": "设置",
   "website.view": "查看网站",
   "website.edit": "编辑网站",
+  "merchiva.view": "使用 Mr. Merchiva",
 };
 
 const PERM_GROUP_LABEL: Record<string, string> = {

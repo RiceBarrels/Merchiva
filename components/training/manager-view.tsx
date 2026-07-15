@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Clock, Eye, FileText, History, Link2, Pencil, Play, Settings2, ShieldCheck, Upload, UploadCloud, Users, X } from "lucide-react";
+import { ArrowUpRight, Clock, Eye, FileText, Link2, Pencil, Play, Plus, ShieldCheck, Trash2, Upload, UploadCloud, Users, X } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTrainingDays, useTrainingObjectives } from "@/lib/spacetimedb/hooks";
 import {
   addTrainingDay,
   addTrainingObjective,
+  deleteTrainingDay,
   deleteTrainingObjective,
   updateTrainingDay,
 } from "@/lib/spacetimedb/actions";
@@ -157,28 +159,107 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
         sortOrder: activeDay.sortOrder,
       });
       setDirty(false);
+      toast.success(t("training.manager.published"));
     } catch (err) {
       console.error("[Training] save day failed", err);
+      toast.error(t("training.manager.publishFailed"));
     } finally {
       setBusy(false);
     }
-  }, [activeDay, draftTitle, draftDesc]);
+  }, [activeDay, draftTitle, draftDesc, t]);
 
   const handleAddDay = useCallback(async () => {
     setBusy(true);
     try {
+      const nextNumber = days.reduce((m, d) => Math.max(m, d.dayNumber), 0) + 1;
       await addTrainingDay({
-        dayNumber: days.length + 1,
-        title: t("training.dayLabel").replace("{n}", String(days.length + 1)),
+        dayNumber: nextNumber,
+        title: t("training.dayLabel").replace("{n}", String(nextNumber)),
         description: null,
         sortOrder: days.length,
       });
     } catch (err) {
       console.error("[Training] add day failed", err);
+      toast.error(t("training.manager.addDayFailed"));
     } finally {
       setBusy(false);
     }
-  }, [days.length]);
+  }, [days, t]);
+
+  const handleDeleteDay = useCallback(async () => {
+    if (!activeDay) return;
+    if (!window.confirm(t("training.confirmDeleteDay"))) return;
+    setBusy(true);
+    try {
+      await deleteTrainingDay(activeDay.id);
+      toast.success(t("training.manager.dayDeleted"));
+    } catch (err) {
+      console.error("[Training] delete day failed", err);
+      toast.error(t("training.manager.deleteDayFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }, [activeDay, t]);
+
+  const handleReorder = useCallback(
+    async (id: string, dir: -1 | 1) => {
+      const index = days.findIndex((d) => d.id === id);
+      if (index === -1) return;
+      const target = index + dir;
+      if (target < 0 || target >= days.length) return;
+      const next = [...days];
+      [next[index], next[target]] = [next[target], next[index]];
+      setBusy(true);
+      try {
+        for (const [idx, day] of next.entries()) {
+          if (day.sortOrder === idx && day.dayNumber === idx + 1) continue;
+          await updateTrainingDay(day.id, {
+            dayNumber: idx + 1,
+            title: day.title,
+            description: day.description,
+            sortOrder: idx,
+          });
+        }
+      } catch (err) {
+        console.error("[Training] reorder days failed", err);
+        toast.error(t("training.manager.publishFailed"));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [days, t],
+  );
+
+  const handleEmbedUrl = useCallback(async () => {
+    if (!activeDay) return;
+    const raw = window.prompt(t("training.manager.embedUrlPrompt"));
+    if (!raw) return;
+    let url: URL;
+    try {
+      url = new URL(raw);
+    } catch {
+      toast.error(t("training.manager.embedInvalidUrl"));
+      return;
+    }
+    const mediaType: "image" | "video" | null = /\.(png|jpe?g|gif|webp|avif)$/i.test(url.pathname)
+      ? "image"
+      : /\.(mp4|mov|webm|m4v)$/i.test(url.pathname)
+        ? "video"
+        : null;
+    try {
+      await addTrainingObjective({
+        dayId: activeDay.id,
+        text: raw,
+        mediaUrl: raw,
+        mediaType,
+        sortOrder: activeObjectives.length,
+      });
+      toast.success(t("training.manager.embedAdded"));
+    } catch (err) {
+      console.error("[Training] embed url failed", err);
+      toast.error(t("training.manager.publishFailed"));
+    }
+  }, [activeDay, activeObjectives.length, t]);
 
   const onTitleChange = (v: string) => {
     setDraftTitle(v);
@@ -221,6 +302,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
           onSelect={setActiveId}
           role="manager"
           onAddDay={handleAddDay}
+          onReorder={handleReorder}
           title={t("training.curriculumDays")}
           subtitle={
             days.length === 1
@@ -228,10 +310,6 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
               : t("training.manager.dayCountPlural").replace("{count}", String(days.length))
           }
         />
-        <div className="border-t border-border px-3 py-2.5 flex items-center gap-2">
-          <Settings2 className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
-          <span className="text-[11.5px] text-muted-foreground">{t("training.manager.curriculumSettings")}</span>
-        </div>
       </aside>
 
       {/* Main */}
@@ -294,11 +372,13 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
               )}
               <button
                 type="button"
-                className="h-8 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5"
-                title={t("training.manager.history")}
+                onClick={handleDeleteDay}
+                disabled={!activeDay || busy}
+                className="h-8 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-red-600 dark:text-red-400 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={t("training.deleteDay")}
               >
-                <History className="h-[13px] w-[13px]" strokeWidth={1.75} />
-                <span className="hidden md:inline">{t("training.manager.history")}</span>
+                <Trash2 className="h-[13px] w-[13px]" strokeWidth={1.75} />
+                <span className="hidden md:inline">{t("training.deleteDay")}</span>
               </button>
               <button
                 type="button"
@@ -330,6 +410,38 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Mobile day picker */}
+        <div className="lg:hidden border-b border-border bg-background px-3 py-2 flex gap-1.5 overflow-x-auto">
+          {days.map((d) => {
+            const active = d.id === activeId;
+            return (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setActiveId(d.id)}
+                className={cn(
+                  "shrink-0 h-8 px-2.5 rounded-[0.3rem] border text-[11.5px] font-medium inline-flex items-center gap-1.5",
+                  active
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-background border-border text-stone-700 dark:text-stone-200",
+                )}
+              >
+                <span className="font-mono">D{String(d.dayNumber).padStart(2, "0")}</span>
+                <span className="max-w-[90px] truncate">{d.title}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={handleAddDay}
+            aria-label={t("training.addDay")}
+            title={t("training.addDay")}
+            className="shrink-0 h-8 px-2.5 rounded-[0.3rem] border border-border bg-background text-stone-700 dark:text-stone-200 inline-flex items-center justify-center"
+          >
+            <Plus className="h-4 w-4" strokeWidth={1.75} />
+          </button>
         </div>
 
         {/* Editor + Preview */}
@@ -468,13 +580,14 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
             <button
               type="button"
               disabled={!activeDay}
+              onClick={handleEmbedUrl}
               className="h-7 px-2.5 rounded-[0.3rem] border border-border bg-background text-[11.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50"
             >
               <Link2 className="h-3 w-3" strokeWidth={1.75} /> {t("training.manager.embedUrl")}
             </button>
           </div>
           <div className="px-4 lg:px-6 pb-4 pt-1 flex gap-2.5 overflow-x-auto">
-            <AttachmentDropZone />
+            <AttachmentDropZone dayId={activeDay?.id} sortOrder={activeObjectives.length} />
             {activeObjectives.map((a) => (
               <AttachmentTile key={a.id} a={a} />
             ))}
@@ -508,6 +621,8 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
     setBusy(true);
     try {
       await deleteTrainingObjective(a.id);
+    } catch {
+      toast.error(t("training.manager.removeFailed"));
     } finally {
       setBusy(false);
     }
@@ -570,9 +685,83 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
   );
 }
 
-function AttachmentDropZone() {
+/**
+ * Shared upload logic for attachment objectives — wraps UploadThing's
+ * "generalFile" preset, validates type/size, and records the uploaded file
+ * as a training objective on the given day.
+ */
+function useAttachmentUpload(dayId: string | undefined, sortOrder: number) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+
+  const { startUpload, isUploading } = useUploadThing("generalFile", {
+    onClientUploadComplete: async (res) => {
+      const file = res?.[0];
+      if (!file || !dayId) {
+        setBusy(false);
+        return;
+      }
+      const isImage = /\.(png|jpe?g|gif|webp|avif)$/i.test(file.name);
+      const isVideo = /\.(mp4|mov|webm|m4v)$/i.test(file.name);
+      try {
+        await addTrainingObjective({
+          dayId,
+          text: file.name,
+          mediaUrl: file.ufsUrl,
+          mediaType: isImage ? "image" : isVideo ? "video" : null,
+          sortOrder,
+        });
+      } catch (err) {
+        console.error("[Training] attachment save failed", err);
+        toast.error(t("training.manager.uploadFailed"));
+      } finally {
+        setBusy(false);
+      }
+    },
+    onUploadError: (err) => {
+      console.error("[Training] attachment upload failed", err);
+      toast.error(t("training.manager.uploadFailed"));
+      setBusy(false);
+    },
+  });
+
+  const uploadFile = useCallback(
+    (file: File) => {
+      if (!dayId) return;
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      if (!isImage && !isVideo) {
+        toast.error(t("training.manager.unsupportedFile"));
+        return;
+      }
+      const max = isVideo ? 64 * 1024 * 1024 : 8 * 1024 * 1024;
+      if (file.size > max) {
+        toast.error(t("training.manager.fileTooLarge"));
+        return;
+      }
+      setBusy(true);
+      startUpload([file]).catch((err) => {
+        console.error("[Training] attachment upload failed", err);
+        toast.error(t("training.manager.uploadFailed"));
+        setBusy(false);
+      });
+    },
+    [dayId, startUpload, t],
+  );
+
+  return { uploadFile, busy: busy || isUploading };
+}
+
+function AttachmentDropZone({
+  dayId,
+  sortOrder,
+}: {
+  dayId: string | undefined;
+  sortOrder: number;
+}) {
   const t = useT();
   const [hover, setHover] = useState(false);
+  const { uploadFile, busy } = useAttachmentUpload(dayId, sortOrder);
   return (
     <div
       onDragEnter={(e) => {
@@ -584,6 +773,8 @@ function AttachmentDropZone() {
       onDrop={(e) => {
         e.preventDefault();
         setHover(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) uploadFile(file);
       }}
       className={cn(
         "shrink-0 w-[140px] h-[112px] rounded-[0.3rem] border border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
@@ -592,12 +783,16 @@ function AttachmentDropZone() {
           : "border-border bg-muted/30 hover:bg-muted/60",
       )}
     >
-      <UploadCloud className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
+      {busy ? (
+        <Spinner size={18} />
+      ) : (
+        <UploadCloud className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
+      )}
       <div className="text-[11px] font-medium text-stone-700 dark:text-stone-300">
         {t("training.manager.dropFile")}
       </div>
       <div className="font-mono text-[9.5px] text-muted-foreground uppercase tracking-wider">
-        jpg · png · webp
+        jpg · png · webp · mp4
       </div>
     </div>
   );
@@ -614,58 +809,19 @@ function AttachmentUploadButton({
 }) {
   const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-
-  const { startUpload, isUploading } = useUploadThing("generalFile", {
-    onClientUploadComplete: async (res) => {
-      const file = res?.[0];
-      if (!file || !dayId) return;
-      const isImage = /\.(png|jpe?g|gif|webp|avif)$/i.test(file.name);
-      const isVideo = /\.(mp4|mov|webm|m4v)$/i.test(file.name);
-      try {
-        await addTrainingObjective({
-          dayId,
-          text: file.name,
-          mediaUrl: file.ufsUrl,
-          mediaType: isImage ? "image" : isVideo ? "video" : null,
-          sortOrder,
-        });
-      } finally {
-        setBusy(false);
-      }
-    },
-    onUploadError: () => setBusy(false),
-  });
+  const { uploadFile, busy } = useAttachmentUpload(dayId, sortOrder);
 
   const onPickFile = () => inputRef.current?.click();
-
-  const onFile = async (file: File) => {
-    if (!dayId) return;
-    const isImage = file.type.startsWith("image/");
-    const isVideo = file.type.startsWith("video/");
-    if (!isImage && !isVideo) return;
-    const max = isVideo ? 64 * 1024 * 1024 : 8 * 1024 * 1024;
-    if (file.size > max) return;
-    setBusy(true);
-    try {
-      await startUpload([file]);
-    } catch (err) {
-      console.error("[Training] attachment upload failed", err);
-      setBusy(false);
-    }
-  };
-
-  const showBusy = busy || isUploading;
 
   return (
     <>
       <button
         type="button"
         onClick={onPickFile}
-        disabled={disabled || showBusy || !dayId}
+        disabled={disabled || busy || !dayId}
         className="h-7 px-2.5 rounded-[0.3rem] border border-border bg-background text-[11.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50"
       >
-        {showBusy ? (
+        {busy ? (
           <Spinner size={12} />
         ) : (
           <Upload className="h-3 w-3" strokeWidth={1.75} />
@@ -679,7 +835,7 @@ function AttachmentUploadButton({
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) void onFile(f);
+          if (f) uploadFile(f);
           e.target.value = "";
         }}
       />

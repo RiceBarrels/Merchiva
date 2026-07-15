@@ -1147,6 +1147,20 @@ export async function createOrg(name: string, parentOrgId?: string | null): Prom
 }
 
 /**
+ * Set the store image URL shown wherever the user picks a store. Pass null /
+ * "" to clear it. Owner-only on the server side.
+ */
+export async function updateOrgLogo(
+  organizationId: string,
+  logoUrl: string | null,
+): Promise<void> {
+  return conn().reducers.updateOrgLogo({
+    organizationId,
+    logoUrl: logoUrl && logoUrl.length > 0 ? logoUrl : undefined,
+  });
+}
+
+/**
  * Attach this org as a sub-store of `parentOrgId`, or detach it (pass null /
  * undefined / "") to make it a root org again. Owner-only on the server side.
  */
@@ -1183,6 +1197,14 @@ export async function setPunchInCode(memberId: string, code: string | null): Pro
     organizationId: orgId(),
     memberId,
     code: code ?? undefined,
+  });
+}
+
+export async function setMemberHourlyRate(memberId: string, rate: number | null): Promise<void> {
+  return conn().reducers.setMemberHourlyRate({
+    organizationId: orgId(),
+    memberId,
+    rate: rate ?? undefined,
   });
 }
 
@@ -1527,20 +1549,6 @@ export async function deleteQueueEntry(entryId: string): Promise<void> {
   return conn().reducers.deleteQueueEntry({ organizationId: orgId(), entryId });
 }
 
-// ─── AI Chat History ────────────────────────────────────────────────────────
-
-export async function saveAiChatHistory(messages: string, summary?: string): Promise<void> {
-  return conn().reducers.saveAiChatHistory({
-    organizationId: orgId(),
-    messages,
-    summary: summary ?? undefined,
-  });
-}
-
-export async function clearAiChatHistory(): Promise<void> {
-  return conn().reducers.clearAiChatHistory({ organizationId: orgId() });
-}
-
 // ─── AI Chat Sessions ───────────────────────────────────────────────────────
 
 export async function createAiChatSession(title: string): Promise<void> {
@@ -1710,17 +1718,14 @@ export async function gradeTrainingDay(data: {
   });
 }
 
-export async function setTrainingFinalGrade(data: {
-  traineeId: string;
-  score: number;
-  comment?: string | null;
-}): Promise<void> {
-  return trainingReducer("setTrainingFinalGrade")({
-    organizationId: orgId(),
-    traineeId: data.traineeId,
-    score: Math.max(0, Math.min(100, Math.round(data.score))),
-    comment: data.comment ?? undefined,
-  });
+// ─── Training: Review Requests ─────────────────────────────────────────────
+
+export async function requestTrainingReview(dayId: string): Promise<void> {
+  return trainingReducer("requestTrainingReview")({ organizationId: orgId(), dayId });
+}
+
+export async function resolveTrainingReview(requestId: string): Promise<void> {
+  return trainingReducer("resolveTrainingReview")({ organizationId: orgId(), requestId });
 }
 
 // ─── Billing ────────────────────────────────────────────────────────────────
@@ -1789,44 +1794,6 @@ export async function saveDailyBriefing(data: {
     actions: data.actions ?? undefined,
     problemKeys: data.problemKeys ?? undefined,
     hour: data.hour ?? undefined,
-  });
-}
-
-export async function saveScheduleProposal(data: {
-  weekStart: string;
-  weekEnd: string;
-  shifts: unknown;       // serializable: will be JSON.stringify'd
-  status: "draft" | "committed" | "rejected";
-  generatedBy: string;
-}): Promise<void> {
-  return insightsReducer("saveScheduleProposal")({
-    organizationId: orgId(),
-    weekStart: data.weekStart,
-    weekEnd: data.weekEnd,
-    shifts: typeof data.shifts === "string" ? data.shifts : JSON.stringify(data.shifts),
-    status: data.status,
-    generatedBy: data.generatedBy,
-  });
-}
-
-export async function commitScheduleProposal(proposalId: string): Promise<void> {
-  return insightsReducer("commitScheduleProposal")({
-    organizationId: orgId(),
-    proposalId,
-  });
-}
-
-export async function rejectScheduleProposal(proposalId: string): Promise<void> {
-  return insightsReducer("rejectScheduleProposal")({
-    organizationId: orgId(),
-    proposalId,
-  });
-}
-
-export async function setAutoCommitSchedules(autoCommit: boolean): Promise<void> {
-  return insightsReducer("setAutoCommitSchedules")({
-    organizationId: orgId(),
-    autoCommit,
   });
 }
 

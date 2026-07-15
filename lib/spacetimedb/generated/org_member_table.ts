@@ -21,4 +21,5 @@ export default __t.row({
   status: __t.string(),
   joinedAt: __t.timestamp().name("joined_at"),
   punchInCode: __t.option(__t.string()).name("punch_in_code"),
+  hourlyRate: __t.option(__t.f64()).name("hourly_rate"),
 });

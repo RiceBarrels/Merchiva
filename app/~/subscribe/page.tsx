@@ -6,7 +6,9 @@ import { Check, Lock, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/loaders/geometric";
-import { useOrganizations } from "@/lib/spacetimedb/hooks";
+import { StoreLogo, StorePlanBadge, StoreList } from "@/components/store-picker";
+import { useOrganizations, useOrgMembers } from "@/lib/spacetimedb/hooks";
+import { useSpacetimeDB } from "spacetimedb/react";
 import { updateOrgSubscription } from "@/lib/spacetimedb/actions";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
@@ -24,11 +26,14 @@ function SubscribeInner() {
   const t = useT();
   const router = useRouter();
   const sp = useSearchParams();
-  const { organizationId, currentOrg, isOwner } = usePermissions();
+  const { organizationId, currentOrg, isOwner, organizations, switchOrg } = usePermissions();
   const { user, signOut } = useAuth();
   const [rawOrgs] = useOrganizations() as [unknown[], boolean];
+  const stdb = useSpacetimeDB();
+  const [orgMembers] = useOrgMembers();
   const [busy, setBusy] = useState<null | "monthly" | "yearly">(null);
   const [syncing, setSyncing] = useState(false);
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
 
   // Subscription lives on the root (top-level) org. Sub-stores inherit it.
   const rootOrgId = currentOrg?.parentOrgId ?? organizationId;
@@ -45,6 +50,34 @@ function SubscribeInner() {
   const access = useMemo(
     () => evaluateSubscription(org, Date.now()),
     [org],
+  );
+
+  // Stores this user is an active member of — lets a user locked out of one
+  // store switch to another that still has an active plan/trial.
+  const identityStr = stdb?.identity?.toString() ?? null;
+  const myStores = useMemo(() => {
+    if (!identityStr) return [];
+    const memberOrgIds = new Set(
+      orgMembers
+        .filter((m) => m.status === "active" && m.userId.toString() === identityStr)
+        .map((m) => m.organizationId.toString()),
+    );
+    return organizations.filter((o) => memberOrgIds.has(o.id));
+  }, [orgMembers, organizations, identityStr]);
+
+  const handleSwitchStore = useCallback(
+    async (id: string) => {
+      if (id === organizationId) return;
+      setSwitchingId(id);
+      try {
+        // switchOrg persists the choice and reloads the page; the subscription
+        // gate re-evaluates for the new store after reload.
+        await switchOrg(id);
+      } catch {
+        setSwitchingId(null);
+      }
+    },
+    [organizationId, switchOrg],
   );
 
   // Refresh subscription state from Stripe (used after returning from checkout).
@@ -166,6 +199,21 @@ function SubscribeInner() {
                 ? t("subscribe.ownerDescription")
                 : t("subscribe.memberDescription")}
           </p>
+          <div className="flex items-center gap-2.5 rounded-[0.3rem] border border-border bg-card px-3 py-2.5 text-left">
+            <StoreLogo name={currentOrg?.name ?? ""} logoUrl={currentOrg?.logoUrl} />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">
+              {currentOrg?.name}
+            </span>
+            {currentOrg?.parentOrgId && (
+              <span className="shrink-0 whitespace-nowrap rounded border border-border px-1 py-px text-[10px] uppercase tracking-wide text-muted-foreground">
+                {t("multiStore.subBadge")}
+              </span>
+            )}
+            <StorePlanBadge
+              store={{ id: organizationId ?? "", parentOrgId: currentOrg?.parentOrgId }}
+              className="shrink-0"
+            />
+          </div>
         </div>
 
         {isOwner ? (
@@ -209,6 +257,23 @@ function SubscribeInner() {
               "{org}",
               currentOrg?.name ?? t("subscribe.yourOrganization"),
             )}
+          </div>
+        )}
+
+        {myStores.length > 1 && (
+          <div className="space-y-2">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {t("subscribe.yourStores")}
+            </p>
+            <p className="text-[12px] text-muted-foreground">
+              {t("subscribe.switchStoreHint")}
+            </p>
+            <StoreList
+              stores={myStores}
+              currentOrgId={organizationId}
+              busyOrgId={switchingId}
+              onSelect={handleSwitchStore}
+            />
           </div>
         )}
 

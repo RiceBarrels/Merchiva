@@ -65,7 +65,8 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
 import { usePermissions } from "@/lib/context/permissions";
-import { useExpenses, usePayments, useSalesRecords, usePurchaseOrders, useShifts, useStaffMembers } from "@/lib/spacetimedb/hooks";
+import { useExpenses, usePayments, useSalesRecords, usePurchaseOrders, useOrgMembers, usePunchEvents } from "@/lib/spacetimedb/hooks";
+import { computeMemberPayroll, grossPay, toPayrollEvents } from "@/lib/payroll";
 import { addExpense, updateExpense, deleteExpense } from "@/lib/spacetimedb/actions";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
@@ -168,8 +169,6 @@ export default function FinancesPage() {
   const [rawPayments] = usePayments();
   const [rawSalesRecords] = useSalesRecords();
   const [rawPurchaseOrders] = usePurchaseOrders();
-  const [rawShifts] = useShifts();
-  const [rawStaffMembers] = useStaffMembers();
 
   // Filter by organization
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -180,10 +179,6 @@ export default function FinancesPage() {
   const salesRecords = useMemo(() => rawSalesRecords.filter((s: any) => s.organizationId === organizationId), [rawSalesRecords, organizationId]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const purchaseOrders = useMemo(() => rawPurchaseOrders.filter((po: any) => po.organizationId === organizationId), [rawPurchaseOrders, organizationId]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const shifts = useMemo(() => rawShifts.filter((s: any) => s.organizationId === organizationId), [rawShifts, organizationId]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const staffMembers = useMemo(() => rawStaffMembers.filter((s: any) => s.organizationId === organizationId), [rawStaffMembers, organizationId]);
 
   return (
     <PermissionGuard section="sales">
@@ -229,7 +224,7 @@ export default function FinancesPage() {
             </TabsContent>
 
             <TabsContent value="payroll" className="mt-4">
-              <PayrollTab shifts={shifts} staffMembers={staffMembers} />
+              <PayrollTab />
             </TabsContent>
           </Tabs>
         </div>
@@ -1009,17 +1004,12 @@ function CashFlowTab({
 
 // ─── Payroll Tab ─────────────────────────────────────────────────────────────
 
-function PayrollTab({
-  shifts,
-  staffMembers,
-}: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  shifts: any[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  staffMembers: any[];
-}) {
+function PayrollTab() {
   const t = useT();
   const { format } = useCurrency();
+  const { organizationId } = usePermissions();
+  const [rawPunches] = usePunchEvents() as [unknown[], boolean];
+  const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [dateRange, setDateRange] = useState<"this_week" | "last_week" | "this_month">("this_week");
 
   // Date range calculation
@@ -1053,45 +1043,37 @@ function PayrollTab({
     }
   }, [dateRange]);
 
-  // Calculate hours from shifts
+  // Actual hours worked, from punch records (breaks deducted). Members with no
+  // hourly rate set fall back to the default so totals stay estimable.
   const payrollData = useMemo(() => {
-    const staffHours: Record<string, { name: string; hours: number }> = {};
-
-    shifts
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((s: any) => {
-        const shiftDate = new Date(s.date);
-        return shiftDate >= start && shiftDate <= end;
+    if (!organizationId) return [];
+    const now = Date.now();
+    const events = toPayrollEvents(rawPunches as never[], organizationId);
+    const byMember = new Map<string, typeof events>();
+    for (const e of events) {
+      const arr = byMember.get(e.memberId) ?? [];
+      arr.push(e);
+      byMember.set(e.memberId, arr);
+    }
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    return (rawMembers as any[])
+      .filter((m) => m.organizationId === organizationId && m.status === "active")
+      .map((m) => {
+        const id = m.id?.toString?.() ?? String(m.id);
+        const pay = computeMemberPayroll(byMember.get(id) ?? [], start.getTime(), end.getTime(), now);
+        const rate = m.hourlyRate != null ? Number(m.hourlyRate) : DEFAULT_HOURLY_RATE;
+        return {
+          id,
+          name: String(m.displayName ?? "—"),
+          hours: Math.round((pay.paidMs / 3_600_000) * 100) / 100,
+          rate,
+          grossPay: grossPay(pay.paidMs, rate),
+        };
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .forEach((s: any) => {
-        const name = s.staffName ?? "Unknown";
-        const memberId = s.memberId ?? name;
-
-        if (!staffHours[memberId]) {
-          staffHours[memberId] = { name, hours: 0 };
-        }
-
-        // Calculate hours from startTime and endTime (HH:MM format)
-        if (s.startTime && s.endTime) {
-          const [startH, startM] = (s.startTime as string).split(":").map(Number);
-          const [endH, endM] = (s.endTime as string).split(":").map(Number);
-          let hours = (endH + endM / 60) - (startH + startM / 60);
-          if (hours < 0) hours += 24; // overnight shift
-          staffHours[memberId].hours += hours;
-        }
-      });
-
-    return Object.entries(staffHours)
-      .map(([id, data]) => ({
-        id,
-        name: data.name,
-        hours: Math.round(data.hours * 100) / 100,
-        rate: DEFAULT_HOURLY_RATE,
-        grossPay: Math.round(data.hours * DEFAULT_HOURLY_RATE * 100) / 100,
-      }))
+      .filter((r) => r.hours > 0)
       .sort((a, b) => b.hours - a.hours);
-  }, [shifts, start, end]);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  }, [rawPunches, rawMembers, organizationId, start, end]);
 
   const totalPayroll = payrollData.reduce((s, d) => s + d.grossPay, 0);
   const totalHours = payrollData.reduce((s, d) => s + d.hours, 0);
@@ -1180,7 +1162,7 @@ function PayrollTab({
       {payrollData.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <CalendarDays className="h-10 w-10 text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">{t("finances.payroll.noShifts")}</p>
+          <p className="text-sm text-muted-foreground">{t("finances.payroll.noPunches")}</p>
         </div>
       ) : (
         <div className="border border-border rounded-[0.3rem] overflow-hidden">
@@ -1214,7 +1196,7 @@ function PayrollTab({
       )}
 
       <p className="text-[10px] text-muted-foreground italic">
-        {t("finances.payroll.rateNote")}
+        {t("finances.payroll.actualNote").replace("{rate}", format(DEFAULT_HOURLY_RATE))}
       </p>
     </div>
   );

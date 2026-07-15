@@ -3,8 +3,7 @@
 import { cn, uuid } from "@/lib/utils";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, ChevronLeft, ChevronRight, X, Shield, Palette, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Coffee, Utensils, ChefHat, Truck, Package, Clipboard, Wrench, Headphones, Store, Banknote, Sparkles, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, ArrowLeft, ClipboardList, Pencil, Download, Wine, Bubbles, MoonStar, Sun, ReceiptText, HandPlatter, RefreshCw, Inbox, PanelRightOpen, PanelRightClose, Bell } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, X, Shield, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Camera, Clock, ClipboardList, Pencil, Download, Sun, RefreshCw, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,12 +28,10 @@ import {
   managerSetPunchWindow,
 } from "@/lib/spacetimedb/actions";
 import type { ShiftPreset } from "@/lib/types";
-import type { ChatConversation } from "@/lib/types";
 import {
   upsertAvailability,
   createTimeOffRequest, updateTimeOffStatus,
   createShiftTrade, updateTradeStatus,
-  acceptShiftTrade, managerApproveShiftTrade,
 } from "@/lib/spacetimedb/actions";
 import { getCoworkersWithShifts } from "@/lib/db/availability";
 import type {
@@ -46,52 +43,23 @@ import { PageHeader } from "@/components/page-header";
 import { hapticLight, hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { getCached, setCache } from "@/lib/cache";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import { tables } from "@/lib/spacetimedb/generated";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
 
-const ROLE_COLORS = [
-  "#44403c", "#78716c", "#57534e", "#a8a29e",
-  "#292524", "#6b7280", "#374151", "#4b5563", "#9ca3af",
-];
-
-const ROLE_ICON_MAP: Record<string, LucideIcon> = {
-  "user": User, "coffee": Coffee, "utensils": Utensils, "chef-hat": ChefHat,
-  "truck": Truck, "package": Package, "clipboard": Clipboard, "wrench": Wrench,
-  "headphones": Headphones, "store": Store, "banknote": Banknote,
-  "sparkles": Sparkles, "box": Box, "shopping-cart": ShoppingCart,
-  "receipt": Receipt, "heart-pulse": HeartPulse, "baby": Baby, "dog": Dog,
-  "leaf": Leaf, "music": Music, "camera": Camera, "palette": Palette,
-  "hammer": Hammer, "zap": Zap, "star": Star, "award": Award,
-  "briefcase": Briefcase, "phone": Phone, "mail": Mail, "clock": Clock,
-  "shield": Shield, "wine": Wine, "bubbles": Bubbles, "moon-star": MoonStar,
-  "sun": Sun, "receipt-text": ReceiptText, "hand-platter": HandPlatter,
-};
-
-const ROLE_ICON_LIST = [
-  "coffee", "utensils", "chef-hat", "store", "receipt", "banknote",
-  "package", "box", "shopping-cart", "truck", "clipboard", "clipboard",
-  "wrench", "hammer", "sparkles", "headphones", "heart-pulse", "shield",
-  "briefcase", "award", "star", "clock", "phone", "mail",
-  "leaf", "music", "camera", "palette", "baby", "dog",
-  "zap", "user", "wine", "bubbles", "moon-star", "sun", "receipt-text", "hand-platter",
-].filter((v, i, a) => a.indexOf(v) === i); // deduplicate
-
-function RoleIconComp({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
-  const Comp = ROLE_ICON_MAP[name] ?? User;
-  return <Comp className={className} style={style} />;
-}
-
-const ROLE_PERMISSION_KEYS: { key: keyof StaffRolePermissions; tKey: string }[] = [
-  { key: "canViewSchedule", tKey: "staffing.permissions.viewSchedule" },
-  { key: "canEditSchedule", tKey: "staffing.permissions.editSchedule" },
-  { key: "canViewInventory", tKey: "staffing.permissions.viewInventory" },
-  { key: "canEditInventory", tKey: "staffing.permissions.editInventory" },
-  { key: "canViewSales", tKey: "staffing.permissions.viewSales" },
-  { key: "canHandleCash", tKey: "staffing.permissions.handleCash" },
-  { key: "canCloseStore", tKey: "staffing.permissions.closeStore" },
-];
+// Role constants + icon helper now live in the shared role-dialogs module so
+// the mobile personnel pages can reuse them.
+import {
+  ROLE_ICON_LIST, ROLE_ICON_MAP, ROLE_PERMISSION_KEYS, RoleColorPicker, RoleIconComp,
+  taskCompletionsForDate,
+} from "@/components/personnel/role-dialogs";
+import { RoleTasksOverview } from "@/components/personnel/tasks-overview";
+import { TaskRow } from "@/components/personnel/task-row";
+import { TaskCompleteDialog } from "@/components/my-tasks-card";
+import { useRoleTaskAssignments } from "@/lib/spacetimedb/hooks";
+import { AttendanceWeek } from "@/components/personnel/attendance";
 
 const SHIFT_COLORS: Record<ShiftType, string> = {
   morning:   "#44403c",
@@ -278,34 +246,6 @@ function nextDayStartFromInput(date: string): Date {
   return d;
 }
 
-function timeToMinutes(time: string | null | undefined): number | null {
-  if (!time) return null;
-  const [h, m] = time.split(":").map(Number);
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  return h * 60 + m;
-}
-
-function minutesFromDay(date: string, value: Date): number {
-  return Math.round((value.getTime() - dayStartFromInput(date).getTime()) / 60000);
-}
-
-function minutesLabel(minutes: number): string {
-  const normalized = ((minutes % 1440) + 1440) % 1440;
-  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
-}
-
-function durationLabel(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h <= 0) return `${m}m`;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
-
-function clampPercent(value: number, start: number, end: number): string {
-  const clamped = Math.max(start, Math.min(end, value));
-  return `${((clamped - start) / Math.max(1, end - start)) * 100}%`;
-}
-
 function AttendanceManagerPanel({
   rows,
   canManage,
@@ -446,276 +386,6 @@ function AttendanceManagerPanel({
   );
 }
 
-function AttendanceStatTile({ label, value, tone }: { label: string; value: number; tone?: "warn" | "ok" }) {
-  return (
-    <div className="border-r border-b border-border px-4 py-3 last:border-r-0">
-      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={cn(
-        "mt-0.5 font-mono text-2xl font-semibold tabular-nums",
-        tone === "warn" ? "text-amber-700" : tone === "ok" ? "text-emerald-700" : "text-foreground",
-      )}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function AttendanceRecordsWorkspace({
-  rows,
-  shifts,
-  date,
-  onDateChange,
-  canManage,
-  busyMemberId,
-  savingMemberId,
-  onPunch,
-  onSaveWindow,
-  compact = false,
-}: {
-  rows: AttendanceRow[];
-  shifts: Shift[];
-  date: string;
-  onDateChange: (date: string) => void;
-  canManage: boolean;
-  busyMemberId: string | null;
-  savingMemberId: string | null;
-  onPunch: (memberId: string, action: "in" | "out") => void;
-  onSaveWindow: (memberId: string, startTime: string, endTime: string) => void;
-  compact?: boolean;
-}) {
-  const t = useT();
-  const now = new Date();
-  const isToday = date === localDateKey(now);
-  const nowMinute = minutesFromDay(date, now);
-
-  const timelineRows = useMemo(() => {
-    const dayShifts = shifts.filter((shift) => shift.date === date);
-    return rows.map((row) => {
-      const memberShifts = dayShifts.filter((shift) => shift.memberId === row.member.id);
-      const shiftWindows = memberShifts
-        .map((shift) => {
-          const start = timeToMinutes(shift.startTime);
-          let end = timeToMinutes(shift.endTime);
-          if (start == null || end == null) return null;
-          if (end <= start) end += 1440;
-          return { start, end };
-        })
-        .filter(Boolean) as Array<{ start: number; end: number }>;
-      const scheduledStart = shiftWindows.length > 0 ? Math.min(...shiftWindows.map((shift) => shift.start)) : null;
-      const scheduledEnd = shiftWindows.length > 0 ? Math.max(...shiftWindows.map((shift) => shift.end)) : null;
-      const actualStart = row.inEvent ? minutesFromDay(date, punchEventTime(row.inEvent)) : null;
-      const actualEnd = row.outEvent
-        ? minutesFromDay(date, punchEventTime(row.outEvent))
-        : row.openIn && isToday
-          ? nowMinute
-          : null;
-      const overtimeMinutes =
-        scheduledEnd != null && actualEnd != null && actualEnd > scheduledEnd
-          ? actualEnd - scheduledEnd
-          : 0;
-
-      return {
-        row,
-        memberShifts,
-        scheduledStart,
-        scheduledEnd,
-        actualStart,
-        actualEnd,
-        overtimeMinutes,
-        missingClockOut: !!row.inEvent && !row.outEvent && !row.openIn,
-      };
-    });
-  }, [date, isToday, nowMinute, rows, shifts]);
-
-  const visibleTimelineRows = timelineRows.filter((item) => item.memberShifts.length > 0 || item.row.inEvent);
-  const recordedCount = rows.filter((row) => row.inEvent).length;
-  const activeCount = rows.filter((row) => row.openIn).length;
-  const overtimeCount = timelineRows.filter((row) => row.overtimeMinutes > 0).length;
-  const noRecordCount = rows.length - recordedCount;
-
-  const allPoints = visibleTimelineRows.flatMap((item) => [
-    item.scheduledStart,
-    item.scheduledEnd,
-    item.actualStart,
-    item.actualEnd,
-  ]).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
-  const rawStart = allPoints.length > 0 ? Math.min(...allPoints) : 8 * 60;
-  const rawEnd = allPoints.length > 0 ? Math.max(...allPoints) : 18 * 60;
-  const timelineStart = Math.max(0, Math.floor((rawStart - 60) / 60) * 60);
-  const timelineEnd = Math.min(1440, Math.max(timelineStart + 360, Math.ceil((rawEnd + 60) / 60) * 60));
-  const hourTicks = Array.from(
-    { length: Math.floor((timelineEnd - timelineStart) / 60) + 1 },
-    (_, index) => timelineStart + index * 60,
-  );
-
-  if (!canManage) return null;
-
-  return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 lg:px-6">
-        <div className="min-w-0">
-          <p className="text-[15px] font-semibold text-foreground">{t("staffing.attendance.title")}</p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">{t("staffing.attendance.managerOnly")}</p>
-        </div>
-        <Input
-          type="date"
-          value={date}
-          onChange={(event) => onDateChange(event.target.value)}
-          className="h-8 w-[136px] shrink-0 px-2 text-[12px]"
-          aria-label={t("staffing.attendance.date")}
-        />
-      </div>
-
-      <div className={cn("grid border-b border-border", compact ? "grid-cols-2" : "grid-cols-4")}>
-        <AttendanceStatTile label={t("staffing.attendance.recorded")} value={recordedCount} tone="ok" />
-        <AttendanceStatTile label={t("staffing.attendance.stillIn")} value={activeCount} />
-        <AttendanceStatTile label={t("staffing.attendance.overtime")} value={overtimeCount} tone={overtimeCount > 0 ? "warn" : undefined} />
-        <AttendanceStatTile label={t("staffing.attendance.noRecord")} value={noRecordCount} />
-      </div>
-
-      <section className="border-b border-border">
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 lg:px-6">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t("staffing.attendance.timeline")}</p>
-          <div className="flex items-center gap-3 text-[10.5px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-5 rounded-sm bg-muted border border-border" />{t("staffing.attendance.scheduled")}</span>
-            <span className="inline-flex items-center gap-1"><span className="h-2 w-5 rounded-sm bg-foreground" />{t("staffing.attendance.actual")}</span>
-          </div>
-        </div>
-
-        {visibleTimelineRows.length === 0 ? (
-          <p className="px-4 pb-4 text-[12px] text-muted-foreground lg:px-6">{t("staffing.attendance.noTimeline")}</p>
-        ) : (
-          <div className={cn("overflow-x-auto", compact ? "max-h-[360px]" : "max-h-[42vh]")}>
-            <div className="min-w-[760px]">
-              <div className="grid grid-cols-[190px_1fr_104px] border-t border-border bg-muted/40">
-                <div />
-                <div className="relative h-7">
-                  {hourTicks.map((tick) => (
-                    <div
-                      key={tick}
-                      className="absolute top-0 h-full border-l border-border/70 pl-1 pt-1 text-[10px] font-mono text-muted-foreground"
-                      style={{ left: clampPercent(tick, timelineStart, timelineEnd) }}
-                    >
-                      {minutesLabel(tick)}
-                    </div>
-                  ))}
-                </div>
-                <div />
-              </div>
-
-              <div className="divide-y divide-border">
-                {visibleTimelineRows.map((item) => {
-                  const { row, scheduledStart, scheduledEnd, actualStart, actualEnd, overtimeMinutes } = item;
-                  const statusLabel = overtimeMinutes > 0
-                    ? t("staffing.attendance.overtime")
-                    : row.openIn
-                      ? t("staffing.attendance.on")
-                      : row.inEvent
-                        ? t("staffing.attendance.complete")
-                        : t("staffing.attendance.noRecord");
-                  return (
-                    <div key={row.member.id} className="grid grid-cols-[190px_1fr_104px] items-center">
-                      <div className="flex min-w-0 items-center gap-2.5 px-4 py-3">
-                        <StaffAvatar name={row.member.displayName} avatarUrl={row.member.avatarUrl} size={30} />
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-foreground">{row.member.displayName}</p>
-                          <p className="truncate text-[11px] text-muted-foreground">
-                            {row.startTime ? `${t("staffing.attendance.clockedAt")} ${row.startTime}` : t("staffing.attendance.noRecord")}
-                            {row.endTime ? ` · ${t("staffing.attendance.clockedOutAt")} ${row.endTime}` : row.openIn ? ` · ${t("staffing.attendance.ongoing")}` : ""}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative h-14 px-1">
-                        {hourTicks.map((tick) => (
-                          <div
-                            key={tick}
-                            className="absolute top-0 h-full border-l border-border/50"
-                            style={{ left: clampPercent(tick, timelineStart, timelineEnd) }}
-                          />
-                        ))}
-                        {scheduledStart != null && scheduledEnd != null && (
-                          <div
-                            className="absolute top-3 h-2 rounded-sm border border-border bg-muted"
-                            style={{
-                              left: clampPercent(scheduledStart, timelineStart, timelineEnd),
-                              width: `max(8px, calc(${clampPercent(scheduledEnd, timelineStart, timelineEnd)} - ${clampPercent(scheduledStart, timelineStart, timelineEnd)}))`,
-                            }}
-                          />
-                        )}
-                        {actualStart != null && actualEnd != null && (
-                          <div
-                            className={cn("absolute top-7 h-3 rounded-sm", overtimeMinutes > 0 ? "bg-amber-500" : "bg-foreground")}
-                            style={{
-                              left: clampPercent(actualStart, timelineStart, timelineEnd),
-                              width: `max(8px, calc(${clampPercent(actualEnd, timelineStart, timelineEnd)} - ${clampPercent(actualStart, timelineStart, timelineEnd)}))`,
-                            }}
-                          />
-                        )}
-                        {actualStart != null && (
-                          <span
-                            className="absolute top-[21px] h-4 w-4 -translate-x-1/2 rounded-full border-2 border-background bg-foreground"
-                            style={{ left: clampPercent(actualStart, timelineStart, timelineEnd) }}
-                            title={row.startTime}
-                          />
-                        )}
-                        {actualEnd != null && row.outEvent && (
-                          <span
-                            className={cn("absolute top-[21px] h-4 w-4 -translate-x-1/2 rounded-full border-2 border-background", overtimeMinutes > 0 ? "bg-amber-500" : "bg-foreground")}
-                            style={{ left: clampPercent(actualEnd, timelineStart, timelineEnd) }}
-                            title={row.endTime}
-                          />
-                        )}
-                      </div>
-
-                      <div className="px-3 py-3 text-right">
-                        <span className={cn(
-                          "inline-flex rounded-[0.3rem] border px-2 py-1 text-[10.5px] font-semibold",
-                          overtimeMinutes > 0
-                            ? "border-amber-300 bg-amber-50 text-amber-800"
-                            : row.openIn
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                              : "border-border bg-muted text-muted-foreground",
-                        )}>
-                          {statusLabel}
-                        </span>
-                        {overtimeMinutes > 0 && (
-                          <p className="mt-1 text-[10.5px] font-mono text-amber-700">
-                            +{durationLabel(overtimeMinutes)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="flex min-h-0 flex-1 flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 lg:px-6">
-          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t("staffing.attendance.records")}</p>
-          <p className="text-[11px] text-muted-foreground">{t("staffing.attendance.editHint")}</p>
-        </div>
-        <AttendanceManagerPanel
-          rows={rows}
-          canManage={canManage}
-          date={date}
-          onDateChange={onDateChange}
-          busyMemberId={busyMemberId}
-          savingMemberId={savingMemberId}
-          onPunch={onPunch}
-          onSaveWindow={onSaveWindow}
-          showHeader={false}
-          full
-        />
-      </section>
-    </div>
-  );
-}
-
 interface StaffingDesktopProps {
   organizationId: string | null;
   isOwner: boolean;
@@ -725,12 +395,7 @@ interface StaffingDesktopProps {
   role: string | null;
   userId: string | null;
   myMemberId: string | null;
-  attendanceRows: AttendanceRow[];
   canManageAttendance: boolean;
-  managerPunchingId: string | null;
-  managerSavingAttendanceId: string | null;
-  handleManagerPunch: (memberId: string, action: "in" | "out") => void;
-  handleManagerSetPunchWindow: (memberId: string, startTime: string, endTime: string) => void;
   team: OrgMember[];
   shifts: Shift[];
   setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
@@ -811,13 +476,38 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     selectedRole, setSelectedRole, handleSelectRole, handleDeleteRole,
     setEditingRole, setRoleForm, setRoleDialog,
     setTaskDialog, setTaskForm, refreshing, myMemberId, selectedDay, setSelectedDay,
-    attendanceRows, canManageAttendance, managerPunchingId, managerSavingAttendanceId,
-    handleManagerPunch, handleManagerSetPunchWindow,
+    canManageAttendance, organizationId,
     subtabs: subtabsFilter,
   } = props;
 
   const [dTab, setDTab] = useState<DesktopTab>(() => subtabsFilter?.[0] ?? "schedule");
   const [railOpen, setRailOpen] = useState(true);
+
+  // ─── Roles tab: per-day completion status. Anyone can submit completions;
+  //     users with staffing-edit permission can browse any day's status. ───
+  const [rawTaskAssignments] = useRoleTaskAssignments() as [unknown[], boolean];
+  const [statusDate, setStatusDate] = useState(todayStr);
+  // Tap a task row to complete it — same evidence-upload flow as the dashboard.
+  const [completeTaskFor, setCompleteTaskFor] = useState<RoleTask | null>(null);
+  const dayCompletions = useMemo(
+    () => taskCompletionsForDate(rawTaskAssignments, organizationId ?? "", statusDate),
+    [rawTaskAssignments, organizationId, statusDate],
+  );
+  const nameByIdentity = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of team) {
+      if (m.userId) map.set(m.userId, m.displayName);
+    }
+    return map;
+  }, [team]);
+  const shiftStatusDate = (delta: number) => {
+    setStatusDate((prev) => {
+      const d = new Date(prev + "T00:00:00");
+      d.setDate(d.getDate() + delta);
+      const next = isoDate(d);
+      return next > todayStr ? prev : next;
+    });
+  };
 
   const prevWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
@@ -1188,7 +878,14 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   // ─── Roles Tab ────────────────────────────────────────────
   function RolesTab() {
     return (
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* All-tasks completion overview, grouped by role */}
+        <RoleTasksOverview
+          orgId={organizationId ?? ""}
+          roles={roles}
+          className="shrink-0 max-h-[40%] overflow-y-auto border-b border-border"
+        />
+        <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Left: Role list */}
         <div className="w-[280px] shrink-0 border-r border-border bg-background overflow-y-auto">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -1308,17 +1005,43 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               {/* Tasks */}
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.roles.taskTimeline")}</p>
-                {canEdit && (
-                  <button
-                    onClick={() => {
-                      setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
-                      setTaskDialog({ open: true, task: null });
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted transition-colors"
-                  >
-                    <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {canEdit && (
+                    <div className="flex items-center gap-0.5 border border-border rounded-[0.3rem] px-1 py-0.5">
+                      <button
+                        onClick={() => shiftStatusDate(-1)}
+                        aria-label={t("staffing.roles.prevDay")}
+                        className="p-0.5 rounded-[0.2rem] hover:bg-muted transition-colors"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                      <span className="text-[11px] font-medium tabular-nums min-w-[72px] text-center">
+                        {statusDate === todayStr
+                          ? t("staffing.roles.today")
+                          : new Date(statusDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" })}
+                      </span>
+                      <button
+                        onClick={() => shiftStatusDate(1)}
+                        aria-label={t("staffing.roles.nextDay")}
+                        disabled={statusDate >= todayStr}
+                        className="p-0.5 rounded-[0.2rem] hover:bg-muted transition-colors disabled:opacity-30"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                  )}
+                  {canEdit && (
+                    <button
+                      onClick={() => {
+                        setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
+                        setTaskDialog({ open: true, task: null });
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted transition-colors"
+                    >
+                      <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {loadingTasks ? (
@@ -1331,49 +1054,36 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   <p className="text-[13px] text-muted-foreground">{t("staffing.roles.noTasksYet")}</p>
                 </div>
               ) : (
-                <div className="space-y-0 pl-3 border-l-2" style={{ borderColor: selectedRole.color }}>
-                  {(roleTasksCache[selectedRole.id] ?? []).map((task) => (
-                    <div key={task.id} className="relative pl-4 pb-4 group">
-                      <div
-                        className="absolute -left-[5px] top-1 h-2 w-2 rounded-full border-2 bg-background"
-                        style={{ borderColor: selectedRole.color }}
+                <div className="border border-border rounded-[0.3rem] overflow-hidden">
+                  {(roleTasksCache[selectedRole.id] ?? []).map((task, i) => {
+                    const comp = dayCompletions.get(task.id);
+                    return (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        completion={comp ? {
+                          completedAtMs: comp.completedAtMs,
+                          completedByName: comp.completedBy ? nameByIdentity.get(comp.completedBy) ?? null : null,
+                          evidence: comp.evidence,
+                          note: comp.note,
+                        } : null}
+                        onComplete={statusDate === todayStr ? () => setCompleteTaskFor(task) : undefined}
+                        onEdit={canEdit ? () => {
+                          setTaskForm({
+                            title: task.title,
+                            description: task.description,
+                            hasTime: !!(task.startTime && task.endTime),
+                            startTime: task.startTime ?? "08:00",
+                            endTime: task.endTime ?? "10:00",
+                            requiresEvidence: task.requiresEvidence ?? false,
+                            notifyChats: task.notifyChats ?? [],
+                          });
+                          setTaskDialog({ open: true, task });
+                        } : undefined}
+                        className={i > 0 ? "border-t border-border" : undefined}
                       />
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          {task.startTime && task.endTime && (
-                            <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5 tabular-nums">
-                              {formatTime(task.startTime)} &ndash; {formatTime(task.endTime)}
-                            </p>
-                          )}
-                          <p className="text-[13px] font-semibold text-foreground leading-snug">{task.title}</p>
-                          {task.description && (
-                            <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">{task.description}</p>
-                          )}
-                        </div>
-                        {canEdit && (
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button
-                              onClick={() => {
-                                setTaskForm({
-                                  title: task.title,
-                                  description: task.description,
-                                  hasTime: !!(task.startTime && task.endTime),
-                                  startTime: task.startTime ?? "08:00",
-                                  endTime: task.endTime ?? "10:00",
-                                  requiresEvidence: task.requiresEvidence ?? false,
-                                  notifyChats: task.notifyChats ?? [],
-                                });
-                                setTaskDialog({ open: true, task });
-                              }}
-                              className="p-1 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -1405,6 +1115,14 @@ function StaffingDesktop(props: StaffingDesktopProps) {
             </div>
           )}
         </div>
+        </div>
+        {completeTaskFor && (
+          <TaskCompleteDialog
+            task={completeTaskFor}
+            organizationId={organizationId ?? ""}
+            onClose={() => setCompleteTaskFor(null)}
+          />
+        )}
       </div>
     );
   }
@@ -1464,18 +1182,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
           {/* Tab content */}
           {dTab === "schedule" && !isStaff && <ScheduleGrid />}
-          {dTab === "attendance" && canManageAttendance && (
-            <AttendanceRecordsWorkspace
-              rows={attendanceRows}
-              shifts={shifts}
-              canManage={canManageAttendance}
-              date={selectedDay}
-              onDateChange={setSelectedDay}
-              busyMemberId={managerPunchingId}
-              savingMemberId={managerSavingAttendanceId}
-              onPunch={handleManagerPunch}
-              onSaveWindow={handleManagerSetPunchWindow}
-            />
+          {dTab === "attendance" && canManageAttendance && organizationId && (
+            <AttendanceWeek orgId={organizationId} />
           )}
           {dTab === "myShifts" && <MyShiftsTab />}
           {dTab === "roles" && <RolesTab />}
@@ -1610,14 +1318,11 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const canManageAttendance = isOwner || role === "manager";
 
   // ─── Desktop detection ────────────────────────────────────────────────────
-  const [isDesktop, setIsDesktop] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    setIsDesktop(mq.matches);
-    const h = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", h);
-    return () => mq.removeEventListener("change", h);
-  }, []);
+  // Must agree with the `md:` (768px) CSS fork in app/~/personnel/* pages:
+  // those pages only show StaffingFull at ≥768px, so anything else here would
+  // surface a third, unmaintained layout in the 768–1023px range.
+  const isMobile = useIsMobile();
+  const isDesktop = !isMobile;
 
   // ─── Data via SpacetimeDB migration hook ──────────────────────────────────
   const {
@@ -2860,12 +2565,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
         role={role}
         userId={userId}
         myMemberId={myMemberId}
-        attendanceRows={attendanceRows}
         canManageAttendance={canManageAttendance}
-        managerPunchingId={managerPunchingId}
-        managerSavingAttendanceId={managerSavingAttendanceId}
-        handleManagerPunch={handleManagerPunch}
-        handleManagerSetPunchWindow={handleManagerSetPunchWindow}
         team={team}
         shifts={shifts}
         setShifts={setShifts}
@@ -3005,12 +2705,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             </div>
             <div className="space-y-1.5">
               <Label>{t("staffing.roleDialog.color")}</Label>
-              <div className="flex gap-2">
-                {ROLE_COLORS.map((c) => (
-                  <button key={c} type="button" onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
-                    className={`h-6 w-6 rounded-full transition-all ${roleForm.color === c ? "ring-2 ring-offset-1 ring-foreground scale-110" : ""}`} style={{ backgroundColor: c }} />
-                ))}
-              </div>
+              <RoleColorPicker value={roleForm.color} onChange={(c) => setRoleForm((f) => ({ ...f, color: c }))} />
             </div>
             <div className="space-y-1.5">
               <Label>{t("staffing.roleDialog.description")}</Label>
@@ -4275,19 +3970,10 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             {/* Color picker */}
             <div className="space-y-1.5">
               <Label>{t("staffing.roleDialog.color")}</Label>
-              <div className="flex gap-2">
-                {ROLE_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setRoleForm((f) => ({ ...f, color: c }))}
-                    className={`h-6 w-6 rounded-full transition-all ${
-                      roleForm.color === c ? "ring-2 ring-offset-1 ring-foreground scale-110" : ""
-                    }`}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
+              <RoleColorPicker
+                value={roleForm.color}
+                onChange={(c) => setRoleForm((f) => ({ ...f, color: c }))}
+              />
             </div>
 
             {/* Description */}

@@ -916,7 +916,13 @@
       "clockedOutAt": "下班",
       "ongoing": "进行中",
       "records": "可编辑记录",
-      "editHint": "修改上下班时间后保存。"
+      "editHint": "修改上下班时间后保存。",
+      "missingOut": "缺下班卡",
+      "editTitle": "修改打卡",
+      "today": "今天",
+      "worked": "实际",
+      "punchDays": "打卡人次",
+      "weekTotal": "本周"
     },
     "myShifts": {
       "trade": "换班",
@@ -947,6 +953,7 @@
     },
     "roles": {
       "title": "岗位",
+      "overviewTitle": "任务总览",
       "noRolesYet": "暂无岗位",
       "tasksCountSingular": "{count} 个任务",
       "tasksCountPlural": "{count} 个任务",
@@ -969,7 +976,12 @@
       "taskDescription": "描述",
       "requiresEvidence": "需要照片证明",
       "notifiesChats": "通知 {count} 个聊天",
-      "editTask": "编辑任务"
+      "editTask": "编辑任务",
+      "today": "今天",
+      "prevDay": "前一天",
+      "nextDay": "后一天",
+      "doneBy": "已完成 · {name} · {time}",
+      "notDone": "未完成"
     },
     "requests": {
       "title": "申请",
@@ -1011,7 +1023,8 @@
       "descriptionPlaceholder": "此岗位的职责是什么？",
       "permissionsLabel": "权限",
       "saveCta": "保存",
-      "addCta": "添加岗位"
+      "addCta": "添加岗位",
+      "customColor": "自定义颜色"
     },
     "taskDialog": {
       "editTitle": "编辑任务",
@@ -1154,7 +1167,9 @@
       "roles": "角色任务",
       "rolesSub": "岗位职责 · 任务清单",
       "training": "培训",
-      "trainingSub": "课程 · 进度 · 考核"
+      "trainingSub": "课程 · 进度 · 考核",
+      "pay": "工资",
+      "paySub": "工时与工资核算"
     },
     "team": {
       "title": "员工",
@@ -1228,7 +1243,8 @@
         "settings": "设置",
         "team": "团队",
         "website": "网站",
-        "trainingGrading": "培训与评分"
+        "trainingGrading": "培训与评分",
+        "merchiva": "Mr. Merchiva"
       },
       "toastInviteSent": "邀请已发送",
       "toastInviteCreateFailed": "无法创建邀请",
@@ -1326,7 +1342,37 @@
     },
     "title": "人事",
     "subtitle": "排班、团队、角色与培训",
-    "pendingRequests": "待处理请求"
+    "pendingRequests": "待处理请求",
+    "pay": {
+      "title": "工资核算",
+      "subtitleManager": "基于打卡记录的工时与工资",
+      "subtitleSelf": "你的工时与预估工资",
+      "unitDay": "按日",
+      "unitWeek": "按周",
+      "unitMonth": "按月",
+      "unitYear": "按年",
+      "from": "从",
+      "to": "至",
+      "totalHours": "工时",
+      "estPay": "预估工资",
+      "onClockNow": "在班",
+      "missingRates": "未设时薪",
+      "hourlyRate": "时薪",
+      "hours": "工时",
+      "breaks": "休息",
+      "onClock": "在班",
+      "noRate": "未设时薪",
+      "empty": "该周期内没有打卡记录",
+      "detailTitle": "工资明细",
+      "editRate": "编辑",
+      "rateSaved": "时薪已保存",
+      "rateSaveFailed": "时薪保存失败",
+      "invalidRate": "请输入有效的非负数字",
+      "ratePlaceholder": "如 18.50",
+      "askManagerForRate": "你的时薪还未设置——请联系经理设置。",
+      "byDay": "按天",
+      "noPunches": "该周期内没有打卡记录"
+    }
   },
   "pos": {
     "tabs": {
@@ -1750,6 +1796,7 @@
     "permTeam": "团队",
     "permWebsite": "网站",
     "permTrainingGrading": "培训评分",
+    "permMerchiva": "Mr. Merchiva",
     "actionView": "查看",
     "actionEdit": "编辑",
     "actionInvite": "邀请",
@@ -1934,7 +1981,13 @@
     "supplierInboxPrefixPlaceholder": "bjcafe",
     "companyIdPrefix": "company {id}",
     "switchStoreAccount": "切换门店或账号",
-    "appVersion": "应用版本"
+    "appVersion": "应用版本",
+    "storeImage": "门店图片",
+    "storeImageHint": "在选择门店时显示。",
+    "storeImageSaved": "门店图片已更新",
+    "storeImageFailed": "门店图片更新失败",
+    "storeImageRemove": "移除",
+    "storeImageUpload": "上传图片"
   },
   "lock": {
     "title": "设备已锁定",
@@ -2156,6 +2209,13 @@
       "onBreak": "休息中",
       "nobody": "还没有人打卡。",
       "allOut": "所有人都已下班打卡。"
+    },
+    "todayTasks": {
+      "title": "今日任务",
+      "done": "已完成",
+      "pending": "待完成",
+      "skipped": "已跳过",
+      "none": "今天没有到期的任务。"
     },
     "yesterdayTasks": {
       "title": "昨日任务",
@@ -2668,7 +2728,9 @@
       "hourlyRate": "时薪",
       "grossPay": "总薪资",
       "total": "合计",
-      "rateNote": "* 使用默认时薪 $15/小时。实际费率将在员工设置中配置。"
+      "rateNote": "* 使用默认时薪 $15/小时。实际费率将在员工设置中配置。",
+      "actualNote": "* 工时来自实际打卡记录。未设置时薪的成员按默认 {rate} 计算——请到 人事 → 工资 设置时薪。",
+      "noPunches": "该周期内没有打卡记录"
     }
   },
   "bookings": {
@@ -2897,7 +2959,21 @@
       "note": "备注",
       "remove": "移除",
       "dropFile": "拖放文件",
-      "upload": "上传"
+      "upload": "上传",
+      "embedUrlPrompt": "粘贴图片或视频链接",
+      "embedInvalidUrl": "这似乎不是有效的链接。",
+      "embedAdded": "已添加嵌入内容。",
+      "published": "日程已发布。",
+      "publishFailed": "无法发布，请重试。",
+      "addDayFailed": "无法添加日程，请重试。",
+      "dayDeleted": "日程已删除。",
+      "deleteDayFailed": "无法删除日程，请重试。",
+      "removeFailed": "无法移除，请重试。",
+      "uploadFailed": "上传失败，请重试。",
+      "fileTooLarge": "文件过大。",
+      "unsupportedFile": "不支持的文件类型。",
+      "moveUp": "上移",
+      "moveDown": "下移"
     },
     "rubric": {
       "knowsMaterial": "掌握材料",
@@ -2932,7 +3008,31 @@
       "retry": "重试",
       "submitGrade": "提交评分",
       "willBeNotified": "{name} 将收到通知 · 已保存至其培训档案",
-      "pickTrainee": "从列表中选择一名学员开始评分。"
+      "pickTrainee": "从列表中选择一名学员开始评分。",
+      "lessonFallback": "第 {n} 课",
+      "reviewQueue": "评审请求",
+      "reviewWaiting": "{count} 个等待中",
+      "noPendingReviews": "暂无待处理的评审请求。",
+      "allStaff": "全部员工",
+      "searchStaff": "搜索员工",
+      "pickPerson": "选择一个人来为课程评分。",
+      "lessonsGraded": "{done}/{total} 节课已评分",
+      "ungraded": "未评分",
+      "pickLesson": "选择一节课",
+      "noLessonSelected": "未选择课程",
+      "gradeByLesson": "按课程评分",
+      "lessonContent": "课程内容",
+      "lessonResult": "课程结果",
+      "giveGrade": "为这节课评分。",
+      "noTraineeSelected": "未选择学员",
+      "signOffDay": "签核",
+      "signedOff": "已签核",
+      "reviewRequested": "已申请评审",
+      "gradeSaved": "评分已保存。",
+      "gradeFailed": "无法保存评分，请重试。",
+      "daySignedOffToast": "当天已签核 — {name} 可以继续了。",
+      "daySignOffFailed": "无法签核当天，请重试。",
+      "addLessonsFirst": "评分前请先在培训课程中添加课时。"
     },
     "intern": {
       "objectiveFallback": "目标 {number}",
@@ -2959,7 +3059,9 @@
       "completeMoreTasks": "再完成 {count} 项任务即可申请评审",
       "awaitingReview": "等待评审",
       "liveGradingNote": "你的培训师将前来现场评分。请在吧台附近等候。",
-      "askTrainerQuestion": "向培训师提问"
+      "askTrainerQuestion": "向培训师提问",
+      "lockedContent": "培训师签核前一天后，这一天才会解锁。",
+      "reviewRequestFailed": "无法发送评审请求，请重试。"
     },
     "dayRail": {
       "days": "天",
@@ -3492,7 +3594,8 @@
       "empty": "暂无新通知"
     },
     "collapsePanel": "收起面板",
-    "openPanel": "打开 Mr. Merchiva"
+    "openPanel": "打开 Mr. Merchiva",
+    "noAccess": "你的账号已被禁用 Mr. Merchiva，请联系管理员开启。"
   },
   "design": {
     "list": {
@@ -4948,7 +5051,20 @@
     "memberOwnerOnly": "只有组织所有者可以订阅。请联系 {org} 的所有者激活订阅，然后刷新。",
     "yourOrganization": "你的组织",
     "continueInTrial": "继续试用",
-    "recommended": "推荐"
+    "recommended": "推荐",
+    "yourStores": "你的门店",
+    "switchStoreHint": "切换到其他门店以打开它或管理其套餐。"
+  },
+  "storePicker": {
+    "title": "选择门店",
+    "description": "选择要打开的门店。每个门店都会显示其当前套餐。",
+    "planPro": "Pro",
+    "planProMonthly": "Pro · 按月",
+    "planProYearly": "Pro · 按年",
+    "planTrialOne": "试用 · 还剩 1 天",
+    "planTrialOther": "试用 · 还剩 {count} 天",
+    "planExpired": "已过期",
+    "current": "当前"
   },
   "bugReport": {
     "title": "报告 Bug",
@@ -4988,7 +5104,9 @@
     "noteLabel": "备注",
     "optional": "（可选）",
     "notePlaceholder": "有什么需要向经理反馈的吗？",
-    "markDone": "标记为完成"
+    "markDone": "标记为完成",
+    "viewSubmission": "查看提交内容",
+    "noSubmission": "未提交图片或备注。"
   },
   "itemForecast": {
     "title": "单品 AI 预测",

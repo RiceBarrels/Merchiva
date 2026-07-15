@@ -44,6 +44,7 @@ const PERMISSION_SECTIONS: ReadonlyArray<{
   { key: "team",             i18nKey: "team",            actions: ["view", "invite", "edit"] },
   { key: "website",          i18nKey: "website",         actions: ["view", "edit"] },
   { key: "training_grading", i18nKey: "trainingGrading", actions: ["view", "edit"] },
+  { key: "merchiva",         i18nKey: "merchiva",        actions: ["view"] },
 ];
 
 export function PermissionsEditor({

@@ -27,7 +27,23 @@ import { betaFeatureForPath, betaFeaturesFromSettingsRow } from "@/lib/beta-feat
 import { tables } from "@/lib/spacetimedb/generated";
 import { getConnection, setActiveOrgId } from "@/lib/spacetimedb/client";
 import { evaluateSubscription } from "@/lib/billing/subscription";
+import { StorePickerScreen } from "@/components/store-picker";
 import type { Permissions, OrgRole, OrgSummary } from "@/lib/types";
+
+// Resolved auth for the active org — everything the app shell needs to render.
+type AuthReady = {
+  kind: "ready";
+  role: OrgRole;
+  permissions: Permissions;
+  organizationId: string;
+  organizations: OrgSummary[];
+  currentOrg: OrgSummary;
+  memberDisplayName: string;
+  memberId: string;
+};
+
+// The user belongs to several stores and hasn't picked one yet — show the picker.
+type AuthResult = { kind: "choose"; choices: OrgSummary[] } | AuthReady | null;
 
 // New-user onboarding: shown when SpacetimeDB is ready but the user has no org membership yet.
 function NewUserSetup({ onComplete, onSignOut }: { onComplete: () => void; onSignOut: () => void }) {
@@ -169,11 +185,13 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   const [settingsRows, settingsReady] = useTable(tables.settings);
   const [timedOut, setTimedOut] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Org the user picked from the store-picker screen this session.
+  const [pickedOrgId, setPickedOrgId] = useState<string | null>(null);
 
   const identity = stdb?.identity;
   const isReady = membersReady && orgsReady;
 
-  const authState = useMemo(() => {
+  const authState = useMemo<AuthResult>(() => {
     if (!isReady || !identity) return null;
 
     const myMemberships = orgMembers.filter(
@@ -182,23 +200,49 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     if (myMemberships.length === 0) return null;
 
     // Honor the user's last-selected org if they have an active membership in it.
-    let preferredOrgId: string | null = null;
+    let storedOrgId: string | null = null;
     try {
-      preferredOrgId = typeof window !== "undefined"
+      storedOrgId = typeof window !== "undefined"
         ? localStorage.getItem("active_org_id")
         : null;
     } catch {
-      preferredOrgId = null;
+      storedOrgId = null;
+    }
+    const preferredOrgId = pickedOrgId ?? storedOrgId;
+
+    const preferredMembership = preferredOrgId
+      ? myMemberships.find((m) => m.organizationId.toString() === preferredOrgId)
+      : undefined;
+
+    // No explicit selection and more than one store — make the user choose
+    // instead of silently opening the first membership.
+    if (!preferredMembership && myMemberships.length > 1) {
+      // Clear the stored preference only when IT is stale — a session-only
+      // pickedOrgId that lost its membership must not wipe a still-valid
+      // stored org id (the reset effect below falls back to it instead).
+      if (
+        storedOrgId &&
+        !myMemberships.some((m) => m.organizationId.toString() === storedOrgId)
+      ) {
+        try { localStorage.removeItem("active_org_id"); } catch {}
+      }
+      const choices: OrgSummary[] = myMemberships.map((m) => {
+        const org = organizations.find((o) => o.id.toString() === m.organizationId.toString());
+        return {
+          id: m.organizationId.toString(),
+          name: org?.name ?? "Unknown",
+          parentOrgId: org?.parentOrgId ?? null,
+          logoUrl: org?.logoUrl ?? null,
+        };
+      });
+      return { kind: "choose", choices };
     }
 
-    const activeMembership =
-      (preferredOrgId
-        ? myMemberships.find((m) => m.organizationId.toString() === preferredOrgId)
-        : null) ?? myMemberships[0];
+    const activeMembership = preferredMembership ?? myMemberships[0];
     const orgId = activeMembership.organizationId;
 
-    // If the preferred org no longer applies, clear the stale preference.
-    if (preferredOrgId && preferredOrgId !== orgId.toString()) {
+    // If the stored preference no longer applies, clear the stale value.
+    if (storedOrgId && storedOrgId !== orgId.toString()) {
       try { localStorage.removeItem("active_org_id"); } catch {}
     }
 
@@ -208,6 +252,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         id: m.organizationId.toString(),
         name: org?.name ?? "Unknown",
         parentOrgId: org?.parentOrgId ?? null,
+        logoUrl: org?.logoUrl ?? null,
       };
     });
     // Pull in any orgs we DON'T have membership in but that are part of the
@@ -225,6 +270,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
           id: idStr,
           name: o.name,
           parentOrgId: (o.parentOrgId as string | undefined) ?? null,
+          logoUrl: (o.logoUrl as string | undefined) ?? null,
         });
       }
     }
@@ -233,6 +279,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       id: orgId.toString(),
       name: currentOrgRow?.name ?? "Unknown",
       parentOrgId: (currentOrgRow?.parentOrgId as string | undefined) ?? null,
+      logoUrl: (currentOrgRow?.logoUrl as string | undefined) ?? null,
     };
 
     const role = activeMembership.role as OrgRole;
@@ -248,8 +295,16 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     })();
 
     const memberDisplayName = activeMembership.displayName ?? "";
-    return { role, permissions, organizationId: orgId.toString(), organizations: orgs, currentOrg, memberDisplayName, memberId: activeMembership.id.toString() };
-  }, [isReady, identity, orgMembers, organizations]);
+    return { kind: "ready" as const, role, permissions, organizationId: orgId.toString(), organizations: orgs, currentOrg, memberDisplayName, memberId: activeMembership.id.toString() };
+  }, [isReady, identity, orgMembers, organizations, pickedOrgId]);
+
+  // If a picked store loses its membership mid-session we land back in
+  // "choose" with pickedOrgId still set — which would leave every picker row
+  // disabled behind a busy state that can never resolve. Drop the pick so the
+  // memo falls back to the stored preference (or shows an interactive picker).
+  useEffect(() => {
+    if (pickedOrgId && authState?.kind === "choose") setPickedOrgId(null);
+  }, [pickedOrgId, authState]);
 
   // Start 8-second timeout while loading; clear it once loaded.
   useEffect(() => {
@@ -273,27 +328,32 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   };
 
   // Try to restore a cached auth state from the offline snapshot for instant startup.
-  const cachedAuthState = useMemo(() => {
+  const cachedAuthState = useMemo<AuthReady | null>(() => {
     if (authState) return null; // live data available, no need for cache
     if (!snapshotLoaded || !cachedSnapshot) return null;
     // Restore minimal auth state from localStorage (we cached role/permissions there)
     try {
       const cached = localStorage.getItem("merchiva_auth_cache");
       if (!cached) return null;
-      return JSON.parse(cached) as typeof authState;
+      const parsed = JSON.parse(cached) as AuthReady | Omit<AuthReady, "kind">;
+      // Legacy cache entries predate the discriminated union — treat them as ready.
+      if (!("kind" in parsed)) return { kind: "ready", ...parsed };
+      return parsed.kind === "ready" ? parsed : null;
     } catch {
       return null;
     }
   }, [authState, snapshotLoaded, cachedSnapshot]);
 
   // Cache auth state whenever it changes so we can restore it offline.
+  // Only "ready" results are cached — a "choose" state must never be
+  // persisted (nor could it be restored meaningfully).
   useEffect(() => {
-    if (authState) {
+    if (authState?.kind === "ready") {
       try { localStorage.setItem("merchiva_auth_cache", JSON.stringify(authState)); } catch {}
     }
   }, [authState]);
 
-  const effectiveAuth = authState ?? cachedAuthState;
+  const effectiveAuth = (authState?.kind === "ready" ? authState : null) ?? cachedAuthState;
 
   const setupRouter = useRouter();
   const pathname = usePathname();
@@ -438,6 +498,21 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     realContent = (
       <NewUserSetup
         onComplete={() => window.location.reload()}
+        onSignOut={handleSignOut}
+      />
+    );
+  } else if (authState?.kind === "choose") {
+    // Multiple stores, none explicitly selected — full-screen picker. No
+    // reload needed on pick: subscriptions are global, so setting state
+    // recomputes the memo into kind "ready".
+    realContent = (
+      <StorePickerScreen
+        stores={authState.choices}
+        busyOrgId={pickedOrgId}
+        onSelect={(id) => {
+          try { localStorage.setItem("active_org_id", id); } catch {}
+          setPickedOrgId(id);
+        }}
         onSignOut={handleSignOut}
       />
     );

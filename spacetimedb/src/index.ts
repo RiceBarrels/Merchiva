@@ -79,6 +79,8 @@ const organizationTable = table(
     // strictly per-org. Two-level only — sub-stores cannot themselves have
     // children.
     parentOrgId: t.option(t.string()).default(undefined),
+    // Store image (UploadThing URL) — shown wherever the user picks a store.
+    logoUrl: t.option(t.string()).default(undefined),
   }
 );
 
@@ -104,6 +106,9 @@ const orgMemberTable = table(
     status: t.string(),        // "active" | "disabled"
     joinedAt: t.timestamp(),
     punchInCode: t.option(t.string()).default(undefined),
+    // Hourly pay rate for payroll. Optional so pre-existing rows default to
+    // null ("rate not set"). MUST stay the last column — see migration rules.
+    hourlyRate: t.option(t.number()).default(undefined),
   }
 );
 
@@ -1197,25 +1202,6 @@ const wasteLogTable = table(
 
 // ─── AI Chat History ─────────────────────────────────────────────────────────
 
-const aiChatHistoryTable = table(
-  {
-    name: 'ai_chat_history',
-    public: true,
-    indexes: [
-      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
-      { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
-    ],
-  },
-  {
-    id: t.uuid().primaryKey(),
-    organizationId: t.string(),
-    userId: t.identity(),
-    messages: t.string(),
-    summary: t.option(t.string()),
-    updatedAt: t.timestamp(),
-  }
-);
-
 // ─── AI Chat Sessions ────────────────────────────────────────────────────────
 
 const aiChatSessionTable = table(
@@ -1370,23 +1356,27 @@ const trainingDayGradeTable = table(
 
 // ─── Training: Final Grade ───────────────────────────────────────────────────
 
-const trainingFinalGradeTable = table(
+// ─── Training: Review Requests ───────────────────────────────────────────────
+
+const trainingReviewRequestTable = table(
   {
-    name: 'training_final_grade',
+    name: 'training_review_request',
     public: true,
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'byTraineeId', algorithm: 'btree', columns: ['traineeId'] },
+      { accessor: 'byDayId', algorithm: 'btree', columns: ['dayId'] },
     ],
   },
   {
     id: t.uuid().primaryKey(),
     organizationId: t.string(),
-    traineeId: t.string(),
-    score: t.i32(),                     // 0..100
-    comment: t.option(t.string()),
-    gradedBy: t.identity(),
-    gradedAt: t.timestamp(),
+    traineeId: t.string(),              // org_member id of the trainee
+    dayId: t.string(),
+    status: t.string(),                 // 'pending' | 'resolved'
+    createdAt: t.timestamp(),
+    resolvedAt: t.option(t.timestamp()),
+    resolvedBy: t.option(t.identity()),
   }
 );
 
@@ -1426,31 +1416,6 @@ const dailyBriefingTable = table(
 );
 
 // ─── Schedule Proposal (AI-drafted 7-day shift suggestions) ──────────────────
-
-const scheduleProposalTable = table(
-  {
-    name: 'schedule_proposal',
-    public: true,
-    indexes: [
-      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
-    ],
-  },
-  {
-    id: t.uuid().primaryKey(),
-    organizationId: t.string(),
-    weekStart: t.string(),             // YYYY-MM-DD (idempotency key with org)
-    weekEnd: t.string(),               // YYYY-MM-DD
-    // JSON-encoded array: [{ date, staffName, staffRoles, startTime, endTime, shiftType }]
-    shifts: t.string(),
-    // 'draft' = waiting for owner action; 'committed' = inserted as real shifts;
-    // 'rejected' = owner declined. Auto-committed proposals are inserted as
-    // shifts AND saved as 'committed' for audit.
-    status: t.string(),
-    generatedBy: t.string(),
-    generatedAt: t.timestamp(),
-    decidedAt: t.option(t.timestamp()),
-  }
-);
 
 // One row per (roleTask, member, dueAt) assignment. Materializes a recurring
 // role task into a concrete to-do that a specific staff member has to complete
@@ -1721,16 +1686,14 @@ const spacetimedb = schema({
   expense: expenseTable,
   coupon: couponTable,
   queueEntry: queueEntryTable,
-  aiChatHistory: aiChatHistoryTable,
   aiChatSession: aiChatSessionTable,
   aiJob: aiJobTable,
   trainingDay: trainingDayTable,
   trainingObjective: trainingObjectiveTable,
   trainingObjectiveGrade: trainingObjectiveGradeTable,
   trainingDayGrade: trainingDayGradeTable,
-  trainingFinalGrade: trainingFinalGradeTable,
+  trainingReviewRequest: trainingReviewRequestTable,
   dailyBriefing: dailyBriefingTable,
-  scheduleProposal: scheduleProposalTable,
   roleTaskAssignment: roleTaskAssignmentTable,
   design: designTable,
   pushSubscription: pushSubscriptionTable,
@@ -1917,6 +1880,7 @@ export const createOrg = spacetimedb.reducer(
       subscriptionInterval: undefined,
       currentPeriodEnd: undefined,
       parentOrgId: resolvedParentId,
+      logoUrl: undefined,
     });
 
     const defaultPermissions = JSON.stringify({
@@ -1942,6 +1906,7 @@ export const createOrg = spacetimedb.reducer(
       status: 'active',
       joinedAt: ctx.timestamp,
       punchInCode: undefined,
+      hourlyRate: undefined,
     });
 
     // Initialize default settings for the org — seed businessName from org name
@@ -1996,6 +1961,24 @@ export const updateOrg = spacetimedb.reducer(
     // Note: update requires primaryKey index – rebuild with delete + insert
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({ ...org, name });
+  }
+);
+
+/** Update the organization's store image URL. Owner only. Pass undefined/"" to clear. */
+export const updateOrgLogo = spacetimedb.reducer(
+  { organizationId: t.string(), logoUrl: t.option(t.string()) },
+  (ctx, { organizationId, logoUrl }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role !== 'owner') unauthorized('Owner only');
+
+    const org = [...ctx.db.organization.iter()]
+      .find(o => o.id.toString() === organizationId);
+    if (!org) throw new Error('Organization not found');
+    ctx.db.organization.delete(org);
+    ctx.db.organization.insert({
+      ...org,
+      logoUrl: logoUrl && logoUrl.length > 0 ? logoUrl : undefined,
+    });
   }
 );
 
@@ -2147,6 +2130,7 @@ export const acceptInvitation = spacetimedb.reducer(
       status: 'active',
       joinedAt: ctx.timestamp,
       punchInCode: undefined,
+      hourlyRate: undefined,
     });
 
     // Mark invitation as accepted (delete + reinsert)
@@ -2262,6 +2246,36 @@ export const setPunchInCode = spacetimedb.reducer(
 
     ctx.db.orgMember.delete(target);
     ctx.db.orgMember.insert({ ...target, punchInCode: code });
+  }
+);
+
+/**
+ * Set or clear a member's hourly pay rate.
+ * Owner or `team.edit` permission only — members cannot set their own rate.
+ * Pass `rate: undefined` (option) to clear it.
+ */
+export const setMemberHourlyRate = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    memberId: t.string(),
+    rate: t.option(t.number()),
+  },
+  (ctx, { organizationId, memberId, rate }) => {
+    const caller = findActiveMember(ctx, organizationId);
+    const perms = JSON.parse(caller.permissions);
+    const canEditTeam = caller.role === 'owner' || perms?.team?.edit === true;
+    if (!canEditTeam) unauthorized('Cannot change pay rates');
+
+    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.id.toString() === memberId);
+    if (!target) throw new Error('Member not found');
+
+    if (rate !== undefined && (!Number.isFinite(rate) || rate < 0)) {
+      throw new Error('Rate must be a non-negative number');
+    }
+
+    ctx.db.orgMember.delete(target);
+    ctx.db.orgMember.insert({ ...target, hourlyRate: rate });
   }
 );
 
@@ -5678,54 +5692,6 @@ function findShareGroupMember(ctx: any, organizationId: string) {
 // AI CHAT HISTORY REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const saveAiChatHistory = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    messages: t.string(),
-    summary: t.option(t.string()),
-  },
-  (ctx, args) => {
-    findActiveMember(ctx, args.organizationId);
-    const existing = [...ctx.db.aiChatHistory.byUserId.filter(ctx.sender)]
-      .find((r: { organizationId: string }) => r.organizationId === args.organizationId);
-    if (existing) {
-      ctx.db.aiChatHistory.id.update({
-        ...existing,
-        messages: args.messages,
-        summary: args.summary ?? existing.summary,
-        updatedAt: ctx.timestamp,
-      });
-    } else {
-      ctx.db.aiChatHistory.insert({
-        id: ctx.newUuidV4(),
-        organizationId: args.organizationId,
-        userId: ctx.sender,
-        messages: args.messages,
-        summary: args.summary ?? undefined,
-        updatedAt: ctx.timestamp,
-      });
-    }
-  }
-);
-
-export const clearAiChatHistory = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-  },
-  (ctx, args) => {
-    findActiveMember(ctx, args.organizationId);
-    const existing = [...ctx.db.aiChatHistory.byUserId.filter(ctx.sender)]
-      .find((r: { organizationId: string }) => r.organizationId === args.organizationId);
-    if (existing) {
-      ctx.db.aiChatHistory.id.update({
-        ...existing,
-        messages: '[]',
-        updatedAt: ctx.timestamp,
-      });
-    }
-  }
-);
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // AI CHAT SESSION REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -6002,6 +5968,11 @@ export const deleteTrainingDay = spacetimedb.reducer(
         ctx.db.trainingDayGrade.delete(g);
       }
     }
+    for (const r of [...ctx.db.trainingReviewRequest.iter()]) {
+      if (r.organizationId === organizationId && r.dayId === dayId) {
+        ctx.db.trainingReviewRequest.delete(r);
+      }
+    }
 
     ctx.db.trainingDay.delete(day);
   }
@@ -6179,39 +6150,75 @@ export const gradeTrainingDay = spacetimedb.reducer(
       gradedBy: ctx.sender,
       gradedAt: ctx.timestamp,
     });
+
+    // Grading a day settles any pending review request for it.
+    for (const r of [...ctx.db.trainingReviewRequest.iter()]) {
+      if (
+        r.organizationId === args.organizationId &&
+        r.traineeId === args.traineeId &&
+        r.dayId === args.dayId &&
+        r.status === 'pending'
+      ) {
+        ctx.db.trainingReviewRequest.delete(r);
+        ctx.db.trainingReviewRequest.insert({
+          ...r,
+          status: 'resolved',
+          resolvedAt: ctx.timestamp,
+          resolvedBy: ctx.sender,
+        });
+      }
+    }
   }
 );
 
 // ── Grading: final overall (upsert) ─────────────────────────────────────────
 
-export const setTrainingFinalGrade = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    traineeId: t.string(),
-    score: t.i32(),                  // 0..100
-    comment: t.option(t.string()),
-  },
+// ── Review requests (intern → trainer) ──────────────────────────────────────
+
+/** Intern asks a trainer to review the day they just finished. Idempotent —
+ *  an existing pending request for the same (trainee, day) is kept as-is. */
+export const requestTrainingReview = spacetimedb.reducer(
+  { organizationId: t.string(), dayId: t.string() },
+  (ctx, args) => {
+    const member = findActiveMember(ctx, args.organizationId);
+    findItemInOrg(ctx.db.trainingDay, args.organizationId, args.dayId);
+
+    const traineeId = member.id.toString();
+    const existing = [...ctx.db.trainingReviewRequest.iter()].find(
+      (r) =>
+        r.organizationId === args.organizationId &&
+        r.traineeId === traineeId &&
+        r.dayId === args.dayId &&
+        r.status === 'pending'
+    );
+    if (existing) return;
+
+    ctx.db.trainingReviewRequest.insert({
+      id: ctx.newUuidV4(),
+      organizationId: args.organizationId,
+      traineeId,
+      dayId: args.dayId,
+      status: 'pending',
+      createdAt: ctx.timestamp,
+      resolvedAt: undefined,
+      resolvedBy: undefined,
+    });
+  }
+);
+
+export const resolveTrainingReview = spacetimedb.reducer(
+  { organizationId: t.string(), requestId: t.string() },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     requireGradingPermission(member);
 
-    for (const g of [...ctx.db.trainingFinalGrade.iter()]) {
-      if (
-        g.organizationId === args.organizationId &&
-        g.traineeId === args.traineeId
-      ) {
-        ctx.db.trainingFinalGrade.delete(g);
-      }
-    }
-
-    ctx.db.trainingFinalGrade.insert({
-      id: ctx.newUuidV4(),
-      organizationId: args.organizationId,
-      traineeId: args.traineeId,
-      score: args.score,
-      comment: args.comment,
-      gradedBy: ctx.sender,
-      gradedAt: ctx.timestamp,
+    const req = findItemInOrg(ctx.db.trainingReviewRequest, args.organizationId, args.requestId);
+    ctx.db.trainingReviewRequest.delete(req);
+    ctx.db.trainingReviewRequest.insert({
+      ...req,
+      status: 'resolved',
+      resolvedAt: ctx.timestamp,
+      resolvedBy: ctx.sender,
     });
   }
 );
@@ -6262,104 +6269,6 @@ export const saveDailyBriefing = spacetimedb.reducer(
       actions: args.actions,
       problemKeys: args.problemKeys,
       hour: args.hour,
-    });
-  }
-);
-
-/**
- * Save a 7-day schedule proposal. Idempotent on (orgId, weekStart) — calling
- * again overwrites a still-draft proposal for the same week. Committed
- * proposals are kept for audit and won't be re-overwritten.
- */
-export const saveScheduleProposal = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    weekStart: t.string(),
-    weekEnd: t.string(),
-    shifts: t.string(),
-    status: t.string(),
-    generatedBy: t.string(),
-  },
-  (ctx, args) => {
-    const member = findActiveMember(ctx, args.organizationId);
-    if (member.role === 'staff') unauthorized('Manager or owner required');
-
-    for (const row of [...ctx.db.scheduleProposal.iter()]) {
-      if (
-        row.organizationId === args.organizationId &&
-        row.weekStart === args.weekStart &&
-        row.status === 'draft'
-      ) {
-        ctx.db.scheduleProposal.delete(row);
-      }
-    }
-
-    ctx.db.scheduleProposal.insert({
-      id: ctx.newUuidV4(),
-      organizationId: args.organizationId,
-      weekStart: args.weekStart,
-      weekEnd: args.weekEnd,
-      shifts: args.shifts,
-      status: args.status,
-      generatedBy: args.generatedBy,
-      generatedAt: ctx.timestamp,
-      decidedAt: args.status === 'committed' ? ctx.timestamp : undefined,
-    });
-  }
-);
-
-/** Mark a schedule proposal as committed (owner accepted it). */
-export const commitScheduleProposal = spacetimedb.reducer(
-  { organizationId: t.string(), proposalId: t.string() },
-  (ctx, { organizationId, proposalId }) => {
-    const member = findActiveMember(ctx, organizationId);
-    if (member.role === 'staff') unauthorized('Manager or owner required');
-
-    const proposal = [...ctx.db.scheduleProposal.iter()]
-      .find(p => p.id.toString() === proposalId && p.organizationId === organizationId);
-    if (!proposal) throw new Error('Proposal not found');
-    ctx.db.scheduleProposal.delete(proposal);
-    ctx.db.scheduleProposal.insert({
-      ...proposal,
-      status: 'committed',
-      decidedAt: ctx.timestamp,
-    });
-  }
-);
-
-/** Mark a schedule proposal as rejected. */
-export const rejectScheduleProposal = spacetimedb.reducer(
-  { organizationId: t.string(), proposalId: t.string() },
-  (ctx, { organizationId, proposalId }) => {
-    const member = findActiveMember(ctx, organizationId);
-    if (member.role === 'staff') unauthorized('Manager or owner required');
-
-    const proposal = [...ctx.db.scheduleProposal.iter()]
-      .find(p => p.id.toString() === proposalId && p.organizationId === organizationId);
-    if (!proposal) throw new Error('Proposal not found');
-    ctx.db.scheduleProposal.delete(proposal);
-    ctx.db.scheduleProposal.insert({
-      ...proposal,
-      status: 'rejected',
-      decidedAt: ctx.timestamp,
-    });
-  }
-);
-
-/** Toggle whether AI-generated schedules auto-commit when no shifts exist. */
-export const setAutoCommitSchedules = spacetimedb.reducer(
-  { organizationId: t.string(), autoCommit: t.bool() },
-  (ctx, { organizationId, autoCommit }) => {
-    const member = findActiveMember(ctx, organizationId);
-    if (member.role !== 'owner') unauthorized('Owner only');
-
-    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
-    ctx.db.settings.delete(existing);
-    ctx.db.settings.insert({
-      ...existing,
-      autoCommitSchedules: autoCommit,
-      updatedAt: ctx.timestamp,
     });
   }
 );

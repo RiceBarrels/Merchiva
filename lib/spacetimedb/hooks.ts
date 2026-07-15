@@ -106,8 +106,7 @@ export function useCoupons() { return useTable(tables.coupon); }
 // ── Queue ───────────────────────────────────────────────────────────────────
 export function useQueueEntries() { return useTable(tables.queueEntry); }
 
-// ── AI Chat History ─────────────────────────────────────────────────────────
-export function useAiChatHistory() { return useTable(tables.aiChatHistory); }
+// ── AI Chat Sessions ────────────────────────────────────────────────────────
 export function useAiChatSessions() { return useTable(tables.aiChatSession); }
 
 // Background AI jobs (server-side generation via /api/store-ai/enqueue).
@@ -141,8 +140,8 @@ export function useTrainingDayGrades() {
   const tbl = (tables as any).trainingDayGrade;
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
-export function useTrainingFinalGrades() {
-  const tbl = (tables as any).trainingFinalGrade;
+export function useTrainingReviewRequests() {
+  const tbl = (tables as any).trainingReviewRequest;
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 
@@ -153,15 +152,10 @@ export function useBlogPosts() {
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 
-// ── Daily Briefing + Schedule Proposal ──────────────────────────────────────
+// ── Daily Briefing ───────────────────────────────────────────────────────────
 export function useDailyBriefings() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tbl = (tables as any).dailyBriefing;
-  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
-}
-export function useScheduleProposals() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tbl = (tables as any).scheduleProposal;
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 export function useBriefingPrefs() {

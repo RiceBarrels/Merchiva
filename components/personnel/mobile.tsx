@@ -2,24 +2,26 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowRight, Award, Ban, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardCheck, Clock, FileEdit, HelpCircle, Inbox, Mail, MoreVertical, Pencil, Play, Plus, Search, Shield, Trash2, UserPlus, X } from "lucide-react";
+import { ArrowRight, Award, Ban, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardCheck, Clock, FileEdit, HelpCircle, Inbox, Pencil, Play, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
-import { useAuth } from "@/lib/auth/context";
-import { defaultPermissions } from "@/lib/db/team";
-import { addShift, createShiftTrade, removeMember, updateShift, updateTradeStatus } from "@/lib/spacetimedb/actions";
-import type { Permissions } from "@/lib/types";
+import { addShift, createShiftTrade, updateShift, updateTradeStatus } from "@/lib/spacetimedb/actions";
+import type { RoleTask, StaffRole, StaffRolePermissions } from "@/lib/types";
 import {
-  InviteMemberDialog,
-  EditMemberDialog,
-  resendInviteEmail,
-  cancelPendingInvite,
-  type EditMemberInput,
-} from "@/components/personnel/team-dialogs";
+  RoleFormDialog,
+  RoleIconComp,
+  RoleTaskFormDialog,
+  taskCompletionsForDate,
+} from "@/components/personnel/role-dialogs";
+import { RoleTasksOverview } from "@/components/personnel/tasks-overview";
+import { TaskRow } from "@/components/personnel/task-row";
+import { AttendanceWeek } from "@/components/personnel/attendance";
+import { TaskCompleteDialog } from "@/components/my-tasks-card";
 import {
-  useOrgInvitations,
+  useChatConversations,
   useOrgMembers,
   useRoleTasks,
+  useRoleTaskAssignments,
   useShifts,
   useShiftTrades,
   useShiftPresets,
@@ -38,7 +40,7 @@ import {
 } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -87,14 +89,6 @@ interface RoleRow {
   name: string;
   color: string;
   description: string;
-}
-
-interface RoleTaskRow {
-  id: string;
-  roleId: string;
-  title: string;
-  startTime: string | null;
-  endTime: string | null;
 }
 
 interface ShiftPresetRow {
@@ -345,6 +339,8 @@ export function MobileSchedule({
   const [changeBusyId, setChangeBusyId] = useState<string | null>(null);
   const { isOwner, role: orgRole, can } = usePermissions();
   const canEditSchedule = isOwner || orgRole === "manager" || can("staffing", "edit");
+  const canManageAttendance = isOwner || orgRole === "manager";
+  const [mobileView, setMobileView] = useState<"shifts" | "attendance">("shifts");
   const [addShiftOpen, setAddShiftOpen] = useState(false);
   const [addShiftBusy, setAddShiftBusy] = useState(false);
   const [addShiftForm, setAddShiftForm] = useState({
@@ -640,8 +636,40 @@ export function MobileSchedule({
     }
   }
 
+  // Managers see a Schedule | Attendance switch; staff just get the schedule.
+  const viewTabs = canManageAttendance ? (
+    <div className="flex border-b border-border bg-background">
+      {(["shifts", "attendance"] as const).map((view) => (
+        <button
+          key={view}
+          type="button"
+          onClick={() => setMobileView(view)}
+          className={cn(
+            "flex-1 py-2.5 text-[13px] text-center transition-colors",
+            mobileView === view
+              ? "font-semibold text-foreground border-b-2 border-foreground"
+              : "font-medium text-muted-foreground",
+          )}
+        >
+          {view === "shifts" ? t("staffing.tabs.schedule") : t("staffing.tabs.attendance")}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  if (mobileView === "attendance" && canManageAttendance) {
+    return (
+      <div>
+        {viewTabs}
+        <AttendanceWeek orgId={orgId} />
+        <div className="h-4" />
+      </div>
+    );
+  }
+
   return (
     <div>
+      {viewTabs}
       {/* KPI row */}
       <div className="grid grid-cols-3 border-b border-border bg-background">
         <Kpi label={t("personnel.m.onShift")} value={onShiftNow.length} suffix={`/ ${members.length}`} />
@@ -1240,333 +1268,21 @@ function IconBtn({
   );
 }
 
-// ─── Mobile Team ────────────────────────────────────────────────────────────
-
-export function MobileTeam({ orgId }: { orgId: string }) {
-  const t = useT();
-  const { currentOrg, can } = usePermissions();
-  const { user } = useAuth();
-  const orgName = currentOrg?.name ?? null;
-  const inviterEmail = user?.email ?? null;
-  const canEditTeam = can("team", "edit");
-  const canInviteTeam = can("team", "invite");
-
-  const [rawMembers] = useOrgMembers() as [unknown[], boolean];
-  const [rawUsers] = useUsers() as [unknown[], boolean];
-  const [rawInvitations] = useOrgInvitations() as [unknown[], boolean];
-  const [rawRoles] = useStaffRoles() as [unknown[], boolean];
-
-  const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "invited">("all");
-
-  // Dialog state
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<EditMemberInput | null>(null);
-  const [actionsFor, setActionsFor] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  function openEdit(rowId: string) {
-    const raw = (rawMembers as Array<{ id: { toString(): string }; role: string; permissions: unknown; displayName: string; email: string }>)
-      .find((x) => (x.id?.toString?.() ?? String(x.id)) === rowId);
-    if (!raw) return;
-    let parsed: Permissions = defaultPermissions();
-    const rawPerms = raw.permissions;
-    if (typeof rawPerms === "string") {
-      try { parsed = { ...parsed, ...(JSON.parse(rawPerms) as Partial<Permissions>) }; } catch {}
-    } else if (rawPerms && typeof rawPerms === "object") {
-      parsed = { ...parsed, ...(rawPerms as Partial<Permissions>) };
-    }
-    const role = String(raw.role ?? "").toLowerCase();
-    if (role === "owner") return;
-    setEditingMember({
-      id: rowId,
-      displayName: String(raw.displayName ?? "—"),
-      email: String(raw.email ?? ""),
-      role: role === "manager" ? "manager" : "staff",
-      perms: parsed,
-    });
-    setActionsFor(null);
-  }
-
-  async function doRemove(id: string, name: string) {
-    if (!confirm(t("personnel.team.confirmRemove").replace("{name}", name))) return;
-    setBusyId(id);
-    try {
-      await removeMember(id);
-      toast.success(t("personnel.toast.memberRemoved"));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("personnel.toast.memberRemoveFailed"));
-    } finally {
-      setBusyId(null);
-      setActionsFor(null);
-    }
-  }
-
-  async function doResend(invId: string) {
-    const inv = (rawInvitations as Array<{ id: { toString(): string }; email: string; token: string; role: string }>)
-      .find((x) => x.id?.toString?.() === invId);
-    if (!inv) return;
-    setBusyId(invId);
-    const ok = await resendInviteEmail({
-      email: inv.email, token: inv.token, role: inv.role, orgName, inviterEmail,
-    });
-    if (ok) toast.success(t("personnel.toast.resendSent"));
-    else toast.error(t("personnel.toast.resendFailed"));
-    setBusyId(null);
-    setActionsFor(null);
-  }
-
-  async function doCancel(invId: string, email: string) {
-    if (!confirm(t("personnel.team.confirmCancelInvite").replace("{email}", email))) return;
-    setBusyId(invId);
-    const ok = await cancelPendingInvite(invId);
-    if (ok) toast.success(t("personnel.toast.inviteCancelled"));
-    setBusyId(null);
-    setActionsFor(null);
-  }
-
-  const roles = useMemo<RoleRow[]>(
-    () =>
-      (rawRoles as any[])
-        .filter((r) => r.organizationId === orgId)
-        .map((r) => ({
-          id: r.id?.toString?.() ?? String(r.id),
-          name: String(r.name ?? ""),
-          color: String(r.color ?? "#44403c"),
-          description: String(r.description ?? ""),
-        })),
-    [rawRoles, orgId],
-  );
-
-  const avatarByUserId = useMemo(() => avatarMapFromUsers(rawUsers), [rawUsers]);
-
-  const members = useMemo<MemberRow[]>(
-    () =>
-      (rawMembers as any[])
-        .filter((m) => m.organizationId === orgId)
-        .map((m) => {
-          const userId = rowIdentityKey(m.userId);
-          return {
-            id: m.id?.toString?.() ?? String(m.id),
-            userId,
-            displayName: String(m.displayName ?? "—"),
-            email: String(m.email ?? ""),
-            avatarUrl: avatarByUserId.get(userId) ?? null,
-            role: String(m.role ?? "staff"),
-            status: String(m.status ?? "active"),
-          };
-        }),
-    [rawMembers, orgId, avatarByUserId],
-  );
-
-  const invitations = useMemo(
-    () =>
-      (rawInvitations as any[]).filter(
-        (i) => i.organizationId === orgId && !i.acceptedAt,
-      ),
-    [rawInvitations, orgId],
-  );
-
-  const counts = {
-    all: members.length,
-    active: members.filter((m) => m.status === "active").length,
-    invited: invitations.length,
-  };
-
-  const list = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (filter === "invited") {
-      return invitations
-        .filter((i: any) =>
-          !needle ||
-          String(i.email ?? "").toLowerCase().includes(needle) ||
-          String(i.role ?? "").toLowerCase().includes(needle),
-        )
-        .map((i: any) => ({
-          id: `inv-${i.id?.toString?.() ?? i.id}`,
-          displayName: String(i.email ?? "—").split("@")[0],
-          email: String(i.email ?? ""),
-          avatarUrl: null,
-          role: String(i.role ?? "staff"),
-          status: "invited",
-        }));
-    }
-    return members.filter((m) => {
-      if (filter === "active" && m.status !== "active") return false;
-      if (!needle) return true;
-      return (
-        m.displayName.toLowerCase().includes(needle) ||
-        m.email.toLowerCase().includes(needle) ||
-        m.role.toLowerCase().includes(needle)
-      );
-    });
-  }, [q, filter, members, invitations]);
-
-  return (
-    <div>
-      {/* Search + invite */}
-      <div className="px-3.5 py-2.5 flex gap-2 bg-background border-b border-border">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" strokeWidth={1.75} />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={t("personnel.m.search")}
-            className="h-9 rounded-[0.3rem] bg-muted/50 pl-8 text-[12.5px]"
-          />
-        </div>
-        {canInviteTeam && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setInviteOpen(true)}
-            className="h-9 rounded-[0.3rem] px-3 text-[12px]"
-          >
-            <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} /> {t("personnel.m.invite")}
-          </Button>
-        )}
-      </div>
-
-      {/* Filter chips */}
-      <div className="flex gap-1.5 px-3.5 py-2.5 border-b border-border bg-background overflow-x-auto no-scrollbar">
-        {(
-          [
-            { id: "all", label: t("personnel.m.filterAll").replace("{n}", String(counts.all)) },
-            { id: "active", label: t("personnel.m.filterActive").replace("{n}", String(counts.active)) },
-            { id: "invited", label: t("personnel.m.filterInvited").replace("{n}", String(counts.invited)) },
-          ] as const
-        ).map((f) => {
-          const active = f.id === filter;
-          return (
-            <Button
-              key={f.id}
-              type="button"
-              size="xs"
-              variant={active ? "default" : "outline"}
-              onClick={() => setFilter(f.id)}
-              className="h-7 rounded-[0.3rem] px-2.5 text-[11.5px] shrink-0 whitespace-nowrap"
-            >
-              {f.label}
-            </Button>
-          );
-        })}
-      </div>
-
-      {/* Member list */}
-      {list.length === 0 ? (
-        <div className="px-4 py-10 text-center text-muted-foreground text-[12.5px]">
-          {t("personnel.m.noMatches")}
-        </div>
-      ) : (
-        list.map((m) => {
-          const role = roles.find((r) =>
-            m.role.toLowerCase().includes(r.name.toLowerCase()),
-          );
-          const isInvite = m.status === "invited";
-          const invId = isInvite ? m.id.replace(/^inv-/, "") : null;
-          const isOwner = m.role.toLowerCase() === "owner";
-          // Rows are tap-to-action; for active members the action sheet
-          // surfaces edit/remove, for pending invites it surfaces resend/cancel.
-          const canAction = canEditTeam && !isOwner;
-          return (
-            <Card key={m.id} size="sm" className="mx-3.5 mt-2 rounded-[0.3rem] py-0 shadow-none">
-              <button
-                type="button"
-                disabled={!canAction}
-                onClick={() => {
-                  if (!canAction) return;
-                  if (isInvite) setActionsFor(actionsFor === m.id ? null : m.id);
-                  else openEdit(m.id);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-3 bg-card text-left rounded-[0.3rem]",
-                  canAction ? "active:bg-muted/60" : "cursor-default",
-                )}
-              >
-                <Avatar name={m.displayName} avatarUrl={m.avatarUrl} size={32} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-medium tracking-[-0.015em] truncate">
-                    {m.displayName}
-                  </div>
-                  <div className="text-[11.5px] text-muted-foreground mt-0.5 truncate inline-flex items-center gap-1">
-                    {role && (
-                      <span
-                        className="inline-block w-1.5 h-1.5 rounded-full"
-                        style={{ background: role.color }}
-                      />
-                    )}
-                    {m.role}
-                  </div>
-                  {m.email && (
-                    <div className="text-[11px] text-muted-foreground/80 mt-0.5 truncate font-mono">
-                      {m.email}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {isInvite && <Badge tone="warn">{t("personnel.m.invitedBadge")}</Badge>}
-                  {canAction && (
-                    isInvite
-                      ? <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
-                      : <Pencil className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
-                  )}
-                </div>
-              </button>
-
-              {/* Pending-invite action sheet (inline expander) */}
-              {isInvite && actionsFor === m.id && invId && (
-                <CardContent className="grid grid-cols-2 gap-2 border-t border-border bg-muted/20 p-2.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={busyId === invId}
-                    onClick={() => doResend(invId)}
-                    className="h-8 rounded-[0.3rem] text-[12px]"
-                  >
-                    {busyId === invId ? <Spinner size={12} /> : <Mail className="h-3 w-3" strokeWidth={1.75} />}
-                    {t("personnel.m.resend")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="destructive"
-                    disabled={busyId === invId}
-                    onClick={() => doCancel(invId, m.email)}
-                    className="h-8 rounded-[0.3rem] text-[12px]"
-                  >
-                    {busyId === invId ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" strokeWidth={1.75} />}
-                    {t("personnel.m.cancel")}
-                  </Button>
-                </CardContent>
-              )}
-            </Card>
-          );
-        })
-      )}
-      <div className="h-4" />
-      {/* Unused imports kept for prettier diff with the design */}
-      <span className="hidden">
-        <UserPlus />
-        <ChevronRight />
-      </span>
-
-      <InviteMemberDialog open={inviteOpen} onClose={() => setInviteOpen(false)} orgId={orgId} />
-      <EditMemberDialog member={editingMember} onClose={() => setEditingMember(null)} />
-    </div>
-  );
-}
-
 // ─── Mobile Roles (list → drill into detail) ────────────────────────────────
 
 export function MobileRoles({ orgId }: { orgId: string }) {
   const tt = useT();
+  const { isOwner, can } = usePermissions();
+  // Same gate as the desktop roles editor in staffing-full.tsx.
+  const canEdit = isOwner || can("staffing", "edit");
   const [rawRoles] = useStaffRoles() as [unknown[], boolean];
   const [rawTasks] = useRoleTasks() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [rawUsers] = useUsers() as [unknown[], boolean];
+  const [rawConvos] = useChatConversations() as [unknown[], boolean];
+  const [rawAssignments] = useRoleTaskAssignments() as [unknown[], boolean];
 
-  const roles = useMemo<RoleRow[]>(
+  const roles = useMemo<StaffRole[]>(
     () =>
       (rawRoles as any[])
         .filter((r) => r.organizationId === orgId)
@@ -1574,28 +1290,73 @@ export function MobileRoles({ orgId }: { orgId: string }) {
           id: r.id?.toString?.() ?? String(r.id),
           name: String(r.name ?? ""),
           color: String(r.color ?? "#44403c"),
+          icon: String(r.icon ?? "user"),
           description: String(r.description ?? ""),
+          permissions: ((): StaffRolePermissions => {
+            const p = r.permissions;
+            if (p && typeof p === "object") return p as StaffRolePermissions;
+            if (typeof p === "string") {
+              try { return JSON.parse(p) as StaffRolePermissions; } catch {}
+            }
+            return {};
+          })(),
         })),
     [rawRoles, orgId],
   );
 
-  const tasksByRole = useMemo<Map<string, RoleTaskRow[]>>(() => {
-    const map = new Map<string, RoleTaskRow[]>();
+  const tasksByRole = useMemo<Map<string, RoleTask[]>>(() => {
+    const map = new Map<string, RoleTask[]>();
     for (const r of rawTasks as any[]) {
       if (r.organizationId && r.organizationId !== orgId) continue;
-      const t: RoleTaskRow = {
+      const t: RoleTask = {
         id: r.id?.toString?.() ?? String(r.id),
         roleId: String(r.roleId ?? ""),
+        organizationId: r.organizationId ?? null,
         title: String(r.title ?? ""),
+        description: String(r.description ?? ""),
         startTime: r.startTime ?? null,
         endTime: r.endTime ?? null,
+        sortOrder: Number(r.sortOrder ?? 0),
+        requiresEvidence: !!r.requiresEvidence,
+        notifyChats: (() => {
+          if (Array.isArray(r.notifyChats)) return r.notifyChats as string[];
+          if (typeof r.notifyChats === "string" && r.notifyChats.length > 0) {
+            try {
+              const parsed = JSON.parse(r.notifyChats);
+              if (Array.isArray(parsed)) return parsed.filter((x) => typeof x === "string");
+            } catch {}
+          }
+          return [];
+        })(),
       };
       const list = map.get(t.roleId) ?? [];
       list.push(t);
       map.set(t.roleId, list);
     }
+    for (const list of map.values()) {
+      list.sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99"));
+    }
     return map;
   }, [rawTasks, orgId]);
+
+  const groupChats = useMemo(
+    () =>
+      (rawConvos as any[])
+        .filter((c) => c.organizationId === orgId && c.type === "group")
+        .map((c) => ({
+          id: c.id?.toString?.() ?? String(c.id),
+          name: (c.name ?? null) as string | null,
+          type: "group",
+        })),
+    [rawConvos, orgId],
+  );
+
+  // ─── Editor state (shared role/task form dialogs) ───
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<StaffRole | null>(null);
+  const [taskDialog, setTaskDialog] = useState<{ open: boolean; task: RoleTask | null }>({ open: false, task: null });
+  // Tap a task row to complete it — same evidence-upload flow as the dashboard.
+  const [completeFor, setCompleteFor] = useState<RoleTask | null>(null);
 
   const avatarByUserId = useMemo(() => avatarMapFromUsers(rawUsers), [rawUsers]);
 
@@ -1620,6 +1381,31 @@ export function MobileRoles({ orgId }: { orgId: string }) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // ─── Per-day completion status (anyone submits; permitted users can browse
+  //     any day's completion state; everyone else sees today's) ───
+  const todayStr = isoDate(new Date());
+  const [statusDate, setStatusDate] = useState(todayStr);
+  const dayCompletions = useMemo(
+    () => taskCompletionsForDate(rawAssignments, orgId, statusDate),
+    [rawAssignments, orgId, statusDate],
+  );
+  const nameByIdentity = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of rawMembers as any[]) {
+      if (m.organizationId !== orgId) continue;
+      map.set(rowIdentityKey(m.userId), String(m.displayName ?? "—"));
+    }
+    return map;
+  }, [rawMembers, orgId]);
+  const shiftStatusDate = (delta: number) => {
+    setStatusDate((prev) => {
+      const d = new Date(prev + "T00:00:00");
+      d.setDate(d.getDate() + delta);
+      const next = isoDate(d);
+      return next > todayStr ? prev : next;
+    });
+  };
+
   const selectedRole = selectedId ? roles.find((r) => r.id === selectedId) ?? null : null;
   const selectedTasks = selectedRole ? tasksByRole.get(selectedRole.id) ?? [] : [];
   const selectedMembers = selectedRole
@@ -1630,9 +1416,15 @@ export function MobileRoles({ orgId }: { orgId: string }) {
 
   return (
     <div>
+      <RoleTasksOverview orgId={orgId} roles={roles} className="border-b border-border" />
       <Section
         title={tt("personnel.m.rolesTitle").replace("{n}", String(roles.length))}
         kicker={tt("personnel.m.rolesKicker")}
+        action={canEdit ? {
+          label: tt("staffing.roles.addRole"),
+          icon: Plus,
+          onClick: () => { setEditingRole(null); setRoleDialogOpen(true); },
+        } : undefined}
       >
         {roles.length === 0 ? (
           <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
@@ -1658,7 +1450,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                   className="w-9 h-9 rounded-[0.3rem] inline-flex items-center justify-center text-background"
                   style={{ background: r.color }}
                 >
-                  <Shield className="h-4 w-4" strokeWidth={1.75} />
+                  <RoleIconComp name={r.icon} className="h-4 w-4" />
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="text-[14px] font-medium tracking-[-0.01em] truncate">
@@ -1693,9 +1485,9 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                     className="w-9 h-9 rounded-[0.3rem] inline-flex items-center justify-center text-background shrink-0"
                     style={{ background: selectedRole.color }}
                   >
-                    <Shield className="h-4 w-4" strokeWidth={1.75} />
+                    <RoleIconComp name={selectedRole.icon} className="h-4 w-4" />
                   </span>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <DynamicUIElementTitle mobileTitle={selectedRole.name}>
                       {selectedRole.name}
                     </DynamicUIElementTitle>
@@ -1705,8 +1497,47 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                         .replace("{t}", String(selectedTasks.length))}
                     </DynamicUIElementDescription>
                   </div>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      aria-label={tt("common.edit")}
+                      onClick={() => { setEditingRole(selectedRole); setRoleDialogOpen(true); }}
+                      className="h-7 w-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"
+                    >
+                      <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    </button>
+                  )}
                 </div>
               </DynamicUIElementHeader>
+
+              {/* DynamicUIElementHeader is CSS-hidden under 640px, which also
+                  hides the edit button — mirror the header here for phones. */}
+              <div className="sm:hidden flex items-center gap-2.5 px-4 pt-1 pb-3 border-b border-border">
+                <span
+                  className="w-9 h-9 rounded-[0.3rem] inline-flex items-center justify-center text-background shrink-0"
+                  style={{ background: selectedRole.color }}
+                >
+                  <RoleIconComp name={selectedRole.icon} className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14px] font-medium tracking-[-0.01em] truncate">{selectedRole.name}</div>
+                  <div className="text-[11.5px] text-muted-foreground mt-0.5">
+                    {tt("personnel.m.membersTasks")
+                      .replace("{m}", String(selectedMembers.length))
+                      .replace("{t}", String(selectedTasks.length))}
+                  </div>
+                </div>
+                {canEdit && (
+                  <button
+                    type="button"
+                    aria-label={tt("common.edit")}
+                    onClick={() => { setEditingRole(selectedRole); setRoleDialogOpen(true); }}
+                    className="h-8 w-8 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground active:bg-muted shrink-0"
+                  >
+                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  </button>
+                )}
+              </div>
 
               <div className="px-4 py-4 space-y-4">
                 {selectedRole.description && (
@@ -1739,36 +1570,71 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                 </div>
 
                 <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                    {tt("personnel.m.taskList").replace("{n}", String(selectedTasks.length))}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {tt("personnel.m.taskList").replace("{n}", String(selectedTasks.length))}
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setTaskDialog({ open: true, task: null })}
+                        className="inline-flex items-center gap-1 px-2 h-6 text-[11px] font-medium border border-border rounded-[0.3rem] text-muted-foreground hover:bg-muted"
+                      >
+                        <Plus className="h-3 w-3" strokeWidth={1.75} /> {tt("staffing.roles.addTask")}
+                      </button>
+                    )}
                   </div>
+                  {/* Permitted users can browse completion status for any day */}
+                  {canEdit && (
+                    <div className="flex items-center justify-between rounded-[0.3rem] border border-border px-1.5 py-1 mb-2">
+                      <button
+                        type="button"
+                        aria-label={tt("staffing.roles.prevDay")}
+                        onClick={() => shiftStatusDate(-1)}
+                        className="h-7 w-7 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground active:bg-muted"
+                      >
+                        <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
+                      </button>
+                      <span className="text-[12px] font-medium tabular-nums">
+                        {statusDate === todayStr
+                          ? tt("staffing.roles.today")
+                          : new Date(statusDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" })}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={tt("staffing.roles.nextDay")}
+                        onClick={() => shiftStatusDate(1)}
+                        disabled={statusDate >= todayStr}
+                        className="h-7 w-7 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground active:bg-muted disabled:opacity-30"
+                      >
+                        <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
+                      </button>
+                    </div>
+                  )}
                   {selectedTasks.length === 0 ? (
                     <div className="rounded-[0.3rem] border border-dashed border-border px-4 py-6 text-center text-[12.5px] text-muted-foreground">
                       {tt("personnel.m.noTasks")}
                     </div>
                   ) : (
                     <div className="rounded-[0.3rem] border border-border overflow-hidden">
-                      {selectedTasks.map((task, i) => (
-                        <div
-                          key={task.id}
-                          className={cn(
-                            "flex items-center gap-3 px-3 py-3 bg-background",
-                            i > 0 && "border-t border-border",
-                          )}
-                        >
-                          <span className="w-[18px] h-[18px] rounded-sm border-[1.5px] border-border bg-background shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[13.5px] font-medium tracking-[-0.01em] text-foreground truncate">
-                              {task.title}
-                            </div>
-                          </div>
-                          <span className="font-mono tabular-nums text-[11px] text-muted-foreground shrink-0">
-                            {task.startTime && task.endTime
-                              ? `${task.startTime.slice(0, 5)}–${task.endTime.slice(0, 5)}`
-                              : tt("personnel.m.anytime")}
-                          </span>
-                        </div>
-                      ))}
+                      {selectedTasks.map((task, i) => {
+                        const comp = dayCompletions.get(task.id);
+                        return (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            completion={comp ? {
+                              completedAtMs: comp.completedAtMs,
+                              completedByName: comp.completedBy ? nameByIdentity.get(comp.completedBy) ?? null : null,
+                              evidence: comp.evidence,
+                              note: comp.note,
+                            } : null}
+                            onComplete={statusDate === todayStr ? () => setCompleteFor(task) : undefined}
+                            onEdit={canEdit ? () => setTaskDialog({ open: true, task }) : undefined}
+                            className={i > 0 ? "border-t border-border" : undefined}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1777,6 +1643,32 @@ export function MobileRoles({ orgId }: { orgId: string }) {
           )}
         </DynamicUIElementContent>
       </DynamicUIElement>
+
+      {/* Shared add/edit dialogs — same forms + actions as the desktop editor. */}
+      <RoleFormDialog
+        open={roleDialogOpen}
+        onOpenChange={(open) => { setRoleDialogOpen(open); if (!open) setEditingRole(null); }}
+        role={editingRole}
+        organizationId={orgId}
+      />
+      {selectedRole && (
+        <RoleTaskFormDialog
+          open={taskDialog.open}
+          onOpenChange={(open) => { if (!open) setTaskDialog({ open: false, task: null }); }}
+          task={taskDialog.task}
+          roleId={selectedRole.id}
+          organizationId={orgId}
+          sortOrder={selectedTasks.length}
+          chatOptions={groupChats}
+        />
+      )}
+      {completeFor && (
+        <TaskCompleteDialog
+          task={completeFor}
+          organizationId={orgId}
+          onClose={() => setCompleteFor(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   TrainingRoleSwitcher,
   type TrainingRole,
@@ -16,17 +16,21 @@ const TRAINING_ROLE_STORAGE_KEY = "bz_personnel_training_role";
 export default function PersonnelTrainingPage() {
   const { organizationId, myMemberId, canManage, canGrade } = usePersonnelHub();
 
-  const [role, setRole] = useState<TrainingRole>(() => {
-    if (typeof window === "undefined") return "intern";
+  // Start with a deterministic value so server and client render the same
+  // markup; restore the persisted role after mount to avoid a hydration
+  // mismatch from reading localStorage during the initial render.
+  const [role, setRole] = useState<TrainingRole>("intern");
+
+  useEffect(() => {
     try {
       const stored = window.localStorage.getItem(
         TRAINING_ROLE_STORAGE_KEY,
       ) as TrainingRole | null;
       if (stored === "manager" || stored === "trainer" || stored === "intern")
-        return stored;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring persisted role after mount is required for hydration safety
+        setRole(stored);
     } catch {}
-    return "intern";
-  });
+  }, []);
 
   const effectiveRole: TrainingRole = useMemo(() => {
     if (role === "manager" && !canManage) return canGrade ? "trainer" : "intern";

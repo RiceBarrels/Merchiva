@@ -567,7 +567,9 @@ function DynamicUIElementContent({
   side?: "right"
 }) {
   // Detect mobile via matchMedia — initialize with correct value to avoid
-  // false→true transition that causes MobileDynamicUIElementPage double-mount
+  // false→true transition that causes MobileDynamicUIElementPage double-mount.
+  // NOTE: 640px is deliberate for this overlay (page-sheet vs side-panel) and
+  // intentionally differs from the app's 768px layout fork (lib/use-is-mobile).
   const [isMobile, setIsMobile] = React.useState(
     () => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches
   );

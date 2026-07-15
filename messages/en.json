@@ -916,7 +916,13 @@
       "clockedOutAt": "Out",
       "ongoing": "ongoing",
       "records": "Editable records",
-      "editHint": "Adjust start and end times, then save."
+      "editHint": "Adjust start and end times, then save.",
+      "missingOut": "Missing out",
+      "editTitle": "Edit record",
+      "today": "Today",
+      "worked": "Worked",
+      "punchDays": "Punch days",
+      "weekTotal": "This week"
     },
     "myShifts": {
       "trade": "Trade",
@@ -947,6 +953,7 @@
     },
     "roles": {
       "title": "Roles",
+      "overviewTitle": "All tasks",
       "noRolesYet": "No roles yet",
       "tasksCountSingular": "{count} task",
       "tasksCountPlural": "{count} tasks",
@@ -969,7 +976,12 @@
       "taskDescription": "Description",
       "requiresEvidence": "Requires photo evidence",
       "notifiesChats": "Notifies {count} chats",
-      "editTask": "Edit task"
+      "editTask": "Edit task",
+      "today": "Today",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "doneBy": "Done · {name} · {time}",
+      "notDone": "Not done"
     },
     "requests": {
       "title": "Requests",
@@ -1011,7 +1023,8 @@
       "descriptionPlaceholder": "What does this role do?",
       "permissionsLabel": "Permissions",
       "saveCta": "Save",
-      "addCta": "Add Role"
+      "addCta": "Add Role",
+      "customColor": "Custom color"
     },
     "taskDialog": {
       "editTitle": "Edit Task",
@@ -1154,7 +1167,9 @@
       "roles": "Roles & tasks",
       "rolesSub": "Role responsibilities and task lists",
       "training": "Training",
-      "trainingSub": "Courses, progress, assessments"
+      "trainingSub": "Courses, progress, assessments",
+      "pay": "Pay",
+      "paySub": "Hours worked and payroll"
     },
     "team": {
       "title": "Team",
@@ -1228,7 +1243,8 @@
         "settings": "Settings",
         "team": "Team",
         "website": "Website",
-        "trainingGrading": "Training & grading"
+        "trainingGrading": "Training & grading",
+        "merchiva": "Mr. Merchiva"
       },
       "toastInviteSent": "Invitation sent",
       "toastInviteCreateFailed": "Could not create invitation",
@@ -1326,7 +1342,37 @@
     },
     "title": "Personnel",
     "subtitle": "Schedule, team, roles, and training",
-    "pendingRequests": "Pending requests"
+    "pendingRequests": "Pending requests",
+    "pay": {
+      "title": "Payroll",
+      "subtitleManager": "Hours and pay from punch records",
+      "subtitleSelf": "Your hours and estimated pay",
+      "unitDay": "By day",
+      "unitWeek": "By week",
+      "unitMonth": "By month",
+      "unitYear": "By year",
+      "from": "From",
+      "to": "To",
+      "totalHours": "Hours",
+      "estPay": "Est. pay",
+      "onClockNow": "On clock",
+      "missingRates": "No rate set",
+      "hourlyRate": "Hourly rate",
+      "hours": "Hours",
+      "breaks": "Breaks",
+      "onClock": "On clock",
+      "noRate": "No rate",
+      "empty": "No punch records in this period",
+      "detailTitle": "Pay detail",
+      "editRate": "Edit",
+      "rateSaved": "Rate saved",
+      "rateSaveFailed": "Failed to save rate",
+      "invalidRate": "Enter a valid non-negative number",
+      "ratePlaceholder": "e.g. 18.50",
+      "askManagerForRate": "No hourly rate is set for you yet — ask a manager to set it.",
+      "byDay": "By day",
+      "noPunches": "No punch records in this period"
+    }
   },
   "pos": {
     "tabs": {
@@ -1750,6 +1796,7 @@
     "permTeam": "Team",
     "permWebsite": "Website",
     "permTrainingGrading": "Training Grading",
+    "permMerchiva": "Mr. Merchiva",
     "actionView": "view",
     "actionEdit": "edit",
     "actionInvite": "invite",
@@ -1934,7 +1981,13 @@
     "supplierInboxPrefixPlaceholder": "bjcafe",
     "companyIdPrefix": "company {id}",
     "switchStoreAccount": "Switch store or account",
-    "appVersion": "App version"
+    "appVersion": "App version",
+    "storeImage": "Store image",
+    "storeImageHint": "Shown wherever you choose a store.",
+    "storeImageSaved": "Store image updated",
+    "storeImageFailed": "Couldn't update the store image",
+    "storeImageRemove": "Remove",
+    "storeImageUpload": "Upload image"
   },
   "lock": {
     "title": "Device Locked",
@@ -2156,6 +2209,13 @@
       "onBreak": "on break",
       "nobody": "No one has punched in yet.",
       "allOut": "Everyone has clocked out."
+    },
+    "todayTasks": {
+      "title": "Today's tasks",
+      "done": "completed",
+      "pending": "pending",
+      "skipped": "skipped",
+      "none": "No tasks due today."
     },
     "yesterdayTasks": {
       "title": "Yesterday's tasks",
@@ -2668,7 +2728,9 @@
       "hourlyRate": "Hourly Rate",
       "grossPay": "Gross Pay",
       "total": "TOTAL",
-      "rateNote": "* Using default rate of $15/hr. Actual rates will be configurable in staff settings."
+      "rateNote": "* Using default rate of $15/hr. Actual rates will be configurable in staff settings.",
+      "actualNote": "* Hours come from actual punch records. Members without an hourly rate use the {rate} default — set rates in Personnel → Pay.",
+      "noPunches": "No punch records in this period"
     }
   },
   "marketing": {
@@ -2897,7 +2959,21 @@
       "note": "Note",
       "remove": "Remove",
       "dropFile": "Drop file",
-      "upload": "Upload"
+      "upload": "Upload",
+      "embedUrlPrompt": "Paste an image or video URL",
+      "embedInvalidUrl": "That doesn't look like a valid URL.",
+      "embedAdded": "Embed added.",
+      "published": "Day published.",
+      "publishFailed": "Could not publish. Please try again.",
+      "addDayFailed": "Could not add a day. Please try again.",
+      "dayDeleted": "Day deleted.",
+      "deleteDayFailed": "Could not delete the day. Please try again.",
+      "removeFailed": "Could not remove. Please try again.",
+      "uploadFailed": "Upload failed. Please try again.",
+      "fileTooLarge": "File is too large.",
+      "unsupportedFile": "Unsupported file type.",
+      "moveUp": "Move up",
+      "moveDown": "Move down"
     },
     "rubric": {
       "knowsMaterial": "Knows the material",
@@ -2932,7 +3008,31 @@
       "retry": "Retry",
       "submitGrade": "Submit grade",
       "willBeNotified": "{name} will be notified · saved to their training file",
-      "pickTrainee": "Pick a trainee from the list to start grading."
+      "pickTrainee": "Pick a trainee from the list to start grading.",
+      "lessonFallback": "Lesson {n}",
+      "reviewQueue": "Review requests",
+      "reviewWaiting": "{count} waiting",
+      "noPendingReviews": "No pending review requests.",
+      "allStaff": "All staff",
+      "searchStaff": "Search staff",
+      "pickPerson": "Pick a person to grade lessons.",
+      "lessonsGraded": "{done}/{total} lessons graded",
+      "ungraded": "Ungraded",
+      "pickLesson": "Pick a lesson",
+      "noLessonSelected": "No lesson selected",
+      "gradeByLesson": "Grade by lesson",
+      "lessonContent": "Lesson content",
+      "lessonResult": "Lesson result",
+      "giveGrade": "Give a grade for this lesson.",
+      "noTraineeSelected": "No trainee selected",
+      "signOffDay": "Sign off",
+      "signedOff": "Signed off",
+      "reviewRequested": "review requested",
+      "gradeSaved": "Grade saved.",
+      "gradeFailed": "Could not save the grade. Please try again.",
+      "daySignedOffToast": "Day signed off — {name} can move on.",
+      "daySignOffFailed": "Could not sign off the day. Please try again.",
+      "addLessonsFirst": "Add lessons to the training curriculum before grading."
     },
     "intern": {
       "objectiveFallback": "Objective {number}",
@@ -2959,7 +3059,9 @@
       "completeMoreTasks": "Complete {count} more tasks to request review",
       "awaitingReview": "awaiting review",
       "liveGradingNote": "Your trainer will come over for live grading. Stay near the bar.",
-      "askTrainerQuestion": "Ask trainer a question"
+      "askTrainerQuestion": "Ask trainer a question",
+      "lockedContent": "This day unlocks after your trainer signs off the previous day.",
+      "reviewRequestFailed": "Could not send the review request. Please try again."
     },
     "dayRail": {
       "days": "days",
@@ -3492,7 +3594,8 @@
       "empty": "No new notifications"
     },
     "collapsePanel": "Collapse panel",
-    "openPanel": "Open Mr. Merchiva"
+    "openPanel": "Open Mr. Merchiva",
+    "noAccess": "Mr. Merchiva is disabled for your account. Ask a manager to enable it."
   },
   "design": {
     "list": {
@@ -4970,7 +5073,20 @@
     "memberOwnerOnly": "Only the organization owner can subscribe. Please ask the owner of {org} to activate a subscription, then refresh.",
     "yourOrganization": "your organization",
     "continueInTrial": "Continue in trial",
-    "recommended": "Recommended"
+    "recommended": "Recommended",
+    "yourStores": "Your stores",
+    "switchStoreHint": "Switch to another store to open it or manage its plan."
+  },
+  "storePicker": {
+    "title": "Choose a store",
+    "description": "Pick which store to open. Each store shows its current plan.",
+    "planPro": "Pro",
+    "planProMonthly": "Pro · Monthly",
+    "planProYearly": "Pro · Yearly",
+    "planTrialOne": "Trial · 1 day left",
+    "planTrialOther": "Trial · {count} days left",
+    "planExpired": "Expired",
+    "current": "Current"
   },
   "bugReport": {
     "title": "Report a Bug",
@@ -5010,7 +5126,9 @@
     "noteLabel": "Note",
     "optional": "(optional)",
     "notePlaceholder": "Anything to flag for the manager?",
-    "markDone": "Mark done"
+    "markDone": "Mark done",
+    "viewSubmission": "View submission",
+    "noSubmission": "No photos or note were submitted."
   },
   "itemForecast": {
     "title": "Per-Item AI Forecast",

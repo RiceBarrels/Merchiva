@@ -908,7 +908,13 @@
       "clockedOutAt": "Sortie",
       "ongoing": "en cours",
       "records": "Enregistrements",
-      "editHint": "Modifiez directement les heures d'entrée et de sortie."
+      "editHint": "Modifiez directement les heures d'entrée et de sortie.",
+      "missingOut": "Sortie manquante",
+      "editTitle": "Modifier le pointage",
+      "today": "Aujourd'hui",
+      "worked": "Travaillé",
+      "punchDays": "Jours pointés",
+      "weekTotal": "Cette semaine"
     },
     "myShifts": {
       "trade": "Échanger",
@@ -939,6 +945,7 @@
     },
     "roles": {
       "title": "Rôles",
+      "overviewTitle": "Toutes les tâches",
       "noRolesYet": "Aucun rôle pour l'instant",
       "tasksCountSingular": "{count} tâche",
       "tasksCountPlural": "{count} tâches",
@@ -961,7 +968,12 @@
       "taskDescription": "Description",
       "requiresEvidence": "Preuve photo requise",
       "notifiesChats": "Notifie {count} discussions",
-      "editTask": "Modifier la tâche"
+      "editTask": "Modifier la tâche",
+      "today": "Aujourd'hui",
+      "prevDay": "Jour précédent",
+      "nextDay": "Jour suivant",
+      "doneBy": "Fait · {name} · {time}",
+      "notDone": "À faire"
     },
     "requests": {
       "title": "Demandes",
@@ -1003,7 +1015,8 @@
       "descriptionPlaceholder": "Que fait ce rôle ?",
       "permissionsLabel": "Autorisations",
       "saveCta": "Enregistrer",
-      "addCta": "Ajouter le rôle"
+      "addCta": "Ajouter le rôle",
+      "customColor": "Couleur personnalisée"
     },
     "taskDialog": {
       "editTitle": "Modifier la tâche",
@@ -1146,7 +1159,9 @@
       "roles": "Rôles et tâches",
       "rolesSub": "Responsabilités et listes de tâches",
       "training": "Formation",
-      "trainingSub": "Cours, progression, évaluation"
+      "trainingSub": "Cours, progression, évaluation",
+      "pay": "Paie",
+      "paySub": "Heures travaillées et paie"
     },
     "team": {
       "title": "Équipe",
@@ -1220,7 +1235,8 @@
         "settings": "Paramètres",
         "team": "Équipe",
         "website": "Site web",
-        "trainingGrading": "Formation et évaluation"
+        "trainingGrading": "Formation et évaluation",
+        "merchiva": "Mr. Merchiva"
       },
       "toastInviteSent": "Invitation envoyée",
       "toastInviteCreateFailed": "Impossible de créer l'invitation",
@@ -1318,7 +1334,37 @@
     },
     "title": "Personnel",
     "subtitle": "Planning, équipe, rôles et formation",
-    "pendingRequests": "Demandes en attente"
+    "pendingRequests": "Demandes en attente",
+    "pay": {
+      "title": "Paie",
+      "subtitleManager": "Heures et paie d'après les pointages",
+      "subtitleSelf": "Vos heures et paie estimée",
+      "unitDay": "Par jour",
+      "unitWeek": "Par semaine",
+      "unitMonth": "Par mois",
+      "unitYear": "Par année",
+      "from": "Du",
+      "to": "Au",
+      "totalHours": "Heures",
+      "estPay": "Paie est.",
+      "onClockNow": "Pointés",
+      "missingRates": "Sans taux",
+      "hourlyRate": "Taux horaire",
+      "hours": "Heures",
+      "breaks": "Pauses",
+      "onClock": "Pointé",
+      "noRate": "Sans taux",
+      "empty": "Aucun pointage sur cette période",
+      "detailTitle": "Détail de paie",
+      "editRate": "Modifier",
+      "rateSaved": "Taux enregistré",
+      "rateSaveFailed": "Échec de l'enregistrement du taux",
+      "invalidRate": "Saisissez un nombre valide non négatif",
+      "ratePlaceholder": "ex. 18,50",
+      "askManagerForRate": "Aucun taux horaire n'est défini pour vous — demandez à un manager de le définir.",
+      "byDay": "Par jour",
+      "noPunches": "Aucun pointage sur cette période"
+    }
   },
   "pos": {
     "tabs": {
@@ -1742,6 +1788,7 @@
     "permTeam": "Équipe",
     "permWebsite": "Site web",
     "permTrainingGrading": "Notation de formation",
+    "permMerchiva": "Mr. Merchiva",
     "actionView": "voir",
     "actionEdit": "modifier",
     "actionInvite": "inviter",
@@ -1926,7 +1973,13 @@
     "supplierInboxPrefixPlaceholder": "bjcafe",
     "companyIdPrefix": "company {id}",
     "switchStoreAccount": "Switch store or account",
-    "appVersion": "App version"
+    "appVersion": "App version",
+    "storeImage": "Image de la boutique",
+    "storeImageHint": "Affichée partout où vous choisissez une boutique.",
+    "storeImageSaved": "Image de la boutique mise à jour",
+    "storeImageFailed": "Impossible de mettre à jour l'image de la boutique",
+    "storeImageRemove": "Supprimer",
+    "storeImageUpload": "Téléverser une image"
   },
   "lock": {
     "title": "Appareil verrouillé",
@@ -2148,6 +2201,13 @@
       "onBreak": "en pause",
       "nobody": "Personne n'a encore pointé.",
       "allOut": "Tout le monde a pointé la sortie."
+    },
+    "todayTasks": {
+      "title": "Tâches du jour",
+      "done": "terminées",
+      "pending": "en attente",
+      "skipped": "ignorées",
+      "none": "Aucune tâche prévue aujourd'hui."
     },
     "yesterdayTasks": {
       "title": "Tâches d'hier",
@@ -2648,7 +2708,9 @@
       "hourlyRate": "Taux horaire",
       "grossPay": "Salaire brut",
       "total": "TOTAL",
-      "rateNote": "* Utilisant le taux par défaut de 15$/heure. Les taux réels seront configurables dans les paramètres du personnel."
+      "rateNote": "* Utilisant le taux par défaut de 15$/heure. Les taux réels seront configurables dans les paramètres du personnel.",
+      "actualNote": "* Les heures proviennent des pointages réels. Les membres sans taux horaire utilisent la valeur par défaut de {rate} — définissez les taux dans Personnel → Paie.",
+      "noPunches": "Aucun pointage sur cette période"
     }
   },
   "bookings": {
@@ -2877,7 +2939,21 @@
       "note": "Note",
       "remove": "Retirer",
       "dropFile": "Déposer le fichier",
-      "upload": "Téléverser"
+      "upload": "Téléverser",
+      "embedUrlPrompt": "Collez l'URL d'une image ou d'une vidéo",
+      "embedInvalidUrl": "Cela ne ressemble pas à une URL valide.",
+      "embedAdded": "Contenu intégré ajouté.",
+      "published": "Jour publié.",
+      "publishFailed": "Impossible de publier. Veuillez réessayer.",
+      "addDayFailed": "Impossible d'ajouter un jour. Veuillez réessayer.",
+      "dayDeleted": "Jour supprimé.",
+      "deleteDayFailed": "Impossible de supprimer le jour. Veuillez réessayer.",
+      "removeFailed": "Impossible de retirer. Veuillez réessayer.",
+      "uploadFailed": "Échec du téléversement. Veuillez réessayer.",
+      "fileTooLarge": "Le fichier est trop volumineux.",
+      "unsupportedFile": "Type de fichier non pris en charge.",
+      "moveUp": "Monter",
+      "moveDown": "Descendre"
     },
     "rubric": {
       "knowsMaterial": "Maîtrise le contenu",
@@ -2912,7 +2988,31 @@
       "retry": "Réessayer",
       "submitGrade": "Soumettre la note",
       "willBeNotified": "{name} sera notifié · enregistré dans son dossier de formation",
-      "pickTrainee": "Choisissez un stagiaire dans la liste pour commencer la notation."
+      "pickTrainee": "Choisissez un stagiaire dans la liste pour commencer la notation.",
+      "lessonFallback": "Leçon {n}",
+      "reviewQueue": "Demandes d'évaluation",
+      "reviewWaiting": "{count} en attente",
+      "noPendingReviews": "Aucune demande d'évaluation en attente.",
+      "allStaff": "Tout le personnel",
+      "searchStaff": "Rechercher un membre du personnel",
+      "pickPerson": "Choisissez une personne pour noter les leçons.",
+      "lessonsGraded": "{done}/{total} leçons notées",
+      "ungraded": "Non noté",
+      "pickLesson": "Choisissez une leçon",
+      "noLessonSelected": "Aucune leçon sélectionnée",
+      "gradeByLesson": "Noter par leçon",
+      "lessonContent": "Contenu de la leçon",
+      "lessonResult": "Résultat de la leçon",
+      "giveGrade": "Attribuez une note pour cette leçon.",
+      "noTraineeSelected": "Aucun stagiaire sélectionné",
+      "signOffDay": "Valider",
+      "signedOff": "Validé",
+      "reviewRequested": "évaluation demandée",
+      "gradeSaved": "Note enregistrée.",
+      "gradeFailed": "Impossible d'enregistrer la note. Veuillez réessayer.",
+      "daySignedOffToast": "Journée validée — {name} peut continuer.",
+      "daySignOffFailed": "Impossible de valider la journée. Veuillez réessayer.",
+      "addLessonsFirst": "Ajoutez des leçons au programme de formation avant de noter."
     },
     "intern": {
       "objectiveFallback": "Objectif {number}",
@@ -2939,7 +3039,9 @@
       "completeMoreTasks": "Terminez encore {count} tâches pour demander une évaluation",
       "awaitingReview": "en attente d'évaluation",
       "liveGradingNote": "Votre formateur viendra pour une notation en direct. Restez près du comptoir.",
-      "askTrainerQuestion": "Poser une question au formateur"
+      "askTrainerQuestion": "Poser une question au formateur",
+      "lockedContent": "Ce jour se déverrouille lorsque votre formateur valide le jour précédent.",
+      "reviewRequestFailed": "Impossible d'envoyer la demande d'évaluation. Veuillez réessayer."
     },
     "dayRail": {
       "days": "jours",
@@ -3472,7 +3574,8 @@
       "empty": "Aucune nouvelle notification"
     },
     "collapsePanel": "Réduire le panneau",
-    "openPanel": "Ouvrir Mr. Merchiva"
+    "openPanel": "Ouvrir Mr. Merchiva",
+    "noAccess": "Mr. Merchiva est désactivé pour votre compte. Demandez à un responsable de l'activer."
   },
   "design": {
     "list": {
@@ -4928,7 +5031,20 @@
     "memberOwnerOnly": "Seul le propriétaire de l'organisation peut s'abonner. Veuillez demander au propriétaire de {org} d'activer un abonnement, puis actualisez.",
     "yourOrganization": "votre organisation",
     "continueInTrial": "Continuer l'essai",
-    "recommended": "Recommandé"
+    "recommended": "Recommandé",
+    "yourStores": "Vos boutiques",
+    "switchStoreHint": "Passez à une autre boutique pour l'ouvrir ou gérer son abonnement."
+  },
+  "storePicker": {
+    "title": "Choisir une boutique",
+    "description": "Sélectionnez la boutique à ouvrir. Chaque boutique affiche son abonnement actuel.",
+    "planPro": "Pro",
+    "planProMonthly": "Pro · Mensuel",
+    "planProYearly": "Pro · Annuel",
+    "planTrialOne": "Essai · 1 jour restant",
+    "planTrialOther": "Essai · {count} jours restants",
+    "planExpired": "Expiré",
+    "current": "Actuelle"
   },
   "bugReport": {
     "title": "Signaler un bug",
@@ -4968,7 +5084,9 @@
     "noteLabel": "Note",
     "optional": "(optionnel)",
     "notePlaceholder": "Un point à signaler au responsable ?",
-    "markDone": "Marquer comme terminé"
+    "markDone": "Marquer comme terminé",
+    "viewSubmission": "Voir la soumission",
+    "noSubmission": "Aucune photo ni note n'a été envoyée."
   },
   "itemForecast": {
     "title": "Prévision AI par article",

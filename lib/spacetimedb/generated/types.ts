@@ -10,16 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const AiChatHistory = __t.object("AiChatHistory", {
-  id: __t.uuid(),
-  organizationId: __t.string(),
-  userId: __t.identity(),
-  messages: __t.string(),
-  summary: __t.option(__t.string()),
-  updatedAt: __t.timestamp(),
-});
-export type AiChatHistory = __Infer<typeof AiChatHistory>;
-
 export const AiChatSession = __t.object("AiChatSession", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -327,6 +317,7 @@ export const OrgMember = __t.object("OrgMember", {
   status: __t.string(),
   joinedAt: __t.timestamp(),
   punchInCode: __t.option(__t.string()),
+  hourlyRate: __t.option(__t.f64()),
 });
 export type OrgMember = __Infer<typeof OrgMember>;
 
@@ -341,6 +332,7 @@ export const Organization = __t.object("Organization", {
   subscriptionInterval: __t.option(__t.string()),
   currentPeriodEnd: __t.option(__t.timestamp()),
   parentOrgId: __t.option(__t.string()),
+  logoUrl: __t.option(__t.string()),
 });
 export type Organization = __Infer<typeof Organization>;
 
@@ -480,19 +472,6 @@ export const SalesRecord = __t.object("SalesRecord", {
   createdAt: __t.timestamp(),
 });
 export type SalesRecord = __Infer<typeof SalesRecord>;
-
-export const ScheduleProposal = __t.object("ScheduleProposal", {
-  id: __t.uuid(),
-  organizationId: __t.string(),
-  weekStart: __t.string(),
-  weekEnd: __t.string(),
-  shifts: __t.string(),
-  status: __t.string(),
-  generatedBy: __t.string(),
-  generatedAt: __t.timestamp(),
-  decidedAt: __t.option(__t.timestamp()),
-});
-export type ScheduleProposal = __Infer<typeof ScheduleProposal>;
 
 export const ServiceIdentity = __t.object("ServiceIdentity", {
   identity: __t.identity(),
@@ -811,17 +790,6 @@ export const TrainingDayGrade = __t.object("TrainingDayGrade", {
 });
 export type TrainingDayGrade = __Infer<typeof TrainingDayGrade>;
 
-export const TrainingFinalGrade = __t.object("TrainingFinalGrade", {
-  id: __t.uuid(),
-  organizationId: __t.string(),
-  traineeId: __t.string(),
-  score: __t.i32(),
-  comment: __t.option(__t.string()),
-  gradedBy: __t.identity(),
-  gradedAt: __t.timestamp(),
-});
-export type TrainingFinalGrade = __Infer<typeof TrainingFinalGrade>;
-
 export const TrainingObjective = __t.object("TrainingObjective", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -846,6 +814,18 @@ export const TrainingObjectiveGrade = __t.object("TrainingObjectiveGrade", {
   gradedAt: __t.timestamp(),
 });
 export type TrainingObjectiveGrade = __Infer<typeof TrainingObjectiveGrade>;
+
+export const TrainingReviewRequest = __t.object("TrainingReviewRequest", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  traineeId: __t.string(),
+  dayId: __t.string(),
+  status: __t.string(),
+  createdAt: __t.timestamp(),
+  resolvedAt: __t.option(__t.timestamp()),
+  resolvedBy: __t.option(__t.identity()),
+});
+export type TrainingReviewRequest = __Infer<typeof TrainingReviewRequest>;
 
 export const User = __t.object("User", {
   identity: __t.identity(),

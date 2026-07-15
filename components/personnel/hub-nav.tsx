@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarClock,
+  CircleDollarSign,
   GraduationCap,
   Inbox,
   Shield,
@@ -16,7 +17,7 @@ import { usePersonnelHub } from "@/components/personnel/hub-context";
 
 interface HubTab {
   /** Route segment under /~/personnel. */
-  segment: "schedule" | "team" | "roles" | "training";
+  segment: "schedule" | "team" | "roles" | "training" | "pay";
   i18nKey: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 }
@@ -26,6 +27,7 @@ const TABS: HubTab[] = [
   { segment: "team", i18nKey: "team", icon: Users },
   { segment: "roles", i18nKey: "roles", icon: Shield },
   { segment: "training", i18nKey: "training", icon: GraduationCap },
+  { segment: "pay", i18nKey: "pay", icon: CircleDollarSign },
 ];
 
 function hrefFor(segment: HubTab["segment"]) {
@@ -59,11 +61,11 @@ export function PersonnelHeader() {
           {t("personnel.subtitle")}
         </div>
       </div>
-      {/* Mobile-only inbox button — opens the requests bottom sheet */}
+      {/* Inbox button — opens the requests panel (all sizes) */}
       <button
         type="button"
         onClick={openRequests}
-        className="md:hidden relative h-9 w-9 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"
+        className="relative h-9 w-9 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"
         aria-label={t("personnel.pendingRequests")}
       >
         <Inbox className="h-4 w-4" strokeWidth={1.75} />
@@ -90,109 +92,92 @@ export function PersonnelTabsNav() {
   };
 
   return (
-    <>
-      {/* Mobile — horizontally scrollable pill tabs */}
-      <div className="md:hidden border-b border-border bg-background shrink-0">
-        <div className="flex gap-1.5 px-3.5 py-2.5 overflow-x-auto no-scrollbar">
-          {TABS.map((tab) => {
-            const active = isActive(tab.segment);
-            const Icon = tab.icon;
-            const label = t(`personnel.tabs.${tab.i18nKey}`);
-            return (
-              <Link
-                key={tab.segment}
-                href={hrefFor(tab.segment)}
-                onClick={() => hapticLight()}
-                className={cn(
-                  "h-8 px-3 inline-flex items-center gap-1.5 rounded-full border text-[13px] transition-colors shrink-0 whitespace-nowrap",
-                  active
-                    ? "bg-foreground text-background border-foreground font-semibold"
-                    : "bg-background text-stone-700 dark:text-stone-200 border-border font-medium hover:bg-muted",
-                )}
-              >
-                <Icon className="h-[13px] w-[13px]" strokeWidth={1.75} />
-                {label}
-                {tab.segment === "schedule" && pending > 0 && (
-                  <span
-                    className={cn(
-                      "ml-1 min-w-[16px] h-[16px] px-1 rounded-full font-mono font-bold text-[9.5px] tabular-nums inline-flex items-center justify-center",
-                      active
-                        ? "bg-background/20 text-background"
-                        : "bg-amber-500 text-white",
-                    )}
-                  >
-                    {pending}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
+    <div className="border-b border-border bg-background shrink-0">
+      {/* Mobile: compact underline tabs (same style as PageTabs) */}
+      <div className="flex md:hidden overflow-x-auto no-scrollbar">
+        {TABS.map((tab) => {
+          const active = isActive(tab.segment);
+          return (
+            <Link
+              key={tab.segment}
+              href={hrefFor(tab.segment)}
+              onClick={() => hapticLight()}
+              className={cn(
+                "flex-1 shrink-0 flex items-center justify-center gap-1 px-3 py-2 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap",
+                active
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t(`personnel.tabs.${tab.i18nKey}`)}
+              {tab.segment === "schedule" && pending > 0 && (
+                <span className="min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-mono font-bold tabular-nums inline-flex items-center justify-center">
+                  {pending}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </div>
-
-      {/* Desktop — card-style segmented tabs */}
-      <div className="hidden md:flex border-b border-border bg-background items-stretch shrink-0">
-        <div className="flex-1 flex overflow-x-auto">
-          {TABS.map((tab) => {
-            const active = isActive(tab.segment);
-            const Icon = tab.icon;
-            const label = t(`personnel.tabs.${tab.i18nKey}`);
-            const sub = t(`personnel.tabs.${tab.i18nKey}Sub`);
-            return (
-              <Link
-                key={tab.segment}
-                href={hrefFor(tab.segment)}
-                onClick={() => hapticLight()}
+      {/* Desktop: segmented tab row with icons + subtitles */}
+      <div className="hidden md:flex overflow-x-auto no-scrollbar">
+        {TABS.map((tab) => {
+          const active = isActive(tab.segment);
+          const Icon = tab.icon;
+          const label = t(`personnel.tabs.${tab.i18nKey}`);
+          const sub = t(`personnel.tabs.${tab.i18nKey}Sub`);
+          return (
+            <Link
+              key={tab.segment}
+              href={hrefFor(tab.segment)}
+              onClick={() => hapticLight()}
+              className={cn(
+                "flex-1 shrink-0 flex items-center gap-2 lg:gap-2.5 px-3 lg:px-4 py-2 lg:py-2.5 transition-colors border-r border-border last:border-r-0 relative rounded-t-[0.3rem] whitespace-nowrap",
+                active ? "bg-muted" : "bg-background hover:bg-muted/50",
+              )}
+            >
+              <span
                 className={cn(
-                  "flex-1 min-w-[170px] flex items-center gap-2.5 px-3 md:px-5 py-2.5 transition-colors border-r border-border last:border-r-0 relative",
-                  active ? "bg-muted/50" : "bg-background hover:bg-muted/30",
+                  "w-7 h-7 lg:w-8 lg:h-8 rounded-[0.3rem] inline-flex items-center justify-center shrink-0",
+                  active
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
-                <span
+                <Icon className="h-[14px] w-[14px]" strokeWidth={1.75} />
+              </span>
+              <div className="text-left min-w-0">
+                <div
                   className={cn(
-                    "w-8 h-8 rounded-[0.3rem] inline-flex items-center justify-center shrink-0",
+                    "text-[13px] lg:text-[13.5px] font-semibold tracking-[-0.01em] truncate",
                     active
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground",
+                      ? "text-foreground"
+                      : "text-stone-700 dark:text-stone-200",
                   )}
                 >
-                  <Icon className="h-[14px] w-[14px]" strokeWidth={1.75} />
-                </span>
-                <div className="text-left min-w-0">
-                  <div className="flex items-baseline gap-1.5">
-                    <span
-                      className={cn(
-                        "text-[13.5px] font-semibold tracking-[-0.01em]",
-                        active
-                          ? "text-foreground"
-                          : "text-stone-700 dark:text-stone-200",
-                      )}
-                    >
-                      {label}
-                    </span>
-                  </div>
-                  <div
-                    className={cn(
-                      "text-[11px] truncate hidden md:block",
-                      active ? "text-muted-foreground" : "text-muted-foreground/80",
-                    )}
-                  >
-                    {sub}
-                  </div>
+                  {label}
                 </div>
-                {tab.segment === "schedule" && pending > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-mono font-bold inline-flex items-center justify-center">
-                    {pending}
-                  </span>
-                )}
-                {active && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />
-                )}
-              </Link>
-            );
-          })}
-        </div>
+                <div
+                  className={cn(
+                    "text-[11px] truncate hidden lg:block",
+                    active ? "text-muted-foreground" : "text-muted-foreground/80",
+                  )}
+                >
+                  {sub}
+                </div>
+              </div>
+              {tab.segment === "schedule" && pending > 0 && (
+                <span className="ml-auto min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-mono font-bold tabular-nums inline-flex items-center justify-center">
+                  {pending}
+                </span>
+              )}
+              {active && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />
+              )}
+            </Link>
+          );
+        })}
       </div>
-    </>
+    </div>
   );
 }

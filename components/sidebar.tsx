@@ -60,6 +60,7 @@ import { PageTransition } from "@/components/page-transition";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { StoreLogo } from "@/components/store-picker";
 
 const SIDEBAR_WIDTH = 280;
 const EDGE_THRESHOLD = 40;
@@ -207,6 +208,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
         onClick={() => { hapticLight(); setOpen((v) => !v); setCreating(false); setError(null); }}
         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
       >
+        <StoreLogo name={currentOrg?.name ?? ""} logoUrl={currentOrg?.logoUrl} className="h-5 w-5 text-[10px]" />
         <span className="flex-1 truncate text-left">{currentOrg?.name ?? t("nav.selectStore")}</span>
         {currentOrg?.parentOrgId && (
           <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px shrink-0">
@@ -225,6 +227,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                   onClick={() => handleSwitch(node.org.id)}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
                 >
+                  <StoreLogo name={node.org.name} logoUrl={node.org.logoUrl} className="h-6 w-6 text-[10px]" />
                   <span className="flex-1 truncate font-medium">{node.org.name}</span>
                   {node.children.length > 0 && (
                     <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -240,6 +243,7 @@ function StoreSwitcher({ onClose }: { onClose?: () => void }) {
                     className="flex w-full items-center gap-2 pl-7 pr-3 py-1.5 text-sm hover:bg-muted transition-colors text-left"
                   >
                     <span className="text-muted-foreground/70">↳</span>
+                    <StoreLogo name={child.name} logoUrl={child.logoUrl} className="h-6 w-6 text-[10px]" />
                     <span className="flex-1 truncate">{child.name}</span>
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 py-px shrink-0">
                       {t("multiStore.subBadge")}
@@ -426,7 +430,6 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
   };
 
   const userInitial = user?.email?.[0]?.toUpperCase() ?? "?";
-  const orgInitial = currentOrg?.name?.[0]?.toUpperCase() ?? "M";
 
   // Collapsed mode: single avatar tile, opens the same dropdown.
   if (collapsed) {
@@ -437,9 +440,7 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
             onClick={() => { hapticLight(); setOpen((v) => !v); setCreating(false); setError(null); }}
             className="flex w-full items-center justify-center rounded px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <div className="h-6 w-6 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center text-[11px] font-semibold shrink-0">
-              {orgInitial}
-            </div>
+            <StoreLogo name={currentOrg?.name ?? ""} logoUrl={currentOrg?.logoUrl} className="h-6 w-6 text-[11px]" />
           </button>
         </SidebarTooltip>
         {open && (
@@ -478,9 +479,7 @@ function WorkspaceSwitcher({ onClose, collapsed }: { onClose?: () => void; colla
         onClick={() => { hapticLight(); setOpen((v) => !v); setCreating(false); setError(null); }}
         className="flex w-full items-center gap-2.5 rounded px-2.5 py-1.5 hover:bg-muted transition-colors text-left"
       >
-        <div className="h-7 w-7 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center text-[12px] font-semibold shrink-0">
-          {orgInitial}
-        </div>
+        <StoreLogo name={currentOrg?.name ?? ""} logoUrl={currentOrg?.logoUrl} className="h-7 w-7 text-[12px]" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[13px] font-medium text-foreground truncate">
@@ -551,9 +550,9 @@ function WorkspaceDropdown({
   onCancelCreate,
   placement,
 }: {
-  currentOrg: { id: string; name: string; parentOrgId?: string | null } | null;
+  currentOrg: { id: string; name: string; parentOrgId?: string | null; logoUrl?: string | null } | null;
   user: { id: string; email: string } | null;
-  tree: { org: { id: string; name: string; parentOrgId?: string | null }; children: { id: string; name: string; parentOrgId?: string | null }[] }[];
+  tree: { org: { id: string; name: string; parentOrgId?: string | null; logoUrl?: string | null }; children: { id: string; name: string; parentOrgId?: string | null; logoUrl?: string | null }[] }[];
   accounts: StoredAccount[];
   eligibleParents: { id: string; name: string }[];
   creating: boolean;
@@ -602,6 +601,7 @@ function WorkspaceDropdown({
               onClick={() => onSwitchOrg(node.org.id)}
               className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
             >
+              <StoreLogo name={node.org.name} logoUrl={node.org.logoUrl} className="h-6 w-6 text-[10px]" />
               <span className="flex-1 truncate font-medium">{node.org.name}</span>
               {node.children.length > 0 && (
                 <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -617,6 +617,7 @@ function WorkspaceDropdown({
                 className="flex w-full items-center gap-2 pl-7 pr-3 py-1.5 text-[13px] hover:bg-muted transition-colors text-left"
               >
                 <span className="text-muted-foreground/70">↳</span>
+                <StoreLogo name={child.name} logoUrl={child.logoUrl} className="h-6 w-6 text-[10px]" />
                 <span className="flex-1 truncate">{child.name}</span>
                 <span className="text-[9px] uppercase tracking-wide text-muted-foreground border border-border rounded px-1 leading-tight shrink-0">
                   {t("multiStore.subBadge")}

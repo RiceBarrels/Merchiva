@@ -224,6 +224,21 @@ export interface BriefingContext {
       minutesOver: number;
       stillOn: boolean;
     }[];
+    // Forgot-to-clock-out radar. Cross-midnight safe: every OPEN "in" punch is
+    // checked against the schedule of the LOCAL DAY it was punched (not just
+    // today), so someone whose shift ended yesterday 22:00 is still flagged at
+    // 01:00. `kind: "overdue"` = >1h past their scheduled end and still clocked
+    // in. `kind: "stale"` = no schedule that day but the punch has been open
+    // suspiciously long.
+    overdueClockOuts: {
+      name: string;
+      kind: "overdue" | "stale";
+      punchDate: string;
+      clockedInAt: string | null;
+      scheduledEnd: string | null; // null for "stale" (no schedule that day)
+      minutesOver: number | null;  // minutes past scheduled end ("overdue" only)
+      openForMinutes: number;      // minutes since clock-in
+    }[];
   };
 
   inventory: {
@@ -563,6 +578,75 @@ export function buildBriefingContext(
       }
     }
   }
+  // ── Forgot to clock out (cross-midnight safe) ──
+  // The lateDepartures loop above only sees TODAY's assigned shifts and compares
+  // minutes-of-day, so it misses anyone still clocked in after midnight, anyone
+  // whose shift row has no memberId, and anyone who punched in without a
+  // schedule. This pass checks every OPEN "in" punch against the schedule of
+  // the local day it was punched, using elapsed real time.
+  const OVERDUE_OUT_GRACE_MIN = 60; // >1h past scheduled end, still clocked in
+  const STALE_PUNCH_MIN = 12 * 60;  // unscheduled open punch older than this
+  const overdueClockOuts: BriefingContext["attendance"]["overdueClockOuts"] = [];
+  const overdueSeen = new Set<string>();
+  for (const e of orgPunchEvents) {
+    if (e.action !== "in" || e.closed) continue;
+    const inMs = tsToMs(e.at);
+    if (!Number.isFinite(inMs) || inMs > nowMs) continue;
+    const mid = idStr(e.memberId);
+    if (overdueSeen.has(mid)) continue;
+    const name = resolveMemberName(mid);
+    const punchDate = localDateOf(inMs, tz) || today;
+    const inLocalMin = hmToMin(localTimeOf(inMs, tz)) ?? 0;
+    const openForMinutes = Math.round((nowMs - inMs) / 60000);
+
+    // Schedule for the punch's own day — by memberId, or by staffName for
+    // shift rows saved without one.
+    const nameLower = name.trim().toLowerCase();
+    let endMin: number | null = null;
+    for (const s of orgShifts as any[]) {
+      if (s.date !== punchDate) continue;
+      const sid = idStr(s.memberId);
+      const matches = sid
+        ? sid === mid
+        : String(s.staffName ?? "").trim().toLowerCase() === nameLower;
+      if (!matches) continue;
+      const sMin = hmToMin(s.startTime);
+      let eMin = hmToMin(s.endTime);
+      if (eMin == null) continue;
+      if (sMin != null && eMin <= sMin) eMin += 1440; // overnight shift
+      if (endMin == null || eMin > endMin) endMin = eMin;
+    }
+
+    if (endMin != null) {
+      // Minutes elapsed since punchDate 00:00 local — comparable to endMin even
+      // after midnight (both can exceed 1440).
+      const virtualNowMin = inLocalMin + openForMinutes;
+      if (virtualNowMin > endMin + OVERDUE_OUT_GRACE_MIN) {
+        overdueSeen.add(mid);
+        overdueClockOuts.push({
+          name,
+          kind: "overdue",
+          punchDate,
+          clockedInAt: localTimeOf(inMs, tz),
+          scheduledEnd: minToHm(endMin % 1440),
+          minutesOver: Math.round(virtualNowMin - endMin),
+          openForMinutes,
+        });
+      }
+    } else if (openForMinutes > STALE_PUNCH_MIN) {
+      overdueSeen.add(mid);
+      overdueClockOuts.push({
+        name,
+        kind: "stale",
+        punchDate,
+        clockedInAt: localTimeOf(inMs, tz),
+        scheduledEnd: null,
+        minutesOver: null,
+        openForMinutes,
+      });
+    }
+  }
+
   const attendance: BriefingContext["attendance"] = {
     onShiftCount: attendanceOnShift.length,
     onShift: attendanceOnShift,
@@ -570,6 +654,7 @@ export function buildBriefingContext(
     punchedInToday,
     lateArrivals,
     lateDepartures,
+    overdueClockOuts,
   };
 
   // ── Pending time-off + shift trades (detailed, not just counts) ──
@@ -895,6 +980,11 @@ export function briefingProblemKeys(ctx: BriefingContext): string[] {
   for (const a of ctx.attendance.lateArrivals) keys.push(`${a.status}:${a.name}`);
   for (const d of ctx.attendance.lateDepartures) {
     keys.push(`${d.stillOn ? "overtime" : "lateout"}:${d.name}`);
+  }
+  // Forgot to clock out — keyed by person + punch day so a new incident on a
+  // later day re-notifies but an ongoing one doesn't re-fire every hour.
+  for (const o of ctx.attendance.overdueClockOuts) {
+    keys.push(`${o.kind === "stale" ? "stale-punch" : "overdue-out"}:${o.name}:${o.punchDate}`);
   }
   for (const r of ctx.timeOffRequests) keys.push(`timeoff:${r.staffName}:${r.startDate}`);
   for (const s of ctx.shiftTrades) keys.push(`trade:${s.requester}:${s.type}`);

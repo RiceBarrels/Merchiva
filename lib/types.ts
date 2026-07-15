@@ -14,6 +14,8 @@ export interface OrgSummary {
   // share staff, products, chat, design, and sites with their parent + sibling
   // sub-stores. Inventory and sales forecasts stay strictly per-org.
   parentOrgId?: string | null;
+  // Store image (UploadThing URL) — shown wherever the user picks a store.
+  logoUrl?: string | null;
 }
 
 // ─── Permissions & Team ───────────────────────────────────────────────────────
@@ -35,6 +37,7 @@ export interface Permissions {
   team: PermissionSection;    // view=see team list, invite=send invites, edit=change roles/codes
   website: PermissionSection; // view=see builder, edit=modify sites
   training_grading: PermissionSection; // view=see trainee grades, edit=grade trainees
+  merchiva: PermissionSection; // view=can use the Mr. Merchiva assistant (chat + quick dialog)
 }
 
 export type OrgRole = "owner" | "manager" | "staff";

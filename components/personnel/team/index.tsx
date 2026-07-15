@@ -20,23 +20,9 @@ import {
   EditMemberDialog,
   type EditMemberInput,
 } from "@/components/personnel/team-dialogs";
+import { useIsMobile } from "@/lib/use-is-mobile";
 
 const VIEW_MODE_STORAGE = "bz_org_view_mode";
-
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return false;
-    return window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches;
-  });
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
-    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
-  }, [breakpoint]);
-  return isMobile;
-}
 
 export function OrgPanel({ orgId }: { orgId: string }) {
   const t = useT();

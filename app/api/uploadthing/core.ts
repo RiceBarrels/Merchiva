@@ -13,7 +13,8 @@ export const ourFileRouter = {
     .middleware(async () => auth())
     .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
 
-  avatar: f({ image: { maxFileSize: "2MB", maxFileCount: 1 } })
+  // 4MB to match the client-side checks + the components.imageUpload.fileTooLarge copy.
+  avatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
     .middleware(async () => auth())
     .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
 

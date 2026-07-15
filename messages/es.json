@@ -908,7 +908,13 @@
       "clockedOutAt": "Salida",
       "ongoing": "en curso",
       "records": "Registros editables",
-      "editHint": "Ajusta entrada y salida, luego guarda."
+      "editHint": "Ajusta entrada y salida, luego guarda.",
+      "missingOut": "Sin salida",
+      "editTitle": "Editar registro",
+      "today": "Hoy",
+      "worked": "Trabajado",
+      "punchDays": "Días fichados",
+      "weekTotal": "Esta semana"
     },
     "myShifts": {
       "trade": "Cambiar",
@@ -939,6 +945,7 @@
     },
     "roles": {
       "title": "Roles",
+      "overviewTitle": "Todas las tareas",
       "noRolesYet": "Aún no hay roles",
       "tasksCountSingular": "{count} tarea",
       "tasksCountPlural": "{count} tareas",
@@ -961,7 +968,12 @@
       "taskDescription": "Descripción",
       "requiresEvidence": "Requiere evidencia fotográfica",
       "notifiesChats": "Notifica a {count} chats",
-      "editTask": "Editar tarea"
+      "editTask": "Editar tarea",
+      "today": "Hoy",
+      "prevDay": "Día anterior",
+      "nextDay": "Día siguiente",
+      "doneBy": "Hecho · {name} · {time}",
+      "notDone": "Sin hacer"
     },
     "requests": {
       "title": "Solicitudes",
@@ -1003,7 +1015,8 @@
       "descriptionPlaceholder": "¿Qué hace este rol?",
       "permissionsLabel": "Permisos",
       "saveCta": "Guardar",
-      "addCta": "Añadir rol"
+      "addCta": "Añadir rol",
+      "customColor": "Color personalizado"
     },
     "taskDialog": {
       "editTitle": "Editar tarea",
@@ -1146,7 +1159,9 @@
       "roles": "Roles y tareas",
       "rolesSub": "Responsabilidades y listas de tareas",
       "training": "Formación",
-      "trainingSub": "Cursos, progreso y evaluación"
+      "trainingSub": "Cursos, progreso y evaluación",
+      "pay": "Nómina",
+      "paySub": "Horas trabajadas y nómina"
     },
     "team": {
       "title": "Equipo",
@@ -1220,7 +1235,8 @@
         "settings": "Ajustes",
         "team": "Equipo",
         "website": "Sitio web",
-        "trainingGrading": "Capacitación y evaluación"
+        "trainingGrading": "Capacitación y evaluación",
+        "merchiva": "Mr. Merchiva"
       },
       "toastInviteSent": "Invitación enviada",
       "toastInviteCreateFailed": "No se pudo crear la invitación",
@@ -1318,7 +1334,37 @@
     },
     "title": "Personal",
     "subtitle": "Horario, equipo, roles y capacitación",
-    "pendingRequests": "Solicitudes pendientes"
+    "pendingRequests": "Solicitudes pendientes",
+    "pay": {
+      "title": "Nómina",
+      "subtitleManager": "Horas y pago según fichajes",
+      "subtitleSelf": "Tus horas y pago estimado",
+      "unitDay": "Por día",
+      "unitWeek": "Por semana",
+      "unitMonth": "Por mes",
+      "unitYear": "Por año",
+      "from": "Desde",
+      "to": "Hasta",
+      "totalHours": "Horas",
+      "estPay": "Pago est.",
+      "onClockNow": "Fichados",
+      "missingRates": "Sin tarifa",
+      "hourlyRate": "Tarifa por hora",
+      "hours": "Horas",
+      "breaks": "Descansos",
+      "onClock": "Fichado",
+      "noRate": "Sin tarifa",
+      "empty": "No hay fichajes en este período",
+      "detailTitle": "Detalle de pago",
+      "editRate": "Editar",
+      "rateSaved": "Tarifa guardada",
+      "rateSaveFailed": "No se pudo guardar la tarifa",
+      "invalidRate": "Ingresa un número válido no negativo",
+      "ratePlaceholder": "p. ej. 18.50",
+      "askManagerForRate": "Aún no tienes tarifa por hora — pide a un gerente que la configure.",
+      "byDay": "Por día",
+      "noPunches": "No hay fichajes en este período"
+    }
   },
   "pos": {
     "tabs": {
@@ -1742,6 +1788,7 @@
     "permTeam": "Equipo",
     "permWebsite": "Sitio web",
     "permTrainingGrading": "Calificación de entrenamiento",
+    "permMerchiva": "Mr. Merchiva",
     "actionView": "ver",
     "actionEdit": "editar",
     "actionInvite": "invitar",
@@ -1926,7 +1973,13 @@
     "supplierInboxPrefixPlaceholder": "bjcafe",
     "companyIdPrefix": "company {id}",
     "switchStoreAccount": "Switch store or account",
-    "appVersion": "App version"
+    "appVersion": "App version",
+    "storeImage": "Imagen de la tienda",
+    "storeImageHint": "Se muestra donde elijas una tienda.",
+    "storeImageSaved": "Imagen de la tienda actualizada",
+    "storeImageFailed": "No se pudo actualizar la imagen de la tienda",
+    "storeImageRemove": "Quitar",
+    "storeImageUpload": "Subir imagen"
   },
   "lock": {
     "title": "Dispositivo bloqueado",
@@ -2148,6 +2201,13 @@
       "onBreak": "en descanso",
       "nobody": "Nadie ha fichado todavía.",
       "allOut": "Todos han fichado la salida."
+    },
+    "todayTasks": {
+      "title": "Tareas de hoy",
+      "done": "completadas",
+      "pending": "pendientes",
+      "skipped": "omitidas",
+      "none": "No hay tareas para hoy."
     },
     "yesterdayTasks": {
       "title": "Tareas de ayer",
@@ -2648,7 +2708,9 @@
       "hourlyRate": "Tarifa por Hora",
       "grossPay": "Pago Bruto",
       "total": "TOTAL",
-      "rateNote": "* Usando tarifa predeterminada de $15/hora. Las tarifas reales se configurarán en ajustes de personal."
+      "rateNote": "* Usando tarifa predeterminada de $15/hora. Las tarifas reales se configurarán en ajustes de personal.",
+      "actualNote": "* Las horas provienen de fichajes reales. Los miembros sin tarifa usan el valor predeterminado de {rate} — configura tarifas en Personal → Nómina.",
+      "noPunches": "No hay fichajes en este período"
     }
   },
   "bookings": {
@@ -2877,7 +2939,21 @@
       "note": "Nota",
       "remove": "Quitar",
       "dropFile": "Suelta el archivo",
-      "upload": "Subir"
+      "upload": "Subir",
+      "embedUrlPrompt": "Pega la URL de una imagen o video",
+      "embedInvalidUrl": "Eso no parece una URL válida.",
+      "embedAdded": "Contenido incrustado agregado.",
+      "published": "Día publicado.",
+      "publishFailed": "No se pudo publicar. Inténtalo de nuevo.",
+      "addDayFailed": "No se pudo agregar el día. Inténtalo de nuevo.",
+      "dayDeleted": "Día eliminado.",
+      "deleteDayFailed": "No se pudo eliminar el día. Inténtalo de nuevo.",
+      "removeFailed": "No se pudo quitar. Inténtalo de nuevo.",
+      "uploadFailed": "Error al subir. Inténtalo de nuevo.",
+      "fileTooLarge": "El archivo es demasiado grande.",
+      "unsupportedFile": "Tipo de archivo no compatible.",
+      "moveUp": "Mover arriba",
+      "moveDown": "Mover abajo"
     },
     "rubric": {
       "knowsMaterial": "Conoce el material",
@@ -2912,7 +2988,31 @@
       "retry": "Reintentar",
       "submitGrade": "Enviar calificación",
       "willBeNotified": "{name} recibirá una notificación · guardado en su expediente de capacitación",
-      "pickTrainee": "Elige un aprendiz de la lista para comenzar a calificar."
+      "pickTrainee": "Elige un aprendiz de la lista para comenzar a calificar.",
+      "lessonFallback": "Lección {n}",
+      "reviewQueue": "Solicitudes de revisión",
+      "reviewWaiting": "{count} en espera",
+      "noPendingReviews": "No hay solicitudes de revisión pendientes.",
+      "allStaff": "Todo el personal",
+      "searchStaff": "Buscar personal",
+      "pickPerson": "Elige una persona para calificar lecciones.",
+      "lessonsGraded": "{done}/{total} lecciones calificadas",
+      "ungraded": "Sin calificar",
+      "pickLesson": "Elige una lección",
+      "noLessonSelected": "Ninguna lección seleccionada",
+      "gradeByLesson": "Calificar por lección",
+      "lessonContent": "Contenido de la lección",
+      "lessonResult": "Resultado de la lección",
+      "giveGrade": "Asigna una calificación para esta lección.",
+      "noTraineeSelected": "Ningún aprendiz seleccionado",
+      "signOffDay": "Validar",
+      "signedOff": "Validado",
+      "reviewRequested": "revisión solicitada",
+      "gradeSaved": "Calificación guardada.",
+      "gradeFailed": "No se pudo guardar la calificación. Inténtalo de nuevo.",
+      "daySignedOffToast": "Día validado — {name} puede continuar.",
+      "daySignOffFailed": "No se pudo validar el día. Inténtalo de nuevo.",
+      "addLessonsFirst": "Agrega lecciones al plan de capacitación antes de calificar."
     },
     "intern": {
       "objectiveFallback": "Objetivo {number}",
@@ -2939,7 +3039,9 @@
       "completeMoreTasks": "Completa {count} tareas más para solicitar la revisión",
       "awaitingReview": "en espera de revisión",
       "liveGradingNote": "Tu capacitador vendrá para calificarte en vivo. Permanece cerca de la barra.",
-      "askTrainerQuestion": "Hacer una pregunta al capacitador"
+      "askTrainerQuestion": "Hacer una pregunta al capacitador",
+      "lockedContent": "Este día se desbloquea cuando tu capacitador valida el día anterior.",
+      "reviewRequestFailed": "No se pudo enviar la solicitud de revisión. Inténtalo de nuevo."
     },
     "dayRail": {
       "days": "días",
@@ -3472,7 +3574,8 @@
       "empty": "No hay notificaciones nuevas"
     },
     "collapsePanel": "Contraer panel",
-    "openPanel": "Abrir Mr. Merchiva"
+    "openPanel": "Abrir Mr. Merchiva",
+    "noAccess": "Mr. Merchiva está desactivado para tu cuenta. Pide a un gerente que lo active."
   },
   "design": {
     "list": {
@@ -4928,7 +5031,20 @@
     "memberOwnerOnly": "Solo el propietario de la organización puede suscribirse. Pide al propietario de {org} que active una suscripción y luego actualiza la página.",
     "yourOrganization": "tu organización",
     "continueInTrial": "Continuar en la prueba",
-    "recommended": "Recomendado"
+    "recommended": "Recomendado",
+    "yourStores": "Tus tiendas",
+    "switchStoreHint": "Cambia a otra tienda para abrirla o gestionar su plan."
+  },
+  "storePicker": {
+    "title": "Elige una tienda",
+    "description": "Elige qué tienda abrir. Cada tienda muestra su plan actual.",
+    "planPro": "Pro",
+    "planProMonthly": "Pro · Mensual",
+    "planProYearly": "Pro · Anual",
+    "planTrialOne": "Prueba · Queda 1 día",
+    "planTrialOther": "Prueba · Quedan {count} días",
+    "planExpired": "Expirada",
+    "current": "Actual"
   },
   "bugReport": {
     "title": "Reportar un error",
@@ -4968,7 +5084,9 @@
     "noteLabel": "Nota",
     "optional": "(opcional)",
     "notePlaceholder": "¿Algo que señalar al gerente?",
-    "markDone": "Marcar como hecho"
+    "markDone": "Marcar como hecho",
+    "viewSubmission": "Ver envío",
+    "noSubmission": "No se enviaron fotos ni notas."
   },
   "itemForecast": {
     "title": "Pronóstico de IA por artículo",
