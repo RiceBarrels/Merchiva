@@ -81,6 +81,7 @@ export function PersonalDeviceScreen() {
 
   const [page, setPage] = useState(0);
   const [openApp, setOpenApp] = useState<DeviceApp["id"] | null>(null);
+  const [openRoute, setOpenRoute] = useState<string | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -219,9 +220,12 @@ export function PersonalDeviceScreen() {
                 <SettingsPanel name={me.myName} email={user?.email} orgName={me.orgName} />
               )}
               {openApp && CatalogComponent && (
-                <EmbeddedPage appId={openApp} onNavigate={(next) => setOpenApp(next)} className="h-full">
-                  <CatalogComponent />
-                </EmbeddedPage>
+                <EmbeddedPage
+                  appId={openApp}
+                  route={openRoute}
+                  onNavigate={(next, route) => { setOpenApp(next); setOpenRoute(route); }}
+                  className="h-full"
+                />
               )}
               {(openApp === "requests" || openApp === "docs") && !CatalogComponent && (
                 <EmptyState

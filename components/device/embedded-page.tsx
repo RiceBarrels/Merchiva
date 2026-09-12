@@ -13,16 +13,22 @@ import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { PersonnelHubProvider } from "@/components/personnel/hub-context";
 import { PersonnelTabsNav } from "@/components/personnel/hub-nav";
-import { catalogApp, catalogAppForRoute, type CatalogActor } from "./app-catalog";
+import { catalogApp, catalogPage, catalogPageForRoute, pageAllowed, type CatalogActor } from "./app-catalog";
+import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { PermissionsProvider, usePermissions } from "@/lib/context/permissions";
-import type { OrgRole } from "@/lib/types";
+import type { OrgRole, Permissions } from "@/lib/types";
 
 export interface EmbeddedPageProps {
   /** Catalog app id being shown (for link interception context). */
   appId: string;
-  children: ReactNode;
-  /** Called with the catalog app id when an intercepted link maps to one. */
-  onNavigate?: (appId: string) => void;
+  /** Current page route inside the app (a tab of its group); defaults to the
+   *  app's main route. */
+  route?: string | null;
+  /** Rendered instead of the catalog page component when given. */
+  children?: ReactNode;
+  /** Called with the catalog app id + page route when an intercepted link
+   *  maps to a page the actor may open (also for tabs within the same app). */
+  onNavigate?: (appId: string, route: string) => void;
   /** Evaluate the page's permission checks as this member (the store-device
    *  operator) instead of the account the device is signed in with. */
   actor?: CatalogActor | null;
@@ -54,9 +60,21 @@ function Fallback() {
   );
 }
 
-export function EmbeddedPage({ appId, children, onNavigate, actor, className }: EmbeddedPageProps) {
+export function EmbeddedPage({ appId, route, children, onNavigate, actor, className }: EmbeddedPageProps) {
   const t = useT();
   const app = catalogApp(appId);
+  const { can: canSelf, role: selfRole } = usePermissions();
+  const { betaFeatures } = useBetaFeatures();
+  const role = actor ? actor.role : selfRole;
+  const gate = {
+    isManager: role === "owner" || role === "manager",
+    betaFeatures,
+    can: (section: keyof Permissions) =>
+      actor ? actor.role === "owner" || actor.permissions[section]?.view === true : canSelf(section, "view"),
+  };
+  const page = app ? catalogPage(app, route) : null;
+  const Page = page?.component ?? null;
+  const content = children ?? (Page ? <Page /> : null);
   const isPersonnel = !!app && app.route.startsWith("/manager/personnel");
 
   const onClickCapture = (e: MouseEvent<HTMLDivElement>) => {
@@ -67,20 +85,24 @@ export function EmbeddedPage({ appId, children, onNavigate, actor, className }: 
     if (!href.startsWith("/manager")) return;
     e.preventDefault();
     e.stopPropagation();
-    const next = catalogAppForRoute(href);
-    if (next && next.id !== appId) onNavigate?.(next.id);
-    else if (!next) toast(t("device.notAvailableHere"));
+    const hit = catalogPageForRoute(href);
+    if (!hit || !pageAllowed(hit.app, gate) || !pageAllowed(hit.page, gate)) {
+      toast(t("device.notAvailableHere"));
+      return;
+    }
+    if (hit.app.id === appId && hit.page.route === (page?.route ?? "")) return;
+    onNavigate?.(hit.app.id, hit.page.route);
   };
 
   const inner = isPersonnel ? (
     <PersonnelHubProvider>
       <div className="flex h-full min-h-0 flex-col">
         <PersonnelTabsNav />
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{children}</div>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{content}</div>
       </div>
     </PersonnelHubProvider>
   ) : (
-    children
+    content
   );
   const body = actor ? <ActorPermissions actor={actor}>{inner}</ActorPermissions> : inner;
 

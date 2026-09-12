@@ -8,10 +8,8 @@
 import { useMemo, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import {
-  BadgeDollarSign, Bell, CalendarCheck, CalendarDays, Crown, FileBarChart, Globe,
-  GraduationCap, LayoutDashboard, Megaphone, MessageSquare, Monitor, MonitorSmartphone,
-  Package, Palette, PiggyBank, Plug, Settings2, Star, Tag, Trash2, TrendingUp, Truck, UserCog,
-  UserRoundSearch, Users, Wallet, type LucideIcon,
+  Bell, CalendarCheck, LayoutDashboard, MessageSquare, Monitor, MonitorSmartphone,
+  Package, Palette, Settings2, Tag, TrendingUp, UserRoundSearch, Users, type LucideIcon,
 } from "lucide-react";
 import type { Permissions } from "@/lib/types";
 import type { BetaFeatureKey } from "@/lib/beta-features";
@@ -20,6 +18,16 @@ import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import type { DeviceApp } from "./types";
+
+export interface CatalogPage {
+  /** Manager route of this page (used to intercept in-page tab links). */
+  route: string;
+  component: ComponentType;
+  /** Extra gating on top of the app's own (e.g. the website builder tab). */
+  permissionKey?: keyof Permissions;
+  betaFeature?: BetaFeatureKey;
+  managerOnly?: boolean;
+}
 
 export interface CatalogApp {
   /** Stable id, also used as the i18n key `device.catalog.<id>`. */
@@ -42,6 +50,8 @@ export interface CatalogApp {
   dock?: boolean;
   /** Dock membership per surface (overrides `dock`). */
   dockOn?: Array<"store" | "personal">;
+  /** Sibling pages that share this app (the manager UI's tab group). */
+  pages?: CatalogPage[];
 }
 
 function Loading() {
@@ -60,58 +70,60 @@ function lazy(loader: () => Promise<{ default: ComponentType<any> }>): Component
 export const APP_CATALOG: CatalogApp[] = [
   { id: "dashboard", icon: LayoutDashboard, route: "/manager/dashboard", permissionKey: "dashboard", surfaces: ["store"], managerOnly: true,
     component: lazy(() => import("@/app/manager/dashboard/page")) },
-  { id: "schedule", icon: CalendarDays, route: "/manager/personnel/schedule", permissionKey: "staffing", surfaces: ["store", "personal"], dockOn: ["personal"],
-    component: lazy(() => import("@/app/manager/personnel/schedule/page")) },
-  { id: "training", icon: GraduationCap, route: "/manager/personnel/training", permissionKey: "staffing", surfaces: ["store", "personal"],
-    component: lazy(() => import("@/app/manager/personnel/training/page")) },
-  { id: "pay", icon: Wallet, route: "/manager/personnel/pay", permissionKey: "staffing", surfaces: ["personal"],
-    component: lazy(() => import("@/app/manager/personnel/pay/page")) },
-  { id: "team", icon: Users, route: "/manager/personnel/team", permissionKey: "team", surfaces: ["store", "personal"],
-    component: lazy(() => import("@/app/manager/personnel/team/page")) },
-  { id: "roles", icon: UserCog, route: "/manager/personnel/roles", permissionKey: "team", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/personnel/roles/page")) },
+  // Personnel hub: schedule · team · roles · training · pay share one app
+  // (the hub tab strip switches pages inside the panel).
+  { id: "personnel", icon: Users, route: "/manager/personnel/schedule", permissionKey: "staffing", surfaces: ["store", "personal"], dockOn: ["personal"],
+    component: lazy(() => import("@/app/manager/personnel/schedule/page")),
+    pages: [
+      { route: "/manager/personnel/team", permissionKey: "team", component: lazy(() => import("@/app/manager/personnel/team/page")) },
+      { route: "/manager/personnel/roles", permissionKey: "team", managerOnly: true, component: lazy(() => import("@/app/manager/personnel/roles/page")) },
+      { route: "/manager/personnel/training", component: lazy(() => import("@/app/manager/personnel/training/page")) },
+      { route: "/manager/personnel/pay", component: lazy(() => import("@/app/manager/personnel/pay/page")) },
+    ] },
+  // Inventory · Suppliers · Waste log are one tab group in the manager UI.
   { id: "inventory", icon: Package, route: "/manager/inventory", permissionKey: "inventory", surfaces: ["store"], dockOn: ["store"],
-    component: lazy(() => import("@/app/manager/inventory/page")) },
-  { id: "waste", icon: Trash2, route: "/manager/inventory/waste", permissionKey: "inventory", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/inventory/waste/page")) },
+    component: lazy(() => import("@/app/manager/inventory/page")),
+    pages: [
+      { route: "/manager/suppliers", component: lazy(() => import("@/app/manager/suppliers/page")) },
+      { route: "/manager/inventory/waste", component: lazy(() => import("@/app/manager/inventory/waste/page")) },
+    ] },
+  // Products · Pricing
   { id: "products", icon: Tag, route: "/manager/products", permissionKey: "products", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/products/page")) },
-  { id: "pricing", icon: BadgeDollarSign, route: "/manager/pricing", permissionKey: "products", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/pricing/page")) },
-  { id: "suppliers", icon: Truck, route: "/manager/suppliers", permissionKey: "inventory", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/suppliers/page")) },
+    component: lazy(() => import("@/app/manager/products/page")),
+    pages: [{ route: "/manager/pricing", component: lazy(() => import("@/app/manager/pricing/page")) }] },
+  // Sales · Reports · Finances
   { id: "sales", icon: TrendingUp, route: "/manager/sales", permissionKey: "sales", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/sales/page")) },
+    component: lazy(() => import("@/app/manager/sales/page")),
+    pages: [
+      { route: "/manager/reports", component: lazy(() => import("@/app/manager/reports/page")) },
+      { route: "/manager/finances", component: lazy(() => import("@/app/manager/finances/page")) },
+    ] },
   { id: "pos", icon: MonitorSmartphone, route: "/manager/pos", permissionKey: "pos", betaFeature: "pos", surfaces: ["store"], dark: true, dockOn: ["store"],
     component: lazy(() => import("@/app/manager/pos/page")) },
-  { id: "bookings", icon: CalendarCheck, route: "/manager/bookings", permissionKey: "sales", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/bookings/page")) },
+  // Bookings · Membership · Reviews · Website builder share the storefront tabs.
+  { id: "bookings", icon: CalendarCheck, route: "/manager/bookings", permissionKey: "settings", surfaces: ["store"],
+    component: lazy(() => import("@/app/manager/bookings/page")),
+    pages: [
+      { route: "/manager/membership", component: lazy(() => import("@/app/manager/membership/page")) },
+      { route: "/manager/reviews", component: lazy(() => import("@/app/manager/reviews/page")) },
+      { route: "/manager/builder", permissionKey: "website", betaFeature: "website", managerOnly: true, component: lazy(() => import("@/app/manager/builder/page")) },
+    ] },
+  // Customers · Marketing
   { id: "customers", icon: UserRoundSearch, route: "/manager/customers", permissionKey: "sales", betaFeature: "website", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/customers/page")) },
-  { id: "marketing", icon: Megaphone, route: "/manager/marketing", permissionKey: "sales", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/marketing/page")) },
-  { id: "finances", icon: PiggyBank, route: "/manager/finances", permissionKey: "sales", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/finances/page")) },
-  { id: "reports", icon: FileBarChart, route: "/manager/reports", permissionKey: "sales", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/reports/page")) },
-  { id: "reviews", icon: Star, route: "/manager/reviews", permissionKey: "sales", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/reviews/page")) },
-  { id: "membership", icon: Crown, route: "/manager/membership", permissionKey: "sales", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/membership/page")) },
+    component: lazy(() => import("@/app/manager/customers/page")),
+    pages: [{ route: "/manager/marketing", component: lazy(() => import("@/app/manager/marketing/page")) }] },
   { id: "notifications", icon: Bell, route: "/manager/notifications", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/notifications/page")) },
   { id: "channel", icon: MessageSquare, route: "/manager/channel", permissionKey: "staffing", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/channel/page")) },
   { id: "display", icon: Monitor, route: "/manager/display", permissionKey: "pos", surfaces: ["store"],
     component: lazy(() => import("@/app/manager/display/page")) },
-  { id: "website", icon: Globe, route: "/manager/builder", permissionKey: "website", betaFeature: "website", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/builder/page")) },
   { id: "design", icon: Palette, route: "/manager/design", permissionKey: "website", betaFeature: "design", surfaces: ["store"], managerOnly: true,
     component: lazy(() => import("@/app/manager/design/page")) },
+  // Store settings · Integrations
   { id: "settings-org", icon: Settings2, route: "/manager/settings", permissionKey: "settings", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/settings/page")) },
-  { id: "api-settings", icon: Plug, route: "/manager/api-settings", permissionKey: "settings", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/api-settings/page")) },
+    component: lazy(() => import("@/app/manager/settings/page")),
+    pages: [{ route: "/manager/api-settings", component: lazy(() => import("@/app/manager/api-settings/page")) }] },
 ];
 
 const BY_ID = new Map(APP_CATALOG.map((a) => [a.id, a]));
@@ -121,16 +133,54 @@ export function catalogApp(id: string): CatalogApp | null {
   return BY_ID.get(id) ?? null;
 }
 
-/** Catalog entry for a manager route (longest prefix match), or null. */
-export function catalogAppForRoute(pathname: string): CatalogApp | null {
-  const path = pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
-  let best: CatalogApp | null = null;
+/** The app's main page as a CatalogPage. */
+export function mainPage(app: CatalogApp): CatalogPage {
+  return { route: app.route, component: app.component };
+}
+
+/** Every page of an app, main page first. */
+export function catalogPages(app: CatalogApp): CatalogPage[] {
+  return [mainPage(app), ...(app.pages ?? [])];
+}
+
+/** Page for `route` within `app` (falls back to the main page). */
+export function catalogPage(app: CatalogApp, route?: string | null): CatalogPage {
+  if (!route) return mainPage(app);
+  return catalogPages(app).find((pg) => pg.route === route) ?? mainPage(app);
+}
+
+function normalize(pathname: string): string {
+  return pathname.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+}
+
+/** App + page for a manager route (longest prefix match), or null. */
+export function catalogPageForRoute(pathname: string): { app: CatalogApp; page: CatalogPage } | null {
+  const path = normalize(pathname);
+  let best: { app: CatalogApp; page: CatalogPage } | null = null;
   for (const app of APP_CATALOG) {
-    if (path === app.route || path.startsWith(app.route + "/")) {
-      if (!best || app.route.length > best.route.length) best = app;
+    for (const page of catalogPages(app)) {
+      if (path === page.route || path.startsWith(page.route + "/")) {
+        if (!best || page.route.length > best.page.route.length) best = { app, page };
+      }
     }
   }
   return best;
+}
+
+/** Catalog entry for a manager route (longest prefix match), or null. */
+export function catalogAppForRoute(pathname: string): CatalogApp | null {
+  return catalogPageForRoute(pathname)?.app ?? null;
+}
+
+/** Whether `page` may be opened by an actor with these checks. */
+export function pageAllowed(
+  page: { permissionKey?: keyof Permissions; betaFeature?: BetaFeatureKey; managerOnly?: boolean },
+  ctx: { can: (section: keyof Permissions) => boolean; isManager: boolean; betaFeatures: Partial<Record<BetaFeatureKey, boolean>> },
+): boolean {
+  if (page.managerOnly && !ctx.isManager) return false;
+  if (page.betaFeature && !ctx.betaFeatures[page.betaFeature]) return false;
+  if (page.permissionKey && !ctx.can(page.permissionKey)) return false;
+  return true;
 }
 
 /** Grid entries for a surface, already filtered by permission + role. */

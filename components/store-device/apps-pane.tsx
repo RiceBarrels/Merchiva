@@ -25,6 +25,7 @@ export interface AppsPaneProps {
 export function AppsPane({ operator, members, forMember, onPanelOpenChange, className }: AppsPaneProps) {
   const t = useT();
   const [openApp, setOpenApp] = useState<DeviceApp["id"] | null>(null);
+  const [openRoute, setOpenRoute] = useState<string | null>(null);
 
   // Punching happens at log-in (PunchPrompt) and in the log-out drawer, so
   // there is no separate Punch In app on the store device. Every other
@@ -38,11 +39,13 @@ export function AppsPane({ operator, members, forMember, onPanelOpenChange, clas
   const open = (id: DeviceApp["id"]) => {
     hapticLight();
     setOpenApp(id);
+    setOpenRoute(null);
     onPanelOpenChange?.(true);
   };
   const close = () => {
     hapticLight();
     setOpenApp(null);
+    setOpenRoute(null);
     onPanelOpenChange?.(false);
   };
 
@@ -67,9 +70,12 @@ export function AppsPane({ operator, members, forMember, onPanelOpenChange, clas
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto">
               {openCatalog && (
-                <EmbeddedPage appId={openCatalog.id} actor={operator} onNavigate={(id) => { hapticLight(); setOpenApp(id); }}>
-                  <openCatalog.component />
-                </EmbeddedPage>
+                <EmbeddedPage
+                  appId={openCatalog.id}
+                  route={openRoute}
+                  actor={operator}
+                  onNavigate={(id, route) => { hapticLight(); setOpenApp(id); setOpenRoute(route); }}
+                />
               )}
               {openApp === "directory" && <DirectoryPanel members={members} forMember={forMember} className="h-full" />}
               {openApp === "settings" && <DeviceSettingsPanel members={members} className="h-full" />}
