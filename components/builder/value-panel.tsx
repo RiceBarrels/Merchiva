@@ -5,6 +5,7 @@ import { Copy, Check, Plus, Trash2, Braces, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { SYSTEM_VALUES, SYSTEM_VALUE_KEYS } from "@/lib/builder/site-values";
 import { updateSite } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ function CopyTag({ text }: { text: string }) {
   return (
     <button
       type="button"
-      className="flex items-center gap-1 rounded-[0.2rem] border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+      className="flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
       onClick={() => {
         navigator.clipboard.writeText(`{${text}}`);
         setCopied(true);
@@ -80,9 +81,7 @@ export function ValuePanel({ site }: ValuePanelProps) {
     <div className="flex flex-col gap-0">
       {/* Custom values */}
       <div className="px-3 py-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t("builder.values.custom")}
-        </span>
+        <Eyebrow as="span">{t("builder.values.custom")}</Eyebrow>
       </div>
 
       <div className="space-y-1 px-2">
@@ -94,7 +93,7 @@ export function ValuePanel({ site }: ValuePanelProps) {
         {entries.map(([key, val]) => (
           <div
             key={key}
-            className="group flex items-center gap-1.5 rounded-[0.3rem] px-1.5 py-1 hover:bg-accent/50"
+            className="group flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-accent/50"
           >
             <CopyTag text={key} />
             {editingKey === key ? (
@@ -149,8 +148,8 @@ export function ValuePanel({ site }: ValuePanelProps) {
           />
           <Button
             variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0"
+            size="icon-xs"
+            className="shrink-0"
             onClick={handleAdd}
             disabled={!addingKey.trim()}
           >
@@ -166,9 +165,7 @@ export function ValuePanel({ site }: ValuePanelProps) {
         className="flex w-full items-center justify-between px-3 py-1.5 hover:bg-accent/50 transition-colors"
         onClick={() => setSystemOpen(!systemOpen)}
       >
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t("builder.values.system")}
-        </span>
+        <Eyebrow as="span">{t("builder.values.system")}</Eyebrow>
         <ChevronDown
           className={cn(
             "h-3 w-3 text-muted-foreground transition-transform",
@@ -182,7 +179,7 @@ export function ValuePanel({ site }: ValuePanelProps) {
           {SYSTEM_VALUES.map((def) => (
             <div
               key={def.key}
-              className="flex items-center gap-2 rounded-[0.3rem] px-1.5 py-1 hover:bg-accent/30"
+              className="flex items-center gap-2 rounded px-1.5 py-1 hover:bg-accent/30"
             >
               <CopyTag text={def.key} />
               <span className="flex-1 truncate text-[10px] text-muted-foreground">

@@ -51,6 +51,12 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar } from "@/components/ui/avatar";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { StatTile, StatGrid } from "@/components/ui/stat-tile";
+import { STATUS_TONE_CLASSES } from "@/components/ui/status-badge";
 
 // ── Brand colors ────────────────────────────────────────────────────────────
 
@@ -195,29 +201,6 @@ export function NotchM({ size = 28, fg = "#fff", bg = "#1c1917" }: { size?: numb
   );
 }
 
-function MonoCap({ children, color = "#78716c", className }: { children: React.ReactNode; color?: string; className?: string }) {
-  return (
-    <span
-      className={cn("font-mono uppercase", className)}
-      style={{ fontSize: 10, color, letterSpacing: 0.6 }}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Initials({ name, size = 28 }: { name: string; size?: number }) {
-  const init = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-  return (
-    <div
-      className="rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 flex items-center justify-center font-semibold shrink-0"
-      style={{ width: size, height: size, fontSize: Math.max(10, size * 0.38) }}
-    >
-      {init}
-    </div>
-  );
-}
-
 // ── Sparkline ───────────────────────────────────────────────────────────────
 
 function Sparkline({
@@ -321,7 +304,7 @@ function KpiStrip() {
     <div className="grid grid-cols-4 border-b border-border bg-background">
       {kpis.map((k, i) => (
         <div key={i} className={cn("px-6 py-4", i > 0 && "border-l border-border")}>
-          <MonoCap>{k.label}</MonoCap>
+          <Eyebrow as="span" size="xs">{k.label}</Eyebrow>
           <div className="flex items-baseline gap-2 mt-2">
             <div className={cn(
               "text-[26px] font-semibold leading-none tracking-tight",
@@ -377,7 +360,7 @@ function WatchlistMini() {
   }, [invItems]);
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden">
+    <div className="rounded-lg border border-border bg-background overflow-hidden">
       {riskItems.map((r, i) => {
         const tone = r.risk === "high" ? "#dc2626" : r.risk === "med" ? "#d97706" : "#059669";
         return (
@@ -386,7 +369,7 @@ function WatchlistMini() {
             <span className="text-[12.5px] flex-1 truncate">{r.name}</span>
             <span className="font-mono text-[11px] tabular-nums">
               <span style={{ color: tone, fontWeight: 600 }}>{r.stock}</span>
-              <span className="text-stone-400 dark:text-stone-500">/{r.par}</span>
+              <span className="text-muted-foreground">/{r.par}</span>
             </span>
             <Sparkline data={r.spark} color={tone} width={48} height={18} fill />
             <span className="font-mono text-[10.5px] tabular-nums" style={{ color: tone, width: 30, textAlign: "right" }}>
@@ -552,9 +535,9 @@ function ChatRow({ from = "merchiva", children, time, footer }: {
   if (from === "system") {
     return (
       <div className="flex items-center gap-3 py-2">
-        <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
-        <MonoCap>{children}</MonoCap>
-        <div className="flex-1 h-px bg-stone-200 dark:bg-stone-700" />
+        <div className="flex-1 h-px bg-border" />
+        <Eyebrow as="span" size="xs">{children}</Eyebrow>
+        <div className="flex-1 h-px bg-border" />
       </div>
     );
   }
@@ -564,7 +547,7 @@ function ChatRow({ from = "merchiva", children, time, footer }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1.5">
           <span className="text-[12.5px] font-semibold tracking-tight">{t("merchiva.name")}</span>
-          <MonoCap color="#a8a29e">{time}</MonoCap>
+          <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{time}</span>
         </div>
         <div className="flex flex-col gap-2">
           {children}
@@ -591,32 +574,32 @@ function VoiceCallRow({ message }: { message: ChatMessage }) {
         onClick={() => canExpand && setExpanded((v) => !v)}
         disabled={!canExpand}
         className={cn(
-          "inline-flex items-center gap-2 rounded-full border border-border bg-stone-50 dark:bg-stone-950 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground",
-          canExpand && "hover:bg-stone-100 dark:hover:bg-stone-900 cursor-pointer",
+          "inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground",
+          canExpand && "hover:bg-muted cursor-pointer",
         )}
       >
         <Phone className="h-3 w-3" />
         <span>{t("merchiva.call.title")}</span>
-        <span className="text-stone-400">·</span>
+        <span className="text-muted-foreground">·</span>
         <span className="tabular-nums">{dur}</span>
         {canExpand && (
           <ChevronDown className={cn("h-3 w-3 transition-transform", expanded && "rotate-180")} />
         )}
       </button>
       {expanded && canExpand && (
-        <div className="w-full max-w-[680px] rounded-[0.3rem] border border-border bg-stone-50/40 dark:bg-stone-950/40 p-3 text-[12.5px] space-y-3 leading-[1.55]">
+        <div className="w-full max-w-[680px] rounded-lg border border-border bg-muted/30 p-3 text-[12.5px] space-y-3 leading-[1.55]">
           {turns.map((turn, i) => (
             <div key={i} className="space-y-1.5">
               <div>
-                <span className="font-mono text-[10px] uppercase tracking-wide text-stone-500 mr-2">
+                <Eyebrow as="span" size="xs" className="mr-2">
                   {t("merchiva.call.youSaid")}
-                </span>
+                </Eyebrow>
                 <span className="whitespace-pre-wrap">{turn.user}</span>
               </div>
               <div>
-                <span className="font-mono text-[10px] uppercase tracking-wide text-stone-500 mr-2">
+                <Eyebrow as="span" size="xs" className="mr-2">
                   {t("merchiva.call.merchivaSaid")}
-                </span>
+                </Eyebrow>
                 <span className="whitespace-pre-wrap">{turn.ai}</span>
               </div>
             </div>
@@ -645,7 +628,7 @@ function InsightCard({
   return (
     <Bubble>
       <div className="flex items-center gap-2">
-        <span className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5"
+        <span className="h-6 px-2 rounded inline-flex items-center gap-1.5"
           style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
           {IconComp}
           <span className="font-mono text-[10px] tracking-[0.08em] uppercase font-semibold">{pill}</span>
@@ -654,39 +637,39 @@ function InsightCard({
         <div className="inline-flex items-center gap-1.5 text-[10.5px] font-mono text-muted-foreground">
           {t("merchiva.insight.confidence")}
           <span className="tabular-nums text-foreground font-semibold">{(confidence * 100).toFixed(0)}%</span>
-          <span className="inline-block w-12 h-1 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
+          <span className="inline-block w-12 h-1 rounded-full bg-muted overflow-hidden">
             <span className="block h-full" style={{ width: `${confidence * 100}%`, background: M_ACC }} />
           </span>
         </div>
       </div>
       <h3 className="text-[20px] font-semibold tracking-tight leading-[1.2]">{title}</h3>
-      <p className="text-[13.5px] text-stone-600 dark:text-stone-300 leading-[1.55]" style={{ textWrap: "pretty" }}>{body}</p>
+      <p className="text-[13.5px] text-muted-foreground leading-[1.55]" style={{ textWrap: "pretty" }}>{body}</p>
 
       {embed}
 
       <div className="flex items-center gap-2">
-        <button className="h-9 px-4 bg-foreground text-background rounded-[0.3rem] text-[13px] font-medium hover:bg-foreground/90 inline-flex items-center gap-2">
+        <Button size="lg" className="px-4 gap-2">
           {primary.label}
           {primary.icon ?? <ArrowRight className="h-3.5 w-3.5" />}
-        </button>
-        <button className="h-9 px-3 rounded-[0.3rem] border border-border bg-background text-foreground text-[13px] font-medium hover:bg-muted">
+        </Button>
+        <Button variant="outline" size="lg" className="px-3">
           {secondary}
-        </button>
+        </Button>
         <div className="flex-1" />
         {reasoning && (
-          <button onClick={() => setExpanded((e) => !e)}
-            className="h-9 px-2 text-[11.5px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+          <Button variant="ghost" size="lg" onClick={() => setExpanded((e) => !e)}
+            className="px-2 text-[11.5px] text-muted-foreground gap-1">
             {expanded ? t("merchiva.insight.hide") : t("merchiva.insight.why")}
             {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
+          </Button>
         )}
       </div>
       {expanded && reasoning && (
-        <div className="border-t border-border pt-3 -mx-4 -mb-4 px-4 pb-4 bg-stone-50/60 dark:bg-stone-950/60">
-          <MonoCap>{t("merchiva.insight.basedOn")}</MonoCap>
+        <div className="border-t border-border pt-3 -mx-4 -mb-4 px-4 pb-4 bg-muted/40">
+          <Eyebrow as="span" size="xs">{t("merchiva.insight.basedOn")}</Eyebrow>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {reasoning.map((r) => (
-              <span key={r} className="inline-flex items-center gap-1.5 px-2 py-1 border border-border rounded-[0.3rem] bg-background font-mono text-[10.5px] text-stone-600 dark:text-stone-300">
+              <span key={r} className="inline-flex items-center gap-1.5 px-2 py-1 border border-border rounded-lg bg-background font-mono text-[10.5px] text-muted-foreground">
                 <span className="w-1 h-1 rounded-full" style={{ background: M_ACC }} />
                 {r}
               </span>
@@ -712,12 +695,12 @@ function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
   if (insight.type === "inventory" && insight.data) {
     const d = insight.data as { itemName: string; currentStock: number; minStock: number; maxStock: number; unit: string; daysOfCover: number };
     return (
-      <div className="rounded-[0.3rem] border border-border bg-stone-50/40 dark:bg-stone-950/40 p-3">
+      <div className="rounded-lg border border-border bg-muted/30 p-3">
         <div className="flex items-baseline gap-2 mb-2">
           <div className="text-[12.5px] font-semibold">{d.itemName}</div>
-          <MonoCap>{d.currentStock} / {d.maxStock} {d.unit} · {t("merchiva.embed.daysCover").replace("{days}", String(d.daysOfCover))}</MonoCap>
+          <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{d.currentStock} / {d.maxStock} {d.unit} · {t("merchiva.embed.daysCover").replace("{days}", String(d.daysOfCover))}</span>
         </div>
-        <div className="w-full h-2 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
+        <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{
@@ -733,7 +716,7 @@ function InsightEmbed({ insight }: { insight: MerchivaInsight }) {
             [t("merchiva.embed.cover"), t("merchiva.embed.daysApprox").replace("{days}", String(d.daysOfCover))],
           ] as const).map(([k, v], i) => (
             <div key={k} className={cn(i > 0 && "pl-3")}>
-              <MonoCap>{k}</MonoCap>
+              <Eyebrow as="span" size="xs">{k}</Eyebrow>
               <div className="text-[14px] font-mono tabular-nums mt-1">{v}</div>
             </div>
           ))}
@@ -859,21 +842,21 @@ function ShiftPreviewStrip({ action, validRoleNamesLower }: {
     }
   }
   const typeColors: Record<string, string> = {
-    morning: "bg-amber-100 text-amber-700 border-amber-200",
-    afternoon: "bg-sky-100 text-sky-700 border-sky-200",
-    evening: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    closing: "bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700",
+    morning: STATUS_TONE_CLASSES.warning,
+    afternoon: STATUS_TONE_CLASSES.info,
+    evening: STATUS_TONE_CLASSES.neutral,
+    closing: STATUS_TONE_CLASSES.neutral,
   };
   const d = date ? new Date(date + "T00:00:00") : null;
   const dayLabel = d ? d.toLocaleDateString("zh-CN", { weekday: "short", month: "numeric", day: "numeric" }) : date;
   return (
     <div className="flex items-center gap-2 mt-1 mb-1 flex-wrap">
-      <Calendar className="h-3.5 w-3.5 text-stone-400 dark:text-stone-500 shrink-0" />
+      <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
       <span className="text-[12.5px] font-medium">{name}</span>
       <span className="text-[11px] text-muted-foreground font-mono">{dayLabel}</span>
-      <span className="text-[11px] font-mono text-stone-600 dark:text-stone-300">{start}–{end}</span>
+      <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{start}–{end}</span>
       {type && (
-        <span className={cn("text-[9.5px] font-mono uppercase px-1.5 py-0.5 rounded border", typeColors[type] ?? "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700")}>
+        <span className={cn("text-[9.5px] font-mono uppercase px-1.5 py-0.5 rounded border", typeColors[type] ?? STATUS_TONE_CLASSES.neutral)}>
           {type}
         </span>
       )}
@@ -885,8 +868,8 @@ function ShiftPreviewStrip({ action, validRoleNamesLower }: {
             className={cn(
               "text-[10px] px-1.5 py-0.5 rounded border",
               isInvalid
-                ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900 line-through"
-                : "bg-stone-50 dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700",
+                ? cn(STATUS_TONE_CLASSES.danger, "line-through")
+                : STATUS_TONE_CLASSES.neutral,
             )}
             title={isInvalid ? t("merchiva.shift.invalidRole") : t("merchiva.shift.jobRole")}
           >
@@ -905,7 +888,7 @@ function RolePreviewStrip({ action }: { action: Record<string, unknown> }) {
   const desc = String(action.description ?? action.des ?? "");
   return (
     <div className="flex items-center gap-2.5 mt-1 mb-1">
-      <span className="w-7 h-7 rounded-[0.2rem] flex items-center justify-center shrink-0" style={{ background: color }}>
+      <span className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{ background: color }}>
         <RoleIcon name={icon} className="h-3.5 w-3.5 text-white" />
       </span>
       <div className="min-w-0">
@@ -974,7 +957,7 @@ function SupplierOrderPreview({ action, supplierNameById }: {
   const money = (n: number) => `$${n.toFixed(2)}`;
 
   return (
-    <div className="mt-1 mb-2 rounded-[0.2rem] border border-border bg-background/60">
+    <div className="mt-1 mb-2 rounded border border-border bg-background/60">
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
         <Truck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         <span className="text-[12px] font-semibold truncate">{supplierName}</span>
@@ -992,7 +975,7 @@ function SupplierOrderPreview({ action, supplierNameById }: {
               <div key={i} className="flex items-baseline gap-2 px-2.5 py-1.5">
                 <span className="text-[12.5px] font-medium truncate flex-1">{name}</span>
                 {qtyLabel && (
-                  <span className="text-[12px] font-mono text-stone-600 dark:text-stone-300 shrink-0">
+                  <span className="text-[12px] font-mono tabular-nums text-muted-foreground shrink-0">
                     {qtyLabel}
                   </span>
                 )}
@@ -1033,7 +1016,7 @@ function SupplierOrderPreview({ action, supplierNameById }: {
         </div>
       )}
       {notes && (
-        <div className="px-2.5 py-1.5 border-t border-border text-[11.5px] text-stone-600 dark:text-stone-300">
+        <div className="px-2.5 py-1.5 border-t border-border text-[11.5px] text-muted-foreground">
           {notes}
         </div>
       )}
@@ -1058,9 +1041,9 @@ function BuilderAddPreview({ action }: { action: Record<string, unknown> }) {
           const label = tag ? `${type}/${tag}` : type;
           const content = el.content ? String(el.content).slice(0, 24) : null;
           return (
-            <span key={i} className="inline-flex items-center gap-1.5 h-5 px-1.5 rounded-[0.2rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-[10.5px]">
-              <span className="font-mono text-stone-600 dark:text-stone-400">{label}</span>
-              {content && <span className="text-stone-700 dark:text-stone-300 truncate max-w-[140px]">{content}</span>}
+            <span key={i} className="inline-flex items-center gap-1.5 h-5 px-1.5 rounded bg-muted border border-border text-[10.5px]">
+              <span className="font-mono text-muted-foreground">{label}</span>
+              {content && <span className="text-foreground truncate max-w-[140px]">{content}</span>}
             </span>
           );
         })}
@@ -1078,7 +1061,7 @@ function BuilderDeletePreview({ action }: { action: Record<string, unknown> }) {
   return (
     <div className="mt-1 mb-1 flex flex-wrap gap-1">
       {targets.map((t, i) => (
-        <span key={i} className="inline-flex items-center h-5 px-1.5 rounded-[0.2rem] bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-[10.5px] font-mono">
+        <span key={i} className={cn("inline-flex items-center h-5 px-1.5 rounded border text-[10.5px] font-mono", STATUS_TONE_CLASSES.danger)}>
           {String(t)}
         </span>
       ))}
@@ -1097,14 +1080,14 @@ function BuilderEditPreview({ action }: { action: Record<string, unknown> }) {
   return (
     <div className="mt-1 mb-1 space-y-1">
       {replaceAll && (
-        <div className="inline-flex items-center h-4 px-1.5 rounded-[0.2rem] bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-[9.5px] font-mono uppercase tracking-wider">
+        <div className="inline-flex items-center h-4 px-1.5 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-[9.5px] font-mono uppercase tracking-wider">
           replace_all
         </div>
       )}
-      <div className="rounded-[0.2rem] border border-red-200 dark:border-red-900 bg-red-50/60 dark:bg-red-950/30 px-2 py-1 font-mono text-[10.5px] text-red-800 dark:text-red-200 whitespace-pre-wrap break-all">
-        <span className="select-none text-red-400 dark:text-red-500 mr-1">-</span>{clip(oldStr)}
+      <div className={cn("rounded border px-2 py-1 font-mono text-[10.5px] whitespace-pre-wrap break-all", STATUS_TONE_CLASSES.danger)}>
+        <span className="select-none opacity-60 mr-1">-</span>{clip(oldStr)}
       </div>
-      <div className="rounded-[0.2rem] border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 px-2 py-1 font-mono text-[10.5px] text-emerald-800 dark:text-emerald-200 whitespace-pre-wrap break-all">
+      <div className="rounded border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 px-2 py-1 font-mono text-[10.5px] text-emerald-800 dark:text-emerald-200 whitespace-pre-wrap break-all">
         <span className="select-none text-emerald-400 dark:text-emerald-500 mr-1">+</span>{clip(newStr)}
       </div>
     </div>
@@ -1165,12 +1148,12 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   const borderColor = status === "approved"
     ? "border-emerald-200 bg-emerald-50/50"
     : status === "rejected"
-    ? "border-red-200 bg-red-50/50"
+    ? "border-destructive/30 bg-destructive/5"
     : denied
-    ? "border-stone-200 dark:border-stone-700 bg-stone-100/60 dark:bg-stone-900/40 opacity-75"
+    ? "border-border bg-muted/60 opacity-75"
     : isHighRisk
     ? "border-amber-200 bg-amber-50/30"
-    : "border-border bg-stone-50/60 dark:bg-stone-950/60";
+    : "border-border bg-muted/40";
 
   // Graceful i18n fallback for the autonomy strings: a missing merchiva.* key
   // resolves to the path itself (starts with "merchiva."), so fall back to English.
@@ -1180,16 +1163,17 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   };
 
   return (
-    <div className={cn("rounded-[0.3rem] border p-3 mt-2", borderColor)}>
+    <div className={cn("rounded-lg border p-3 mt-2", borderColor)}>
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
         <span className={cn(
-          "h-6 px-2 rounded-[0.2rem] inline-flex items-center gap-1.5",
-          status === "approved" ? "bg-emerald-100 border border-emerald-200 text-emerald-700" :
-          status === "rejected" ? "bg-red-100 border border-red-200 text-red-700" :
-          denied ? "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-400 dark:text-stone-500" :
-          isHighRisk ? "bg-amber-100 border border-amber-200 text-amber-700" :
-          "bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300"
+          "h-6 px-2 rounded inline-flex items-center gap-1.5",
+          "border",
+          status === "approved" ? STATUS_TONE_CLASSES.success :
+          status === "rejected" ? STATUS_TONE_CLASSES.danger :
+          denied ? cn(STATUS_TONE_CLASSES.neutral, "opacity-60") :
+          isHighRisk ? STATUS_TONE_CLASSES.warning :
+          STATUS_TONE_CLASSES.neutral
         )}>
           {meta?.icon ?? <ArrowRight className="h-3 w-3" />}
           <span className="font-mono text-[10px] tracking-[0.06em] uppercase font-semibold">
@@ -1197,12 +1181,12 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
           </span>
         </span>
         {denied && (
-          <span className="text-[10px] font-mono text-stone-400 dark:text-stone-500 inline-flex items-center gap-1">
+          <span className="text-[10px] font-mono text-muted-foreground inline-flex items-center gap-1">
             <X className="h-3 w-3" /> {tx("merchiva.ui.noPermission", "No permission")}
           </span>
         )}
         {needsApproval && status === "pending" && (
-          <span className={cn("text-[10px] font-mono inline-flex items-center gap-1", isHighRisk ? "text-amber-600" : "text-stone-500")}>
+          <span className={cn("text-[10px] font-mono inline-flex items-center gap-1", isHighRisk ? "text-amber-600" : "text-muted-foreground")}>
             <AlertTriangle className="h-3 w-3" /> {tx("merchiva.ui.needsApproval", "Needs your OK")}
           </span>
         )}
@@ -1217,7 +1201,7 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
           </span>
         )}
         {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+          <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
             <X className="h-3 w-3" /> {t("merchiva.ui.undone")}
           </span>
         )}
@@ -1261,27 +1245,31 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
           high risk), not just high-risk as before. */}
       {status === "pending" && !executing && needsApproval && (
         <div className="flex items-center gap-2 mt-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => { setExecuting(true); Promise.resolve(onApprove()).finally(() => setExecuting(false)); }}
-            className="h-7 px-3 rounded-[0.3rem] border border-emerald-200 bg-emerald-50 text-emerald-700 text-[11px] font-semibold hover:bg-emerald-100 inline-flex items-center gap-1.5"
+            className={cn(STATUS_TONE_CLASSES.success, "px-3 font-semibold hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900")}
           >
             <Check className="h-3 w-3" /> {t("merchiva.ui.confirmExecute")}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onReject}
-            className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5"
+            className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <X className="h-3 w-3" /> {t("merchiva.ui.cancel")}
-          </button>
+          </Button>
         </div>
       )}
       {/* Executed: real Undo when the action is reversible, otherwise a note. */}
       {status === "approved" && !executing && (
         canUndo ? (
-          <button onClick={onReject}
-            className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 mt-1">
+          <Button variant="outline" size="sm" onClick={onReject}
+            className="px-3 mt-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
             {t("merchiva.ui.undo")}
-          </button>
+          </Button>
         ) : (
           <p className="text-[10.5px] text-muted-foreground/70 mt-1 italic">
             {tx("merchiva.ui.cannotUndo", "Can't be undone")}
@@ -1308,9 +1296,9 @@ const ACTION_CATEGORY_ICONS: Record<string, React.ReactNode> = {
 
 
 const ACTION_RISK_CLASS: Record<string, string> = {
-  low: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  medium: "border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 text-stone-600 dark:text-stone-300",
-  high: "border-amber-200 bg-amber-50 text-amber-700",
+  low: STATUS_TONE_CLASSES.success,
+  medium: STATUS_TONE_CLASSES.neutral,
+  high: STATUS_TONE_CLASSES.warning,
 };
 
 function ActionsListCard() {
@@ -1322,9 +1310,9 @@ function ActionsListCard() {
     .filter((group) => group.actions.length > 0);
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden mt-2">
+    <div className="rounded-lg border border-border bg-background overflow-hidden mt-2">
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
           <Sparkles className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.actionsList.tag")}</span>
         </span>
@@ -1333,8 +1321,8 @@ function ActionsListCard() {
       <div className="max-h-[460px] overflow-y-auto">
         {grouped.map(({ category, actions }) => (
           <div key={category} className="border-b border-border last:border-b-0">
-            <div className="px-3 py-2 bg-stone-50/70 dark:bg-stone-950/70 flex items-center gap-2">
-              <span className="h-5 w-5 rounded-[0.2rem] border border-stone-200 dark:border-stone-700 bg-background text-stone-600 dark:text-stone-300 inline-flex items-center justify-center">
+            <div className="px-3 py-2 bg-muted/50 flex items-center gap-2">
+              <span className="h-5 w-5 rounded border border-border bg-background text-muted-foreground inline-flex items-center justify-center">
                 {ACTION_CATEGORY_ICONS[category] ?? <ArrowRight className="h-[10px] w-[10px]" />}
               </span>
               <span className="text-[12px] font-semibold">{(() => {
@@ -1353,9 +1341,9 @@ function ActionsListCard() {
                 return (
                   <div key={action.name} className="px-3 py-2.5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <code className="text-[12px] font-mono font-semibold text-stone-800 dark:text-stone-200 truncate">{action.name}</code>
+                      <code className="text-[12px] font-mono font-semibold text-foreground truncate">{action.name}</code>
                       <span className={cn(
-                        "h-5 px-1.5 rounded-[0.2rem] border text-[9px] font-mono uppercase shrink-0",
+                        "h-5 px-1.5 rounded border text-[9px] font-mono uppercase shrink-0",
                         ACTION_RISK_CLASS[action.riskLevel]
                       )}>
                         {t(`merchiva.risk.${action.riskLevel}`)}
@@ -1366,17 +1354,17 @@ function ActionsListCard() {
                     </div>
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {required.map((param) => (
-                        <span key={param.name} className="h-5 px-1.5 rounded-[0.2rem] border border-border bg-background text-[10px] font-mono inline-flex items-center">
+                        <span key={param.name} className="h-5 px-1.5 rounded border border-border bg-background text-[10px] font-mono inline-flex items-center">
                           {param.name}: {param.type}
                         </span>
                       ))}
                       {optional > 0 && (
-                        <span className="h-5 px-1.5 rounded-[0.2rem] border border-border bg-stone-50 dark:bg-stone-950 text-[10px] font-mono text-muted-foreground inline-flex items-center">
+                        <span className="h-5 px-1.5 rounded border border-border bg-muted/40 text-[10px] font-mono text-muted-foreground inline-flex items-center">
                           {t("merchiva.actionsList.optionalCount").replace("{count}", String(optional))}
                         </span>
                       )}
                       {permission !== "none" && (
-                        <span className="h-5 px-1.5 rounded-[0.2rem] border border-border bg-stone-50 dark:bg-stone-950 text-[10px] font-mono text-muted-foreground inline-flex items-center">
+                        <span className="h-5 px-1.5 rounded border border-border bg-muted/40 text-[10px] font-mono text-muted-foreground inline-flex items-center">
                           {permission}
                         </span>
                       )}
@@ -1437,9 +1425,9 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
   const totalSelected = Object.values(selections).reduce((sum, arr) => sum + arr.length, 0);
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 space-y-3">
+    <div className="rounded-lg border border-border bg-muted/40 p-3 mt-2 space-y-3">
       <div className="flex items-center gap-2">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1"
+        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1"
           style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">Q&A</span>
         </span>
@@ -1451,80 +1439,75 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
       </div>
       {items.map((item, qi) => (
         <div key={qi}>
-          <p className="text-[13px] font-medium text-stone-800 dark:text-stone-200 mb-1.5">{item.q}</p>
+          <p className="text-[13px] font-medium text-foreground mb-1.5">{item.q}</p>
           <div className="flex flex-wrap gap-1.5">
             {item.a.map((answer) => {
               const selected = (selections[qi] ?? []).includes(answer);
               return (
-                <button
+                <Button
                   key={answer}
+                  variant="outline"
                   disabled={submitted}
                   onClick={() => handleToggle(qi, answer)}
                   className={cn(
-                    "h-8 px-3 rounded-[0.3rem] text-[12px] font-medium transition-colors inline-flex items-center gap-1.5",
-                    selected && !submitted
-                      ? "bg-foreground text-background"
-                      : submitted && selected
-                      ? "bg-foreground text-background opacity-70"
-                      : submitted
-                      ? "border border-border bg-background text-muted-foreground opacity-50 cursor-not-allowed"
-                      : "border border-border bg-background text-foreground hover:bg-muted"
+                    "px-3 text-[12px]",
+                    selected && "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background",
+                    submitted && selected && "opacity-70",
+                    submitted && !selected && "text-muted-foreground",
                   )}
                 >
                   {selected && <Check className="h-3 w-3" />}
                   {answer}
-                </button>
+                </Button>
               );
             })}
             {!submitted && (
-              <button
+              <Button
+                variant="outline"
                 onClick={() => handleOtherToggle(qi)}
                 className={cn(
-                  "h-8 px-3 rounded-[0.3rem] text-[12px] font-medium transition-colors",
+                  "px-3 text-[12px]",
                   otherOpen[qi]
-                    ? "bg-foreground text-background"
-                    : "border border-dashed border-border bg-background text-muted-foreground hover:bg-muted"
+                    ? "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+                    : "border-dashed text-muted-foreground"
                 )}
               >
                 {t("merchiva.qa.other")}
-              </button>
+              </Button>
             )}
           </div>
           {otherOpen[qi] && !submitted && (
             <div className="flex items-center gap-1.5 mt-1.5">
-              <input
+              <Input
                 type="text"
                 value={otherText[qi] ?? ""}
                 onChange={(e) => setOtherText((prev) => ({ ...prev, [qi]: e.target.value }))}
                 onKeyDown={(e) => { if (e.key === "Enter") handleOtherConfirm(qi); }}
                 placeholder={t("merchiva.qa.customReplyPlaceholder")}
-                className="flex-1 h-8 px-2.5 rounded-[0.3rem] border border-border bg-background text-[12px] outline-none focus:border-stone-400"
+                className="flex-1 md:text-[12px]"
               />
-              <button
+              <Button
                 onClick={() => handleOtherConfirm(qi)}
                 disabled={!(otherText[qi] ?? "").trim()}
-                className="h-8 px-3 rounded-[0.3rem] bg-foreground text-background text-[12px] font-medium hover:bg-foreground/90 disabled:opacity-40"
+                className="px-3"
               >
                 <Check className="h-3 w-3" />
-              </button>
+              </Button>
             </div>
           )}
         </div>
       ))}
       {!submitted && (
-        <button
+        <Button
+          size="lg"
+          variant={allAnswered ? "default" : "secondary"}
           disabled={!allAnswered}
           onClick={handleSubmit}
-          className={cn(
-            "h-9 w-full rounded-[0.3rem] text-[13px] font-medium transition-colors inline-flex items-center justify-center gap-2",
-            allAnswered
-              ? "bg-foreground text-background hover:bg-foreground/90"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-          )}
+          className="w-full gap-2 text-[13px]"
         >
           <Check className="h-3.5 w-3.5" />
           {allAnswered ? t("merchiva.qa.submit") : t("merchiva.qa.pickAtLeastOne")}
-        </button>
+        </Button>
       )}
       {submitted && (
         <div className="text-[11px] font-mono text-emerald-600 inline-flex items-center gap-1">
@@ -1543,9 +1526,9 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
   const t = useT();
   return (
-    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden mt-2">
+    <div className="rounded-lg border border-border bg-background overflow-hidden mt-2">
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
           <Users className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.rolesList.tag")}</span>
         </span>
@@ -1557,7 +1540,7 @@ function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; col
         <div className="divide-y divide-border">
           {roles.map((role) => (
             <div key={role.id} className="px-3 py-2.5 flex items-center gap-3">
-              <div className="h-8 w-8 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+              <div className="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg"
                 style={{ borderColor: role.color, color: role.color }}>
                 <RoleIcon name={role.icon} className="h-4 w-4" />
               </div>
@@ -1584,13 +1567,13 @@ function RoleAddCard({ role, status, onDelete }: {
   const t = useT();
   return (
     <div className={cn(
-      "rounded-[0.3rem] border p-3 mt-2",
+      "rounded-lg border p-3 mt-2",
       status === "added" ? "border-emerald-200 bg-emerald-50/50" :
-      status === "rejected" ? "border-red-200 bg-red-50/50" :
-      "border-border bg-stone-50/60 dark:bg-stone-950/60"
+      status === "rejected" ? "border-destructive/30 bg-destructive/5" :
+      "border-border bg-muted/40"
     )}>
       <div className="flex items-center gap-2 mb-2.5">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
           <Users className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.roleAdd.tag")}</span>
         </span>
@@ -1600,7 +1583,7 @@ function RoleAddCard({ role, status, onDelete }: {
           </span>
         )}
         {status === "deleting" && (
-          <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+          <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
             <Spinner size={12} /> {t("merchiva.status.deleting")}
           </span>
         )}
@@ -1610,11 +1593,11 @@ function RoleAddCard({ role, status, onDelete }: {
           </span>
         )}
         {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-red-500 ml-auto">{t("merchiva.status.deleted")}</span>
+          <span className="text-[10.5px] font-mono text-destructive ml-auto">{t("merchiva.status.deleted")}</span>
         )}
       </div>
       <div className="flex items-center gap-3 mb-2">
-        <div className="h-10 w-10 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+        <div className="h-10 w-10 shrink-0 flex items-center justify-center border rounded-lg"
           style={{ borderColor: role.color, color: role.color }}>
           <RoleIcon name={role.icon} className="h-5 w-5" />
         </div>
@@ -1625,10 +1608,10 @@ function RoleAddCard({ role, status, onDelete }: {
       </div>
       {role.tasks && (
         <div className="mb-2.5">
-          <MonoCap>{t("merchiva.roleAdd.responsibilities")}</MonoCap>
+          <Eyebrow as="span" size="xs">{t("merchiva.roleAdd.responsibilities")}</Eyebrow>
           <div className="flex flex-wrap gap-1 mt-1">
             {role.tasks.split(",").map((t) => t.trim()).filter(Boolean).map((task) => (
-              <span key={task} className="inline-flex items-center px-2 py-0.5 rounded-[0.2rem] border border-border bg-background text-[11px]">
+              <span key={task} className="inline-flex items-center px-2 py-0.5 rounded border border-border bg-background text-[11px]">
                 {task}
               </span>
             ))}
@@ -1640,10 +1623,10 @@ function RoleAddCard({ role, status, onDelete }: {
         <span className="text-[11px] font-mono text-muted-foreground">{role.color}</span>
       </div>
       {status === "added" && (
-        <button onClick={onDelete}
-          className="h-7 px-3 mt-2.5 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
+        <Button variant="outline" size="sm" onClick={onDelete}
+          className="px-3 mt-2.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
           <Trash2 className="h-3 w-3" /> {t("common.delete")}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -1669,7 +1652,7 @@ function TasksListInline({ roleId, roleName }: { roleId: string; roleName: strin
 
   if (loading) {
     return (
-      <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
+      <div className="rounded-lg border border-border bg-muted/40 p-3 mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
         <Spinner size={12} /> {t("merchiva.tasks.loading")}
       </div>
     );
@@ -1700,9 +1683,9 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
   };
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-background overflow-hidden mt-2">
+    <div className="rounded-lg border border-border bg-background overflow-hidden mt-2">
       <div className="px-3 py-2 border-b border-border flex items-center gap-2">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
           <Clipboard className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.tasks.tag")}</span>
         </span>
@@ -1719,7 +1702,7 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
                 <div className="flex items-center gap-2">
                   <div className="text-[12.5px] font-medium leading-tight">{task.title}</div>
                   {task.requiresEvidence && (
-                    <span className="h-4 px-1 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-mono uppercase inline-flex items-center">
+                    <span className="h-4 px-1 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-mono uppercase inline-flex items-center">
                       {t("merchiva.tasks.evidence")}
                     </span>
                   )}
@@ -1733,13 +1716,15 @@ function TasksListCard({ roleName, tasks: initialTasks }: {
                   {task.startTime}–{task.endTime ?? ""}
                 </span>
               )}
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => handleDelete(task.id)}
                 disabled={deleting.has(task.id)}
-                className="h-6 w-6 shrink-0 rounded-[0.2rem] flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
               >
                 {deleting.has(task.id) ? <Spinner size={12} /> : <Trash2 className="h-3 w-3" />}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -1761,14 +1746,14 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
   const t = useT();
   return (
     <div className={cn(
-      "rounded-[0.3rem] border p-3 mt-2",
+      "rounded-lg border p-3 mt-2",
       status === "added" ? "border-emerald-200 bg-emerald-50/50" :
-      status === "rejected" ? "border-red-200 bg-red-50/50" :
+      status === "rejected" ? "border-destructive/30 bg-destructive/5" :
       status === "needs-chat" ? "border-amber-300 bg-amber-50/40 dark:bg-amber-950/20" :
-      "border-border bg-stone-50/60 dark:bg-stone-950/60"
+      "border-border bg-muted/40"
     )}>
       <div className="flex items-center gap-2 mb-2.5">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1 bg-muted border border-border text-muted-foreground">
           <Clipboard className="h-[10px] w-[10px]" />
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.taskAdd.tag")}</span>
         </span>
@@ -1779,7 +1764,7 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
           </span>
         )}
         {status === "deleting" && (
-          <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+          <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
             <Spinner size={12} /> {t("merchiva.status.deleting")}
           </span>
         )}
@@ -1789,7 +1774,7 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
           </span>
         )}
         {status === "rejected" && (
-          <span className="text-[10.5px] font-mono text-red-500 ml-auto">{t("merchiva.status.deleted")}</span>
+          <span className="text-[10.5px] font-mono text-destructive ml-auto">{t("merchiva.status.deleted")}</span>
         )}
         {status === "needs-chat" && (
           <span className="text-[10.5px] font-mono text-amber-700 ml-auto">{t("merchiva.taskAdd.chooseChat")}</span>
@@ -1810,7 +1795,7 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
           </div>
         )}
         {task.requiresEvidence && (
-          <span className="h-5 px-1.5 rounded-[0.2rem] bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-mono uppercase inline-flex items-center gap-1">
+          <span className="h-5 px-1.5 rounded bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-mono uppercase inline-flex items-center gap-1">
             <Camera className="h-[10px] w-[10px]" /> {t("merchiva.taskAdd.evidenceRequired")}
           </span>
         )}
@@ -1829,44 +1814,48 @@ function TaskAddCard({ task, roleColor, status, groupChats, selectedChats, onTog
               {groupChats.map((c) => {
                 const isSel = selectedChats.includes(c.id);
                 return (
-                  <button
+                  <Button
                     key={c.id}
+                    variant="outline"
+                    size="xs"
                     onClick={() => onToggleChat(c.id)}
                     className={cn(
-                      "h-6 px-2 rounded-[0.2rem] text-[10.5px] font-medium border transition-colors",
                       isSel
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border text-muted-foreground hover:bg-muted"
+                        ? "border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+                        : "text-muted-foreground"
                     )}
                   >
                     {c.name}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
           )}
           <div className="flex items-center gap-2 mt-2.5">
-            <button
+            <Button
+              size="sm"
               onClick={onConfirm}
               disabled={selectedChats.length === 0}
-              className="h-7 px-3 rounded-[0.3rem] border border-foreground bg-foreground text-background text-[11px] font-medium inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 disabled:opacity-40"
             >
               <Check className="h-3 w-3" /> {t("merchiva.taskAdd.add")}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onDelete}
-              className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5"
+              className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             >
               <Trash2 className="h-3 w-3" /> {t("merchiva.taskAdd.skip")}
-            </button>
+            </Button>
           </div>
         </div>
       )}
       {status === "added" && (
-        <button onClick={onDelete}
-          className="h-7 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-red-50 hover:text-red-600 hover:border-red-200 inline-flex items-center gap-1.5">
+        <Button variant="outline" size="sm" onClick={onDelete}
+          className="px-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive">
           <Trash2 className="h-3 w-3" /> {t("common.delete")}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -2200,13 +2189,13 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
     <>
       {deletes.map((del, i) => (
         <div key={`del-${i}`} className={cn(
-          "rounded-[0.3rem] border p-3 mt-2",
-          statuses[i] === "deleted" ? "border-red-200 bg-red-50/50" :
+          "rounded-lg border p-3 mt-2",
+          statuses[i] === "deleted" ? "border-destructive/30 bg-destructive/5" :
           statuses[i] === "failed" ? "border-amber-200 bg-amber-50/50" :
-          "border-border bg-stone-50/60 dark:bg-stone-950/60"
+          "border-border bg-muted/40"
         )}>
           <div className="flex items-center gap-2">
-            <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1 bg-red-100 border border-red-200 text-red-600">
+            <span className={cn("h-5 px-1.5 rounded inline-flex items-center gap-1 border", STATUS_TONE_CLASSES.danger)}>
               <Trash2 className="h-[10px] w-[10px]" />
               <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{t("merchiva.taskDelete.tag")}</span>
             </span>
@@ -2218,7 +2207,7 @@ function TaskDeleteGroup({ deletes, alreadyExecuted }: {
               </span>
             )}
             {statuses[i] === "deleted" && (
-              <span className="text-[10.5px] font-mono text-red-500 inline-flex items-center gap-1 ml-auto">
+              <span className="text-[10.5px] font-mono text-destructive inline-flex items-center gap-1 ml-auto">
                 <Check className="h-3 w-3" /> {t("merchiva.status.deleted")}
               </span>
             )}
@@ -2299,20 +2288,20 @@ const mdComponents: Record<string, React.ComponentType<React.HTMLAttributes<HTML
   li: ({ children, ...props }) => <li className="text-[13.5px]" {...props}>{replaceInlineIcons(children)}</li>,
   code: ({ children, className, ...props }) => {
     if (className?.includes("language-")) {
-      return <code className="block bg-stone-100 dark:bg-stone-800 rounded-[0.3rem] p-2 text-[11px] font-mono text-stone-700 dark:text-stone-300 overflow-x-auto my-1.5" {...props}>{children}</code>;
+      return <code className="block bg-muted rounded-lg p-2 text-[11px] font-mono text-foreground overflow-x-auto my-1.5" {...props}>{children}</code>;
     }
-    return <code className="bg-stone-100 dark:bg-stone-800 rounded-[0.2rem] px-1 py-0.5 text-[12px] font-mono text-stone-700 dark:text-stone-300" {...props}>{children}</code>;
+    return <code className="bg-muted rounded px-1 py-0.5 text-[12px] font-mono text-foreground" {...props}>{children}</code>;
   },
   pre: ({ children, ...props }) => <pre className="mb-1.5 last:mb-0" {...props}>{children}</pre>,
   h1: ({ children, ...props }) => <h1 className="text-[16px] font-semibold mb-1" {...props}>{children}</h1>,
   h2: ({ children, ...props }) => <h2 className="text-[15px] font-semibold mb-1" {...props}>{children}</h2>,
   h3: ({ children, ...props }) => <h3 className="text-[14px] font-semibold mb-1" {...props}>{children}</h3>,
-  blockquote: ({ children, ...props }) => <blockquote className="border-l-2 border-stone-300 dark:border-stone-700 pl-3 text-stone-600 dark:text-stone-300 my-1.5" {...props}>{children}</blockquote>,
+  blockquote: ({ children, ...props }) => <blockquote className="border-l-2 border-border pl-3 text-muted-foreground my-1.5" {...props}>{children}</blockquote>,
   table: ({ children, ...props }) => <div className="overflow-x-auto my-1.5"><table className="text-[12px] w-full border-collapse" {...props}>{children}</table></div>,
-  th: ({ children, ...props }) => <th className="text-left px-2 py-1 border-b border-border font-semibold text-[11px] font-mono uppercase text-stone-500 dark:text-stone-400" {...props}>{replaceInlineIcons(children)}</th>,
-  td: ({ children, ...props }) => <td className="px-2 py-1 border-b border-border/50" {...props}>{replaceInlineIcons(children)}</td>,
+  th: ({ children, ...props }) => <th className="h-8 px-3 text-left border-b border-border text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap" {...props}>{replaceInlineIcons(children)}</th>,
+  td: ({ children, ...props }) => <td className="px-3 py-2 border-b border-border align-middle" {...props}>{replaceInlineIcons(children)}</td>,
   hr: (props) => <hr className="border-border my-2" {...props} />,
-  a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-stone-700 dark:text-stone-300 hover:text-foreground" {...props}>{children}</a>,
+  a: ({ children, href, ...props }) => <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-foreground" {...props}>{children}</a>,
 };
 
 function MerchivaMarkdown({ content }: { content: string }) {
@@ -4060,20 +4049,20 @@ function MerchivaChatInner({
               <span className={cn(compact ? "text-[13px]" : "text-[15px]", "font-semibold tracking-tight")}>{t("merchiva.name")}</span>
               <span className="inline-flex items-center gap-1 ml-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <MonoCap color="#059669">{t("merchiva.online")}</MonoCap>
+                <Eyebrow as="span" size="xs" className="text-emerald-600 dark:text-emerald-400">{t("merchiva.online")}</Eyebrow>
               </span>
             </div>
             {!compact && (
-              <div className="text-[11.5px] text-stone-600 dark:text-stone-300 mt-0.5">
+              <div className="text-[11.5px] text-muted-foreground mt-0.5">
                 {t("merchiva.opsAgent").replace("{orgName}", orgName)}
               </div>
             )}
           </div>
           {!compact && (
-            <button onClick={handleClearHistory} title={t("merchiva.clearHistory")}
-              className="h-8 w-8 rounded-[0.3rem] border bg-background text-foreground inline-flex items-center justify-center hover:bg-muted" style={{ borderColor: M_ACC_BD }}>
+            <Button variant="outline" size="icon" onClick={handleClearHistory} title={t("merchiva.clearHistory")}
+              style={{ borderColor: M_ACC_BD }}>
               <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           )}
         </header>
       )
@@ -4093,7 +4082,7 @@ function MerchivaChatInner({
         {/* Auto-generated insights (skip in compact mode) */}
         {!compact && (
           <ChatRow time="06:14">
-            <div className="text-[14px] text-stone-800 dark:text-stone-200 leading-[1.55] max-w-[680px]">
+            <div className="text-[14px] text-foreground leading-[1.55] max-w-[680px]">
               {headline}
             </div>
           </ChatRow>
@@ -4104,7 +4093,7 @@ function MerchivaChatInner({
             {insight.type === "watchlist" ? (
               <Bubble>
                 <div className="flex items-center gap-2">
-                  <span className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300">
+                  <span className="h-6 px-2 rounded inline-flex items-center gap-1.5 bg-muted border border-border text-muted-foreground">
                     {INSIGHT_ICONS[insight.type]}
                     <span className="font-mono text-[10px] tracking-[0.08em] uppercase font-semibold">{insight.type}</span>
                   </span>
@@ -4203,7 +4192,7 @@ function MerchivaChatInner({
           return renderMenu(
             <ChatRow time={msg.time}>
               <Bubble>
-                <div className="text-[13.5px] text-stone-800 dark:text-stone-200 leading-[1.55]">
+                <div className="text-[13.5px] text-foreground leading-[1.55]">
                   <MerchivaMarkdown content={msg.text} />
                 </div>
                 {msg.actions && msg.actions.length > 0 && (
@@ -4246,7 +4235,7 @@ function MerchivaChatInner({
                   return matchedRole ? (
                     <TasksListInline roleId={matchedRole.id} roleName={matchedRole.name} />
                   ) : (
-                    <div className="rounded-[0.3rem] border border-border bg-stone-50/60 dark:bg-stone-950/60 p-3 mt-2 text-[12px] text-muted-foreground">
+                    <div className="rounded-lg border border-border bg-muted/40 p-3 mt-2 text-[12px] text-muted-foreground">
                       {t("merchiva.command.roleNotFound").replace("{role}", msg.tasksList ?? "")}
                     </div>
                   );
@@ -4311,7 +4300,7 @@ function MerchivaChatInner({
       {(attachedData.length > 0 || attachedFiles.length > 0 || attachedElements.length > 0) && (
         <div className={cn("pt-2 flex items-center gap-1.5 flex-wrap shrink-0", compact ? "px-4" : "px-6")}>
           {attachedData.map((d) => (
-            <span key={d} className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 text-[11px] font-mono font-medium"
+            <span key={d} className="h-6 px-2 rounded inline-flex items-center gap-1.5 text-[11px] font-mono font-medium"
               style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
               {DATA_ICONS[d]}
               @{d}
@@ -4319,7 +4308,7 @@ function MerchivaChatInner({
             </span>
           ))}
           {attachedFiles.map((f, i) => (
-            <span key={i} className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 text-[11px] font-mono">
+            <span key={i} className="h-6 px-2 rounded inline-flex items-center gap-1.5 bg-muted border border-border text-muted-foreground text-[11px] font-mono">
               <Paperclip className="h-3 w-3" />
               {f.name.length > 20 ? f.name.slice(0, 17) + "..." : f.name}
               <button onClick={() => removeFile(i)} className="ml-0.5 hover:text-foreground">×</button>
@@ -4329,11 +4318,11 @@ function MerchivaChatInner({
             <span
               key={`${el.selector}-${i}`}
               title={el.selector}
-              className="h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-900 text-sky-700 dark:text-sky-300 text-[11px] font-mono"
+              className={cn("h-6 px-2 rounded inline-flex items-center gap-1.5 border text-[11px] font-mono", STATUS_TONE_CLASSES.info)}
             >
               <MousePointer2 className="h-3 w-3" />
               &lt;{el.tag}&gt;
-              <span className="text-sky-500/70 dark:text-sky-400/60 max-w-[120px] truncate">
+              <span className="opacity-70 max-w-[120px] truncate">
                 {shortSelector(el.selector)}
               </span>
               <button onClick={() => removeAttachedElement(i)} className="ml-0.5 hover:text-foreground">×</button>
@@ -4345,16 +4334,16 @@ function MerchivaChatInner({
       {/* @data mention dropdown */}
       {dataMentionOpen && (
         <div className={cn("pt-2 shrink-0", compact ? "px-4" : "px-6")}>
-          <div className="rounded-[0.3rem] border border-border bg-background p-2 space-y-0.5">
+          <div className="rounded-lg border border-border bg-background p-2 space-y-0.5">
             <div className="px-2 pb-1">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{t("merchiva.mentionData")}</span>
+              <Eyebrow as="span" size="xs">{t("merchiva.mentionData")}</Eyebrow>
             </div>
             {DATA_CATEGORIES.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => toggleDataMention(cat.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-2.5 py-2 rounded-[0.3rem] text-left transition-colors",
+                  "w-full flex items-center gap-3 px-2.5 py-2 rounded-lg text-left transition-colors",
                   attachedData.includes(cat.id) ? "bg-foreground text-background" : "hover:bg-muted"
                 )}
               >
@@ -4373,7 +4362,7 @@ function MerchivaChatInner({
       {/* Composer */}
       <div className={cn("pt-2 shrink-0", compact ? "px-4 pb-3" : "px-6 pb-5")}>
         <input ref={fileInputRef} type="file" accept="image/*,.pdf,.csv,.xlsx,.txt" multiple className="hidden" onChange={handleFileSelect} />
-        <div className="rounded-lg border border-border bg-background focus-within:border-stone-400 transition-colors">
+        <div className="rounded-lg border border-border bg-background focus-within:border-ring transition-colors">
           <textarea
             rows={2}
             value={draft}
@@ -4388,47 +4377,47 @@ function MerchivaChatInner({
             className="w-full resize-none bg-transparent border-0 outline-none px-4 pt-3 pb-2 text-[14px] leading-[1.5] placeholder:text-muted-foreground/60"
           />
           <div className="flex items-center gap-2 px-3 pb-2.5 pt-1">
-            <button onClick={() => fileInputRef.current?.click()}
-              className="h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted inline-flex items-center justify-center" title={t("merchiva.attachFile")}>
+            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}
+              className="text-muted-foreground" title={t("merchiva.attachFile")}>
               <Paperclip className="h-[15px] w-[15px]" />
-            </button>
-            <button onClick={recording ? stopVoice : startVoice}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={recording ? stopVoice : startVoice}
               className={cn(
-                "h-8 w-8 rounded-[0.3rem] inline-flex items-center justify-center transition-colors",
-                recording ? "bg-red-500 text-white animate-pulse" : "text-muted-foreground hover:bg-muted"
+                "text-muted-foreground",
+                recording && "bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
               )} title={recording ? t("merchiva.stopRecording") : t("merchiva.voiceInput")}>
               <Mic className="h-[15px] w-[15px]" />
-            </button>
+            </Button>
             {!builderMode && (
-              <button onClick={() => setCallOpen(true)}
-                className="hidden @[300px]:inline-flex h-8 w-8 rounded-[0.3rem] text-muted-foreground hover:bg-muted items-center justify-center"
+              <Button variant="ghost" size="icon" onClick={() => setCallOpen(true)}
+                className="hidden @[300px]:inline-flex text-muted-foreground"
                 title={t("merchiva.startCall")}>
                 <Phone className="h-[15px] w-[15px]" />
-              </button>
+              </Button>
             )}
             {!builderMode && (
-              <button onClick={() => setDataMentionOpen((v) => !v)}
+              <Button variant="ghost" size="icon" onClick={() => setDataMentionOpen((v) => !v)}
                 className={cn(
-                  "h-8 rounded-[0.3rem] inline-flex items-center gap-1.5 transition-colors",
-                  "w-8 justify-center @[340px]:w-auto @[340px]:px-2 @[340px]:justify-start",
+                  "gap-1.5 @[340px]:w-auto @[340px]:px-2 @[340px]:justify-start",
                   dataMentionOpen || attachedData.length > 0
                     ? "text-foreground bg-muted"
-                    : "text-muted-foreground hover:bg-muted"
+                    : "text-muted-foreground"
                 )} title={t("merchiva.mentionData")}>
                 <AtSign className="h-[14px] w-[14px]" />
                 <span className="hidden @[340px]:inline text-[11.5px]">{t("merchiva.dataLabel")}{attachedData.length > 0 ? ` · ${attachedData.length}` : ""}</span>
-              </button>
+              </Button>
             )}
             {builderMode && (
-              <button
+              <Button
+                variant="ghost"
                 onClick={togglePickMode}
                 className={cn(
-                  "h-8 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 transition-colors",
+                  "px-2",
                   pickMode
-                    ? "bg-sky-500 text-white hover:bg-sky-600"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground"
                     : attachedElements.length > 0
                       ? "text-foreground bg-muted"
-                      : "text-muted-foreground hover:bg-muted",
+                      : "text-muted-foreground",
                 )}
                 title={pickMode ? t("merchiva.pick.titleActive") : t("merchiva.pick.titleIdle")}
               >
@@ -4436,18 +4425,19 @@ function MerchivaChatInner({
                 <span className="text-[11.5px]">
                   {pickMode ? t("merchiva.pick.clicking") : `${t("merchiva.pick.element")}${attachedElements.length > 0 ? ` · ${attachedElements.length}` : ""}`}
                 </span>
-              </button>
+              </Button>
             )}
             <div className="flex-1" />
-            <kbd className="hidden @[420px]:inline-block font-mono text-[10px] text-stone-400 dark:text-stone-500 border border-border rounded-[0.3rem] px-1.5 py-0.5">⏎ {t("merchiva.sendShortcut")}</kbd>
-            <button
+            <kbd className="hidden @[420px]:inline-block font-mono text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⏎ {t("merchiva.sendShortcut")}</kbd>
+            <Button
+              size="lg"
               disabled={(!draft.trim() && attachedFiles.length === 0 && attachedElements.length === 0) || sending}
               onClick={() => sendMessage(draft)}
-              className="h-9 w-9 @[300px]:w-auto @[300px]:px-4 rounded-[0.3rem] bg-foreground text-background text-[13px] font-medium hover:bg-foreground/90 inline-flex items-center justify-center gap-2 disabled:opacity-30 shrink-0"
+              className="w-9 px-0 @[300px]:w-auto @[300px]:px-4 gap-2 disabled:opacity-30"
             >
               {sending ? <Spinner size={14} /> : <span className="hidden @[300px]:inline">{t("merchiva.send")}</span>}
               {!sending && <ArrowUp className="h-3.5 w-3.5" />}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -4629,15 +4619,15 @@ function TodayScheduleCard() {
           <div className="px-5 pt-3 pb-4">
             <div className="relative h-3 mb-1">
               {ticks.map((h) => (
-                <div key={h} className="absolute font-mono text-[9px] text-stone-400 dark:text-stone-500 tabular-nums -translate-x-1/2" style={{ left: `${pct(h * 60)}%` }}>
+                <div key={h} className="absolute font-mono text-[9px] text-muted-foreground tabular-nums -translate-x-1/2" style={{ left: `${pct(h * 60)}%` }}>
                   {h === 12 ? "12p" : h < 12 ? `${h}a` : `${h - 12}p`}
                 </div>
               ))}
             </div>
-            <div className="relative rounded-[0.3rem] border border-border bg-stone-50 dark:bg-stone-950 overflow-hidden"
+            <div className="relative rounded-lg border border-border bg-muted/40 overflow-hidden"
               style={{ height: lanes.length * 22 + (lanes.length - 1) * 3 + 8 }}>
               {ticks.map((h) => (
-                <div key={h} className="absolute top-0 bottom-0 w-px bg-stone-200 dark:bg-stone-700" style={{ left: `${pct(h * 60)}%` }} />
+                <div key={h} className="absolute top-0 bottom-0 w-px bg-border" style={{ left: `${pct(h * 60)}%` }} />
               ))}
               {shifts.map((s) => {
                 const left = pct(s.startMin);
@@ -4647,7 +4637,7 @@ function TodayScheduleCard() {
                 return (
                   <div key={s.id}
                     className={cn(
-                      "absolute flex items-center gap-1.5 px-1.5 rounded-[0.2rem] border text-[10px] font-medium whitespace-nowrap overflow-hidden",
+                      "absolute flex items-center gap-1.5 px-1.5 rounded border text-[10px] font-medium whitespace-nowrap overflow-hidden",
                       isActive
                         ? "bg-foreground border-foreground text-background"
                         : "bg-background border-border text-foreground",
@@ -4661,8 +4651,8 @@ function TodayScheduleCard() {
                   </div>
                 );
               })}
-              <div className="absolute -top-1 -bottom-1 w-px bg-red-500" style={{ left: `${pct(nowMin)}%` }}>
-                <div className="absolute -top-1 -left-[3px] w-[7px] h-[7px] rounded-full bg-red-500" />
+              <div className="absolute -top-1 -bottom-1 w-px bg-destructive" style={{ left: `${pct(nowMin)}%` }}>
+                <div className="absolute -top-1 -left-[3px] w-[7px] h-[7px] rounded-full bg-destructive" />
               </div>
             </div>
           </div>
@@ -4671,14 +4661,14 @@ function TodayScheduleCard() {
             {onShift.length > 0 && (
               <>
                 <div className="px-5 py-2 flex items-center gap-2">
-                  <MonoCap>{t("merchiva.schedule.onShift").replace("{count}", String(onShift.length))}</MonoCap>
+                  <Eyebrow as="span" size="xs">{t("merchiva.schedule.onShift").replace("{count}", String(onShift.length))}</Eyebrow>
                   <span className="ml-auto text-[10.5px] font-mono text-emerald-600 inline-flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> {t("merchiva.schedule.live")}
                   </span>
                 </div>
                 {onShift.map((s) => (
                   <div key={s.id} className="px-5 py-2 flex items-center gap-3">
-                    <Initials name={s.name} size={24} />
+                    <Avatar name={s.name} size="sm" />
                     <div className="flex-1 min-w-0">
                       <div className="text-[12.5px] font-medium leading-tight">{s.name}</div>
                       <div className="text-[10.5px] text-muted-foreground leading-tight mt-0.5">{s.role}</div>
@@ -4693,7 +4683,7 @@ function TodayScheduleCard() {
             {upNext.length > 0 && (
               <>
                 <div className="px-5 py-2 flex items-center gap-2">
-                  <MonoCap>{t("merchiva.schedule.upNext")}</MonoCap>
+                  <Eyebrow as="span" size="xs">{t("merchiva.schedule.upNext")}</Eyebrow>
                 </div>
                 {upNext.map((s) => {
                   const inMin = s.startMin - nowMin;
@@ -4702,7 +4692,7 @@ function TodayScheduleCard() {
                     : t("merchiva.schedule.inHours").replace("{n}", String(Math.floor(inMin / 60)));
                   return (
                     <div key={s.id} className="px-5 py-2 flex items-center gap-3">
-                      <Initials name={s.name} size={24} />
+                      <Avatar name={s.name} size="sm" />
                       <div className="flex-1 min-w-0">
                         <div className="text-[12.5px] font-medium leading-tight">{s.name}</div>
                         <div className="text-[10.5px] text-muted-foreground leading-tight mt-0.5">{s.role} · {inStr}</div>
@@ -4776,24 +4766,24 @@ function NotificationsCard() {
             const ago = timeAgo(n.createdAt.toDate().toISOString());
             return (
               <div key={n.id.toString()} className="px-5 py-3 flex items-start gap-3">
-                <span className="h-6 w-6 rounded-[0.3rem] border inline-flex items-center justify-center shrink-0"
+                <span className="h-6 w-6 rounded-lg border inline-flex items-center justify-center shrink-0"
                   style={{ background: tone.bg, borderColor: tone.bd, color: tone.fg }}>
                   {icon}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <div className="text-[12.5px] font-medium leading-tight truncate">{n.title}</div>
-                    <span className="ml-auto font-mono text-[10px] text-stone-400 dark:text-stone-500 tabular-nums shrink-0">{ago}</span>
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground tabular-nums shrink-0">{ago}</span>
                   </div>
                   <div className="text-[11.5px] text-muted-foreground leading-snug mt-1">{n.body}</div>
                   {(n.type === "shift_trade" || n.type === "time_off") && (
                     <div className="flex items-center gap-1.5 mt-2">
-                      <button className="h-6 px-2 rounded-[0.3rem] bg-foreground text-background text-[11px] font-medium hover:bg-foreground/90">
+                      <Button size="xs">
                         {t("merchiva.notifications.review")}
-                      </button>
-                      <button className="h-6 px-2 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[11px] font-medium hover:bg-muted">
+                      </Button>
+                      <Button variant="outline" size="xs" className="text-muted-foreground">
                         {t("merchiva.notifications.dismiss")}
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -4859,20 +4849,19 @@ function MobileKpiRow() {
   }, [invItems, invReady]);
 
   return (
-    <div className="grid grid-cols-2 gap-3 px-4">
-      <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">
-        <MonoCap>{t("merchiva.kpi.revenueToday")}</MonoCap>
-        <div className="text-[26px] font-semibold leading-none tracking-tight tabular-nums">
-          {todayRevenue != null ? format(todayRevenue, { decimals: 0 }) : "—"}
-        </div>
-      </div>
-      <div className="rounded-lg border border-border bg-background p-4 min-h-[88px] flex flex-col justify-between">
-        <MonoCap>{t("merchiva.kpi.skusAtRisk")}</MonoCap>
-        <div className={cn("text-[26px] font-semibold leading-none tracking-tight tabular-nums", atRisk && atRisk > 0 ? "text-amber-600" : "")}>
-          {atRisk != null ? String(atRisk) : "—"}
-        </div>
-      </div>
-    </div>
+    <StatGrid className="grid-cols-2 px-4 lg:grid-cols-2">
+      <StatTile
+        size="md"
+        label={t("merchiva.kpi.revenueToday")}
+        value={todayRevenue != null ? format(todayRevenue, { decimals: 0 }) : "—"}
+      />
+      <StatTile
+        size="md"
+        label={t("merchiva.kpi.skusAtRisk")}
+        value={atRisk != null ? String(atRisk) : "—"}
+        tone={atRisk && atRisk > 0 ? "warning" : undefined}
+      />
+    </StatGrid>
   );
 }
 
@@ -4924,10 +4913,10 @@ function MobileMerchivaChat() {
             <span className="text-[14.5px] font-semibold tracking-tight">{t("merchiva.name")}</span>
             <span className="inline-flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <MonoCap color="#059669">{t("merchiva.online")}</MonoCap>
+              <Eyebrow as="span" size="xs" className="text-emerald-600 dark:text-emerald-400">{t("merchiva.online")}</Eyebrow>
             </span>
           </div>
-          <div className="text-[11px] text-stone-600 dark:text-stone-300 mt-0.5 truncate">{t("merchiva.trainedOn").replace("{orgName}", orgName)}</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{t("merchiva.trainedOn").replace("{orgName}", orgName)}</div>
         </div>
       </header>
 
@@ -4937,9 +4926,9 @@ function MobileMerchivaChat() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-[12.5px] font-semibold">{t("merchiva.name")}</span>
-            <MonoCap color="#a8a29e">{nowTime}</MonoCap>
+            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{nowTime}</span>
           </div>
-          <p className="text-[13.5px] text-stone-800 dark:text-stone-200 leading-[1.55]">{headline}</p>
+          <p className="text-[13.5px] text-foreground leading-[1.55]">{headline}</p>
         </div>
       </div>
 
@@ -4956,7 +4945,7 @@ function MobileMerchivaChat() {
           />
         ))}
         {insights.length === 0 && (
-          <div className="rounded-[0.3rem] border border-border bg-background p-3 text-center text-[12.5px] text-muted-foreground">
+          <div className="rounded-lg border border-border bg-background p-3 text-center text-[12.5px] text-muted-foreground">
             {t("merchiva.allClear")}
           </div>
         )}
@@ -4975,18 +4964,19 @@ function MobileMerchivaChat() {
       {/* Simple input */}
       <div className="px-4 pb-4">
         <div className="flex items-center gap-2 rounded-full border border-border bg-background pl-4 pr-1.5 py-1.5">
-          <input
+          <Input
             type="text"
             placeholder={t("merchiva.composerPlaceholder")}
-            className="flex-1 bg-transparent outline-none text-[13.5px] placeholder:text-muted-foreground/60 h-9"
+            className="flex-1 h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:border-transparent md:text-[13.5px] placeholder:text-muted-foreground/60"
           />
-          <button
+          <Button
             type="button"
+            size="icon-lg"
             aria-label={t("merchiva.send")}
-            className="h-9 w-9 rounded-full bg-foreground text-background inline-flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+            className="rounded-full active:scale-95"
           >
             <ArrowUp className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </section>
@@ -5001,9 +4991,9 @@ function MobileInsight({ pill, icon, title, sub, confidence }: {
   confidence: number;
 }) {
   return (
-    <div className="rounded-[0.3rem] border border-border bg-background p-3">
+    <div className="rounded-lg border border-border bg-background p-3">
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="h-5 px-1.5 rounded-[0.2rem] inline-flex items-center gap-1"
+        <span className="h-5 px-1.5 rounded inline-flex items-center gap-1"
           style={{ background: M_ACC_SOFT, border: `1px solid ${M_ACC_BD}`, color: M_ACC }}>
           {icon}
           <span className="font-mono text-[9px] tracking-[0.08em] uppercase font-semibold">{pill}</span>

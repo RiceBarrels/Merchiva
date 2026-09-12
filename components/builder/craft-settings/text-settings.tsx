@@ -2,7 +2,6 @@
 
 import { useNode } from "@craftjs/core";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectTrigger,
@@ -11,6 +10,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Field } from "@/components/ui/field";
+import { ColorPicker } from "@/components/builder/color-picker";
+import { Textarea } from "@/components/ui/textarea";
 
 export function TextSettings() {
   const {
@@ -23,9 +25,8 @@ export function TextSettings() {
   return (
     <div className="space-y-3 p-3">
       {/* Content */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Content</Label>
-        <textarea
+      <Field label="Content">
+        <Textarea
           value={props.content || ""}
           onChange={(e) =>
             setProp((p: Record<string, unknown>) => {
@@ -33,13 +34,12 @@ export function TextSettings() {
             })
           }
           rows={3}
-          className="flex w-full rounded-[0.3rem] border border-border bg-background px-2 py-1.5 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+          className="min-h-0 resize-y text-xs md:text-xs"
         />
-      </div>
+      </Field>
 
       {/* Tag */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Tag</Label>
+      <Field label="Tag">
         <Select
           value={props.tag || "p"}
           onValueChange={(val) => {
@@ -61,11 +61,10 @@ export function TextSettings() {
             <SelectItem value="span">span</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       {/* Alignment */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Align</Label>
+      <Field label="Align">
         <Select
           value={props.align || "left"}
           onValueChange={(val) => {
@@ -84,13 +83,12 @@ export function TextSettings() {
             <SelectItem value="right">Right</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Font Size */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Font Size</Label>
+      <Field label="Font Size">
         <Input
           value={props.fontSize || ""}
           onChange={(e) =>
@@ -101,11 +99,10 @@ export function TextSettings() {
           placeholder="1rem"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Font Weight */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Font Weight</Label>
+      <Field label="Font Weight">
         <Select
           value={props.fontWeight || "normal"}
           onValueChange={(val) => {
@@ -126,23 +123,20 @@ export function TextSettings() {
             <SelectItem value="800">800</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Color */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Color</Label>
+      <Field label="Color">
         <div className="flex items-center gap-2">
-          <input
-            type="color"
+          <ColorPicker
             value={props.color || "#000000"}
-            onChange={(e) =>
+            onChange={(val) =>
               setProp((p: Record<string, unknown>) => {
-                p.color = e.target.value;
+                p.color = val;
               })
             }
-            className="h-7 w-7 rounded border border-border cursor-pointer"
           />
           <Input
             value={props.color || ""}
@@ -155,11 +149,10 @@ export function TextSettings() {
             className="h-7 text-xs font-mono flex-1"
           />
         </div>
-      </div>
+      </Field>
 
       {/* Padding */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Padding</Label>
+      <Field label="Padding">
         <Input
           value={props.padding || ""}
           onChange={(e) =>
@@ -170,7 +163,7 @@ export function TextSettings() {
           placeholder="0"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
     </div>
   );
 }

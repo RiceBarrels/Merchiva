@@ -5,6 +5,9 @@ import { Check, ChevronRight, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
+import { IconTile } from "@/components/ui/icon-tile";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { useOrganizations } from "@/lib/spacetimedb/hooks";
 import { evaluateSubscription } from "@/lib/billing/subscription";
 import type { OrgSummary } from "@/lib/types";
@@ -25,7 +28,7 @@ export function StoreLogo({
   return (
     <div
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-[0.3rem] border border-border bg-muted",
+        "flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted",
         className,
       )}
     >
@@ -67,7 +70,7 @@ export function StorePlanBadge({
   const access = evaluateSubscription(row, Date.now());
 
   let label: string;
-  let tone: string;
+  let tone: StatusTone;
   if (access.isSubscribed) {
     label =
       row.subscriptionInterval === "year"
@@ -75,7 +78,7 @@ export function StorePlanBadge({
         : row.subscriptionInterval === "month"
           ? t("storePicker.planProMonthly")
           : t("storePicker.planPro");
-    tone = "text-emerald-600 border-emerald-600/30";
+    tone = "success";
   } else if (access.inTrial) {
     label =
       access.trialDaysLeft === 1
@@ -84,22 +87,16 @@ export function StorePlanBadge({
             "{count}",
             String(access.trialDaysLeft),
           );
-    tone = "text-amber-600 border-amber-600/30";
+    tone = "warning";
   } else {
     label = t("storePicker.planExpired");
-    tone = "text-red-600 border-red-600/30";
+    tone = "danger";
   }
 
   return (
-    <span
-      className={cn(
-        "whitespace-nowrap rounded border px-1 py-px text-[10px] uppercase tracking-wide",
-        tone,
-        className,
-      )}
-    >
+    <StatusBadge size="xs" tone={tone} className={className}>
       {label}
-    </span>
+    </StatusBadge>
   );
 }
 
@@ -149,7 +146,7 @@ export function StoreList({
   }, [stores]);
 
   return (
-    <div className="divide-y divide-border overflow-hidden rounded-[0.3rem] border border-border bg-card">
+    <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
       {ordered.map(({ store: s, isChild }) => {
         const isCurrent = currentOrgId != null && s.id === currentOrgId;
         const isBusy = busyOrgId === s.id;
@@ -175,16 +172,12 @@ export function StoreList({
               {s.name}
             </span>
             {s.parentOrgId && (
-              <span className="shrink-0 whitespace-nowrap rounded border border-border px-1 py-px text-[10px] uppercase tracking-wide text-muted-foreground">
-                {t("multiStore.subBadge")}
-              </span>
+              <StatusBadge size="xs">{t("multiStore.subBadge")}</StatusBadge>
             )}
             <StorePlanBadge store={s} />
             {isCurrent ? (
               <span className="flex shrink-0 items-center gap-1.5">
-                <span className="whitespace-nowrap rounded border border-border px-1 py-px text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {t("storePicker.current")}
-                </span>
+                <StatusBadge size="xs">{t("storePicker.current")}</StatusBadge>
                 <Check className="h-4 w-4 text-emerald-600" />
               </span>
             ) : isBusy ? (
@@ -200,7 +193,7 @@ export function StoreList({
 }
 
 // ─── StorePickerScreen ────────────────────────────────────────────────────────
-// Full-screen store chooser (used at /~ when no store is active).
+// Full-screen store chooser (used at /manager when no store is active).
 
 export function StorePickerScreen({
   stores,
@@ -218,9 +211,7 @@ export function StorePickerScreen({
     <div className="flex min-h-screen flex-col justify-center bg-background px-6 py-10">
       <div className="mx-auto w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-[0.3rem] border bg-muted">
-            <Store className="h-5 w-5 text-foreground" />
-          </div>
+          <IconTile icon={Store} size="lg" className="mx-auto text-foreground" />
           <h1 className="text-xl font-bold">{t("storePicker.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {t("storePicker.description")}
@@ -236,13 +227,15 @@ export function StorePickerScreen({
 
         {onSignOut && (
           <div className="flex justify-center">
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
               onClick={onSignOut}
-              className="text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              className="text-[12px] text-muted-foreground underline hover:text-foreground"
             >
               {t("common.signOut")}
-            </button>
+            </Button>
           </div>
         )}
       </div>

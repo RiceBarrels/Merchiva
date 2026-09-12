@@ -21,6 +21,7 @@ import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
 import { getServiceConn, subscribeAndWait } from "@/lib/spacetimedb/service-client";
+import { productsFromInventoryRows } from "@/lib/products/from-inventory";
 
 /** Tools are only usable when the server can open the service connection. */
 export function merchivaToolsEnabled(): boolean {
@@ -95,7 +96,6 @@ const TOOL_QUERIES = [
   "SELECT * FROM inventory_item",
   "SELECT * FROM supplier",
   "SELECT * FROM sales_record",
-  "SELECT * FROM product",
   "SELECT * FROM settings",
 ];
 
@@ -384,7 +384,8 @@ export function buildMerchivaTools(opts: { organizationId: string; today?: strin
       description: "Menu/products (id, name, price, category, inventoryUsage). Use the id for updatePrice / product edits.",
       inputSchema: z.object({}),
       execute: exec("viewProducts", async (conn) => ({
-        products: orgRows(conn, "product", organizationId)
+        // product table no longer exists — retail-enabled inventory rows ARE the products
+        products: productsFromInventoryRows(orgRows(conn, "inventoryItem", organizationId))
           .slice(0, 200)
           .map((p) => ({
             id: rowId(p),

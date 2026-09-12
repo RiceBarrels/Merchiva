@@ -5,6 +5,12 @@ import { cn, uuid } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Plus, ChevronLeft, ChevronRight, X, Shield, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Camera, Clock, ClipboardList, Pencil, Download, Sun, RefreshCw, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, type AvatarProps } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { StatTile } from "@/components/ui/stat-tile";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { DialogActions } from "@/components/ui/dialog-actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,61 +81,30 @@ const SHIFT_LABEL_KEYS: Record<ShiftType, string> = {
   closing:   "staffing.shiftTypes.closing",
 };
 
-const AVATAR_BG = [
-  "bg-muted text-foreground",
-  "bg-cyan-100 text-cyan-800",
-  "bg-violet-100 text-violet-800",
-  "bg-rose-100 text-rose-800",
-  "bg-emerald-100 text-emerald-800",
-  "bg-amber-100 text-amber-800",
-];
-
 const DAY_NAME_KEYS = ["staffing.days.sun", "staffing.days.mon", "staffing.days.tue", "staffing.days.wed", "staffing.days.thu", "staffing.days.fri", "staffing.days.sat"];
 
-function strHash(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
-  return Math.abs(h);
-}
-
-function avatarBg(name: string): string {
-  return AVATAR_BG[strHash(name) % AVATAR_BG.length];
-}
-
-function initials(name: string): string {
-  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+function avatarSize(px: number): NonNullable<AvatarProps["size"]> {
+  if (px <= 22) return "xs";
+  if (px <= 27) return "sm";
+  if (px <= 33) return "md";
+  if (px <= 40) return "lg";
+  return "xl";
 }
 
 function StaffAvatar({
   name,
   avatarUrl,
   size = 28,
+  shape,
   className,
 }: {
   name: string;
   avatarUrl?: string | null;
   size?: number;
+  shape?: AvatarProps["shape"];
   className?: string;
 }) {
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        className={cn("shrink-0 rounded-full border border-border bg-muted object-cover", className)}
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={cn("shrink-0 rounded-full flex items-center justify-center font-bold", avatarBg(name), className)}
-      style={{ width: size, height: size, fontSize: Math.max(7, Math.round(size * 0.36)) }}
-    >
-      {initials(name)}
-    </div>
-  );
+  return <Avatar name={name} src={avatarUrl} size={avatarSize(size)} shape={shape} className={className} />;
 }
 
 function formatTime(t: string): string {
@@ -303,7 +278,7 @@ function AttendanceManagerPanel({
       {showHeader && (
         <div className={cn("flex items-center justify-between gap-3", compact ? "px-4 py-2.5" : "px-6 py-3")}>
           <div className="min-w-0">
-            <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.attendance.title")}</p>
+            <Eyebrow>{t("staffing.attendance.title")}</Eyebrow>
             <p className="text-[12px] text-muted-foreground">
               {t("staffing.attendance.subtitle").replace("{active}", String(recordedCount)).replace("{total}", String(rows.length))}
             </p>
@@ -529,16 +504,18 @@ function StaffingDesktop(props: StaffingDesktopProps) {
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Week nav */}
         <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background shrink-0">
-          <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+          <Button variant="ghost" size="icon-sm" onClick={prevWeekD}>
             <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-          </button>
+          </Button>
           <span className="text-[13px] font-semibold text-foreground min-w-[140px] text-center">{monthYearD}</span>
-          <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+          <Button variant="ghost" size="icon-sm" onClick={nextWeekD}>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
+          </Button>
           <div className="flex-1" />
           {canEdit && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => {
                 setEditingShift(null);
                 setShiftForm({
@@ -551,10 +528,9 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 });
                 setAddDialog(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium border border-border rounded-[0.3rem] hover:bg-muted transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> {t("staffing.header.addShift")}
-            </button>
+            </Button>
           )}
         </div>
 
@@ -563,7 +539,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           <div className="min-w-full grid grid-cols-[180px_repeat(7,minmax(0,1fr))_68px]">
             {/* Header row */}
             <div className="sticky top-0 z-10 bg-muted border-b border-r border-border px-3 py-2.5 flex items-center">
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.header.staff")}</span>
+              <Eyebrow as="span">{t("staffing.header.staff")}</Eyebrow>
             </div>
             {weekDates.map((d) => {
               const ds = isoDate(d);
@@ -585,7 +561,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               );
             })}
             <div className="sticky top-0 z-10 bg-muted border-b border-border px-2 py-2.5 text-center">
-              <span className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.header.total")}</span>
+              <Eyebrow as="span">{t("staffing.header.total")}</Eyebrow>
             </div>
 
             {/* Staff rows */}
@@ -624,7 +600,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                               return (
                                 <div
                                   key={shift.id}
-                                  className="flex items-start gap-1.5 px-1.5 py-1 rounded-[0.3rem] hover:bg-muted cursor-pointer transition-colors group/chip"
+                                  className="flex items-start gap-1.5 px-1.5 py-1 rounded hover:bg-muted cursor-pointer transition-colors group/chip"
                                   onClick={() => {
                                     if (canEdit) {
                                       setEditingShift(shift);
@@ -664,7 +640,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                                   {canEdit && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleDeleteShift(shift.id); }}
-                                      className="p-0.5 rounded opacity-0 group-hover/chip:opacity-100 hover:bg-red-100 text-muted-foreground hover:text-red-600 transition-all shrink-0"
+                                      className="p-0.5 rounded opacity-0 group-hover/chip:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all shrink-0"
                                     >
                                       <X className="h-3 w-3" />
                                     </button>
@@ -687,7 +663,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                               });
                               setAddDialog(true);
                             }}
-                            className="absolute inset-1 border border-dashed border-transparent group-hover/cell:border-border rounded-[0.3rem] flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all"
+                            className="absolute inset-1 border border-dashed border-transparent group-hover/cell:border-border rounded-lg flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all"
                           >
                             <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                           </button>
@@ -708,7 +684,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 
             {/* Bottom total row */}
             <div className="bg-muted border-r border-border px-3 py-2 flex items-center">
-              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.header.total")}</span>
+              <Eyebrow as="span">{t("staffing.header.total")}</Eyebrow>
             </div>
             {weekDates.map((d) => {
               const ds = isoDate(d);
@@ -717,7 +693,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               return (
                 <div key={ds} className="bg-muted border-r border-border px-2 py-2 text-center">
                   <div className="text-[13px] font-semibold text-foreground font-mono tabular-nums">{count}</div>
-                  <div className="text-[10px] text-muted-foreground font-mono">{hrs % 1 === 0 ? `${hrs}h` : `${hrs.toFixed(1)}h`}</div>
+                  <div className="text-[10px] text-muted-foreground font-mono tabular-nums">{hrs % 1 === 0 ? `${hrs}h` : `${hrs.toFixed(1)}h`}</div>
                 </div>
               );
             })}
@@ -743,13 +719,13 @@ function StaffingDesktop(props: StaffingDesktopProps) {
         <div className="flex-1 min-w-0 overflow-y-auto px-6 py-4">
           {/* Week nav */}
           <div className="flex items-center gap-3 mb-4">
-            <button onClick={prevWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+            <Button variant="ghost" size="icon-sm" onClick={prevWeekD}>
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-            </button>
+            </Button>
             <span className="text-[13px] font-semibold text-foreground">{monthYearD}</span>
-            <button onClick={nextWeekD} className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors">
+            <Button variant="ghost" size="icon-sm" onClick={nextWeekD}>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
+            </Button>
           </div>
 
           <div className="divide-y divide-border">
@@ -760,7 +736,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               return (
                 <div key={ds} className="flex gap-4 py-3">
                   {/* Date column */}
-                  <div className={`w-14 shrink-0 text-center py-1.5 rounded-[0.3rem] ${today ? "bg-foreground text-background" : ""}`}>
+                  <div className={`w-14 shrink-0 text-center py-1.5 rounded-lg ${today ? "bg-foreground text-background" : ""}`}>
                     <div className={`text-[10.5px] font-semibold uppercase tracking-wide ${today ? "text-muted-foreground" : "text-muted-foreground"}`}>
                       {d.toLocaleDateString("en-US", { weekday: "short" })}
                     </div>
@@ -782,7 +758,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                           return (
                             <div
                               key={shift.id}
-                              className="flex items-center gap-3 px-3 py-2 border border-border rounded-[0.3rem] hover:border-border transition-colors"
+                              className="flex items-center gap-3 px-3 py-2 border border-border rounded-lg hover:border-border transition-colors"
                             >
                               <div
                                 className="w-[3px] rounded-full self-stretch shrink-0"
@@ -803,12 +779,12 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 shrink-0">
-                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted text-muted-foreground transition-colors">
+                                <Button variant="outline" size="xs" className="text-muted-foreground">
                                   {t("staffing.myShifts.trade")}
-                                </button>
-                                <button className="px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted text-muted-foreground transition-colors">
+                                </Button>
+                                <Button variant="outline" size="xs" className="text-muted-foreground">
                                   {t("staffing.myShifts.cover")}
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           );
@@ -831,7 +807,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 <span className="text-[13px] font-semibold text-foreground">{t("staffing.myShifts.todaysTasks")}</span>
               </div>
               {todayTasks.length > 0 && (
-                <span className="text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 border border-border rounded-[0.3rem]">
+                <span className="text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 border border-border rounded">
                   {doneCount}/{todayTasks.length}
                 </span>
               )}
@@ -849,7 +825,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     <button
                       key={task.id}
                       onClick={() => toggleTaskDone(task.id)}
-                      className="flex items-start gap-2.5 w-full text-left py-1.5 hover:bg-muted -mx-1 px-1 transition-colors rounded-[0.3rem]"
+                      className="flex items-start gap-2.5 w-full text-left py-1.5 hover:bg-muted -mx-1 px-1 transition-colors rounded-lg"
                     >
                       <div className={`mt-0.5 h-4 w-4 shrink-0 border rounded-[2px] flex items-center justify-center transition-colors ${done ? "bg-foreground border-foreground" : "border-border"}`}>
                         {done && <Check className="h-2.5 w-2.5 text-background" />}
@@ -891,16 +867,17 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <span className="text-[13px] font-semibold text-foreground">{t("staffing.roles.title")}</span>
             {canEdit && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => {
                   setEditingRole(null);
                   setRoleForm({ name: "", color: "#44403c", icon: "user", description: "", permissions: {} as StaffRolePermissions });
                   setRoleDialog(true);
                 }}
-                className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
               >
                 <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
+              </Button>
             )}
           </div>
 
@@ -923,7 +900,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     }`}
                   >
                     <div
-                      className="h-8 w-8 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+                      className="h-8 w-8 shrink-0 flex items-center justify-center border rounded-lg"
                       style={{ borderColor: r.color, color: r.color }}
                     >
                       <RoleIconComp name={r.icon} className="h-4 w-4" />
@@ -950,7 +927,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
               {/* Header */}
               <div className="flex items-center gap-3 mb-6">
                 <div
-                  className="h-10 w-10 shrink-0 flex items-center justify-center border rounded-[0.3rem]"
+                  className="h-10 w-10 shrink-0 flex items-center justify-center border rounded-lg"
                   style={{ borderColor: selectedRole.color, color: selectedRole.color }}
                 >
                   <RoleIconComp name={selectedRole.icon} className="h-5 w-5" />
@@ -975,7 +952,10 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 </div>
                 {canEdit && (
                   <div className="flex items-center gap-1 shrink-0">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground"
                       onClick={() => {
                         setEditingRole(selectedRole);
                         setRoleForm({
@@ -988,58 +968,62 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                         loadRoleTasksFor(selectedRole.id);
                         setRoleDialog(true);
                       }}
-                      className="p-1.5 rounded-[0.3rem] hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       onClick={async () => { await handleDeleteRole(selectedRole.id); setSelectedRole(null); }}
-                      className="p-1.5 rounded-[0.3rem] hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
 
               {/* Tasks */}
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{t("staffing.roles.taskTimeline")}</p>
+                <Eyebrow>{t("staffing.roles.taskTimeline")}</Eyebrow>
                 <div className="flex items-center gap-2">
                   {canEdit && (
-                    <div className="flex items-center gap-0.5 border border-border rounded-[0.3rem] px-1 py-0.5">
-                      <button
+                    <div className="flex items-center gap-0.5 border border-border rounded-lg px-1 py-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => shiftStatusDate(-1)}
                         aria-label={t("staffing.roles.prevDay")}
-                        className="p-0.5 rounded-[0.2rem] hover:bg-muted transition-colors"
                       >
                         <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
+                      </Button>
                       <span className="text-[11px] font-medium tabular-nums min-w-[72px] text-center">
                         {statusDate === todayStr
                           ? t("staffing.roles.today")
                           : new Date(statusDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" })}
                       </span>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
                         onClick={() => shiftStatusDate(1)}
                         aria-label={t("staffing.roles.nextDay")}
                         disabled={statusDate >= todayStr}
-                        className="p-0.5 rounded-[0.2rem] hover:bg-muted transition-colors disabled:opacity-30"
                       >
                         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {canEdit && (
-                    <button
+                    <Button
+                      variant="outline"
+                      size="xs"
                       onClick={() => {
                         setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
                         setTaskDialog({ open: true, task: null });
                       }}
-                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border rounded-[0.3rem] hover:bg-muted transition-colors"
                     >
                       <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -1054,7 +1038,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   <p className="text-[13px] text-muted-foreground">{t("staffing.roles.noTasksYet")}</p>
                 </div>
               ) : (
-                <div className="border border-border rounded-[0.3rem] overflow-hidden">
+                <div className="border border-border rounded-lg overflow-hidden">
                   {(roleTasksCache[selectedRole.id] ?? []).map((task, i) => {
                     const comp = dayCompletions.get(task.id);
                     return (
@@ -1100,10 +1084,10 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                 if (assignedMembers.length === 0) return null;
                 return (
                   <div className="mt-6">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">{t("staffing.roles.assignedMembers")}</p>
+                    <Eyebrow className="mb-2">{t("staffing.roles.assignedMembers")}</Eyebrow>
                     <div className="flex flex-wrap gap-2">
                       {assignedMembers.map((m) => (
-                        <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded-[0.3rem]">
+                        <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded-lg">
                           <StaffAvatar name={m.displayName} avatarUrl={m.avatarUrl} size={20} />
                           <span className="text-[12px] font-medium text-foreground">{m.displayName}</span>
                         </div>
@@ -1318,7 +1302,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const canManageAttendance = isOwner || role === "manager";
 
   // ─── Desktop detection ────────────────────────────────────────────────────
-  // Must agree with the `md:` (768px) CSS fork in app/~/personnel/* pages:
+  // Must agree with the `md:` (768px) CSS fork in app/manager/personnel/* pages:
   // those pages only show StaffingFull at ≥768px, so anything else here would
   // surface a third, unmaintained layout in the 768–1023px range.
   const isMobile = useIsMobile();
@@ -2765,10 +2749,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             </div>
             <div className="flex items-center justify-between">
               <Label>{t("staffing.taskDialog.timeWindow")}</Label>
-              <button onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${taskForm.hasTime ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"}`} />
-              </button>
+              <Switch size="sm" checked={taskForm.hasTime} onCheckedChange={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))} />
             </div>
             {taskForm.hasTime && (
               <div className="grid grid-cols-2 gap-3">
@@ -2781,19 +2762,13 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 <Label>{t("staffing.taskDialog.requireEvidence")}</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">{t("staffing.taskDialog.requireEvidenceHint")}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setTaskForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
-                aria-pressed={taskForm.requiresEvidence}
+              <Switch
+                size="sm"
+                checked={taskForm.requiresEvidence}
+                onCheckedChange={() => setTaskForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
                 aria-label={t("staffing.taskDialog.requireEvidence")}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors shrink-0 mt-0.5 ${
-                  taskForm.requiresEvidence ? "bg-foreground border-foreground" : "bg-background border-border"
-                }`}
-              >
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
-                  taskForm.requiresEvidence ? "translate-x-4" : "translate-x-0.5"
-                }`} />
-              </button>
+                className="mt-0.5"
+              />
             </div>
             <div className="space-y-1.5">
               <Label>
@@ -3022,32 +2997,14 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           <div className="flex-1 overflow-y-auto pb-24">
 
             {/* ── KPI Grid: 2x2, cells separated by borders ── */}
-            <div className="grid grid-cols-2 border-b border-border">
-              {/* On shift now */}
-              <div className="px-4 py-3 border-r border-b border-border">
-                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.onShiftNow")}</p>
-                <p className="text-2xl font-semibold text-foreground mt-0.5">
-                  {nowOnShift.length}
-                  <span className="text-[15px] text-muted-foreground font-normal"> / {activeMembers.length}</span>
-                </p>
-              </div>
-              {/* Today hours */}
-              <div className="px-4 py-3 border-b border-border">
-                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.todayHours")}</p>
-                <p className="text-2xl font-semibold text-foreground font-mono tabular-nums mt-0.5">{todayScheduledHours}h</p>
-              </div>
-              {/* Open requests */}
-              <div className="px-4 py-3 border-r border-border">
-                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.openRequests")}</p>
-                <p className={`text-2xl font-semibold mt-0.5 ${pendingCount > 0 ? "text-amber-600" : "text-foreground"}`}>
-                  {pendingCount}
-                </p>
-              </div>
-              {/* This week */}
-              <div className="px-4 py-3">
-                <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.thisWeek")}</p>
-                <p className="text-2xl font-semibold text-foreground font-mono tabular-nums mt-0.5">{weekTotalHours}h</p>
-              </div>
+            <div className="grid grid-cols-2 gap-3 p-4 border-b border-border">
+              <StatTile
+                label={t("staffing.overview.onShiftNow")}
+                value={<>{nowOnShift.length}<span className="text-sm font-normal text-muted-foreground"> / {activeMembers.length}</span></>}
+              />
+              <StatTile label={t("staffing.overview.todayHours")} value={`${todayScheduledHours}h`} />
+              <StatTile label={t("staffing.overview.openRequests")} value={pendingCount} tone={pendingCount > 0 ? "warning" : undefined} />
+              <StatTile label={t("staffing.overview.thisWeek")} value={`${weekTotalHours}h`} />
             </div>
 
             <AttendanceManagerPanel
@@ -3066,7 +3023,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             <div className="border-b border-border">
               <div className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex items-center gap-2">
-                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.currentlyOnShift")}</p>
+                  <Eyebrow>{t("staffing.overview.currentlyOnShift")}</Eyebrow>
                   <span className="text-[10.5px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5">{nowOnShift.length}</span>
                 </div>
               </div>
@@ -3121,7 +3078,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             {upNextToday.length > 0 && (
               <div className="border-b border-border">
                 <div className="flex items-center gap-2 px-4 py-2.5">
-                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.upNextToday")}</p>
+                  <Eyebrow>{t("staffing.overview.upNextToday")}</Eyebrow>
                   <span className="text-[10.5px] font-semibold text-muted-foreground bg-muted rounded px-1.5 py-0.5">{upNextToday.length}</span>
                 </div>
                 <div className="divide-y divide-border">
@@ -3178,7 +3135,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             {((canEdit && (pendingTimeOff.length > 0 || pendingTrades.length > 0)) || hasTradesForMe) && (
               <div className="border-b border-border">
                 <div className="flex items-center gap-2 px-4 py-2.5">
-                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.overview.needsAttention")}</p>
+                  <Eyebrow>{t("staffing.overview.needsAttention")}</Eyebrow>
                 </div>
                 <div className="divide-y divide-border">
                   {canEdit && pendingTimeOff.length > 0 && (
@@ -3241,12 +3198,12 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               <div className="flex items-center justify-between px-4 py-2">
                 <p className="text-[12px] font-semibold text-foreground">{t("staffing.schedule.weekOf").replace("{date}", weekOfLabel)}</p>
                 <div className="flex items-center gap-1">
-                  <button onClick={prevWeek} className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-muted transition-colors">
+                  <Button variant="outline" size="icon-sm" onClick={prevWeek}>
                     <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  <button onClick={nextWeek} className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-muted transition-colors">
+                  </Button>
+                  <Button variant="outline" size="icon-sm" onClick={nextWeek}>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -3270,7 +3227,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                       <button
                         key={ds}
                         onClick={() => { hapticLight(); setSelectedDay(ds); }}
-                        className={`flex flex-col items-center py-1.5 rounded-[0.3rem] transition-colors ${
+                        className={`flex flex-col items-center py-1.5 rounded-lg transition-colors ${
                           isSelected ? "bg-foreground text-background" : "hover:bg-muted"
                         }`}
                       >
@@ -3305,7 +3262,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 </p>
               </div>
               {canEdit && (
-                <button
+                <Button
+                  variant="outline"
+                  size="xs"
                   onClick={() => {
                     hapticLight();
                     setEditingShift(null);
@@ -3319,10 +3278,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                     });
                     setAddDialog(true);
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold border border-border rounded hover:bg-muted text-foreground transition-colors"
                 >
                   <Plus className="h-3 w-3" /> {t("staffing.header.addShiftShort")}
-                </button>
+                </Button>
               )}
             </div>
 
@@ -3349,10 +3307,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               }}
             >
               {selectedDayShifts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16">
-                  <Clock className="h-6 w-6 text-muted-foreground mb-2" />
-                  <p className="text-[13px] text-muted-foreground">{t("staffing.schedule.noShiftsScheduled")}</p>
-                </div>
+                <EmptyState icon={Clock} description={t("staffing.schedule.noShiftsScheduled")} className="py-16" />
               ) : (
                 <div className="relative" style={{ height: `${TIMELINE_HOURS_COUNT * 48}px` }}>
                   {/* Hour labels + grid lines */}
@@ -3379,8 +3334,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                       className="absolute left-12 right-0 z-10 flex items-center"
                       style={{ top: `${currentTimePercent}%` }}
                     >
-                      <div className="h-2 w-2 rounded-full bg-red-500 -ml-1 shrink-0" />
-                      <div className="flex-1 bg-red-500 h-[1.5px]" />
+                      <div className="h-2 w-2 rounded-full bg-destructive -ml-1 shrink-0" />
+                      <div className="flex-1 bg-destructive h-[1.5px]" />
                     </div>
                   )}
 
@@ -3460,7 +3415,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                   onClick={() => setShowRequests(!showRequests)}
                   className="flex items-center gap-2 w-full px-4 py-2.5 border-b border-border"
                 >
-                  <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.requests.title")}</p>
+                  <Eyebrow>{t("staffing.requests.title")}</Eyebrow>
                   <span className="text-[10.5px] font-semibold text-background bg-foreground rounded px-1.5 py-0.5">
                     {pendingCount}
                   </span>
@@ -3478,18 +3433,12 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                           {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
                         </p>
                         <div className="flex gap-2 mt-2">
-                          <button
-                            onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}
-                            className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
-                          >
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}>
                             <Check className="h-3 w-3" /> {t("staffing.requests.approve")}
-                          </button>
-                          <button
-                            onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}
-                            className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
-                          >
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTimeOffStatusUpdate(req.id, "denied")}>
                             <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -3507,28 +3456,23 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                             </p>
                           )}
                           <div className="flex gap-2 mt-2">
-                            <button
-                              onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}
-                              className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
-                            >
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTradeStatusUpdate(trade.id, "accepted")}>
                               <Check className="h-3 w-3" /> {isTarget ? t("staffing.requests.accept") : t("staffing.requests.approve")}
-                            </button>
-                            <button
-                              onClick={() => handleTradeStatusUpdate(trade.id, "denied")}
-                              className="flex-1 h-7 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
-                            >
+                            </Button>
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTradeStatusUpdate(trade.id, "denied")}>
                               <Ban className="h-3 w-3" /> {t("staffing.requests.deny")}
-                            </button>
+                            </Button>
                             {canEdit && (
-                              <button
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => {
                                   hapticLight();
                                   setTradeDialog({ open: true, shift: shift ?? null });
                                 }}
-                                className="h-7 px-2 rounded border border-border text-foreground font-semibold text-[11px] hover:bg-muted flex items-center justify-center gap-1 transition-colors"
                               >
                                 <UserPlus className="h-3 w-3" /> {t("staffing.requests.reassign")}
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -3588,28 +3532,31 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         onClick={async () => { await handleDeleteRole(selectedRole.id); setSelectedRole(null); setRoleDetailOpen(false); }}
-                        className="p-1.5 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider">{t("staffing.roles.taskTimeline")}</p>
+                    <Eyebrow>{t("staffing.roles.taskTimeline")}</Eyebrow>
                     {canEdit && (
-                      <button
+                      <Button
+                        variant="outline"
+                        size="xs"
                         onClick={() => {
                           setTaskForm({ title: "", description: "", hasTime: false, startTime: "08:00", endTime: "10:00", requiresEvidence: false, notifyChats: [] });
                           setTaskDialog({ open: true, task: null });
                         }}
-                        className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium border border-border hover:bg-muted transition-colors rounded"
                       >
                         <Plus className="h-3 w-3" /> {t("staffing.roles.addTask")}
-                      </button>
+                      </Button>
                     )}
                   </div>
                   {loadingTasks ? (
@@ -3690,7 +3637,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
                 {taskDetail.description && (
                   <div>
-                    <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t("staffing.roles.taskDescription")}</p>
+                    <Eyebrow className="mb-1.5">{t("staffing.roles.taskDescription")}</Eyebrow>
                     <p className="text-[13px] text-foreground leading-relaxed whitespace-pre-wrap">{taskDetail.description}</p>
                   </div>
                 )}
@@ -3728,7 +3675,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 hover:text-red-600"
+                      className="text-destructive hover:text-destructive"
                       onClick={async () => { const id = taskDetail.id; setTaskDetail(null); await handleDeleteTask(id); }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -3797,7 +3744,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 {/* Time Template */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">{t("staffing.shiftDialog.timeTemplate")}</span>
+                    <Eyebrow as="span">{t("staffing.shiftDialog.timeTemplate")}</Eyebrow>
                     {canEdit && (
                       <button
                         onClick={() => { setEditingPreset(null); setPresetForm({ name: "", startTime: shiftForm.startTime, endTime: shiftForm.endTime, color: "#44403c" }); setPresetDialog(true); }}
@@ -3818,7 +3765,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                             <button
                               onClick={() => setShiftForm((f) => ({ ...f, startTime: p.startTime, endTime: p.endTime }))}
                               className={`px-2.5 py-1.5 text-[11px] font-semibold rounded transition-all text-center ${
-                                active ? "text-white shadow-sm" : "text-muted-foreground bg-muted hover:bg-muted/80"
+                                active ? "text-white" : "text-muted-foreground bg-muted hover:bg-muted/80"
                               }`}
                               style={active ? { backgroundColor: p.color } : undefined}
                             >
@@ -4013,12 +3960,16 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setRoleDialog(false)}>{t("common.cancel")}</Button>
-            <Button onClick={handleSaveRole} disabled={saving || !roleForm.name}>
-              {saving ? <Spinner size={16} /> : editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}
-            </Button>
-          </div>
+          <DialogActions
+            divider={false}
+            className="pt-1"
+            onCancel={() => setRoleDialog(false)}
+            onConfirm={handleSaveRole}
+            saving={saving}
+            disabled={!roleForm.name}
+            cancelLabel={t("common.cancel")}
+            confirmLabel={editingRole ? t("staffing.roleDialog.saveCta") : t("staffing.roleDialog.addCta")}
+          />
         </DynamicUIElementContent>
       </DynamicUIElement>
 
@@ -4052,16 +4003,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             </div>
             <div className="flex items-center justify-between">
               <Label>{t("staffing.taskDialog.timeWindow")}</Label>
-              <button
-                onClick={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                  taskForm.hasTime ? "bg-foreground border-foreground" : "bg-background border-border"
-                }`}
-              >
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
-                  taskForm.hasTime ? "translate-x-4" : "translate-x-0.5"
-                }`} />
-              </button>
+              <Switch size="sm" checked={taskForm.hasTime} onCheckedChange={() => setTaskForm((f) => ({ ...f, hasTime: !f.hasTime }))} />
             </div>
             {taskForm.hasTime && (
               <div className="grid grid-cols-2 gap-3">
@@ -4088,16 +4030,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 <Label>{t("staffing.taskDialog.requireEvidence")}</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">{t("staffing.taskDialog.requireEvidenceHint")}</p>
               </div>
-              <button
-                onClick={() => setTaskForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                  taskForm.requiresEvidence ? "bg-foreground border-foreground" : "bg-background border-border"
-                }`}
-              >
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
-                  taskForm.requiresEvidence ? "translate-x-4" : "translate-x-0.5"
-                }`} />
-              </button>
+              <Switch size="sm" checked={taskForm.requiresEvidence} onCheckedChange={() => setTaskForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))} />
             </div>
             <div className="space-y-1.5">
               <Label>
@@ -4137,12 +4070,16 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setTaskDialog({ open: false, task: null })}>{t("common.cancel")}</Button>
-            <Button onClick={handleSaveTask} disabled={savingTask || !taskForm.title || (taskForm.requiresEvidence && taskForm.notifyChats.length === 0)}>
-              {savingTask ? <Spinner size={16} /> : taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}
-            </Button>
-          </div>
+          <DialogActions
+            divider={false}
+            className="pt-1"
+            onCancel={() => setTaskDialog({ open: false, task: null })}
+            onConfirm={handleSaveTask}
+            saving={savingTask}
+            disabled={!taskForm.title || (taskForm.requiresEvidence && taskForm.notifyChats.length === 0)}
+            cancelLabel={t("common.cancel")}
+            confirmLabel={taskDialog.task ? t("staffing.taskDialog.saveCta") : t("staffing.taskDialog.addCta")}
+          />
         </DynamicUIElementContent>
       </DynamicUIElement>
 
@@ -4175,7 +4112,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         style={{ borderColor: viewTasksDialog.role!.color }}
                       />
                       {task.startTime && task.endTime && (
-                        <p className="font-mono text-[11px] text-muted-foreground leading-none mb-0.5">
+                        <p className="font-mono tabular-nums text-[11px] text-muted-foreground leading-none mb-0.5">
                           {formatTime(task.startTime)} – {formatTime(task.endTime)}
                         </p>
                       )}
@@ -4206,7 +4143,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             <div className="space-y-4 py-1">
               {/* Your shift */}
               <div className="bg-muted border border-border p-3">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t("staffing.tradeDialog.yourShift")}</p>
+                <Eyebrow className="mb-1">{t("staffing.tradeDialog.yourShift")}</Eyebrow>
                 <p className="text-sm font-semibold text-foreground">
                   {new Date(tradeDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
                     weekday: "short", month: "short", day: "numeric",
@@ -4222,7 +4159,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setTradeMode("broadcast")}
-                  className={`flex flex-col items-center gap-1 rounded-[0.3rem] border p-2.5 text-xs font-medium transition-colors ${
+                  className={`flex flex-col items-center gap-1 rounded-lg border p-2.5 text-xs font-medium transition-colors ${
                     tradeMode === "broadcast" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"
                   }`}
                 >
@@ -4231,7 +4168,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                 </button>
                 <button
                   onClick={() => setTradeMode("specific")}
-                  className={`flex flex-col items-center gap-1 rounded-[0.3rem] border p-2.5 text-xs font-medium transition-colors ${
+                  className={`flex flex-col items-center gap-1 rounded-lg border p-2.5 text-xs font-medium transition-colors ${
                     tradeMode === "specific" ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted"
                   }`}
                 >
@@ -4304,7 +4241,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                               {formatDateShort(s.date)} &middot; {formatTime(s.startTime)}–{formatTime(s.endTime)}
                             </p>
                           </div>
-                          <span className="h-2 w-2 rounded-full shrink-0 bg-stone-700" />
+                          <span className="h-2 w-2 rounded-full shrink-0 bg-foreground" />
                         </label>
                       );
                     })
@@ -4314,12 +4251,16 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               </>)}
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setTradeDialog({ open: false, shift: null })}>{t("common.cancel")}</Button>
-            <Button onClick={handleTradeRequest} disabled={savingTrade || (tradeMode === "specific" && !selectedTradeTarget)}>
-              {savingTrade ? <Spinner size={16} /> : t("staffing.tradeDialog.sendRequest")}
-            </Button>
-          </div>
+          <DialogActions
+            divider={false}
+            className="pt-1"
+            onCancel={() => setTradeDialog({ open: false, shift: null })}
+            onConfirm={handleTradeRequest}
+            saving={savingTrade}
+            disabled={tradeMode === "specific" && !selectedTradeTarget}
+            cancelLabel={t("common.cancel")}
+            confirmLabel={t("staffing.tradeDialog.sendRequest")}
+          />
         </DynamicUIElementContent>
       </DynamicUIElement>
 
@@ -4334,7 +4275,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             <div className="space-y-4 py-1">
               {/* Your shift */}
               <div className="bg-muted border border-border p-3">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t("staffing.coverDialog.yourShift")}</p>
+                <Eyebrow className="mb-1">{t("staffing.coverDialog.yourShift")}</Eyebrow>
                 <p className="text-sm font-semibold text-foreground">
                   {new Date(coverDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
                     weekday: "short", month: "short", day: "numeric",
@@ -4375,12 +4316,16 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               </div>
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setCoverDialog({ open: false, shift: null })}>{t("common.cancel")}</Button>
-            <Button onClick={handleCoverRequest} disabled={savingCover || !selectedCover}>
-              {savingCover ? <Spinner size={16} /> : t("staffing.coverDialog.sendRequest")}
-            </Button>
-          </div>
+          <DialogActions
+            divider={false}
+            className="pt-1"
+            onCancel={() => setCoverDialog({ open: false, shift: null })}
+            onConfirm={handleCoverRequest}
+            saving={savingCover}
+            disabled={!selectedCover}
+            cancelLabel={t("common.cancel")}
+            confirmLabel={t("staffing.coverDialog.sendRequest")}
+          />
         </DynamicUIElementContent>
       </DynamicUIElement>
 
@@ -4491,13 +4436,10 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                       <span className="text-xs font-semibold text-foreground">{t(DAY_NAME_KEYS[i])}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-muted-foreground">{t("staffing.availDialog.fullDay")}</span>
-                        <button onClick={() => setAvailForm((f) => {
+                        <Switch size="sm" checked={dt.fullDay} onCheckedChange={() => setAvailForm((f) => {
                           const dayTimes = f.dayTimes.map((d, j) => j === i ? { ...d, fullDay: !d.fullDay } : d);
                           return { ...f, dayTimes };
-                        })}
-                          className={`relative inline-flex h-4 w-7 items-center rounded-full border transition-colors ${dt.fullDay ? "bg-foreground border-foreground" : "bg-background border-border"}`}>
-                          <span className={`inline-block h-2.5 w-2.5 rounded-full bg-white dark:bg-stone-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform ${dt.fullDay ? "translate-x-3" : "translate-x-0.5"}`} />
-                        </button>
+                        })} />
                       </div>
                     </div>
                     {!dt.fullDay && (
@@ -4529,12 +4471,15 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               />
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={() => setAvailDialog(false)}>{t("common.cancel")}</Button>
-            <Button onClick={handleSaveAvailability} disabled={savingAvail}>
-              {savingAvail ? <Spinner size={16} /> : t("staffing.availDialog.saveCta")}
-            </Button>
-          </div>
+          <DialogActions
+            divider={false}
+            className="pt-1"
+            onCancel={() => setAvailDialog(false)}
+            onConfirm={handleSaveAvailability}
+            saving={savingAvail}
+            cancelLabel={t("common.cancel")}
+            confirmLabel={t("staffing.availDialog.saveCta")}
+          />
         </DynamicUIElementContent>
       </DynamicUIElement>
 
@@ -4549,18 +4494,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             {/* Full Days toggle */}
             <div className="flex items-center justify-between">
               <Label className="cursor-pointer">{t("staffing.timeOffDialog.fullDays")}</Label>
-              <button
-                onClick={() => setTimeOffForm((f) => ({ ...f, fullDays: !f.fullDays }))}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                  timeOffForm.fullDays ? "bg-foreground border-foreground" : "bg-background border-border"
-                }`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform ${
-                    timeOffForm.fullDays ? "translate-x-4" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
+              <Switch size="sm" checked={timeOffForm.fullDays} onCheckedChange={() => setTimeOffForm((f) => ({ ...f, fullDays: !f.fullDays }))} />
             </div>
 
             {/* Dates */}
@@ -4620,7 +4554,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
           <Button
             onClick={handleTimeOffRequest}
             disabled={savingTimeOff || !timeOffForm.startDate || !timeOffForm.endDate}
-            className="w-full mt-1 bg-foreground hover:bg-foreground/90 text-background"
+            className="w-full mt-1"
           >
             {savingTimeOff ? <Spinner size={16} /> : t("staffing.timeOffDialog.submitCta")}
           </Button>
@@ -4771,8 +4705,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
               {/* Top section */}
               <div className="px-5 pt-5 pb-4 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{dateLabel}</p>
-                <p className="text-3xl font-bold font-mono tracking-tight text-foreground">
+                <Eyebrow>{dateLabel}</Eyebrow>
+                <p className="text-3xl font-bold font-mono tabular-nums tracking-tight text-foreground">
                   {formatTime(s.startTime)}<span className="text-muted-foreground mx-2">→</span>{formatTime(s.endTime)}
                 </p>
 
@@ -4808,7 +4742,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         .filter(Boolean) as StaffRole[];
                       return (
                         <div key={cs.id} className="flex items-center gap-2.5">
-                          <StaffAvatar name={name} avatarUrl={member?.avatarUrl} size={28} className="rounded-[0.3rem]" />
+                          <StaffAvatar name={name} avatarUrl={member?.avatarUrl} size={28} shape="square" />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-foreground truncate">{name}</p>
                             <div className="flex items-center gap-1.5 flex-wrap">

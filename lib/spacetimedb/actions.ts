@@ -907,6 +907,9 @@ export async function sendMessage(
   content: string,
   replyToId?: string,
   attachment?: { url: string; type: string; name: string } | null,
+  // Raw speech-to-text transcript when `content` is an AI summary of a voice
+  // message (walkie-talkie surfaces). Stored on chat_message.voiceTranscript.
+  voiceTranscript?: string | null,
 ): Promise<void> {
   await offlineAware("sendMessage", {
     conversationId,
@@ -915,6 +918,7 @@ export async function sendMessage(
     attachmentUrl: attachment?.url ?? undefined,
     attachmentType: attachment?.type ?? undefined,
     attachmentName: attachment?.name ?? undefined,
+    voiceTranscript: voiceTranscript ?? undefined,
   });
   // Best-effort: also fan out web push to recipients' other devices. The
   // sendMessage reducer already inserted notification rows server-side which
@@ -984,7 +988,7 @@ async function fanOutChatPush(
         subscriptions,
         title: senderName,
         body,
-        link: "/~/chat",
+        link: "/manager/channel",
         type: "team",
       }),
     });
@@ -1948,4 +1952,32 @@ export async function setAiUsageQuota(
     monthlyTokenLimit: monthlyTokenLimit ?? undefined,
     monthlyCostLimit: monthlyCostLimit ?? undefined,
   });
+}
+
+// ─── Device log-in (store device ⇄ personal phone QR handshake) ──────────────
+// Backed by the `device_login_request` table. The store device publishes a
+// pending nonce (encoded in its QR as
+// `merchiva://device-login?org=<orgId>&nonce=<nonce>`), the phone approves it
+// as the scanning member (optionally recording a punch), the store device
+// consumes the approval after logging the operator in.
+
+export type DeviceLoginIntent = "login" | "punch-in" | "punch-out";
+
+/** Store device: publish a fresh pending request for `nonce` (invalidates the
+ *  device's previous pending ones). Expires server-side after 2 minutes. */
+export async function createDeviceLoginRequest(deviceId: string, nonce: string): Promise<void> {
+  return conn().reducers.createDeviceLoginRequest({ organizationId: orgId(), deviceId, nonce });
+}
+
+/** Personal phone: approve the scanned nonce as the calling member. With a
+ *  punch intent the server also records that punch for the caller. Throws
+ *  when the nonce is unknown, already used or expired. */
+export async function approveDeviceLogin(nonce: string, intent: DeviceLoginIntent): Promise<void> {
+  return conn().reducers.approveDeviceLogin({ nonce, intent });
+}
+
+/** Store device: mark an approved request as consumed after logging the
+ *  operator in so it can't be replayed. */
+export async function consumeDeviceLogin(requestId: string): Promise<void> {
+  return conn().reducers.consumeDeviceLogin({ id: requestId });
 }

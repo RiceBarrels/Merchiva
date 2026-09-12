@@ -16,8 +16,10 @@ import {
   Wrench, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DynamicUIElement, DynamicUIElementContent, DynamicUIElementDescription,
@@ -334,16 +336,14 @@ export function RoleFormDialog({
             <div className="space-y-0.5">
               {ROLE_PERMISSION_KEYS.map(({ key, tKey }) => (
                 <label key={key} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-muted/50 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={form.permissions[key] === true}
-                    onChange={() =>
+                    onCheckedChange={() =>
                       setForm((f) => ({
                         ...f,
                         permissions: { ...f.permissions, [key]: !f.permissions[key] },
                       }))
                     }
-                    className="h-4 w-4 accent-foreground cursor-pointer"
                   />
                   <span className="text-sm">{t(tKey)}</span>
                 </label>
@@ -492,17 +492,10 @@ export function RoleTaskFormDialog({
           </div>
           <div className="flex items-center justify-between">
             <Label>{t("staffing.taskDialog.timeWindow")}</Label>
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, hasTime: !f.hasTime }))}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                form.hasTime ? "bg-foreground border-foreground" : "bg-background border-border"
-              }`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
-                form.hasTime ? "translate-x-4" : "translate-x-0.5"
-              }`} />
-            </button>
+            <Switch
+              checked={form.hasTime}
+              onCheckedChange={() => setForm((f) => ({ ...f, hasTime: !f.hasTime }))}
+            />
           </div>
           {form.hasTime && (
             <div className="grid grid-cols-2 gap-3">
@@ -529,17 +522,10 @@ export function RoleTaskFormDialog({
               <Label>{t("staffing.taskDialog.requireEvidence")}</Label>
               <p className="text-xs text-muted-foreground mt-0.5">{t("staffing.taskDialog.requireEvidenceHint")}</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full border transition-colors ${
-                form.requiresEvidence ? "bg-foreground border-foreground" : "bg-background border-border"
-              }`}
-            >
-              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white dark:bg-stone-900 shadow transition-transform ${
-                form.requiresEvidence ? "translate-x-4" : "translate-x-0.5"
-              }`} />
-            </button>
+            <Switch
+              checked={form.requiresEvidence}
+              onCheckedChange={() => setForm((f) => ({ ...f, requiresEvidence: !f.requiresEvidence }))}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>
@@ -555,23 +541,26 @@ export function RoleTaskFormDialog({
               {groupChats.map((c) => {
                 const selected = form.notifyChats.includes(c.id);
                 return (
-                  <button
+                  <Button
                     key={c.id}
                     type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-pressed={selected}
                     onClick={() => setForm((f) => ({
                       ...f,
                       notifyChats: selected
                         ? f.notifyChats.filter((id) => id !== c.id)
                         : [...f.notifyChats, c.id],
                     }))}
-                    className={`px-2.5 py-1 text-xs font-medium border rounded transition-colors ${
+                    className={`rounded text-xs ${
                       selected
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border text-muted-foreground hover:bg-muted"
+                        ? "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {c.name ?? t("staffing.unnamed")}
-                  </button>
+                  </Button>
                 );
               })}
               {groupChats.length === 0 && (

@@ -15,7 +15,7 @@ const config: CapacitorConfig = {
     iosScheme: 'capacitor',
     androidScheme: 'https',
     // Start at the static root shim. It decides whether the WebView should
-    // enter /~/ or /login after reading local auth state.
+    // enter /manager/ or /login after reading local auth state.
     appStartPath: '/',
   },
   plugins: {

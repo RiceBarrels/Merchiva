@@ -121,7 +121,7 @@ export function PageTemplateDialog({
                     key={tpl.id}
                     onClick={() => setTemplateId(tpl.id)}
                     className={cn(
-                      "flex flex-col items-start gap-1 rounded-[0.3rem] border p-2.5 text-left transition-colors",
+                      "flex flex-col items-start gap-1 rounded-lg border p-2.5 text-left transition-colors",
                       active
                         ? "border-foreground bg-accent"
                         : "border-border hover:border-foreground/60 hover:bg-accent/40"

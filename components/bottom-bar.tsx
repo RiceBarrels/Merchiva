@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Package, TrendingUp, Users,
-  MonitorSmartphone, KeyRound, MessageSquare, Globe, Crown,
+  MonitorSmartphone, MessageSquare, Globe, Crown,
   Settings, MoreHorizontal, X, FileBarChart, UserRoundSearch,
   Palette, Bell,
 } from "lucide-react";
@@ -39,25 +39,24 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { labelKey: "nav.home",      href: "/~/",      icon: LayoutDashboard, permissionKey: "dashboard" },
-  { labelKey: "nav.inventory", href: "/~/inventory",       icon: Package,         permissionKey: "inventory" },
-  { labelKey: "nav.sales",     href: "/~/sales",           icon: TrendingUp,      permissionKey: "sales" },
-  { labelKey: "nav.personnel", href: "/~/personnel/schedule", icon: Users,        permissionKey: "staffing" },
-  { labelKey: "nav.reports",   href: "/~/reports",         icon: FileBarChart,    permissionKey: "sales" },
-  { labelKey: "nav.customers", href: "/~/customers",       icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website" },
-  { labelKey: "nav.pos",       href: "/~/pos",             icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
-  { labelKey: "nav.punchIn",   href: "/~/punch-in",        icon: KeyRound },
-  { labelKey: "nav.chat",      href: "/~/chat",            icon: MessageSquare,   permissionKey: "staffing" },
-  { labelKey: "nav.notifications", href: "/~/notifications", icon: Bell },
-  { labelKey: "nav.website",   href: "/~/builder",         icon: Globe,           permissionKey: "website", betaFeature: "website" },
-  { labelKey: "nav.design",    href: "/~/design",          icon: Palette,         permissionKey: "website", betaFeature: "design" },
-  { labelKey: "nav.membership", href: "/~/membership",     icon: Crown },
-  { labelKey: "nav.settings",  href: "/~/settings",        icon: Settings },
+  { labelKey: "nav.home",      href: "/manager/",      icon: LayoutDashboard, permissionKey: "dashboard" },
+  { labelKey: "nav.inventory", href: "/manager/inventory",       icon: Package,         permissionKey: "inventory" },
+  { labelKey: "nav.sales",     href: "/manager/sales",           icon: TrendingUp,      permissionKey: "sales" },
+  { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: Users,        permissionKey: "staffing" },
+  { labelKey: "nav.reports",   href: "/manager/reports",         icon: FileBarChart,    permissionKey: "sales" },
+  { labelKey: "nav.customers", href: "/manager/customers",       icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website" },
+  { labelKey: "nav.pos",       href: "/manager/pos",             icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
+  { labelKey: "nav.chat",      href: "/manager/channel",            icon: MessageSquare,   permissionKey: "staffing" },
+  { labelKey: "nav.notifications", href: "/manager/notifications", icon: Bell },
+  { labelKey: "nav.website",   href: "/manager/builder",         icon: Globe,           permissionKey: "website", betaFeature: "website" },
+  { labelKey: "nav.design",    href: "/manager/design",          icon: Palette,         permissionKey: "website", betaFeature: "design" },
+  { labelKey: "nav.membership", href: "/manager/membership",     icon: Crown },
+  { labelKey: "nav.settings",  href: "/manager/settings",        icon: Settings },
 ];
 
-const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in", "/~/chat"]);
+const STORE_MACHINE_HREFS = new Set(["/manager/pos", "/manager/inventory", "/manager/channel"]);
 
-const PRIMARY_HREFS = ["/~/", "/~/personnel", "/~/chat", "/~/notifications"];
+const PRIMARY_HREFS = ["/manager/", "/manager/personnel", "/manager/channel", "/manager/notifications"];
 
 export function BottomBar() {
   const t = useT();
@@ -69,10 +68,9 @@ export function BottomBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const unreadCount = useUnreadCount();
   const badgeFor = (href: string) =>
-    href === "/~/notifications" && unreadCount > 0 ? unreadCount : 0;
+    href === "/manager/notifications" && unreadCount > 0 ? unreadCount : 0;
 
   const permitted = NAV_ITEMS.filter((item) => {
-    if (item.href === "/~/punch-in" && !storeMachine) return false;
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
     if (item.betaFeature && !betaFeatures[item.betaFeature]) return false;
     if (!item.permissionKey) return true;

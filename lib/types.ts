@@ -414,6 +414,9 @@ export interface ChatMessage {
   // True when this message was authored by Mr. Merchiva (rendered as the bot
   // regardless of senderId).
   isMerchiva?: boolean;
+  // Raw speech-to-text transcript when `content` is an AI summary of a voice
+  // message (walkie-talkie surfaces).
+  voiceTranscript?: string | null;
   // Joined
   senderName?: string;
 }

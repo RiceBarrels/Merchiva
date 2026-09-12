@@ -291,7 +291,7 @@ export function StoreDeviceLock() {
     <div className="fixed inset-0 z-[100] bg-muted overflow-hidden flex flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-2xl w-full p-3 sm:p-4 lg:p-6">
-          <div className="relative bg-background border border-border rounded-[0.3rem] p-4 sm:p-5 lg:p-6 flex flex-col">
+          <div className="relative bg-background border border-border rounded-lg p-4 sm:p-5 lg:p-6 flex flex-col">
             <Corners />
 
             {/* Header: title + clock */}
@@ -312,7 +312,7 @@ export function StoreDeviceLock() {
                   </p>
                 )}
               </div>
-              <div className="text-right border border-border rounded-[0.3rem] px-2.5 sm:px-3.5 py-2 sm:py-2.5 bg-muted shrink-0">
+              <div className="text-right border border-border rounded-lg px-2.5 sm:px-3.5 py-2 sm:py-2.5 bg-muted shrink-0">
                 <div className="font-mono text-lg sm:text-2xl font-semibold tracking-tight leading-none tabular-nums">
                   {fmtClock(now)}
                 </div>
@@ -332,8 +332,8 @@ export function StoreDeviceLock() {
                 {/* PIN display */}
                 <div
                   className={cn(
-                    "relative border-[1.5px] rounded-[0.3rem] p-3 sm:p-4",
-                    error ? "border-red-400" : "border-border",
+                    "relative border-[1.5px] rounded-lg p-3 sm:p-4",
+                    error ? "border-destructive" : "border-border",
                   )}
                 >
                   <div className="absolute -top-2 left-3 bg-background px-1.5 font-mono text-[10px] tracking-[0.14em] text-muted-foreground">
@@ -344,7 +344,7 @@ export function StoreDeviceLock() {
                       <div
                         key={i}
                         className={cn(
-                          "relative aspect-[1/0.65] sm:aspect-[1/0.72] border-[1.5px] rounded-[0.3rem] flex items-center justify-center transition-all",
+                          "relative aspect-[1/0.65] sm:aspect-[1/0.72] border-[1.5px] rounded-lg flex items-center justify-center transition-all",
                           i < pin.length
                             ? "border-foreground bg-foreground text-background"
                             : i === pin.length
@@ -376,7 +376,7 @@ export function StoreDeviceLock() {
                     <span
                       className={cn(
                         "font-mono text-[10px] sm:text-[11px] tracking-wider",
-                        error ? "text-red-500" : "text-muted-foreground",
+                        error ? "text-destructive" : "text-muted-foreground",
                       )}
                     >
                       {error ?? <span className="hidden sm:inline">{t("lock.keypadHint").toUpperCase()}</span>}
@@ -391,7 +391,7 @@ export function StoreDeviceLock() {
                       key={k}
                       onClick={() => handleDigit(k)}
                       disabled={stage === "verifying"}
-                      className="rounded-[0.3rem] border border-border bg-background text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50 disabled:active:translate-y-0"
+                      className="rounded-lg border border-border bg-background text-2xl sm:text-[28px] font-medium active:translate-y-px active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50 disabled:active:translate-y-0"
                     >
                       {k}
                     </button>
@@ -399,21 +399,21 @@ export function StoreDeviceLock() {
                   <button
                     onClick={handleClear}
                     disabled={stage === "verifying"}
-                    className="rounded-[0.3rem] border border-border bg-muted font-mono text-xs sm:text-sm font-medium text-muted-foreground shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50"
+                    className="rounded-lg border border-border bg-muted font-mono text-xs sm:text-sm font-medium text-muted-foreground active:translate-y-px active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50"
                   >
                     {t("lock.clear")}
                   </button>
                   <button
                     onClick={() => handleDigit("0")}
                     disabled={stage === "verifying"}
-                    className="rounded-[0.3rem] border border-border bg-background text-2xl sm:text-[28px] font-medium shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50 disabled:active:translate-y-0"
+                    className="rounded-lg border border-border bg-background text-2xl sm:text-[28px] font-medium active:translate-y-px active:bg-muted transition-all select-none min-h-[56px] disabled:opacity-50 disabled:active:translate-y-0"
                   >
                     0
                   </button>
                   <button
                     onClick={handleBackspace}
                     disabled={stage === "verifying"}
-                    className="rounded-[0.3rem] border border-border bg-muted text-muted-foreground shadow-[0_1px_0_rgb(229,229,229)] active:translate-y-px active:shadow-none active:bg-muted transition-all select-none flex items-center justify-center min-h-[56px] disabled:opacity-50"
+                    className="rounded-lg border border-border bg-muted text-muted-foreground active:translate-y-px active:bg-muted transition-all select-none flex items-center justify-center min-h-[56px] disabled:opacity-50"
                   >
                     <svg
                       width="18"
@@ -441,10 +441,10 @@ export function StoreDeviceLock() {
             ) : (
               <div
                 onClick={() => setLocked(false)}
-                className="border-[1.5px] border-foreground rounded-[0.3rem] p-4 sm:p-6 bg-foreground text-background cursor-pointer"
+                className="border-[1.5px] border-foreground rounded-lg p-4 sm:p-6 bg-foreground text-background cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[0.3rem] bg-emerald-500 flex items-center justify-center">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
                     <svg
                       width="14"
                       height="14"

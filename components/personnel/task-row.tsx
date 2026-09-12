@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { hapticLight } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Label } from "@/components/ui/label";
+import { STATUS_TONE_CLASSES, STATUS_TONE_TEXT } from "@/components/ui/status-badge";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -104,7 +106,7 @@ export function TaskRow({ task, completion, onComplete, onEdit, className }: {
             </div>
           )}
           {done ? (
-            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5 truncate">
+            <div className={cn("text-[11px] mt-0.5 truncate", STATUS_TONE_TEXT.success)}>
               {t("staffing.roles.doneBy")
                 .replace("{name}", completion.completedByName ?? "—")
                 .replace("{time}", new Date(completion.completedAtMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}
@@ -113,14 +115,14 @@ export function TaskRow({ task, completion, onComplete, onEdit, className }: {
             (task.startTime || task.requiresEvidence) && (
               <div className="flex items-center gap-1.5 mt-1">
                 {task.startTime && (
-                  <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-muted text-muted-foreground text-[10px] font-mono tabular-nums">
+                  <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded bg-muted text-muted-foreground text-[10px] font-mono tabular-nums">
                     <Clock className="h-2.5 w-2.5" />
                     {task.startTime}
                     {task.endTime ? `–${task.endTime}` : ""}
                   </span>
                 )}
                 {task.requiresEvidence && (
-                  <span className="inline-flex items-center gap-1 h-4 px-1.5 rounded-[0.25rem] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-mono">
+                  <span className={cn("inline-flex items-center gap-1 h-4 px-1.5 rounded border text-[10px] font-mono", STATUS_TONE_CLASSES.warning)}>
                     <ImageIcon className="h-2.5 w-2.5" />
                     {t("myTasks.evidenceBadge")}
                   </span>
@@ -131,14 +133,16 @@ export function TaskRow({ task, completion, onComplete, onEdit, className }: {
         </div>
       </button>
       {onEdit && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-label={t("staffing.roles.editTask")}
           onClick={onEdit}
-          className="h-8 w-8 mr-1.5 shrink-0 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-muted active:bg-muted"
+          className="mr-1.5 text-muted-foreground"
         >
           <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </button>
+        </Button>
       )}
       {viewOpen && completion && (
         <TaskCompletionViewDialog
@@ -167,7 +171,7 @@ export function TaskCompletionViewDialog({ task, completion, onClose }: {
         <DynamicUIElementHeader>
           <DynamicUIElementTitle mobileTitle={task.title}>{task.title}</DynamicUIElementTitle>
           <DynamicUIElementDescription>
-            <span className="text-emerald-700 dark:text-emerald-400">
+            <span className={STATUS_TONE_TEXT.success}>
               {t("staffing.roles.doneBy")
                 .replace("{name}", completion.completedByName ?? "—")
                 .replace("{time}", new Date(completion.completedAtMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}
@@ -176,9 +180,7 @@ export function TaskCompletionViewDialog({ task, completion, onClose }: {
         </DynamicUIElementHeader>
         <div className="space-y-3 p-4">
           {evidence.length === 0 && !note && (
-            <p className="text-[12.5px] text-muted-foreground py-3 text-center border border-dashed border-border rounded-[0.3rem]">
-              {t("myTasks.noSubmission")}
-            </p>
+            <EmptyState compact description={t("myTasks.noSubmission")} />
           )}
           {evidence.length > 0 && (
             <div>
@@ -194,11 +196,11 @@ export function TaskCompletionViewDialog({ task, completion, onClose }: {
                       <div key={item.url} className="relative aspect-square">
                         <video
                           src={item.url}
-                          className="w-full h-full object-cover rounded-[0.2rem] border border-border bg-black"
+                          className="w-full h-full object-cover rounded-lg border border-border bg-black"
                           playsInline
                           controls
                         />
-                        <span className="absolute bottom-1 left-1 h-4 w-4 rounded-[0.15rem] bg-black/60 text-white inline-flex items-center justify-center pointer-events-none">
+                        <span className="absolute bottom-1 left-1 h-4 w-4 rounded bg-black/60 text-white inline-flex items-center justify-center pointer-events-none">
                           <Film className="h-2.5 w-2.5" />
                         </span>
                       </div>
@@ -217,7 +219,7 @@ export function TaskCompletionViewDialog({ task, completion, onClose }: {
                       <img
                         src={item.url}
                         alt={t("myTasks.evidenceAlt")}
-                        className="w-full h-full object-cover rounded-[0.2rem] border border-border"
+                        className="w-full h-full object-cover rounded-lg border border-border"
                       />
                     </a>
                   );
@@ -228,7 +230,7 @@ export function TaskCompletionViewDialog({ task, completion, onClose }: {
           {note && (
             <div>
               <Label className="text-[11px]">{t("myTasks.noteLabel")}</Label>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-foreground whitespace-pre-wrap border border-border rounded-[0.3rem] px-2.5 py-2 bg-muted/20">
+              <p className="mt-1 text-[12.5px] leading-relaxed text-foreground whitespace-pre-wrap border border-border rounded-lg px-2.5 py-2 bg-muted/20">
                 {note}
               </p>
             </div>

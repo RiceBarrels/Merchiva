@@ -22,6 +22,8 @@ import type { PageTemplateId } from "@/lib/builder/page-templates";
 import { componentDragState } from "./component-drag-state";
 import { ValuePanel } from "./value-panel";
 import { TokenPanel } from "./token-panel";
+import { pageColor } from "./page-colors";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 interface LeftPanelProps {
   site: Site;
@@ -31,15 +33,6 @@ interface LeftPanelProps {
   onPublish: () => void;
   onAddPage: (name: string, templateId: PageTemplateId) => void;
 }
-
-const PAGE_COLORS = [
-  "bg-blue-600",
-  "bg-emerald-600",
-  "bg-amber-600",
-  "bg-rose-600",
-  "bg-violet-600",
-  "bg-cyan-600",
-];
 
 function DropSection({
   label,
@@ -69,12 +62,10 @@ function DropSection({
           if (draggedNodeId) onDrop(draggedNodeId);
         }}
       >
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
-        <button type="button" onClick={onAdd} className="text-muted-foreground hover:text-foreground">
+        <Eyebrow as="span">{label}</Eyebrow>
+        <Button type="button" variant="ghost" size="icon-xs" onClick={onAdd} className="text-muted-foreground">
           <Plus className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       </div>
       <div
         className={cn("flex-1 overflow-y-scroll px-1 pb-2", over && "bg-accent/30")}
@@ -189,14 +180,12 @@ export function LeftPanel({
       {/* Webpages section */}
       <div>
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t("builder.leftPanel.webpages")}
-          </span>
+          <Eyebrow as="span">{t("builder.leftPanel.webpages")}</Eyebrow>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-xs"
             onClick={() => setIsAddingPage(true)}
-            className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent"
+            className="text-muted-foreground"
           >
             <Plus className="h-3.5 w-3.5" />
           </Button>
@@ -209,7 +198,7 @@ export function LeftPanel({
               <div
                 key={page.id}
                 className={cn(
-                  "group flex w-full items-center gap-2 rounded-[0.3rem] border border-transparent p-2 text-left cursor-pointer",
+                  "group flex w-full items-center gap-2 rounded border border-transparent p-2 text-left cursor-pointer",
                   isActive
                     ? "border-border bg-accent text-foreground"
                     : "text-foreground hover:bg-accent/60"
@@ -218,8 +207,8 @@ export function LeftPanel({
               >
                 <div
                   className={cn(
-                    "h-6 w-8 shrink-0 rounded-[0.2rem]",
-                    PAGE_COLORS[i % PAGE_COLORS.length]
+                    "h-6 w-8 shrink-0 rounded",
+                    pageColor(i)
                   )}
                 />
                 <span className="flex-1 truncate text-xs">{page.name}</span>
@@ -252,10 +241,8 @@ export function LeftPanel({
           className="flex w-full items-center justify-between px-3 py-2 hover:bg-accent/50 transition-colors"
           onClick={() => setComponentsOpen(!componentsOpen)}
         >
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t("builder.leftPanel.components")}
-          </span>
-          <span className="text-[10px] text-muted-foreground">{siteComponents.length}</span>
+          <Eyebrow as="span">{t("builder.leftPanel.components")}</Eyebrow>
+          <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{siteComponents.length}</span>
         </button>
 
         {componentsOpen && (
@@ -287,7 +274,7 @@ export function LeftPanel({
                     onDragEnd={() => {
                       componentDragState.payload = null;
                     }}
-                    className="group flex items-center gap-2 rounded-[0.3rem] border border-transparent px-2 py-1.5 hover:border-border hover:bg-accent/60 cursor-grab active:cursor-grabbing"
+                    className="group flex items-center gap-2 rounded border border-transparent px-2 py-1.5 hover:border-border hover:bg-accent/60 cursor-grab active:cursor-grabbing"
                     onClick={() => insertComponent(comp.elementData, { id: compIdStr, name: comp.name })}
                     title={t("builder.leftPanel.insertHint")}
                   >

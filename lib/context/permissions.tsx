@@ -16,6 +16,9 @@ export interface PermissionsContextValue {
   organizations: OrgSummary[];
   currentOrg: OrgSummary | null;
   switchOrg: (orgId: string) => Promise<void>;
+  // Soft switch used by /choose: re-scopes the layout's auth state in place
+  // (no reload). Falls back to switchOrg when the layout didn't wire it.
+  pickOrg: (orgId: string) => void;
   // ─── Multi-store share group ──────────────────────────────────────────────
   // The "root" of the current org's parent/child tree. Equals organizationId
   // when the current org is a root (top-level) store, or the parent id when
@@ -43,6 +46,7 @@ const PermissionsContext = createContext<PermissionsContextValue>({
   organizations: [],
   currentOrg: null,
   switchOrg: async () => {},
+  pickOrg: () => {},
   rootOrgId: null,
   shareGroupOrgIds: [],
   shareGroupOrgs: [],
@@ -56,6 +60,7 @@ export function PermissionsProvider({
   organizationId,
   organizations,
   currentOrg,
+  onPickOrg,
 }: {
   children: React.ReactNode;
   role: OrgRole;
@@ -63,6 +68,7 @@ export function PermissionsProvider({
   organizationId: string | null;
   organizations: OrgSummary[];
   currentOrg: OrgSummary | null;
+  onPickOrg?: (orgId: string) => void;
 }) {
   const router = useRouter();
   const isOwner = role === "owner";
@@ -92,6 +98,16 @@ export function PermissionsProvider({
     window.location.reload();
   }
 
+  function pickOrg(orgId: string) {
+    if (!orgId || orgId === organizationId) return;
+    if (onPickOrg) {
+      try { localStorage.setItem("active_org_id", orgId); } catch {}
+      onPickOrg(orgId);
+      return;
+    }
+    void switchOrg(orgId);
+  }
+
   const { rootOrgId, shareGroupOrgIds, shareGroupOrgs, isSubStore } = useMemo(() => {
     const root = computeRootOrgId(organizationId, organizations);
     const ids = computeShareGroupOrgIds(organizationId, organizations);
@@ -111,6 +127,7 @@ export function PermissionsProvider({
         organizations,
         currentOrg,
         switchOrg,
+        pickOrg,
         rootOrgId,
         shareGroupOrgIds,
         shareGroupOrgs,

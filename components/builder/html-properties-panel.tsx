@@ -14,6 +14,15 @@ import {
   Unlink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { StatusBadge, STATUS_TONE_CLASSES } from "@/components/ui/status-badge";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { ColorPicker } from "./color-picker";
 import type { HtmlSelectionInfo } from "./html-canvas";
 import type { BuilderAnimation, EntryAnimationType } from "@/lib/builder/animation";
@@ -245,11 +254,7 @@ export function HtmlPropertiesPanel({ selected, html, onHtmlChange, site, active
       return <PageInspector key={activePage.id} site={site} page={activePage} />;
     }
     return (
-      <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-        <div className="text-[12px] text-muted-foreground">
-          Click any element in the preview to edit its properties.
-        </div>
-      </div>
+      <EmptyState compact className="h-full" description="Click any element in the preview to edit its properties." />
     );
   }
   // Keying on selector remounts the inspector for a fresh selection — that
@@ -340,28 +345,30 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
       {/* Header */}
       <div className="border-b border-border px-3 py-2 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 h-5 px-1.5 rounded-[0.2rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 font-mono text-[10.5px] font-medium text-stone-700 dark:text-stone-300">
+          <StatusBadge tone="neutral" size="xs" className="h-5 font-mono normal-case tracking-normal">
             &lt;{selected.tag}&gt;
-          </span>
+          </StatusBadge>
           {attrs.id && (
-            <span className="font-mono text-[10px] text-rose-600 dark:text-rose-400 truncate">
+            <span className="font-mono text-[10px] text-muted-foreground truncate">
               #{attrs.id}
             </span>
           )}
           {attrs.class && (
-            <span className="font-mono text-[10px] text-sky-600 dark:text-sky-400 truncate" title={attrs.class}>
+            <span className="font-mono text-[10px] text-muted-foreground truncate" title={attrs.class}>
               .{attrs.class.split(/\s+/)[0]}
               {attrs.class.split(/\s+/).length > 1 && "…"}
             </span>
           )}
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            size="icon-xs"
             onClick={() => onHtmlChange(deleteSelected(html, selected.selector))}
             title="Delete element"
-            className="ml-auto h-5 w-5 rounded-[0.2rem] inline-flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+            className="ml-auto h-5 w-5"
           >
             <Trash2 className="h-3 w-3" />
-          </button>
+          </Button>
         </div>
         <div className="font-mono text-[9.5px] text-muted-foreground truncate mt-1" title={selected.selector}>
           {selected.selector}
@@ -607,7 +614,7 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
                 max={100}
                 value={Math.round(parseFloat(styles.opacity ?? "1") * 100)}
                 onChange={(e) => commitOne("opacity", String(Number(e.target.value) / 100))}
-                className="flex-1 accent-stone-700 dark:accent-stone-300"
+                className="flex-1 accent-foreground"
               />
               <span className="font-mono text-[10.5px] text-muted-foreground w-9 text-right tabular-nums">
                 {Math.round(parseFloat(styles.opacity ?? "1") * 100)}%
@@ -624,7 +631,7 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
                     type="button"
                     onClick={() => commitOne("boxShadow", p.value)}
                     className={cn(
-                      "h-6 px-1.5 rounded-[0.2rem] border text-[10px] font-mono transition-colors",
+                      "h-6 px-1.5 rounded border text-[10px] font-mono transition-colors",
                       active
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted",
@@ -637,19 +644,26 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
             </div>
           </Row>
           <Row label="Cursor">
-            <select
+            <Select
               value={styles.cursor ?? ""}
-              onChange={(e) => commitOne("cursor", e.target.value)}
-              className="h-[26px] w-full rounded-[4px] border border-border bg-background text-[11.5px] font-mono px-1.5 outline-none focus:border-stone-400"
+              onValueChange={(v) => {
+                if (v == null) return;
+                commitOne("cursor", v);
+              }}
             >
-              <option value="">default</option>
-              <option value="pointer">pointer</option>
-              <option value="text">text</option>
-              <option value="grab">grab</option>
-              <option value="not-allowed">not-allowed</option>
-              <option value="wait">wait</option>
-              <option value="crosshair">crosshair</option>
-            </select>
+              <SelectTrigger size="sm" className="h-[26px] w-full px-1.5 text-[11.5px] font-mono">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="">default</SelectItem>
+                  <SelectItem value="pointer">pointer</SelectItem>
+                  <SelectItem value="text">text</SelectItem>
+                  <SelectItem value="grab">grab</SelectItem>
+                  <SelectItem value="not-allowed">not-allowed</SelectItem>
+                  <SelectItem value="wait">wait</SelectItem>
+                  <SelectItem value="crosshair">crosshair</SelectItem>
+              </SelectContent>
+            </Select>
           </Row>
         </Section>
 
@@ -671,14 +685,16 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
                   mono
                 />
                 <TextInput value={value} onChange={(v) => commitOne(key, v)} placeholder="value" mono />
-                <button
+                <Button
                   type="button"
+                  variant="destructive"
+                  size="icon-xs"
                   onClick={() => commitOne(key, "")}
-                  className="h-[26px] w-[22px] rounded-[4px] inline-flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                  className="h-[26px] w-[22px]"
                   title="Remove"
                 >
                   <X className="h-3 w-3" />
-                </button>
+                </Button>
               </div>
             ))}
             <div className="grid grid-cols-[1fr_1fr_22px] items-center gap-1 pt-1">
@@ -700,7 +716,7 @@ function Inspector({ selected, html, onHtmlChange }: HtmlPropertiesPanelProps & 
                 type="button"
                 onClick={addCustomProperty}
                 disabled={!newCustomKey.trim() || !newCustomValue.trim()}
-                className="h-[26px] w-[22px] rounded-[4px] inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                className="h-[26px] w-[22px] rounded inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
                 title="Add property"
               >
                 <Plus className="h-3 w-3" />
@@ -802,9 +818,9 @@ function PageInspector({ site, page }: { site: Site; page: SitePage }) {
       {/* Header */}
       <div className="border-b border-border px-3 py-2 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 h-5 px-1.5 rounded-[0.2rem] bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 font-mono text-[10.5px] font-medium text-stone-700 dark:text-stone-300">
+          <StatusBadge tone="neutral" size="xs" className="h-5 font-mono">
             PAGE
-          </span>
+          </StatusBadge>
           <span className="font-mono text-[10.5px] text-foreground truncate">{page.name}</span>
           <span className="font-mono text-[10px] text-muted-foreground truncate">/{page.slug}</span>
         </div>
@@ -910,14 +926,12 @@ function PageInspector({ site, page }: { site: Site; page: SitePage }) {
             {PLUGIN_LABELS.map((p) => {
               const enabled = Boolean(site.features?.[p.key]);
               return (
-                <button
+                <label
                   key={p.key}
-                  type="button"
-                  onClick={() => commitSite({ features: { [p.key]: !enabled } as Partial<SiteFeatures> })}
                   className={cn(
-                    "w-full flex items-center justify-between rounded-[4px] border px-2 py-1.5 text-left transition-colors",
+                    "w-full flex cursor-pointer items-center justify-between rounded border px-2 py-1.5 text-left transition-colors",
                     enabled
-                      ? "border-stone-800 dark:border-stone-100 bg-stone-50 dark:bg-stone-900"
+                      ? "border-foreground bg-muted/40"
                       : "border-border hover:bg-muted/60",
                   )}
                 >
@@ -925,20 +939,12 @@ function PageInspector({ site, page }: { site: Site; page: SitePage }) {
                     <div className="text-[11.5px] font-medium text-foreground">{p.label}</div>
                     <div className="text-[10px] text-muted-foreground truncate">{p.description}</div>
                   </div>
-                  <span
-                    className={cn(
-                      "h-4 w-7 rounded-full relative shrink-0 transition-colors",
-                      enabled ? "bg-stone-800 dark:bg-stone-100" : "bg-stone-300 dark:bg-stone-700",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "absolute top-0.5 h-3 w-3 rounded-full bg-white transition-[left]",
-                        enabled ? "left-[14px]" : "left-0.5",
-                      )}
-                    />
-                  </span>
-                </button>
+                  <Switch
+                    size="sm"
+                    checked={enabled}
+                    onCheckedChange={() => commitSite({ features: { [p.key]: !enabled } as Partial<SiteFeatures> })}
+                  />
+                </label>
               );
             })}
           </div>
@@ -972,18 +978,18 @@ function PageInspector({ site, page }: { site: Site; page: SitePage }) {
             />
           </Row>
           <Row label="Published">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
               onClick={() => commitSite({ published: !site.published })}
               className={cn(
-                "h-[24px] w-full rounded-[4px] border text-[11px] font-medium transition-colors",
-                site.published
-                  ? "border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted",
+                "w-full text-[11px]",
+                site.published ? STATUS_TONE_CLASSES.success : "text-muted-foreground",
               )}
             >
               {site.published ? "Published" : "Draft"}
-            </button>
+            </Button>
           </Row>
         </Section>
       </div>
@@ -1006,7 +1012,7 @@ function CommitInput({
   mono?: boolean;
 }) {
   return (
-    <input
+    <Input
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => onCommit(value)}
@@ -1015,7 +1021,7 @@ function CommitInput({
       }}
       placeholder={placeholder}
       className={cn(
-        "w-full h-[26px] px-2 text-[11.5px] border border-border rounded-[4px] bg-background text-foreground outline-none focus:border-stone-400 dark:focus:border-stone-500 placeholder:text-stone-400",
+        "h-[26px] px-2 text-[11.5px] md:text-[11.5px]",
         mono && "font-mono",
       )}
     />
@@ -1034,13 +1040,13 @@ function CommitTextarea({
   placeholder?: string;
 }) {
   return (
-    <textarea
+    <Textarea
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => onCommit(value)}
       rows={2}
       placeholder={placeholder}
-      className="w-full px-2 py-1.5 text-[11.5px] border border-border rounded-[4px] bg-background text-foreground outline-none focus:border-stone-400 dark:focus:border-stone-500 placeholder:text-stone-400 resize-y min-h-[44px]"
+      className="min-h-[44px] resize-y px-2 py-1.5 text-[11.5px] md:text-[11.5px]"
     />
   );
 }
@@ -1070,9 +1076,7 @@ function Section({
             !open && "-rotate-90",
           )}
         />
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground font-medium">
-          {label}
-        </span>
+        <Eyebrow as="span" size="xs">{label}</Eyebrow>
       </button>
       {open && <div className="px-3 pb-2.5 space-y-1.5">{children}</div>}
     </div>
@@ -1081,10 +1085,9 @@ function Section({
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[56px,1fr] items-center gap-2">
-      <span className="text-[10.5px] text-muted-foreground">{label}</span>
-      <div className="min-w-0">{children}</div>
-    </div>
+    <Field layout="inline" label={label}>
+      {children}
+    </Field>
   );
 }
 
@@ -1107,7 +1110,7 @@ function TextInput({
 }) {
   const active = tokens ? tokenFromValue(value) : null;
   const input = (
-    <input
+    <Input
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => {
@@ -1118,9 +1121,9 @@ function TextInput({
       }}
       placeholder={placeholder}
       className={cn(
-        "w-full h-[26px] px-2 text-[11.5px] border border-border rounded-[4px] bg-background text-foreground outline-none focus:border-stone-400 dark:focus:border-stone-500 placeholder:text-stone-400",
+        "h-[26px] px-2 text-[11.5px] md:text-[11.5px]",
         mono && "font-mono",
-        active && "font-mono text-[10.5px]",
+        active && "font-mono text-[10.5px] md:text-[10.5px]",
       )}
     />
   );
@@ -1183,16 +1186,16 @@ function TokenPickerButton({
         onClick={() => setOpen((v) => !v)}
         title={active ? `${active.label} · var(${active.cssVar})` : t("builder.tokens.pickToken")}
         className={cn(
-          "h-[26px] w-[26px] inline-flex items-center justify-center border rounded-[4px] text-[11px] font-mono transition-colors",
+          "h-[26px] w-[26px] inline-flex items-center justify-center border rounded text-[11px] font-mono transition-colors",
           active
-            ? "border-foreground bg-stone-200 dark:bg-stone-700 text-foreground"
+            ? "border-foreground bg-accent text-foreground"
             : "border-border text-muted-foreground hover:bg-muted",
         )}
       >
         $
       </button>
       {open && (
-        <div className="absolute right-0 top-[28px] z-[9999] min-w-[160px] rounded-[4px] border border-border bg-popover shadow-lg py-1">
+        <div className="absolute right-0 top-[28px] z-[9999] min-w-[160px] rounded-lg border border-border bg-popover shadow-md py-1">
           {merged.map((tok) => {
             const isActive = active?.cssVar === tok.cssVar;
             return (
@@ -1226,7 +1229,7 @@ function SegmentedControl<T extends string>({
   options: Array<{ value: T; label?: string; icon?: React.ReactNode }>;
 }) {
   return (
-    <div className="inline-flex w-full rounded-[4px] border border-border bg-background overflow-hidden">
+    <div className="inline-flex w-full rounded-lg border border-border bg-background overflow-hidden">
       {options.map((opt) => {
         const active = value === opt.value;
         return (
@@ -1257,13 +1260,13 @@ function ColorInput({ value, onChange }: { value: string; onChange: (next: strin
         value={value}
         onChange={onChange}
         showAlpha
-        className="h-[26px] w-[28px] rounded-[4px]"
+        className="h-[26px] w-[28px] rounded"
       />
-      <input
+      <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="#000 / rgb / gradient"
-        className="flex-1 h-[26px] px-2 text-[11.5px] font-mono border border-border rounded-[4px] bg-background text-foreground outline-none focus:border-stone-400 dark:focus:border-stone-500 placeholder:text-stone-400"
+        className="h-[26px] flex-1 px-2 font-mono text-[11.5px] md:text-[11.5px]"
       />
     </div>
   );
@@ -1291,9 +1294,9 @@ function SpacingBox({
           onClick={() => onLinkedChange(!linked)}
           title={linked ? "Linked — edits all sides at once" : "Independent sides"}
           className={cn(
-            "h-[18px] px-1 rounded-[3px] inline-flex items-center gap-1 text-[9.5px] font-medium transition-colors",
+            "h-[18px] px-1 rounded inline-flex items-center gap-1 text-[9.5px] font-medium transition-colors",
             linked
-              ? "bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-200"
+              ? "bg-accent text-foreground"
               : "text-muted-foreground hover:bg-muted",
           )}
         >
@@ -1306,7 +1309,7 @@ function SpacingBox({
         <SmallNumInput value={values.top} onChange={(v) => onChange("top", v)} placeholder="T" />
         <div />
         <SmallNumInput value={values.left} onChange={(v) => onChange("left", v)} placeholder="L" />
-        <div className="h-[26px] rounded-[4px] border border-dashed border-border bg-stone-50 dark:bg-stone-900/50 flex items-center justify-center font-mono text-[9px] text-muted-foreground uppercase">
+        <div className="h-[26px] rounded border border-dashed border-border bg-muted flex items-center justify-center font-mono text-[9px] text-muted-foreground uppercase">
           {label[0]}
         </div>
         <SmallNumInput value={values.right} onChange={(v) => onChange("right", v)} placeholder="R" />
@@ -1328,11 +1331,11 @@ function SmallNumInput({
   placeholder?: string;
 }) {
   return (
-    <input
+    <Input
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full h-[26px] px-1 text-center text-[11px] font-mono border border-border rounded-[4px] bg-background text-foreground outline-none focus:border-stone-400 dark:focus:border-stone-500 placeholder:text-stone-400"
+      className="h-[26px] px-1 text-center font-mono text-[11px] tabular-nums md:text-[11px]"
     />
   );
 }
@@ -1407,12 +1410,13 @@ export function AnimationEditor({
     <div className="space-y-3">
       {/* Entry */}
       <div className="space-y-1.5">
-        <p className="text-[9.5px] font-medium uppercase tracking-wider text-muted-foreground/70">Entry</p>
+        <Eyebrow size="xs">Entry</Eyebrow>
         <Row label="Type">
-          <select
+          <Select
             value={entry.type}
-            onChange={(e) => {
-              const type = e.target.value as EntryAnimationType;
+            onValueChange={(v) => {
+              if (v == null) return;
+              const type = v as EntryAnimationType;
               update({
                 entry:
                   type === "none"
@@ -1425,26 +1429,35 @@ export function AnimationEditor({
                       },
               });
             }}
-            className="h-[26px] w-full rounded-[4px] border border-border bg-background text-[11.5px] font-mono px-1.5 outline-none focus:border-stone-400"
           >
-            {ENTRY_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+            <SelectTrigger size="sm" className="h-[26px] w-full px-1.5 text-[11.5px] font-mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ENTRY_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Row>
         {entry.type !== "none" && (
           <>
             <Row label="Trigger">
-              <select
+              <Select
                 value={entry.trigger ?? "inView"}
-                onChange={(e) =>
-                  update({ entry: { ...entry, trigger: e.target.value as "immediate" | "inView" } })
-                }
-                className="h-[26px] w-full rounded-[4px] border border-border bg-background text-[11.5px] font-mono px-1.5 outline-none focus:border-stone-400"
+                onValueChange={(v) => {
+                  if (v == null) return;
+                  update({ entry: { ...entry, trigger: v as "immediate" | "inView" } });
+                }}
               >
-                <option value="inView">On scroll into view</option>
-                <option value="immediate">On page load</option>
-              </select>
+                <SelectTrigger size="sm" className="h-[26px] w-full px-1.5 text-[11.5px] font-mono">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inView">On scroll into view</SelectItem>
+                  <SelectItem value="immediate">On page load</SelectItem>
+                </SelectContent>
+              </Select>
             </Row>
             <Row label="Duration">
               <TextInput
@@ -1476,7 +1489,7 @@ export function AnimationEditor({
 
       {/* Hover */}
       <div className="space-y-1.5">
-        <p className="text-[9.5px] font-medium uppercase tracking-wider text-muted-foreground/70">Hover</p>
+        <Eyebrow size="xs">Hover</Eyebrow>
         <Row label="Scale">
           <TextInput
             value={hoverCfg.scale != null ? String(hoverCfg.scale) : ""}
@@ -1513,7 +1526,7 @@ export function AnimationEditor({
 
       {/* Tap */}
       <div className="space-y-1.5">
-        <p className="text-[9.5px] font-medium uppercase tracking-wider text-muted-foreground/70">Tap</p>
+        <Eyebrow size="xs">Tap</Eyebrow>
         <Row label="Scale">
           <TextInput
             value={tapCfg.scale != null ? String(tapCfg.scale) : ""}

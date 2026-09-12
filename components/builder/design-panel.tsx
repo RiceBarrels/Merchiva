@@ -60,6 +60,11 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Field as UiField } from "@/components/ui/field";
+import { EmptyState as UiEmptyState } from "@/components/ui/empty-state";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Textarea } from "@/components/ui/textarea";
+import type { LucideIcon } from "lucide-react";
 
 // ─── Deferred input (only commits on blur or Enter) ─────────────────────────
 
@@ -156,23 +161,21 @@ function Section({
 // ─── Field components ───────────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal">{label}</Label>
-      {children}
-    </div>
-  );
+  return <UiField label={label}>{children}</UiField>;
 }
 
 function FieldRow({ label, icon: Icon, children }: { label: string; icon?: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1">
-        {Icon && <Icon className="h-3 w-3 text-muted-foreground" />}
-        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-normal">{label}</Label>
-      </div>
+    <UiField
+      label={
+        <>
+          {Icon && <Icon className="h-3 w-3 text-muted-foreground" />}
+          {label}
+        </>
+      }
+    >
       {children}
-    </div>
+    </UiField>
   );
 }
 
@@ -422,7 +425,7 @@ function FieldCheckbox({ label, checked, onChange }: { label: string; checked: b
   const id = `cb-${label.replace(/\s+/g, "-").toLowerCase()}`;
   return (
     <div className="flex items-center gap-2">
-      <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} className="h-3.5 w-3.5 rounded-[0.2rem]" />
+      <Checkbox id={id} checked={checked} onCheckedChange={(v) => onChange(v === true)} className="h-3.5 w-3.5" />
       <Label htmlFor={id} className="text-[11px] text-muted-foreground font-normal cursor-pointer">{label}</Label>
     </div>
   );
@@ -542,24 +545,17 @@ function ToggleGroup<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex gap-0.5 rounded-[0.3rem] border border-border p-0.5">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          title={opt.label}
-          className={cn(
-            "flex flex-1 items-center justify-center gap-1 rounded-[0.2rem] py-1 text-[10px] transition-colors",
-            value === opt.value
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}
-          onClick={() => onChange(opt.value)}
-        >
-          <opt.icon className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{opt.label}</span>
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      size="sm"
+      fullWidth
+      value={value}
+      onChange={onChange}
+      options={options.map((opt) => ({
+        value: opt.value,
+        icon: opt.icon as LucideIcon,
+        label: <span className="hidden sm:inline" title={opt.label}>{opt.label}</span>,
+      }))}
+    />
   );
 }
 
@@ -663,11 +659,7 @@ function InteractionsSection({
 // ─── Empty state ────────────────────────────────────────────────────────────
 
 function EmptyState() {
-  return (
-    <div className="flex h-full items-center justify-center p-6">
-      <p className="text-center text-xs text-muted-foreground">Select an element to edit its properties.</p>
-    </div>
-  );
+  return <UiEmptyState compact className="h-full" description="Select an element to edit its properties." />;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -805,12 +797,12 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
             ]}
             onChange={(v) => setProp("tag", v)}
           />
-          <textarea
+          <Textarea
             value={(props.content as string) || ""}
             onChange={(e) => setProp("content", e.target.value)}
             rows={3}
             placeholder="Type your text..."
-            className="flex w-full rounded-[0.3rem] border border-input bg-transparent px-2 py-1.5 text-xs ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+            className="min-h-0 resize-y text-xs md:text-xs"
           />
         </Section>
       )}
@@ -1010,24 +1002,23 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
           <Field label="Alignment">
             <div className="space-y-1">
               {/* Horizontal alignment */}
-              <div className="flex gap-0.5 rounded-[0.3rem] border border-border p-0.5">
-                {[
-                  { value: "left", icon: AlignLeft, label: "Align left" },
-                  { value: "center", icon: AlignCenter, label: "Align horizontal centers" },
-                  { value: "right", icon: AlignRight, label: "Align right" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    title={opt.label}
-                    className="flex flex-1 items-center justify-center rounded-[0.2rem] py-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                    onClick={() => {
+              <SegmentedControl
+                size="sm"
+                fullWidth
+                aria-label="Horizontal alignment"
+                value=""
+                options={[
+                  { value: "left", icon: AlignLeft, label: <span className="sr-only">Align left</span> },
+                  { value: "center", icon: AlignCenter, label: <span className="sr-only">Align horizontal centers</span> },
+                  { value: "right", icon: AlignRight, label: <span className="sr-only">Align right</span> },
+                ] as { value: string; icon: LucideIcon; label: React.ReactNode }[]}
+                onChange={(v) => {
                       const parentWidth = (dom?.parentElement?.getBoundingClientRect().width) || 0;
                       const selfWidth = dom?.getBoundingClientRect().width || 0;
-                      if (opt.value === "left") {
+                      if (v === "left") {
                         setStyle("left", "0px");
                         setStyle("right", "");
-                      } else if (opt.value === "right") {
+                      } else if (v === "right") {
                         setStyle("right", "0px");
                         setStyle("left", "");
                       } else {
@@ -1036,31 +1027,26 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
                         setStyle("left", `${left}px`);
                         setStyle("right", "");
                       }
-                    }}
-                  >
-                    <opt.icon className="h-3.5 w-3.5" />
-                  </button>
-                ))}
-              </div>
+                }}
+              />
               {/* Vertical alignment */}
-              <div className="flex gap-0.5 rounded-[0.3rem] border border-border p-0.5">
-                {[
-                  { value: "top", icon: AlignStartHorizontal, label: "Align top" },
-                  { value: "middle", icon: AlignCenterHorizontal, label: "Align vertical centers" },
-                  { value: "bottom", icon: AlignEndHorizontal, label: "Align bottom" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    title={opt.label}
-                    className="flex flex-1 items-center justify-center rounded-[0.2rem] py-1 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                    onClick={() => {
+              <SegmentedControl
+                size="sm"
+                fullWidth
+                aria-label="Vertical alignment"
+                value=""
+                options={[
+                  { value: "top", icon: AlignStartHorizontal, label: <span className="sr-only">Align top</span> },
+                  { value: "middle", icon: AlignCenterHorizontal, label: <span className="sr-only">Align vertical centers</span> },
+                  { value: "bottom", icon: AlignEndHorizontal, label: <span className="sr-only">Align bottom</span> },
+                ] as { value: string; icon: LucideIcon; label: React.ReactNode }[]}
+                onChange={(v) => {
                       const parentHeight = (dom?.parentElement?.getBoundingClientRect().height) || 0;
                       const selfHeight = dom?.getBoundingClientRect().height || 0;
-                      if (opt.value === "top") {
+                      if (v === "top") {
                         setStyle("top", "0px");
                         setStyle("bottom", "");
-                      } else if (opt.value === "bottom") {
+                      } else if (v === "bottom") {
                         setStyle("bottom", "0px");
                         setStyle("top", "");
                       } else {
@@ -1068,12 +1054,8 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
                         setStyle("top", `${top}px`);
                         setStyle("bottom", "");
                       }
-                    }}
-                  >
-                    <opt.icon className="h-3.5 w-3.5" />
-                  </button>
-                ))}
-              </div>
+                }}
+              />
             </div>
           </Field>
         )}
@@ -1148,7 +1130,7 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
 
         <button
           className={cn(
-            "flex items-center gap-1.5 text-[11px] rounded-[0.3rem] px-2 py-1 transition-colors",
+            "flex items-center gap-1.5 text-[11px] rounded px-2 py-1 transition-colors",
             lockAspect ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
           )}
           onClick={() => setLockAspect(!lockAspect)}
@@ -1296,7 +1278,7 @@ export function DesignPanel({ pages = [] }: { pages?: SitePage[] }) {
                   <button
                     key={p.label}
                     className={cn(
-                      "flex-1 rounded-[0.3rem] border border-border py-1 text-[10px] font-medium transition-colors",
+                      "flex-1 rounded border border-border py-1 text-[10px] font-medium transition-colors",
                       style[shadowProp] === p.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
                     )}
                     onClick={() => setStyle(shadowProp, p.value)}

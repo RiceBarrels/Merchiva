@@ -117,7 +117,7 @@ export function FloatingNavButton({
           <>
             <motion.button
               onClick={handleClick}
-              className="fixed left-0 p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999 shadow-[0_4px_14px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)]"
+              className="fixed left-0 p-3 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 m-4 z-999"
               style={{ top: buttonTop, zIndex }}
               initial={{ opacity: 0, scale: 0, rotate: -180 }}
               animate={{
@@ -145,7 +145,7 @@ export function FloatingNavButton({
                 exit={{ opacity: 0, scale: 0.3, x: -30 }}
                 transition={dialogSwipe > 0 ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 400, delay: 0.05 }}
               >
-                <div className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)]">
+                <div className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
                   {title}
                 </div>
               </motion.div>
@@ -229,7 +229,7 @@ export function FloatingNavButton({
             exit={{ opacity: 0, scale: 0.3, x: -30 }}
             transition={pillTransition}
           >
-            <div className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.2)]">
+            <div className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold">
               {title}
             </div>
           </motion.div>

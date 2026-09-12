@@ -5,6 +5,9 @@ import { Send, Sparkles, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { prettyPrintHtml } from "@/lib/builder/html-format";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Textarea } from "@/components/ui/textarea";
 import { useT } from "@/lib/i18n/context";
 import { usePermissions } from "@/lib/context/permissions";
 
@@ -44,11 +47,7 @@ export function DesignMerchivaChat(props: DesignMerchivaChatProps) {
   const t = useT();
   if (!(isOwner || can("merchiva", "view"))) {
     return (
-      <div className="flex-1 h-full flex items-center justify-center p-6 text-center bg-background">
-        <p className="text-[12.5px] text-muted-foreground max-w-[280px] leading-relaxed">
-          {t("merchiva.noAccess")}
-        </p>
-      </div>
+      <EmptyState compact className="h-full flex-1 bg-background" description={t("merchiva.noAccess")} />
     );
   }
   return <DesignMerchivaChatInner {...props} />;
@@ -180,24 +179,26 @@ function DesignMerchivaChatInner({
     <div className="flex h-full w-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2 shrink-0">
-        <div className="h-6 w-6 rounded-[0.3rem] bg-foreground text-background flex items-center justify-center shrink-0">
+        <div className="h-6 w-6 rounded bg-foreground text-background flex items-center justify-center shrink-0">
           <Sparkles className="h-3.5 w-3.5" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[12px] font-semibold truncate">Mr. Merchiva</div>
-          <div className="text-[10.5px] text-muted-foreground font-mono truncate">
+          <div className="text-[10.5px] text-muted-foreground font-mono tabular-nums truncate">
             {width} × {height}
           </div>
         </div>
         {messages.length > 0 && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             onClick={clearConversation}
             title={t("design.chat.clearTitle")}
-            className="h-6 w-6 rounded-[0.3rem] text-muted-foreground hover:text-foreground hover:bg-muted inline-flex items-center justify-center"
+            className="text-muted-foreground"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -227,7 +228,7 @@ function DesignMerchivaChatInner({
       {/* Composer */}
       <div className="border-t border-border p-2 shrink-0">
         <div className="flex items-end gap-1.5">
-          <textarea
+          <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -239,17 +240,18 @@ function DesignMerchivaChatInner({
             placeholder={t("design.chat.placeholder")}
             rows={2}
             disabled={sending}
-            className="flex-1 resize-none rounded-[0.3rem] border border-border bg-background px-2 py-1.5 text-[12.5px] outline-none focus:ring-1 focus:ring-ring min-h-[44px] max-h-[120px]"
+            className="min-h-[44px] max-h-[120px] flex-1 resize-none px-2 py-1.5 text-[12.5px] md:text-[12.5px]"
           />
-          <button
+          <Button
             type="button"
+            size="icon"
             onClick={send}
             disabled={sending || !draft.trim()}
-            className="h-[44px] w-9 rounded-[0.3rem] bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 inline-flex items-center justify-center shrink-0"
+            className="h-[44px] w-9 shrink-0"
             title={t("design.chat.sendTitle")}
           >
             {sending ? <Spinner size={16} /> : <Send className="h-4 w-4" />}
-          </button>
+          </Button>
         </div>
         <div className="text-[10px] text-muted-foreground mt-1 ml-1">
           {t("design.chat.sendHint")}
@@ -266,7 +268,7 @@ function MessageBubble({ msg }: { msg: DesignChatMessage }) {
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-[0.3rem] bg-foreground text-background px-2.5 py-1.5 text-[12px] whitespace-pre-wrap break-words">
+        <div className="max-w-[85%] rounded-lg bg-foreground text-background px-2.5 py-1.5 text-[12px] whitespace-pre-wrap break-words">
           {msg.content}
         </div>
       </div>
@@ -274,7 +276,7 @@ function MessageBubble({ msg }: { msg: DesignChatMessage }) {
   }
   if (msg.error) {
     return (
-      <div className="rounded-[0.3rem] border border-destructive/40 bg-destructive/5 px-2.5 py-1.5 text-[11.5px] text-destructive">
+      <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-2.5 py-1.5 text-[11.5px] text-destructive">
         {msg.error}
       </div>
     );
@@ -283,7 +285,7 @@ function MessageBubble({ msg }: { msg: DesignChatMessage }) {
     <div className="flex flex-col gap-1">
       <div
         className={cn(
-          "max-w-[92%] rounded-[0.3rem] border border-border bg-muted/30 px-2.5 py-1.5 text-[12px] whitespace-pre-wrap break-words",
+          "max-w-[92%] rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-[12px] whitespace-pre-wrap break-words",
           !msg.applied && msg.action && "opacity-60",
         )}
       >

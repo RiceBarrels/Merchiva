@@ -366,7 +366,7 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
         onDrop={handleDrop}
         onDragEnd={handleDragEnd}
         className={cn(
-          "group relative flex h-7 cursor-pointer items-center gap-0.5 rounded-[0.3rem] pr-1 text-xs transition-colors",
+          "group relative flex h-7 cursor-pointer items-center gap-0.5 rounded pr-1 text-xs transition-colors",
           selected
             ? "bg-accent text-accent-foreground"
             : hovered
@@ -386,7 +386,7 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
           <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-primary rounded-full" />
         )}
         {dropPosition === "inside" && (
-          <div className="absolute inset-0 rounded-[0.3rem] border-2 border-primary pointer-events-none" />
+          <div className="absolute inset-0 rounded border-2 border-primary pointer-events-none" />
         )}
 
         {/* Drag handle */}
@@ -412,7 +412,7 @@ function LayerNode({ nodeId, depth, filter = "all" }: LayerNodeProps) {
         <NodeIcon
           className={cn(
             "h-3.5 w-3.5 shrink-0",
-            isComponentNode ? "text-violet-500" : "text-muted-foreground",
+            isComponentNode ? "text-primary" : "text-muted-foreground",
           )}
         />
 

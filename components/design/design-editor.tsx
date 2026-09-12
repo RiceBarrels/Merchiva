@@ -18,12 +18,15 @@ import { HtmlPropertiesPanel } from "@/components/builder/html-properties-panel"
 import { prettyPrintHtml } from "@/lib/builder/html-format";
 import { updateDesign } from "@/lib/spacetimedb/actions";
 import { DESIGN_PRESETS, findPreset, type DesignPreset } from "@/lib/design/presets";
-import { hapticLight } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
 import type { Design } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DesignMerchivaChat } from "./design-merchiva-chat";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DesignEditorProps {
   design: Design;
@@ -496,7 +499,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
   const toolbar = (
     <div className="flex h-10 items-center border-b border-border bg-background text-foreground">
       <Link
-        href="/~/design"
+        href="/manager/design"
         className="flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground border-r border-border"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -506,7 +509,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
       <div className="flex h-full items-center gap-2 px-3 border-r border-border min-w-0">
         <Palette className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
         {nameEditing ? (
-          <input
+          <Input
             autoFocus
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value)}
@@ -515,34 +518,38 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
               if (e.key === "Enter") commitName();
               if (e.key === "Escape") { setNameDraft(design.name); setNameEditing(false); }
             }}
-            className="h-7 rounded-[0.3rem] border border-border bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring max-w-[220px]"
+            className="h-7 max-w-[220px] px-2 text-xs md:text-xs"
           />
         ) : (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setNameEditing(true)}
-            className="text-xs font-medium hover:bg-accent rounded-[0.3rem] px-2 py-1 max-w-[220px] truncate"
+            className="max-w-[220px] truncate px-2 text-xs font-medium"
             title={design.name}
           >
             {design.name}
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Size / preset picker */}
       <div className="relative h-full flex items-center px-2 border-r border-border">
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setPresetMenu((v) => !v)}
-          className="inline-flex items-center gap-1.5 h-7 px-2 rounded-[0.3rem] text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="gap-1.5 px-2 text-xs text-muted-foreground"
         >
-          <span className="font-mono">
+          <span className="font-mono tabular-nums">
             {currentPreset ? t(`design.preset.${currentPreset.labelKey}`) : `${design.width} × ${design.height}`}
           </span>
           <ChevronDown className="h-3 w-3" />
-        </button>
+        </Button>
         {presetMenu && (
           <>
             <div className="fixed inset-0 z-30" onClick={() => setPresetMenu(false)} />
-            <div className="absolute left-2 top-9 z-40 w-64 rounded-[0.3rem] border border-border bg-background shadow-md p-1 max-h-[440px] overflow-y-auto">
+            <div className="absolute left-2 top-9 z-40 w-64 rounded-lg border border-border bg-popover text-popover-foreground shadow-md p-1 max-h-[440px] overflow-y-auto">
               <PresetGroupHeader label={t("design.preset.groupSocial")} />
               {presetGroups.social.map((p) => (
                 <PresetRow key={p.id} preset={p} active={design.preset === p.id} onClick={() => applyPreset(p)} t={t} />
@@ -570,28 +577,32 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
           {saving ? (
             <><Spinner size={12} /><span>{t("design.editor.saving")}</span></>
           ) : savedAt ? (
-            <><Check className="h-3 w-3 text-green-600" /><span>{t("design.editor.saved")} {formatSavedAt(savedAt)}</span></>
+            <><Check className="h-3 w-3 text-emerald-600" /><span>{t("design.editor.saved")} {formatSavedAt(savedAt)}</span></>
           ) : null}
         </div>
 
         <div className="h-4 w-px bg-border" />
 
-        <button
-          onClick={() => { hapticLight(); undo(); }}
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => undo()}
           disabled={!canUndo}
           title={t("design.editor.undo")}
-          className="flex h-7 w-7 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+          className="text-muted-foreground"
         >
           <Undo2 className="h-4 w-4" />
-        </button>
-        <button
-          onClick={() => { hapticLight(); redo(); }}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => redo()}
           disabled={!canRedo}
           title={t("design.editor.redo")}
-          className="flex h-7 w-7 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+          className="text-muted-foreground"
         >
           <Redo2 className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -600,24 +611,28 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
   const canvasPanel = (
     <div className="relative flex h-full w-full flex-col overflow-hidden">
       <HtmlElementPalette onInsert={handlePaletteInsert} hideItems={HIDE_PALETTE_ITEMS} />
-      <div ref={stageRef} className="flex-1 min-h-0 relative overflow-auto bg-stone-200/70">
-        <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-[0.3rem] border border-border bg-background px-1.5 py-1 shadow-sm">
-          <button
+      <div ref={stageRef} className="flex-1 min-h-0 relative overflow-auto bg-muted">
+        <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1">
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={() => setZoom((z) => Math.max(0.1, z - 0.1))}
-            className="h-6 w-6 rounded-[0.3rem] hover:bg-accent inline-flex items-center justify-center"
             title={t("design.editor.zoomOut")}
           >
             <ZoomOut className="h-3.5 w-3.5" />
-          </button>
-          <span className="font-mono text-[10px] w-10 text-center text-muted-foreground">{Math.round(zoom * 100)}%</span>
-          <button
+          </Button>
+          <span className="font-mono text-[10px] tabular-nums w-10 text-center text-muted-foreground">{Math.round(zoom * 100)}%</span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
-            className="h-6 w-6 rounded-[0.3rem] hover:bg-accent inline-flex items-center justify-center"
             title={t("design.editor.zoomIn")}
           >
             <ZoomIn className="h-3.5 w-3.5" />
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={() => {
               const el = stageRef.current;
               if (!el) return;
@@ -625,11 +640,10 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
               const v = Math.min((el.clientWidth - padding) / design.width, (el.clientHeight - padding) / design.height, 1);
               setZoom(Math.max(0.1, Math.min(2, v)));
             }}
-            className="h-6 w-6 rounded-[0.3rem] hover:bg-accent inline-flex items-center justify-center"
             title={t("design.editor.fit")}
           >
             <Maximize2 className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
 
         <div
@@ -643,7 +657,7 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
           }}
         >
           <div
-            className="relative shadow-md ring-1 ring-stone-300 bg-white origin-top-left"
+            className="relative border border-border bg-white origin-top-left"
             style={{ width: design.width, height: design.height, transform: `scale(${zoom})` }}
           >
             <HtmlCanvas
@@ -662,26 +676,16 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
   // ── Right panel: Properties / Mr. Merchiva tabs ───────────────────────────
   const rightSide = (
     <div className="flex h-full w-full flex-col border-l border-border bg-background">
-      <div className="flex border-b border-border">
-        <button
-          className={cn(
-            "flex-1 py-1.5 text-center text-[11px] font-medium transition-colors",
-            rightPanel === "properties" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-          onClick={() => setRightPanel("properties")}
-        >
-          {t("design.editor.properties")}
-        </button>
-        <button
-          className={cn(
-            "flex-1 py-1.5 text-center text-[11px] font-medium transition-colors",
-            rightPanel === "ai" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-          onClick={() => setRightPanel("ai")}
-        >
-          Mr. Merchiva
-        </button>
-      </div>
+      <Tabs
+        value={rightPanel}
+        onValueChange={(v) => setRightPanel(v as "properties" | "ai")}
+        className="gap-0 border-b border-border"
+      >
+        <TabsList variant="line" className="w-full">
+          <TabsTrigger value="properties" className="text-[11px]">{t("design.editor.properties")}</TabsTrigger>
+          <TabsTrigger value="ai" className="text-[11px]">Mr. Merchiva</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <div className="flex-1 overflow-hidden">
         {rightPanel === "properties" ? (
           <HtmlPropertiesPanel selected={selected} html={html} onHtmlChange={setHtml} />
@@ -726,9 +730,9 @@ export function DesignEditor({ design: initialDesign }: DesignEditorProps) {
 
 function PresetGroupHeader({ label }: { label: string }) {
   return (
-    <div className="px-2 pt-2 pb-1 text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+    <Eyebrow size="xs" className="px-2 pt-2 pb-1">
       {label}
-    </div>
+    </Eyebrow>
   );
 }
 
@@ -747,12 +751,12 @@ function PresetRow({
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-[0.3rem] text-xs hover:bg-accent text-left",
+        "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs hover:bg-accent text-left",
         active && "bg-accent",
       )}
     >
       <span className="truncate">{t(`design.preset.${preset.labelKey}`)}</span>
-      <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+      <span className="font-mono text-[10px] tabular-nums text-muted-foreground shrink-0">
         {preset.width}×{preset.height}
       </span>
       {active && <Check className="h-3 w-3 shrink-0" />}
@@ -776,23 +780,24 @@ function CustomSizeRow({
   useEffect(() => { setW(String(width)); setH(String(height)); }, [width, height]);
   return (
     <div className="px-2 py-2 flex items-center gap-1.5">
-      <input
+      <Input
         type="number" value={w} onChange={(e) => setW(e.target.value)}
-        className="w-16 rounded-[0.3rem] border border-border bg-background px-2 py-1 text-xs font-mono outline-none focus:ring-1 focus:ring-ring"
+        className="h-7 w-16 px-2 font-mono text-xs tabular-nums md:text-xs"
         min={50} max={8000}
       />
       <span className="text-[10px] text-muted-foreground">×</span>
-      <input
+      <Input
         type="number" value={h} onChange={(e) => setH(e.target.value)}
-        className="w-16 rounded-[0.3rem] border border-border bg-background px-2 py-1 text-xs font-mono outline-none focus:ring-1 focus:ring-ring"
+        className="h-7 w-16 px-2 font-mono text-xs tabular-nums md:text-xs"
         min={50} max={8000}
       />
-      <button
+      <Button
+        size="xs"
         onClick={() => onApply(Number(w), Number(h))}
-        className="ml-auto h-6 px-2 rounded-[0.3rem] text-[11px] bg-foreground text-background hover:bg-foreground/90"
+        className="ml-auto text-[11px]"
       >
         {t("design.preset.apply")}
-      </button>
+      </Button>
     </div>
   );
 }

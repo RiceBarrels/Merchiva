@@ -2,6 +2,7 @@
 
 import { Check, ChevronDown, ChevronUp, GripVertical, Lock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useT } from "@/lib/i18n/context";
 import type { TrainingRole } from "./role-switcher";
 
@@ -68,15 +69,16 @@ export function DayRail({
           </div>
         </div>
         {role === "manager" && onAddDay && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="icon-sm"
             onClick={onAddDay}
-            className="h-7 w-7 rounded-[0.3rem] border border-border bg-background text-muted-foreground inline-flex items-center justify-center hover:bg-muted"
+            className="text-muted-foreground"
             title={t("training.addDay")}
             aria-label={t("training.addDay")}
           >
             <Plus className="h-[13px] w-[13px]" strokeWidth={1.75} />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -104,7 +106,7 @@ export function DayRail({
               type="button"
               onClick={() => onSelect(d.id)}
               className={cn(
-                "group w-full text-left flex items-start gap-2.5 px-2 py-2 rounded-[0.3rem] transition-colors mb-0.5",
+                "group w-full text-left flex items-start gap-2.5 px-2 py-2 rounded-lg transition-colors mb-0.5",
                 active ? "bg-foreground text-background" : "hover:bg-muted",
               )}
             >
@@ -188,7 +190,7 @@ export function DayRail({
                     </span>
                   )}
                   {isCurrent && (
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border-2 border-background bg-stone-700">
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border-2 border-background bg-foreground">
                       <span className="w-1 h-1 rounded-full bg-background" />
                     </span>
                   )}

@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Select,
   SelectContent,
@@ -50,7 +51,7 @@ export function ProductInventoryUsageEditor({
   };
 
   return (
-    <div className="space-y-2 rounded-[0.3rem] border border-border bg-muted/20 p-3">
+    <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
       <div className="flex items-center gap-2">
         <div>
           <Label>{t("products.inventoryUsage.title")}</Label>
@@ -60,9 +61,8 @@ export function ProductInventoryUsageEditor({
         </div>
         <Button
           type="button"
-          size="sm"
           variant="outline"
-          className="ml-auto h-8 gap-1.5"
+          className="ml-auto"
           onClick={addLine}
           disabled={inventoryItems.length === 0}
         >
@@ -72,19 +72,15 @@ export function ProductInventoryUsageEditor({
       </div>
 
       {inventoryItems.length === 0 ? (
-        <div className="rounded-[0.3rem] border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
-          {t("products.inventoryUsage.noInventory")}
-        </div>
+        <EmptyState compact description={t("products.inventoryUsage.noInventory")} className="rounded-lg border border-border bg-background" />
       ) : usage.length === 0 ? (
-        <div className="rounded-[0.3rem] border border-dashed border-border bg-background px-3 py-4 text-sm text-muted-foreground">
-          {t("products.inventoryUsage.empty")}
-        </div>
+        <EmptyState compact description={t("products.inventoryUsage.empty")} className="rounded-lg border border-border bg-background" />
       ) : (
         <div className="space-y-2">
           {usage.map((line, index) => (
             <div
               key={`${line.inventoryItemId}-${index}`}
-              className="grid gap-2 rounded-[0.3rem] border border-border bg-background p-2 sm:grid-cols-[1fr_120px_34px]"
+              className="grid gap-2 rounded-lg border border-border bg-background p-2 sm:grid-cols-[1fr_120px_34px]"
             >
               <Select
                 value={line.inventoryItemId}
@@ -110,7 +106,7 @@ export function ProductInventoryUsageEditor({
                   ))}
                 </SelectContent>
               </Select>
-              <div className="flex items-center rounded-[0.3rem] border border-input bg-background">
+              <div className="flex items-center rounded-lg border border-input bg-background">
                 <Input
                   type="number"
                   min="0"
@@ -122,7 +118,7 @@ export function ProductInventoryUsageEditor({
                       quantity: e.target.value === "" ? 0 : Number(e.target.value),
                     })
                   }
-                  className="border-0 shadow-none focus-visible:ring-0"
+                  className="border-0 focus-visible:ring-0"
                 />
                 <span className="shrink-0 pr-2 text-[11px] text-muted-foreground">
                   {line.unit || t("products.inventoryUsage.unitFallback")}
@@ -131,8 +127,8 @@ export function ProductInventoryUsageEditor({
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-destructive hover:text-destructive"
+                size="icon-lg"
+                className="text-destructive hover:text-destructive"
                 onClick={() => removeLine(index)}
               >
                 <Trash2 className="h-4 w-4" />

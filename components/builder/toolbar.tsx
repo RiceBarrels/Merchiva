@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useEditor } from "@craftjs/core";
 import { ArrowLeft, Globe, Redo2, Undo2, Check, X, Workflow, Plus } from "lucide-react";
-import { hapticLight } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import type { Site, SitePage } from "@/lib/types";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
 
 export type BuilderTab =
   | { kind: "page"; pageId: string }
@@ -85,7 +85,7 @@ export function BuilderToolbar({
     <div className="flex h-10 items-center border-b border-border bg-background text-foreground">
       {/* Back */}
       <Link
-        href="/~/builder"
+        href="/manager/builder"
         className="flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground border-r border-border"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -153,7 +153,7 @@ export function BuilderToolbar({
             </>
           ) : savedAt ? (
             <>
-              <Check className="h-3 w-3 text-green-600" />
+              <Check className="h-3 w-3 text-emerald-600" />
               <span>{t("builder.toolbar.saved")} {formatSavedAt(savedAt)}</span>
             </>
           ) : null}
@@ -164,20 +164,24 @@ export function BuilderToolbar({
         {/* Undo / Redo (only for page tabs, only when handlers are available) */}
         {activeTab.kind === "page" && (onUndo || onRedo) && (
           <>
-            <button
-              onClick={() => { hapticLight(); onUndo?.(); }}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onUndo?.()}
               disabled={!canUndo || !onUndo}
-              className="flex h-7 w-7 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+              className="text-muted-foreground"
             >
               <Undo2 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => { hapticLight(); onRedo?.(); }}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onRedo?.()}
               disabled={!canRedo || !onRedo}
-              className="flex h-7 w-7 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30"
+              className="text-muted-foreground"
             >
               <Redo2 className="h-4 w-4" />
-            </button>
+            </Button>
             <div className="h-4 w-px bg-border" />
           </>
         )}
@@ -186,7 +190,7 @@ export function BuilderToolbar({
         <Link
           href={`/preview/${site.id}`}
           target="_blank"
-          className="flex h-7 items-center gap-1 rounded-[0.3rem] px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex h-7 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <Globe className="h-3.5 w-3.5" />
           {t("builder.toolbar.preview")}

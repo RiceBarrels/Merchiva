@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -127,12 +128,12 @@ export function MyTasksCard() {
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         <span className="text-[13px] font-semibold text-foreground">{t("myTasks.title")}</span>
-        <span className="font-mono text-[10.5px] text-muted-foreground">
+        <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
           {t("myTasks.doneCount").replace("{done}", String(totalTasks - pending.length)).replace("{total}", String(totalTasks))}
         </span>
         <Link
-          href="/~/personnel"
-          className="ml-auto h-8 px-2 -mr-2 text-[12px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 rounded-[0.3rem]"
+          href="/manager/personnel"
+          className="ml-auto h-8 px-2 -mr-2 text-[12px] text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 rounded-lg"
         >
           {t("myTasks.all")}
           <ArrowRight className="h-3 w-3" />
@@ -140,9 +141,7 @@ export function MyTasksCard() {
       </div>
 
       {pending.length === 0 ? (
-        <div className="px-4 py-8 text-center">
-          <div className="text-[13px] text-muted-foreground">{t("myTasks.allCompleted")}</div>
-        </div>
+        <EmptyState icon={CheckCircle2} description={t("myTasks.allCompleted")} />
       ) : (
         <div className="divide-y divide-border">
           {top.map((task) => (
@@ -289,7 +288,7 @@ export function TaskCompleteDialog({
           <div>
             <Label className="text-[11px]">
               {t("myTasks.evidenceLabel")}
-              {evidenceRequired && <span className="text-red-500 ml-1">*</span>}
+              {evidenceRequired && <span className="text-destructive ml-1">*</span>}
               {evidence.length > 0 && (
                 <span className="text-muted-foreground ml-1">({evidence.length})</span>
               )}
@@ -303,7 +302,7 @@ export function TaskCompleteDialog({
                       {isVideo ? (
                         <video
                           src={item.url}
-                          className="w-full h-full object-cover rounded-[0.2rem] border border-border bg-black"
+                          className="w-full h-full object-cover rounded-lg border border-border bg-black"
                           muted
                           playsInline
                         />
@@ -312,11 +311,11 @@ export function TaskCompleteDialog({
                         <img
                           src={item.url}
                           alt={t("myTasks.evidenceAlt")}
-                          className="w-full h-full object-cover rounded-[0.2rem] border border-border"
+                          className="w-full h-full object-cover rounded-lg border border-border"
                         />
                       )}
                       {isVideo && (
-                        <span className="absolute bottom-1 left-1 h-4 w-4 rounded-[0.15rem] bg-black/60 text-white inline-flex items-center justify-center">
+                        <span className="absolute bottom-1 left-1 h-4 w-4 rounded bg-black/60 text-white inline-flex items-center justify-center">
                           <Film className="h-2.5 w-2.5" />
                         </span>
                       )}
@@ -334,7 +333,7 @@ export function TaskCompleteDialog({
               </div>
             )}
             {evidence.length < 10 && (
-              <div className="border border-dashed border-border rounded-[0.2rem] p-3 mt-1.5">
+              <div className="border border-dashed border-border rounded-lg p-3 mt-1.5">
                 <UploadButton
                   endpoint="taskEvidence"
                   onUploadBegin={() => setUploading(true)}

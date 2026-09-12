@@ -27,6 +27,12 @@ import {
 import { gradeTrainingDay, gradeTrainingObjective } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Avatar } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -69,29 +75,6 @@ interface ReviewRequestRow {
   traineeId: string;
   dayId: string;
   createdAtMs: number;
-}
-
-function avatarColor(name: string): string {
-  const colors = [
-    "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-200",
-    "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
-    "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200",
-    "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
-    "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
-  ];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return colors[h % colors.length];
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 function isHtmlContent(s: string): boolean {
@@ -404,9 +387,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
           </div>
           <div className="max-h-[260px] overflow-y-auto divide-y divide-border">
             {reviewQueue.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[12px] text-muted-foreground">
-                {t("training.trainer.noPendingReviews")}
-              </div>
+              <EmptyState compact icon={Inbox} description={t("training.trainer.noPendingReviews")} className="py-6" />
             ) : (
               reviewQueue.map((req) => {
                 const trainee = trainees.find((m) => m.id === req.traineeId);
@@ -426,14 +407,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "w-7 h-7 rounded-full inline-flex items-center justify-center text-[10.5px] font-semibold",
-                          avatarColor(trainee.displayName),
-                        )}
-                      >
-                        {initials(trainee.displayName)}
-                      </span>
+                      <Avatar name={trainee.displayName} size="sm" className="h-7 w-7" />
                       <div className="min-w-0 flex-1">
                         <div className="text-[12.5px] font-medium truncate">
                           {trainee.displayName}
@@ -467,11 +441,11 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                 className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground"
                 strokeWidth={1.75}
               />
-              <input
+              <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("training.trainer.searchStaff")}
-                className="h-8 w-full rounded-[0.3rem] border border-border bg-background pl-7 pr-2 text-[12px] outline-none focus:border-stone-400"
+                className="pl-7 pr-2 text-[12px]"
               />
             </div>
           </div>
@@ -489,14 +463,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                       : "border-l-transparent",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "w-7 h-7 rounded-full inline-flex items-center justify-center text-[10px] font-semibold shrink-0",
-                      avatarColor(m.displayName),
-                    )}
-                  >
-                    {initials(m.displayName)}
-                  </span>
+                  <Avatar name={m.displayName} size="sm" className="h-7 w-7" />
                   <span className="min-w-0 flex-1 text-[12px] font-medium truncate">
                     {m.displayName}
                   </span>
@@ -505,9 +472,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
             </div>
             <div className="overflow-y-auto">
               {!selectedMember ? (
-                <div className="px-3 py-6 text-center text-[12px] text-muted-foreground">
-                  {t("training.trainer.pickPerson")}
-                </div>
+                <EmptyState compact icon={Users} description={t("training.trainer.pickPerson")} className="py-6" />
               ) : (
                 <>
                   <div className="px-3 py-2 bg-muted/40 text-[11px] text-muted-foreground border-b border-border">
@@ -536,12 +501,13 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                             {t("training.trainer.signedOff")}
                           </span>
                         ) : (
-                          <button
-                            type="button"
+                          <Button
+                            variant="outline"
+                            size="xs"
                             onClick={() => void signOffDay(day.id)}
                             disabled={signOffBusyDayId !== null}
                             title={t("training.trainer.signOffDay")}
-                            className="shrink-0 h-6 px-1.5 rounded-[0.3rem] border border-border bg-background text-[10px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1 disabled:opacity-50"
+                            className="shrink-0 px-1.5 text-[10px]"
                           >
                             {signOffBusyDayId === day.id ? (
                               <Spinner size={11} />
@@ -549,10 +515,10 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                               <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} />
                             )}
                             {t("training.trainer.signOffDay")}
-                            <span className="font-mono text-muted-foreground">
+                            <span className="font-mono tabular-nums text-muted-foreground">
                               {passedCount}/{dayLessons.length}
                             </span>
-                          </button>
+                          </Button>
                         )}
                       </div>
                       {dayLessons.map(({ lesson, grade }) => {
@@ -612,7 +578,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
       <main className="min-w-0 min-h-0 flex flex-col">
         <div className="border-b border-border px-4 lg:px-6 py-3 flex items-center gap-3 flex-wrap">
           {activeLesson && (
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded-[0.3rem] px-1.5 py-0.5">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-muted border border-border rounded-lg px-1.5 py-0.5">
               L{String(activeLesson.lessonNumber).padStart(2, "0")}
             </span>
           )}
@@ -634,7 +600,7 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
               </span>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[0.3rem] font-mono text-[10px] uppercase tracking-wider bg-muted border border-border text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg font-mono text-[10px] uppercase tracking-wider bg-muted border border-border text-muted-foreground">
             <Award className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.trainer.badge")}
           </span>
         </div>
@@ -643,10 +609,10 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
           <div className="max-w-[760px] mx-auto space-y-5">
             {activeLesson ? (
               <>
-                <article className="rounded-[0.3rem] border border-border bg-background p-5 merchiva-quill-prose">
-                  <div className="mb-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                <article className="rounded-lg border border-border bg-background p-5 merchiva-quill-prose">
+                  <Eyebrow size="xs" className="mb-3 font-mono">
                     {t("training.trainer.lessonContent")}
-                  </div>
+                  </Eyebrow>
                   {isHtmlContent(activeLesson.text) ? (
                     <div dangerouslySetInnerHTML={{ __html: activeLesson.text }} />
                   ) : (
@@ -657,29 +623,22 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                     <img
                       src={activeLesson.mediaUrl}
                       alt=""
-                      className="mt-4 max-h-[320px] rounded-[0.3rem] border border-border object-contain"
+                      className="mt-4 max-h-[320px] rounded-lg border border-border object-contain"
                     />
                   )}
                   {activeLesson.mediaUrl && activeLesson.mediaType === "video" && (
                     <video
                       src={activeLesson.mediaUrl}
                       controls
-                      className="mt-4 max-h-[320px] w-full rounded-[0.3rem] border border-border"
+                      className="mt-4 max-h-[320px] w-full rounded-lg border border-border"
                     />
                   )}
                 </article>
 
-                <section className="rounded-[0.3rem] border border-border bg-background overflow-hidden">
+                <section className="rounded-lg border border-border bg-background overflow-hidden">
                   <div className="px-4 py-3 flex items-center gap-2.5 bg-muted/30 border-b border-border">
                     {activeTrainee && (
-                      <span
-                        className={cn(
-                          "w-8 h-8 rounded-full inline-flex items-center justify-center text-[11px] font-semibold shrink-0",
-                          avatarColor(activeTrainee.displayName),
-                        )}
-                      >
-                        {initials(activeTrainee.displayName)}
-                      </span>
+                      <Avatar name={activeTrainee.displayName} size="md" className="h-8 w-8" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-[13px] font-semibold leading-tight truncate">
@@ -690,8 +649,8 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                       </div>
                     </div>
                     <Link
-                      href="/~/chat"
-                      className="h-7 px-2 rounded-[0.3rem] border border-border bg-background text-[11px] hover:bg-muted inline-flex items-center gap-1"
+                      href="/manager/channel"
+                      className="h-7 px-2 rounded-lg border border-border bg-background text-[11px] hover:bg-muted inline-flex items-center gap-1"
                       title={t("training.trainer.message")}
                     >
                       <MessageSquare className="h-[11px] w-[11px]" strokeWidth={1.75} />{" "}
@@ -700,19 +659,19 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                   </div>
 
                   <div className="px-4 py-3">
-                    <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                    <Eyebrow size="xs" className="font-mono mb-2">
                       {t("training.trainer.lessonResult")}
-                    </div>
+                    </Eyebrow>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setVerdict("pass")}
                         disabled={busy}
                         className={cn(
-                          "flex-1 h-9 rounded-[0.3rem] border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50",
+                          "flex-1 h-9 rounded-lg border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50",
                           verdict === "pass"
                             ? "bg-emerald-600 text-white border-emerald-600"
-                            : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 dark:border-stone-700 hover:border-emerald-400 hover:text-emerald-700",
+                            : "bg-background text-foreground border-border hover:border-emerald-400 hover:text-emerald-700",
                         )}
                       >
                         <CheckCircle2 className="h-[14px] w-[14px]" strokeWidth={1.75} />{" "}
@@ -723,10 +682,10 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                         onClick={() => setVerdict("fail")}
                         disabled={busy}
                         className={cn(
-                          "flex-1 h-9 rounded-[0.3rem] border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50",
+                          "flex-1 h-9 rounded-lg border text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50",
                           verdict === "fail"
                             ? "bg-amber-500 text-white border-amber-500"
-                            : "bg-background text-stone-700 dark:text-stone-200 border-stone-300 dark:border-stone-700 hover:border-amber-400 hover:text-amber-700",
+                            : "bg-background text-foreground border-border hover:border-amber-400 hover:text-amber-700",
                         )}
                       >
                         <RotateCcw className="h-[14px] w-[14px]" strokeWidth={1.75} />{" "}
@@ -737,9 +696,9 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
 
                   <div className="px-4 py-3 border-t border-border">
                     <div className="flex items-baseline gap-2 mb-1.5">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <Eyebrow as="span" size="xs" className="font-mono">
                         {t("training.trainer.notesForTrainee")}
-                      </span>
+                      </Eyebrow>
                       <div className="flex-1" />
                       {activeTrainee && (
                         <span className="text-[10.5px] text-muted-foreground">
@@ -750,22 +709,22 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                         </span>
                       )}
                     </div>
-                    <textarea
+                    <Textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       rows={4}
                       disabled={busy}
                       placeholder={t("training.trainer.notesPlaceholder")}
-                      className="w-full rounded-[0.3rem] border border-border bg-background p-2.5 text-[12.5px] leading-relaxed outline-none focus:border-stone-400 resize-none disabled:opacity-50"
+                      className="p-2.5 text-[12.5px] leading-relaxed resize-none"
                     />
                   </div>
 
                   <div className="px-4 py-3 border-t border-border bg-muted/20">
-                    <button
-                      type="button"
+                    <Button
+                      size="lg"
                       onClick={submit}
                       disabled={!target || !verdict || busy}
-                      className="w-full h-9 rounded-[0.3rem] bg-foreground text-background text-[12.5px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
+                      className="w-full text-[12.5px]"
                     >
                       {busy ? (
                         <Spinner size={14} />
@@ -775,14 +734,12 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
                           <ArrowRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
                         </>
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </section>
               </>
             ) : (
-              <div className="rounded-[0.3rem] border border-border bg-muted/30 px-4 py-10 text-center text-[12.5px] text-muted-foreground">
-                {t("training.trainer.addLessonsFirst")}
-              </div>
+              <EmptyState description={t("training.trainer.addLessonsFirst")} className="rounded-lg border border-border bg-muted/30" />
             )}
           </div>
         </div>

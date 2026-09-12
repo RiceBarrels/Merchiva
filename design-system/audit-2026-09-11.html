@@ -1,0 +1,223 @@
+<title>Merchiva UI 合规审计</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --background: rgb(255,255,255); --foreground: rgb(10,10,10); --card: rgb(255,255,255);
+    --primary: rgb(23,23,23); --primary-foreground: rgb(250,250,250);
+    --muted: rgb(245,245,245); --muted-foreground: rgb(115,115,115);
+    --border: rgb(229,229,229); --destructive: rgb(231,0,11);
+    --ok: #059669; --ok-bg: #ecfdf5; --ok-bd: #a7f3d0;
+    --warn: #b45309; --warn-bg: #fffbeb; --warn-bd: #fde68a;
+    --bad: #dc2626; --bad-bg: #fef2f2; --bad-bd: #fecaca;
+    --radius: 0.15rem;
+    --sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, "PingFang SC", sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --background: rgb(10,10,10); --foreground: rgb(250,250,250); --card: rgb(23,23,23);
+      --primary: rgb(229,229,229); --primary-foreground: rgb(23,23,23);
+      --muted: rgb(38,38,38); --muted-foreground: rgb(161,161,161); --border: rgb(40,40,40); --destructive: rgb(255,100,103);
+      --ok: #34d399; --ok-bg: rgba(16,185,129,.12); --ok-bd: rgba(16,185,129,.35);
+      --warn: #fbbf24; --warn-bg: rgba(245,158,11,.12); --warn-bd: rgba(245,158,11,.35);
+      --bad: #f87171; --bad-bg: rgba(239,68,68,.12); --bad-bd: rgba(239,68,68,.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --background: rgb(10,10,10); --foreground: rgb(250,250,250); --card: rgb(23,23,23);
+    --primary: rgb(229,229,229); --primary-foreground: rgb(23,23,23);
+    --muted: rgb(38,38,38); --muted-foreground: rgb(161,161,161); --border: rgb(40,40,40); --destructive: rgb(255,100,103);
+    --ok: #34d399; --ok-bg: rgba(16,185,129,.12); --ok-bd: rgba(16,185,129,.35);
+    --warn: #fbbf24; --warn-bg: rgba(245,158,11,.12); --warn-bd: rgba(245,158,11,.35);
+    --bad: #f87171; --bad-bg: rgba(239,68,68,.12); --bad-bd: rgba(239,68,68,.35);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--background); color: var(--foreground); font: 14px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
+  h1, h2, h3 { margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  p { margin: 0; }
+  .top { height: 54px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 24px; position: sticky; top: 0; background: var(--background); z-index: 5; }
+  .top .word { font-size: 13px; font-weight: 600; }
+  .top .meta { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted-foreground); }
+  main { max-width: 960px; margin: 0 auto; padding: 28px 24px 80px; }
+  section { padding-block: 28px; border-bottom: 1px solid var(--border); }
+  section:last-child { border-bottom: 0; }
+  .eyebrow { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); margin-bottom: 8px; }
+  h1 { font-size: 26px; font-weight: 600; line-height: 1.2; }
+  h2 { font-size: 19px; font-weight: 600; }
+  h3 { font-size: 13px; font-weight: 600; margin: 20px 0 8px; }
+  .lede { color: var(--muted-foreground); max-width: 64ch; margin-top: 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 18px; }
+  .tile { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--card); }
+  .tile .v { font-family: var(--mono); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .tile .k { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); margin-top: 4px; }
+  .tile .s { font-size: 11px; color: var(--muted-foreground); margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; height: 30px; padding: 0 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-foreground); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr:hover td { background: color-mix(in srgb, var(--muted) 50%, transparent); }
+  .scroll { overflow-x: auto; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 8px; border-radius: 4px; font-size: 11.5px; font-weight: 500; border: 1px solid; white-space: nowrap; }
+  .pill.ok { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-bd); }
+  .pill.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-bd); }
+  .pill.bad { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-bd); }
+  .pill.mute { color: var(--muted-foreground); background: var(--muted); border-color: var(--border); }
+  .delta { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .delta.down { color: var(--ok); }
+  ul { margin: 8px 0 0; padding-left: 18px; }
+  li { margin-bottom: 6px; }
+  li b { font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+  .box { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .box h4 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+  .box p, .box li { font-size: 12.5px; color: var(--muted-foreground); }
+  .note { border-left: 2px solid var(--border); padding-left: 12px; color: var(--muted-foreground); font-size: 13px; margin-top: 12px; }
+  @media (max-width: 720px) { .tiles { grid-template-columns: repeat(2, minmax(0,1fr)); } .grid2 { grid-template-columns: 1fr; } main { padding: 20px 16px 60px; } .top { padding: 0 16px; } }
+</style>
+
+<header class="top">
+  <svg width="22" height="22" viewBox="0 0 100 100" aria-hidden="true"><path d="M14 14 L40 14 L50 42 L60 14 L86 14 L86 86 L14 86 Z" fill="currentColor"/></svg>
+  <span class="word">Merchiva</span>
+  <span class="meta">ui-audit · 2026-09-11 · 5 audit agents + 5 migration agents</span>
+</header>
+
+<main>
+<section>
+  <div class="eyebrow">审计范围 · app/manager/** 与 components/**（不含 craft-components、site-elements、landing、flowfn、mobile）</div>
+  <h1>UI 合规审计与迁移结果</h1>
+  <p class="lede">以 <code>design-system/README.md</code> 为基准，5 个 agent 并行审计了约 140 个页面和组件文件，随后 5 个 agent 把重复出现的手写写法迁移到 12 个新的共享组件上。下面是发现了什么、修了什么、还剩什么。</p>
+  <div class="tiles">
+    <div class="tile"><div class="v">133</div><div class="k">改动文件</div><div class="s">+7,864 / −7,009 行</div></div>
+    <div class="tile"><div class="v">12</div><div class="k">新共享组件</div><div class="s">components/ui/</div></div>
+    <div class="tile"><div class="v">0</div><div class="k">tsc 错误</div><div class="s">全量 --noEmit</div></div>
+    <div class="tile"><div class="v">36 → 34</div><div class="k">eslint 错误</div><div class="s">同一组文件，HEAD 对比，无新增</div></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">前后对比</div>
+  <h2>违反规范的写法，迁移前后</h2>
+  <p class="lede">在同一范围内用 grep 统计。剩余项集中在本轮明确排除的文件里（sidebar、merchiva-quick-dialog、flowfn、mobile-builder）。</p>
+  <div class="scroll" style="margin-top:14px"><table>
+    <thead><tr><th>模式</th><th class="n">迁移前</th><th class="n">迁移后</th><th>剩余在哪里</th></tr></thead>
+    <tbody>
+      <tr><td>硬编码 <code>stone-*</code> 灰阶（应用语义 token）</td><td class="n">816</td><td class="n">50</td><td>flowfn-editor 13、merchiva-quick-dialog 8、flowfn/canvas 3（均排除在本轮外）</td></tr>
+      <tr><td><code>rounded-[0.3rem]</code>（圆角实际是 0.15rem）</td><td class="n">≈750</td><td class="n">21</td><td>sidebar 7、mobile-builder 7、ui 内部注释与 popover</td></tr>
+      <tr><td>裸 <code>&lt;button&gt;</code> 手写样式</td><td class="n">≈590</td><td class="n">318</td><td>剩余多为自定义卡片/列表行、POS 键盘（已有 haptic）、微型图标按钮</td></tr>
+      <tr><td>非规范色相 blue / violet / rose / orange / yellow</td><td class="n">≈150</td><td class="n">0</td><td>全部映射到 success / warning / danger / info / neutral</td></tr>
+      <tr><td><code>text-red-*</code>（应为 <code>text-destructive</code>）</td><td class="n">179</td><td class="n">5</td><td>排除文件</td></tr>
+      <tr><td><code>green-*</code>（应为 emerald）</td><td class="n">≈20</td><td class="n">1</td><td>排除文件</td></tr>
+      <tr><td>非 popover 的 <code>shadow-*</code> / 发光阴影</td><td class="n">≈50</td><td class="n">17</td><td>主要是 ui 原语的 popover shadow-md（合规）与 context-menu</td></tr>
+      <tr><td>手写空状态（不符合 gap-3 p-8 + h-10 w-10）</td><td class="n">57</td><td class="n">0</td><td>EmptyState 已用于 43 个文件</td></tr>
+      <tr><td>KPI 卡片本地副本（SummaryCard / StatCard / StatTile）</td><td class="n">10 处定义</td><td class="n">0</td><td>StatTile 已用于 17 个文件</td></tr>
+      <tr><td>各自为政的状态色 map</td><td class="n">≈20</td><td class="n">0</td><td>StatusBadge / STATUS_TONE_* 已用于 30 个文件</td></tr>
+      <tr><td>手写 Switch（白色圆点 + 阴影）</td><td class="n">14</td><td class="n">0</td><td>全部换成 ui/switch</td></tr>
+      <tr><td>各自实现的头像 initials</td><td class="n">9 份</td><td class="n">0</td><td>Avatar 已用于 12 个文件</td></tr>
+      <tr><td><code>font-mono</code> 数字缺 <code>tabular-nums</code></td><td class="n">≈280</td><td class="n">少量</td><td>数字列改用 NumCell / Num / Money，剩余为 ID、URL 等非数字</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">审计发现 · 按区域</div>
+  <h2>每块最严重的问题</h2>
+  <div class="grid2" style="margin-top:14px">
+    <div class="box"><h4>库存 · 供应商 · 商品 · POS</h4><ul>
+      <li>POS 整页没有 PageHeader，自己复制了一份页头和页签；44 个裸按钮，12 个裸输入框。</li>
+      <li>POS 深色模式下 <code>text-white</code> 叠在 <code>bg-foreground</code> 上不可见（3 处）。</li>
+      <li>库存优先级用 stone / yellow / orange 三套色，供应商 PO 状态用 blue，废弃日志用 100 级填充色。</li>
+      <li>4 份几乎相同的 KPI 卡片组件，10 种互不相同的空状态。</li>
+    </ul></div>
+    <div class="box"><h4>设置 · 报表 · 销售 · 通知等</h4><ul>
+      <li>settings 页 3,600 行里有 4 个手写 Switch、7 个手写可选项行、5 种 segmented 写法、4 种 eyebrow 拼法。</li>
+      <li>sales 图表 <code>stroke="hsl(var(--border))"</code> 写错格式（token 是 rgb），网格线一直没渲染出来。</li>
+      <li>subscribe 与 settings/billing 的 PlanRow 逐字节重复。</li>
+      <li>reports 22 个数字单元格全部缺 tabular-nums。</li>
+    </ul></div>
+    <div class="box"><h4>财务 · 客户 · 聊天 · 门店屏 · 打卡等</h4><ul>
+      <li>display 页 154 个 stone 类，且 <code>darkMode ? … : …</code> 三元和 <code>dark:</code> 变体同时生效，颜色互相打架。</li>
+      <li>chat 页 98 个 stone 类，FAB 带发光阴影，有一处两个分支完全相同的三元。</li>
+      <li>membership 页与 builder/[siteId]/membership 页是 785 行的双胞胎。</li>
+      <li>131 处 font-mono 只有 1 处有 tabular-nums；punch-in 用了 6 个内联 svg 而非 Lucide。</li>
+    </ul></div>
+    <div class="box"><h4>共享组件 · 人事 · 培训</h4><ul>
+      <li>276 个裸按钮（staffing-full 一个文件 63 个），8 个手写 Switch，9 份头像 initials 实现，4 套青/紫/玫红头像配色。</li>
+      <li>merchiva-quick-dialog 全部用内联 hex 样式：16px 圆角、四层发光阴影、无深色模式。</li>
+      <li>team/canvas 节点卡片用渐变和阴影；hub-nav 重新实现了一遍 PageHeader 和 PageTabs。</li>
+      <li>morning-briefing-card 用 rose / sky 两套非规范色调。</li>
+    </ul></div>
+    <div class="box"><h4>网站编辑器面板</h4><ul>
+      <li>整个编辑器没有 import 过 Badge / Card / Table；116 个裸按钮，97 处任意圆角。</li>
+      <li>tool-bar 用 shadow-xl + 毛玻璃；html-editor 有 <code>animate-ping</code>；render-node 用蓝色徽标。</li>
+      <li>三份重复的 PAGE_COLORS 数组（blue / rose / violet / cyan）。</li>
+      <li>flowfn 自带一套 40 个非 Lucide 图标和约 200 条注入式 CSS，还在全局 :root 上重新声明了 --stone-* 变量。</li>
+    </ul></div>
+    <div class="box"><h4>顺手发现的真 bug</h4><ul>
+      <li>suppliers 页 <code>text-stone-800</code> 没有 dark 变体，深色模式下文字不可读。</li>
+      <li>display 页的重复 <code>dark:</code> key 让后者覆盖前者。</li>
+      <li>globals.css 里 <code>font-mono</code> 映射到未加载的 JetBrains Mono，数字实际在用系统等宽字体（仍未修，见待办）。</li>
+      <li>两处 React Compiler 报错顺手修掉：RestockCard 的 <code>Date.now()</code>、POS ProductCard 渲染期创建组件。</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <div class="eyebrow">交付物</div>
+  <h2>12 个共享组件</h2>
+  <p class="lede">全部在 <code>components/ui/</code>，文档见 README §5b，可交互示例见 <code>/design-system</code> 路由的 Composites 一节。右列是迁移后已使用的文件数。</p>
+  <div class="scroll" style="margin-top:14px"><table>
+    <thead><tr><th>组件</th><th>取代的写法</th><th class="n">已用文件</th></tr></thead>
+    <tbody>
+      <tr><td><code>StatusBadge</code> + <code>STATUS_TONE_CLASSES / TEXT / DOT</code></td><td>每页各自的 emerald / amber / red / stone class map，rounded-full 药丸</td><td class="n">30</td></tr>
+      <tr><td><code>EmptyState</code></td><td>py-16 text-center + opacity-40 图标块，虚线框</td><td class="n">43</td></tr>
+      <tr><td><code>Eyebrow</code></td><td>六种 <code>text-[11px] uppercase tracking-*</code> 拼法</td><td class="n">44</td></tr>
+      <tr><td><code>SegmentedControl</code></td><td>手写 <code>bg-foreground text-white</code> 按钮行，重新实现的 TabsList</td><td class="n">22</td></tr>
+      <tr><td><code>Field</code></td><td>裸 label + input，编辑器 inspector 行</td><td class="n">18</td></tr>
+      <tr><td><code>StatTile</code> + <code>StatGrid</code></td><td>7 个页面里的 SummaryCard / StatCard 副本</td><td class="n">17</td></tr>
+      <tr><td><code>Avatar</code> + <code>initials()</code></td><td>9 份本地 initials 实现和彩色头像色带</td><td class="n">12</td></tr>
+      <tr><td><code>DialogActions</code></td><td>复制粘贴的 Separator + 取消/确认页脚</td><td class="n">11</td></tr>
+      <tr><td><code>NumCell</code> · <code>Num</code> · <code>Money</code></td><td>缺 tabular-nums 的 font-mono span 和单元格</td><td class="n">11 / 5</td></tr>
+      <tr><td><code>IconTile</code></td><td><code>h-8 w-8 rounded-[0.3rem] bg-muted</code> 图标方块</td><td class="n">9</td></tr>
+      <tr><td><code>Callout</code></td><td><code>bg-amber-100 border-amber-300</code> 横幅</td><td class="n">6</td></tr>
+      <tr><td><code>OptionRow</code></td><td>11 个全宽可选项按钮行（套餐、供应商、语言）</td><td class="n">5</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">规则：状态色只有五个 tone；加载态用 <code>Loader2 h-4 w-4 animate-spin</code> 或按钮内的品牌 <code>Spinner</code>；骨架屏来自 skeleton-loaders，不再手写 animate-pulse。</p>
+</section>
+
+<section>
+  <div class="eyebrow">验证</div>
+  <h2>验证结果</h2>
+  <div class="scroll" style="margin-top:14px"><table>
+    <thead><tr><th>检查</th><th>结果</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><code>tsc --noEmit</code>（全量）</td><td><span class="pill ok">0 错误</span></td><td>.next/types 里两个 macOS 重复文件（"… 2.ts"）是陈旧产物，已删除</td></tr>
+      <tr><td><code>eslint --quiet</code>（112 个改动文件）</td><td><span class="pill ok">36 → 34</span></td><td>在 HEAD worktree 上跑同一组文件对比；剩余 34 个全是原有的 React Compiler 规则报错，改动会涉及行为</td></tr>
+      <tr><td><code>bun run build</code></td><td id="build-pill"><span class="pill ok">通过</span></td><td>第一次失败：/design-system 预渲染时 <code>Money</code> 依赖 SpacetimeDB provider；示例改用 <code>Num</code> 后通过</td></tr>
+      <tr><td>行为改动</td><td><span class="pill mute">无</span></td><td>所有迁移都是同 handler、同 i18n key、同数据流的机械替换；每个 agent 的报告都列出了跳过的非机械项</td></tr>
+      <tr><td>未提交</td><td><span class="pill warn">工作区</span></td><td>没有 commit；建议先在浏览器里过一遍 POS、settings、personnel、builder 再提交</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="eyebrow">待办</div>
+  <h2>本轮没做的（按价值排序）</h2>
+  <ul>
+    <li><b>修 globals.css 字体映射。</b>在 <code>@theme inline</code> 加 <code>--font-mono: var(--font-geist-mono)</code>，删掉 Cascadia Code / JetBrains Mono 残留。一行改动，全站数字字体立刻正确。</li>
+    <li><b>merchiva-quick-dialog 重写。</b>约 40 处内联 hex 样式换成 token 类，圆角 16px → rounded-lg，去掉四层发光阴影，顺便获得深色模式。</li>
+    <li><b>membership 双胞胎。</b>把 <code>app/manager/membership</code> 与 <code>app/manager/builder/[siteId]/membership</code> 抽成一个 MembershipManager，只差 i18n 前缀。</li>
+    <li><b>手写页头页签。</b>POS 页、products/[productId]、personnel/hub-nav、builder/design 路由都该用 PageHeader + PageTabs；hub-nav 需要 PageTabs 支持前缀匹配和计数徽标。</li>
+    <li><b>flowfn。</b>注入式 CSS 迁到 Tailwind + 原语，40 个自绘图标换 Lucide，删掉 :root 上的 --stone-* 声明。</li>
+    <li><b>图表颜色。</b>products、usage-section、team/canvas 里的 Recharts / SVG 仍用 hex，改用 <code>var(--color-chart-N)</code> 和 <code>var(--border)</code>。</li>
+    <li><b>sidebar / bottom-bar。</b>本轮刻意没动，sidebar 里还有 7 处 rounded-[0.3rem]。</li>
+    <li><b>原生控件。</b>theme 页的 color / range input、html-properties-panel 的 click-to-deselect segmented 保持原样，换原语会改行为。</li>
+    <li><b>旧 <code>design.md</code>。</b>已被 design-system/README.md 取代，可以删除或改成指针。</li>
+  </ul>
+</section>
+</main>

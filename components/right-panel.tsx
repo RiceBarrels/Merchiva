@@ -9,6 +9,7 @@ import { motion } from "motion/react";
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { MerchivaChat, NotchM } from "@/components/merchiva-chat-dashboard";
 import { useT } from "@/lib/i18n/context";
+import { Button } from "@/components/ui/button";
 
 // ─── RightPanel Component ───────────────────────────────────────────────────
 
@@ -54,14 +55,15 @@ export function RightPanel({
         {/* Top bar — reserve space for the animated label + close button */}
         <div className="flex items-center px-4 py-2.5 shrink-0 min-h-[42px]">
           <div className="flex-1" />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             onClick={onToggleCollapse}
-            className="p-1 rounded-[0.3rem] hover:bg-muted transition-colors"
             title={t("merchiva.collapsePanel")}
           >
             <PanelRightClose className="h-4 w-4 text-muted-foreground" />
-          </button>
+          </Button>
         </div>
         <div className="flex-1 min-h-0 overflow-hidden">
           <MerchivaChat compact header={false} />

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { MerchivaLogo } from "@/components/logo";
 import { SiteShell } from "@/components/landing/site-shell";
+import { notFound } from "next/navigation";
+import { DOWNLOAD_PAGE_ENABLED } from "@/lib/download-page";
 
 // ─── brand tokens ───────────────────────────────────────────
 const D = {
@@ -1840,6 +1842,8 @@ function CTAFooter() {
 // PAGE
 // ═══════════════════════════════════════════════════════════
 export default function DownloadPage() {
+  // Page is hidden behind the flag — 404 until it is switched back on.
+  if (!DOWNLOAD_PAGE_ENABLED) notFound();
   const [detectedId] = useState<string>(() => detectPlatformId());
   const [activeId, setActiveId] = useState<string>(detectedId);
   useReveal();

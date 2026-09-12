@@ -18,9 +18,15 @@ import {
   toPayrollEvents,
   type MemberPayroll,
 } from "@/lib/payroll";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Num } from "@/components/ui/num";
+import { StatGrid, StatTile } from "@/components/ui/stat-tile";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Select,
   SelectContent,
@@ -117,41 +123,6 @@ function unitEnd(unit: PeriodUnit, key: string): Date {
   }
 }
 
-function initials(name: string): string {
-  return (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase() ?? "").join("");
-}
-
-function MemberAvatar({ name, avatarUrl, size = 30 }: { name: string; avatarUrl?: string | null; size?: number }) {
-  if (avatarUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={avatarUrl}
-        alt={name}
-        className="inline-flex rounded-full border border-border bg-muted object-cover shrink-0"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  return (
-    <span
-      className="rounded-full inline-flex items-center justify-center font-semibold shrink-0 bg-muted text-muted-foreground"
-      style={{ width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.36)) }}
-    >
-      {initials(name)}
-    </span>
-  );
-}
-
-function StatTile({ label, value, border = true }: { label: string; value: string; border?: boolean }) {
-  return (
-    <div className={cn("px-3 py-2.5 lg:px-4 lg:py-3 border-b border-border min-w-0", border && "border-r")}>
-      <p className="text-[10px] lg:text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground truncate">{label}</p>
-      <p className="mt-0.5 font-mono text-lg lg:text-xl font-semibold tabular-nums text-foreground truncate">{value}</p>
-    </div>
-  );
-}
-
 // ─── Member detail sheet ─────────────────────────────────────────────────────
 
 function PayDetailSheet({
@@ -215,26 +186,26 @@ function PayDetailSheet({
 
         <div className="space-y-4 pt-1 pb-1">
           {/* Summary */}
-          <div className="grid grid-cols-3 border border-border rounded-[0.3rem] overflow-hidden">
+          <div className="grid grid-cols-3 border border-border rounded-lg overflow-hidden">
             <div className="px-2.5 py-2 border-r border-border">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("personnel.pay.hours")}</p>
+              <Eyebrow size="xs">{t("personnel.pay.hours")}</Eyebrow>
               <p className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">{fmtHM(pay.paidMs)}</p>
             </div>
             <div className="px-2.5 py-2 border-r border-border">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("personnel.pay.breaks")}</p>
+              <Eyebrow size="xs">{t("personnel.pay.breaks")}</Eyebrow>
               <p className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums text-muted-foreground">{fmtHM(pay.breakMs)}</p>
             </div>
             <div className="px-2.5 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("personnel.pay.estPay")}</p>
+              <Eyebrow size="xs">{t("personnel.pay.estPay")}</Eyebrow>
               <p className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">{gross != null ? format(gross) : "—"}</p>
             </div>
           </div>
 
           {/* Rate */}
-          <div className="flex items-center gap-2 border border-border rounded-[0.3rem] px-2.5 py-2">
+          <div className="flex items-center gap-2 border border-border rounded-lg px-2.5 py-2">
             <CircleDollarSign className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("personnel.pay.hourlyRate")}</p>
+              <Eyebrow size="xs">{t("personnel.pay.hourlyRate")}</Eyebrow>
               {editingRate ? (
                 <div className="flex items-center gap-2 mt-1">
                   <Input
@@ -270,25 +241,23 @@ function PayDetailSheet({
 
           {/* Day breakdown */}
           <div>
-            <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-              {t("personnel.pay.byDay")}
-            </p>
+            <Eyebrow className="mb-1.5">{t("personnel.pay.byDay")}</Eyebrow>
             {pay.days.length === 0 ? (
-              <p className="text-[12.5px] text-muted-foreground py-3 text-center border border-border rounded-[0.3rem]">
-                {t("personnel.pay.noPunches")}
-              </p>
+              <EmptyState compact description={t("personnel.pay.noPunches")} className="border border-border rounded-lg" />
             ) : (
-              <div className="border border-border rounded-[0.3rem] divide-y divide-border max-h-[240px] overflow-y-auto">
+              <div className="border border-border rounded-lg divide-y divide-border max-h-[240px] overflow-y-auto">
                 {pay.days.map((d) => (
                   <div key={d.date} className="flex items-center justify-between px-2.5 py-1.5">
                     <span className="text-[12px] text-foreground">{dayLabel(d.date)}</span>
-                    <span className="font-mono text-[12px] tabular-nums text-foreground">
-                      {fmtHM(d.paidMs)}
-                      {d.open && <span className="text-emerald-600 dark:text-emerald-400"> ·</span>}
-                      {member.hourlyRate != null && (
-                        <span className="text-muted-foreground"> · {format(grossPay(d.paidMs, member.hourlyRate))}</span>
-                      )}
-                    </span>
+                    <Num size="xs" className="text-foreground" value={
+                      <>
+                        {fmtHM(d.paidMs)}
+                        {d.open && <span className="text-emerald-600 dark:text-emerald-400"> ·</span>}
+                        {member.hourlyRate != null && (
+                          <span className="text-muted-foreground"> · {format(grossPay(d.paidMs, member.hourlyRate))}</span>
+                        )}
+                      </>
+                    } />
                   </div>
                 ))}
               </div>
@@ -470,9 +439,7 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
   const header = (
     <div className="px-4 py-2.5 lg:px-6 border-b border-border bg-background space-y-2">
       <div className="min-w-0">
-        <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {t("personnel.pay.title")}
-        </p>
+        <Eyebrow>{t("personnel.pay.title")}</Eyebrow>
         <p className="text-[13px] font-semibold text-foreground">
           {canViewAll ? t("personnel.pay.subtitleManager") : t("personnel.pay.subtitleSelf")}
         </p>
@@ -482,22 +449,21 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
   );
 
   const stats = (
-    <div className={cn("grid border-b border-border shrink-0", canViewAll ? "grid-cols-4" : "grid-cols-3")}>
+    <StatGrid className={cn("shrink-0 border-b border-border p-3", canViewAll ? "lg:grid-cols-4" : "grid-cols-3 lg:grid-cols-3")}>
       <StatTile label={t("personnel.pay.totalHours")} value={fmtHM(totals.paidMs)} />
       <StatTile label={t("personnel.pay.estPay")} value={format(totals.gross)} />
       {canViewAll ? (
         <>
           <StatTile label={t("personnel.pay.onClockNow")} value={String(totals.onClock)} />
-          <StatTile label={t("personnel.pay.missingRates")} value={String(totals.missingRate)} border={false} />
+          <StatTile label={t("personnel.pay.missingRates")} value={String(totals.missingRate)} tone={totals.missingRate > 0 ? "warning" : undefined} />
         </>
       ) : (
         <StatTile
           label={t("personnel.pay.hourlyRate")}
           value={rows[0]?.member.hourlyRate != null ? `${format(rows[0].member.hourlyRate)}/h` : "—"}
-          border={false}
         />
       )}
-    </div>
+    </StatGrid>
   );
 
   const list = rows.length === 0 ? (
@@ -511,14 +477,14 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
           onClick={() => { hapticLight(); setDetailId(r.member.id); }}
           className="w-full flex items-center gap-2.5 px-4 lg:px-6 py-3 bg-background text-left hover:bg-muted/60 active:bg-muted/60"
         >
-          <MemberAvatar name={r.member.displayName} avatarUrl={r.member.avatarUrl} size={32} />
+          <Avatar name={r.member.displayName} src={r.member.avatarUrl} size="md" />
           <div className="flex-1 min-w-0">
             <p className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em] truncate">
               {r.member.displayName}
               {r.pay.openNow && (
-                <span className="ml-1.5 inline-flex rounded-[0.3rem] border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 text-[9.5px] font-semibold align-middle">
+                <StatusBadge tone="success" size="xs" className="ml-1.5 align-middle normal-case tracking-normal font-semibold">
                   {t("personnel.pay.onClock")}
-                </span>
+                </StatusBadge>
               )}
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5 font-mono tabular-nums">

@@ -31,7 +31,7 @@ function parseState(raw: string | undefined): OAuthState | null {
 }
 
 export async function GET(req: NextRequest) {
-  const settingsUrl = new URL("/~/settings", req.url);
+  const settingsUrl = new URL("/manager/settings", req.url);
   const state = parseState(req.cookies.get("schedule_oauth_state")?.value);
   const returnedState = req.nextUrl.searchParams.get("state");
   const guid = req.nextUrl.searchParams.get("guid");

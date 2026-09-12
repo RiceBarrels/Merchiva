@@ -3,8 +3,9 @@
 import React from "react";
 import { useEditor } from "@craftjs/core";
 import { Trash2 } from "lucide-react";
-import { hapticLight } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function SettingsPanel() {
   const t = useT();
@@ -39,15 +40,13 @@ export function SettingsPanel() {
           {/* Header */}
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-semibold">{selectedDisplayName}</p>
-            <button
-              onClick={() => {
-                hapticLight();
-                actions.delete(selected);
-              }}
-              className="flex h-6 w-6 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+            <Button
+              variant="destructive"
+              size="icon-xs"
+              onClick={() => actions.delete(selected)}
             >
               <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            </Button>
           </div>
 
           {/* Settings component from the Craft node */}
@@ -60,11 +59,7 @@ export function SettingsPanel() {
           )}
         </div>
       ) : (
-        <div className="flex h-full items-center justify-center p-4">
-          <p className="text-center text-xs text-muted-foreground">
-            {t("builder.settingsPanel.selectElement")}
-          </p>
-        </div>
+        <EmptyState compact className="h-full" description={t("builder.settingsPanel.selectElement")} />
       )}
     </div>
   );

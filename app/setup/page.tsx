@@ -351,7 +351,7 @@ export default function SetupPage() {
 
   const handleSkip = useCallback(() => {
     try { localStorage.setItem("merchiva_setup_done", "1"); } catch {}
-    router.replace("/~/");
+    router.replace("/manager/");
   }, [router]);
 
   const handleFeaturesNext = useCallback((_enabled: Record<string, boolean>) => {
@@ -362,7 +362,7 @@ export default function SetupPage() {
     setFinishing(true);
     try { localStorage.setItem("merchiva_setup_done", "1"); } catch {}
     toast.success("Setup complete!");
-    router.replace("/~/");
+    router.replace("/manager/");
   }, [router]);
 
   if (finishing) {

@@ -312,7 +312,7 @@ export function CanvasContextMenu({ children, siteId }: CanvasContextMenuProps) 
           {showAlignOverlay && componentDragState.payload && (
             <div className="pointer-events-none absolute inset-0 z-40">
               <div
-                className="pointer-events-auto absolute inset-8 grid rounded-[0.3rem] border-2 border-dashed border-primary/40 bg-primary/5"
+                className="pointer-events-auto absolute inset-8 grid rounded-lg border-2 border-dashed border-primary/40 bg-primary/5"
                 style={{ gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "1fr 1fr 1fr" }}
               >
                 {zones.map((z) => (

@@ -21,4 +21,5 @@ export default __t.row({
   attachmentType: __t.option(__t.string()).name("attachment_type"),
   attachmentName: __t.option(__t.string()).name("attachment_name"),
   isMerchiva: __t.option(__t.bool()).name("is_merchiva"),
+  voiceTranscript: __t.option(__t.string()).name("voice_transcript"),
 });

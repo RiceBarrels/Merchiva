@@ -3,7 +3,7 @@
 //
 //   merchiva chat                 talk to Mr. Merchiva (interactive)
 //   merchiva ask "<question>"     one-shot question
-//   merchiva new page <name>      scaffold an authenticated /~/ page
+//   merchiva new page <name>      scaffold an authenticated /manager/ page
 //   merchiva new hook <name>      scaffold a SpacetimeDB domain hook
 //   merchiva config [...]         view / set base URL + language
 //   merchiva doctor               check connectivity to the app
@@ -54,7 +54,7 @@ function printHelp() {
     ["whoami", "Show the signed-in user + token freshness"],
     ["chat", "Interactive chat with Mr. Merchiva"],
     ['ask "<q>"', "Ask one question and exit"],
-    ["new page <name>", "Scaffold app/~/<name>/page.tsx + i18n + nav"],
+    ["new page <name>", "Scaffold app/manager/<name>/page.tsx + i18n + nav"],
     ["new hook <name>", "Scaffold lib/spacetimedb/hooks/use<Name>.ts"],
     ["config", "Show current config"],
     ["config set url <origin>", "Set the app base URL"],

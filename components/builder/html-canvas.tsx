@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Code2, Eye, MousePointer2, RefreshCw, AlignLeft } from "lucide-react";
 import { useDefaultLayout } from "react-resizable-panels";
-import { cn } from "@/lib/utils";
 import { resolveValuesPreview } from "@/lib/builder/site-values";
 import { prettyPrintHtml } from "@/lib/builder/html-format";
 import { CodeEditor } from "./code-editor";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 export interface HtmlSelectionInfo {
   selector: string;
@@ -811,34 +812,46 @@ export function HtmlCanvas({
       {/* View switcher */}
       {!hideViewToolbar && (
         <div className="flex items-center gap-1 border-b border-border bg-background px-2 py-1.5 shrink-0">
-          <ViewButton active={view === "preview"} onClick={() => setView("preview")} icon={<Eye className="h-3.5 w-3.5" />} label="Preview" />
-          <ViewButton active={view === "split"} onClick={() => setView("split")} icon={<MousePointer2 className="h-3.5 w-3.5" />} label="Split" />
-          <ViewButton active={view === "code"} onClick={() => setView("code")} icon={<Code2 className="h-3.5 w-3.5" />} label="Code" />
+          <SegmentedControl
+            size="sm"
+            aria-label="Canvas view"
+            options={[
+              { value: "preview", label: "Preview", icon: Eye },
+              { value: "split", label: "Split", icon: MousePointer2 },
+              { value: "code", label: "Code", icon: Code2 },
+            ]}
+            value={view}
+            onChange={setView}
+          />
           <div className="flex-1" />
           {selectedSelector && (
             <span className="font-mono text-[10.5px] text-muted-foreground truncate max-w-[280px]" title={selectedSelector}>
               {selectedSelector}
             </span>
           )}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             onClick={() => {
               const formatted = prettyPrintHtml(draftHtml);
               if (formatted !== draftHtml) setDraftHtml(formatted);
             }}
-            className="h-6 w-6 rounded-[0.3rem] hover:bg-muted inline-flex items-center justify-center text-muted-foreground"
+            className="text-muted-foreground"
             title="Format HTML"
           >
             <AlignLeft className="h-3 w-3" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             onClick={reload}
-            className="h-6 w-6 rounded-[0.3rem] hover:bg-muted inline-flex items-center justify-center text-muted-foreground"
+            className="text-muted-foreground"
             title="Reload preview"
           >
             <RefreshCw className="h-3 w-3" />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -856,7 +869,7 @@ export function HtmlCanvas({
           </div>
         )}
         {view === "code" && (
-          <div className="h-full w-full bg-stone-950">
+          <div className="h-full w-full bg-foreground">
             <CodeEditor
               value={draftHtml}
               onChange={setDraftHtml}
@@ -886,7 +899,7 @@ export function HtmlCanvas({
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel id="canvas-code" defaultSize="38%" minSize="15%">
-              <div className="h-full w-full bg-stone-950">
+              <div className="h-full w-full bg-foreground">
                 <CodeEditor
                   value={draftHtml}
                   onChange={setDraftHtml}
@@ -900,21 +913,5 @@ export function HtmlCanvas({
         )}
       </div>
     </div>
-  );
-}
-
-function ViewButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "h-6 px-2 rounded-[0.3rem] inline-flex items-center gap-1.5 text-[11px] transition-colors",
-        active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
-      )}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
   );
 }

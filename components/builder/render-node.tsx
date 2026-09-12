@@ -5,6 +5,7 @@ import ReactDOM from "react-dom";
 import { useNode, useEditor } from "@craftjs/core";
 import { ROOT_NODE } from "@craftjs/utils";
 import { ArrowUp, GripVertical, Lock, Trash2 } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 // ─── Pointer helpers (mouse + touch) ───────────────────────────────────────
 
@@ -476,7 +477,7 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
         ? ReactDOM.createPortal(
             <div
               ref={indicatorRef}
-              className="fixed z-[9999] flex h-6 items-center gap-0.5 rounded-t-sm bg-blue-500 px-1.5 text-white shadow-sm"
+              className="fixed z-[9999] flex h-6 items-center gap-0.5 rounded-t-sm bg-primary px-1.5 text-primary-foreground"
               style={{
                 left: getPos(dom).left,
                 top: getPos(dom).top,
@@ -489,25 +490,27 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
                 {name}
               </span>
               {isLocked && (
-                <span
+                <StatusBadge
+                  tone="warning"
+                  size="xs"
                   title={lockLabel ? `Required: ${lockLabel}` : "Locked — required by template"}
-                  className="flex h-5 items-center gap-0.5 rounded bg-amber-400/90 px-1 text-[9px] font-semibold uppercase tracking-wide text-amber-950"
+                  className="gap-0.5 px-1"
                 >
                   <Lock className="h-2.5 w-2.5" />
                   {lockLabel ? <span className="truncate" style={{ maxWidth: 80 }}>{lockLabel}</span> : null}
-                </span>
+                </StatusBadge>
               )}
               {moveable && (
                 <button
                   ref={(r) => { if (r) drag(r); }}
-                  className="flex h-5 w-5 cursor-grab items-center justify-center rounded hover:bg-blue-600 active:cursor-grabbing"
+                  className="flex h-5 w-5 cursor-grab items-center justify-center rounded hover:bg-primary-foreground/20 active:cursor-grabbing"
                 >
                   <GripVertical className="h-3 w-3" />
                 </button>
               )}
               {parent && (
                 <button
-                  className="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-blue-600"
+                  className="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-primary-foreground/20"
                   onClick={() => actions.selectNode(parent)}
                 >
                   <ArrowUp className="h-3 w-3" />
@@ -515,7 +518,7 @@ export function RenderNode({ render }: { render: React.ReactElement }) {
               )}
               {deletable && (
                 <button
-                  className="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-red-500"
+                  className="flex h-5 w-5 cursor-pointer items-center justify-center rounded hover:bg-destructive hover:text-white"
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     actions.delete(id);

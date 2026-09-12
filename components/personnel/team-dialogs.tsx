@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   inviteToOrg,
@@ -13,12 +12,13 @@ import { defaultPermissions, getInvitations } from "@/lib/db/team";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import type { Permissions } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { Button } from "@/components/ui/button";
+import { DialogActions } from "@/components/ui/dialog-actions";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -56,7 +56,7 @@ export function PermissionsEditor({
 }) {
   const t = useT();
   return (
-    <div className="mt-1 border border-border rounded-[0.3rem] divide-y divide-border max-h-[260px] overflow-y-auto">
+    <div className="mt-1 border border-border rounded-lg divide-y divide-border max-h-[260px] overflow-y-auto">
       {PERMISSION_SECTIONS.map(({ key, i18nKey, actions }) => {
         const sec = (value[key] ?? {}) as { view?: boolean; edit?: boolean; invite?: boolean };
         return (
@@ -187,57 +187,39 @@ export function InviteMemberDialog({
         </DynamicUIElementHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("personnel.team.fieldEmail")}
-            </Label>
+            <Eyebrow>{t("personnel.team.fieldEmail")}</Eyebrow>
             <Input
               autoFocus
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="teammate@example.com"
-              className="rounded-[0.3rem]"
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("personnel.team.fieldRole")}
-            </Label>
-            <div className="flex gap-2">
-              {(["staff", "manager"] as const).map((r) => (
-                <Button
-                  key={r}
-                  variant={role === r ? "default" : "outline"}
-                  onClick={() => setRole(r)}
-                  className={cn("flex-1 rounded-[0.3rem]")}
-                >
-                  {t(`personnel.team.role.${r}`)}
-                </Button>
-              ))}
-            </div>
+            <Eyebrow>{t("personnel.team.fieldRole")}</Eyebrow>
+            <SegmentedControl
+              fullWidth
+              value={role}
+              onChange={setRole}
+              options={(["staff", "manager"] as const).map((r) => ({ value: r, label: t(`personnel.team.role.${r}`) }))}
+            />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("personnel.team.fieldPermissions")}
-            </Label>
+            <Eyebrow>{t("personnel.team.fieldPermissions")}</Eyebrow>
             <PermissionsEditor value={perms} onChange={setPerms} />
           </div>
-          <div className="flex gap-2 pt-1">
-            <Button
-              variant="outline"
-              onClick={() => !busy && onClose()}
-              className="flex-1 rounded-[0.3rem]"
-            >
-              {t("personnel.team.cancel")}
-            </Button>
-            <Button
-              disabled={busy || !email.trim()}
-              onClick={handleSubmit}
-              className="flex-1 rounded-[0.3rem]"
-            >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("personnel.team.sendInvite")}
-            </Button>
-          </div>
+          <DialogActions
+            divider={false}
+            size="default"
+            className="pt-1"
+            onCancel={onClose}
+            onConfirm={handleSubmit}
+            saving={busy}
+            disabled={!email.trim()}
+            cancelLabel={t("personnel.team.cancel")}
+            confirmLabel={t("personnel.team.sendInvite")}
+          />
         </div>
       </DynamicUIElementContent>
     </DynamicUIElement>
@@ -315,52 +297,33 @@ export function EditMemberDialog({
         </DynamicUIElementHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("personnel.team.fieldRole")}
-            </Label>
-            <div className="flex gap-2">
-              {(["staff", "manager"] as const).map((r) => (
-                <Button
-                  key={r}
-                  variant={role === r ? "default" : "outline"}
-                  onClick={() => setRole(r)}
-                  className="flex-1 rounded-[0.3rem]"
-                >
-                  {t(`personnel.team.role.${r}`)}
-                </Button>
-              ))}
-            </div>
+            <Eyebrow>{t("personnel.team.fieldRole")}</Eyebrow>
+            <SegmentedControl
+              fullWidth
+              value={role}
+              onChange={setRole}
+              options={(["staff", "manager"] as const).map((r) => ({ value: r, label: t(`personnel.team.role.${r}`) }))}
+            />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("personnel.team.fieldPermissions")}
-            </Label>
+            <Eyebrow>{t("personnel.team.fieldPermissions")}</Eyebrow>
             <PermissionsEditor value={perms} onChange={setPerms} />
           </div>
-          <div className="flex gap-2 pt-1">
-            <Button
-              variant="destructive"
-              onClick={handleRemove}
-              disabled={busy}
-              className="rounded-[0.3rem]"
-            >
-              {t("personnel.team.remove")}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => !busy && onClose()}
-              className="flex-1 rounded-[0.3rem]"
-            >
-              {t("personnel.team.cancel")}
-            </Button>
-            <Button
-              disabled={busy}
-              onClick={handleSave}
-              className="flex-1 rounded-[0.3rem]"
-            >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("personnel.team.save")}
-            </Button>
-          </div>
+          <DialogActions
+            divider={false}
+            size="default"
+            className="pt-1"
+            onCancel={onClose}
+            onConfirm={handleSave}
+            saving={busy}
+            cancelLabel={t("personnel.team.cancel")}
+            confirmLabel={t("personnel.team.save")}
+            secondary={
+              <Button variant="destructive" onClick={handleRemove} disabled={busy}>
+                {t("personnel.team.remove")}
+              </Button>
+            }
+          />
         </div>
       </DynamicUIElementContent>
     </DynamicUIElement>

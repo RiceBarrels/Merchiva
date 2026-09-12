@@ -237,7 +237,7 @@ export function QuillEditor({
   return (
     <div
       className={cn(
-        "merchiva-quill rounded-[0.3rem] border border-border bg-background overflow-hidden",
+        "merchiva-quill rounded-lg border border-border bg-background overflow-hidden",
         className,
       )}
       style={{ ["--quill-min-h" as string]: `${minHeight}px` }}

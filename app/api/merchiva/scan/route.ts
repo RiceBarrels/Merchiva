@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getServiceConn,
-  subscribeAndWait,
+  getSubscribedServiceConn,
   serviceCreateNotification,
 } from "@/lib/spacetimedb/service-client";
 
@@ -28,15 +27,7 @@ export async function POST(req: NextRequest) {
 
   let conn;
   try {
-    conn = await getServiceConn();
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[merchiva/scan] service connection failed:", msg);
-    return NextResponse.json({ error: `service connection: ${msg}` }, { status: 500 });
-  }
-
-  try {
-    await subscribeAndWait(conn, [
+    conn = await getSubscribedServiceConn([
       "SELECT * FROM inventory_item",
       "SELECT * FROM org_member",
       "SELECT * FROM user",
@@ -102,7 +93,7 @@ export async function POST(req: NextRequest) {
           type: "order",
           title: copy.title,
           body: copy.body(lowItems.length, names),
-          link: "/~/chat",
+          link: "/manager/channel",
         });
         notified++;
       } catch (err) {

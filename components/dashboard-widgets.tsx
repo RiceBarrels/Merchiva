@@ -25,6 +25,10 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { SkeletonText } from "@/components/ui/skeleton-loaders";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { useCurrency } from "@/lib/currency";
@@ -92,18 +96,16 @@ function getMonthStart(): string {
 function WidgetSkeleton() {
   return (
     <div className="space-y-2">
-      <div className="h-5 w-24 bg-muted rounded-sm animate-pulse" />
-      <div className="h-4 w-full bg-muted rounded-sm animate-pulse" />
-      <div className="h-4 w-3/4 bg-muted rounded-sm animate-pulse" />
+      <SkeletonText width="6rem" className="h-5" />
+      <SkeletonText />
+      <SkeletonText width="75%" />
     </div>
   );
 }
 
 function WidgetEmpty({ message }: { message: string }) {
   return (
-    <div className="text-xs text-muted-foreground text-center py-4">
-      {message}
-    </div>
+    <EmptyState compact description={message} />
   );
 }
 
@@ -121,7 +123,7 @@ export function WidgetCard({
   action?: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-[0.3rem] border h-full flex flex-col">
+    <Card className="h-full flex flex-col">
       <CardHeader className="pb-2 shrink-0">
         <div className="flex items-center gap-2">
           <Icon className="h-4 w-4 text-muted-foreground" />
@@ -178,7 +180,7 @@ export function SalesTodayWidget() {
     <WidgetCard icon={DollarSign} title={t("dashboard.widgets.salesToday.title")}>
       <div className="space-y-2">
         <div className="flex items-baseline gap-3">
-          <span className="text-2xl font-bold font-mono">
+          <span className="text-2xl font-bold font-mono tabular-nums">
             {format(actual, { decimals: 0 })}
           </span>
           {predicted > 0 && (
@@ -204,7 +206,7 @@ export function SalesTodayWidget() {
           {!isUp && !isDown && <Minus className="h-3 w-3 text-muted-foreground" />}
           <span
             className={cn(
-              "font-mono",
+              "font-mono tabular-nums",
               isUp && "text-emerald-600",
               isDown && "text-destructive",
               !isUp && !isDown && "text-muted-foreground"
@@ -245,7 +247,7 @@ export function InventoryAlertsWidget() {
       title={t("dashboard.widgets.inventoryAlerts.title")}
       action={
         <Link
-          href="/~/inventory"
+          href="/manager/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           {t("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
@@ -275,7 +277,7 @@ export function InventoryAlertsWidget() {
                 className="flex items-center justify-between gap-2 rounded border border-border px-2 py-1.5"
               >
                 <span className="text-xs truncate flex-1">{item.name}</span>
-                <span className="text-xs font-mono text-muted-foreground shrink-0">
+                <span className="text-xs font-mono tabular-nums text-muted-foreground shrink-0">
                   {item.currentStock} {item.unit}
                 </span>
                 <Badge
@@ -337,7 +339,7 @@ export function ScheduleOverviewWidget() {
       title={t("dashboard.widgets.scheduleOverview.title")}
       action={
         <Link
-          href="/~/personnel"
+          href="/manager/personnel"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           {t("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
@@ -349,7 +351,7 @@ export function ScheduleOverviewWidget() {
       ) : (
         <div className="space-y-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold font-mono">
+            <span className="text-lg font-bold font-mono tabular-nums">
               {todayShifts.length}
             </span>
             <span className="text-xs text-muted-foreground">
@@ -365,7 +367,7 @@ export function ScheduleOverviewWidget() {
                 className="flex items-center gap-1.5 rounded border border-border px-2 py-1"
               >
                 <span className="text-xs capitalize">{type}</span>
-                <span className="text-xs font-mono text-muted-foreground">
+                <span className="text-xs font-mono tabular-nums text-muted-foreground">
                   {count}
                 </span>
               </div>
@@ -376,7 +378,7 @@ export function ScheduleOverviewWidget() {
               {t("dashboard.widgets.scheduleOverview.nextLabel")}{" "}
               <span className="font-medium text-foreground">{nextShift.staffName}</span>{" "}
               {t("dashboard.widgets.scheduleOverview.atLabel")}{" "}
-              <span className="font-mono">{formatTime(nextShift.startTime)}</span>
+              <span className="font-mono tabular-nums">{formatTime(nextShift.startTime)}</span>
             </div>
           )}
         </div>
@@ -462,21 +464,23 @@ export function TodoWidget() {
       icon={CheckCircle2}
       title={t("dashboard.widgets.todo.title")}
       action={
-        <button
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => {
             setAddingTodo(true);
             setTimeout(() => inputRef.current?.focus(), 50);
           }}
-          className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+          className="text-[10px] text-muted-foreground"
         >
           <Plus className="h-3 w-3" /> {t("dashboard.todo.add")}
-        </button>
+        </Button>
       }
     >
       <div className="space-y-1">
         {addingTodo && (
           <div className="flex gap-1.5 mb-1">
-            <input
+            <Input
               ref={inputRef}
               type="text"
               value={todoInput}
@@ -489,14 +493,11 @@ export function TodoWidget() {
                 }
               }}
               placeholder={t("dashboard.widgets.todo.placeholder")}
-              className="flex-1 rounded-[0.3rem] border border-border bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-ring"
+              className="h-7 flex-1 text-xs md:text-xs"
             />
-            <button
-              onClick={handleAdd}
-              className="rounded-[0.3rem] bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground hover:bg-primary/90"
-            >
+            <Button size="sm" onClick={handleAdd} className="text-[10px]">
               {t("dashboard.todo.add")}
-            </button>
+            </Button>
           </div>
         )}
         {shown.length === 0 && !addingTodo ? (
@@ -550,10 +551,10 @@ export function TodoWidget() {
 // ── 5. Waste Cost Widget ─────────────────────────────────────────────────────
 
 const REASON_COLORS: Record<WasteReason, string> = {
-  expired: "bg-red-500",
+  expired: "bg-destructive",
   damaged: "bg-amber-500",
-  overproduction: "bg-blue-500",
-  other: "bg-stone-400",
+  overproduction: "bg-chart-2",
+  other: "bg-muted-foreground",
 };
 
 const REASON_LABELS: Record<WasteReason, string> = {
@@ -624,7 +625,7 @@ export function WasteCostWidget() {
       title={t("dashboard.widgets.wasteCost.title")}
       action={
         <Link
-          href="/~/inventory"
+          href="/manager/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           {t("dashboard.widgets.wasteCost.details")} <ChevronRight className="h-3 w-3" />
@@ -635,19 +636,19 @@ export function WasteCostWidget() {
         <div className="grid grid-cols-3 gap-2">
           <div>
             <div className="text-[10px] text-muted-foreground">{t("dashboard.widgets.wasteCost.today")}</div>
-            <div className="text-sm font-bold font-mono">
+            <div className="text-sm font-bold font-mono tabular-nums">
               {format(todayCost)}
             </div>
           </div>
           <div>
             <div className="text-[10px] text-muted-foreground">{t("dashboard.widgets.wasteCost.thisWeek")}</div>
-            <div className="text-sm font-bold font-mono">
+            <div className="text-sm font-bold font-mono tabular-nums">
               {format(weekCost)}
             </div>
           </div>
           <div>
             <div className="text-[10px] text-muted-foreground">{t("dashboard.widgets.wasteCost.thisMonth")}</div>
-            <div className="text-sm font-bold font-mono">
+            <div className="text-sm font-bold font-mono tabular-nums">
               {format(monthCost)}
             </div>
           </div>
@@ -659,13 +660,13 @@ export function WasteCostWidget() {
                 <div
                   className={cn(
                     "h-2 w-2 rounded-full shrink-0",
-                    REASON_COLORS[reason as WasteReason] ?? "bg-stone-400"
+                    REASON_COLORS[reason as WasteReason] ?? "bg-muted-foreground"
                   )}
                 />
                 <span className="text-muted-foreground">
                   {REASON_LABELS[reason as WasteReason] ?? reason}
                 </span>
-                <span className="font-mono">{format(cost)}</span>
+                <span className="font-mono tabular-nums">{format(cost)}</span>
               </div>
             ))}
           </div>
@@ -729,12 +730,9 @@ export function NotificationFeedWidget() {
       title={t("dashboard.widgets.notifications.title")}
       action={
         notifications.length > 0 ? (
-          <button
-            onClick={handleMarkAllRead}
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-          >
+          <Button variant="ghost" size="xs" onClick={handleMarkAllRead} className="text-[10px] text-muted-foreground">
             {t("notifications.markAllRead")}
-          </button>
+          </Button>
         ) : null
       }
     >
@@ -794,7 +792,7 @@ export function ProductPerformanceWidget() {
       title={t("dashboard.widgets.topProducts.title")}
       action={
         <Link
-          href="/~/inventory"
+          href="/manager/inventory"
           className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5"
         >
           {t("dashboard.shifts.viewAll")} <ChevronRight className="h-3 w-3" />
@@ -809,13 +807,13 @@ export function ProductPerformanceWidget() {
             <div key={p.id} className="space-y-0.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                  <span className="text-[10px] text-muted-foreground font-mono w-3 shrink-0">
+                  <span className="text-[10px] text-muted-foreground font-mono tabular-nums w-3 shrink-0">
                     {i + 1}
                   </span>
                   <span className="text-xs truncate">{p.name}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-xs font-mono">
+                  <span className="text-xs font-mono tabular-nums">
                     {format(p.revenue, { decimals: 0 })}
                   </span>
                   {p.trend === "up" && (
@@ -897,7 +895,7 @@ export function QuickStatsWidget() {
                   {s.label}
                 </span>
               </div>
-              <div className="text-lg font-bold font-mono">{s.value}</div>
+              <div className="text-lg font-bold font-mono tabular-nums">{s.value}</div>
             </div>
           );
         })}

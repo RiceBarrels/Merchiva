@@ -85,7 +85,7 @@ export default function AdminsLayout({ children }: { children: React.ReactNode }
             {t("admins.deniedBody")}
           </p>
           <Link
-            href="/~/"
+            href="/manager/"
             className="mt-6 inline-block rounded border border-stone-300 bg-white px-4 py-2 text-[13px] font-medium text-foreground hover:bg-stone-50"
           >
             {t("admins.backToApp")}
@@ -133,7 +133,7 @@ function AdminShell({
           <div className="flex items-center gap-3">
             <span className="hidden font-mono text-[11px] text-stone-500 sm:inline">{adminEmail}</span>
             <Link
-              href="/~/"
+              href="/manager/"
               className="rounded border border-stone-300 bg-white px-3 py-1.5 text-[12px] font-medium text-foreground hover:bg-stone-50"
             >
               {t("admins.exit")}

@@ -1,6 +1,6 @@
 // Subscription access logic — single source of truth for "can this org use
-// Merchiva right now?". Used by the auth gate in `app/~/layout.tsx` and the
-// `/~/subscribe` paywall page.
+// Merchiva right now?". Used by the auth gate in `app/manager/layout.tsx` and the
+// `/manager/subscribe` paywall page.
 //
 // An org gets access when EITHER:
 //   1. It has an active Stripe subscription (status in ACTIVE_STATUSES), OR

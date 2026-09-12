@@ -28,11 +28,11 @@ Merchiva is a daily management platform for small businesses. It handles invento
 
 ## Route Structure
 
-All authenticated pages live under `/~/`. Public pages are at root.
+All authenticated pages live under `/manager/`. Public pages are at root.
 
 ```
 app/
-├── ~/                          # Authenticated app (sidebar + bottom bar)
+├── manager/                        # Authenticated app (sidebar + bottom bar)
 │   ├── layout.tsx              # Auth guard, SpacetimeDB provider, sidebar
 │   ├── dashboard/
 │   ├── inventory/              # + inventory/waste/ sub-route
@@ -57,6 +57,9 @@ app/
 │   ├── display/                # Store display mode
 │   └── api-settings/
 ├── (auth)/login/, signup/      # Public auth
+├── choose/                     # Post-sign-in mode picker (admin / personal / store device); layout re-exports manager layout
+├── store/                      # Store device surface (shared tablet: QR/PIN log-in, walkie-talkie, apps); bare route, reuses manager layout for auth
+├── personal/                   # Personal device surface (employee phone: channels, punch-in, leave drawer); bare route, reuses manager layout for auth
 ├── api/                        # Route handlers
 │   ├── auth/                   # sign-in, sign-up, callback, oauth, refresh, verify-*
 │   ├── square/                 # catalog, inventory, orders, sync, validate, oauth/*
@@ -97,6 +100,9 @@ lib/
 
 components/
 ├── ui/                         # shadcn/ui primitives
+├── device/                     # Shared device-surface pieces (walkie-talkie, PIN pad, idle lock, QR, apps grid) used by /store and /personal
+├── store-device/               # /store-only composition
+├── personal-device/            # /personal-only composition
 ├── builder/                    # Website builder (editor, panels, craft-components/, craft-settings/)
 ├── site-elements/              # Published site components (booking-form, login, gallery, etc.)
 ├── flowfn/                     # Visual flow/function editor
@@ -116,7 +122,7 @@ components/
 - Real-time subscriptions via `lib/spacetimedb/hooks.ts` and domain hooks in `hooks/`.
 - Mutations via reducer calls in `lib/spacetimedb/actions.ts`.
 - Generated types in `lib/spacetimedb/generated/` — **never edit these manually**.
-- Provider wraps the app in `app/~/layout.tsx`.
+- Provider wraps the app in `app/manager/layout.tsx`.
 - No Supabase. `lib/db/*.ts` files are legacy and being phased out.
 - Module source: `spacetimedb/src/index.ts`. Published to maincloud via `spacetime publish`.
 
@@ -129,14 +135,26 @@ components/
 - After publish, run `spacetime generate` to regenerate TypeScript types.
 
 ### Navigation Tabs
-Pages are grouped with `PageTabs`. All hrefs must use the `/~/` prefix:
+Pages are grouped with `PageTabs`. All hrefs must use the `/manager/` prefix:
 ```tsx
 <PageTabs tabs={[
-  { label: "Inventory", href: "/~/inventory" },
-  { label: "Suppliers", href: "/~/suppliers" },
-  { label: "Waste Log", href: "/~/inventory/waste" },
+  { label: "Inventory", href: "/manager/inventory" },
+  { label: "Suppliers", href: "/manager/suppliers" },
+  { label: "Waste Log", href: "/manager/inventory/waste" },
 ]} />
 ```
+
+## App modes
+
+`/choose` asks how a device is used and stores it in localStorage (`lib/app-mode.ts`):
+
+| Mode | Home | UI |
+|:---|:---|:---|
+| admin | `/manager` | The original back-office shell (sidebar / bottom bar) — this is the "manager" UI |
+| personal | `/personal` | Employee phone surface |
+| store | `/store` | Shared store tablet surface |
+
+`/store` and `/personal` render bare (no MobileShell) through the manager layout for auth + providers. When a store/personal device opens `/manager` ("Switch to manager mode") it sets the session flag `merchiva_manager_override` so the sidebar account menu shows "Back to store device / personal". The legacy `store_machine_mode` flag is no longer set by the chooser.
 
 ## Auth & Permissions
 
@@ -164,7 +182,7 @@ Build tools, not demos. Professional software, not AI templates.
 - Client components: `"use client"` at top. Server components: no directive.
 - Files: kebab-case. Components: PascalCase. DB columns: snake_case. TS props: camelCase.
 - Always add loading states (`Loader2` spinner) and empty states.
-- All internal links within the app use `/~/` prefix.
+- All internal links within the app use `/manager/` prefix.
 - i18n: use `useT()` hook, keys in `messages/{locale}.json`.
 
 ## Environment Variables

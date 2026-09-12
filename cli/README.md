@@ -22,7 +22,7 @@ merchiva help
 |---|---|
 | `merchiva chat` | Interactive REPL with Mr. Merchiva (streaming). `/exit`, `/reset`. |
 | `merchiva ask "<question>"` | One-shot question, prints the reply and exits. |
-| `merchiva new page <name>` | Scaffold `app/~/<name>/page.tsx` + `nav.<name>` i18n key in all 6 locales + nav snippets to paste. |
+| `merchiva new page <name>` | Scaffold `app/manager/<name>/page.tsx` + `nav.<name>` i18n key in all 6 locales + nav snippets to paste. |
 | `merchiva new hook <name>` | Scaffold `lib/spacetimedb/hooks/use<Name>.ts` using the `useTable` idiom. |
 | `merchiva config` | Show current config (base URL, language, token). |
 | `merchiva config set url <origin>` | Point the CLI at an app (`http://localhost:3000`, `https://www.merchiva.com`). |

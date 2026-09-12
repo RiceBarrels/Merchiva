@@ -5,20 +5,20 @@ import { theme } from "../theme.ts";
 // Sections whose web feature exists but whose TUI view isn't built yet. Keeps
 // the same header/tabs frame so navigation feels complete; describes parity.
 const NOTES: Record<string, string> = {
-  pos: "Point-of-sale terminal: ring up sales, take payments. (web: /~/pos)",
-  suppliers: "Supplier directory & purchase orders. (web: /~/suppliers)",
-  waste: "Waste log: track spoilage & shrinkage. (web: /~/inventory/waste)",
-  pricing: "Pricing rules & price changes. (web: /~/pricing)",
-  reports: "Sales & finance reports, charts. (web: /~/reports)",
-  finances: "Expenses, P&L, cash flow. (web: /~/finances)",
-  schedule: "Shift schedule & rota. (web: /~/personnel/schedule)",
-  roles: "Staff roles & task assignment. (web: /~/personnel/roles)",
-  training: "Training days & objectives. (web: /~/personnel/training)",
-  marketing: "Campaigns, coupons, loyalty. (web: /~/marketing)",
-  website: "Website builder (Craft.js). (web: /~/builder)",
-  design: "Brand & design system. (web: /~/design)",
-  membership: "Plan & billing (Stripe). (web: /~/membership)",
-  settings: "Org & account settings. (web: /~/settings)",
+  pos: "Point-of-sale terminal: ring up sales, take payments. (web: /manager/pos)",
+  suppliers: "Supplier directory & purchase orders. (web: /manager/suppliers)",
+  waste: "Waste log: track spoilage & shrinkage. (web: /manager/inventory/waste)",
+  pricing: "Pricing rules & price changes. (web: /manager/pricing)",
+  reports: "Sales & finance reports, charts. (web: /manager/reports)",
+  finances: "Expenses, P&L, cash flow. (web: /manager/finances)",
+  schedule: "Shift schedule & rota. (web: /manager/personnel/schedule)",
+  roles: "Staff roles & task assignment. (web: /manager/personnel/roles)",
+  training: "Training days & objectives. (web: /manager/personnel/training)",
+  marketing: "Campaigns, coupons, loyalty. (web: /manager/marketing)",
+  website: "Website builder (Craft.js). (web: /manager/builder)",
+  design: "Brand & design system. (web: /manager/design)",
+  membership: "Plan & billing (Stripe). (web: /manager/membership)",
+  settings: "Org & account settings. (web: /manager/settings)",
 };
 
 export function Placeholder({ page }: { page: string }) {

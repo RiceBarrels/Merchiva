@@ -2,6 +2,7 @@
 
 import { GraduationCap, PencilRuler, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { useT } from "@/lib/i18n/context";
 import { hapticLight } from "@/lib/haptics";
 
@@ -49,9 +50,9 @@ export function TrainingRoleSwitcher({
         <GraduationCap className="h-[15px] w-[15px] text-foreground" strokeWidth={1.75} />
         <div className="leading-tight">
           <div className="text-[14px] font-semibold tracking-[-0.01em]">{t("nav.training")}</div>
-          <div className="text-[10.5px] text-muted-foreground font-mono uppercase tracking-wider">
+          <Eyebrow className="font-mono">
             {t("training.viewAs")}
-          </div>
+          </Eyebrow>
         </div>
       </div>
       <div className="flex-1 flex min-w-0">
@@ -68,13 +69,13 @@ export function TrainingRoleSwitcher({
               }}
               disabled={!r.enabled}
               className={cn(
-                "flex-1 min-w-0 flex items-center gap-2 lg:gap-2.5 px-3 lg:px-4 transition-colors border-r border-border last:border-r-0 relative rounded-t-[0.3rem] disabled:cursor-not-allowed disabled:opacity-50",
+                "flex-1 min-w-0 flex items-center gap-2 lg:gap-2.5 px-3 lg:px-4 transition-colors border-r border-border last:border-r-0 relative rounded-t-lg disabled:cursor-not-allowed disabled:opacity-50",
                 active ? "bg-muted" : "bg-background hover:bg-muted/50",
               )}
             >
               <span
                 className={cn(
-                  "w-7 h-7 lg:w-8 lg:h-8 rounded-[0.3rem] inline-flex items-center justify-center shrink-0",
+                  "w-7 h-7 lg:w-8 lg:h-8 rounded-lg inline-flex items-center justify-center shrink-0",
                   active
                     ? "bg-foreground text-background"
                     : "bg-muted text-muted-foreground",
@@ -88,7 +89,7 @@ export function TrainingRoleSwitcher({
                     "text-[12.5px] md:text-[13.5px] font-semibold tracking-[-0.01em] truncate",
                     active
                       ? "text-foreground"
-                      : "text-stone-700 dark:text-stone-200",
+                      : "text-foreground/80",
                   )}
                 >
                   {r.label}
@@ -103,7 +104,7 @@ export function TrainingRoleSwitcher({
                 </div>
               </div>
               {active && (
-                <span className="hidden lg:inline ml-auto font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-background border border-border rounded-[0.3rem] px-1.5 py-0.5">
+                <span className="hidden lg:inline ml-auto font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-background border border-border rounded px-1.5 py-0.5">
                   {t("training.role.active")}
                 </span>
               )}

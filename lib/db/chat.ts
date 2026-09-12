@@ -220,11 +220,12 @@ export async function getMessages(
     senderId: r.senderId.toHexString(),
     content: r.content,
     createdAt: toIsoString(r.createdAt),
-    replyToId: null,
-    attachmentUrl: null,
-    attachmentType: null,
-    attachmentName: null,
+    replyToId: r.replyToId ? r.replyToId.toString() : null,
+    attachmentUrl: r.attachmentUrl ?? null,
+    attachmentType: r.attachmentType ?? null,
+    attachmentName: r.attachmentName ?? null,
     isMerchiva: r.isMerchiva === true,
+    voiceTranscript: r.voiceTranscript ?? null,
   }));
 }
 

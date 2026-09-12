@@ -11,6 +11,8 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Field } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
 
 export function ButtonSettings() {
   const {
@@ -23,8 +25,7 @@ export function ButtonSettings() {
   return (
     <div className="space-y-3 p-3">
       {/* Label */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Label</Label>
+      <Field label="Label">
         <Input
           value={props.label || ""}
           onChange={(e) =>
@@ -35,11 +36,10 @@ export function ButtonSettings() {
           placeholder="Click me"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Href */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Link URL</Label>
+      <Field label="Link URL">
         <Input
           value={props.href || ""}
           onChange={(e) =>
@@ -50,13 +50,12 @@ export function ButtonSettings() {
           placeholder="https://..."
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Variant */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Variant</Label>
+      <Field label="Variant">
         <Select
           value={props.variant || "primary"}
           onValueChange={(val) => {
@@ -76,11 +75,10 @@ export function ButtonSettings() {
             <SelectItem value="ghost">Ghost</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       {/* Size */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Size</Label>
+      <Field label="Size">
         <Select
           value={props.size || "md"}
           onValueChange={(val) => {
@@ -99,32 +97,22 @@ export function ButtonSettings() {
             <SelectItem value="lg">Large</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Full Width */}
       <div className="flex items-center justify-between">
-        <Label className="text-xs text-muted-foreground">Full Width</Label>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={!!props.fullWidth}
-          onClick={() =>
+        <Label>Full Width</Label>
+        <Switch
+          size="sm"
+          checked={!!props.fullWidth}
+          onCheckedChange={(checked) =>
             setProp((p: Record<string, unknown>) => {
-              p.fullWidth = !p.fullWidth;
+              p.fullWidth = checked;
             })
           }
-          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-border transition-colors ${
-            props.fullWidth ? "bg-primary" : "bg-muted"
-          }`}
-        >
-          <span
-            className={`pointer-events-none block h-4 w-4 rounded-full bg-white dark:bg-stone-900 shadow-sm ring-0 transition-transform ${
-              props.fullWidth ? "translate-x-4" : "translate-x-0"
-            }`}
-          />
-        </button>
+        />
       </div>
     </div>
   );

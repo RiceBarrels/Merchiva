@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn } from "@/lib/utils";
 import type { ViewLayout } from "./data";
 
@@ -62,7 +63,7 @@ export function OrgToolbar({
     <div className="shrink-0 z-30 flex items-center gap-1.5 sm:gap-2 flex-wrap px-2.5 sm:px-3 py-2 border-b border-border bg-background">
       {/* Title block */}
       <div className="flex items-center gap-2">
-        <GitFork className="h-3.5 w-3.5 text-stone-700 dark:text-stone-200" strokeWidth={1.75} />
+        <GitFork className="h-3.5 w-3.5 text-foreground" strokeWidth={1.75} />
         <div>
           <div className="text-[12.5px] font-semibold leading-tight">
             团队<span className="hidden sm:inline"> · Team</span>
@@ -77,34 +78,20 @@ export function OrgToolbar({
       <span className="hidden sm:block h-6 w-px bg-border" />
 
       {/* View toggle */}
-      <div className="border border-border rounded-[0.3rem] p-0.5 flex items-center">
-        <button
-          onClick={() => onViewMode("graph")}
-          className={cn(
-            "h-7 px-2 sm:px-2.5 rounded-[0.2rem] inline-flex items-center gap-1.5 text-[12px] font-medium transition-colors",
-            viewMode === "graph" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
-          )}
-          title="图谱视图"
-        >
-          <GitFork className="h-3 w-3" strokeWidth={1.75} />
-          <span className="hidden sm:inline">图谱</span>
-        </button>
-        <button
-          onClick={() => onViewMode("list")}
-          className={cn(
-            "h-7 px-2 sm:px-2.5 rounded-[0.2rem] inline-flex items-center gap-1.5 text-[12px] font-medium transition-colors",
-            viewMode === "list" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
-          )}
-          title="列表视图"
-        >
-          <List className="h-3 w-3" strokeWidth={1.75} />
-          <span className="hidden sm:inline">列表</span>
-        </button>
-      </div>
+      <SegmentedControl<ViewMode>
+        size="sm"
+        aria-label="视图"
+        value={viewMode}
+        onChange={onViewMode}
+        options={[
+          { value: "graph", label: <span className="hidden sm:inline">图谱</span>, icon: GitFork },
+          { value: "list", label: <span className="hidden sm:inline">列表</span>, icon: List },
+        ]}
+      />
 
       {/* Search */}
       {(!isMobile || mSearchOpen) ? (
-        <div className="border border-border rounded-[0.3rem] px-2 py-1.5 flex items-center gap-1.5 flex-1 sm:flex-none min-w-0">
+        <div className="border border-border rounded-lg px-2 py-1.5 flex items-center gap-1.5 flex-1 sm:flex-none min-w-0">
           <Search className="h-3 w-3 text-muted-foreground shrink-0" strokeWidth={1.75} />
           <Input
             value={q}
@@ -115,56 +102,56 @@ export function OrgToolbar({
           />
           {q && <span className="text-[10px] font-mono text-muted-foreground tabular-nums shrink-0">{matchCount}</span>}
           {(q || isMobile) && (
-            <button onClick={() => { onQuery(""); if (isMobile) setMSearchOpen(false); }} className="h-5 w-5 rounded-[0.2rem] hover:bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0">
+            <Button variant="ghost" size="icon-xs" onClick={() => { onQuery(""); if (isMobile) setMSearchOpen(false); }} className="h-5 w-5 text-muted-foreground shrink-0">
               <X className="h-2.5 w-2.5" strokeWidth={1.75} />
-            </button>
+            </Button>
           )}
         </div>
       ) : (
-        <button onClick={() => setMSearchOpen(true)} className="h-8 w-8 border border-border rounded-[0.3rem] inline-flex items-center justify-center text-muted-foreground">
+        <Button variant="outline" size="icon" onClick={() => setMSearchOpen(true)} className="text-muted-foreground">
           <Search className="h-3.5 w-3.5" strokeWidth={1.75} />
-        </button>
+        </Button>
       )}
 
       {/* Add actions */}
       {!isMobile ? (
         canEdit && (
-          <div className="border border-border rounded-[0.3rem] px-2 py-1.5 flex items-center gap-1">
-            <button onClick={onInviteMember} className="h-7 px-2 rounded-[0.2rem] hover:bg-muted text-stone-700 dark:text-stone-200 inline-flex items-center gap-1.5 text-[12px] font-medium">
+          <div className="border border-border rounded-lg px-2 py-1.5 flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={onInviteMember} className="text-[12px]">
               <UserPlus className="h-3 w-3" strokeWidth={1.75} />
               邀请成员
-            </button>
+            </Button>
             <span className="h-4 w-px bg-border" />
-            <button onClick={onAddGroup} className="h-7 px-2 rounded-[0.2rem] hover:bg-muted text-stone-700 dark:text-stone-200 inline-flex items-center gap-1.5 text-[12px] font-medium">
+            <Button variant="ghost" size="sm" onClick={onAddGroup} className="text-[12px]">
               <UsersRound className="h-3 w-3" strokeWidth={1.75} />
               加分组
-            </button>
+            </Button>
             <span className="h-4 w-px bg-border" />
-            <button onClick={onOpenRoleManager} className="h-7 px-2 rounded-[0.2rem] hover:bg-muted text-stone-700 dark:text-stone-200 inline-flex items-center gap-1.5 text-[12px] font-medium" title="编辑岗位角色">
+            <Button variant="ghost" size="sm" onClick={onOpenRoleManager} className="text-[12px]" title="编辑岗位角色">
               <ShieldPlus className="h-3 w-3" strokeWidth={1.75} />
               角色
-            </button>
+            </Button>
           </div>
         )
       ) : (
         canEdit && (
           <div className="relative">
-            <button onClick={() => setMMenuOpen((o) => !o)} className="h-8 w-8 rounded-[0.3rem] bg-foreground text-background inline-flex items-center justify-center" title="添加">
+            <Button size="icon" onClick={() => setMMenuOpen((o) => !o)} title="添加">
               <Plus className="h-4 w-4" strokeWidth={1.75} />
-            </button>
+            </Button>
             {mMenuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMMenuOpen(false)} />
-                <div className="absolute right-0 top-9 z-40 w-40 bg-background border border-border rounded-[0.3rem] shadow-lg py-1">
-                  <button onClick={() => { setMMenuOpen(false); onInviteMember(); }} className="w-full text-left px-3 py-2 text-[13px] hover:bg-muted inline-flex items-center gap-2">
+                <div className="absolute right-0 top-9 z-40 w-40 bg-background border border-border rounded-lg shadow-md py-1">
+                  <Button variant="ghost" onClick={() => { setMMenuOpen(false); onInviteMember(); }} className="w-full justify-start rounded-none px-3 text-[13px] font-normal">
                     <UserPlus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />邀请成员
-                  </button>
-                  <button onClick={() => { setMMenuOpen(false); onAddGroup(); }} className="w-full text-left px-3 py-2 text-[13px] hover:bg-muted inline-flex items-center gap-2">
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setMMenuOpen(false); onAddGroup(); }} className="w-full justify-start rounded-none px-3 text-[13px] font-normal">
                     <UsersRound className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />加分组
-                  </button>
-                  <button onClick={() => { setMMenuOpen(false); onOpenRoleManager(); }} className="w-full text-left px-3 py-2 text-[13px] hover:bg-muted inline-flex items-center gap-2">
+                  </Button>
+                  <Button variant="ghost" onClick={() => { setMMenuOpen(false); onOpenRoleManager(); }} className="w-full justify-start rounded-none px-3 text-[13px] font-normal">
                     <ShieldPlus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />管理角色
-                  </button>
+                  </Button>
                 </div>
               </>
             )}
@@ -173,33 +160,32 @@ export function OrgToolbar({
       )}
 
       {/* View tools — graph only */}
-      <div className="border border-border rounded-[0.3rem] px-1.5 sm:px-2 py-1.5 flex items-center gap-1 ml-auto">
+      <div className="border border-border rounded-lg px-1.5 sm:px-2 py-1.5 flex items-center gap-1 ml-auto">
         {viewMode === "graph" && (
           <>
-            <button onClick={onAutoLayout} className="h-7 px-2 rounded-[0.2rem] hover:bg-muted text-stone-700 dark:text-stone-200 inline-flex items-center gap-1.5 text-[12px]" title="自动整理">
+            <Button variant="ghost" size="sm" onClick={onAutoLayout} className="text-[12px] font-normal" title="自动整理">
               <LayoutGrid className="h-3 w-3" strokeWidth={1.75} />
               <span className="hidden sm:inline">整理</span>
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onFocusMode}
-              className={cn(
-                "h-7 px-2 rounded-[0.2rem] inline-flex items-center gap-1.5 text-[12px]",
-                focusMode ? "bg-foreground text-background" : "hover:bg-muted text-stone-700 dark:text-stone-200",
-              )}
+              className={cn("text-[12px] font-normal", focusMode && "bg-foreground text-background hover:bg-foreground hover:text-background")}
               title="只看选中节点的上下级"
             >
               <Target className="h-3 w-3" strokeWidth={1.75} />
               <span className="hidden sm:inline">聚焦</span>
-            </button>
+            </Button>
             <span className="hidden sm:block h-4 w-px bg-border" />
-            <button onClick={() => onZoom(view.zoom * 0.9)} className="hidden sm:inline-flex h-7 w-7 rounded-[0.2rem] hover:bg-muted text-stone-700 dark:text-stone-200 items-center justify-center">
+            <Button variant="ghost" size="icon-sm" onClick={() => onZoom(view.zoom * 0.9)} className="hidden sm:inline-flex">
               <Minus className="h-3 w-3" strokeWidth={1.75} />
-            </button>
+            </Button>
             <span className="hidden sm:block text-[10.5px] font-mono text-muted-foreground w-10 text-center tabular-nums">{Math.round(view.zoom * 100)}%</span>
-            <button onClick={() => onZoom(view.zoom * 1.1)} className="hidden sm:inline-flex h-7 w-7 rounded-[0.2rem] hover:bg-muted text-stone-700 dark:text-stone-200 items-center justify-center">
+            <Button variant="ghost" size="icon-sm" onClick={() => onZoom(view.zoom * 1.1)} className="hidden sm:inline-flex">
               <Plus className="h-3 w-3" strokeWidth={1.75} />
-            </button>
-            <Button variant="ghost" size="sm" onClick={onResetView} className="h-7 px-2 rounded-[0.2rem] text-muted-foreground text-[11px]" title="适配">
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onResetView} className="text-muted-foreground text-[11px]" title="适配">
               <Maximize className="h-2.5 w-2.5" strokeWidth={1.75} />
               <span className="hidden sm:inline">适配</span>
             </Button>

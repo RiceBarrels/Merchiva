@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { StatusBadge, STATUS_TONE_DOT, STATUS_TONE_TEXT, type StatusTone } from "@/components/ui/status-badge";
 import { MerchivaLogo } from "@/components/logo";
 import { usePermissions } from "@/lib/context/permissions";
 import {
@@ -147,41 +149,27 @@ const BRIEFING_ICON_MAP: Record<string, LucideIcon> = {
   clock: Clock,
 };
 
-const BRIEFING_TONE_STYLES: Record<
-  BriefingCardTone,
-  { card: string; pip: string; icon: string; badge: string }
-> = {
-  critical: {
-    card: "border-rose-200 bg-rose-50/70 dark:border-rose-900/60 dark:bg-rose-950/30",
-    pip: "bg-rose-500 ring-2 ring-rose-500/20",
-    icon: "text-rose-600 dark:text-rose-400",
-    badge: "border-rose-200 bg-rose-100/70 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/50 dark:text-rose-300",
-  },
-  warning: {
-    card: "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20",
-    pip: "bg-amber-500 ring-2 ring-amber-500/15",
-    icon: "text-amber-700 dark:text-amber-400",
-    badge: "border-amber-200 bg-amber-100/70 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
-  },
-  info: {
-    card: "border-sky-200 bg-sky-50/60 dark:border-sky-900/50 dark:bg-sky-950/20",
-    pip: "bg-sky-500 ring-2 ring-sky-500/15",
-    icon: "text-sky-700 dark:text-sky-400",
-    badge: "border-sky-200 bg-sky-100/70 text-sky-800 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-300",
-  },
-  success: {
-    card: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20",
-    pip: "bg-emerald-500 ring-2 ring-emerald-500/15",
-    icon: "text-emerald-700 dark:text-emerald-400",
-    badge: "border-emerald-200 bg-emerald-100/70 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
-  },
-  neutral: {
-    card: "border-border bg-muted/40",
-    pip: "bg-stone-400",
-    icon: "text-muted-foreground",
-    badge: "border-border bg-background/60 text-muted-foreground",
-  },
+const BRIEFING_STATUS_TONE: Record<BriefingCardTone, StatusTone> = {
+  critical: "danger",
+  warning: "warning",
+  info: "info",
+  success: "success",
+  neutral: "neutral",
 };
+
+/** Soft-fill card surface (border + bg only; text inherits) per status tone. */
+const TONE_CARD: Record<StatusTone, string> = {
+  danger: "border-red-200 bg-red-50/70 dark:border-red-900/60 dark:bg-red-950/30",
+  warning: "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20",
+  info: "border-sky-200 bg-sky-50/60 dark:border-sky-900/50 dark:bg-sky-950/20",
+  success: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20",
+  neutral: "border-border bg-muted/40",
+};
+
+function briefingToneStyles(tone: BriefingCardTone) {
+  const status = BRIEFING_STATUS_TONE[tone];
+  return { card: TONE_CARD[status], pip: STATUS_TONE_DOT[status], icon: STATUS_TONE_TEXT[status], status };
+}
 
 function normalizeMetaKey(value: string | null | undefined): string {
   return String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -322,10 +310,10 @@ function AiBriefingCards({ html }: { html: string }) {
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <MerchivaLogo size={11} />
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+        <Eyebrow as="span" size="xs">
           AI briefing
-        </span>
-        <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-stone-900 px-1 font-mono text-[9.5px] text-white dark:bg-stone-100 dark:text-stone-900">
+        </Eyebrow>
+        <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-foreground px-1 font-mono text-[9.5px] tabular-nums text-background">
           {cards.length}
         </span>
         <div className="h-px flex-1 bg-border" />
@@ -341,12 +329,12 @@ function AiBriefingCards({ html }: { html: string }) {
 
 function AiBriefingCardRow({ item }: { item: BriefingCardItem }) {
   const Icon = item.icon;
-  const tone = BRIEFING_TONE_STYLES[item.tone];
+  const tone = briefingToneStyles(item.tone);
 
   return (
     <li
       className={cn(
-        "flex items-start gap-2 rounded-[0.3rem] border px-2.5 py-2 text-[12px]",
+        "flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[12px]",
         tone.card,
       )}
     >
@@ -356,14 +344,9 @@ function AiBriefingCardRow({ item }: { item: BriefingCardItem }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-medium leading-snug">{item.title}</span>
           {item.section && (
-            <span
-              className={cn(
-                "inline-flex shrink-0 rounded-[0.2rem] border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.08em]",
-                tone.badge,
-              )}
-            >
+            <StatusBadge size="xs" tone={tone.status} className="font-mono">
               {item.section}
-            </span>
+            </StatusBadge>
           )}
         </div>
         {item.detail && (
@@ -379,7 +362,7 @@ function AiBriefingCardRow({ item }: { item: BriefingCardItem }) {
 function MerchivaMark({ state }: { state: AgentState }) {
   return (
     <span className="relative inline-flex shrink-0">
-      <span className="inline-flex h-7 w-7 items-center justify-center rounded-[0.3rem] bg-stone-900 dark:bg-stone-100">
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-foreground">
         <MerchivaLogo size={16} fg="var(--background)" />
       </span>
       <span
@@ -387,9 +370,9 @@ function MerchivaMark({ state }: { state: AgentState }) {
         className={cn(
           "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card",
           state === "working" && "bg-amber-500 animate-pulse",
-          state === "attention" && "bg-rose-500",
+          state === "attention" && "bg-destructive",
           state === "done" && "bg-emerald-500",
-          state === "idle" && "bg-stone-400",
+          state === "idle" && "bg-muted-foreground",
         )}
       />
     </span>
@@ -827,7 +810,7 @@ export function MorningBriefingCard() {
         label: "No one scheduled today",
         sub: `${start}–${end} · auto-schedule ${proposed.length} member${proposed.length > 1 ? "s" : ""}`,
         actions: [
-          { label: "Manual", action: { kind: "navigate", href: "/~/staffing" } },
+          { label: "Manual", action: { kind: "navigate", href: "/manager/staffing" } },
           { label: "Auto-schedule", primary: true, action: { kind: "autoScheduleToday", shifts: proposed } },
         ],
       });
@@ -1315,7 +1298,7 @@ export function MorningBriefingCard() {
               body:
                 `Please submit the required photo/note for: ` +
                 `${action.tasks.slice(0, 5).join(", ")}${action.tasks.length > 5 ? "…" : ""}`,
-              link: "/~/punch-in",
+              link: "/store",
             });
             toast.success("Reminder sent to staff");
             break;
@@ -1466,7 +1449,7 @@ export function MorningBriefingCard() {
                     <span
                       className={cn(
                         "inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-mono text-[10px] tabular-nums text-white",
-                        hasHigh ? "bg-rose-500" : "bg-amber-500",
+                        hasHigh ? "bg-destructive" : "bg-amber-500",
                       )}
                     >
                       {issueCount}
@@ -1477,15 +1460,15 @@ export function MorningBriefingCard() {
                   <span
                     aria-hidden
                     className={cn(
-                      "h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500",
+                      "h-1.5 w-1.5 shrink-0 rounded-full bg-destructive",
                       onToday && !busyBriefing && "animate-pulse",
                     )}
                   />
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.15em]">
+                  <Eyebrow as="span" size="xs">
                     {busyBriefing
                       ? t("dashboard.scanning") || "scanning…"
                       : t("dashboard.hourlyScan") || "Hourly scan"}
-                  </span>
+                  </Eyebrow>
                   {latestHour != null && (
                     <>
                       <span className="text-border">·</span>
@@ -1501,46 +1484,54 @@ export function MorningBriefingCard() {
             <div className="flex shrink-0 items-center gap-1">
               {/* day pager */}
               <div className="flex items-center gap-0.5">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={goPrevDay}
                   disabled={viewIdx <= 0}
-                  className="h-6 w-6 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-muted disabled:opacity-30"
+                  className="text-muted-foreground"
                   title={t("common.previous") || "Previous day"}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                </button>
+                </Button>
                 <span className="min-w-[58px] text-center font-mono text-[10.5px] font-medium tabular-nums text-foreground">
                   {weekdayLabel ? `${weekdayLabel} · ` : ""}
                   {monthDay(viewDate)}
                 </span>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={goNextDay}
                   disabled={viewIdx < 0 || viewIdx >= navDates.length - 1}
-                  className="h-6 w-6 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-muted disabled:opacity-30"
+                  className="text-muted-foreground"
                   title={t("common.next") || "Next day"}
                 >
                   <ChevronRight className="h-3.5 w-3.5" />
-                </button>
+                </Button>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => void generateBriefing()}
                 disabled={busyBriefing}
-                className="h-6 w-6 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="text-muted-foreground"
                 title={t("dashboard.regenerate") || "Regenerate"}
               >
                 {busyBriefing ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <RefreshCw className="h-3 w-3" />
                 )}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setBriefingExpanded((v) => !v)}
-                className="h-6 w-6 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-muted"
+                className="text-muted-foreground"
                 title={
                   briefingExpanded
                     ? t("common.collapse") || "Collapse"
@@ -1550,7 +1541,7 @@ export function MorningBriefingCard() {
                 <ChevronDown
                   className={cn("h-4 w-4 transition-transform", briefingExpanded && "rotate-180")}
                 />
-              </button>
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -1565,7 +1556,7 @@ export function MorningBriefingCard() {
                 replaces the greyed-out 64px vertical 24-hour rail. */}
             <div>
               <div className="mb-2 flex items-baseline justify-between gap-2">
-                <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                <Eyebrow as="span" size="xs">
                   {scanTimeline.isToday
                     ? t("dashboard.todayScan") || "Today's scan"
                     : t("dashboard.hourlyScan") || "Hourly scan"}
@@ -1573,7 +1564,7 @@ export function MorningBriefingCard() {
                     {" · "}
                     {t("dashboard.perHour") || "hourly"}
                   </span>
-                </span>
+                </Eyebrow>
                 <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                   {scanTimeline.scanCount === 0 ? (
                     t("dashboard.awaitingScan") || "Awaiting first scan"
@@ -1581,7 +1572,7 @@ export function MorningBriefingCard() {
                     <>
                       {scanTimeline.scanCount} {t("dashboard.scans") || "scans"}
                       {scanTimeline.issueCount > 0 && (
-                        <span className="text-rose-600 dark:text-rose-400">
+                        <span className="text-destructive">
                           {" · "}
                           {scanTimeline.issueCount} {t("dashboard.flagged") || "flagged"}
                         </span>
@@ -1606,13 +1597,13 @@ export function MorningBriefingCard() {
                   const dot =
                     r.state === "issue"
                       ? cn(
-                          "rounded-full bg-rose-500 ring-4 ring-rose-500/15",
-                          active ? "h-3 w-3 ring-rose-500/30" : "h-2.5 w-2.5",
+                          "rounded-full bg-destructive ring-4 ring-destructive/15",
+                          active ? "h-3 w-3 ring-destructive/30" : "h-2.5 w-2.5",
                         )
                       : r.state === "clear"
                       ? cn(
-                          "rounded-full bg-stone-400/80",
-                          active ? "h-2.5 w-2.5 bg-stone-500 ring-2 ring-stone-400/30" : "h-1.5 w-1.5",
+                          "rounded-full bg-muted-foreground/80",
+                          active ? "h-2.5 w-2.5 bg-muted-foreground ring-2 ring-muted-foreground/30" : "h-1.5 w-1.5",
                         )
                       : r.state === "pending"
                       ? "h-1.5 w-1.5 rounded-full border border-border bg-card"
@@ -1623,7 +1614,7 @@ export function MorningBriefingCard() {
                       {/* flag row (fixed height so every dot lines up) */}
                       <span className="flex h-[11px] items-end leading-none">
                         {r.flag && (
-                          <span className="font-mono text-[8px] font-semibold uppercase tracking-[0.06em] text-rose-600 dark:text-rose-400">
+                          <span className="font-mono text-[8px] font-semibold uppercase tracking-[0.06em] text-destructive">
                             {t("dashboard.issueFlag") || "issue"}
                           </span>
                         )}
@@ -1635,7 +1626,7 @@ export function MorningBriefingCard() {
                       {/* label row (issue HH:00, else a sparse context tick) */}
                       <span className="flex h-[12px] items-start leading-none">
                         {r.state === "issue" ? (
-                          <span className="font-mono text-[9px] font-semibold tabular-nums text-rose-600 dark:text-rose-400">
+                          <span className="font-mono text-[9px] font-semibold tabular-nums text-destructive">
                             {hourLabel}
                           </span>
                         ) : r.tickLabel ? (
@@ -1657,7 +1648,7 @@ export function MorningBriefingCard() {
                           ? `${hourLabel} — ${t("dashboard.issueFlag") || "issue"}`
                           : hourLabel
                       }
-                      className="flex min-w-0 flex-1 flex-col items-center rounded-[0.2rem] hover:bg-muted/50"
+                      className="flex min-w-0 flex-1 flex-col items-center rounded hover:bg-muted/50"
                     >
                       {inner}
                     </button>
@@ -1683,10 +1674,10 @@ export function MorningBriefingCard() {
                 {/* Today's attendance */}
                 <div>
                   <div className="mb-1.5 flex items-center gap-2">
-                    <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                    <Eyebrow as="span" size="xs">
                       {t("dashboard.attendance.title") || "Today's attendance"}
-                    </span>
-                    <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-stone-200 px-1 font-mono text-[9.5px] tabular-nums dark:bg-stone-700">
+                    </Eyebrow>
+                    <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-muted px-1 font-mono text-[9.5px] tabular-nums">
                       {todayStatus.onShift.length}
                     </span>
                     <div className="h-px flex-1 bg-border" />
@@ -1708,7 +1699,7 @@ export function MorningBriefingCard() {
                         <li
                           key={`${s.name}-${i}`}
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-[0.3rem] border px-2 py-1 text-[11.5px]",
+                            "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11.5px]",
                             s.onBreak
                               ? "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20"
                               : "border-border bg-muted/40",
@@ -1736,9 +1727,9 @@ export function MorningBriefingCard() {
                 {/* Today's tasks — live completion progress, always shown */}
                 <div>
                   <div className="mb-1.5 flex items-center gap-2">
-                    <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                    <Eyebrow as="span" size="xs">
                       {t("dashboard.todayTasks.title") || "Today's tasks"}
-                    </span>
+                    </Eyebrow>
                     <div className="h-px flex-1 bg-border" />
                     {todayStatus.dueT > 0 && (
                       <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
@@ -1754,7 +1745,7 @@ export function MorningBriefingCard() {
                     <div className="flex flex-wrap items-center gap-1.5 text-[11.5px]">
                       <span
                         className={cn(
-                          "inline-flex items-center gap-1 rounded-[0.3rem] border px-2 py-1",
+                          "inline-flex items-center gap-1 rounded-lg border px-2 py-1",
                           todayStatus.doneT >= todayStatus.dueT
                             ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20"
                             : "border-border bg-muted/40",
@@ -1769,7 +1760,7 @@ export function MorningBriefingCard() {
                         </span>
                       </span>
                       {todayStatus.pendingT > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-amber-200 bg-amber-50/60 px-2 py-1 dark:border-amber-900/50 dark:bg-amber-950/20">
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50/60 px-2 py-1 dark:border-amber-900/50 dark:bg-amber-950/20">
                           <span className="font-mono tabular-nums">{todayStatus.pendingT}</span>
                           <span className="text-amber-700 dark:text-amber-400">
                             {t("dashboard.todayTasks.pending") || "pending"}
@@ -1777,7 +1768,7 @@ export function MorningBriefingCard() {
                         </span>
                       )}
                       {todayStatus.skippedT > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-border px-2 py-1 text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-muted-foreground">
                           <span className="font-mono tabular-nums">{todayStatus.skippedT}</span>
                           <span>{t("dashboard.todayTasks.skipped") || "skipped"}</span>
                         </span>
@@ -1789,9 +1780,9 @@ export function MorningBriefingCard() {
                 {/* Yesterday's tasks */}
                 <div>
                   <div className="mb-1.5 flex items-center gap-2">
-                    <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                    <Eyebrow as="span" size="xs">
                       {t("dashboard.yesterdayTasks.title") || "Yesterday's tasks"}
-                    </span>
+                    </Eyebrow>
                     <div className="h-px flex-1 bg-border" />
                   </div>
                   {todayStatus.dueY === 0 ? (
@@ -1800,7 +1791,7 @@ export function MorningBriefingCard() {
                     </p>
                   ) : (
                     <div className="flex flex-wrap items-center gap-1.5 text-[11.5px]">
-                      <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-border bg-muted/40 px-2 py-1">
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 px-2 py-1">
                         <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                         <span className="font-mono tabular-nums">
                           {todayStatus.doneY}/{todayStatus.dueY}
@@ -1810,7 +1801,7 @@ export function MorningBriefingCard() {
                         </span>
                       </span>
                       {todayStatus.notDoneY > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-amber-200 bg-amber-50/60 px-2 py-1 dark:border-amber-900/50 dark:bg-amber-950/20">
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50/60 px-2 py-1 dark:border-amber-900/50 dark:bg-amber-950/20">
                           <span className="font-mono tabular-nums">{todayStatus.notDoneY}</span>
                           <span className="text-amber-700 dark:text-amber-400">
                             {t("dashboard.yesterdayTasks.notDone") || "not done"}
@@ -1818,7 +1809,7 @@ export function MorningBriefingCard() {
                         </span>
                       )}
                       {todayStatus.skippedY > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-[0.3rem] border border-border px-2 py-1 text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-muted-foreground">
                           <span className="font-mono tabular-nums">{todayStatus.skippedY}</span>
                           <span>{t("dashboard.yesterdayTasks.skipped") || "skipped"}</span>
                         </span>
@@ -1831,30 +1822,32 @@ export function MorningBriefingCard() {
 
             {/* Viewing a past snapshot — jump back to the live view. */}
             {!viewingLatest && displayedBriefing && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   setViewDate(today);
                   setViewHour(null);
                 }}
-                className="flex w-full items-center gap-1.5 rounded-[0.3rem] border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
+                className="w-full justify-start gap-1.5 px-2 text-[11px] text-muted-foreground"
               >
                 <History className="h-3 w-3" />
                 {slotTitle(displayedBriefing.date, displayedBriefing.hour)}
-                <span className="ml-auto font-mono text-[9.5px] uppercase tracking-[0.12em]">
+                <Eyebrow as="span" size="xs" className="ml-auto text-current">
                   {t("dashboard.backToNow") || "Back to now"}
-                </span>
-              </button>
+                </Eyebrow>
+              </Button>
             )}
 
             {/* ── Needs attention — the live issues, lifted to be the main event ── */}
             {viewingLatest && issueCount > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                  <Eyebrow as="span" size="xs">
                     {t("dashboard.needsAttention") || "Needs attention"}
-                  </span>
-                  <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-rose-500 px-1 font-mono text-[9.5px] text-white">
+                  </Eyebrow>
+                  <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-destructive px-1 font-mono text-[9.5px] tabular-nums text-white">
                     {issueCount}
                   </span>
                   <div className="h-px flex-1 bg-border" />
@@ -1868,7 +1861,7 @@ export function MorningBriefingCard() {
                       title={t("dashboard.approveAll") || "Approve all"}
                     >
                       {busyAll ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <CheckCheck className="h-3 w-3" />
                       )}
@@ -1905,9 +1898,9 @@ export function MorningBriefingCard() {
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <MerchivaLogo size={11} />
-                  <span className="font-mono text-[9.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                  <Eyebrow as="span" size="xs">
                     {t("dashboard.suggestedActions") || "Suggested actions"} · {pendingAiActions.length}
-                  </span>
+                  </Eyebrow>
                   <div className="h-px flex-1 bg-border" />
                   {issueCount === 0 && approvableCount > 1 && (
                     <Button
@@ -1919,7 +1912,7 @@ export function MorningBriefingCard() {
                       title={t("dashboard.approveAll") || "Approve all"}
                     >
                       {busyAll ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <CheckCheck className="h-3 w-3" />
                       )}
@@ -1932,9 +1925,9 @@ export function MorningBriefingCard() {
                     dismissedAi.has(i) ? null : (
                       <li
                         key={`ai-${i}`}
-                        className="flex items-center gap-2 rounded-[0.3rem] border border-border px-2 py-1.5 text-[12px]"
+                        className="flex items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-[12px]"
                       >
-                        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />
+                        <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">{act.label}</div>
                           <div className="truncate font-mono text-[10px] text-muted-foreground">
@@ -1959,7 +1952,7 @@ export function MorningBriefingCard() {
                             onClick={() => runAiAction(i, act)}
                           >
                             {busyAi.has(i) ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               t("dashboard.approve") || "Approve"
                             )}
@@ -1996,9 +1989,9 @@ export function MorningBriefingCard() {
                     className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
                   >
                     <History className="h-3 w-3" />
-                    <span className="font-mono text-[9.5px] uppercase tracking-[0.12em]">
+                    <Eyebrow as="span" size="xs" className="text-current">
                       {t("dashboard.pastBriefings") || "Past briefings"} · {briefingHistory.length}
-                    </span>
+                    </Eyebrow>
                     <ChevronDown
                       className={cn("h-3 w-3 transition-transform", historyExpanded && "rotate-180")}
                     />
@@ -2022,7 +2015,7 @@ export function MorningBriefingCard() {
                 {briefingHistory.map((b) => (
                   <li
                     key={b.id.toString()}
-                    className="grid grid-cols-[88px_1fr] items-center gap-2 rounded-[0.3rem] border border-border px-2 py-1.5 text-[12px]"
+                    className="grid grid-cols-[88px_1fr] items-center gap-2 rounded-lg border border-border px-2 py-1.5 text-[12px]"
                   >
                     <span className="font-mono tabular-nums text-muted-foreground">{b.date}</span>
                     <span className="truncate">{b.summary || "—"}</span>
@@ -2048,22 +2041,22 @@ function IssueRow({
 }) {
   const Icon = issue.icon;
   // Severity sets the card's emphasis: high-severity issues are lifted onto a
-  // rose-tinted card (the design's "main event becomes the protagonist"),
+  // danger-tinted card (the design's "main event becomes the protagonist"),
   // lower ones stay quiet so the urgent thing reads first.
   const tone =
     issue.severity === "high"
       ? {
-          card: "border-rose-200 bg-rose-50/70 dark:border-rose-900/60 dark:bg-rose-950/30",
-          pip: "bg-rose-500 ring-2 ring-rose-500/20",
-          icon: "text-rose-600 dark:text-rose-400",
+          card: TONE_CARD.danger,
+          pip: cn(STATUS_TONE_DOT.danger, "ring-2 ring-destructive/20"),
+          icon: STATUS_TONE_TEXT.danger,
         }
       : issue.severity === "medium"
-      ? { card: "border-border bg-muted/40", pip: "bg-amber-500", icon: "text-muted-foreground" }
-      : { card: "border-border", pip: "bg-stone-400", icon: "text-muted-foreground" };
+      ? { card: TONE_CARD.neutral, pip: STATUS_TONE_DOT.warning, icon: STATUS_TONE_TEXT.neutral }
+      : { card: "border-border", pip: STATUS_TONE_DOT.neutral, icon: STATUS_TONE_TEXT.neutral };
   return (
     <li
       className={cn(
-        "flex flex-wrap items-center gap-x-2 gap-y-2 rounded-[0.3rem] border px-2.5 py-2 text-[12px]",
+        "flex flex-wrap items-center gap-x-2 gap-y-2 rounded-lg border px-2.5 py-2 text-[12px]",
         tone.card,
       )}
     >
@@ -2088,7 +2081,7 @@ function IssueRow({
               disabled={busy}
               onClick={() => onAction(act.action)}
             >
-              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : act.label}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : act.label}
             </Button>
           ))}
         </div>

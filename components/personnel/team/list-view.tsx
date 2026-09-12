@@ -5,6 +5,9 @@ import { ArrowDown, ArrowUp, Building, ChevronRight, KeyRound, Map as MapIcon, S
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -15,7 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ORG_GROUP_PRESETS,
-  initials,
   type EdgeLayout,
   type GroupNode,
   type OrgNode,
@@ -29,35 +31,6 @@ const GROUP_ICON_MAP: Record<string, React.ComponentType<{ className?: string; s
   building: Building,
   "users-round": Users,
 };
-
-function PersonAvatar({
-  p,
-  color,
-  className,
-}: {
-  p: PersonNode;
-  color: string;
-  className?: string;
-}) {
-  if (p.avatarUrl) {
-    return (
-      <img
-        src={p.avatarUrl}
-        alt={p.name}
-        className={cn("rounded-full border border-border bg-muted object-cover shrink-0", className)}
-      />
-    );
-  }
-
-  return (
-    <span
-      className={cn("rounded-full inline-flex items-center justify-center font-semibold shrink-0", className)}
-      style={{ background: color + "20", color }}
-    >
-      {initials(p.name)}
-    </span>
-  );
-}
 
 type SortKey = "name" | "role" | "group" | "status" | "joined";
 
@@ -153,7 +126,7 @@ export function OrgListView({
 
   // ── Shared count line ──────────────────────────────────────────────────────
   const countLine = (
-    <span className="text-stone-700 dark:text-stone-200">
+    <span className="text-foreground">
       <span className="font-mono tabular-nums font-semibold text-foreground">{visible.length}</span>
       {searchMatchIds && <span className="text-muted-foreground"> / {persons.length}</span>}
       <span className="text-muted-foreground"> 人</span>
@@ -181,7 +154,7 @@ export function OrgListView({
       <div className="flex-1 min-h-0 overflow-auto bg-background">
         <div className="sticky top-0 z-20 px-3.5 py-2.5 bg-background border-b border-border flex items-center gap-3 text-[11.5px]">
           {countLine}
-          <label className="ml-auto text-[11px] text-stone-600 dark:text-stone-300 inline-flex items-center gap-1.5 cursor-pointer">
+          <label className="ml-auto text-[11px] text-muted-foreground inline-flex items-center gap-1.5 cursor-pointer">
             <Checkbox checked={showGroupHeaders} onCheckedChange={(v) => setShowGroupHeaders(!!v)} />
             按分组
           </label>
@@ -201,10 +174,10 @@ export function OrgListView({
                 <div className="sticky top-[41px] z-10 flex items-center gap-2 px-3.5 py-1.5 bg-muted/60 border-y border-border backdrop-blur">
                   {g ? (
                     <>
-                      <span className="h-4 w-4 rounded-[0.25rem] inline-flex items-center justify-center text-white shrink-0" style={{ background: preset!.color }}>
+                      <span className="h-4 w-4 rounded inline-flex items-center justify-center text-white shrink-0" style={{ background: preset!.color }}>
                         <Icon className="h-2.5 w-2.5" strokeWidth={1.75} />
                       </span>
-                      <button onClick={() => onSelectNode(g.id)} className="text-[11.5px] font-semibold text-stone-800 dark:text-stone-100 truncate">{g.name}</button>
+                      <button onClick={() => onSelectNode(g.id)} className="text-[11.5px] font-semibold text-foreground truncate">{g.name}</button>
                     </>
                   ) : (
                     <span className="text-[11.5px] font-semibold text-muted-foreground italic">未分组</span>
@@ -227,15 +200,12 @@ export function OrgListView({
   // Desktop — sortable table.
   // ─────────────────────────────────────────────────────────────────────────
   const headerCell = (label: string, k: SortKey, className?: string) => (
-    <th
+    <TableHead
       onClick={() => {
         if (sortKey === k) setSortDir((d) => d === "asc" ? "desc" : "asc");
         else { setSortKey(k); setSortDir("asc"); }
       }}
-      className={cn(
-        "px-3 py-2 text-left text-[10.5px] uppercase tracking-wider font-mono text-muted-foreground cursor-pointer hover:text-foreground select-none",
-        className,
-      )}
+      className={cn("cursor-pointer hover:text-foreground select-none", className)}
     >
       <span className="inline-flex items-center gap-1">
         {label}
@@ -245,7 +215,7 @@ export function OrgListView({
             : <ArrowDown className="h-2.5 w-2.5" strokeWidth={1.75} />
         )}
       </span>
-    </th>
+    </TableHead>
   );
 
   return (
@@ -253,49 +223,49 @@ export function OrgListView({
       <div className="sticky top-0 z-20 px-4 py-2.5 bg-background border-b border-border flex items-center gap-3 sm:gap-4 text-[11.5px] flex-wrap">
         {countLine}
         <div className="ml-auto flex items-center gap-2">
-          <label className="text-[11px] text-stone-600 dark:text-stone-300 inline-flex items-center gap-1.5 cursor-pointer">
+          <label className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5 cursor-pointer">
             <Checkbox checked={showGroupHeaders} onCheckedChange={(v) => setShowGroupHeaders(!!v)} />
             按分组显示
           </label>
         </div>
       </div>
 
-      <table className="w-full text-[12.5px]">
-        <thead className="sticky top-[42px] z-10 bg-muted/40 border-b border-border">
-          <tr>
-            <th className="px-3 py-2 w-8" />
+      <Table className="text-[12.5px]">
+        <TableHeader className="sticky top-[42px] z-10 bg-muted/40">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-8" />
             {headerCell("姓名", "name")}
             {headerCell("角色", "role")}
             {headerCell("分组", "group")}
             {headerCell("状态", "status")}
-            <th className="px-3 py-2 text-left text-[10.5px] uppercase tracking-wider font-mono text-muted-foreground">联系方式</th>
-            <th className="px-3 py-2 text-left text-[10.5px] uppercase tracking-wider font-mono text-muted-foreground">权限</th>
-            <th className="px-3 py-2 text-left text-[10.5px] uppercase tracking-wider font-mono text-muted-foreground">关系</th>
-            <th className="px-3 py-2 w-10" />
-          </tr>
-        </thead>
+            <TableHead>联系方式</TableHead>
+            <TableHead>权限</TableHead>
+            <TableHead>关系</TableHead>
+            <TableHead className="w-10" />
+          </TableRow>
+        </TableHeader>
 
-        <tbody>
+        <TableBody>
           {visible.length === 0 ? (
-            <tr>
-              <td colSpan={9} className="px-4 py-12 text-center text-[12.5px] text-muted-foreground">
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={9} className="px-4 py-12 text-center text-[12.5px] text-muted-foreground whitespace-normal">
                 没有匹配的成员
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ) : grouped ? grouped.flatMap(([gid, rows]) => {
             const g = gid === "__none" ? null : groupsById[gid];
             const preset = g ? (ORG_GROUP_PRESETS[g.groupKind] || ORG_GROUP_PRESETS.custom) : null;
             const Icon = preset ? (GROUP_ICON_MAP[preset.icon] || Users) : Users;
             return [
-              <tr key={"h-" + gid} className="bg-muted/40 border-y border-border">
-                <td colSpan={9} className="px-3 py-1.5">
+              <TableRow key={"h-" + gid} className="bg-muted/40 border-y border-border hover:bg-muted/40">
+                <TableCell colSpan={9} className="py-1.5">
                   <div className="flex items-center gap-2">
                     {g ? (
                       <>
-                        <span className="h-5 w-5 rounded-[0.3rem] inline-flex items-center justify-center text-white" style={{ background: preset!.color }}>
+                        <span className="h-5 w-5 rounded inline-flex items-center justify-center text-white" style={{ background: preset!.color }}>
                           <Icon className="h-2.5 w-2.5" strokeWidth={1.75} />
                         </span>
-                        <button onClick={() => onSelectNode(g.id)} className="text-[12px] font-semibold text-stone-800 dark:text-stone-100 hover:underline">{g.name}</button>
+                        <button onClick={() => onSelectNode(g.id)} className="text-[12px] font-semibold text-foreground hover:underline">{g.name}</button>
                         <span className="text-[10.5px] text-muted-foreground">{g.desc}</span>
                       </>
                     ) : (
@@ -303,8 +273,8 @@ export function OrgListView({
                     )}
                     <span className="ml-auto text-[10.5px] font-mono text-muted-foreground tabular-nums">{rows.length} 人</span>
                   </div>
-                </td>
-              </tr>,
+                </TableCell>
+              </TableRow>,
               ...rows.map((p) => (
                 <PersonRow
                   key={p.id}
@@ -334,8 +304,8 @@ export function OrgListView({
               onDeleteNode={onDeleteNode}
             />
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -365,12 +335,12 @@ function PersonCard({
     >
       <span className="w-1 shrink-0" style={{ background: color }} />
       <span className="flex-1 min-w-0 flex items-center gap-3 px-3.5 py-3">
-        <PersonAvatar p={p} color={color} className="h-9 w-9 text-[11.5px]" />
+        <Avatar name={p.name} src={p.avatarUrl} size="lg" />
         <span className="flex-1 min-w-0">
           <span className="flex items-center gap-1.5">
             <span className="text-[14px] font-medium tracking-[-0.015em] text-foreground truncate">{p.name}</span>
             {p.isMe && (
-              <Badge variant="outline" className="h-4 px-1 text-[9px] bg-foreground text-background border-foreground rounded-[0.2rem] shrink-0">
+              <Badge variant="outline" className="h-4 px-1 text-[9px] bg-foreground text-background border-foreground shrink-0">
                 YOU
               </Badge>
             )}
@@ -424,10 +394,10 @@ function PersonRow({
   const role = rolesByKey[p.role] ?? roles[0];
 
   return (
-    <tr
+    <TableRow
       onClick={onSelect}
       className={cn(
-        "border-b border-border group cursor-pointer transition-colors",
+        "border-border group cursor-pointer",
         isSelected
           ? "bg-muted/40"
           : isMatch
@@ -435,25 +405,25 @@ function PersonRow({
           : "hover:bg-muted/30",
       )}
     >
-      <td className="px-3 py-2.5 align-middle">
+      <TableCell className="py-2.5">
         <span className="block h-7 w-1 rounded" style={{ background: role?.color ?? "#78716c" }} />
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle">
+      <TableCell className="py-2.5">
         <div className="flex items-center gap-2.5">
-          <PersonAvatar p={p} color={role?.color ?? "#78716c"} className="h-7 w-7 text-[10.5px]" />
+          <Avatar name={p.name} src={p.avatarUrl} size="sm" />
           <div className="min-w-0">
             <div className="text-[12.5px] font-medium text-foreground truncate">{p.name}</div>
             {p.isMe && (
-              <Badge variant="outline" className="h-4 px-1 text-[9px] mt-0.5 bg-foreground text-background border-foreground rounded-[0.2rem]">
+              <Badge variant="outline" className="h-4 px-1 text-[9px] mt-0.5 bg-foreground text-background border-foreground">
                 YOU
               </Badge>
             )}
           </div>
         </div>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
         <Select
           value={p.role}
           onValueChange={(v) => {
@@ -476,9 +446,9 @@ function PersonRow({
             ))}
           </SelectContent>
         </Select>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="py-2.5" onClick={(e) => e.stopPropagation()}>
         <Select
           value={p.groupId ?? "__none"}
           onValueChange={(v) => {
@@ -486,7 +456,7 @@ function PersonRow({
             onUpdateNode(p.id, { groupId: v === "__none" ? null : v });
           }}
         >
-          <SelectTrigger size="sm" className="max-w-[160px] h-7 text-[12px] text-stone-700 dark:text-stone-200">
+          <SelectTrigger size="sm" className="max-w-[160px] h-7 text-[12px] text-foreground">
             <SelectValue placeholder="— 无组 —" />
           </SelectTrigger>
           <SelectContent>
@@ -496,17 +466,17 @@ function PersonRow({
             ))}
           </SelectContent>
         </Select>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle">
+      <TableCell className="py-2.5">
         <StatusPill status={p.status} />
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle">
-        <div className="text-[11.5px] font-mono text-stone-700 dark:text-stone-200 truncate max-w-[180px]">{p.email}</div>
-      </td>
+      <TableCell className="py-2.5">
+        <div className="text-[11.5px] font-mono tabular-nums text-foreground truncate max-w-[180px]">{p.email}</div>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle">
+      <TableCell className="py-2.5">
         <button
           onClick={(e) => { e.stopPropagation(); onSelect(); }}
           className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
@@ -515,9 +485,9 @@ function PersonRow({
           <KeyRound className="h-2.5 w-2.5" strokeWidth={1.75} />
           <span className="font-mono tabular-nums">{p.perms.length}</span>
         </button>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle">
+      <TableCell className="py-2.5">
         <div className="inline-flex items-center gap-2 text-[10.5px] font-mono text-muted-foreground tabular-nums">
           <span title="谁管它">
             <ArrowDown className="inline h-2.5 w-2.5 align-[-1px]" strokeWidth={1.75} /> {manageCount.inc[p.id] || 0}
@@ -526,9 +496,9 @@ function PersonRow({
             <ArrowUp className="inline h-2.5 w-2.5 align-[-1px]" strokeWidth={1.75} /> {manageCount.out[p.id] || 0}
           </span>
         </div>
-      </td>
+      </TableCell>
 
-      <td className="px-3 py-2.5 align-middle">
+      <TableCell className="py-2.5">
         <Button
           variant="ghost"
           size="icon-xs"
@@ -536,26 +506,26 @@ function PersonRow({
             e.stopPropagation();
             if (confirm(`从画布移除 ${p.name}（不会删除成员）？`)) onDeleteNode(p.id);
           }}
-          className="opacity-0 group-hover:opacity-100 transition-opacity rounded-[0.2rem] text-stone-400 hover:text-destructive hover:bg-destructive/10"
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
           title="从画布移除"
         >
           <Trash2 strokeWidth={1.75} />
         </Button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
 function StatusPill({ status }: { status: string }) {
-  const styles: Record<string, { bg: string; text: string; label: string }> = {
-    active:   { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-300", label: "在职" },
-    invited:  { bg: "bg-amber-50 dark:bg-amber-950/30",     text: "text-amber-700 dark:text-amber-300",     label: "待入职" },
-    disabled: { bg: "bg-muted",                              text: "text-muted-foreground",                  label: "已停用" },
+  const styles: Record<string, { tone: StatusTone; label: string }> = {
+    active:   { tone: "success", label: "在职" },
+    invited:  { tone: "warning", label: "待入职" },
+    disabled: { tone: "neutral", label: "已停用" },
   };
   const s = styles[status] ?? styles.active;
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-[0.2rem] px-1.5 py-0.5 text-[10.5px] font-medium", s.bg, s.text)}>
-      ●&nbsp;{s.label}
-    </span>
+    <StatusBadge tone={s.tone} dot size="xs" className="normal-case tracking-normal">
+      {s.label}
+    </StatusBadge>
   );
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Building, Copy, Map as MapIcon, Pencil, Plus, RefreshCw, Store, Trash2, UserMinus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/ui/avatar";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,7 +19,6 @@ import {
   bottomAnchor,
   edgeMid,
   edgePath,
-  initials,
   pointInGroupInterior,
   type EdgeLayout,
   type GroupNode,
@@ -43,35 +43,6 @@ const GROUP_ICON_MAP: Record<string, React.ComponentType<{ className?: string; s
   building: Building,
   "users-round": Users,
 };
-
-function PersonAvatar({
-  node,
-  color,
-  className,
-}: {
-  node: PersonNode;
-  color: string;
-  className?: string;
-}) {
-  if (node.avatarUrl) {
-    return (
-      <img
-        src={node.avatarUrl}
-        alt={node.name}
-        className={cn("rounded-full border border-border bg-muted object-cover shrink-0", className)}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={cn("rounded-full inline-flex items-center justify-center font-semibold shrink-0", className)}
-      style={{ background: color + "20", color }}
-    >
-      {initials(node.name)}
-    </div>
-  );
-}
 
 // ─── Person card ───────────────────────────────────────────────────────────
 
@@ -106,16 +77,16 @@ function PersonCard({
       style={{ transform: `translate(${node.x}px, ${node.y}px)`, width: CARD_W, height: CARD_H }}
     >
       <div className={cn(
-        "relative h-full w-full rounded-[0.5rem] border bg-background shadow-sm transition-shadow",
+        "relative h-full w-full rounded-lg border bg-background transition-colors",
         selected
-          ? "border-foreground ring-2 ring-foreground/15 shadow-md"
+          ? "border-foreground ring-2 ring-foreground/15"
           : matchesSearch
           ? "border-amber-400 ring-2 ring-amber-200"
-          : "border-border hover:border-stone-300 dark:hover:border-stone-700 hover:shadow",
+          : "border-border hover:border-muted-foreground/40",
       )}>
-        <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-[0.5rem]" style={{ background: role.color }} />
+        <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg" style={{ background: role.color }} />
         <div className="h-full flex items-center gap-2.5 pl-3 pr-2.5">
-          <PersonAvatar node={node} color={role.color} className="h-9 w-9 text-[11px]" />
+          <Avatar name={node.name} src={node.avatarUrl} size="lg" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <div className="text-[12.5px] font-semibold tracking-[-0.01em] truncate">{node.name}</div>
@@ -131,16 +102,16 @@ function PersonCard({
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: role.color }} />
                 {role.name}
               </span>
-              <span className="text-[9.5px] text-stone-400 font-mono tabular-nums">{node.perms.length}p</span>
+              <span className="text-[9.5px] text-muted-foreground font-mono tabular-nums">{node.perms.length}p</span>
             </div>
           </div>
         </div>
         <button
           onPointerDown={(e) => { e.stopPropagation(); onHandlePointerDown(e, node.id); }}
           title="拖动以创建管理关系"
-          className="absolute left-1/2 -translate-x-1/2 -bottom-[7px] h-3.5 w-3.5 rounded-full bg-background border border-stone-300 dark:border-stone-700 hover:border-foreground hover:bg-foreground shadow-sm flex items-center justify-center"
+          className="absolute left-1/2 -translate-x-1/2 -bottom-[7px] h-3.5 w-3.5 rounded-full bg-background border border-border hover:border-foreground hover:bg-foreground flex items-center justify-center"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
+          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
         </button>
       </div>
     </div>
@@ -178,12 +149,10 @@ function GroupFrame({
       onContextMenu={(e) => onContextMenu(e, node)}
     >
       <div
-        className="absolute inset-0 rounded-[0.7rem] pointer-events-none"
+        className="absolute inset-0 rounded-lg pointer-events-none"
         style={{
           border: `2px dashed ${borderColor}`,
-          background: dropTarget
-            ? `linear-gradient(180deg, ${preset.color}10, #16a34a18)`
-            : `linear-gradient(180deg, ${preset.color}06, ${preset.color}0E)`,
+          background: dropTarget ? "#16a34a14" : "var(--card)",
           transition: "border-color 120ms, background 120ms",
         }}
       />
@@ -192,22 +161,22 @@ function GroupFrame({
         className="absolute left-0 right-0 top-0 cursor-grab active:cursor-grabbing flex items-center gap-2.5 px-3"
         style={{
           height: GROUP_HEADER_H,
-          background: `linear-gradient(180deg, ${preset.color}24, ${preset.color}10)`,
-          borderTopLeftRadius: 10, borderTopRightRadius: 10,
+          background: "var(--muted)",
+          borderTopLeftRadius: "var(--radius-lg)", borderTopRightRadius: "var(--radius-lg)",
           borderBottom: `1px dashed ${borderColor}`,
         }}
       >
-        <div className="h-8 w-8 rounded-[0.3rem] inline-flex items-center justify-center text-white shrink-0 shadow-sm" style={{ background: preset.color }}>
+        <div className="h-8 w-8 rounded-lg inline-flex items-center justify-center text-white shrink-0" style={{ background: preset.color }}>
           <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <div className="text-[12.5px] font-semibold tracking-[-0.01em] truncate text-stone-800 dark:text-stone-100">{node.name}</div>
-            <span className="text-[8.5px] uppercase tracking-wider font-mono text-stone-500 shrink-0">group</span>
+            <div className="text-[12.5px] font-semibold tracking-[-0.01em] truncate text-foreground">{node.name}</div>
+            <span className="text-[8.5px] uppercase tracking-wider font-mono text-muted-foreground shrink-0">group</span>
           </div>
-          <div className="text-[10.5px] text-stone-500 truncate leading-tight">{node.desc}</div>
+          <div className="text-[10.5px] text-muted-foreground truncate leading-tight">{node.desc}</div>
         </div>
-        <div className="flex items-center gap-2 text-[10.5px] font-mono text-stone-600 dark:text-stone-300 tabular-nums shrink-0">
+        <div className="flex items-center gap-2 text-[10.5px] font-mono text-muted-foreground tabular-nums shrink-0">
           <span className="inline-flex items-center gap-1">
             <Users className="h-2.5 w-2.5" strokeWidth={1.75} />
             {memberCount}
@@ -218,13 +187,13 @@ function GroupFrame({
         onPointerDown={(e) => { e.stopPropagation(); onHandlePointerDown(e, node.id); }}
         onClick={(e) => e.stopPropagation()}
         title="拖动以创建管理关系"
-        className="absolute left-1/2 -translate-x-1/2 -bottom-[7px] h-3.5 w-3.5 rounded-full bg-background border border-stone-300 dark:border-stone-700 hover:border-foreground hover:bg-foreground shadow-sm flex items-center justify-center z-10"
+        className="absolute left-1/2 -translate-x-1/2 -bottom-[7px] h-3.5 w-3.5 rounded-full bg-background border border-border hover:border-foreground hover:bg-foreground flex items-center justify-center z-10"
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
+        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
       </button>
       {memberCount === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-[11px] text-stone-400 italic">拖动成员到此处</div>
+          <div className="text-[11px] text-muted-foreground italic">拖动成员到此处</div>
         </div>
       )}
       <div
@@ -670,7 +639,7 @@ export function OrgCanvas({
       }}
       onContextMenu={onBgContextMenu}
       style={{
-        backgroundImage: "radial-gradient(circle, rgba(120,113,108,.25) 1px, transparent 1px)",
+        backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)",
         backgroundSize: `20px 20px`,
         backgroundPosition: `${view.tx}px ${view.ty}px`,
       }}

@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { ChevronDown, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { updateSite } from "@/lib/spacetimedb/actions";
@@ -83,12 +85,10 @@ export function TokenPanel({ site }: TokenPanelProps) {
         className="flex w-full items-center justify-between px-3 py-1.5 hover:bg-accent/50 transition-colors"
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t("builder.tokenPanel.title")}
-        </span>
+        <Eyebrow as="span">{t("builder.tokenPanel.title")}</Eyebrow>
         <span className="flex items-center gap-1.5">
           {overrideCount > 0 && (
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
               {overrideCount}
             </span>
           )}
@@ -166,9 +166,7 @@ function TokenGroup({
   return (
     <div className="px-2 pt-1.5">
       <div className="flex items-center justify-between px-1">
-        <p className="text-[9.5px] font-medium uppercase tracking-wider text-muted-foreground/70">
-          {label}
-        </p>
+        <Eyebrow size="xs">{label}</Eyebrow>
         <button
           type="button"
           onClick={() => setAdding((v) => !v)}
@@ -251,7 +249,7 @@ function AddCustomRow({
   };
 
   return (
-    <div className="flex flex-col gap-1 rounded-[3px] border border-dashed border-border bg-accent/20 p-1.5">
+    <div className="flex flex-col gap-1 rounded border border-dashed border-border bg-accent/20 p-1.5">
       <Input
         value={name}
         onChange={(e) => { setName(e.target.value); setError(null); }}
@@ -287,20 +285,24 @@ function AddCustomRow({
       )}
       {error && <p className="text-[9.5px] text-destructive">{error}</p>}
       <div className="flex justify-end gap-1">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="xs"
           onClick={onCancel}
-          className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+          className="h-5 px-1.5 text-[10px] text-muted-foreground"
         >
           {t("builder.tokenPanel.cancel")}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="secondary"
+          size="xs"
           onClick={submit}
-          className="h-5 px-1.5 text-[10px] font-medium text-foreground bg-accent hover:bg-accent/80 rounded-[3px]"
+          className="h-5 px-1.5 text-[10px]"
         >
           {t("builder.tokenPanel.add")}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -335,7 +337,7 @@ function TokenRow({
   };
 
   return (
-    <div className="group flex items-center gap-1.5 px-1 py-0.5 hover:bg-accent/40 rounded-[3px]">
+    <div className="group flex items-center gap-1.5 px-1 py-0.5 hover:bg-accent/40 rounded">
       <span className="flex-1 min-w-0 text-[11px] truncate" title={token.cssVar}>
         {token.label}
       </span>

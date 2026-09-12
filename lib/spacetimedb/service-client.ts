@@ -15,6 +15,7 @@ import "server-only";
 import { DbConnection } from "./generated";
 import type { Identity } from "spacetimedb";
 import { buildBriefingContext, type BriefingContext } from "@/lib/insights/build-context";
+import { productsFromInventoryRows } from "@/lib/products/from-inventory";
 import {
   normalizeSupplierInboundPrefix,
   supplierInboundAddressForOrg,
@@ -30,10 +31,12 @@ const MODULE = process.env.NEXT_PUBLIC_SPACETIMEDB_MODULE ?? "merchiva";
 type ServiceConn = any;
 
 // Cache the connection across warm invocations (Fluid Compute reuses the
-// instance). A rejected promise is cleared so the next call retries.
+// instance). A rejected promise is cleared so the next call retries, and a
+// dropped socket clears it via onDisconnect so a warm invocation hours later
+// dials fresh instead of subscribing on a dead connection.
 let _connPromise: Promise<ServiceConn> | null = null;
 
-function connect(): Promise<ServiceConn> {
+function connect(onDrop: () => void): Promise<ServiceConn> {
   const token = process.env.SPACETIMEDB_SERVICE_TOKEN;
   if (!token) {
     return Promise.reject(
@@ -63,19 +66,51 @@ function connect(): Promise<ServiceConn> {
         clearTimeout(timeout);
         reject(err);
       })
+      .onDisconnect(() => {
+        onDrop();
+      })
       .build();
   });
 }
 
-/** Get (or lazily open) the cached service connection. */
+/**
+ * Get (or lazily open) the cached service connection. A cached connection
+ * whose socket has died (`isActive === false`) is discarded and re-dialed.
+ */
 export async function getServiceConn(): Promise<ServiceConn> {
-  if (!_connPromise) {
-    _connPromise = connect().catch((err) => {
-      _connPromise = null; // allow retry on next call
-      throw err;
-    });
+  const cached = _connPromise;
+  if (cached) {
+    try {
+      const conn = await cached;
+      if (conn.isActive) return conn;
+    } catch {
+      // fall through and re-dial
+    }
+    if (_connPromise === cached) _connPromise = null;
   }
-  return _connPromise;
+
+  const promise: Promise<ServiceConn> = connect(() => {
+    if (_connPromise === promise) _connPromise = null;
+  }).catch((err) => {
+    if (_connPromise === promise) _connPromise = null; // allow retry on next call
+    throw err;
+  });
+  _connPromise = promise;
+  return promise;
+}
+
+/**
+ * Drop the cached connection (closing it if still open) so the next
+ * getServiceConn() dials fresh. Call after a subscription failure — the usual
+ * cause is a half-open socket the SDK still reports as connected.
+ */
+export function resetServiceConn(conn?: ServiceConn): void {
+  _connPromise = null;
+  try {
+    conn?.disconnect?.();
+  } catch {
+    // already closed
+  }
 }
 
 /**
@@ -86,11 +121,11 @@ export async function getServiceConn(): Promise<ServiceConn> {
 export function subscribeAndWait(
   conn: ServiceConn,
   queries: string[],
-  timeoutMs = 15_000,
+  timeoutMs = 30_000,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error("SpacetimeDB subscription timed out"));
+      reject(new Error(`SpacetimeDB subscription timed out after ${timeoutMs}ms`));
     }, timeoutMs);
     conn
       .subscriptionBuilder()
@@ -98,12 +133,40 @@ export function subscribeAndWait(
         clearTimeout(timeout);
         resolve();
       })
-      .onError(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .onError((ctx: any) => {
         clearTimeout(timeout);
-        reject(new Error("SpacetimeDB subscription failed"));
+        const detail = ctx?.event?.message ?? ctx?.event ?? "unknown error";
+        reject(new Error(`SpacetimeDB subscription failed: ${detail}`));
       })
       .subscribe(queries);
   });
+}
+
+/**
+ * Connect + subscribe with one retry on a FRESH connection. The first attempt
+ * usually fails only because the warm-cached socket is half-open, so retrying
+ * after resetServiceConn() recovers cron runs instead of 500ing the hour.
+ */
+export async function getSubscribedServiceConn(
+  queries: string[],
+  timeoutMs = 30_000,
+): Promise<ServiceConn> {
+  let conn: ServiceConn | undefined;
+  try {
+    conn = await getServiceConn();
+    await subscribeAndWait(conn, queries, timeoutMs);
+    return conn;
+  } catch (err) {
+    console.warn(
+      "[service-client] subscribe failed, retrying on a fresh connection:",
+      err instanceof Error ? err.message : String(err),
+    );
+    resetServiceConn(conn);
+    conn = await getServiceConn();
+    await subscribeAndWait(conn, queries, timeoutMs);
+    return conn;
+  }
 }
 
 // ─── Live store context (server-side, for group-chat Mr. Merchiva) ──────────────
@@ -124,7 +187,6 @@ const STORE_CONTEXT_QUERIES = [
   "SELECT * FROM shift_trade",
   "SELECT * FROM sales_record",
   "SELECT * FROM payment",
-  "SELECT * FROM product",
   "SELECT * FROM staff_role",
   "SELECT * FROM role_task",
   "SELECT * FROM role_task_assignment",
@@ -193,7 +255,8 @@ export async function getOrgStoreContext(
       shiftTrades: allRows("shiftTrade"),
       salesRecords: allRows("salesRecord"),
       payments: allRows("payment"),
-      products: allRows("product"),
+      // product table no longer exists — retail-enabled inventory rows ARE the products
+      products: productsFromInventoryRows(allRows("inventoryItem")),
       staffRoles: allRows("staffRole"),
       roleTasks: allRows("roleTask"),
       roleTaskAssignments: allRows("roleTaskAssignment"),

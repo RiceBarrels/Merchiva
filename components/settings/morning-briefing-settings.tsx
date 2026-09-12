@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Bell, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -16,7 +17,6 @@ import { useSpacetimeDB } from "spacetimedb/react";
 import { useT } from "@/lib/i18n/context";
 import { useBriefingPrefs } from "@/lib/spacetimedb/hooks";
 import { setBriefingPref, deleteBriefingPref } from "@/lib/spacetimedb/actions";
-import { cn } from "@/lib/utils";
 
 // A small, curated timezone list keeps the picker usable. "auto" resolves to
 // the browser's IANA zone at save time. Add more as needed.
@@ -142,7 +142,7 @@ export function MorningBriefingSettings() {
   }
 
   return (
-    <div className="rounded-[0.3rem] border border-border bg-background">
+    <div className="rounded-lg border border-border bg-background">
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <Bell className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-[13px] font-semibold">{t("settings.briefing.title")}</h2>
@@ -177,49 +177,31 @@ export function MorningBriefingSettings() {
                 {ALL_HOURS.map((h) => {
                   const on = hours.includes(h);
                   return (
-                    <button
+                    <Button
                       key={h}
                       type="button"
+                      variant={on ? "default" : "outline"}
+                      size="sm"
                       onClick={() => toggleHour(h)}
                       disabled={saving}
                       aria-pressed={on}
-                      className={cn(
-                        "h-8 rounded-[0.3rem] border text-[11px] font-mono tabular-nums transition-colors disabled:opacity-50",
-                        on
-                          ? "bg-foreground text-background border-foreground"
-                          : "border-border text-muted-foreground hover:bg-muted",
-                      )}
+                      className="font-mono text-[11px] tabular-nums"
                     >
                       {String(h).padStart(2, "0")}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => setHours(BUSINESS_HOURS)}
-                  className="h-7 px-2 rounded-[0.3rem] border border-border text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
-                >
+                <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => setHours(BUSINESS_HOURS)}>
                   {t("settings.briefing.presetBusiness")}
-                </button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => setHours([...ALL_HOURS])}
-                  className="h-7 px-2 rounded-[0.3rem] border border-border text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
-                >
+                </Button>
+                <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => setHours([...ALL_HOURS])}>
                   {t("settings.briefing.presetAll")}
-                </button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={() => setHours([])}
-                  className="h-7 px-2 rounded-[0.3rem] border border-border text-[11px] text-muted-foreground hover:bg-muted disabled:opacity-50"
-                >
+                </Button>
+                <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => setHours([])}>
                   {t("settings.briefing.presetClear")}
-                </button>
+                </Button>
               </div>
               <p className="text-[10.5px] text-muted-foreground">
                 {t("settings.briefing.hoursHint")}
@@ -245,22 +227,14 @@ export function MorningBriefingSettings() {
         )}
 
         <div className="flex items-center gap-2 pt-1">
-          <button
-            onClick={save}
-            disabled={saving}
-            className="h-9 px-3 rounded-[0.3rem] border border-foreground bg-foreground text-background text-[12px] font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          <Button onClick={save} disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {t("settings.briefing.saveCta")}
-          </button>
+          </Button>
           {myPref && (
-            <button
-              onClick={disableAndClear}
-              disabled={saving}
-              className="h-9 px-3 rounded-[0.3rem] border border-border bg-background text-muted-foreground text-[12px] font-medium hover:bg-muted disabled:opacity-50"
-            >
+            <Button variant="outline" onClick={disableAndClear} disabled={saving}>
               {t("settings.briefing.clearCta")}
-            </button>
+            </Button>
           )}
         </div>
       </div>

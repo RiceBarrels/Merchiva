@@ -27,6 +27,9 @@ import {
 } from "@/lib/spacetimedb/hooks";
 import { requestTrainingReview } from "@/lib/spacetimedb/actions";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { DayRail, type DayRailItem } from "./day-rail";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -236,9 +239,9 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
       <div className="border-b border-border bg-background">
         <div className="px-4 lg:px-6 py-3 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <Eyebrow as="span" size="xs" className="font-mono">
               {t("training.intern.progress")}
-            </span>
+            </Eyebrow>
             <span className="text-[13px] font-semibold">
               {t("training.intern.dayOfTotal")
                 .replace("{day}", String(internDayNumber))
@@ -272,7 +275,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
             </div>
           </div>
           <div className="flex-1" />
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[0.3rem] font-mono text-[10.5px] bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-300">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded font-mono text-[10.5px] bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-300">
             <Flame className="h-3 w-3" strokeWidth={1.75} />
             <span className="uppercase tracking-wider">{t("training.intern.keepGoing")}</span>
           </div>
@@ -281,30 +284,29 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
 
       {/* Mobile day picker */}
       <div className="lg:hidden border-b border-border bg-background px-3 py-2 flex gap-1.5 overflow-x-auto">
-        {days.map((d) => {
-          const active = d.id === activeId;
-          const done = completedDayIds.has(d.id);
-          const locked = d.dayNumber > internDayNumber;
-          return (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => setActiveId(d.id)}
-              className={cn(
-                "shrink-0 h-8 px-2.5 rounded-[0.3rem] border text-[11.5px] font-medium inline-flex items-center gap-1.5",
-                active
-                  ? "bg-foreground text-background border-foreground"
-                  : "bg-background text-stone-700 dark:text-stone-200 border-border hover:bg-muted",
-              )}
-            >
-              <span className="font-mono tabular-nums">
-                {t("training.dayRail.dayAbbrev")} {String(d.dayNumber).padStart(2, "0")}
-              </span>
-              {done && <Check className="h-3 w-3 text-emerald-500" strokeWidth={2.5} />}
-              {locked && <Lock className="h-[10px] w-[10px] opacity-60" strokeWidth={1.75} />}
-            </button>
-          );
-        })}
+        <SegmentedControl
+          variant="chips"
+          size="md"
+          className="flex-nowrap"
+          value={activeId ?? ""}
+          onChange={(id) => setActiveId(id)}
+          options={days.map((d) => {
+            const done = completedDayIds.has(d.id);
+            const locked = d.dayNumber > internDayNumber;
+            return {
+              value: d.id,
+              label: (
+                <>
+                  <span className="font-mono tabular-nums">
+                    {t("training.dayRail.dayAbbrev")} {String(d.dayNumber).padStart(2, "0")}
+                  </span>
+                  {done && <Check className="h-3 w-3 text-emerald-500" strokeWidth={2.5} />}
+                  {locked && <Lock className="h-[10px] w-[10px] opacity-60" strokeWidth={1.75} />}
+                </>
+              ),
+            };
+          })}
+        />
       </div>
 
       <div className="flex-1 min-h-0 flex">
@@ -325,17 +327,17 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
               <span className="font-mono uppercase tracking-wider text-muted-foreground/80">
                 {t("training.intern.dayLabel").replace("{number}", String(activeDay?.dayNumber ?? "—"))}
               </span>
-              <span className="text-stone-300 dark:text-stone-700">·</span>
+              <span className="text-border">·</span>
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.intern.practice")}
               </span>
-              <span className="text-stone-300 dark:text-stone-700">·</span>
+              <span className="text-border">·</span>
               <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
                 <ShieldCheck className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.intern.required")}
               </span>
               {isLocked && (
                 <>
-                  <span className="text-stone-300 dark:text-stone-700">·</span>
+                  <span className="text-border">·</span>
                   <span className="inline-flex items-center gap-1 text-muted-foreground">
                     <Lock className="h-[11px] w-[11px]" strokeWidth={1.75} /> {t("training.intern.lockedUntilPrior")}
                   </span>
@@ -344,7 +346,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
             </div>
 
             {isLocked ? (
-              <div className="rounded-[0.3rem] border border-border bg-muted/30 px-6 py-14 text-center">
+              <div className="rounded-lg border border-border bg-muted/30 px-6 py-14 text-center">
                 <Lock className="h-6 w-6 text-muted-foreground mx-auto mb-3" strokeWidth={1.5} />
                 <div className="text-[14px] font-semibold">{activeDay?.title ?? "—"}</div>
                 <div className="text-[12.5px] text-muted-foreground mt-1.5">
@@ -374,15 +376,15 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                     return (
                       <div
                         key={o.id}
-                        className="rounded-[0.5rem] overflow-hidden border border-border bg-stone-900 my-4"
+                        className="rounded-lg overflow-hidden border border-border bg-foreground my-4"
                       >
                         <video
                           src={o.mediaUrl}
                           controls
-                          className="w-full aspect-video object-contain bg-stone-900"
+                          className="w-full aspect-video object-contain bg-foreground"
                         />
                         {o.text && (
-                          <div className="px-3 py-2 text-[11.5px] text-stone-300 border-t border-stone-800">
+                          <div className="px-3 py-2 text-[11.5px] text-background/80 border-t border-background/20">
                             {o.text}
                           </div>
                         )}
@@ -416,11 +418,12 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
 
             {/* Pace controls */}
             <div className="mt-8 mb-2 flex items-center gap-3 pt-5 border-t border-border">
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="lg"
                 disabled={!prevDay}
                 onClick={() => prevDay && setActiveId(prevDay.id)}
-                className="h-9 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 text-[12.5px]"
               >
                 <ArrowLeft className="h-[13px] w-[13px]" strokeWidth={1.75} />{" "}
                 {prevDay
@@ -428,13 +431,14 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                       .replace("{number}", String(prevDay.dayNumber))
                       .replace("{title}", prevDay.title)
                   : t("common.previous")}
-              </button>
+              </Button>
               <div className="flex-1" />
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="lg"
                 disabled={!nextDay || nextLocked}
                 onClick={() => nextDay && !nextLocked && setActiveId(nextDay.id)}
-                className="h-9 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-stone-700 dark:text-stone-200 inline-flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-muted"
+                className="px-3 text-[12.5px]"
               >
                 {nextDay
                   ? t("training.intern.dayWithTitle")
@@ -446,7 +450,7 @@ export function TrainingInternView({ orgId, userId }: { orgId: string; userId: s
                 ) : (
                   <ArrowRight className="h-[12px] w-[12px]" strokeWidth={1.75} />
                 )}
-              </button>
+              </Button>
             </div>
 
             {/* Mobile practice + review (right rail is hidden below xl) */}
@@ -511,14 +515,14 @@ function PracticePanel({
   requestReview: () => void;
 }) {
   return (
-    <div className="rounded-[0.3rem] border border-border xl:rounded-none xl:border-0 overflow-hidden">
+    <div className="rounded-lg border border-border xl:rounded-none xl:border-0 overflow-hidden">
       {/* Practice checklist */}
       <div className="bg-background border-b border-border">
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-baseline gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <Eyebrow as="span" size="xs" className="font-mono">
               {t("training.intern.practice")}
-            </span>
+            </Eyebrow>
             <span className="ml-auto font-mono text-[11px] tabular-nums">
               <span className="text-foreground font-semibold">{doneCount}</span>
               <span className="text-muted-foreground">/{tasks.length}</span>
@@ -545,10 +549,10 @@ function PracticePanel({
                 onClick={() => toggleTask(task.id)}
                 disabled={locked}
                 className={cn(
-                  "shrink-0 w-5 h-5 rounded-[0.3rem] border inline-flex items-center justify-center transition-colors disabled:opacity-50",
+                  "shrink-0 w-5 h-5 rounded border inline-flex items-center justify-center transition-colors disabled:opacity-50",
                   task.done
                     ? "bg-foreground border-foreground text-background"
-                    : "bg-background border-border hover:border-stone-500",
+                    : "bg-background border-border hover:border-foreground",
                 )}
                 aria-pressed={task.done}
               >
@@ -578,9 +582,9 @@ function PracticePanel({
       {activeObjectives.length > 0 && (
         <div className="bg-background border-b border-border">
           <div className="px-4 pt-3 pb-2">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <Eyebrow as="span" size="xs" className="font-mono">
               {t("training.intern.resources")}
-            </span>
+            </Eyebrow>
           </div>
           <div className="px-4 pb-3 flex flex-col gap-1.5">
             {activeObjectives.map((a) => {
@@ -596,7 +600,7 @@ function PracticePanel({
                   href={a.mediaUrl ?? "#"}
                   target={a.mediaUrl ? "_blank" : undefined}
                   rel="noreferrer"
-                  className="w-full h-9 px-2.5 rounded-[0.3rem] border border-border bg-background hover:bg-muted inline-flex items-center gap-2 text-left"
+                  className="w-full h-9 px-2.5 rounded-lg border border-border bg-background hover:bg-muted inline-flex items-center gap-2 text-left"
                 >
                   <Icon
                     className="h-[13px] w-[13px] text-muted-foreground shrink-0"
@@ -619,11 +623,11 @@ function PracticePanel({
       <div className="bg-background p-4">
         {!reviewRequested ? (
           <>
-            <button
-              type="button"
+            <Button
+              size="lg"
               onClick={requestReview}
               disabled={!allDone || locked || reviewBusy}
-              className="w-full h-10 rounded-[0.3rem] bg-foreground text-background text-[13px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              className="w-full h-10 text-[13px] gap-2"
             >
               {reviewBusy ? (
                 <Spinner size={14} />
@@ -633,7 +637,7 @@ function PracticePanel({
                   <ArrowRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
                 </>
               )}
-            </button>
+            </Button>
             <div className="mt-1.5 text-[10.5px] text-muted-foreground text-center">
               {allDone
                 ? t("training.intern.trainerWillBeNotified")
@@ -646,22 +650,22 @@ function PracticePanel({
             </div>
           </>
         ) : (
-          <div className="rounded-[0.3rem] border p-3 bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50">
+          <div className="rounded-lg border p-3 bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full animate-pulse bg-amber-500" />
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
               <span className="font-mono text-[10.5px] uppercase tracking-wider text-amber-700 dark:text-amber-300">
                 {t("training.intern.awaitingReview")}
               </span>
             </div>
-            <div className="text-[12.5px] mt-1.5 text-stone-700 dark:text-stone-300">
+            <div className="text-[12.5px] mt-1.5 text-foreground">
               {t("training.intern.liveGradingNote")}
             </div>
           </div>
         )}
 
         <Link
-          href="/~/chat"
-          className="w-full h-9 mt-2 rounded-[0.3rem] border border-border bg-background text-[12.5px] text-muted-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5"
+          href="/manager/channel"
+          className="w-full h-9 mt-2 rounded-lg border border-border bg-background text-[12.5px] text-muted-foreground hover:bg-muted inline-flex items-center justify-center gap-1.5"
         >
           <MessageSquare className="h-3 w-3" strokeWidth={1.75} /> {t("training.intern.askTrainerQuestion")}
         </Link>

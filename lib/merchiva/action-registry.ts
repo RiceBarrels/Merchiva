@@ -305,9 +305,9 @@ register({
 
     if (!token) {
       // The invitation row was created but we couldn't fetch its token to email.
-      // The user can still resend from /~/settings → Team.
+      // The user can still resend from /manager/settings → Team.
       throw new Error(
-        "Invitation created but the email could not be queued — open /~/settings → Team to resend.",
+        "Invitation created but the email could not be queued — open /manager/settings → Team to resend.",
       );
     }
 

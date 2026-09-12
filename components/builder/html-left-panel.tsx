@@ -14,6 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import type { Site, SitePage } from "@/lib/types";
 import type { PageTemplateId } from "@/lib/builder/page-templates";
 import type { HtmlSelectionInfo } from "./html-canvas";
+import { pageColor } from "./page-colors";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 interface HtmlLeftPanelProps {
   site: Site;
@@ -27,15 +29,6 @@ interface HtmlLeftPanelProps {
   selectedSelector?: string | null;
   onSelectElement?: (info: HtmlSelectionInfo) => void;
 }
-
-const PAGE_COLORS = [
-  "bg-blue-600",
-  "bg-emerald-600",
-  "bg-amber-600",
-  "bg-rose-600",
-  "bg-violet-600",
-  "bg-cyan-600",
-];
 
 // HTML-mode left panel: site header + page list + publish, with no Craft.js
 // dependencies. Components/Layers/Values sections from the Craft.js LeftPanel
@@ -75,14 +68,12 @@ export function HtmlLeftPanel({
       {/* Pages + nested layers + values, all in one scrollable column */}
       <div className="flex-1 overflow-auto">
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t("builder.leftPanel.pagesAndLayers")}
-          </span>
+          <Eyebrow as="span">{t("builder.leftPanel.pagesAndLayers")}</Eyebrow>
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-xs"
             onClick={() => setIsAddingPage(true)}
-            className="h-5 w-5 text-muted-foreground hover:text-foreground hover:bg-accent"
+            className="text-muted-foreground"
             title={t("builder.leftPanel.newPage")}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -109,14 +100,14 @@ export function HtmlLeftPanel({
                   key={page.id}
                   type="button"
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-[0.3rem] border border-transparent p-2 text-left cursor-pointer",
+                    "flex w-full items-center gap-2 rounded border border-transparent p-2 text-left cursor-pointer",
                     isActive
                       ? "border-border bg-accent text-foreground"
                       : "text-foreground hover:bg-accent/60",
                   )}
                   onClick={() => onPageSwitch(page.id)}
                 >
-                  <div className={cn("h-6 w-8 shrink-0 rounded-[0.2rem]", PAGE_COLORS[i % PAGE_COLORS.length])} />
+                  <div className={cn("h-6 w-8 shrink-0 rounded", pageColor(i))} />
                   <span className="flex-1 truncate text-xs">{page.name}</span>
                 </button>
               );

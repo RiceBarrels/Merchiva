@@ -2,6 +2,8 @@
 
 import { ArrowLeftRight, CalendarX, Check, Ban, Clock, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { IconTile } from "@/components/ui/icon-tile";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useT } from "@/lib/i18n/context";
@@ -44,10 +46,7 @@ export function NotificationPanel({
 
   if (empty) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <Inbox className="h-8 w-8 mb-2 opacity-40" />
-        <p className="text-sm">{t("notifications.empty")}</p>
-      </div>
+      <EmptyState icon={Inbox} description={t("notifications.empty")} className="py-16" />
     );
   }
 
@@ -75,9 +74,7 @@ export function NotificationPanel({
         return (
           <div key={trade.id} className="flex flex-col gap-1.5 py-2.5">
             <div className="flex items-start gap-2.5">
-              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted">
-                <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
+              <IconTile icon={ArrowLeftRight} size="sm" className="mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground leading-tight">{description}</p>
                 {shift && (
@@ -93,20 +90,20 @@ export function NotificationPanel({
             </div>
             {!canEdit && isPending && isMyTrade && (
               <div className="flex gap-2 ml-9">
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onAcceptTrade(trade.id)}>
+                <Button size="sm" variant="outline" onClick={() => onAcceptTrade(trade.id)}>
                   <Check className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.accept")}
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onDenyTrade(trade.id)}>
+                <Button size="sm" variant="outline" onClick={() => onDenyTrade(trade.id)}>
                   <Ban className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.deny")}
                 </Button>
               </div>
             )}
             {canEdit && isAcceptedAwaitingManager && (
               <div className="flex gap-2 ml-9">
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onManagerApproveTrade(trade.id, true)}>
+                <Button size="sm" variant="outline" onClick={() => onManagerApproveTrade(trade.id, true)}>
                   <Check className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.approve")}
                 </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onManagerApproveTrade(trade.id, false)}>
+                <Button size="sm" variant="outline" onClick={() => onManagerApproveTrade(trade.id, false)}>
                   <Ban className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.deny")}
                 </Button>
               </div>
@@ -124,9 +121,7 @@ export function NotificationPanel({
       {timeOff.map((req) => (
         <div key={req.id} className="flex flex-col gap-1.5 py-2.5">
           <div className="flex items-start gap-2.5">
-            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted">
-              <CalendarX className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
+            <IconTile icon={CalendarX} size="sm" className="mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground leading-tight">
                 {t("notifications.requestedTimeOff").replace("{name}", getMemberName(req.userId))}
@@ -143,10 +138,10 @@ export function NotificationPanel({
             </div>
           </div>
           <div className="flex gap-2 ml-9">
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onApproveTimeOff(req.id)}>
+            <Button size="sm" variant="outline" onClick={() => onApproveTimeOff(req.id)}>
               <Check className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.approve")}
             </Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onDenyTimeOff(req.id)}>
+            <Button size="sm" variant="outline" onClick={() => onDenyTimeOff(req.id)}>
               <Ban className="h-3.5 w-3.5 mr-1" />{t("staffing.requests.deny")}
             </Button>
           </div>

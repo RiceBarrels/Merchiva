@@ -28,7 +28,7 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 }
 
 import type { StoredAccount } from "@/lib/auth/context";
-import { LayoutDashboard, Package, TrendingUp, Users, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, KeyRound, Bell, UserRoundSearch, UserPlus, Palette } from "lucide-react";
+import { LayoutDashboard, Package, TrendingUp, Users, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, Bell, UserRoundSearch, UserPlus, Palette, SwatchBook, UserRound } from "lucide-react";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
@@ -46,6 +46,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { clearCache } from "@/lib/cache";
 import { createOrg } from "@/lib/spacetimedb/actions";
 import { useStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
+import { useAppMode, PERSONAL_MODE_HREFS, clearManagerOverride } from "@/lib/app-mode";
 import { StoreDeviceLock } from "@/components/store-device-lock";
 import { useCurrentOperator, setCurrentOperator } from "@/lib/store-device-lock";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
@@ -84,32 +85,31 @@ type SubNavItem = { labelKey: string; href: string };
 type NavItemExt = NavItem & { mobileOnly?: boolean; children?: SubNavItem[] };
 
 const navItems: NavItemExt[] = [
-  { labelKey: "nav.home",      href: "/~/",  icon: LayoutDashboard, permissionKey: "dashboard" },
-  { labelKey: "nav.pos",       href: "/~/pos",         icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
-  { labelKey: "nav.inventory", href: "/~/inventory",   icon: Package,         permissionKey: "inventory",
+  { labelKey: "nav.home",      href: "/manager/",  icon: LayoutDashboard, permissionKey: "dashboard" },
+  { labelKey: "nav.pos",       href: "/manager/pos",         icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
+  { labelKey: "nav.inventory", href: "/manager/inventory",   icon: Package,         permissionKey: "inventory",
     children: [
-      { labelKey: "nav.suppliers", href: "/~/suppliers" },
+      { labelKey: "nav.suppliers", href: "/manager/suppliers" },
     ] },
-  { labelKey: "nav.sales",     href: "/~/sales",       icon: TrendingUp,      permissionKey: "sales",
+  { labelKey: "nav.sales",     href: "/manager/sales",       icon: TrendingUp,      permissionKey: "sales",
     children: [
-      { labelKey: "nav.reports",  href: "/~/reports" },
-      { labelKey: "nav.finances", href: "/~/finances" },
+      { labelKey: "nav.reports",  href: "/manager/reports" },
+      { labelKey: "nav.finances", href: "/manager/finances" },
     ] },
-  { labelKey: "nav.personnel", href: "/~/personnel/schedule", icon: Users,    permissionKey: "staffing",
+  { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: Users,    permissionKey: "staffing",
     children: [
-      { labelKey: "personnel.tabs.schedule", href: "/~/personnel/schedule" },
-      { labelKey: "personnel.tabs.team",     href: "/~/personnel/team" },
-      { labelKey: "personnel.tabs.roles",    href: "/~/personnel/roles" },
-      { labelKey: "personnel.tabs.training", href: "/~/personnel/training" },
+      { labelKey: "personnel.tabs.schedule", href: "/manager/personnel/schedule" },
+      { labelKey: "personnel.tabs.team",     href: "/manager/personnel/team" },
+      { labelKey: "personnel.tabs.roles",    href: "/manager/personnel/roles" },
+      { labelKey: "personnel.tabs.training", href: "/manager/personnel/training" },
     ] },
-  { labelKey: "nav.customers", href: "/~/customers",   icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website",
+  { labelKey: "nav.customers", href: "/manager/customers",   icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website",
     children: [
-      { labelKey: "nav.marketing", href: "/~/marketing" },
+      { labelKey: "nav.marketing", href: "/manager/marketing" },
     ] },
-  { labelKey: "nav.chat",      href: "/~/chat",        icon: MessageSquare,   permissionKey: "staffing"  },
-  { labelKey: "nav.website",   href: "/~/builder",     icon: Globe,           permissionKey: "website", betaFeature: "website" },
-  { labelKey: "nav.design",    href: "/~/design",      icon: Palette,         permissionKey: "website", betaFeature: "design" },
-  { labelKey: "nav.punchIn",   href: "/~/punch-in",    icon: KeyRound },
+  { labelKey: "nav.chat",      href: "/manager/channel",        icon: MessageSquare,   permissionKey: "staffing"  },
+  { labelKey: "nav.website",   href: "/manager/builder",     icon: Globe,           permissionKey: "website", betaFeature: "website" },
+  { labelKey: "nav.design",    href: "/manager/design",      icon: Palette,         permissionKey: "website", betaFeature: "design" },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {
@@ -722,6 +722,17 @@ function WorkspaceDropdown({
       </div>
 
       <div className="border-t border-border py-1">
+        <BackToDeviceLink />
+        <Link
+          href="/choose?switch=1"
+          className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <SwatchBook className="h-3.5 w-3.5 shrink-0" />
+          {t("chooseMode.switchMode")}
+        </Link>
+      </div>
+
+      <div className="border-t border-border py-1">
         <button
           onClick={onLogout}
           className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -836,6 +847,17 @@ function AccountSwitcher({ onClose, collapsed }: { onClose?: () => void; collaps
               </button>
             </div>
             <div className="border-t border-border py-1">
+              <BackToDeviceLink onClick={onClose} />
+              <Link
+                href="/choose?switch=1"
+                onClick={onClose}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <SwatchBook className="h-3.5 w-3.5 shrink-0" />
+                {t("chooseMode.switchMode")}
+              </Link>
+            </div>
+            <div className="border-t border-border py-1">
               <button
                 onClick={handleLogout}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -860,13 +882,15 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const isCapacitor = useIsCapacitor();
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
+  const [appMode] = useAppMode();
+  const personalMode = appMode === "personal" && !storeMachine;
   const { betaFeatures } = useBetaFeatures();
   const unreadCount = useUnreadCount();
   // Which sections (keyed by parent href) are expanded to show sub-pages.
   const [expandedHrefs, setExpandedHrefs] = useState<Set<string>>(() => new Set());
 
   // Paths allowed when the device is in store-machine mode.
-  const STORE_MACHINE_HREFS = new Set(["/~/pos", "/~/inventory", "/~/punch-in", "/~/chat"]);
+  const STORE_MACHINE_HREFS = new Set(["/manager/pos", "/manager/inventory", "/manager/channel"]);
 
   // True when `pathname` sits inside the section (its main page or any sub-page).
   const isInSection = (item: NavItemExt) =>
@@ -909,8 +933,10 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
   const visibleNavItems = navItems.filter((item) => {
     if (item.mobileOnly && isDesktop) return false;
-    if (item.href === "/~/punch-in" && !storeMachine) return false;
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
+    // Personal mode: only the member's own surfaces (schedule, tasks, training, pay, chat).
+    if (personalMode && !PERSONAL_MODE_HREFS.has(item.href) &&
+        !(item.children ?? []).some((c) => PERSONAL_MODE_HREFS.has(c.href))) return false;
     // Hide public-facing/SEO surfaces (storefront builder, marketing) inside
     // the native Capacitor shell.
     if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(item.href)) return false;
@@ -956,6 +982,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
           const subItems = (item.children ?? []).filter((c) => {
             if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(c.href)) return false;
             if (storeMachine && !STORE_MACHINE_HREFS.has(c.href)) return false;
+            if (personalMode && !PERSONAL_MODE_HREFS.has(c.href)) return false;
             return true;
           });
           const showSubNav = isDesktop && !collapsed && subItems.length > 0;
@@ -1070,12 +1097,12 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
       <div className="px-2 py-3 border-t border-border space-y-0.5">
         <SidebarTooltip label={t("notifications.title")} show={!!collapsed}>
           <Link
-            href="/~/notifications"
+            href="/manager/notifications"
             onClick={handleNavClick}
             className={cn(
               "flex w-full items-center rounded text-[13px] font-medium transition-colors relative",
               collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
-              pathname === "/~/notifications"
+              pathname === "/manager/notifications"
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
@@ -1085,7 +1112,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             {unreadCount > 0 && (
               <span className={cn(
                 "flex items-center justify-center rounded-full text-[10px] font-bold leading-none",
-                pathname === "/~/notifications" ? "bg-background text-foreground" : "bg-foreground text-background",
+                pathname === "/manager/notifications" ? "bg-background text-foreground" : "bg-foreground text-background",
                 collapsed ? "absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1" : "ml-auto h-4 min-w-[16px] px-1"
               )}>
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -1095,12 +1122,12 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
         </SidebarTooltip>
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
-            href="/~/settings"
+            href="/manager/settings"
             onClick={handleNavClick}
             className={cn(
               "flex items-center rounded text-[13px] font-medium transition-colors",
               collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
-              pathname === "/~/settings"
+              pathname === "/manager/settings"
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
@@ -1131,6 +1158,29 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
       </div>
     </aside>
     </TooltipProvider>
+  );
+}
+
+// Shown in the account menus when this device is a store or personal device
+// whose user switched into the manager UI: one tap returns to that surface.
+function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
+  const t = useT();
+  const [appMode] = useAppMode();
+  if (appMode !== "store" && appMode !== "personal") return null;
+  const isStore = appMode === "store";
+  const Icon = isStore ? MonitorSmartphone : UserRound;
+  return (
+    <Link
+      href={isStore ? "/store" : "/personal"}
+      onClick={() => {
+        clearManagerOverride();
+        onClick?.();
+      }}
+      className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      {t(isStore ? "chooseMode.backToStore" : "chooseMode.backToPersonal")}
+    </Link>
   );
 }
 
@@ -1219,7 +1269,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // any deep links straight to the dashboard.
   useEffect(() => {
     if (isCapacitor && isCapacitorHiddenPath(pathname)) {
-      router.replace("/~/");
+      router.replace("/manager/");
     }
   }, [isCapacitor, pathname, router]);
 
@@ -1257,7 +1307,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   const [navMode] = useNavMode();
   const useBottomBar = navMode === "bottombar" && !storeMachineMode;
   // Builder subpages (/builder/[siteId]/...) need full viewport — force drawer mode
-  const isBuilderPage = pathname.startsWith("/~/builder/");
+  const isBuilderPage = pathname.startsWith("/manager/builder/");
   const openDialogs = useOpenDynamicUIElementCount();
   const hasDialog = openDialogs > 0;
   const dialogTitle = useDynamicUIElementTitle();

@@ -9,9 +9,10 @@ import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight, DownloadIcon, XIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import { MerchivaLogo } from "./logo";
+import { DOWNLOAD_PAGE_ENABLED } from "@/lib/download-page";
 
 const APP_PROMO_DISMISSED_KEY = "isAppAsked";
 const APP_PROMO_DISMISSED_EVENT = "merchiva-app-promo-dismissed";
@@ -65,6 +66,10 @@ export function NativeTitleBar() {
     getClientMountedSnapshot,
     getServerMountedSnapshot,
   );
+  // Measured height of whatever this component renders (title bar, promo
+  // strip, or nothing). The root layout subtracts `--merchiva-chrome-height`
+  // from the viewport so pages never get clipped at the bottom.
+  const barRef = useRef<HTMLDivElement | null>(null);
   const [canBack, setCanBack] = useState(false);
   const [canFwd, setCanFwd] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -108,9 +113,18 @@ export function NativeTitleBar() {
     setTimeout(refreshState, 200);
   }, [refreshState]);
 
-  // The Mr. Merchiva quick-dialog overlay window is chrome-less — never draw
-  // the title bar (or the desktop-app promo strip) inside it.
-  const showAppPromo = isMounted && !isNative && !isAppAsked && pathname !== "/quick-overlay";
+  // The title bar belongs to the manager (back-office) mode only. The mode
+  // chooser and the store / personal device surfaces are full-screen kiosk
+  // style screens and render no chrome at all; the quick-dialog overlay
+  // window is chrome-less too.
+  const isManagerRoute = pathname === "/manager" || pathname.startsWith("/manager/");
+  const isDeviceRoute =
+    pathname === "/choose" ||
+    pathname === "/store" || pathname.startsWith("/store/") ||
+    pathname === "/personal" || pathname.startsWith("/personal/");
+  const showAppPromo =
+    DOWNLOAD_PAGE_ENABLED && isMounted && !isNative && !isAppAsked &&
+    pathname !== "/quick-overlay" && !isDeviceRoute;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -125,11 +139,32 @@ export function NativeTitleBar() {
     };
   }, [showAppPromo]);
 
+  const chromeVisible = pathname !== "/quick-overlay" && (showAppPromo || isManagerRoute);
+  useEffect(() => {
+    const root = document.documentElement;
+    const el = barRef.current;
+    if (!chromeVisible || !el) {
+      root.style.setProperty("--merchiva-chrome-height", "0px");
+      return;
+    }
+    const apply = () => root.style.setProperty("--merchiva-chrome-height", `${el.offsetHeight}px`);
+    apply();
+    // The title bar is `hidden lg:flex`, so its height changes with the viewport.
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    window.addEventListener("resize", apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", apply);
+      root.style.setProperty("--merchiva-chrome-height", "0px");
+    };
+  }, [chromeVisible, showAppPromo, isManagerRoute]);
+
   if (pathname === "/quick-overlay") return null;
 
   if (showAppPromo) {
     return (
-      <div className="z-9999 h-12 select-none border-b border-border flex items-center gap-3 bg-foreground/95 text-background px-4">
+      <div ref={barRef} className="z-9999 h-12 select-none border-b border-border flex items-center gap-3 bg-foreground/95 text-background px-4">
         <div className="flex h-full items-center text-sm font-black pt-1">
           Get The Merchiva App.
         </div>
@@ -149,6 +184,8 @@ export function NativeTitleBar() {
     );
   }
 
+  if (!isManagerRoute) return null;
+
   return (
     // Tauri 2.11+ walks the composed path: `data-tauri-drag-region="deep"`
     // makes the whole subtree draggable; bare `data-tauri-drag-region` only
@@ -156,8 +193,8 @@ export function NativeTitleBar() {
     // trigger drag). The back/forward button group opts out with "false".
     // <div className="h-10">
       <div
+        ref={barRef}
         data-tauri-drag-region="deep"
-        
         className="hidden lg:flex z-9999 select-none bg-background border-b border-border items-center justify-center gap-4 pt-1 px-2"
       >
         {isMac && <div className={cn("h-6 bg-foreground rounded-full duration-200 w-20", isFullScreen && "opacity-0 -translate-x-24")} />}

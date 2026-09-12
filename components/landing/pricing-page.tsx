@@ -344,7 +344,7 @@ function PlanCard({ plan, idx, yearly }: { plan: typeof PLAN_DATA[number]; idx: 
         // Enterprise → contact; numbered tiers → in-app billing (AppLayout
         // gates routes — unauthenticated visitors get bounced to /login first,
         // then return to billing where they can pick monthly/yearly).
-        href={typeof price === "number" ? `/~/settings/billing?cycle=${yearly ? "yearly" : "monthly"}` : "/signup"}
+        href={typeof price === "number" ? `/manager/settings/billing?cycle=${yearly ? "yearly" : "monthly"}` : "/signup"}
         style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           marginTop: 28, padding: "14px 18px", borderRadius: 4, position: "relative",

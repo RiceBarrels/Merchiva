@@ -4,10 +4,13 @@ import { useState, useMemo, useCallback } from "react";
 import { Sparkles, Check, AlertTriangle, X, RotateCcw, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Callout } from "@/components/ui/callout";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { STATUS_TONE_TEXT } from "@/components/ui/status-badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -78,15 +81,9 @@ function formatTime(t: string): string {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 70) return "text-emerald-600";
-  if (score >= 40) return "text-amber-600";
-  return "text-red-600";
-}
-
-function scoreBg(score: number): string {
-  if (score >= 70) return "bg-emerald-50 border-emerald-200";
-  if (score >= 40) return "bg-amber-50 border-amber-200";
-  return "bg-red-50 border-red-200";
+  if (score >= 70) return STATUS_TONE_TEXT.success;
+  if (score >= 40) return STATUS_TONE_TEXT.warning;
+  return STATUS_TONE_TEXT.danger;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -216,12 +213,9 @@ export function AutoScheduler({
   return (
     <>
       {compact ? (
-        <button
-          onClick={handleOpen}
-          className="h-8 w-8 flex items-center justify-center rounded-[0.3rem] border border-border text-foreground hover:bg-muted transition-colors"
-        >
+        <Button variant="outline" size="icon" onClick={handleOpen}>
           <Sparkles className="h-4 w-4" />
-        </button>
+        </Button>
       ) : (
         <Button
           variant="outline"
@@ -251,9 +245,9 @@ export function AutoScheduler({
               <div className="px-4 pt-2 pb-4 space-y-4 border-b border-border">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                    <Eyebrow>
                       {t("scheduler.auto.startDate")}
-                    </Label>
+                    </Eyebrow>
                     <div className="flex items-center gap-2 mt-1">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <Input
@@ -265,9 +259,9 @@ export function AutoScheduler({
                     </div>
                   </div>
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                    <Eyebrow>
                       {t("scheduler.auto.endDate")}
-                    </Label>
+                    </Eyebrow>
                     <div className="flex items-center gap-2 mt-1">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <Input
@@ -282,9 +276,9 @@ export function AutoScheduler({
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                    <Eyebrow>
                       {t("scheduler.auto.maxHoursPerWeek")}
-                    </Label>
+                    </Eyebrow>
                     <Input
                       type="number"
                       min={1}
@@ -295,9 +289,9 @@ export function AutoScheduler({
                     />
                   </div>
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                    <Eyebrow>
                       {t("scheduler.auto.maxConsecutiveDays")}
-                    </Label>
+                    </Eyebrow>
                     <Input
                       type="number"
                       min={1}
@@ -308,9 +302,9 @@ export function AutoScheduler({
                     />
                   </div>
                   <div>
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                    <Eyebrow>
                       {t("scheduler.auto.minRestHours")}
-                    </Label>
+                    </Eyebrow>
                     <Input
                       type="number"
                       min={0}
@@ -345,22 +339,22 @@ export function AutoScheduler({
                   <div className="px-4 py-3 border-b border-border bg-muted/30">
                     <div className="grid grid-cols-4 gap-3">
                       <div className="text-center">
-                        <div className="text-lg font-mono font-bold">{result.stats.totalShifts}</div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statShifts")}</div>
+                        <div className="text-lg font-mono font-bold tabular-nums">{result.stats.totalShifts}</div>
+                        <Eyebrow size="xs">{t("scheduler.auto.statShifts")}</Eyebrow>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-mono font-bold">{result.stats.totalHours}h</div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statTotalHours")}</div>
+                        <div className="text-lg font-mono font-bold tabular-nums">{result.stats.totalHours}h</div>
+                        <Eyebrow size="xs">{t("scheduler.auto.statTotalHours")}</Eyebrow>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-mono font-bold">{result.stats.avgHoursPerStaff}h</div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statAvgPerStaff")}</div>
+                        <div className="text-lg font-mono font-bold tabular-nums">{result.stats.avgHoursPerStaff}h</div>
+                        <Eyebrow size="xs">{t("scheduler.auto.statAvgPerStaff")}</Eyebrow>
                       </div>
                       <div className="text-center">
-                        <div className={`text-lg font-mono font-bold ${scoreColor(result.stats.fairnessScore)}`}>
+                        <div className={`text-lg font-mono font-bold tabular-nums ${scoreColor(result.stats.fairnessScore)}`}>
                           {result.stats.fairnessScore}
                         </div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{t("scheduler.auto.statFairness")}</div>
+                        <Eyebrow size="xs">{t("scheduler.auto.statFairness")}</Eyebrow>
                         <Progress value={result.stats.fairnessScore} className="mt-1 h-1" />
                       </div>
                     </div>
@@ -370,10 +364,9 @@ export function AutoScheduler({
                   {result.warnings.length > 0 && (
                     <div className="px-4 py-2 space-y-1.5 border-b border-border">
                       {result.warnings.map((w, i) => (
-                        <div key={i} className="flex items-start gap-2 px-2.5 py-1.5 text-xs bg-amber-50 border border-amber-200 rounded-[0.3rem]">
-                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
-                          <span className="text-amber-800">{w}</span>
-                        </div>
+                        <Callout key={i} tone="warning" icon={AlertTriangle} className="px-2.5 py-1.5">
+                          {w}
+                        </Callout>
                       ))}
                     </div>
                   )}
@@ -381,16 +374,13 @@ export function AutoScheduler({
                   {/* Unfilled slots */}
                   {result.unfilledSlots.length > 0 && (
                     <div className="px-4 py-2 space-y-1.5 border-b border-border">
-                      <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">
+                      <Eyebrow>
                         {t("scheduler.auto.unfilledSlots").replace("{count}", String(result.unfilledSlots.length))}
-                      </div>
+                      </Eyebrow>
                       {result.unfilledSlots.slice(0, 5).map((slot, i) => (
-                        <div key={i} className="flex items-start gap-2 px-2.5 py-1.5 text-xs bg-red-50 border border-red-200 rounded-[0.3rem]">
-                          <X className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
-                          <span className="text-red-800">
-                            {formatDateShort(slot.date)} &mdash; {slot.shiftType}: {slot.reason}
-                          </span>
-                        </div>
+                        <Callout key={i} tone="danger" icon={X} className="px-2.5 py-1.5">
+                          {formatDateShort(slot.date)} &mdash; {slot.shiftType}: {slot.reason}
+                        </Callout>
                       ))}
                       {result.unfilledSlots.length > 5 && (
                         <div className="text-[11px] text-muted-foreground pl-6">
@@ -404,56 +394,55 @@ export function AutoScheduler({
                   {result.shifts.length > 0 && (
                     <div className="px-4 py-2">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-[11px] text-muted-foreground uppercase tracking-wide font-medium">
+                        <Eyebrow>
                           {t("scheduler.auto.schedulePreview")}
-                        </div>
-                        <button
+                        </Eyebrow>
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           onClick={toggleAll}
-                          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-[11px] text-muted-foreground hover:text-foreground"
                         >
                           {selectedCount === totalCount ? t("scheduler.auto.deselectAll") : t("scheduler.auto.selectAll")} ({selectedCount}/{totalCount})
-                        </button>
+                        </Button>
                       </div>
 
-                      <div className="border border-border rounded-[0.3rem] overflow-hidden">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="bg-muted/50 border-b border-border">
-                                <th className="w-8 px-2 py-1.5 text-center">&nbsp;</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colDate")}</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colShift")}</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colTime")}</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colStaff")}</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colRoles")}</th>
-                                <th className="px-2 py-1.5 text-center font-medium text-muted-foreground">{t("scheduler.auto.colScore")}</th>
-                                <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t("scheduler.auto.colStatus")}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
+                      <div className="border border-border rounded-lg overflow-hidden">
+                        <Table className="text-xs">
+                          <TableHeader>
+                            <TableRow className="bg-muted/50 hover:bg-muted/50">
+                              <TableHead className="w-8 px-2 text-center">&nbsp;</TableHead>
+                              <TableHead className="px-2">{t("scheduler.auto.colDate")}</TableHead>
+                              <TableHead className="px-2">{t("scheduler.auto.colShift")}</TableHead>
+                              <TableHead className="px-2">{t("scheduler.auto.colTime")}</TableHead>
+                              <TableHead className="px-2">{t("scheduler.auto.colStaff")}</TableHead>
+                              <TableHead className="px-2">{t("scheduler.auto.colRoles")}</TableHead>
+                              <TableHead className="px-2 text-center">{t("scheduler.auto.colScore")}</TableHead>
+                              <TableHead className="px-2">{t("scheduler.auto.colStatus")}</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
                               {result.shifts.map((shift, i) => {
                                 const isChecked = selected.has(i);
                                 const preset = presets.find(
                                   (p) => p.startTime === shift.startTime && p.endTime === shift.endTime
                                 );
                                 return (
-                                  <tr
+                                  <TableRow
                                     key={i}
-                                    className={`border-b border-border last:border-b-0 transition-colors ${
-                                      isChecked ? "bg-background" : "bg-muted/20 opacity-60"
-                                    }`}
+                                    className={isChecked ? "bg-background" : "bg-muted/20 opacity-60"}
                                   >
-                                    <td className="px-2 py-1.5 text-center">
+                                    <TableCell className="px-2 py-1.5 text-center">
                                       <Checkbox
                                         checked={isChecked}
                                         onCheckedChange={() => toggleShift(i)}
                                         className="h-3.5 w-3.5"
                                       />
-                                    </td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap font-mono text-[11px]">
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1.5 whitespace-nowrap font-mono text-[11px] tabular-nums">
                                       {formatDateShort(shift.date)}
-                                    </td>
-                                    <td className="px-2 py-1.5">
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1.5">
                                       <Badge
                                         variant="outline"
                                         className="text-[10px] px-1.5 py-0"
@@ -464,14 +453,14 @@ export function AutoScheduler({
                                       >
                                         {shift.shiftType}
                                       </Badge>
-                                    </td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap font-mono text-[11px]">
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1.5 whitespace-nowrap font-mono text-[11px] tabular-nums">
                                       {formatTime(shift.startTime)} &ndash; {formatTime(shift.endTime)}
-                                    </td>
-                                    <td className="px-2 py-1.5 whitespace-nowrap text-[11px] font-medium">
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1.5 whitespace-nowrap text-[11px] font-medium">
                                       {shift.memberName}
-                                    </td>
-                                    <td className="px-2 py-1.5">
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1.5">
                                       <div className="flex gap-1 flex-wrap">
                                         {shift.roles.length > 0 ? shift.roles.map((r) => {
                                           const role = roles.find((rl) => rl.name === r);
@@ -479,7 +468,7 @@ export function AutoScheduler({
                                             <span
                                               key={r}
                                               className="inline-block h-2 w-2 rounded-full"
-                                              style={{ backgroundColor: role?.color ?? "#78716c" }}
+                                              style={{ backgroundColor: role?.color ?? "var(--muted-foreground)" }}
                                               title={r}
                                             />
                                           );
@@ -487,13 +476,13 @@ export function AutoScheduler({
                                           <span className="text-muted-foreground">&mdash;</span>
                                         )}
                                       </div>
-                                    </td>
-                                    <td className="px-2 py-1.5 text-center">
-                                      <span className={`font-mono font-bold text-[11px] ${scoreColor(shift.score)}`}>
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1.5 text-center">
+                                      <span className={`font-mono font-bold text-[11px] tabular-nums ${scoreColor(shift.score)}`}>
                                         {shift.score}
                                       </span>
-                                    </td>
-                                    <td className="px-2 py-1.5">
+                                    </TableCell>
+                                    <TableCell className="px-2 py-1.5">
                                       {shift.warnings.length > 0 ? (
                                         <div className="flex items-center gap-1">
                                           <AlertTriangle className="h-3 w-3 text-amber-500" />
@@ -507,13 +496,12 @@ export function AutoScheduler({
                                           <span className="text-[10px]">{t("scheduler.auto.statusOk")}</span>
                                         </div>
                                       )}
-                                    </td>
-                                  </tr>
+                                    </TableCell>
+                                  </TableRow>
                                 );
                               })}
-                            </tbody>
-                          </table>
-                        </div>
+                          </TableBody>
+                        </Table>
                       </div>
                     </div>
                   )}

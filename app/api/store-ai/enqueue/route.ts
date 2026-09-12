@@ -450,7 +450,7 @@ async function notifyReplyReady(
       : REPLY_FALLBACK_BODY[lang] ?? REPLY_FALLBACK_BODY.en;
     // Carries the session id so the client can suppress the bell entry when the
     // user actually watched the reply stream in (see merchiva-chat-dashboard).
-    const link = `/~/chat?mvsession=${encodeURIComponent(args.sessionId)}`;
+    const link = `/manager/channel?mvsession=${encodeURIComponent(args.sessionId)}`;
 
     const conn = await getServiceConn();
     const target = await getAiReplyTarget(conn, args.organizationId, args.sessionId);

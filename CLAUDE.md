@@ -13,7 +13,7 @@ Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business ma
 3. **No direct DB calls from components.** Use `lib/spacetimedb/hooks.ts` for reads, `lib/spacetimedb/actions.ts` for writes.
 4. **Handle async errors.** Every `useEffect` data fetch needs `.catch()` and `.finally()`.
 5. **No secrets in client code.** `WORKOS_API_KEY` is server-only.
-6. **All app links use `/~/` prefix.** Internal navigation: `/~/dashboard`, `/~/inventory`, etc.
+6. **All app links use `/manager/` prefix.** Internal navigation: `/manager/dashboard`, `/manager/inventory`, etc. Device surfaces are the exception: `/store` (shared store tablet) and `/personal` (employee phone) live at the root and are picked at `/choose` (`lib/app-mode.ts`: admin → `/manager`, personal → `/personal`, store → `/store`).
 7. **Test builds before deploying.** `bun run build` must pass clean.
 
 ## Style Guide
@@ -26,7 +26,7 @@ Merchiva is a Next.js 16 + SpacetimeDB + Square/Clover app for small business ma
 ## Common Tasks
 
 ### Add a new page
-1. Create `app/~/newpage/page.tsx` (client component with loading state)
+1. Create `app/manager/newpage/page.tsx` (client component with loading state)
 2. Add nav item to `components/sidebar.tsx` and `components/bottom-bar.tsx`
 3. Wrap content in `<PermissionGuard section="newpage">`
 4. Add to a `PageTabs` group if it belongs to a tab cluster

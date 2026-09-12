@@ -17,6 +17,9 @@ import { useT } from "@/lib/i18n/context";
 import { QuillEditor } from "./quill-editor";
 import { DayRail, type DayRailItem } from "./day-rail";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -318,11 +321,11 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
         <div className="border-b border-border bg-background">
           <div className="flex items-center gap-3 px-4 lg:px-6 py-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              <Eyebrow as="span" size="xs" className="font-mono">
                 {t("training.manager.moduleLabel")}
-              </span>
+              </Eyebrow>
               {activeDay && (
-                <span className="font-mono text-[10px] uppercase tracking-wider text-foreground bg-muted border border-border rounded-[0.3rem] px-1.5 py-0.5">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-foreground bg-muted border border-border rounded px-1.5 py-0.5">
                   D{String(activeDay.dayNumber).padStart(2, "0")}
                 </span>
               )}
@@ -335,7 +338,7 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                       value={draftTitle}
                       onChange={(e) => onTitleChange(e.target.value)}
                       placeholder={t("training.manager.untitledDay")}
-                      className="text-[18px] font-semibold tracking-[-0.01em] bg-transparent border-0 outline-none w-full max-w-[400px] focus:bg-muted rounded-[0.3rem] px-1 -mx-1"
+                      className="text-[18px] font-semibold tracking-[-0.01em] bg-transparent border-0 outline-none w-full max-w-[400px] focus:bg-muted rounded px-1 -mx-1"
                     />
                     <Pencil className="h-3 w-3 text-muted-foreground" strokeWidth={1.75} />
                   </div>
@@ -365,39 +368,34 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
 
             <div className="flex items-center gap-1.5 flex-wrap">
               {dirty && (
-                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[0.3rem] bg-amber-50 border border-amber-200 font-mono text-[10px] uppercase tracking-wider text-amber-700 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-300">
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-50 border border-amber-200 font-mono text-[10px] uppercase tracking-wider text-amber-700 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                   {t("training.manager.unsaved")}
                 </span>
               )}
-              <button
-                type="button"
+              <Button
+                variant="destructive"
                 onClick={handleDeleteDay}
                 disabled={!activeDay || busy}
-                className="h-8 px-3 rounded-[0.3rem] border border-border bg-background text-[12.5px] font-medium text-red-600 dark:text-red-400 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 text-[12.5px]"
                 title={t("training.deleteDay")}
               >
                 <Trash2 className="h-[13px] w-[13px]" strokeWidth={1.75} />
                 <span className="hidden md:inline">{t("training.deleteDay")}</span>
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => setShowPreview((v) => !v)}
-                className={cn(
-                  "h-8 px-3 rounded-[0.3rem] border border-border text-[12.5px] font-medium inline-flex items-center gap-1.5",
-                  showPreview
-                    ? "bg-muted text-foreground"
-                    : "bg-background text-stone-700 dark:text-stone-200 hover:bg-muted",
-                )}
+                aria-pressed={showPreview}
+                className={cn("px-3 text-[12.5px]", showPreview && "bg-muted text-foreground")}
               >
                 <Eye className="h-[13px] w-[13px]" strokeWidth={1.75} />
                 <span className="hidden md:inline">{t("training.manager.previewAsIntern")}</span>
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
                 onClick={handleSave}
                 disabled={!activeDay || !dirty || busy}
-                className="h-8 px-3.5 rounded-[0.3rem] bg-foreground text-background text-[12.5px] font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+                className="px-3.5 text-[12.5px]"
               >
                 {busy ? (
                   <Spinner size={16} />
@@ -407,41 +405,39 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
                     <ArrowUpRight className="h-[13px] w-[13px]" strokeWidth={1.75} />
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Mobile day picker */}
         <div className="lg:hidden border-b border-border bg-background px-3 py-2 flex gap-1.5 overflow-x-auto">
-          {days.map((d) => {
-            const active = d.id === activeId;
-            return (
-              <button
-                key={d.id}
-                type="button"
-                onClick={() => setActiveId(d.id)}
-                className={cn(
-                  "shrink-0 h-8 px-2.5 rounded-[0.3rem] border text-[11.5px] font-medium inline-flex items-center gap-1.5",
-                  active
-                    ? "bg-foreground text-background border-foreground"
-                    : "bg-background border-border text-stone-700 dark:text-stone-200",
-                )}
-              >
-                <span className="font-mono">D{String(d.dayNumber).padStart(2, "0")}</span>
-                <span className="max-w-[90px] truncate">{d.title}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
+          <SegmentedControl
+            variant="chips"
+            size="md"
+            className="flex-nowrap"
+            value={activeId ?? ""}
+            onChange={(id) => setActiveId(id)}
+            options={days.map((d) => ({
+              value: d.id,
+              label: (
+                <>
+                  <span className="font-mono tabular-nums">D{String(d.dayNumber).padStart(2, "0")}</span>
+                  <span className="max-w-[90px] truncate">{d.title}</span>
+                </>
+              ),
+            }))}
+          />
+          <Button
+            variant="outline"
+            size="icon"
             onClick={handleAddDay}
             aria-label={t("training.addDay")}
             title={t("training.addDay")}
-            className="shrink-0 h-8 px-2.5 rounded-[0.3rem] border border-border bg-background text-stone-700 dark:text-stone-200 inline-flex items-center justify-center"
+            className="shrink-0 text-foreground"
           >
             <Plus className="h-4 w-4" strokeWidth={1.75} />
-          </button>
+          </Button>
         </div>
 
         {/* Editor + Preview */}
@@ -456,10 +452,10 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
           {/* Editor column */}
           <div className="flex flex-col border-r border-border bg-background min-h-0">
             <div className="px-4 h-9 border-b border-border flex items-center gap-2 shrink-0">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              <Eyebrow as="span" size="xs" className="font-mono">
                 {t("training.manager.editor")}
-              </span>
-              <span className="text-stone-300 dark:text-stone-700">·</span>
+              </Eyebrow>
+              <span className="text-border">·</span>
               <span className="text-[11px] text-muted-foreground">
                 <span className="font-mono">{wordCount}</span> {t("training.manager.words")} · ~
                 <span className="font-mono">{readingMin}</span> {t("training.manager.minRead")}
@@ -495,40 +491,24 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
           {showPreview && (
             <div className="hidden lg:flex flex-col bg-muted/30 min-h-0">
               <div className="px-4 h-9 border-b border-border flex items-center gap-2 shrink-0">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                <Eyebrow as="span" size="xs" className="font-mono">
                   {t("training.manager.preview")}
-                </span>
-                <span className="text-stone-300 dark:text-stone-700">·</span>
+                </Eyebrow>
+                <span className="text-border">·</span>
                 <span className="text-[11px] text-muted-foreground">
                   {t("training.manager.howInternsSeeIt")}
                 </span>
                 <div className="flex-1" />
-                <div className="inline-flex rounded-[0.3rem] border border-border bg-background overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewMode("desktop")}
-                    className={cn(
-                      "px-2.5 h-6 text-[11px] font-medium",
-                      previewMode === "desktop"
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {t("training.manager.desktop")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewMode("mobile")}
-                    className={cn(
-                      "px-2.5 h-6 text-[11px] font-medium border-l border-border",
-                      previewMode === "mobile"
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {t("training.manager.mobile")}
-                  </button>
-                </div>
+                <SegmentedControl
+                  size="sm"
+                  className="h-6 [&>button]:h-6 [&>button]:text-[11px]"
+                  value={previewMode}
+                  onChange={setPreviewMode}
+                  options={[
+                    { value: "desktop", label: t("training.manager.desktop") },
+                    { value: "mobile", label: t("training.manager.mobile") },
+                  ]}
+                />
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto p-6">
                 <div
@@ -564,9 +544,9 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
         {/* Attachments rail */}
         <div className="border-t border-border bg-background shrink-0">
           <div className="px-4 lg:px-6 h-10 flex items-center gap-3">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            <Eyebrow as="span" size="xs" className="font-mono">
               {t("training.manager.attachments")}
-            </span>
+            </Eyebrow>
             <span className="text-[11.5px] text-muted-foreground">
               <span className="font-mono">{activeObjectives.length}</span>{" "}
               {activeObjectives.length === 1 ? t("training.manager.item") : t("training.manager.items")}
@@ -577,14 +557,15 @@ export function TrainingManagerView({ orgId }: { orgId: string }) {
               sortOrder={activeObjectives.length}
               disabled={!activeDay || busy}
             />
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={!activeDay}
               onClick={handleEmbedUrl}
-              className="h-7 px-2.5 rounded-[0.3rem] border border-border bg-background text-[11.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50"
+              className="text-[11.5px]"
             >
               <Link2 className="h-3 w-3" strokeWidth={1.75} /> {t("training.manager.embedUrl")}
-            </button>
+            </Button>
           </div>
           <div className="px-4 lg:px-6 pb-4 pt-1 flex gap-2.5 overflow-x-auto">
             <AttachmentDropZone dayId={activeDay?.id} sortOrder={activeObjectives.length} />
@@ -629,17 +610,8 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
   };
 
   return (
-    <div className="group relative rounded-[0.3rem] border border-border bg-background overflow-hidden shrink-0 w-[140px]">
-      <div
-        className="relative h-[78px]"
-        style={{
-          background: isVideo
-            ? "linear-gradient(135deg, #2a2520 0%, #44403c 100%)"
-            : isPhoto
-              ? "repeating-linear-gradient(135deg, #efe9dd 0 8px, #e8e1d2 8px 16px)"
-              : "#f5f5f4",
-        }}
-      >
+    <div className="group relative rounded-lg border border-border bg-background overflow-hidden shrink-0 w-[140px]">
+      <div className={cn("relative h-[78px]", isVideo ? "bg-foreground" : "bg-muted")}>
         {isVideo && a.mediaUrl && (
           <>
             <div className="absolute inset-0 flex items-center justify-center">
@@ -666,7 +638,7 @@ function AttachmentTile({ a }: { a: ObjectiveRow }) {
           type="button"
           onClick={onDelete}
           disabled={busy}
-          className="absolute top-1 right-1 w-5 h-5 rounded-[0.3rem] bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-black/60 disabled:opacity-50"
+          className="absolute top-1 right-1 w-5 h-5 rounded bg-black/40 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-black/60 disabled:opacity-50"
           title={t("training.manager.remove")}
           aria-label={t("training.manager.remove")}
         >
@@ -777,7 +749,7 @@ function AttachmentDropZone({
         if (file) uploadFile(file);
       }}
       className={cn(
-        "shrink-0 w-[140px] h-[112px] rounded-[0.3rem] border border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
+        "shrink-0 w-[140px] h-[112px] rounded-lg border border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
         hover
           ? "border-foreground bg-muted"
           : "border-border bg-muted/30 hover:bg-muted/60",
@@ -788,12 +760,12 @@ function AttachmentDropZone({
       ) : (
         <UploadCloud className="h-[18px] w-[18px] text-muted-foreground" strokeWidth={1.75} />
       )}
-      <div className="text-[11px] font-medium text-stone-700 dark:text-stone-300">
+      <div className="text-[11px] font-medium text-foreground">
         {t("training.manager.dropFile")}
       </div>
-      <div className="font-mono text-[9.5px] text-muted-foreground uppercase tracking-wider">
+      <Eyebrow size="xs" className="font-mono text-[9.5px]">
         jpg · png · webp · mp4
-      </div>
+      </Eyebrow>
     </div>
   );
 }
@@ -815,11 +787,12 @@ function AttachmentUploadButton({
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="outline"
+        size="sm"
         onClick={onPickFile}
         disabled={disabled || busy || !dayId}
-        className="h-7 px-2.5 rounded-[0.3rem] border border-border bg-background text-[11.5px] font-medium text-stone-700 dark:text-stone-200 hover:bg-muted inline-flex items-center gap-1.5 disabled:opacity-50"
+        className="text-[11.5px]"
       >
         {busy ? (
           <Spinner size={12} />
@@ -827,7 +800,7 @@ function AttachmentUploadButton({
           <Upload className="h-3 w-3" strokeWidth={1.75} />
         )}{" "}
         {t("training.manager.upload")}
-      </button>
+      </Button>
       <input
         ref={inputRef}
         type="file"

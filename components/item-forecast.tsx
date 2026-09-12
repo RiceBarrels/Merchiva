@@ -11,6 +11,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   BarChart,
   Bar,
@@ -190,41 +193,44 @@ export function ItemForecast() {
 
   if (error?.includes("No model trained") || error?.includes("404")) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center space-y-4">
-          <Brain className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
-          <div>
-            <p className="font-semibold text-sm">{t("itemForecast.modelNotTrained")}</p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              {trainingRecords.length >= 100
+      <Card>
+        <CardContent className="py-8">
+          <EmptyState
+            icon={Brain}
+            title={t("itemForecast.modelNotTrained")}
+            description={
+              trainingRecords.length >= 100
                 ? t("itemForecast.recordsReady").replace("{count}", trainingRecords.length.toLocaleString())
-                : t("itemForecast.recordsNeeded").replace("{count}", String(trainingRecords.length))}
-            </p>
-          </div>
-          {trainingRecords.length >= 100 && (
-            <Button
-              onClick={handleTrain}
-              disabled={training}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              {training ? (
-                <Spinner size={14} />
-              ) : (
-                <Brain className="h-3.5 w-3.5" />
-              )}
-              {training ? t("itemForecast.training") : t("itemForecast.trainModel")}
-            </Button>
-          )}
-          {trainResult && (
-            <div className="text-xs text-muted-foreground">
-              {t("itemForecast.modelTrainedSummary")
-                .replace("{items}", String(trainResult.items_count))
-                .replace("{days}", String(trainResult.days_count))
-                .replace("{r2}", trainResult.metrics.r2.toFixed(2))}
-            </div>
-          )}
+                : t("itemForecast.recordsNeeded").replace("{count}", String(trainingRecords.length))
+            }
+            action={
+              trainingRecords.length >= 100 ? (
+                <Button
+                  onClick={handleTrain}
+                  disabled={training}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  {training ? (
+                    <Spinner size={14} />
+                  ) : (
+                    <Brain className="h-3.5 w-3.5" />
+                  )}
+                  {training ? t("itemForecast.training") : t("itemForecast.trainModel")}
+                </Button>
+              ) : undefined
+            }
+          >
+            {trainResult && (
+              <div className="text-xs text-muted-foreground">
+                {t("itemForecast.modelTrainedSummary")
+                  .replace("{items}", String(trainResult.items_count))
+                  .replace("{days}", String(trainResult.days_count))
+                  .replace("{r2}", trainResult.metrics.r2.toFixed(2))}
+              </div>
+            )}
+          </EmptyState>
         </CardContent>
       </Card>
     );
@@ -274,10 +280,9 @@ export function ItemForecast() {
       </div>
 
       {error && !error.includes("404") && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 p-3 rounded-[0.3rem]">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <Callout tone="danger" icon={AlertCircle}>
           {error}
-        </div>
+        </Callout>
       )}
 
       {loading && !predictions && (
@@ -299,19 +304,19 @@ export function ItemForecast() {
                   setShowAll(false);
                 }}
                 className={cn(
-                  "rounded-[0.3rem] border p-2.5 text-left transition-colors cursor-pointer",
+                  "rounded-lg border p-2.5 text-left transition-colors cursor-pointer",
                   i === selectedDay
                     ? "border-foreground bg-accent"
                     : "hover:border-foreground/30 bg-card",
                 )}
               >
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <Eyebrow as="span" size="xs">
                   {i === 0 ? t("itemForecast.today") : day.dayLabel.split(" ")[0]}
-                </span>
+                </Eyebrow>
                 <p className="text-xs text-muted-foreground">
                   {day.dayLabel.split(" ")[1]}
                 </p>
-                <p className="text-lg font-bold font-mono leading-tight mt-1">
+                <p className="text-lg font-bold font-mono tabular-nums leading-tight mt-1">
                   {day.total}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
@@ -399,16 +404,18 @@ export function ItemForecast() {
                         <Package className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         <span className="text-sm truncate">{item.item}</span>
                       </div>
-                      <span className="text-sm font-mono font-semibold shrink-0 ml-2">
+                      <span className="text-sm font-mono font-semibold tabular-nums shrink-0 ml-2">
                         {item.predicted_sales}
                       </span>
                     </div>
                   ))}
                 </div>
                 {selected.items.length > 15 && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="xs"
                     onClick={() => setShowAll(!showAll)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-2 mx-auto cursor-pointer"
+                    className="flex mt-2 mx-auto text-muted-foreground"
                   >
                     {showAll ? (
                       <>
@@ -421,7 +428,7 @@ export function ItemForecast() {
                         {t("itemForecast.showAllItems").replace("{count}", String(selected.items.length))}
                       </>
                     )}
-                  </button>
+                  </Button>
                 )}
               </CardContent>
             </Card>

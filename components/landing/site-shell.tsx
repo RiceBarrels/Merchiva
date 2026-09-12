@@ -11,6 +11,7 @@ import {
 import { useI18n } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import type { Locale } from "@/lib/i18n/config";
+import { DOWNLOAD_PAGE_ENABLED } from "@/lib/download-page";
 
 // Prefix internal marketing links with the active locale so navigation stays in
 // the same language without a proxy redirect hop. Auth routes (/login, /signup)
@@ -51,7 +52,7 @@ function NotchM({ size = 22, fg = C.ink }: { size?: number; fg?: string }) {
 
 // `navKey` indexes landing.nav.* in the dictionaries; href is locale-prefixed
 // at render time via localizeHref().
-const NAV_LINKS: { key: SiteNavKey; navKey: string; href: string }[] = [
+const ALL_NAV_LINKS: { key: SiteNavKey; navKey: string; href: string }[] = [
   { key: "features", navKey: "features", href: "/features" },
   { key: "pricing", navKey: "pricing", href: "/pricing" },
   { key: "download", navKey: "download", href: "/download" },
@@ -59,6 +60,7 @@ const NAV_LINKS: { key: SiteNavKey; navKey: string; href: string }[] = [
   { key: "blog", navKey: "blog", href: "/blogs" },
   { key: "changelog", navKey: "changelog", href: "/changelog" },
 ];
+const NAV_LINKS = ALL_NAV_LINKS.filter((x) => DOWNLOAD_PAGE_ENABLED || x.key !== "download");
 
 function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.RefObject<HTMLElement | null> }) {
   const { locale, t } = useI18n();
@@ -264,7 +266,7 @@ function SiteNav({ active, scrollRef }: { active?: SiteNavKey; scrollRef: React.
 }
 
 // tKey indexes the dictionaries; suffix is non-translated trailing text.
-const FOOTER_GROUPS: { headingKey: string; items: { tKey: string; href: string; suffix?: string }[] }[] = [
+const ALL_FOOTER_GROUPS: { headingKey: string; items: { tKey: string; href: string; suffix?: string }[] }[] = [
   {
     headingKey: "product",
     items: [
@@ -301,6 +303,10 @@ const FOOTER_GROUPS: { headingKey: string; items: { tKey: string; href: string; 
     ],
   },
 ];
+const FOOTER_GROUPS = ALL_FOOTER_GROUPS.map((g) => ({
+  ...g,
+  items: g.items.filter((x) => DOWNLOAD_PAGE_ENABLED || x.href !== "/download"),
+}));
 
 export function SiteFooter() {
   const { locale, t } = useI18n();

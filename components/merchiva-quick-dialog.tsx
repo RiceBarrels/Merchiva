@@ -99,12 +99,12 @@ function prettifySegment(seg: string): string {
     .join(" ");
 }
 
-/** Resolve the current /~/ route to a human page label (for the context chip). */
+/** Resolve the current /manager/ route to a human page label (for the context chip). */
 export function useCurrentPageLabel(): string | null {
   const { t } = useI18n();
   const pathname = usePathname();
   if (!pathname) return null;
-  const seg = pathname.replace(/^\/~\//, "").split("/")[0];
+  const seg = pathname.replace(/^\/manager\//, "").split("/")[0];
   if (!seg || seg.startsWith("/")) return null;
   const key = PAGE_LABEL_KEYS[seg];
   if (key) {
@@ -666,7 +666,7 @@ function MerchivaQuickDialogInner() {
     };
   }, [open, native, launch, close]);
 
-  const goToAssistant = useCallback(() => { close(); router.push("/~/chat"); }, [close, router]);
+  const goToAssistant = useCallback(() => { close(); router.push("/manager/channel"); }, [close, router]);
 
   return (
     <>

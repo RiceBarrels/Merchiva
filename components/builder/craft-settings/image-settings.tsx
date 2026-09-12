@@ -2,7 +2,6 @@
 
 import { useNode } from "@craftjs/core";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectTrigger,
@@ -11,6 +10,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Field } from "@/components/ui/field";
 
 export function ImageSettings() {
   const {
@@ -23,8 +23,7 @@ export function ImageSettings() {
   return (
     <div className="space-y-3 p-3">
       {/* Source URL */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Source URL</Label>
+      <Field label="Source URL">
         <Input
           value={props.src || ""}
           onChange={(e) =>
@@ -35,11 +34,10 @@ export function ImageSettings() {
           placeholder="https://..."
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Alt Text */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Alt Text</Label>
+      <Field label="Alt Text">
         <Input
           value={props.alt || ""}
           onChange={(e) =>
@@ -50,13 +48,12 @@ export function ImageSettings() {
           placeholder="Image description"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Width */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Width</Label>
+      <Field label="Width">
         <Input
           value={props.width || ""}
           onChange={(e) =>
@@ -67,11 +64,10 @@ export function ImageSettings() {
           placeholder="100%"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Height */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Height</Label>
+      <Field label="Height">
         <Input
           value={props.height || ""}
           onChange={(e) =>
@@ -82,11 +78,10 @@ export function ImageSettings() {
           placeholder="auto"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Object Fit */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Object Fit</Label>
+      <Field label="Object Fit">
         <Select
           value={props.objectFit || "cover"}
           onValueChange={(val) => {
@@ -106,13 +101,12 @@ export function ImageSettings() {
             <SelectItem value="none">None</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Border Radius */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Border Radius</Label>
+      <Field label="Border Radius">
         <Input
           value={props.borderRadius || ""}
           onChange={(e) =>
@@ -123,7 +117,7 @@ export function ImageSettings() {
           placeholder="0"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
     </div>
   );
 }

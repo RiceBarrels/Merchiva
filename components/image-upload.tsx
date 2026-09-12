@@ -6,6 +6,7 @@ import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
 
 const ACCEPTED = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml"];
 const MAX_BYTES = 4 * 1024 * 1024; // 4 MB (siteImage endpoint limit)
@@ -76,8 +77,8 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         className={cn(
-          "relative rounded border border-dashed border-border transition-colors",
-          dragging && "border-blue-400 bg-blue-50/40",
+          "relative rounded-lg border border-dashed border-border transition-colors",
+          dragging && "border-foreground bg-muted/40",
           value ? "h-24" : "h-16 flex items-center justify-center"
         )}
       >
@@ -113,18 +114,20 @@ export function ImageUpload({ value, onChange, className }: ImageUploadProps) {
       </div>
 
       {/* Upload button */}
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         disabled={isUploading}
         onClick={() => inputRef.current?.click()}
-        className="flex w-full items-center justify-center gap-1.5 rounded border border-border bg-background px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 transition-colors"
+        className="w-full text-xs text-muted-foreground"
       >
         {isUploading ? (
           <><Spinner size={12} /> {t("components.imageUpload.uploading")}</>
         ) : (
           <><Upload className="h-3 w-3" /> {t("components.imageUpload.uploadImage")}</>
         )}
-      </button>
+      </Button>
 
       <input
         ref={inputRef}

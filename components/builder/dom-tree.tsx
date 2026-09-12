@@ -164,10 +164,10 @@ function TreeItem({
         ) : (
           <span className="w-3 shrink-0" />
         )}
-        <span className="text-stone-700 dark:text-stone-300 shrink-0">{node.tag}</span>
-        {node.id && <span className="text-rose-600 dark:text-rose-400 truncate shrink-0">#{node.id}</span>}
+        <span className="text-foreground shrink-0">{node.tag}</span>
+        {node.id && <span className="text-muted-foreground truncate shrink-0">#{node.id}</span>}
         {node.className && (
-          <span className="text-sky-600 dark:text-sky-400 truncate shrink-0">
+          <span className="text-muted-foreground truncate shrink-0">
             .{String(node.className).split(/\s+/)[0]}
           </span>
         )}

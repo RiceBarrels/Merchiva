@@ -20,6 +20,7 @@ import { FlowFnEditor } from "./flowfn-editor";
 import { MerchivaChat, type BuilderModeContext } from "@/components/merchiva-chat-dashboard";
 import { useDefaultLayout } from "react-resizable-panels";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createPage, updatePage, updateSite } from "@/lib/spacetimedb/actions";
 import { buildPageTemplate, type PageTemplateId } from "@/lib/builder/page-templates";
 import { registerHtmlBridge } from "@/lib/builder/html-bridge";
@@ -1058,11 +1059,8 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
         </div>
       )}
       {pickMode && activeTab.kind === "page" && (
-        <div className="pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 h-7 px-3 rounded-full bg-sky-500 text-white text-[11.5px] font-medium shadow-lg">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-75 animate-ping" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-          </span>
+        <div className="pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-2 h-7 px-3 rounded-full bg-foreground text-background text-[11.5px] font-medium">
+          <span className="inline-flex h-2 w-2 rounded-full bg-background" />
           Click any element to attach · press Esc to cancel
         </div>
       )}
@@ -1071,26 +1069,17 @@ export function HtmlBuilderEditor({ site, pages, products: _products, organizati
 
   const rightSide = (
     <div className="flex h-full w-full flex-col border-l border-border bg-background">
-      <div className="flex border-b border-border">
-        <button
-          className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "design" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          onClick={() => setRightPanel("design")}
-        >
-          Properties
-        </button>
-        <button
-          className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "animator" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          onClick={() => setRightPanel("animator")}
-        >
-          Animator
-        </button>
-        <button
-          className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "ai" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          onClick={() => setRightPanel("ai")}
-        >
-          Mr. Merchiva
-        </button>
-      </div>
+      <Tabs
+        value={rightPanel}
+        onValueChange={(v) => setRightPanel(v as "design" | "animator" | "ai")}
+        className="gap-0 border-b border-border"
+      >
+        <TabsList variant="line" className="w-full">
+          <TabsTrigger value="design" className="text-[11px]">Properties</TabsTrigger>
+          <TabsTrigger value="animator" className="text-[11px]">Animator</TabsTrigger>
+          <TabsTrigger value="ai" className="text-[11px]">Mr. Merchiva</TabsTrigger>
+        </TabsList>
+      </Tabs>
       <div className="flex-1 overflow-hidden">
         {rightPanel === "design" ? (
           <HtmlPropertiesPanel

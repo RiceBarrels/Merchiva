@@ -11,15 +11,16 @@ interface CheckoutBody {
   stripeCustomerId?: string | null;
   customerEmail?: string;
   // Where Stripe sends the user back after checkout. Defaults to the billing
-  // settings page; the /~/subscribe paywall passes "/~/subscribe" so a blocked
+  // settings page; the /manager/subscribe paywall passes "/manager/subscribe" so a blocked
   // org returns to the gate page (which forwards to the dashboard once active).
   returnPath?: string;
 }
 
 // Only allow internal app paths as the post-checkout return target.
 function safeReturnPath(p?: string): string {
-  if (p && p.startsWith("/~/") && !p.startsWith("//")) return p;
-  return "/~/settings/billing";
+  // /choose embeds the paywall (SubscribePanel) so it is a valid return too.
+  if (p && (p.startsWith("/manager/") || p === "/choose") && !p.startsWith("//")) return p;
+  return "/manager/settings/billing";
 }
 
 export async function POST(req: NextRequest) {

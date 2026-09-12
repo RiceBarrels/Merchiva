@@ -39,8 +39,12 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { StatusBadge, STATUS_TONE_TEXT, type StatusTone } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -148,56 +152,6 @@ function shiftHours(s: { startTime: string; endTime: string }): number {
 
 // ─── Avatar / pill primitives ───────────────────────────────────────────────
 
-function avatarBg(name: string): string {
-  const palette = [
-    "bg-cyan-100 text-cyan-800",
-    "bg-violet-100 text-violet-800",
-    "bg-rose-100 text-rose-800",
-    "bg-amber-100 text-amber-800",
-    "bg-emerald-100 text-emerald-800",
-    "bg-sky-100 text-sky-800",
-    "bg-fuchsia-100 text-fuchsia-800",
-    "bg-lime-100 text-lime-800",
-  ];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return palette[h % palette.length];
-}
-
-function initials(name: string): string {
-  return (name || "?")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((s) => s[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-function Avatar({ name, avatarUrl, size = 32 }: { name: string; avatarUrl?: string | null; size?: number }) {
-  if (avatarUrl) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={name}
-        className="inline-flex rounded-full border border-border bg-muted object-cover shrink-0"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-
-  return (
-    <span
-      className={cn(
-        "rounded-full inline-flex items-center justify-center font-semibold shrink-0",
-        avatarBg(name),
-      )}
-      style={{ width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.36)) }}
-    >
-      {initials(name)}
-    </span>
-  );
-}
-
 function rowIdentityKey(value: unknown): string {
   if (value && typeof (value as { toHexString?: () => string }).toHexString === "function") {
     return (value as { toHexString: () => string }).toHexString();
@@ -232,23 +186,15 @@ function Badge({
   className?: string;
   children: React.ReactNode;
 }) {
-  const tones: Record<string, string> = {
-    default: "bg-muted text-muted-foreground border-border",
-    warn: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50",
-    ok: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50",
-    danger: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-900/50",
-  };
+  const tones: Record<string, StatusTone> = { default: "neutral", warn: "warning", ok: "success", danger: "danger" };
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[0.3rem] border text-[10px] font-medium",
-        mono && "font-mono tabular-nums",
-        tones[tone],
-        className,
-      )}
+    <StatusBadge
+      tone={tones[tone]}
+      size="xs"
+      className={cn("h-auto gap-1 px-1.5 py-0.5 normal-case tracking-normal", mono && "font-mono tabular-nums", className)}
     >
       {children}
-    </span>
+    </StatusBadge>
   );
 }
 
@@ -269,11 +215,9 @@ function Section({
     <div className="border-b border-border">
       <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {title}
-          </span>
+          <Eyebrow as="span">{title}</Eyebrow>
           {typeof count === "number" && count > 0 && (
-            <span className="font-mono tabular-nums text-[10.5px] text-muted-foreground px-1.5 h-4 inline-flex items-center justify-center border border-border rounded-[0.3rem]">
+            <span className="font-mono tabular-nums text-[10.5px] text-muted-foreground px-1.5 h-4 inline-flex items-center justify-center border border-border rounded">
               {count}
             </span>
           )}
@@ -282,7 +226,7 @@ function Section({
           <button
             type="button"
             onClick={action.onClick}
-            className="text-[11.5px] font-medium text-stone-700 dark:text-stone-200 inline-flex items-center gap-1 hover:text-foreground"
+            className="text-[11.5px] font-medium text-muted-foreground inline-flex items-center gap-1 hover:text-foreground"
           >
             {action.label}
             {action.icon ? (
@@ -686,9 +630,9 @@ export function MobileSchedule({
       {/* Week strip */}
       <div className="border-b border-border bg-muted/30">
         <div className="flex items-center justify-between px-4 pt-3 pb-1.5">
-          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Eyebrow as="span">
             {t("personnel.m.thisWeek")} · {weekLabel}
-          </span>
+          </Eyebrow>
           <div className="flex items-center gap-1">
             <IconBtn icon={ChevronLeft} onClick={() => navigateWeek(-1)} />
             <IconBtn icon={ChevronRight} onClick={() => navigateWeek(1)} />
@@ -707,7 +651,7 @@ export function MobileSchedule({
                 type="button"
                 onClick={() => setSelDate(iso)}
                 className={cn(
-                  "py-2 px-0 rounded-[0.3rem] flex flex-col items-center gap-0.5 relative transition-colors",
+                  "py-2 px-0 rounded-lg flex flex-col items-center gap-0.5 relative transition-colors",
                   active
                     ? "bg-foreground text-background border border-foreground"
                     : "bg-transparent border border-transparent",
@@ -761,7 +705,7 @@ export function MobileSchedule({
           </div>
         </div>
         {canEditSchedule && (
-          <button
+          <Button
             type="button"
             onClick={() => {
               setAddShiftForm({
@@ -774,10 +718,10 @@ export function MobileSchedule({
               });
               setAddShiftOpen(true);
             }}
-            className="h-8 px-3 rounded-[0.3rem] border border-border bg-foreground text-background text-[12px] font-semibold inline-flex items-center gap-1.5 shrink-0"
+            className="px-3 text-[12px] font-semibold"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("staffing.header.addShiftShort")}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -814,7 +758,7 @@ export function MobileSchedule({
                 className="w-[3px] self-stretch rounded-[1.5px]"
                 style={{ background: SHIFT_COLORS[s.shiftType] ?? "#78716c" }}
               />
-              <Avatar name={name} avatarUrl={member?.avatarUrl} size={32} />
+              <Avatar name={name} src={member?.avatarUrl} size="md" />
               <div className="flex-1 min-w-0">
                 <div className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em] truncate">
                   {name}
@@ -863,9 +807,9 @@ export function MobileSchedule({
             const assigned = members.find((m) => m.id === shift.memberId);
             const isOwnRequest = request.requesterId === myMemberId;
             return (
-              <Card key={request.id} size="sm" className="mx-3.5 mb-2 rounded-[0.3rem] py-0 shadow-none">
+              <Card key={request.id} size="sm" className="mx-3.5 mb-2 py-0 shadow-none">
                 <div className="flex items-center gap-3 px-3 py-3">
-                  <Avatar name={assigned?.displayName ?? shift.staffName} avatarUrl={assigned?.avatarUrl} size={32} />
+                  <Avatar name={assigned?.displayName ?? shift.staffName} src={assigned?.avatarUrl} size="md" />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13.5px] font-semibold truncate">
                       {assigned?.displayName ?? shift.staffName}
@@ -883,7 +827,7 @@ export function MobileSchedule({
                     variant={isOwnRequest ? "outline" : "default"}
                     disabled={isOwnRequest || poolBusyId === request.id}
                     onClick={() => acceptCoverPoolTrade(request.id)}
-                    className="h-8 rounded-[0.3rem] px-2.5 text-[12px]"
+                    className="h-8 px-2.5 text-[12px]"
                   >
                     {poolBusyId === request.id ? <Spinner size={12} /> : isOwnRequest ? "Mine" : "Accept"}
                   </Button>
@@ -942,9 +886,9 @@ export function MobileSchedule({
 
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <Eyebrow as="span">
                       {t("staffing.shiftDialog.timeTemplate")}
-                    </span>
+                    </Eyebrow>
                   </div>
                   {shiftPresets.length === 0 ? (
                     <p className="text-xs text-muted-foreground">{t("staffing.shiftDialog.noTemplatesYet")}</p>
@@ -1089,10 +1033,10 @@ export function MobileSchedule({
               </DynamicUIElementHeader>
 
               <div className="px-4 py-4 space-y-4">
-                <div className="rounded-[0.3rem] border border-border bg-muted/20 p-3">
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar name={selectedShiftName} avatarUrl={selectedShiftMember?.avatarUrl} size={36} />
+                      <Avatar name={selectedShiftName} src={selectedShiftMember?.avatarUrl} size="lg" />
                       <div className="min-w-0">
                         <div className="text-[14px] font-semibold truncate">{selectedShiftName}</div>
                         <div className="text-[11.5px] text-muted-foreground">
@@ -1105,9 +1049,9 @@ export function MobileSchedule({
                 </div>
 
                 <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  <Eyebrow as="div" className="mb-3">
                     Everyone working that day
-                  </div>
+                  </Eyebrow>
                   <div className="relative pl-4 space-y-0">
                     <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
                     {selectedDayShifts.map((shift) => {
@@ -1122,10 +1066,10 @@ export function MobileSchedule({
                               active ? "bg-foreground" : "bg-muted-foreground",
                             )}
                           />
-                          <div className={cn("rounded-[0.3rem] border p-2.5", active ? "border-foreground bg-muted/40" : "border-border bg-background")}>
+                          <div className={cn("rounded-lg border p-2.5", active ? "border-foreground bg-muted/40" : "border-border bg-background")}>
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 min-w-0">
-                                <Avatar name={name} avatarUrl={member?.avatarUrl} size={26} />
+                                <Avatar name={name} src={member?.avatarUrl} size="sm" />
                                 <span className="text-[13px] font-medium truncate">{name}</span>
                               </div>
                               <span className="font-mono tabular-nums text-[11.5px] text-muted-foreground shrink-0">
@@ -1147,12 +1091,12 @@ export function MobileSchedule({
                     variant="outline"
                     size="sm"
                     onClick={() => setShowPeoplePicker((v) => !v)}
-                    className="w-full h-9 rounded-[0.3rem] text-[12.5px]"
+                    className="w-full h-9 text-[12.5px]"
                   >
                     Change people
                   </Button>
                   {showPeoplePicker && (
-                    <div className="mt-2 rounded-[0.3rem] border border-border overflow-hidden">
+                    <div className="mt-2 rounded-lg border border-border overflow-hidden">
                       {members.map((member) => (
                         <button
                           key={member.id}
@@ -1161,7 +1105,7 @@ export function MobileSchedule({
                           onClick={() => changeShiftPerson(member)}
                           className="w-full flex items-center gap-2.5 px-3 py-2.5 bg-background text-left border-t border-border first:border-t-0 disabled:opacity-50"
                         >
-                          <Avatar name={member.displayName} avatarUrl={member.avatarUrl} size={26} />
+                          <Avatar name={member.displayName} src={member.avatarUrl} size="sm" />
                           <div className="flex-1 min-w-0">
                             <div className="text-[12.5px] font-medium truncate">{member.displayName}</div>
                             <div className="text-[10.5px] text-muted-foreground truncate">{member.role}</div>
@@ -1180,15 +1124,15 @@ export function MobileSchedule({
 
               {canFindCover && (
                 <DynamicUIElementFooter className="px-4 py-3 border-t border-border">
-                  <button
+                  <Button
                     type="button"
                     disabled={coverBusy || existingCoverRequest}
                     onClick={requestCover}
-                    className="w-full h-10 rounded-[0.3rem] bg-foreground text-background inline-flex items-center justify-center gap-2 text-[13px] font-semibold disabled:opacity-50"
+                    className="w-full h-10 gap-2 text-[13px] font-semibold"
                   >
                     {coverBusy ? <Spinner size={16} /> : <Clock className="h-4 w-4" strokeWidth={1.75} />}
                     {existingCoverRequest ? "Already in cover pool" : "Find cover"}
-                  </button>
+                  </Button>
                 </DynamicUIElementFooter>
               )}
             </>
@@ -1227,9 +1171,9 @@ function Kpi({
         onClick && "hover:bg-muted/40",
       )}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <Eyebrow as="div" size="xs">
         {label}
-      </div>
+      </Eyebrow>
       <div className="flex items-baseline gap-1 mt-1.5">
         <span
           className={cn(
@@ -1258,13 +1202,15 @@ function IconBtn({
   onClick?: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="icon-sm"
       onClick={onClick}
-      className="h-7 w-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted"
+      className="text-muted-foreground"
     >
       <IconComp className="h-[14px] w-[14px]" strokeWidth={1.75} />
-    </button>
+    </Button>
   );
 }
 
@@ -1447,7 +1393,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                 )}
               >
                 <span
-                  className="w-9 h-9 rounded-[0.3rem] inline-flex items-center justify-center text-background"
+                  className="w-9 h-9 rounded-lg inline-flex items-center justify-center text-background"
                   style={{ background: r.color }}
                 >
                   <RoleIconComp name={r.icon} className="h-4 w-4" />
@@ -1482,7 +1428,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
               <DynamicUIElementHeader className="px-4 pt-4 pb-3 border-b border-border">
                 <div className="flex items-center gap-2.5">
                   <span
-                    className="w-9 h-9 rounded-[0.3rem] inline-flex items-center justify-center text-background shrink-0"
+                    className="w-9 h-9 rounded-lg inline-flex items-center justify-center text-background shrink-0"
                     style={{ background: selectedRole.color }}
                   >
                     <RoleIconComp name={selectedRole.icon} className="h-4 w-4" />
@@ -1498,14 +1444,16 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                     </DynamicUIElementDescription>
                   </div>
                   {canEdit && (
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="icon-sm"
                       aria-label={tt("common.edit")}
                       onClick={() => { setEditingRole(selectedRole); setRoleDialogOpen(true); }}
-                      className="h-7 w-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"
+                      className="text-muted-foreground"
                     >
                       <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    </button>
+                    </Button>
                   )}
                 </div>
               </DynamicUIElementHeader>
@@ -1514,7 +1462,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                   hides the edit button — mirror the header here for phones. */}
               <div className="sm:hidden flex items-center gap-2.5 px-4 pt-1 pb-3 border-b border-border">
                 <span
-                  className="w-9 h-9 rounded-[0.3rem] inline-flex items-center justify-center text-background shrink-0"
+                  className="w-9 h-9 rounded-lg inline-flex items-center justify-center text-background shrink-0"
                   style={{ background: selectedRole.color }}
                 >
                   <RoleIconComp name={selectedRole.icon} className="h-4 w-4" />
@@ -1528,28 +1476,30 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                   </div>
                 </div>
                 {canEdit && (
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="icon"
                     aria-label={tt("common.edit")}
                     onClick={() => { setEditingRole(selectedRole); setRoleDialogOpen(true); }}
-                    className="h-8 w-8 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground active:bg-muted shrink-0"
+                    className="text-muted-foreground"
                   >
                     <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  </button>
+                  </Button>
                 )}
               </div>
 
               <div className="px-4 py-4 space-y-4">
                 {selectedRole.description && (
-                  <div className="rounded-[0.3rem] border border-border bg-muted/20 px-3 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                  <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
                     {selectedRole.description}
                   </div>
                 )}
 
                 <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  <Eyebrow as="div" className="mb-2">
                     {tt("personnel.m.members").replace("{n}", String(selectedMembers.length))}
-                  </div>
+                  </Eyebrow>
                   {selectedMembers.length === 0 ? (
                     <div className="text-[12px] text-muted-foreground py-1">{tt("personnel.m.noMembers")}</div>
                   ) : (
@@ -1559,7 +1509,7 @@ export function MobileRoles({ orgId }: { orgId: string }) {
                           key={m.id}
                           className="inline-flex items-center gap-1.5 pr-2.5 pl-1 py-1 rounded-full border border-border bg-background"
                         >
-                          <Avatar name={m.displayName} avatarUrl={m.avatarUrl} size={20} />
+                          <Avatar name={m.displayName} src={m.avatarUrl} size="xs" />
                           <span className="text-[12px] font-medium">
                             {m.displayName.split(" ")[0]}
                           </span>
@@ -1571,52 +1521,56 @@ export function MobileRoles({ orgId }: { orgId: string }) {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Eyebrow as="div">
                       {tt("personnel.m.taskList").replace("{n}", String(selectedTasks.length))}
-                    </div>
+                    </Eyebrow>
                     {canEdit && (
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="xs"
                         onClick={() => setTaskDialog({ open: true, task: null })}
-                        className="inline-flex items-center gap-1 px-2 h-6 text-[11px] font-medium border border-border rounded-[0.3rem] text-muted-foreground hover:bg-muted"
+                        className="text-[11px] text-muted-foreground"
                       >
                         <Plus className="h-3 w-3" strokeWidth={1.75} /> {tt("staffing.roles.addTask")}
-                      </button>
+                      </Button>
                     )}
                   </div>
                   {/* Permitted users can browse completion status for any day */}
                   {canEdit && (
-                    <div className="flex items-center justify-between rounded-[0.3rem] border border-border px-1.5 py-1 mb-2">
-                      <button
+                    <div className="flex items-center justify-between rounded-lg border border-border px-1.5 py-1 mb-2">
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         aria-label={tt("staffing.roles.prevDay")}
                         onClick={() => shiftStatusDate(-1)}
-                        className="h-7 w-7 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground active:bg-muted"
+                        className="text-muted-foreground"
                       >
                         <ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
-                      </button>
+                      </Button>
                       <span className="text-[12px] font-medium tabular-nums">
                         {statusDate === todayStr
                           ? tt("staffing.roles.today")
                           : new Date(statusDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" })}
                       </span>
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-sm"
                         aria-label={tt("staffing.roles.nextDay")}
                         onClick={() => shiftStatusDate(1)}
                         disabled={statusDate >= todayStr}
-                        className="h-7 w-7 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground active:bg-muted disabled:opacity-30"
+                        className="text-muted-foreground"
                       >
                         <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
-                      </button>
+                      </Button>
                     </div>
                   )}
                   {selectedTasks.length === 0 ? (
-                    <div className="rounded-[0.3rem] border border-dashed border-border px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-                      {tt("personnel.m.noTasks")}
-                    </div>
+                    <EmptyState compact description={tt("personnel.m.noTasks")} />
                   ) : (
-                    <div className="rounded-[0.3rem] border border-border overflow-hidden">
+                    <div className="rounded-lg border border-border overflow-hidden">
                       {selectedTasks.map((task, i) => {
                         const comp = dayCompletions.get(task.id);
                         return (
@@ -1844,12 +1798,14 @@ export function MobileRequestsSheet({
             {tt("personnel.m.pendingCount").replace("{n}", String(total))}
           </span>
           <DrawerClose asChild>
-            <button
+            <Button
               type="button"
-              className="ml-2 h-7 w-7 rounded-[0.3rem] inline-flex items-center justify-center hover:bg-muted"
+              variant="ghost"
+              size="icon-sm"
+              className="ml-2"
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.75} />
-            </button>
+            </Button>
           </DrawerClose>
         </div>
 
@@ -1870,7 +1826,7 @@ export function MobileRequestsSheet({
                     className="px-4 py-3 bg-background border-t border-border"
                   >
                     <div className="flex gap-2.5">
-                      <Avatar name={r.staffName} avatarUrl={r.avatarUrl} size={32} />
+                      <Avatar name={r.staffName} src={r.avatarUrl} size="md" />
                       <div className="flex-1 min-w-0">
                         <div className="text-[13.5px] font-semibold tracking-[-0.01em] truncate">
                           {r.staffName}
@@ -1886,31 +1842,35 @@ export function MobileRequestsSheet({
                           )}
                         </div>
                         {r.comments && (
-                          <div className="text-[11.5px] text-stone-700 dark:text-stone-300 mt-1 italic line-clamp-2">
+                          <div className="text-[11.5px] text-muted-foreground mt-1 italic line-clamp-2">
                             “{r.comments}”
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="flex gap-1.5 mt-2.5">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         disabled={isBusy}
                         onClick={() => approveTO(r.id)}
-                        className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-emerald-700 disabled:opacity-50"
+                        className={cn("flex-1 text-[12px]", STATUS_TONE_TEXT.success)}
                       >
                         <Check className="h-3 w-3" strokeWidth={1.75} />
                         {tt("personnel.m.approve")}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="destructive"
+                        size="sm"
                         disabled={isBusy}
                         onClick={() => denyTO(r.id)}
-                        className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-rose-700 disabled:opacity-50"
+                        className="flex-1 text-[12px]"
                       >
                         <Ban className="h-3 w-3" strokeWidth={1.75} />
                         {tt("personnel.m.reject")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -1946,7 +1906,7 @@ export function MobileRequestsSheet({
                     <div className="flex items-center gap-2 text-[12.5px]">
                       {reqName && (
                         <>
-                          <Avatar name={reqName} avatarUrl={reqMember?.avatarUrl} size={22} />
+                          <Avatar name={reqName} src={reqMember?.avatarUrl} size="sm" />
                           <span className="font-medium">{reqName.split(" ")[0]}</span>
                         </>
                       )}
@@ -1956,7 +1916,7 @@ export function MobileRequestsSheet({
                       />
                       {tgtName ? (
                         <>
-                          <Avatar name={tgtName} avatarUrl={tgtMember?.avatarUrl} size={22} />
+                          <Avatar name={tgtName} src={tgtMember?.avatarUrl} size="sm" />
                           <span className="font-medium">{tgtName.split(" ")[0]}</span>
                         </>
                       ) : (
@@ -1966,24 +1926,28 @@ export function MobileRequestsSheet({
                       )}
                     </div>
                     <div className="flex gap-1.5 mt-2.5">
-                      <button
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         disabled={isBusy}
                         onClick={() => approveTD(t.id)}
-                        className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-emerald-700 disabled:opacity-50"
+                        className={cn("flex-1 text-[12px]", STATUS_TONE_TEXT.success)}
                       >
                         <Check className="h-3 w-3" strokeWidth={1.75} />
                         {tt("personnel.m.accept")}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="destructive"
+                        size="sm"
                         disabled={isBusy}
                         onClick={() => denyTD(t.id)}
-                        className="flex-1 h-7 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center gap-1 text-[12px] font-medium text-rose-700 disabled:opacity-50"
+                        className="flex-1 text-[12px]"
                       >
                         <Ban className="h-3 w-3" strokeWidth={1.75} />
                         {tt("personnel.m.reject")}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );

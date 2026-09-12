@@ -10,6 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { SkeletonText } from "@/components/ui/skeleton-loaders";
+import { STATUS_TONE_DOT } from "@/components/ui/status-badge";
 import {
   BarChart,
   Bar,
@@ -47,20 +51,20 @@ function weatherIcon(condition: string) {
     case "sunny":
       return <Sun className="h-4 w-4 text-amber-500" />;
     case "rainy":
-      return <CloudRain className="h-4 w-4 text-blue-400" />;
+      return <CloudRain className="h-4 w-4 text-muted-foreground" />;
     case "snowy":
-      return <Snowflake className="h-4 w-4 text-sky-300" />;
+      return <Snowflake className="h-4 w-4 text-muted-foreground" />;
     case "stormy":
-      return <CloudLightning className="h-4 w-4 text-violet-400" />;
+      return <CloudLightning className="h-4 w-4 text-foreground" />;
     default:
-      return <Cloud className="h-4 w-4 text-stone-400 dark:text-stone-500" />;
+      return <Cloud className="h-4 w-4 text-muted-foreground" />;
   }
 }
 
 function confidenceColor(c: number): string {
-  if (c >= 70) return "bg-emerald-500";
-  if (c >= 40) return "bg-amber-400";
-  return "bg-red-400";
+  if (c >= 70) return STATUS_TONE_DOT.success;
+  if (c >= 40) return STATUS_TONE_DOT.warning;
+  return STATUS_TONE_DOT.danger;
 }
 
 function qualityBadge(q: ForecastResult["dataQuality"]): {
@@ -284,12 +288,12 @@ export function SalesForecast() {
           {Array.from({ length: 7 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-[0.3rem] border p-3 space-y-2 bg-card"
+              className="rounded-lg border p-3 space-y-2 bg-card"
             >
-              <div className="h-3 w-10 bg-muted rounded-sm animate-pulse" />
-              <div className="h-5 w-14 bg-muted rounded-sm animate-pulse" />
-              <div className="h-1.5 w-full bg-muted rounded-sm animate-pulse" />
-              <div className="h-3 w-20 bg-muted rounded-sm animate-pulse" />
+              <SkeletonText width="40%" />
+              <SkeletonText width="55%" />
+              <SkeletonText width="100%" />
+              <SkeletonText width="70%" />
             </div>
           ))}
         </div>
@@ -301,26 +305,22 @@ export function SalesForecast() {
 
   if (salesHistory.length < 7) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="py-12 text-center space-y-3">
-          <BarChart3 className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
-          <div>
-            <p className="font-semibold text-sm">
-              {t("salesForecast.notEnoughData")}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-              {t("salesForecast.notEnoughDataDesc").replace(
-                "{count}",
-                String(
-                  new Set(
-                    salesHistory
-                      .filter((r) => r.hour === undefined)
-                      .map((r) => r.date),
-                  ).size,
-                ),
-              )}
-            </p>
-          </div>
+      <Card>
+        <CardContent className="py-8">
+          <EmptyState
+            icon={BarChart3}
+            title={t("salesForecast.notEnoughData")}
+            description={t("salesForecast.notEnoughDataDesc").replace(
+              "{count}",
+              String(
+                new Set(
+                  salesHistory
+                    .filter((r) => r.hour === undefined)
+                    .map((r) => r.date),
+                ).size,
+              ),
+            )}
+          />
         </CardContent>
       </Card>
     );
@@ -376,7 +376,7 @@ export function SalesForecast() {
               {t("salesForecast.weatherUnavailable")}
             </span>
           )}
-          <span className="font-mono">
+          <span className="font-mono tabular-nums">
             {t("salesForecast.confidence").replace(
               "{percent}",
               String(forecast.overallConfidence),
@@ -395,7 +395,7 @@ export function SalesForecast() {
               key={day.date}
               onClick={() => setSelectedDay(i)}
               className={cn(
-                "rounded-[0.3rem] border p-2.5 text-left transition-colors cursor-pointer",
+                "rounded-lg border p-2.5 text-left transition-colors cursor-pointer",
                 isSelected
                   ? "border-foreground bg-accent"
                   : "hover:border-foreground/30 bg-card",
@@ -403,9 +403,9 @@ export function SalesForecast() {
             >
               {/* Day name + date */}
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <Eyebrow as="span" size="xs">
                   {isToday ? t("salesForecast.today") : day.dayOfWeek.slice(0, 3)}
-                </span>
+                </Eyebrow>
                 {weatherIcon(day.factors.weatherLabel)}
               </div>
               <p className="text-xs text-muted-foreground mb-1">
@@ -416,7 +416,7 @@ export function SalesForecast() {
               </p>
 
               {/* Predicted revenue */}
-              <p className="text-base font-bold font-mono leading-tight">
+              <p className="text-base font-bold font-mono tabular-nums leading-tight">
                 {format(day.predicted, { decimals: 0 })}
               </p>
 
@@ -435,13 +435,13 @@ export function SalesForecast() {
               <div className="mt-2 space-y-0.5 text-[10px] text-muted-foreground leading-tight">
                 <div className="flex items-center gap-1">
                   <span>{t("salesForecast.factorBase")}</span>
-                  <span className="font-mono">
+                  <span className="font-mono tabular-nums">
                     {format(day.factors.baseLine, { decimals: 0 })}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <span>{t("salesForecast.factorWeather")}</span>
-                  <span className="font-mono">
+                  <span className="font-mono tabular-nums">
                     {formatMultiplier(day.factors.weatherMultiplier)}
                   </span>
                 </div>
@@ -465,7 +465,7 @@ export function SalesForecast() {
                 )}
                 <div className="flex items-center gap-1">
                   <span>{t("salesForecast.factorTrend")}</span>
-                  <span className="font-mono">
+                  <span className="font-mono tabular-nums">
                     {formatMultiplier(day.factors.trendMultiplier)}
                   </span>
                 </div>
@@ -493,7 +493,7 @@ export function SalesForecast() {
                   {t("salesForecast.predictedRevenuePerHour")}
                 </CardDescription>
               </div>
-              <span className="text-xs font-mono text-muted-foreground">
+              <span className="text-xs font-mono tabular-nums text-muted-foreground">
                 {t("salesForecast.total")}: {format(selected.predicted, { decimals: 0 })}
               </span>
             </div>
@@ -556,7 +556,7 @@ export function SalesForecast() {
                 {bestDay.dayOfWeek}
               </span>{" "}
               {t("salesForecast.at")}{" "}
-              <span className="font-mono font-semibold text-foreground">
+              <span className="font-mono font-semibold tabular-nums text-foreground">
                 {format(bestDay.predicted, { decimals: 0 })}
               </span>
             </p>
@@ -597,7 +597,7 @@ export function SalesForecast() {
                         {worstWeatherDay.dayOfWeek}
                       </span>{" "}
                       {t("salesForecast.maySee")}{" "}
-                      <span className="font-mono">
+                      <span className="font-mono tabular-nums">
                         {formatMultiplier(
                           worstWeatherDay.factors.weatherMultiplier,
                         )}

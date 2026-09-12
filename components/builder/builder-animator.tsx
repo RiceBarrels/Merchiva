@@ -2,7 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { Sparkles, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { patchSelectedAttribute } from "./html-properties-panel";
 import type { HtmlSelectionInfo } from "./html-canvas";
 import type {
@@ -26,12 +32,12 @@ interface BuilderAnimatorProps {
 export function BuilderAnimator({ selected, html, onHtmlChange }: BuilderAnimatorProps) {
   if (!selected) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <Sparkles className="h-8 w-8 text-muted-foreground/40" />
-        <p className="text-[12px] text-muted-foreground max-w-[220px]">
-          Select an element on the canvas to add or edit its animation.
-        </p>
-      </div>
+      <EmptyState
+        compact
+        icon={Sparkles}
+        className="h-full"
+        description="Select an element on the canvas to add or edit its animation."
+      />
     );
   }
 
@@ -96,23 +102,22 @@ function Inner({ selected, html, onHtmlChange }: BuilderAnimatorProps & { select
         <div>
           <div className="flex items-center gap-2">
             <Sparkles className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Animator
-            </span>
+            <Eyebrow as="span">Animator</Eyebrow>
           </div>
           <div className="mt-1 font-mono text-[9.5px] text-muted-foreground/70 truncate max-w-[180px]" title={selected.selector}>
             {selected.selector}
           </div>
         </div>
         {hasAny && (
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            size="icon-xs"
             onClick={clearAll}
             title="Clear all animations"
-            className="h-6 w-6 inline-flex items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
           >
             <Trash2 className="h-3 w-3" />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -133,6 +138,8 @@ function Inner({ selected, html, onHtmlChange }: BuilderAnimatorProps & { select
             <>
               <Row label="Start">
                 <SegmentedControl
+                  size="sm"
+                  fullWidth
                   value={entry.start ?? "center"}
                   onChange={(v) => setEntry({ start: v as "top" | "center" | "bottom" })}
                   options={[
@@ -144,6 +151,8 @@ function Inner({ selected, html, onHtmlChange }: BuilderAnimatorProps & { select
               </Row>
               <Row label="Replay">
                 <SegmentedControl
+                  size="sm"
+                  fullWidth
                   value={entry.replay === false ? "no" : "yes"}
                   onChange={(v) => setEntry({ replay: v === "yes" })}
                   options={[
@@ -400,9 +409,7 @@ function clamp(n: number, lo: number, hi: number): number {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="px-3 py-2.5 border-b border-border">
-      <p className="text-[9.5px] font-medium uppercase tracking-wider text-muted-foreground/70 mb-1.5">
-        {title}
-      </p>
+      <Eyebrow size="xs" className="mb-1.5">{title}</Eyebrow>
       <div className="space-y-1">{children}</div>
     </div>
   );
@@ -410,10 +417,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[60px_1fr] items-center gap-2">
-      <span className="text-[10.5px] text-muted-foreground truncate" title={label}>{label}</span>
-      <div className="min-w-0">{children}</div>
-    </div>
+    <Field layout="inline" label={label} labelWidth={60}>
+      {children}
+    </Field>
   );
 }
 
@@ -427,45 +433,22 @@ function SelectField({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <select
+    <Select
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-[26px] w-full rounded-[4px] border border-border bg-background text-[11.5px] font-mono px-1.5 outline-none focus:border-stone-400"
+      onValueChange={(v) => {
+        if (v == null) return;
+        onChange(v);
+      }}
     >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-  );
-}
-
-function SegmentedControl({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: Array<{ value: string; label: string }>;
-}) {
-  return (
-    <div className="flex h-[26px] rounded-[4px] border border-border bg-background overflow-hidden">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "flex-1 text-[10.5px] font-medium transition-colors px-1",
-            o.value === value
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+      <SelectTrigger size="sm" className="h-[26px] w-full px-1.5 text-[11.5px] font-mono">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -501,7 +484,7 @@ function NumberField({
 
   return (
     <div className="relative">
-      <input
+      <Input
         type="text"
         value={text}
         placeholder={placeholder}
@@ -513,7 +496,7 @@ function NumberField({
           else if (e.key === "ArrowUp") { e.preventDefault(); onCommit(round(value + step)); }
           else if (e.key === "ArrowDown") { e.preventDefault(); onCommit(round(value - step)); }
         }}
-        className="h-[26px] w-full rounded-[4px] border border-border bg-background text-[11.5px] font-mono px-1.5 pr-5 outline-none focus:border-stone-400"
+        className="h-[26px] px-1.5 pr-5 font-mono text-[11.5px] tabular-nums md:text-[11.5px]"
       />
       {unit && (
         <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground/70 pointer-events-none">
@@ -552,7 +535,7 @@ function NumberFieldXY({
 
   return (
     <div className="relative flex-1">
-      <input
+      <Input
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -563,7 +546,7 @@ function NumberFieldXY({
           else if (e.key === "ArrowUp") { e.preventDefault(); onCommit(round(value + 1)); }
           else if (e.key === "ArrowDown") { e.preventDefault(); onCommit(round(value - 1)); }
         }}
-        className="h-[26px] w-full rounded-[4px] border border-border bg-background text-[11.5px] font-mono px-1.5 pr-5 outline-none focus:border-stone-400"
+        className="h-[26px] px-1.5 pr-5 font-mono text-[11.5px] tabular-nums md:text-[11.5px]"
       />
       <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-muted-foreground/70 pointer-events-none">
         {axis}
@@ -594,16 +577,16 @@ function NumberSlider({
         step={step}
         value={value}
         onChange={(e) => onCommit(parseFloat(e.target.value))}
-        className="flex-1 accent-stone-700 dark:accent-stone-300 h-1"
+        className="flex-1 accent-foreground h-1"
       />
-      <input
+      <Input
         type="text"
         value={formatNum(value)}
         onChange={(e) => {
           const n = parseFloat(e.target.value);
           if (Number.isFinite(n)) onCommit(clamp(n, min, max));
         }}
-        className="h-[24px] w-12 rounded-[4px] border border-border bg-background text-[10.5px] font-mono px-1.5 text-center tabular-nums outline-none focus:border-stone-400"
+        className="h-6 w-12 px-1.5 text-center font-mono text-[10.5px] tabular-nums md:text-[10.5px]"
       />
     </div>
   );

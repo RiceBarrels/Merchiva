@@ -56,6 +56,7 @@ import { CraftCheckout } from "./craft-components/craft-checkout";
 import { CraftReward } from "./craft-components/craft-reward";
 import React from "react";
 import { useT } from "@/lib/i18n/context";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 // ─── Category definitions ────────────────────────────────────────────────────
 
@@ -156,14 +157,10 @@ export function ElementPalette() {
   return (
     <div className="w-56 shrink-0 overflow-y-auto border-r border-border bg-background">
       <div className="p-2">
-        <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {t("builder.palette.elements")}
-        </p>
+        <Eyebrow className="mb-2 px-1">{t("builder.palette.elements")}</Eyebrow>
         {categories.map((cat) => (
           <div key={cat.labelKey} className="mb-3">
-            <p className="mb-1 px-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-              {t(`builder.palette.${cat.labelKey}`)}
-            </p>
+            <Eyebrow size="xs" className="mb-1 px-1">{t(`builder.palette.${cat.labelKey}`)}</Eyebrow>
             <div className="grid grid-cols-2 gap-1">
               {cat.items.map((item) => {
                 const Icon = item.icon;
@@ -173,7 +170,7 @@ export function ElementPalette() {
                     ref={(ref: HTMLElement | null) => {
                       if (ref) connectors.create(ref, item.element);
                     }}
-                    className="flex cursor-grab flex-col items-center gap-1 rounded-[0.3rem] border border-border bg-background p-2 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground active:cursor-grabbing"
+                    className="flex cursor-grab flex-col items-center gap-1 rounded-lg border border-border bg-background p-2 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground active:cursor-grabbing"
                   >
                     <Icon className="h-4 w-4" />
                     <span className="text-[10px] font-medium leading-none">

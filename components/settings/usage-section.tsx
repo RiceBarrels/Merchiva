@@ -12,6 +12,10 @@ import {
 } from "recharts";
 import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Activity, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { SkeletonText } from "@/components/ui/skeleton-loaders";
+import { StatGrid, StatTile } from "@/components/ui/stat-tile";
 import {
   Select,
   SelectContent,
@@ -181,41 +185,38 @@ export function UsageSection() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          icon={<ArrowDownToLine className="h-4 w-4" />}
+      <StatGrid>
+        <StatTile
+          icon={ArrowDownToLine}
           label={t("usage.inputTokens")}
           value={fmtTokens(totals.inputTokens)}
           sub={fmtCost((totals.inputTokens / 1_000_000) * 2)}
         />
-        <StatCard
-          icon={<ArrowUpFromLine className="h-4 w-4" />}
+        <StatTile
+          icon={ArrowUpFromLine}
           label={t("usage.outputTokens")}
           value={fmtTokens(totals.outputTokens)}
           sub={fmtCost((totals.outputTokens / 1_000_000) * 10)}
         />
-        <StatCard
-          icon={<DollarSign className="h-4 w-4" />}
+        <StatTile
+          icon={DollarSign}
           label={t("usage.totalCost")}
           value={fmtCost(totals.cost)}
           sub={t("usage.thisMonth")}
-          emphasize
         />
-        <StatCard
-          icon={<Activity className="h-4 w-4" />}
+        <StatTile
+          icon={Activity}
           label={t("usage.calls")}
           value={String(totals.calls)}
           sub={t("usage.aiRequests")}
         />
-      </div>
+      </StatGrid>
 
       {/* Quota */}
       {(tokenQuotaPct !== null || costQuotaPct !== null) && (
-        <Card className="rounded-[0.3rem]">
+        <Card>
           <CardContent className="p-4 space-y-3">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("usage.quota")}
-            </div>
+            <Eyebrow>{t("usage.quota")}</Eyebrow>
             {costQuotaPct !== null && quota?.monthlyCostLimit != null && (
               <QuotaBar
                 label={t("usage.costLimit")}
@@ -237,18 +238,17 @@ export function UsageSection() {
       )}
 
       {/* Daily chart */}
-      <Card className="rounded-[0.3rem]">
+      <Card>
         <CardContent className="p-4">
-          <div className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("usage.dailyCost")}
-          </div>
+          <Eyebrow className="mb-3">{t("usage.dailyCost")}</Eyebrow>
           {!isReady ? (
-            <div className="h-[220px] animate-pulse rounded bg-muted/40" />
-          ) : daily.length === 0 ? (
-            <div className="flex h-[220px] flex-col items-center justify-center text-center">
-              <Sparkles className="h-8 w-8 text-muted-foreground opacity-40" />
-              <p className="mt-2 text-sm text-muted-foreground">{t("usage.empty")}</p>
+            <div className="flex h-[220px] flex-col justify-center gap-2">
+              <SkeletonText width="60%" />
+              <SkeletonText width="85%" />
+              <SkeletonText width="40%" />
             </div>
+          ) : daily.length === 0 ? (
+            <EmptyState icon={Sparkles} description={t("usage.empty")} className="h-[220px]" />
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={daily} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
@@ -285,26 +285,24 @@ export function UsageSection() {
       </Card>
 
       {/* By feature */}
-      <Card className="rounded-[0.3rem]">
+      <Card>
         <CardContent className="p-4">
-          <div className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("usage.byFeature")}
-          </div>
+          <Eyebrow className="mb-3">{t("usage.byFeature")}</Eyebrow>
           {byFeature.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">{t("usage.empty")}</p>
+            <EmptyState compact description={t("usage.empty")} />
           ) : (
             <div className="space-y-2.5">
               {byFeature.map((f) => (
                 <div key={f.feature} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium">{featureLabel(f.feature)}</span>
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
                       {fmtCost(f.cost)} · {fmtTokens(f.inputTokens + f.outputTokens)} tok · {f.calls}×
                     </span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full bg-stone-700"
+                      className="h-full bg-foreground"
                       style={{ width: `${(f.cost / maxFeatureCost) * 100}%` }}
                     />
                   </div>
@@ -316,12 +314,10 @@ export function UsageSection() {
       </Card>
 
       {/* Activity log — every call, newest first, filterable by feature */}
-      <Card className="rounded-[0.3rem]">
+      <Card>
         <CardContent className="p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {t("usage.activityLog")}
-            </div>
+            <Eyebrow>{t("usage.activityLog")}</Eyebrow>
             <Select value={featureFilter} onValueChange={(v) => v && setFeatureFilter(v)}>
               <SelectTrigger className="h-8 w-[160px] text-xs">
                 <SelectValue />
@@ -340,19 +336,17 @@ export function UsageSection() {
           </div>
 
           {logEntries.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {t("usage.noRecords")}
-            </p>
+            <EmptyState compact description={t("usage.noRecords")} />
           ) : (
             <div className="max-h-[360px] divide-y divide-border overflow-y-auto">
               {logEntries.map((e) => (
                 <div key={e.id} className="flex items-start gap-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-[0.3rem] bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                      <span className="inline-flex items-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
                         {featureLabel(e.feature)}
                       </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {fmtTime(e.createdAtMs)}
                       </span>
                     </div>
@@ -380,40 +374,6 @@ export function UsageSection() {
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-  emphasize,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: string;
-  emphasize?: boolean;
-}) {
-  return (
-    <Card className="rounded-[0.3rem]">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-1.5 text-muted-foreground">
-          {icon}
-          <span className="text-xs font-medium uppercase tracking-wide">{label}</span>
-        </div>
-        <div
-          className={
-            "mt-2 font-mono tabular-nums text-2xl font-semibold " +
-            (emphasize ? "text-foreground" : "")
-          }
-        >
-          {value}
-        </div>
-        {sub && <div className="mt-0.5 font-mono text-xs text-muted-foreground">{sub}</div>}
-      </CardContent>
-    </Card>
-  );
-}
-
 function QuotaBar({
   label,
   used,
@@ -430,13 +390,13 @@ function QuotaBar({
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
         <span>{label}</span>
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">
           {used} / {limit} ({pct.toFixed(0)}%)
         </span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className={"h-full " + (over ? "bg-red-600" : pct > 80 ? "bg-amber-500" : "bg-stone-700")}
+          className={"h-full " + (over ? "bg-destructive" : pct > 80 ? "bg-amber-500" : "bg-foreground")}
           style={{ width: `${pct}%` }}
         />
       </div>

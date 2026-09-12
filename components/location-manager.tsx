@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DialogActions } from "@/components/ui/dialog-actions";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useLocations } from "@/lib/spacetimedb/hooks";
@@ -146,7 +150,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
   };
 
   return (
-    <Card className="rounded-[0.3rem] border border-border">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -158,7 +162,6 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
           <Button
             variant="outline"
             size="sm"
-            className="h-7 text-xs rounded-[0.3rem]"
             onClick={openAddForm}
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -172,15 +175,11 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
       <CardContent className="pt-3">
         {/* Empty state */}
         {locations.length === 0 && !showForm && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <MapPin className="h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="text-sm font-medium text-muted-foreground">
-              {t("locations.empty")}
-            </p>
-            <p className="text-xs text-muted-foreground/70 mt-0.5">
-              {t("locations.emptyDesc")}
-            </p>
-          </div>
+          <EmptyState
+            icon={MapPin}
+            title={t("locations.empty")}
+            description={t("locations.emptyDesc")}
+          />
         )}
 
         {/* Location list */}
@@ -195,7 +194,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                 <div
                   key={locId}
                   className={cn(
-                    "flex items-start gap-3 p-3 border border-border rounded-[0.3rem] bg-background",
+                    "flex items-start gap-3 p-3 border border-border rounded-lg bg-background",
                     "hover:border-muted-foreground/30 transition-colors"
                   )}
                 >
@@ -207,7 +206,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                       {loc.isDefault && (
                         <Badge
                           variant="secondary"
-                          className="text-[10px] h-4 px-1.5 rounded-[0.2rem] shrink-0"
+                          className="text-[10px] h-4 px-1.5 shrink-0"
                         >
                           <Star className="h-2.5 w-2.5 mr-0.5" />
                           {t("locations.default")}
@@ -231,7 +230,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-[11px] px-2 rounded-[0.3rem]"
+                        className="text-[11px] px-2"
                         onClick={() => handleSetDefault(loc)}
                       >
                         <Star className="h-3 w-3 mr-1" />
@@ -240,8 +239,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                     )}
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 rounded-[0.3rem]"
+                      size="icon-sm"
                       onClick={() => openEditForm(loc)}
                     >
                       <Pencil className="h-3 w-3" />
@@ -253,7 +251,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                             <Button
                               variant="destructive"
                               size="sm"
-                              className="h-7 text-[11px] px-2 rounded-[0.3rem]"
+                              className="text-[11px] px-2"
                               onClick={() => handleDelete(loc)}
                               disabled={deletingId === locId}
                             >
@@ -265,8 +263,7 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 rounded-[0.3rem]"
+                              size="icon-sm"
                               onClick={() => setConfirmDeleteId(null)}
                             >
                               <X className="h-3 w-3" />
@@ -275,8 +272,8 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                         ) : (
                           <Button
                             variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 rounded-[0.3rem] text-muted-foreground hover:text-destructive"
+                            size="icon-sm"
+                            className="text-muted-foreground hover:text-destructive"
                             onClick={() => setConfirmDeleteId(locId)}
                           >
                             <Trash2 className="h-3 w-3" />
@@ -295,20 +292,19 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
         {showForm && (
           <div
             className={cn(
-              "border border-border rounded-[0.3rem] p-4 bg-muted/30",
+              "border border-border rounded-lg p-4 bg-muted/30",
               locations.length > 0 && "mt-3"
             )}
           >
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            <Eyebrow className="mb-3">
               {editingId
                 ? t("locations.editLocation")
                 : t("locations.addLocation")}
-            </p>
+            </Eyebrow>
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">{t("locations.name")}</Label>
                 <Input
-                  className="h-8 text-sm rounded-[0.3rem]"
                   placeholder={t("locations.namePlaceholder")}
                   value={form.name}
                   onChange={(e) =>
@@ -320,7 +316,6 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
               <div className="space-y-1">
                 <Label className="text-xs">{t("locations.address")}</Label>
                 <Input
-                  className="h-8 text-sm rounded-[0.3rem]"
                   placeholder={t("locations.addressPlaceholder")}
                   value={form.address}
                   onChange={(e) =>
@@ -331,7 +326,6 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
               <div className="space-y-1">
                 <Label className="text-xs">{t("locations.phone")}</Label>
                 <Input
-                  className="h-8 text-sm rounded-[0.3rem]"
                   placeholder={t("locations.phonePlaceholder")}
                   value={form.phone}
                   onChange={(e) =>
@@ -340,12 +334,10 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                 />
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 rounded-[0.2rem] border border-border accent-foreground"
+                <Checkbox
                   checked={form.isDefault}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, isDefault: e.target.checked }))
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, isDefault: checked === true }))
                   }
                 />
                 <span className="text-xs text-foreground">
@@ -353,27 +345,15 @@ export function LocationManager({ organizationId }: LocationManagerProps) {
                 </span>
               </label>
 
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  className="h-7 text-xs rounded-[0.3rem]"
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving && <Spinner size={12} className="mr-1" />}
-                  {editingId
-                    ? t("locations.save")
-                    : t("locations.add")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs rounded-[0.3rem]"
-                  onClick={closeForm}
-                >
-                  {t("locations.cancel")}
-                </Button>
-              </div>
+              <DialogActions
+                divider={false}
+                className="pt-1"
+                onCancel={closeForm}
+                onConfirm={handleSave}
+                saving={saving}
+                cancelLabel={t("locations.cancel")}
+                confirmLabel={editingId ? t("locations.save") : t("locations.add")}
+              />
             </div>
           </div>
         )}

@@ -3,19 +3,19 @@ export const BETA_FEATURES = [
     key: "pos",
     labelKey: "settings.betaFeaturePOS",
     descriptionKey: "settings.betaFeaturePOSDesc",
-    href: "/~/pos",
+    href: "/manager/pos",
   },
   {
     key: "website",
     labelKey: "settings.betaFeatureWebsite",
     descriptionKey: "settings.betaFeatureWebsiteDesc",
-    href: "/~/builder",
+    href: "/manager/builder",
   },
   {
     key: "design",
     labelKey: "settings.betaFeatureDesign",
     descriptionKey: "settings.betaFeatureDesignDesc",
-    href: "/~/design",
+    href: "/manager/design",
   },
 ] as const;
 
@@ -56,11 +56,11 @@ export function parseBetaFeatures(raw: unknown): BetaFeaturesConfig {
 
 export function betaFeatureForPath(pathname: string | null | undefined): BetaFeatureKey | null {
   if (!pathname) return null;
-  if (pathname === "/~/pos" || pathname.startsWith("/~/pos/")) return "pos";
-  if (pathname === "/~/customers" || pathname.startsWith("/~/customers/")) return "website";
-  if (pathname === "/~/marketing" || pathname.startsWith("/~/marketing/")) return "website";
-  if (pathname === "/~/builder" || pathname.startsWith("/~/builder/")) return "website";
-  if (pathname === "/~/design" || pathname.startsWith("/~/design/")) return "design";
+  if (pathname === "/manager/pos" || pathname.startsWith("/manager/pos/")) return "pos";
+  if (pathname === "/manager/customers" || pathname.startsWith("/manager/customers/")) return "website";
+  if (pathname === "/manager/marketing" || pathname.startsWith("/manager/marketing/")) return "website";
+  if (pathname === "/manager/builder" || pathname.startsWith("/manager/builder/")) return "website";
+  if (pathname === "/manager/design" || pathname.startsWith("/manager/design/")) return "design";
   return null;
 }
 

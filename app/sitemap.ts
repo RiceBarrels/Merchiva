@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
 import { LOCALES, LOCALE_BCP47 } from "@/lib/i18n/config";
+import { DOWNLOAD_PAGE_ENABLED } from "@/lib/download-page";
 
 export const dynamic = "force-static";
 
 const BASE_URL = "https://project-management-phi-red.vercel.app";
 
 // Locale-prefixed marketing routes (tail, "" = home) with crawl hints.
-const LOCALIZED_PATHS: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [
+const ALL_LOCALIZED_PATHS: { path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }[] = [
   { path: "", changeFrequency: "weekly", priority: 1.0 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.9 },
   { path: "/features", changeFrequency: "monthly", priority: 0.8 },
@@ -15,6 +16,7 @@ const LOCALIZED_PATHS: { path: string; changeFrequency: MetadataRoute.Sitemap[nu
   { path: "/blogs", changeFrequency: "weekly", priority: 0.6 },
   { path: "/download", changeFrequency: "monthly", priority: 0.6 },
 ];
+const LOCALIZED_PATHS = ALL_LOCALIZED_PATHS.filter((x) => DOWNLOAD_PAGE_ENABLED || x.path !== "/download");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

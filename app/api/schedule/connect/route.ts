@@ -14,7 +14,7 @@ type OAuthState = {
 export async function GET(req: NextRequest) {
   const provider = normalizeScheduleProvider(req.nextUrl.searchParams.get("provider"));
   const organizationId = req.nextUrl.searchParams.get("orgId")?.trim();
-  const settingsUrl = new URL("/~/settings", req.url);
+  const settingsUrl = new URL("/manager/settings", req.url);
 
   if (!organizationId) {
     settingsUrl.searchParams.set("schedule_error", "missing_org");

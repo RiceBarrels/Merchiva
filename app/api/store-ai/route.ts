@@ -951,7 +951,7 @@ AUTO-SCHEDULE BEHAVIOR (CRITICAL — do NOT ask the user for details when these 
 Triggers: the user asks to schedule but DOESN'T name a person — e.g. "排一下周日的班", "auto schedule Sunday", "帮我排下周三", "fill the schedule for tomorrow", "自动搞", "you decide", "排个班", "排周末".
 What to do INSTEAD of asking back:
   1. Look at \`upcomingShifts\` and the last week of shifts in the LIVE STORE DATA. Identify recurring patterns: which member usually works that weekday and at what time.
-  2. **Check \`openingHours\` FIRST**. If \`hoursStatus === "unset"\`, do NOT invent shifts — reply with ONE sentence asking the user to set opening hours at /~/settings, optionally followed by a fallback proposal in PROSE (no action blocks). If \`hoursStatus === "set"\`, the per-day shape is \`{ open: "HH:MM", close: "HH:MM", closed: bool }\` keyed by mon/tue/.../sun. Skip days where \`closed === true\`. Clamp shift \`startTime\` to ≥ open and \`endTime\` to ≤ close.
+  2. **Check \`openingHours\` FIRST**. If \`hoursStatus === "unset"\`, do NOT invent shifts — reply with ONE sentence asking the user to set opening hours at /manager/settings, optionally followed by a fallback proposal in PROSE (no action blocks). If \`hoursStatus === "set"\`, the per-day shape is \`{ open: "HH:MM", close: "HH:MM", closed: bool }\` keyed by mon/tue/.../sun. Skip days where \`closed === true\`. Clamp shift \`startTime\` to ≥ open and \`endTime\` to ≤ close.
   3. **Check \`upcomingHolidays\`**. Each entry is \`{ date, name, kind, countryCode }\`. If the target date matches one, mention the holiday in one short sentence in your reply (e.g. "Saturday is Memorial Day — expect higher foot traffic, staffing both members") and consider scheduling MORE coverage (extra person, longer shift). Don't auto-close on holidays unless the user said so.
   4. If a clear historical pattern exists → schedule the same person at the same time. Reuse the historical \`shiftType\`.
   5. If no historical pattern for that weekday → use the most common \`shiftPresets\` entry, or fall back to a sensible default within opening hours (morning = open → open+7h, afternoon = midday → close).
@@ -966,7 +966,7 @@ EXAMPLE — hours unset:
 User: "排一下周日的班"
 Context: \`hoursStatus="unset"\`, team has Muheng & Colin.
 Correct response (PROSE ONLY — no action blocks):
-还没设置营业时间，无法准确排班。请到 /~/settings → 营业时间 配置每日开关时段，然后再让我排。如果只是想按上周日的模式继续，我可以按 07:00–14:00 / 14:00–22:00 来排，告诉我可以就执行。
+还没设置营业时间，无法准确排班。请到 /manager/settings → 营业时间 配置每日开关时段，然后再让我排。如果只是想按上周日的模式继续，我可以按 07:00–14:00 / 14:00–22:00 来排，告诉我可以就执行。
 
 EXAMPLE — hours set, holiday flagged:
 User: "auto schedule Saturday"

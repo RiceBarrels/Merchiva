@@ -5,6 +5,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { hapticLight } from "@/lib/haptics";
+import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { STATUS_TONE_CLASSES, STATUS_TONE_TEXT } from "@/components/ui/status-badge";
 import { useOrgMembers, useRoleTaskAssignments, useRoleTasks } from "@/lib/spacetimedb/hooks";
 import type { StaffRole } from "@/lib/types";
 import { RoleIconComp, taskCompletionsForDate } from "@/components/personnel/role-dialogs";
@@ -101,41 +104,39 @@ export function RoleTasksOverview({ orgId, roles, className }: {
       {/* Header: title, overall progress, day nav */}
       <div className="flex items-center gap-2 px-4 lg:px-6 py-2.5 border-b border-border">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            {t("staffing.roles.overviewTitle")}
-          </p>
+          <Eyebrow>{t("staffing.roles.overviewTitle")}</Eyebrow>
         </div>
         <span
           className={cn(
-            "font-mono text-[12px] font-semibold tabular-nums px-1.5 py-0.5 rounded-[0.3rem] border",
-            done >= total
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              : "border-border text-foreground",
+            "font-mono text-[12px] font-semibold tabular-nums px-1.5 py-0.5 rounded border",
+            done >= total ? STATUS_TONE_CLASSES.success : "border-border text-foreground",
           )}
         >
           {done}/{total}
         </span>
-        <div className="flex items-center gap-0.5 border border-border rounded-[0.3rem] px-1 py-0.5">
-          <button
+        <div className="flex items-center gap-0.5 border border-border rounded-lg px-1 py-0.5">
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={() => shiftStatusDate(-1)}
             aria-label={t("staffing.roles.prevDay")}
-            className="p-0.5 rounded-[0.2rem] hover:bg-muted transition-colors"
           >
             <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
+          </Button>
           <span className="text-[11px] font-medium tabular-nums min-w-[72px] text-center">
             {statusDate === todayStr
               ? t("staffing.roles.today")
               : new Date(statusDate + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", weekday: "short" })}
           </span>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={() => shiftStatusDate(1)}
             aria-label={t("staffing.roles.nextDay")}
             disabled={statusDate >= todayStr}
-            className="p-0.5 rounded-[0.2rem] hover:bg-muted transition-colors disabled:opacity-30"
           >
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -146,7 +147,7 @@ export function RoleTasksOverview({ orgId, roles, className }: {
           <div key={role.id} className="border-b border-border">
             <div className="flex items-center gap-2 px-4 lg:px-6 py-1.5 bg-muted/50">
               <span
-                className="w-5 h-5 rounded-[0.3rem] inline-flex items-center justify-center border shrink-0"
+                className="w-5 h-5 rounded inline-flex items-center justify-center border shrink-0"
                 style={{ borderColor: role.color, color: role.color }}
               >
                 <RoleIconComp name={role.icon} className="h-3 w-3" />
@@ -155,7 +156,7 @@ export function RoleTasksOverview({ orgId, roles, className }: {
               <span
                 className={cn(
                   "font-mono text-[11px] tabular-nums shrink-0",
-                  groupDone >= tasks.length ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground",
+                  groupDone >= tasks.length ? STATUS_TONE_TEXT.success : STATUS_TONE_TEXT.neutral,
                 )}
               >
                 {groupDone}/{tasks.length}

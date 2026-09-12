@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -133,16 +134,16 @@ export function RoleManager({
                     )}
                   >
                     <span
-                      className="h-7 w-7 rounded-[0.3rem] inline-flex items-center justify-center text-white font-semibold text-[11px] shrink-0"
+                      className="h-7 w-7 rounded-lg inline-flex items-center justify-center text-white font-semibold text-[11px] shrink-0"
                       style={{ background: r.color }}
                     >
                       {(r.name || "?").slice(0, 1).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <div className="text-[12.5px] font-medium text-stone-800 dark:text-stone-100 truncate">{r.name}</div>
+                        <div className="text-[12.5px] font-medium text-foreground truncate">{r.name}</div>
                         {r.isBuiltin && (
-                          <span className="text-[8.5px] uppercase tracking-wider font-mono text-stone-400 shrink-0">内置</span>
+                          <Eyebrow as="span" size="xs" className="text-[8.5px] font-mono shrink-0">内置</Eyebrow>
                         )}
                       </div>
                       <div className="text-[10.5px] text-muted-foreground truncate">{r.perms.length} 权限</div>
@@ -156,7 +157,7 @@ export function RoleManager({
               <Button
                 onClick={handleAdd}
                 size="sm"
-                className="w-full h-8 rounded-[0.3rem] text-[12px]"
+                className="w-full h-8 text-[12px]"
               >
                 <Plus className="h-3 w-3" strokeWidth={1.75} />
                 新增角色
@@ -173,7 +174,7 @@ export function RoleManager({
             <div className="flex-1 flex flex-col min-w-0">
               <div className="px-5 py-3.5 border-b border-border flex items-center gap-3">
                 <span
-                  className="h-10 w-10 rounded-[0.3rem] inline-flex items-center justify-center text-white font-semibold text-[14px] shrink-0"
+                  className="h-10 w-10 rounded-lg inline-flex items-center justify-center text-white font-semibold text-[14px] shrink-0"
                   style={{ background: editing.color }}
                 >
                   {(editing.name || "?").slice(0, 1).toUpperCase()}
@@ -182,21 +183,20 @@ export function RoleManager({
                   <div className="flex items-center gap-1.5">
                     <div className="text-[14px] font-semibold tracking-[-0.01em]">{editing.name}</div>
                     {editing.isBuiltin ? (
-                      <span className="text-[9.5px] uppercase tracking-wider font-mono text-stone-400">内置角色</span>
+                      <Eyebrow as="span" size="xs" className="font-mono">内置角色</Eyebrow>
                     ) : (
-                      <Badge variant="outline" className="h-4 px-1 text-[9px] rounded-[0.2rem] bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-900/50">自定义</Badge>
+                      <StatusBadge tone="success" size="xs">自定义</StatusBadge>
                     )}
                   </div>
                   <div className="text-[11px] text-muted-foreground">{usage[editing.key] || 0} 人正在使用 · key {editing.key}</div>
                 </div>
                 {!editing.isBuiltin && (
                   <Button
-                    variant="outline"
+                    variant="destructive"
                     size="sm"
                     onClick={() => handleDelete(editing.key)}
-                    className="h-8 px-2.5 text-[12px] rounded-[0.3rem] text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
-                    <Trash2 className="h-3 w-3" strokeWidth={1.75} />
+                    <Trash2 strokeWidth={1.75} />
                     删除
                   </Button>
                 )}
@@ -206,7 +206,7 @@ export function RoleManager({
                 {/* Name + color */}
                 <div className="px-5 py-4 border-b border-border grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <div className="text-[10.5px] uppercase tracking-wider font-mono text-muted-foreground mb-1">名称</div>
+                    <Eyebrow className="font-mono mb-1">名称</Eyebrow>
                     <Input
                       value={editing.name}
                       onChange={(e) => patch({ name: e.target.value })}
@@ -214,7 +214,7 @@ export function RoleManager({
                     />
                   </div>
                   <div className="col-span-2">
-                    <div className="text-[10.5px] uppercase tracking-wider font-mono text-muted-foreground mb-1">描述</div>
+                    <Eyebrow className="font-mono mb-1">描述</Eyebrow>
                     <Input
                       value={editing.description}
                       onChange={(e) => patch({ description: e.target.value })}
@@ -223,14 +223,14 @@ export function RoleManager({
                     />
                   </div>
                   <div className="col-span-2">
-                    <div className="text-[10.5px] uppercase tracking-wider font-mono text-muted-foreground mb-1.5">颜色</div>
+                    <Eyebrow className="font-mono mb-1.5">颜色</Eyebrow>
                     <div className="flex flex-wrap gap-1.5 items-center">
                       {ROLE_COLOR_SWATCHES.map((c) => (
                         <button
                           key={c}
                           onClick={() => patch({ color: c })}
                           className={cn(
-                            "h-7 w-7 rounded-[0.3rem] transition-transform",
+                            "h-7 w-7 rounded-lg transition-transform",
                             c === editing.color ? "ring-2 ring-offset-2 ring-foreground scale-105" : "hover:scale-105",
                           )}
                           style={{ background: c }}
@@ -242,7 +242,7 @@ export function RoleManager({
                           type="color"
                           value={editing.color}
                           onChange={(e) => patch({ color: e.target.value })}
-                          className="h-7 w-9 rounded-[0.3rem] border border-border cursor-pointer"
+                          className="h-7 w-9 rounded-lg border border-border cursor-pointer"
                         />
                         <span className="font-mono">{editing.color}</span>
                       </label>
@@ -254,29 +254,29 @@ export function RoleManager({
                 <div className="px-5 py-3">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <div className="text-[12.5px] font-semibold text-stone-800 dark:text-stone-100">默认权限</div>
+                      <div className="text-[12.5px] font-semibold text-foreground">默认权限</div>
                       <div className="text-[10.5px] text-muted-foreground">分配此角色时套用，可单独调整每个成员</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10.5px] font-mono text-muted-foreground tabular-nums">{editing.perms.length} / {ORG_PERMS_FLAT.length}</span>
-                      <Button variant="outline" size="sm" className="h-6 px-2 text-[10.5px] rounded-[0.2rem]" onClick={() => patch({ perms: ORG_PERMS_FLAT.map((p) => p.id) })}>全选</Button>
-                      <Button variant="outline" size="sm" className="h-6 px-2 text-[10.5px] rounded-[0.2rem]" onClick={() => patch({ perms: [] })}>清空</Button>
+                      <Button variant="outline" size="sm" className="h-6 px-2 text-[10.5px]" onClick={() => patch({ perms: ORG_PERMS_FLAT.map((p) => p.id) })}>全选</Button>
+                      <Button variant="outline" size="sm" className="h-6 px-2 text-[10.5px]" onClick={() => patch({ perms: [] })}>清空</Button>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
                     {ORG_PERMS.map((g) => (
                       <div key={g.group} className="mb-1.5">
-                        <div className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground mb-0.5">{PERM_GROUP_LABEL[g.i18nKey] ?? g.group}</div>
+                        <Eyebrow size="xs" className="font-mono mb-0.5">{PERM_GROUP_LABEL[g.i18nKey] ?? g.group}</Eyebrow>
                         {g.items.map((p: PermLeaf) => {
                           const checked = editing.perms.includes(p.id);
                           return (
-                            <label key={p.id} className="flex items-start gap-2 py-1 px-1 rounded-[0.3rem] hover:bg-muted/40 cursor-pointer">
+                            <label key={p.id} className="flex items-start gap-2 py-1 px-1 rounded-lg hover:bg-muted/40 cursor-pointer">
                               <Checkbox checked={checked} onCheckedChange={(v) => togglePerm(p.id, !!v)} className="mt-[3px]" />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[12px] text-stone-800 dark:text-stone-100">{PERM_LABEL[p.id] ?? p.id}</span>
+                                  <span className="text-[12px] text-foreground">{PERM_LABEL[p.id] ?? p.id}</span>
                                   {p.sensitive && (
-                                    <Badge variant="outline" className="h-4 px-1 text-[9px] rounded-[0.2rem] bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/50">敏感</Badge>
+                                    <StatusBadge tone="warning" size="xs">敏感</StatusBadge>
                                   )}
                                 </div>
                               </div>
@@ -293,7 +293,7 @@ export function RoleManager({
                 <div className="text-[11px] text-muted-foreground">
                   修改默认权限不会影响已分配此角色的成员；可在成员卡的右侧用「重置为角色默认」套用最新设置。
                 </div>
-                <Button size="sm" onClick={() => { toast.success("已保存"); onClose(); }} className="h-8 px-3 text-[12px] rounded-[0.3rem]">
+                <Button size="sm" onClick={() => { toast.success("已保存"); onClose(); }} className="h-8 px-3 text-[12px]">
                   完成
                 </Button>
               </div>

@@ -111,7 +111,7 @@ export default function proxy(req: NextRequest) {
 }
 
 // Union of: /api/* (CORS) and the public marketing routes (locale routing).
-// Everything else — /~/, /s, /login, /admins, etc. — is absent on purpose.
+// Everything else — /manager/, /s, /login, /admins, etc. — is absent on purpose.
 export const config = {
   matcher: [
     "/api/:path*",

@@ -4,6 +4,7 @@ import * as React from "react";
 import ReactDOM from "react-dom";
 import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { mergedTokensFor, tokenRef, tokenFromValue, type DesignToken } from "@/lib/builder/design-tokens";
@@ -277,7 +278,7 @@ export function ColorPicker({
         aria-label="Pick color"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "relative h-7 w-7 shrink-0 overflow-hidden rounded-[0.3rem] border border-border transition-colors hover:border-foreground/40 cursor-pointer",
+          "relative h-7 w-7 shrink-0 overflow-hidden rounded border border-border transition-colors hover:border-foreground/40 cursor-pointer",
           className,
         )}
       >
@@ -295,14 +296,14 @@ export function ColorPicker({
       {open && typeof window !== "undefined" && ReactDOM.createPortal(
         <div
           ref={popupRef}
-          className="fixed z-[9999] w-60 rounded-[0.3rem] border border-border bg-popover p-2 text-popover-foreground shadow-lg space-y-2"
+          className="fixed z-[9999] w-60 rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-md space-y-2"
           style={{ top: coords.top, left: coords.left }}
         >
           {/* Saturation / value square */}
           <div
             ref={svRef}
             onMouseDown={onSvDrag}
-            className="relative h-36 w-full cursor-crosshair rounded-[0.3rem] select-none"
+            className="relative h-36 w-full cursor-crosshair rounded select-none"
             style={{
               backgroundColor: hueColor,
               backgroundImage:
@@ -310,7 +311,7 @@ export function ColorPicker({
             }}
           >
             <div
-              className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow pointer-events-none"
+              className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background pointer-events-none"
               style={{
                 left: `${hsva.s * 100}%`,
                 top: `${(1 - hsva.v) * 100}%`,
@@ -330,7 +331,7 @@ export function ColorPicker({
             }}
           >
             <div
-              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow pointer-events-none"
+              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background pointer-events-none"
               style={{
                 left: `${(hsva.h / 360) * 100}%`,
                 backgroundColor: hueColor,
@@ -353,7 +354,7 @@ export function ColorPicker({
                 }}
               />
               <div
-                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow pointer-events-none"
+                className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background pointer-events-none"
                 style={{
                   left: `${hsva.a * 100}%`,
                   backgroundColor: swatchColor,
@@ -365,7 +366,7 @@ export function ColorPicker({
           {/* Hex + RGB inputs */}
           <div className="grid grid-cols-[1fr_auto_auto_auto] gap-1">
             <div className="space-y-0.5">
-              <label className="text-[9px] uppercase tracking-wider text-muted-foreground">Hex</label>
+              <Eyebrow as="span" size="xs" className="block">Hex</Eyebrow>
               <Input
                 value={hexInput}
                 onChange={(e) => setHexInput(e.target.value)}
@@ -378,7 +379,7 @@ export function ColorPicker({
             </div>
             {(["r", "g", "b"] as const).map((key) => (
               <div key={key} className="space-y-0.5 w-9">
-                <label className="text-[9px] uppercase tracking-wider text-muted-foreground text-center block">{key}</label>
+                <Eyebrow as="span" size="xs" className="block text-center">{key}</Eyebrow>
                 <Input
                   type="number"
                   min={0}
@@ -398,7 +399,7 @@ export function ColorPicker({
                 key={p}
                 type="button"
                 onClick={() => handleHexCommit(p)}
-                className="h-4 w-4 rounded-[0.2rem] border border-border transition-transform hover:scale-110"
+                className="h-4 w-4 rounded border border-border transition-transform hover:scale-110"
                 style={{ backgroundColor: p }}
                 aria-label={`Use ${p}`}
               />
@@ -410,9 +411,9 @@ export function ColorPicker({
               predefined tokens and any user-added custom ones from
               site.tokens via the BuilderSiteContext. */}
           <div className="pt-1.5 border-t border-border space-y-1">
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            <Eyebrow size="xs">
               {t("builder.tokens.colorsLabel")}
-            </p>
+            </Eyebrow>
             <div className="grid grid-cols-11 gap-1">
               {colorTokens.map((tok) => {
                 const isActive = activeToken?.cssVar === tok.cssVar;
@@ -424,7 +425,7 @@ export function ColorPicker({
                     title={`${tok.label} · var(${tok.cssVar})`}
                     aria-label={`Use token ${tok.label}`}
                     className={cn(
-                      "h-4 w-4 rounded-[0.2rem] border transition-transform hover:scale-110",
+                      "h-4 w-4 rounded border transition-transform hover:scale-110",
                       isActive
                         ? "border-foreground ring-1 ring-foreground"
                         : "border-border",
@@ -435,7 +436,7 @@ export function ColorPicker({
               })}
             </div>
             {activeToken && (
-              <p className="text-[10px] font-mono text-muted-foreground truncate">
+              <p className="text-[10px] font-mono tabular-nums text-muted-foreground truncate">
                 {activeToken.label} · {activeToken.cssVar}
               </p>
             )}

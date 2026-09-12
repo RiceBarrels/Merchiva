@@ -1,4 +1,4 @@
-// `merchiva new page <name>`  — scaffold an authenticated /~/ page
+// `merchiva new page <name>`  — scaffold an authenticated /manager/ page
 // `merchiva new hook <name>`  — scaffold a SpacetimeDB domain hook
 //
 // Page scaffolding follows the conventions in CLAUDE.md / AGENTS.md:
@@ -134,7 +134,7 @@ function addI18nKey(root: string, navKey: string, english: string): { added: str
 }
 
 function navSnippets(navKey: string, slug: string, section: string) {
-  const sidebar = `  { labelKey: "nav.${navKey}", href: "/~/${slug}", icon: Sparkles, permissionKey: "${section}" },`;
+  const sidebar = `  { labelKey: "nav.${navKey}", href: "/manager/${slug}", icon: Sparkles, permissionKey: "${section}" },`;
   console.log();
   console.log(c.bold("  Next, register navigation (icons are hand-picked, so paste these):"));
   console.log(c.dim(`\n  components/sidebar.tsx  → add to the navItems array:`));
@@ -157,16 +157,16 @@ function newPage(name: string) {
   const navKey = toCamel(slug);
   const section = "dashboard"; // safe default; user can tighten it
 
-  const dir = join(root, "app", "~", slug);
+  const dir = join(root, "app", "manager", slug);
   const file = join(dir, "page.tsx");
   if (existsSync(file)) {
-    fail(`Page already exists: app/~/${slug}/page.tsx`);
+    fail(`Page already exists: app/manager/${slug}/page.tsx`);
     process.exit(1);
   }
 
   mkdirSync(dir, { recursive: true });
   writeFileSync(file, pageTemplate(slug, comp, navKey, section), "utf-8");
-  ok(`Created ${c.bold(`app/~/${slug}/page.tsx`)}`);
+  ok(`Created ${c.bold(`app/manager/${slug}/page.tsx`)}`);
 
   const { added, skipped } = addI18nKey(root, navKey, toTitle(slug));
   if (added.length) ok(`Added i18n key ${c.bold(`nav.${navKey}`)} to ${added.length} locale file(s)`);
@@ -204,7 +204,7 @@ export function newCommand(args: string[]) {
   const [kind, name] = args;
   if (!kind || !name) {
     console.log(`Usage:
-  merchiva new page <name>    scaffold app/~/<name>/page.tsx + i18n + nav snippets
+  merchiva new page <name>    scaffold app/manager/<name>/page.tsx + i18n + nav snippets
   merchiva new hook <name>    scaffold lib/spacetimedb/hooks/use<Name>.ts
 
 Examples:

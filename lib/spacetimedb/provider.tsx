@@ -180,7 +180,9 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
           "SELECT * FROM inventory_item",
           "SELECT * FROM inventory_transaction",
           "SELECT * FROM sales_record",
-          "SELECT * FROM product",
+          // NOTE: no `product` table — sellable products live on inventory_item
+          // rows (retailEnabled). Subscribing to a nonexistent table fails the
+          // whole subscription set.
           "SELECT * FROM staff_member",
           "SELECT * FROM staff_role",
           "SELECT * FROM role_task",

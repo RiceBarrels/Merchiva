@@ -5,6 +5,8 @@ import { Search, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 // ─── Google Fonts API ───────────────────────────────────────────────────────
 
@@ -152,23 +154,25 @@ export function FontPicker({ value, onChange }: FontPickerProps) {
 
   return (
     <div ref={containerRef} className="relative">
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={() => setOpen(!open)}
-        className="flex h-7 w-full items-center justify-between rounded-md border border-input bg-transparent px-2 text-xs transition-colors hover:bg-accent"
+        className="w-full justify-between px-2 text-xs font-normal"
         style={currentFamily && !SYSTEM_FONTS.has(currentFamily) ? { fontFamily: `${currentFamily}, sans-serif` } : undefined}
       >
         <span className="truncate">{currentFamily || t("builder.fonts.selectFont")}</span>
         <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-      </button>
+      </Button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-[9999] mt-1 rounded-md border border-border bg-popover shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-[9999] mt-1 rounded-lg border border-border bg-popover shadow-md">
           <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <input
+            <Input
               ref={inputRef}
-              className="h-5 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              className="h-5 flex-1 rounded-none border-0 bg-transparent px-0 text-xs focus-visible:ring-0 md:text-xs dark:bg-transparent"
               placeholder={t("builder.fonts.search")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}

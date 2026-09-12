@@ -2,7 +2,6 @@
 
 import { useNode } from "@craftjs/core";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectTrigger,
@@ -11,6 +10,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Field } from "@/components/ui/field";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ColorPicker } from "@/components/builder/color-picker";
 
 export function ViewportSettings() {
   const {
@@ -23,8 +25,7 @@ export function ViewportSettings() {
   return (
     <div className="space-y-3 p-3">
       {/* Viewport Name */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Name</Label>
+      <Field label="Name">
         <Input
           value={props.viewportName || ""}
           onChange={(e) =>
@@ -35,11 +36,10 @@ export function ViewportSettings() {
           placeholder="Desktop"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Viewport Width */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Width</Label>
+      <Field label="Width">
         <div className="flex items-center gap-1.5">
           <Input
             type="number"
@@ -52,39 +52,27 @@ export function ViewportSettings() {
             placeholder="1280"
             className="h-7 text-xs flex-1"
           />
-          <div className="flex gap-1">
-            {[
-              { label: "D", value: 1280, title: "Desktop" },
-              { label: "T", value: 800, title: "Tablet" },
-              { label: "M", value: 375, title: "Mobile" },
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                title={preset.title}
-                onClick={() =>
-                  setProp((p: Record<string, unknown>) => {
-                    p.viewportWidth = preset.value;
-                  })
-                }
-                className={`h-7 w-7 rounded-[0.3rem] border border-border text-[10px] font-medium transition-colors ${
-                  props.viewportWidth === preset.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            size="sm"
+            options={[
+              { value: "1280", label: <span title="Desktop">D</span> },
+              { value: "800", label: <span title="Tablet">T</span> },
+              { value: "375", label: <span title="Mobile">M</span> },
+            ] as { value: string; label: React.ReactNode }[]}
+            value={String(props.viewportWidth ?? "")}
+            onChange={(v) =>
+              setProp((p: Record<string, unknown>) => {
+                p.viewportWidth = parseInt(v, 10) || 0;
+              })
+            }
+          />
         </div>
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Direction */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Direction</Label>
+      <Field label="Direction">
         <Select
           value={props.direction || "stack"}
           onValueChange={(val) => {
@@ -103,11 +91,10 @@ export function ViewportSettings() {
             <SelectItem value="grid">Grid</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       {/* Spacing */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Spacing</Label>
+      <Field label="Spacing">
         <Input
           value={props.spacing || ""}
           onChange={(e) =>
@@ -118,11 +105,10 @@ export function ViewportSettings() {
           placeholder="1rem"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Align */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Align</Label>
+      <Field label="Align">
         <Select
           value={props.align || "stretch"}
           onValueChange={(val) => {
@@ -142,13 +128,12 @@ export function ViewportSettings() {
             <SelectItem value="flex-end">End</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Padding */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Padding</Label>
+      <Field label="Padding">
         <Input
           value={props.padding || ""}
           onChange={(e) =>
@@ -159,21 +144,18 @@ export function ViewportSettings() {
           placeholder="0"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Background Color */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Background</Label>
+      <Field label="Background">
         <div className="flex items-center gap-2">
-          <input
-            type="color"
+          <ColorPicker
             value={props.backgroundColor || "#ffffff"}
-            onChange={(e) =>
+            onChange={(val) =>
               setProp((p: Record<string, unknown>) => {
-                p.backgroundColor = e.target.value;
+                p.backgroundColor = val;
               })
             }
-            className="h-7 w-7 rounded border border-border cursor-pointer"
           />
           <Input
             value={props.backgroundColor || ""}
@@ -186,7 +168,7 @@ export function ViewportSettings() {
             className="h-7 text-xs font-mono flex-1"
           />
         </div>
-      </div>
+      </Field>
     </div>
   );
 }

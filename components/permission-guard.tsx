@@ -27,7 +27,7 @@ export function PermissionGuard({
 
   useEffect(() => {
     if (!hasView) {
-      router.replace("/~/");
+      router.replace("/manager/");
     }
   }, [hasView, router]);
 

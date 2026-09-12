@@ -10,9 +10,13 @@ import { useI18n, useT } from "@/lib/i18n/context";
 import { useOrgMembers, usePunchEvents, useShifts, useUsers } from "@/lib/spacetimedb/hooks";
 import { managerRecordPunch, managerSetPunchWindow } from "@/lib/spacetimedb/actions";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { StatGrid, StatTile } from "@/components/ui/stat-tile";
+import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -132,53 +136,13 @@ function nextDayStartOf(date: string): Date {
 
 // ─── Small UI bits ───────────────────────────────────────────────────────────
 
-function initials(name: string): string {
-  return (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase() ?? "").join("");
-}
-
-function MemberAvatar({ name, avatarUrl, size = 30 }: { name: string; avatarUrl?: string | null; size?: number }) {
-  if (avatarUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={avatarUrl}
-        alt={name}
-        className="inline-flex rounded-full border border-border bg-muted object-cover shrink-0"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  return (
-    <span
-      className="rounded-full inline-flex items-center justify-center font-semibold shrink-0 bg-muted text-muted-foreground"
-      style={{ width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.36)) }}
-    >
-      {initials(name)}
-    </span>
-  );
-}
-
-function StatTile({ label, value, tone, border = true }: { label: string; value: number; tone?: "warn" | "ok"; border?: boolean }) {
-  return (
-    <div className={cn("px-3 py-2.5 lg:px-4 lg:py-3 border-b border-border", border && "border-r")}>
-      <p className="text-[10px] lg:text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground truncate">{label}</p>
-      <p className={cn(
-        "mt-0.5 font-mono text-xl lg:text-2xl font-semibold tabular-nums",
-        tone === "warn" && value > 0 ? "text-amber-600 dark:text-amber-400" : tone === "ok" ? "text-emerald-700 dark:text-emerald-400" : "text-foreground",
-      )}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function StateBadge({ state, t }: { state: CellState; t: (k: string) => string }) {
-  const styles: Record<CellState, string> = {
-    on: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-    break: "border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-400",
-    complete: "border-border bg-muted text-foreground",
-    missing: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
-    none: "border-border bg-muted text-muted-foreground",
+  const tones: Record<CellState, StatusTone> = {
+    on: "success",
+    break: "neutral",
+    complete: "neutral",
+    missing: "warning",
+    none: "neutral",
   };
   const labels: Record<CellState, string> = {
     on: t("staffing.attendance.on"),
@@ -188,9 +152,9 @@ function StateBadge({ state, t }: { state: CellState; t: (k: string) => string }
     none: t("staffing.attendance.noRecord"),
   };
   return (
-    <span className={cn("inline-flex rounded-[0.3rem] border px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap", styles[state])}>
+    <StatusBadge tone={tones[state]} size="xs" className={cn("normal-case tracking-normal font-semibold", state === "complete" && "text-foreground")}>
       {labels[state]}
-    </span>
+    </StatusBadge>
   );
 }
 
@@ -293,7 +257,7 @@ function CellEditor({
         <div className="space-y-4 pt-1">
           {/* Status */}
           <div className="flex items-center gap-2.5">
-            <MemberAvatar name={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+            <Avatar name={member.displayName} src={member.avatarUrl} size="md" />
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold text-foreground truncate">{member.displayName}</p>
               <p className="text-[11px] text-muted-foreground font-mono tabular-nums">{cell.date}</p>
@@ -308,7 +272,7 @@ function CellEditor({
               <span>{minLabel((winStart + winEnd) / 2)}</span>
               <span>{minLabel(winEnd)}</span>
             </div>
-            <div className="relative h-8 rounded-[0.3rem] border border-border bg-muted/30 overflow-hidden">
+            <div className="relative h-8 rounded-lg border border-border bg-muted/30 overflow-hidden">
               {cell.scheduledStart != null && cell.scheduledEnd != null && (
                 <div
                   className="absolute top-1.5 h-2 rounded-sm border border-border bg-muted"
@@ -340,7 +304,7 @@ function CellEditor({
           {/* Time inputs */}
           <div className="flex items-center gap-2">
             <div className="flex-1">
-              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t("staffing.attendance.start")}</p>
+              <Eyebrow className="mb-1">{t("staffing.attendance.start")}</Eyebrow>
               <Input
                 type="time"
                 value={draft.startTime}
@@ -350,7 +314,7 @@ function CellEditor({
             </div>
             <span className="text-muted-foreground mt-4">–</span>
             <div className="flex-1">
-              <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{t("staffing.attendance.end")}</p>
+              <Eyebrow className="mb-1">{t("staffing.attendance.end")}</Eyebrow>
               <Input
                 type="time"
                 value={draft.endTime}
@@ -607,25 +571,26 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
   const weekNav = (
     <div className="flex items-center justify-between gap-2 px-4 py-2.5 lg:px-6 border-b border-border bg-background">
       <div className="min-w-0">
-        <p className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">{t("staffing.attendance.title")}</p>
+        <Eyebrow>{t("staffing.attendance.title")}</Eyebrow>
         <p className="text-[13px] font-semibold text-foreground font-mono tabular-nums">{weekLabel}</p>
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {!onCurrentWeek && (
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={jumpToday}
-            className="h-8 px-2.5 rounded-[0.3rem] border border-border text-[11.5px] font-semibold text-muted-foreground hover:bg-muted"
+            className="text-[11.5px] font-semibold text-muted-foreground"
           >
             {t("staffing.attendance.today")}
-          </button>
+          </Button>
         )}
-        <button type="button" onClick={() => navigateWeek(-1)} className="h-8 w-8 rounded-[0.3rem] border border-border inline-flex items-center justify-center text-muted-foreground hover:bg-muted">
+        <Button type="button" variant="outline" size="icon" onClick={() => navigateWeek(-1)} className="text-muted-foreground">
           <ChevronLeft className="h-4 w-4" />
-        </button>
-        <button type="button" onClick={() => navigateWeek(1)} className="h-8 w-8 rounded-[0.3rem] border border-border inline-flex items-center justify-center text-muted-foreground hover:bg-muted">
+        </Button>
+        <Button type="button" variant="outline" size="icon" onClick={() => navigateWeek(1)} className="text-muted-foreground">
           <ChevronRight className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -663,7 +628,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
                   type="button"
                   onClick={() => { hapticLight(); setSelDate(iso); }}
                   className={cn(
-                    "py-2 px-0 rounded-[0.3rem] flex flex-col items-center gap-0.5 relative transition-colors",
+                    "py-2 px-0 rounded-lg flex flex-col items-center gap-0.5 relative transition-colors",
                     active ? "bg-foreground text-background border border-foreground" : "bg-transparent border border-transparent",
                     !active && dayIsToday && "text-foreground",
                     !active && !dayIsToday && "text-muted-foreground",
@@ -687,12 +652,12 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
         </div>
 
         {/* Day stats */}
-        <div className="grid grid-cols-4 border-b border-border">
-          <StatTile label={t("staffing.attendance.recorded")} value={dayStats.recorded} tone="ok" />
+        <StatGrid className="grid-cols-4 gap-2 border-b border-border p-2.5">
+          <StatTile label={t("staffing.attendance.recorded")} value={dayStats.recorded} />
           <StatTile label={t("staffing.attendance.stillIn")} value={dayStats.stillIn} />
-          <StatTile label={t("staffing.attendance.overtime")} value={dayStats.overtime} tone="warn" />
-          <StatTile label={t("staffing.attendance.noRecord")} value={dayStats.none} border={false} />
-        </div>
+          <StatTile label={t("staffing.attendance.overtime")} value={dayStats.overtime} tone={dayStats.overtime > 0 ? "warning" : undefined} />
+          <StatTile label={t("staffing.attendance.noRecord")} value={dayStats.none} />
+        </StatGrid>
 
         {/* Day member list */}
         {selCells.length === 0 ? (
@@ -708,7 +673,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
                   onClick={() => { hapticLight(); setEditing({ memberId: member.id, date: selDate }); }}
                   className="w-full flex items-center gap-2.5 px-4 py-3 bg-background text-left active:bg-muted/60"
                 >
-                  <MemberAvatar name={member.displayName} avatarUrl={member.avatarUrl} size={32} />
+                  <Avatar name={member.displayName} src={member.avatarUrl} size="md" />
                   <div className="flex-1 min-w-0">
                     <p className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em] truncate">{member.displayName}</p>
                     <p className="text-[11px] text-muted-foreground mt-0.5 font-mono tabular-nums">
@@ -737,12 +702,12 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background">
       {weekNav}
 
-      <div className="grid grid-cols-4 border-b border-border shrink-0">
-        <StatTile label={t("staffing.attendance.punchDays")} value={weekStats.recorded} tone="ok" />
+      <StatGrid className="shrink-0 border-b border-border p-3">
+        <StatTile label={t("staffing.attendance.punchDays")} value={weekStats.recorded} />
         <StatTile label={t("staffing.attendance.stillIn")} value={weekStats.stillIn} />
-        <StatTile label={t("staffing.attendance.overtime")} value={weekStats.overtime} tone="warn" />
-        <StatTile label={t("staffing.attendance.missingOut")} value={weekStats.missing} tone="warn" border={false} />
-      </div>
+        <StatTile label={t("staffing.attendance.overtime")} value={weekStats.overtime} tone={weekStats.overtime > 0 ? "warning" : undefined} />
+        <StatTile label={t("staffing.attendance.missingOut")} value={weekStats.missing} tone={weekStats.missing > 0 ? "warning" : undefined} />
+      </StatGrid>
 
       {memberWeeks.length === 0 ? (
         <p className="px-6 py-8 text-[12px] text-muted-foreground">{t("staffing.attendance.empty")}</p>
@@ -751,9 +716,9 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
           <div className="min-w-[920px]">
             {/* Day header row */}
             <div className="grid grid-cols-[200px_repeat(7,1fr)] border-b border-border bg-muted/40 sticky top-0 z-10">
-              <div className="px-4 py-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 bg-muted/40 backdrop-blur-sm">
+              <Eyebrow as="div" className="px-4 py-2 sticky left-0 bg-muted/40 backdrop-blur-sm">
                 {t("staffing.attendance.records")}
-              </div>
+              </Eyebrow>
               {week.map((d) => {
                 const iso = isoDate(d);
                 const dayIsToday = iso === todayIso;
@@ -775,7 +740,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
               {memberWeeks.map(({ member, cells, weekWorkedMin }) => (
                 <div key={member.id} className="grid grid-cols-[200px_repeat(7,1fr)] items-stretch">
                   <div className="flex items-center gap-2.5 px-4 py-2.5 min-w-0 sticky left-0 bg-background">
-                    <MemberAvatar name={member.displayName} avatarUrl={member.avatarUrl} size={30} />
+                    <Avatar name={member.displayName} src={member.avatarUrl} size="md" />
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-semibold text-foreground leading-tight">{member.displayName}</p>
                       <p className="text-[10.5px] text-muted-foreground font-mono tabular-nums leading-tight">

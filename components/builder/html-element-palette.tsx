@@ -15,6 +15,7 @@ import {
   Table2,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
+import { Eyebrow } from "@/components/ui/eyebrow";
 
 interface PaletteItem {
   id: string;
@@ -120,9 +121,9 @@ export function HtmlElementPalette({ onInsert, hideItems }: HtmlElementPalettePr
   const items = hidden ? ITEMS.filter((i) => !hidden.has(i.id)) : ITEMS;
   return (
     <div className="flex items-center gap-1 overflow-x-auto px-2 py-1.5 border-b border-border bg-background shrink-0">
-      <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground shrink-0 mr-2 ml-1">
+      <Eyebrow as="span" size="xs" className="shrink-0 mr-2 ml-1">
         {t("builder.htmlPalette.insert")}
-      </span>
+      </Eyebrow>
       {items.map((item) => (
         <button
           key={item.id}
@@ -135,7 +136,7 @@ export function HtmlElementPalette({ onInsert, hideItems }: HtmlElementPalettePr
             e.dataTransfer.setData("text/plain", item.html);
           }}
           onClick={() => onInsert(item.html)}
-          className="inline-flex items-center gap-1.5 h-7 px-2 rounded-[0.3rem] text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent hover:border-border transition-colors shrink-0 cursor-grab active:cursor-grabbing"
+          className="inline-flex items-center gap-1.5 h-7 px-2 rounded text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent hover:border-border transition-colors shrink-0 cursor-grab active:cursor-grabbing"
           title={t("builder.htmlPalette.tooltip")}
         >
           {item.icon}

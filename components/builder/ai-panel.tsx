@@ -2,9 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useEditor } from "@craftjs/core";
-import { Send, Sparkles, Trash2 } from "lucide-react";
+import { Check, Send, Sparkles, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { Textarea } from "@/components/ui/textarea";
 import { usePermissions } from "@/lib/context/permissions";
 
 interface Message {
@@ -134,40 +138,45 @@ export function AiPanel({ siteName, siteId, siteTheme }: AiPanelProps = {}) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex items-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+          <Sparkles className="h-3.5 w-3.5 text-foreground" />
           <span className="text-xs font-medium">AI Assistant</span>
         </div>
         {messages.length > 0 && (
-          <button
-            className="text-muted-foreground hover:text-foreground"
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="text-muted-foreground"
             onClick={() => { setMessages([]); if (siteId) localStorage.removeItem(`flowfn:chat:${siteId}`); }}
             title="Clear chat"
           >
             <Trash2 className="h-3 w-3" />
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 space-y-2">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-4">
-            <Sparkles className="h-8 w-8 text-violet-500/30" />
-            <p className="text-[11px] text-muted-foreground">
-              Ask me to generate sections, suggest designs, or explain features.
-            </p>
-            <div className="flex flex-wrap gap-1 mt-2">
+          <EmptyState
+            compact
+            icon={Sparkles}
+            className="h-full"
+            description="Ask me to generate sections, suggest designs, or explain features."
+          >
+            <div className="flex flex-wrap justify-center gap-1">
               {["Add a hero section", "Create a pricing table", "Make a contact form"].map((q) => (
-                <button
+                <Button
                   key={q}
-                  className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  variant="outline"
+                  size="xs"
+                  className="text-[10px] text-muted-foreground"
                   onClick={() => { setInput(q); inputRef.current?.focus(); }}
                 >
                   {q}
-                </button>
+                </Button>
               ))}
             </div>
-          </div>
+          </EmptyState>
         )}
         {messages.map((msg, i) => (
           <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
@@ -186,14 +195,19 @@ export function AiPanel({ siteName, siteId, siteTheme }: AiPanelProps = {}) {
                 }
               </div>
               {msg.role === "assistant" && msg.content.includes("```json") && (
-                <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600">
-                  <span>✓ Applied</span>
-                  <button
-                    className="text-muted-foreground hover:text-foreground underline"
+                <div className="mt-1 flex items-center gap-1 text-[10px]">
+                  <StatusBadge tone="success" size="xs">
+                    <Check className="h-2.5 w-2.5" />
+                    Applied
+                  </StatusBadge>
+                  <Button
+                    variant="link"
+                    size="xs"
+                    className="h-auto p-0 text-[10px] text-muted-foreground underline hover:text-foreground"
                     onClick={() => applyAction(msg.content)}
                   >
                     redo
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -211,9 +225,9 @@ export function AiPanel({ siteName, siteId, siteTheme }: AiPanelProps = {}) {
       {/* Input */}
       <div className="border-t border-border p-2">
         <div className="flex items-end gap-1.5 rounded-lg border border-border bg-background px-2 py-1.5">
-          <textarea
+          <Textarea
             ref={inputRef}
-            className="flex-1 resize-none bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent p-0 text-[11px] text-foreground focus-visible:ring-0 md:text-[11px] dark:bg-transparent"
             placeholder="Ask AI..."
             rows={1}
             value={input}
@@ -227,13 +241,15 @@ export function AiPanel({ siteName, siteId, siteTheme }: AiPanelProps = {}) {
             }}
             disabled={loading}
           />
-          <button
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-violet-500 hover:bg-violet-500/10 disabled:opacity-30"
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="shrink-0"
             onClick={sendMessage}
             disabled={!input.trim() || loading}
           >
             <Send className="h-3 w-3" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>

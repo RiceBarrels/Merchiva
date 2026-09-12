@@ -126,7 +126,7 @@ function ensureCapacitorEntryHtml(outDir: string) {
     if (!isGeneratedShim) return;
   }
 
-  const appEntry = join(outDir, "~", "index.html");
+  const appEntry = join(outDir, "manager", "index.html");
   if (!existsSync(appEntry)) return;
 
   writeFileSync(
@@ -163,13 +163,13 @@ function ensureCapacitorEntryHtml(outDir: string) {
           var user = localStorage.getItem("workos_user");
           hasAuth = !!token && !!user && tokenIsFresh(token);
         } catch (e) {}
-        var target = hasAuth ? "/~/" : "/login?next=%2F~%2F";
+        var target = hasAuth ? "/manager/" : "/login?next=%2Fmanager%2F";
         location.replace(target + location.hash);
       })();
     </script>
   </head>
   <body>
-    <a href="/login?next=%2F~%2F">Open Merchiva</a>
+    <a href="/login?next=%2Fmanager%2F">Open Merchiva</a>
   </body>
 </html>
 `,

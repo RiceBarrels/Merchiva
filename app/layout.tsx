@@ -45,7 +45,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Locale resolved server-side by proxy.ts from the URL prefix (public pages).
-  // Defaults to English for app/~/ and other unprefixed routes.
+  // Defaults to English for app/manager/ and other unprefixed routes.
   let locale: Locale = DEFAULT_LOCALE;
   try {
     const h = await headers();
@@ -132,7 +132,9 @@ export default async function RootLayout({
           <NativeTitleBar />
           <MobileDetector />
           <ServiceWorkerRegistrar />
-          <div className="h-[calc(100vh-40px)] overflow-hidden">
+          {/* NativeTitleBar measures itself into --merchiva-chrome-height
+              (0 when it renders nothing, e.g. on /store, /personal, /choose). */}
+          <div className="overflow-hidden" style={{ height: "calc(100dvh - var(--merchiva-chrome-height, 0px))" }}>
             <Providers initialLocale={locale}>{children}</Providers>
           </div>
           <Toaster position="top-center" richColors />

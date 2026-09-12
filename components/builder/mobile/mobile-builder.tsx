@@ -40,7 +40,7 @@ function MobileToolbar({
   return (
     <div className="flex h-11 items-center gap-1 border-b border-border bg-background px-2 shrink-0">
       <Link
-        href="/~/builder"
+        href="/manager/builder"
         className="flex h-8 w-8 items-center justify-center rounded-[0.3rem] text-muted-foreground hover:bg-accent"
       >
         <ArrowLeft className="h-4 w-4" />

@@ -9,7 +9,7 @@ export function BrandPanel() {
     <div className="hidden lg:flex flex-col flex-1 min-w-0 h-full bg-muted border-r border-border p-7">
       {/* Top — Logo */}
       <div className="flex items-center gap-2">
-        <MerchivaLogo size={22} fg="#292524" />
+        <MerchivaLogo size={22} className="text-foreground" />
         <span className="text-[13px] font-semibold text-foreground tracking-tight">
           Merchiva
         </span>

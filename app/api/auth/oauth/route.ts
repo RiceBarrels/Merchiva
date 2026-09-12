@@ -6,7 +6,7 @@ import { handleOptions, jsonWithCors } from "@/lib/api-cors";
 // Node SDK doesn't expose a direct passkey API — passkey sign-in is only
 // available via the AuthKit page, which the user reaches by selecting
 // "Sign in with passkey" there. Email is pre-filled via loginHint when the
-// user kicks off the flow from /~/settings (enrollment).
+// user kicks off the flow from /manager/settings (enrollment).
 const providerMap: Record<string, string> = {
   google: "GoogleOAuth",
   apple: "AppleOAuth",
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const useProtocolCallback =
       client === "desktop" || client === "electron" || client === "capacitor";
     const statePayload = {
-      redirectTo: redirectTo || "/~/",
+      redirectTo: redirectTo || "/manager/",
       client: useProtocolCallback ? "desktop" : "web",
     };
 

@@ -1,0 +1,189 @@
+"use client";
+
+import { useState } from "react";
+import { Coffee, LogIn, LogOut, ScanLine, Undo2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ClockCard, fmtDurationHMS, fmtHM, useNow, type OnShiftEntry, type PunchAction } from "@/components/device";
+import { recordPunch, setPunchInCode, type DeviceLoginIntent } from "@/lib/spacetimedb/actions";
+import { useT } from "@/lib/i18n/context";
+import { hapticLight, hapticSuccess } from "@/lib/haptics";
+import { ScanPane } from "./scan-pane";
+
+export function PunchPanel({
+  organizationId,
+  myMemberId,
+  myCode,
+  shift,
+}: {
+  organizationId: string;
+  myMemberId: string | null;
+  myCode: string | null;
+  shift: OnShiftEntry | null;
+}) {
+  const t = useT();
+  const now = useNow();
+  const [busy, setBusy] = useState<PunchAction | null>(null);
+  const [codeInput, setCodeInput] = useState("");
+  const [savingCode, setSavingCode] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [intent, setIntent] = useState<DeviceLoginIntent>("login");
+
+  const onShift = !!shift;
+  const onBreak = !!shift?.onBreak;
+
+  const saveCode = async () => {
+    if (!myMemberId) return;
+    if (!/^\d{4}$/.test(codeInput)) { toast.error(t("personalDevice.punch.codeFormat")); return; }
+    setSavingCode(true);
+    try {
+      await setPunchInCode(myMemberId, codeInput);
+      hapticSuccess();
+      toast.success(t("personalDevice.punch.codeSaved"));
+      setCodeInput("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("personalDevice.punch.failed"));
+    } finally {
+      setSavingCode(false);
+    }
+  };
+
+  const punch = async (action: PunchAction) => {
+    if (!myCode || busy) return;
+    hapticLight();
+    setBusy(action);
+    try {
+      await recordPunch(myCode, action);
+      hapticSuccess();
+      const label = {
+        in: t("personalDevice.punch.punchedIn"),
+        out: t("personalDevice.punch.punchedOut"),
+        "break-start": t("personalDevice.punch.breakStarted"),
+        "break-end": t("personalDevice.punch.breakEnded"),
+      }[action];
+      toast.success(`${label} · ${fmtHM(new Date())}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("personalDevice.punch.failed"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!myCode) {
+    return (
+      <div className="space-y-4 p-4">
+        <div>
+          <p className="text-[15px] font-semibold">{t("personalDevice.punch.setCodeTitle")}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">{t("personalDevice.punch.setCodeDesc")}</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("personalDevice.punch.codeLabel")}
+          </Label>
+          <Input
+            value={codeInput}
+            inputMode="numeric"
+            maxLength={4}
+            onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            placeholder="••••"
+            className="h-11 font-mono tracking-[0.4em]"
+            autoFocus
+          />
+        </div>
+        <Button className="h-11 w-full" onClick={saveCode} disabled={savingCode || codeInput.length !== 4}>
+          {t("personalDevice.punch.saveCode")}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 p-4">
+      <ClockCard
+        title={onShift ? t("personalDevice.punch.onShift") : t("personalDevice.punch.offShift")}
+        badge={
+          onShift ? (
+            <StatusBadge tone={onBreak ? "warning" : "success"} dot>
+              {onBreak ? t("personalDevice.punch.onBreak") : t("personalDevice.punch.active")}
+            </StatusBadge>
+          ) : (
+            <StatusBadge tone="neutral">{t("personalDevice.punch.off")}</StatusBadge>
+          )
+        }
+        value={<span className="font-mono tabular-nums">{shift ? fmtDurationHMS(now.getTime() - shift.since.getTime()) : "--:--:--"}</span>}
+        footLeft={shift ? `${t("personalDevice.punch.since")} ${fmtHM(shift.since)}` : t("personalDevice.punch.notPunchedIn")}
+        footRight={<span className="font-mono tabular-nums">{fmtHM(now)}</span>}
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        {!onShift && (
+          <Button className="col-span-2 h-12 gap-2" onClick={() => punch("in")} disabled={busy !== null}>
+            <LogIn className="h-4 w-4" />{t("personalDevice.punch.punchIn")}
+          </Button>
+        )}
+        {onShift && !onBreak && (
+          <>
+            <Button variant="outline" className="h-12 gap-2" onClick={() => punch("break-start")} disabled={busy !== null}>
+              <Coffee className="h-4 w-4" />{t("personalDevice.punch.startBreak")}
+            </Button>
+            <Button variant="destructive" className="h-12 gap-2" onClick={() => punch("out")} disabled={busy !== null}>
+              <LogOut className="h-4 w-4" />{t("personalDevice.punch.punchOut")}
+            </Button>
+          </>
+        )}
+        {onShift && onBreak && (
+          <Button className="col-span-2 h-12 gap-2" onClick={() => punch("break-end")} disabled={busy !== null}>
+            <Undo2 className="h-4 w-4" />{t("personalDevice.punch.endBreak")}
+          </Button>
+        )}
+      </div>
+
+      <div className="border-t border-border pt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("personalDevice.punch.scanSection")}
+          </span>
+          {scanOpen && (
+            <button type="button" className="text-[12px] text-muted-foreground" onClick={() => setScanOpen(false)}>
+              {t("common.cancel")}
+            </button>
+          )}
+        </div>
+        {!scanOpen ? (
+          <Button variant="outline" className="h-11 w-full gap-2" onClick={() => { hapticLight(); setScanOpen(true); }}>
+            <ScanLine className="h-4 w-4" />{t("personalDevice.punch.scanStoreQr")}
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <SegmentedControl
+              value={intent}
+              onChange={(v) => setIntent(v)}
+              options={[
+                { value: "login", label: t("personalDevice.punch.intentLogin") },
+                { value: "punch-in", label: t("personalDevice.punch.intentIn") },
+                { value: "punch-out", label: t("personalDevice.punch.intentOut") },
+              ]}
+            />
+            <ScanPane
+              active={scanOpen}
+              organizationId={organizationId}
+              intent={intent}
+              onDone={() => {
+                setScanOpen(false);
+                toast.success(
+                  intent === "login" ? t("personalDevice.scan.loggedIn")
+                  : intent === "punch-in" ? t("personalDevice.scan.punchedIn")
+                  : t("personalDevice.scan.punchedOut"),
+                );
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

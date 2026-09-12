@@ -14,7 +14,8 @@ import {
   Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { EmptyState } from "@/components/ui/empty-state";
+import { IconTile } from "@/components/ui/icon-tile";
 import { useSpacetimeDB } from "spacetimedb/react";
 import { useNotifications } from "@/lib/spacetimedb/hooks";
 import { usePermissions } from "@/lib/context/permissions";
@@ -93,11 +94,12 @@ export function NotificationCenter() {
 
   if (myNotifications.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <Inbox className="h-8 w-8 mb-2 opacity-40" />
-        <p className="text-sm font-medium">{t("notifications.empty")}</p>
-        <p className="text-xs mt-0.5">{t("notifications.emptyDesc")}</p>
-      </div>
+      <EmptyState
+        icon={Inbox}
+        title={t("notifications.empty")}
+        description={t("notifications.emptyDesc")}
+        className="py-16"
+      />
     );
   }
 
@@ -108,7 +110,7 @@ export function NotificationCenter() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs text-muted-foreground"
+            className="text-muted-foreground"
             onClick={() => markAllNotificationsRead().catch(console.error)}
           >
             <CheckCheck className="h-3.5 w-3.5 mr-1" />
@@ -128,13 +130,11 @@ export function NotificationCenter() {
             <div
               key={notif.id.toString()}
               className={cn(
-                "flex items-start gap-2.5 py-2.5 rounded-md px-1 transition-colors",
+                "flex items-start gap-2.5 py-2.5 rounded-lg px-1 transition-colors",
                 !notif.read && "bg-muted/50"
               )}
             >
-              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted">
-                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
+              <IconTile icon={Icon} size="sm" className="mt-0.5" />
               <button
                 type="button"
                 className="flex-1 min-w-0 text-left"
@@ -153,13 +153,15 @@ export function NotificationCenter() {
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.body}</p>
                 <p className="text-[10px] text-muted-foreground/70 mt-0.5">{timeAgo(createdStr, t)}</p>
               </button>
-              <button
+              <Button
                 type="button"
-                className="mt-1 p-0.5 rounded hover:bg-muted text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                variant="ghost"
+                size="icon-xs"
+                className="mt-1 text-muted-foreground/50 hover:text-muted-foreground"
                 onClick={() => dismissNotification(notif.id.toString()).catch(console.error)}
               >
                 <X className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </div>
           );
         })}

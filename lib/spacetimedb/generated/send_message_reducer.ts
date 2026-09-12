@@ -17,4 +17,5 @@ export default {
   attachmentUrl: __t.option(__t.string()),
   attachmentType: __t.option(__t.string()),
   attachmentName: __t.option(__t.string()),
+  voiceTranscript: __t.option(__t.string()),
 };

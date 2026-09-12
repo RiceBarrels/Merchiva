@@ -57,6 +57,7 @@ import AddTrainingDayReducer from "./add_training_day_reducer";
 import AddTrainingObjectiveReducer from "./add_training_objective_reducer";
 import AddWasteLogReducer from "./add_waste_log_reducer";
 import AppendAiJobChunkReducer from "./append_ai_job_chunk_reducer";
+import ApproveDeviceLoginReducer from "./approve_device_login_reducer";
 import ArchiveAiChatSessionReducer from "./archive_ai_chat_session_reducer";
 import AssignRoleTaskReducer from "./assign_role_task_reducer";
 import AssignTierReducer from "./assign_tier_reducer";
@@ -66,11 +67,13 @@ import ClaimPerkReducer from "./claim_perk_reducer";
 import ClearTrainingObjectiveGradeReducer from "./clear_training_objective_grade_reducer";
 import CompleteRoleTaskReducer from "./complete_role_task_reducer";
 import ConsumeAiJobReducer from "./consume_ai_job_reducer";
+import ConsumeDeviceLoginReducer from "./consume_device_login_reducer";
 import CreateAiChatSessionReducer from "./create_ai_chat_session_reducer";
 import CreateAiJobReducer from "./create_ai_job_reducer";
 import CreateBlogPostReducer from "./create_blog_post_reducer";
 import CreateConversationReducer from "./create_conversation_reducer";
 import CreateDesignReducer from "./create_design_reducer";
+import CreateDeviceLoginRequestReducer from "./create_device_login_request_reducer";
 import CreateMembershipTierReducer from "./create_membership_tier_reducer";
 import CreateNotificationReducer from "./create_notification_reducer";
 import CreateOrgReducer from "./create_org_reducer";
@@ -213,6 +216,7 @@ import CouponRow from "./coupon_table";
 import CustomerPointsRow from "./customer_points_table";
 import DailyBriefingRow from "./daily_briefing_table";
 import DesignRow from "./design_table";
+import DeviceLoginRequestRow from "./device_login_request_table";
 import ExpenseRow from "./expense_table";
 import InventoryItemRow from "./inventory_item_table";
 import InventoryTransactionRow from "./inventory_transaction_table";
@@ -447,6 +451,26 @@ const tablesSchema = __schema({
       { name: 'design_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, DesignRow),
+  deviceLoginRequest: __table({
+    name: 'device_login_request',
+    indexes: [
+      { accessor: 'byDeviceId', name: 'device_login_request_device_id_idx_btree', algorithm: 'btree', columns: [
+        'deviceId',
+      ] },
+      { accessor: 'id', name: 'device_login_request_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byNonce', name: 'device_login_request_nonce_idx_btree', algorithm: 'btree', columns: [
+        'nonce',
+      ] },
+      { accessor: 'byOrganizationId', name: 'device_login_request_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+    ],
+    constraints: [
+      { name: 'device_login_request_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, DeviceLoginRequestRow),
   expense: __table({
     name: 'expense',
     indexes: [
@@ -1232,6 +1256,7 @@ const reducersSchema = __reducers(
   __reducerSchema("add_training_objective", AddTrainingObjectiveReducer),
   __reducerSchema("add_waste_log", AddWasteLogReducer),
   __reducerSchema("append_ai_job_chunk", AppendAiJobChunkReducer),
+  __reducerSchema("approve_device_login", ApproveDeviceLoginReducer),
   __reducerSchema("archive_ai_chat_session", ArchiveAiChatSessionReducer),
   __reducerSchema("assign_role_task", AssignRoleTaskReducer),
   __reducerSchema("assign_tier", AssignTierReducer),
@@ -1241,11 +1266,13 @@ const reducersSchema = __reducers(
   __reducerSchema("clear_training_objective_grade", ClearTrainingObjectiveGradeReducer),
   __reducerSchema("complete_role_task", CompleteRoleTaskReducer),
   __reducerSchema("consume_ai_job", ConsumeAiJobReducer),
+  __reducerSchema("consume_device_login", ConsumeDeviceLoginReducer),
   __reducerSchema("create_ai_chat_session", CreateAiChatSessionReducer),
   __reducerSchema("create_ai_job", CreateAiJobReducer),
   __reducerSchema("create_blog_post", CreateBlogPostReducer),
   __reducerSchema("create_conversation", CreateConversationReducer),
   __reducerSchema("create_design", CreateDesignReducer),
+  __reducerSchema("create_device_login_request", CreateDeviceLoginRequestReducer),
   __reducerSchema("create_membership_tier", CreateMembershipTierReducer),
   __reducerSchema("create_notification", CreateNotificationReducer),
   __reducerSchema("create_org", CreateOrgReducer),

@@ -98,7 +98,7 @@ async fn hide_quick(app: tauri::AppHandle) -> Result<(), String> {
 #[tauri::command]
 async fn open_chat(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(main) = app.get_webview_window("main") {
-        let _ = main.eval("window.location.assign('/~/chat')");
+        let _ = main.eval("window.location.assign('/manager/chat')");
         let _ = main.unminimize();
         let _ = main.show();
         let _ = main.set_focus();

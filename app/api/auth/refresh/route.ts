@@ -28,6 +28,18 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const error = err as any;
     const message = error.message ?? "Token refresh failed";
-    return jsonWithCors(req, { error: message }, { status: 401 });
+    // Only report 401 when WorkOS definitively rejected the refresh token
+    // (invalid/expired/already-used grant). Anything else — WorkOS outage,
+    // rate limit, network — is transient: return 502 so the client keeps the
+    // session and retries later instead of logging the user out.
+    const code = error.error ?? error.code ?? error.rawData?.error;
+    const status = typeof error.status === "number" ? error.status : undefined;
+    const invalidGrant =
+      code === "invalid_grant" ||
+      code === "invalid_refresh_token" ||
+      status === 400 ||
+      status === 401 ||
+      status === 403;
+    return jsonWithCors(req, { error: message, code }, { status: invalidGrant ? 401 : 502 });
   }
 }

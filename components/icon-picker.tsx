@@ -4,6 +4,8 @@ import { useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useT } from "@/lib/i18n/context";
 
 // Curated list of 200+ Lucide icons organized by category
@@ -113,11 +115,11 @@ export function IconPicker({ value, onValueChange, onClose }: IconPickerProps) {
     : ALL_ICONS;
 
   return (
-    <div className="absolute z-50 top-full left-0 mt-1 w-72 rounded border border-border bg-background shadow-lg flex flex-col" style={{ maxHeight: "320px" }}>
+    <div className="absolute z-50 top-full left-0 mt-1 w-72 rounded-lg border border-border bg-popover text-popover-foreground shadow-md flex flex-col" style={{ maxHeight: "320px" }}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0">
         <span className="text-xs font-semibold">{t("components.iconPicker.title")}</span>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+        <Button variant="ghost" size="icon-xs" onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></Button>
       </div>
 
       {/* Search */}
@@ -131,27 +133,23 @@ export function IconPicker({ value, onValueChange, onClose }: IconPickerProps) {
           placeholder={t("components.iconPicker.search")}
           className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
         />
-        {query && <button onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>}
+        {query && <Button variant="ghost" size="icon-xs" onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></Button>}
       </div>
 
       {/* Category tabs */}
       {!query && (
-        <div className="flex gap-1 overflow-x-auto px-2 py-1.5 border-b border-border shrink-0">
-          <button
-            onClick={() => setActiveCategory(null)}
-            className={cn("shrink-0 rounded px-2 py-0.5 text-[10px] font-medium transition-colors", !activeCategory ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted")}
-          >
-            {t("components.iconPicker.all")}
-          </button>
-          {Object.keys(ICON_CATEGORIES).map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={cn("shrink-0 rounded px-2 py-0.5 text-[10px] font-medium transition-colors", activeCategory === cat ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted")}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="overflow-x-auto px-2 py-1.5 border-b border-border shrink-0">
+          <SegmentedControl
+            variant="chips"
+            size="sm"
+            className="flex-nowrap"
+            value={activeCategory ?? "__all__"}
+            onChange={(v) => setActiveCategory(v === "__all__" ? null : v)}
+            options={[
+              { value: "__all__", label: t("components.iconPicker.all") },
+              ...Object.keys(ICON_CATEGORIES).map((cat) => ({ value: cat, label: cat })),
+            ]}
+          />
         </div>
       )}
 

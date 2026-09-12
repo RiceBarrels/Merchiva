@@ -26,7 +26,7 @@ self.addEventListener("push", (event) => {
     badge: "/icon-192.png",
     tag: payload.tag || payload.id || undefined,
     data: {
-      link: payload.link || "/~/dashboard",
+      link: payload.link || "/manager/dashboard",
       type: payload.type || "general",
     },
     requireInteraction: false,
@@ -43,7 +43,7 @@ self.addEventListener("push", (event) => {
           const watching = clients.some((c) => {
             if (c.visibilityState !== "visible" || !c.focused) return false;
             const path = new URL(c.url).pathname;
-            return path.startsWith("/~/chat") || path.startsWith("/~/dashboard");
+            return path.startsWith("/manager/chat") || path.startsWith("/manager/dashboard");
           });
           if (watching) return;
           return self.registration.showNotification(title, options);
@@ -57,7 +57,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const link = (event.notification.data && event.notification.data.link) || "/~/dashboard";
+  const link = (event.notification.data && event.notification.data.link) || "/manager/dashboard";
   const targetUrl = new URL(link, self.location.origin).href;
 
   event.waitUntil(

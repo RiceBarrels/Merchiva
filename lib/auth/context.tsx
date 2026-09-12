@@ -192,22 +192,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  // Refresh the WorkOS session. Careful: refresh tokens are SINGLE-USE
+  // (rotating), and access tokens only live ~5 minutes, so two tabs racing a
+  // refresh used to log the whole session out — the loser's 401 wiped the
+  // tokens the winner had just rotated. Rules here:
+  //   1. Serialize refreshes across tabs via the Web Locks API when available.
+  //   2. Re-read storage before refreshing — another tab may already have done it.
+  //   3. Only a definitive rejection (401 = invalid refresh token) ends the
+  //      session. Network failures and server hiccups keep the tokens and let
+  //      the next getToken() retry.
   const doRefresh = useCallback(async (): Promise<string | null> => {
-    const refreshToken = localStorage.getItem(REFRESH_KEY);
-    if (!refreshToken) return null;
+    const run = async (): Promise<string | null> => {
+      // Another tab may have refreshed while we waited on the lock.
+      const current = localStorage.getItem(TOKEN_KEY);
+      if (current && !isTokenExpiringSoon(current)) {
+        setAccessToken(current);
+        return current;
+      }
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+      if (!refreshToken) return null;
 
-    try {
-      const res = await fetch(apiUrl("/api/auth/refresh"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(apiUrl("/api/auth/refresh"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+      } catch {
+        // Network hiccup — keep the session; the current token may still be
+        // accepted and the next getToken() will retry the refresh.
+        return current;
+      }
 
       if (!res.ok) {
-        clearAuthTokens();
-        setAccessToken(null);
-        setUser(null);
-        return null;
+        // A concurrent tab/device may have rotated the refresh token while our
+        // request was in flight — if storage moved on, trust it instead of
+        // logging out.
+        const latestRefresh = localStorage.getItem(REFRESH_KEY);
+        const latestToken = localStorage.getItem(TOKEN_KEY);
+        if (latestRefresh && latestRefresh !== refreshToken && latestToken) {
+          setAccessToken(latestToken);
+          return latestToken;
+        }
+        if (res.status === 401) {
+          // Definitive: the refresh token itself was rejected.
+          clearAuthTokens();
+          setAccessToken(null);
+          setUser(null);
+          return null;
+        }
+        // Transient server error (5xx/429/…) — keep the session.
+        return current;
       }
 
       const data = await res.json();
@@ -216,12 +252,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setAccounts(loadAccounts());
       return data.accessToken;
+    };
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.locks?.request) {
+        return await navigator.locks.request("merchiva-token-refresh", run);
+      }
     } catch {
-      clearAuthTokens();
-      setAccessToken(null);
-      setUser(null);
-      return null;
+      // Web Locks unavailable/failed — fall through to an unlocked refresh.
     }
+    return run();
   }, []);
 
   const getToken = useCallback(async (): Promise<string | null> => {
@@ -237,6 +277,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return refreshingRef.current;
   }, [doRefresh]);
+
+  // Keep the WorkOS session alive for as long as the app is installed/open.
+  // Access tokens live ~5 min, so any getToken() after that rotates the
+  // refresh token; doing it when the tab comes back into view and on a timer
+  // means a device that's left open (kiosk, back-office PC) never trips the
+  // dashboard's inactivity timeout. Session length itself is capped only by
+  // the "Maximum session length" set in the WorkOS Dashboard.
+  useEffect(() => {
+    if (!isLoaded || !accessToken) return;
+    const ping = () => {
+      if (document.visibilityState === "hidden") return;
+      void getToken();
+    };
+    document.addEventListener("visibilitychange", ping);
+    window.addEventListener("focus", ping);
+    const timer = window.setInterval(ping, 30 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", ping);
+      window.removeEventListener("focus", ping);
+      window.clearInterval(timer);
+    };
+  }, [isLoaded, accessToken, getToken]);
 
   const signIn = useCallback(
     (token: string, refresh: string, userData: AuthUser) => {
@@ -261,32 +323,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.reload();
   }, []);
 
+  // Sign-out wipes ALL browser storage for this origin — tokens, the
+  // multi-account list, app/store-device mode, cached org id, theme, offline
+  // caches. Nothing from the previous session may survive on a shared device.
   const signOut = useCallback(() => {
-    const currentUser = localStorage.getItem(USER_KEY);
-    let currentId: string | null = null;
     try {
-      if (currentUser) currentId = (JSON.parse(currentUser) as AuthUser).id;
+      localStorage.clear();
     } catch {}
-
-    const accts = loadAccounts().filter((a) => a.id !== currentId);
-    saveAccounts(accts);
-
-    if (accts.length > 0) {
-      const next = accts[0];
-      storeAuthTokens(next.accessToken, next.refreshToken, {
-        id: next.id,
-        email: next.email,
-        firstName: next.firstName,
-        lastName: next.lastName,
-      });
-      window.location.reload();
-      return;
-    }
-
-    clearAuthTokens();
+    try {
+      sessionStorage.clear();
+    } catch {}
     setAccessToken(null);
     setUser(null);
-    window.location.href = "/login?logout=1&next=%2F~%2F";
+    setAccounts([]);
+    window.location.href = "/login?logout=1&next=%2Fmanager%2F";
   }, []);
 
   const value = useMemo<AuthContextValue>(

@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 const MonacoEditor = dynamic(() => import("@monaco-editor/react").then((m) => m.Editor), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-stone-950 text-stone-400">
+    <div className="flex h-full w-full items-center justify-center bg-foreground text-background">
       <Spinner size={16} />
     </div>
   ),

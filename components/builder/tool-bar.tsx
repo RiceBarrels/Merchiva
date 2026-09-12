@@ -9,6 +9,7 @@ import { CraftLayout } from "./craft-components/craft-layout";
 import React from "react";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/lib/context/permissions";
 
 export function ToolBar() {
@@ -68,7 +69,7 @@ export function ToolBar() {
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-background/95 px-1 py-1 shadow-xl backdrop-blur-sm">
+    <div className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-border bg-background px-1 py-1">
       {tools.map((tool) => {
         const Icon = tool.icon;
         return (
@@ -77,7 +78,7 @@ export function ToolBar() {
             ref={(ref: HTMLElement | null) => {
               if (ref) connectors.create(ref, tool.element);
             }}
-            className="flex cursor-grab items-center gap-1.5 rounded-[0.3rem] px-3 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground active:cursor-grabbing"
+            className="flex cursor-grab items-center gap-1.5 rounded px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
           >
             <Icon className="h-5 w-5" />
             <span className="text-xs font-medium">{tool.label}</span>
@@ -90,8 +91,8 @@ export function ToolBar() {
 
       {/* AI Generate */}
       {aiOpen ? (
-        <div className="flex items-center gap-1 rounded-[0.3rem] bg-accent/50 px-2 py-1">
-          <Sparkles className="h-4 w-4 shrink-0 text-violet-500" />
+        <div className="flex items-center gap-1 rounded bg-muted px-2 py-1">
+          <Sparkles className="h-4 w-4 shrink-0 text-foreground" />
           <input
             ref={inputRef}
             className="w-48 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
@@ -108,30 +109,35 @@ export function ToolBar() {
             <Spinner size={16} className="text-muted-foreground" />
           ) : (
             <>
-              <button
-                className="flex h-5 w-5 items-center justify-center rounded text-violet-500 hover:bg-violet-500/10 disabled:opacity-30"
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={handleAiSubmit}
                 disabled={!aiPrompt.trim()}
               >
                 <Send className="h-3.5 w-3.5" />
-              </button>
-              <button
-                className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="text-muted-foreground"
                 onClick={() => { setAiOpen(false); setAiPrompt(""); }}
               >
                 <X className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </>
           )}
         </div>
       ) : (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => setAiOpen(true)}
-          className="flex items-center gap-1.5 rounded-[0.3rem] px-3 py-1.5 text-violet-500 transition-colors hover:bg-violet-500/10"
+          className="gap-1.5 px-3 text-muted-foreground"
         >
           <Sparkles className="h-5 w-5" />
           <span className="text-xs font-medium">{t("builder.floatingTools.ai")}</span>
-        </button>
+        </Button>
       )}
     </div>
   );

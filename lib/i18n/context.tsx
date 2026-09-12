@@ -100,7 +100,7 @@ export function I18nProvider({
     setLocaleState(next);
     // On a locale-prefixed public page, swap the prefix and navigate so the
     // server re-renders the page in the new language (full reload guarantees
-    // fresh SSR HTML for SEO/correctness). App pages under /~/ are unaffected.
+    // fresh SSR HTML for SEO/correctness). App pages under /manager/ are unaffected.
     if (typeof window !== "undefined") {
       const { pathname, search, hash } = window.location;
       const current = localePrefixOfPath(pathname);

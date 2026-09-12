@@ -112,6 +112,7 @@ export const ChatMessage = __t.object("ChatMessage", {
   attachmentType: __t.option(__t.string()),
   attachmentName: __t.option(__t.string()),
   isMerchiva: __t.option(__t.bool()),
+  voiceTranscript: __t.option(__t.string()),
 });
 export type ChatMessage = __Infer<typeof ChatMessage>;
 
@@ -168,6 +169,19 @@ export const Design = __t.object("Design", {
   updatedAt: __t.timestamp(),
 });
 export type Design = __Infer<typeof Design>;
+
+export const DeviceLoginRequest = __t.object("DeviceLoginRequest", {
+  id: __t.uuid(),
+  organizationId: __t.string(),
+  deviceId: __t.string(),
+  nonce: __t.string(),
+  status: __t.string(),
+  memberId: __t.option(__t.string()),
+  intent: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  expiresAt: __t.timestamp(),
+});
+export type DeviceLoginRequest = __Infer<typeof DeviceLoginRequest>;
 
 export const Expense = __t.object("Expense", {
   id: __t.uuid(),

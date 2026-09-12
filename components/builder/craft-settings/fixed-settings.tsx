@@ -2,7 +2,6 @@
 
 import { useNode } from "@craftjs/core";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectTrigger,
@@ -11,6 +10,9 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Field } from "@/components/ui/field";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ColorPicker } from "@/components/builder/color-picker";
 
 export function FixedSettings() {
   const {
@@ -25,8 +27,7 @@ export function FixedSettings() {
   return (
     <div className="space-y-3 p-3">
       {/* Position */}
-      <div>
-        <Label className="text-xs text-muted-foreground">X</Label>
+      <Field label="X">
         <Input
           type="number"
           value={props.x ?? 0}
@@ -37,9 +38,8 @@ export function FixedSettings() {
           }
           className="h-7 text-xs"
         />
-      </div>
-      <div>
-        <Label className="text-xs text-muted-foreground">Y</Label>
+      </Field>
+      <Field label="Y">
         <Input
           type="number"
           value={props.y ?? 0}
@@ -50,13 +50,12 @@ export function FixedSettings() {
           }
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Direction */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Direction</Label>
+      <Field label="Direction">
         <Select
           value={direction}
           onValueChange={(val) => {
@@ -75,12 +74,11 @@ export function FixedSettings() {
             <SelectItem value="grid">Grid</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       {/* Columns (only for grid) */}
       {direction === "grid" && (
-        <div>
-          <Label className="text-xs text-muted-foreground">Columns</Label>
+        <Field label="Columns">
           <Input
             type="number"
             min={1}
@@ -93,12 +91,11 @@ export function FixedSettings() {
             }
             className="h-7 text-xs"
           />
-        </div>
+        </Field>
       )}
 
       {/* Spacing */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Spacing</Label>
+      <Field label="Spacing">
         <div className="flex items-center gap-1.5">
           <Input
             value={props.spacing || ""}
@@ -110,36 +107,25 @@ export function FixedSettings() {
             placeholder="1rem"
             className="h-7 text-xs flex-1"
           />
-          <div className="flex gap-1">
-            {[
-              { label: "S", value: "0.5rem" },
-              { label: "M", value: "1rem" },
-              { label: "L", value: "2rem" },
-            ].map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                onClick={() =>
-                  setProp((p: Record<string, unknown>) => {
-                    p.spacing = preset.value;
-                  })
-                }
-                className={`h-7 w-7 rounded-[0.3rem] border border-border text-[10px] font-medium transition-colors ${
-                  props.spacing === preset.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            size="sm"
+            options={[
+              { value: "0.5rem", label: "S" },
+              { value: "1rem", label: "M" },
+              { value: "2rem", label: "L" },
+            ] as { value: string; label: React.ReactNode }[]}
+            value={props.spacing ?? ""}
+            onChange={(v) =>
+              setProp((p: Record<string, unknown>) => {
+                p.spacing = v;
+              })
+            }
+          />
         </div>
-      </div>
+      </Field>
 
       {/* Align */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Align</Label>
+      <Field label="Align">
         <Select
           value={props.align || "stretch"}
           onValueChange={(val) => {
@@ -159,13 +145,12 @@ export function FixedSettings() {
             <SelectItem value="flex-end">End</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </Field>
 
       <Separator />
 
       {/* Padding */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Padding</Label>
+      <Field label="Padding">
         <Input
           value={props.padding || ""}
           onChange={(e) =>
@@ -176,21 +161,18 @@ export function FixedSettings() {
           placeholder="0"
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
 
       {/* Background Color */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Background</Label>
+      <Field label="Background">
         <div className="flex items-center gap-2">
-          <input
-            type="color"
+          <ColorPicker
             value={props.backgroundColor || "#ffffff"}
-            onChange={(e) =>
+            onChange={(val) =>
               setProp((p: Record<string, unknown>) => {
-                p.backgroundColor = e.target.value;
+                p.backgroundColor = val;
               })
             }
-            className="h-7 w-7 rounded border border-border cursor-pointer"
           />
           <Input
             value={props.backgroundColor || ""}
@@ -203,11 +185,10 @@ export function FixedSettings() {
             className="h-7 text-xs font-mono flex-1"
           />
         </div>
-      </div>
+      </Field>
 
       {/* Z-Index */}
-      <div>
-        <Label className="text-xs text-muted-foreground">Z-Index</Label>
+      <Field label="Z-Index">
         <Input
           type="number"
           value={props.zIndex ?? 100}
@@ -218,7 +199,7 @@ export function FixedSettings() {
           }
           className="h-7 text-xs"
         />
-      </div>
+      </Field>
     </div>
   );
 }

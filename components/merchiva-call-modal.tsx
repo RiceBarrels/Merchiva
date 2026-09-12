@@ -8,6 +8,7 @@ import { usePermissions } from "@/lib/context/permissions";
 import { loadStoredMcpServers } from "@/lib/merchiva/mcp/config";
 import { MerchivaLogo } from "./logo";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { Button } from "@/components/ui/button";
 
 type CallState =
   | "idle"
@@ -580,20 +581,20 @@ export function MerchivaCallModal({
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex flex-col bg-stone-950 text-stone-100 select-none"
+      className="fixed inset-0 z-[120] flex flex-col bg-foreground text-background select-none"
       role="dialog"
       aria-modal="true"
       aria-label={t("merchiva.call.title")}
     >
-      <header className="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-background/10 shrink-0">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-stone-400">
+          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-background/60">
             {t("merchiva.call.title")}
           </span>
           <span className="h-1 w-1 rounded-full bg-emerald-500" />
-          <span className="font-mono text-[11px] tabular-nums text-stone-300">{elapsedLabel}</span>
+          <span className="font-mono text-[11px] tabular-nums text-background/80">{elapsedLabel}</span>
         </div>
-        <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-stone-500">
+        <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-background/50">
           {t("merchiva.call.modelTag")}
         </span>
       </header>
@@ -610,7 +611,7 @@ export function MerchivaCallModal({
                   ? "bg-sky-500/15"
                   : state === "thinking" || state === "transcribing"
                     ? "bg-amber-500/15"
-                    : "bg-stone-500/10",
+                    : "bg-background/10",
             )}
             style={{
               transform: `scale(${state === "listening" || state === "speaking" ? ringScale : 1})`,
@@ -623,7 +624,7 @@ export function MerchivaCallModal({
               tied to the audio. */}
           <div
             className={cn(
-              "relative font-mono leading-none text-stone-100 select-none transition-none",
+              "relative font-mono leading-none text-background select-none transition-none",
             )}
             style={{ fontSize: 64, letterSpacing: "0.02em" }}
             aria-hidden="true"
@@ -644,7 +645,7 @@ export function MerchivaCallModal({
           <div
             className={cn(
               "text-[13px] font-mono tracking-wide uppercase",
-              state === "error" ? "text-red-400" : "text-stone-400",
+              state === "error" ? "text-destructive" : "text-background/60",
             )}
           >
             {state === "error" && <AlertTriangle className="inline h-3 w-3 mr-1 -mt-0.5" />}
@@ -653,20 +654,21 @@ export function MerchivaCallModal({
         </div>
 
         {state === "error" && (
-          <button
+          <Button
+            size="lg"
             onClick={() => startListening()}
-            className="h-9 px-4 rounded-[0.3rem] bg-primary-foreground text-primary dark:bg-primary dark:text-primary-foreground text-[13px] font-medium hover:bg-primary-foreground/90 dark:hover:bg-primary/90"
+            className="px-4 bg-background text-foreground hover:bg-background/90 text-[13px]"
           >
             {t("merchiva.call.retry")}
-          </button>
+          </Button>
         )}
 
         {(state === "transcribing" || state === "thinking") && (
-          <Spinner size={20} className="text-stone-400" />
+          <Spinner size={20} className="text-background/60" />
         )}
 
         {state === "speaking" && (
-          <div className="flex items-center gap-1.5 text-stone-400">
+          <div className="flex items-center gap-1.5 text-background/60">
             <Volume2 className="h-4 w-4" />
             <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
               {t("merchiva.call.playing")}
@@ -675,28 +677,32 @@ export function MerchivaCallModal({
         )}
       </div>
 
-      <footer className="flex items-center justify-center gap-4 px-6 py-6 border-t border-white/5 shrink-0">
-        <button
+      <footer className="flex items-center justify-center gap-4 px-6 py-6 border-t border-background/10 shrink-0">
+        <Button
+          variant="ghost"
+          size="icon-lg"
           onClick={() => setMuted((m) => !m)}
           className={cn(
-            "h-14 w-14 rounded-full inline-flex items-center justify-center transition-colors border",
+            "h-14 w-14 rounded-full border",
             muted
-              ? "bg-red-500/20 border-red-500/40 text-red-300"
-              : "bg-white/5 border-white/10 text-stone-200 hover:bg-white/10",
+              ? "bg-destructive/20 border-destructive/40 text-destructive hover:bg-destructive/30 hover:text-destructive"
+              : "bg-background/5 border-background/10 text-background hover:bg-background/10 hover:text-background",
           )}
           aria-label={muted ? t("merchiva.call.unmute") : t("merchiva.call.mute")}
           title={muted ? t("merchiva.call.unmute") : t("merchiva.call.mute")}
         >
           {muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="destructive"
+          size="lg"
           onClick={endCall}
-          className="h-14 px-6 rounded-full bg-red-600 text-white inline-flex items-center justify-center gap-2 hover:bg-red-700 font-medium text-[13px]"
+          className="h-14 px-6 rounded-full gap-2 bg-destructive text-white hover:bg-destructive/90 text-[13px]"
           aria-label={t("merchiva.call.endCall")}
         >
           <PhoneOff className="h-5 w-5" />
           <span className="hidden sm:inline">{t("merchiva.call.endCall")}</span>
-        </button>
+        </Button>
       </footer>
     </div>
   );

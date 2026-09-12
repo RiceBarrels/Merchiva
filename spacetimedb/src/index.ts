@@ -175,7 +175,7 @@ const settingsTable = table(
     //    "tue":{...}, ..., "sun":{"closed":true}}
     // Read by the auto-scheduler so AI shifts align with open/close, and by
     // public site code that needs to render hours. null/missing = unset (AI
-    // should prompt the user to configure in /~/settings).
+    // should prompt the user to configure in /manager/settings).
     openingHours: t.option(t.string()).default(undefined),
     // ISO country code (e.g. "US", "CN") used to look up regional public
     // holidays so the AI can flag them when proposing schedules. Optional —
@@ -188,7 +188,7 @@ const settingsTable = table(
     // proposed). Kept at the END for safe migration.
     assistantConfig: t.option(t.string()).default(undefined),
     // JSON-encoded BetaFeaturesConfig. Default null/missing means all beta
-    // surfaces are hidden until enabled in /~/settings. Kept at the END for
+    // surfaces are hidden until enabled in /manager/settings. Kept at the END for
     // safe migration.
     betaFeatures: t.option(t.string()).default(undefined),
     // External scheduling integration. Kept at the END for safe migrations.
@@ -633,6 +633,9 @@ const chatMessageTable = table(
     // this flag — not senderId — to render the bot's name/avatar. Added at end
     // per migration rules; .default(undefined) migrates existing rows safely.
     isMerchiva: t.option(t.bool()).default(undefined),
+    // Raw speech-to-text transcript when `content` is an AI summary of a
+    // walkie-talkie voice message. Appended last per migration rules.
+    voiceTranscript: t.option(t.string()).default(undefined),
   }
 );
 
@@ -702,6 +705,35 @@ const storeDeviceTable = table(
     lastSeenAt: t.timestamp(),
     registeredBy: t.identity(),
     createdAt: t.timestamp(),
+  }
+);
+
+// ─── Device log-in requests ──────────────────────────────────────────────────
+// QR handshake between a shared store device and a team member's personal
+// phone. The store device publishes a pending nonce (encoded in its QR); the
+// phone scans it and approves as the calling member, optionally recording a
+// punch at the same time; the store device then consumes the approval.
+
+const deviceLoginRequestTable = table(
+  {
+    name: 'device_login_request',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byDeviceId', algorithm: 'btree', columns: ['deviceId'] },
+      { accessor: 'byNonce', algorithm: 'btree', columns: ['nonce'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    organizationId: t.string(),
+    deviceId: t.string(),
+    nonce: t.string(),
+    status: t.string(),              // "pending" | "approved" | "consumed" | "expired"
+    memberId: t.option(t.string()),  // approving org_member id
+    intent: t.option(t.string()),    // "login" | "punch-in" | "punch-out"
+    createdAt: t.timestamp(),
+    expiresAt: t.timestamp(),
   }
 );
 
@@ -1666,6 +1698,7 @@ const spacetimedb = schema({
   todo: todoTable,
   punchEvent: punchEventTable,
   storeDevice: storeDeviceTable,
+  deviceLoginRequest: deviceLoginRequestTable,
   site: siteTable,
   sitePage: sitePageTable,
   siteComponent: siteComponentTable,
@@ -2298,20 +2331,17 @@ function timestampMicros(timestamp: { microsSinceUnixEpoch?: bigint; __timestamp
   return timestamp.microsSinceUnixEpoch ?? timestamp.__timestamp_micros_since_unix_epoch__ ?? 0n;
 }
 
-export const recordPunch = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    code: t.string(),
-    action: t.string(), // "in" | "out" | "break-start" | "break-end"
-  },
-  (ctx, { organizationId, code, action }) => {
-    findActiveMember(ctx, organizationId);
-
-    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-      .find(m => m.punchInCode === code && m.status === 'active');
-    if (!target) throw new Error('Invalid punch-in code');
-
-    const memberId = target.id.toString();
+// Shared punch state machine used by recordPunch (PIN on a store device) and
+// approveDeviceLogin (QR scan from a personal phone). `action` may be "auto".
+function applyPunch(
+  ctx: any,
+  organizationId: string,
+  member: { id: { toString(): string } },
+  action: string,
+  pin: string,
+) {
+    const code = pin;
+    const memberId = member.id.toString();
     const memberEvents = [...ctx.db.punchEvent.byMemberId.filter(memberId)]
       .filter(e => e.organizationId === organizationId);
 
@@ -2373,6 +2403,22 @@ export const recordPunch = spacetimedb.reducer(
       pairEventId: pairId,
       createdAt: ctx.timestamp,
     });
+}
+
+export const recordPunch = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    code: t.string(),
+    action: t.string(), // "in" | "out" | "break-start" | "break-end"
+  },
+  (ctx, { organizationId, code, action }) => {
+    findActiveMember(ctx, organizationId);
+
+    const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.punchInCode === code && m.status === 'active');
+    if (!target) throw new Error('Invalid punch-in code');
+
+    applyPunch(ctx, organizationId, target, action, code);
   }
 );
 
@@ -2612,6 +2658,94 @@ export const removeStoreDevice = spacetimedb.reducer(
       .find(d => d.deviceId === deviceId);
     if (!device) throw new Error('Device not found');
     ctx.db.storeDevice.delete(device);
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEVICE LOG-IN (QR handshake) REDUCERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const DEVICE_LOGIN_TTL_MICROS = BigInt(120 * 1_000_000);      // 2 minutes
+const DEVICE_LOGIN_PRUNE_MICROS = BigInt(60 * 60 * 1_000_000); // 1 hour
+
+export const createDeviceLoginRequest = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    deviceId: t.string(),
+    nonce: t.string(),
+  },
+  (ctx, { organizationId, deviceId, nonce }) => {
+    findActiveMember(ctx, organizationId);
+    if (!nonce || nonce.length < 8) throw new Error('Invalid nonce');
+
+    const now = ctx.timestamp.microsSinceUnixEpoch;
+    for (const row of [...ctx.db.deviceLoginRequest.byOrganizationId.filter(organizationId)]) {
+      const stale = now - row.createdAt.microsSinceUnixEpoch > DEVICE_LOGIN_PRUNE_MICROS;
+      const samePending = row.deviceId === deviceId && row.status === 'pending';
+      if (stale || samePending) ctx.db.deviceLoginRequest.delete(row);
+    }
+
+    ctx.db.deviceLoginRequest.insert({
+      id: ctx.newUuidV4(),
+      organizationId,
+      deviceId,
+      nonce,
+      status: 'pending',
+      memberId: undefined,
+      intent: undefined,
+      createdAt: ctx.timestamp,
+      expiresAt: new (ctx.timestamp.constructor as any)(now + DEVICE_LOGIN_TTL_MICROS),
+    });
+  }
+);
+
+export const approveDeviceLogin = spacetimedb.reducer(
+  {
+    nonce: t.string(),
+    intent: t.string(), // "login" | "punch-in" | "punch-out"
+  },
+  (ctx, { nonce, intent }) => {
+    const row = [...ctx.db.deviceLoginRequest.byNonce.filter(nonce)][0];
+    if (!row) throw new Error('QR code not recognised');
+    if (row.status !== 'pending') throw new Error('QR code already used');
+    if (row.expiresAt.microsSinceUnixEpoch < ctx.timestamp.microsSinceUnixEpoch) {
+      ctx.db.deviceLoginRequest.delete(row);
+      ctx.db.deviceLoginRequest.insert({ ...row, status: 'expired' });
+      throw new Error('QR code expired — refresh it on the store device');
+    }
+    if (intent !== 'login' && intent !== 'punch-in' && intent !== 'punch-out') {
+      throw new Error('Invalid intent: ' + intent);
+    }
+
+    const member = findActiveMember(ctx, row.organizationId) as unknown as {
+      id: { toString(): string };
+      punchInCode?: string;
+    };
+
+    if (intent === 'punch-in' || intent === 'punch-out') {
+      applyPunch(ctx, row.organizationId, member, intent === 'punch-in' ? 'in' : 'out', member.punchInCode ?? '');
+    }
+
+    ctx.db.deviceLoginRequest.delete(row);
+    ctx.db.deviceLoginRequest.insert({
+      ...row,
+      status: 'approved',
+      memberId: member.id.toString(),
+      intent,
+    });
+  }
+);
+
+export const consumeDeviceLogin = spacetimedb.reducer(
+  {
+    id: t.uuid(),
+  },
+  (ctx, { id }) => {
+    const row = [...ctx.db.deviceLoginRequest.iter()].find(r => r.id.toString() === id.toString());
+    if (!row) throw new Error('Request not found');
+    findActiveMember(ctx, row.organizationId);
+    ctx.db.deviceLoginRequest.delete(row);
+    ctx.db.deviceLoginRequest.insert({ ...row, status: 'consumed' });
   }
 );
 
@@ -3666,8 +3800,9 @@ export const sendMessage = spacetimedb.reducer(
     attachmentUrl: t.option(t.string()),
     attachmentType: t.option(t.string()),
     attachmentName: t.option(t.string()),
+    voiceTranscript: t.option(t.string()),
   },
-  (ctx, { conversationId, content, replyToId, attachmentUrl, attachmentType, attachmentName }) => {
+  (ctx, { conversationId, content, replyToId, attachmentUrl, attachmentType, attachmentName, voiceTranscript }) => {
     // Verify sender is in the conversation
     const isMember = [...ctx.db.chatMember.byUserId.filter(ctx.sender)]
       .some(m => m.conversationId === conversationId);
@@ -3684,6 +3819,7 @@ export const sendMessage = spacetimedb.reducer(
       attachmentType,
       attachmentName,
       isMerchiva: undefined,
+      voiceTranscript,
     });
 
     // Bump conversation updatedAt
@@ -3713,7 +3849,7 @@ export const sendMessage = spacetimedb.reducer(
           type: 'team',
           title: senderName,
           body,
-          link: '/~/chat',
+          link: '/manager/channel',
           read: false,
           createdAt: ctx.timestamp,
         });
@@ -3779,6 +3915,7 @@ export const sendMerchivaMessage = spacetimedb.reducer(
       attachmentType: undefined,
       attachmentName: undefined,
       isMerchiva: true,
+      voiceTranscript: undefined,
     });
 
     ctx.db.chatConversation.delete(conv);
@@ -3796,7 +3933,7 @@ export const sendMerchivaMessage = spacetimedb.reducer(
         type: 'team',
         title: 'Mr. Merchiva',
         body: preview,
-        link: '/~/chat',
+        link: '/manager/channel',
         read: false,
         createdAt: ctx.timestamp,
       });
@@ -5173,7 +5310,7 @@ export const recordSupplierOrder = spacetimedb.reducer(
         'order',
         'Purchase order needs your attention',
         `Mr. Merchiva couldn't email ${args.supplierName} — the order was saved as a draft. Add a supplier email or send it manually.`,
-        '/~/suppliers',
+        '/manager/suppliers',
       );
     }
   }
@@ -5217,7 +5354,7 @@ export const logSupplierMessage = spacetimedb.reducer(
         'order',
         `Supplier issue: ${args.supplierName}`,
         args.body.length > 160 ? args.body.slice(0, 159) + '…' : args.body,
-        '/~/suppliers',
+        '/manager/suppliers',
       );
     }
   }
@@ -5261,7 +5398,7 @@ export const serviceLogSupplierMessage = spacetimedb.reducer(
         'order',
         `Supplier issue: ${args.supplierName}`,
         args.body.length > 160 ? args.body.slice(0, 159) + '…' : args.body,
-        '/~/suppliers',
+        '/manager/suppliers',
       );
     }
   }

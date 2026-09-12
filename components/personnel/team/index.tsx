@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { toast } from "sonner";
 import { OrgToolbar, type ViewMode } from "./toolbar";
 import { OrgCanvas } from "./canvas";
@@ -179,13 +180,13 @@ export function OrgPanel({ orgId }: { orgId: string }) {
               view={graph.view}
               onViewChange={graph.setView}
             />
-            <div className="absolute left-4 bottom-4 z-20 bg-background/95 backdrop-blur border border-border rounded-[0.3rem] shadow-sm px-3 py-2 text-[10.5px]">
-              <div className="text-[9.5px] uppercase font-mono tracking-wider text-muted-foreground mb-1.5">图例</div>
+            <div className="absolute left-4 bottom-4 z-20 bg-background/95 backdrop-blur border border-border rounded-lg px-3 py-2 text-[10.5px]">
+              <Eyebrow size="xs" className="font-mono mb-1.5">图例</Eyebrow>
               <div className="grid grid-cols-3 gap-x-3 gap-y-1">
                 {graph.roles.map((r) => (
                   <div key={r.key} className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full" style={{ background: r.color }} />
-                    <span className="text-stone-700 dark:text-stone-200">{r.name}</span>
+                    <span className="text-foreground">{r.name}</span>
                   </div>
                 ))}
               </div>

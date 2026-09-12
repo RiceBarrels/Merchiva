@@ -21,6 +21,7 @@ import { createPage, updateSite } from "@/lib/spacetimedb/actions";
 import { buildPageTemplate, type PageTemplateId } from "@/lib/builder/page-templates";
 import { BuilderSiteProvider } from "@/lib/builder/site-context";
 import type { Site, SitePage, Product } from "@/lib/types";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Wraps MerchivaChat with builder-mode context derived from the live Craft.js state.
 // Must be rendered inside the <Editor> provider so useEditor() works.
@@ -273,20 +274,16 @@ export function BuilderEditor({
             <div
               className={`flex shrink-0 flex-col border-l border-border bg-background transition-[width] duration-200 ${rightPanel === "ai" ? "w-[380px]" : "w-64"}`}
             >
-              <div className="flex border-b border-border">
-                <button
-                  className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "design" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => setRightPanel("design")}
-                >
-                  Design
-                </button>
-                <button
-                  className={`flex-1 py-1.5 text-center text-[11px] font-medium transition-colors ${rightPanel === "ai" ? "text-foreground border-b-2 border-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  onClick={() => setRightPanel("ai")}
-                >
-                  Mr. Merchiva
-                </button>
-              </div>
+              <Tabs
+                value={rightPanel}
+                onValueChange={(v) => setRightPanel(v as "design" | "ai")}
+                className="gap-0 border-b border-border"
+              >
+                <TabsList variant="line" className="w-full">
+                  <TabsTrigger value="design" className="text-[11px]">Design</TabsTrigger>
+                  <TabsTrigger value="ai" className="text-[11px]">Mr. Merchiva</TabsTrigger>
+                </TabsList>
+              </Tabs>
               <div className="flex-1 overflow-hidden">
                 {rightPanel === "design" ? (
                   <DesignPanel pages={pages} />

@@ -13,10 +13,11 @@ import {
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
+import { Button } from "@/components/ui/button";
 import { usePersonnelHub } from "@/components/personnel/hub-context";
 
 interface HubTab {
-  /** Route segment under /~/personnel. */
+  /** Route segment under /manager/personnel. */
   segment: "schedule" | "team" | "roles" | "training" | "pay";
   i18nKey: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -31,7 +32,7 @@ const TABS: HubTab[] = [
 ];
 
 function hrefFor(segment: HubTab["segment"]) {
-  return `/~/personnel/${segment}`;
+  return `/manager/personnel/${segment}`;
 }
 
 // ─── Loading fallback ────────────────────────────────────────────────────────
@@ -52,29 +53,31 @@ export function PersonnelHeader() {
   const { pending, openRequests } = usePersonnelHub();
 
   return (
-    <div className="px-4 lg:px-6 py-3 border-b border-border bg-background flex items-center gap-3 shrink-0 -mx-2">
+    <div className="h-14 px-4 lg:px-6 border-b border-border bg-background flex items-center gap-3 shrink-0 -mx-2">
       <div className="min-w-0 flex-1">
-        <h1 className="text-[16px] font-semibold tracking-[-0.01em]">
+        <h1 className="text-[15px] font-semibold leading-tight truncate">
           {t("personnel.title")}
         </h1>
-        <div className="text-[11px] text-muted-foreground mt-0.5">
+        <div className="text-[11.5px] text-muted-foreground leading-tight truncate">
           {t("personnel.subtitle")}
         </div>
       </div>
       {/* Inbox button — opens the requests panel (all sizes) */}
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="icon"
         onClick={openRequests}
-        className="relative h-9 w-9 rounded-[0.3rem] border border-border bg-background inline-flex items-center justify-center text-muted-foreground hover:bg-muted shrink-0"
+        className="relative text-muted-foreground"
         aria-label={t("personnel.pendingRequests")}
       >
         <Inbox className="h-4 w-4" strokeWidth={1.75} />
         {pending > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-white text-[9.5px] font-mono font-bold inline-flex items-center justify-center border-[1.5px] border-background">
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-foreground text-background text-[9.5px] font-mono font-bold tabular-nums inline-flex items-center justify-center border-[1.5px] border-background">
             {pending}
           </span>
         )}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -103,7 +106,7 @@ export function PersonnelTabsNav() {
               href={hrefFor(tab.segment)}
               onClick={() => hapticLight()}
               className={cn(
-                "flex-1 shrink-0 flex items-center justify-center gap-1 px-3 py-2 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap",
+                "flex-1 shrink-0 flex items-center justify-center gap-1 px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap",
                 active
                   ? "border-foreground text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground",
@@ -111,7 +114,7 @@ export function PersonnelTabsNav() {
             >
               {t(`personnel.tabs.${tab.i18nKey}`)}
               {tab.segment === "schedule" && pending > 0 && (
-                <span className="min-w-[15px] h-[15px] px-1 rounded-full bg-amber-500 text-white text-[9px] font-mono font-bold tabular-nums inline-flex items-center justify-center">
+                <span className="min-w-[15px] h-[15px] px-1 rounded-full bg-foreground text-background text-[9px] font-mono font-bold tabular-nums inline-flex items-center justify-center">
                   {pending}
                 </span>
               )}
@@ -132,13 +135,13 @@ export function PersonnelTabsNav() {
               href={hrefFor(tab.segment)}
               onClick={() => hapticLight()}
               className={cn(
-                "flex-1 shrink-0 flex items-center gap-2 lg:gap-2.5 px-3 lg:px-4 py-2 lg:py-2.5 transition-colors border-r border-border last:border-r-0 relative rounded-t-[0.3rem] whitespace-nowrap",
+                "flex-1 shrink-0 flex items-center gap-2 lg:gap-2.5 px-3 lg:px-4 py-2 lg:py-2.5 transition-colors border-r border-border last:border-r-0 relative whitespace-nowrap",
                 active ? "bg-muted" : "bg-background hover:bg-muted/50",
               )}
             >
               <span
                 className={cn(
-                  "w-7 h-7 lg:w-8 lg:h-8 rounded-[0.3rem] inline-flex items-center justify-center shrink-0",
+                  "w-7 h-7 lg:w-8 lg:h-8 rounded-lg inline-flex items-center justify-center shrink-0",
                   active
                     ? "bg-foreground text-background"
                     : "bg-muted text-muted-foreground",
@@ -150,9 +153,7 @@ export function PersonnelTabsNav() {
                 <div
                   className={cn(
                     "text-[13px] lg:text-[13.5px] font-semibold tracking-[-0.01em] truncate",
-                    active
-                      ? "text-foreground"
-                      : "text-stone-700 dark:text-stone-200",
+                    active ? "text-foreground" : "text-foreground/80",
                   )}
                 >
                   {label}
@@ -167,7 +168,7 @@ export function PersonnelTabsNav() {
                 </div>
               </div>
               {tab.segment === "schedule" && pending > 0 && (
-                <span className="ml-auto min-w-[17px] h-[17px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-mono font-bold tabular-nums inline-flex items-center justify-center">
+                <span className="ml-auto min-w-[17px] h-[17px] px-1 rounded-full bg-foreground text-background text-[10px] font-mono font-bold tabular-nums inline-flex items-center justify-center">
                   {pending}
                 </span>
               )}

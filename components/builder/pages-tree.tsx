@@ -7,6 +7,7 @@ import { useT } from "@/lib/i18n/context";
 import { DomTree } from "./dom-tree";
 import type { SitePage } from "@/lib/types";
 import type { HtmlSelectionInfo } from "./html-canvas";
+import { pageColor } from "./page-colors";
 
 interface PagesTreeProps {
   pages: SitePage[];
@@ -19,15 +20,6 @@ interface PagesTreeProps {
   onSelectElement: (info: HtmlSelectionInfo) => void;
   onPageSettings: (pageId: string) => void;
 }
-
-const PAGE_COLORS = [
-  "bg-blue-600",
-  "bg-emerald-600",
-  "bg-amber-600",
-  "bg-rose-600",
-  "bg-violet-600",
-  "bg-cyan-600",
-];
 
 // Combined Pages + Layers navigator (Webflow / Figma style). Each page is a
 // collapsible root; expanding it shows its DOM tree underneath. Clicking a
@@ -60,7 +52,7 @@ export function PagesTree({
           <li key={page.id}>
             <div
               className={cn(
-                "group flex w-full items-center gap-1 rounded-[0.3rem] border border-transparent p-1.5 cursor-pointer text-[12px]",
+                "group flex w-full items-center gap-1 rounded border border-transparent p-1.5 cursor-pointer text-[12px]",
                 isActive
                   ? "border-border bg-accent text-foreground"
                   : "text-foreground hover:bg-accent/60",
@@ -80,8 +72,8 @@ export function PagesTree({
               </button>
               <div
                 className={cn(
-                  "h-5 w-6 shrink-0 rounded-[0.2rem]",
-                  PAGE_COLORS[i % PAGE_COLORS.length],
+                  "h-5 w-6 shrink-0 rounded",
+                  pageColor(i),
                 )}
               />
               <span className="flex-1 truncate">{page.name}</span>

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getServiceConn,
-  subscribeAndWait,
+  getSubscribedServiceConn,
   getEnabledBriefingPrefs,
   getAdminOrgsForUser,
   serviceSaveDailyBriefing,
@@ -9,6 +8,7 @@ import {
   serviceAppendAiChatMessage,
 } from "@/lib/spacetimedb/service-client";
 import { buildBriefingContext, briefingProblemKeys } from "@/lib/insights/build-context";
+import { productsFromInventoryRows } from "@/lib/products/from-inventory";
 import { buildFallbackBriefing } from "@/lib/insights/fallback-briefing";
 import { sendWebPush } from "@/lib/push/send";
 
@@ -236,18 +236,12 @@ async function runHourlyPatrol(req: NextRequest) {
   const now = new Date();
   const origin = req.nextUrl.origin;
 
+  // Snapshot every table the context builder + idempotency checks read.
+  // getSubscribedServiceConn retries once on a fresh connection, so a stale
+  // warm socket doesn't kill the hour's patrol.
   let conn;
   try {
-    conn = await getServiceConn();
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[cron/morning-briefing] service connection failed:", msg);
-    return NextResponse.json({ error: `service connection: ${msg}` }, { status: 500 });
-  }
-
-  // Snapshot every table the context builder + idempotency checks read.
-  try {
-    await subscribeAndWait(conn, [
+    conn = await getSubscribedServiceConn([
       "SELECT * FROM user",
       "SELECT * FROM user_briefing_pref",
       "SELECT * FROM organization",
@@ -262,7 +256,6 @@ async function runHourlyPatrol(req: NextRequest) {
       // right-panel Mr. Merchiva sees, plus yesterday's task evidence.
       "SELECT * FROM sales_record",
       "SELECT * FROM payment",
-      "SELECT * FROM product",
       "SELECT * FROM staff_role",
       "SELECT * FROM role_task",
       "SELECT * FROM role_task_assignment",
@@ -303,7 +296,8 @@ async function runHourlyPatrol(req: NextRequest) {
   const shiftTrades = allRows("shiftTrade");
   const salesRecords = allRows("salesRecord");
   const payments = allRows("payment");
-  const products = allRows("product");
+  // The product table no longer exists — retail-enabled inventory rows ARE the products.
+  const products = productsFromInventoryRows(inventoryItems);
   const staffRoles = allRows("staffRole");
   const roleTasks = allRows("roleTask");
   const roleTaskAssignments = allRows("roleTaskAssignment");
@@ -530,7 +524,7 @@ async function runHourlyPatrol(req: NextRequest) {
             type: "briefing",
             title: copy.title,
             body: copy.body(newCount),
-            link: "/~/",
+            link: "/manager/",
           });
           notified++;
         }
@@ -564,7 +558,7 @@ async function runHourlyPatrol(req: NextRequest) {
               o.kind === "overdue"
                 ? copy.overdue(o.scheduledEnd ?? "?", o.minutesOver ?? 0)
                 : copy.stale(Math.max(1, Math.round(o.openForMinutes / 60))),
-            link: "/~/punch-in",
+            link: "/store",
           });
           clockOutReminders++;
         } catch (err) {
@@ -653,7 +647,7 @@ async function runHourlyPatrol(req: NextRequest) {
                 if (nowMin < start || nowMin >= start + 60) continue;
                 const taskId = tk.id?.toString?.() ?? String(tk.id);
                 if (completedToday.has(taskId)) continue;
-                const link = `/~/personnel?task=${taskId}&d=${date}`;
+                const link = `/manager/personnel?task=${taskId}&d=${date}`;
                 if (alreadyReminded.has(`${targetHex}|${link}`)) continue;
                 alreadyReminded.add(`${targetHex}|${link}`);
                 const timeLabel = `${String(tk.startTime).slice(0, 5)}${

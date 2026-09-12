@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 const ALLOWED_ORIGINS = [
+  "https://merchiva.com",
+  "https://www.merchiva.com",
   "https://project-management-phi-red.vercel.app",
   "merchiva://",
   "capacitor://localhost",
