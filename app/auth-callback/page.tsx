@@ -19,7 +19,7 @@ function AuthCallbackInner() {
     const accessToken = searchParams.get("access_token");
     const refreshToken = searchParams.get("refresh_token");
     const userStr = searchParams.get("user");
-    const redirectTo = searchParams.get("redirect_to") || "/manager/";
+    const redirectTo = searchParams.get("redirect_to") || "/choose";
 
     if (!accessToken || !refreshToken || !userStr) {
       router.replace("/login?error=missing_tokens");

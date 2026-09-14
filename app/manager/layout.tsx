@@ -9,7 +9,7 @@ import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { TauriNotificationBridge } from "@/components/tauri-notification-bridge";
 import { PermissionsProvider } from "@/lib/context/permissions";
-import { SpacetimeProvider } from "@/lib/spacetimedb/provider";
+import { useSpacetimeStatus, SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { OfflineModeProvider, useOfflineMode } from "@/lib/offline-mode";
 import { ownerPermissions, defaultPermissions } from "@/lib/db/team";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
@@ -185,6 +185,7 @@ function NamePrompt({ memberId, onComplete }: { memberId: string; onComplete: ()
 function AuthLoader({ children }: { children: React.ReactNode }) {
   const t = useT();
   const stdb = useSpacetimeDB();
+  const conn = useSpacetimeStatus();
   const [orgMembers, membersReady] = useTable(tables.orgMember);
   const [organizations, orgsReady] = useTable(tables.organization);
   // Settings drives the "has the user finished setup?" check below. `createOrg`
@@ -322,9 +323,15 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     if (pickedOrgId && authState?.kind === "choose") setPickedOrgId(null);
   }, [pickedOrgId, authState]);
 
+  // Memberships are decided once the tables have streamed in and we know
+  // who we are: either the user has an org (authState) or provably has none
+  // (NewUserSetup renders). Both are "loaded" — a brand-new account must not
+  // sit behind the splash / connection timeout just because authState is null.
+  const membershipsDecided = isReady && !!identity;
+
   // Start 8-second timeout while loading; clear it once loaded.
   useEffect(() => {
-    if (isReady && authState) {
+    if (membershipsDecided) {
       if (timerRef.current) clearTimeout(timerRef.current);
       return;
     }
@@ -332,7 +339,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isReady, authState]);
+  }, [membershipsDecided]);
 
   const { signOut } = useAuth();
   const { cachedSnapshot, snapshotLoaded } = useOfflineMode();
@@ -524,7 +531,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // its hideWelcome path — the dashboard is already painted underneath, so
   // the transition is seamless.
   let realContent: React.ReactNode = null;
-  if (isReady && !authState) {
+  if (membershipsDecided && !authState) {
     realContent = (
       <NewUserSetup
         onComplete={() => window.location.reload()}
@@ -568,7 +575,26 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   }
 
   const showSplash = splashStarted && !splashFinished;
-  const dataReady = isReady && !!authState;
+  const dataReady = membershipsDecided;
+
+  // What the splash is waiting on right now, plus anything that went wrong,
+  // so a stuck screen tells the user where it is stuck.
+  const splashStatus = conn.tokenMissing ? t("layout.status.token")
+    : !conn.connected && !stdb?.isActive
+      ? (conn.retryCount > 0 ? t("layout.status.reconnecting").replace("{n}", String(conn.retryCount)) : t("layout.status.connecting"))
+    : !identity ? t("layout.status.identity")
+    : !membersReady ? t("layout.status.members")
+    : !orgsReady ? t("layout.status.stores")
+    : !authState ? t("layout.status.newUser")
+    : authState.kind === "choose" ? t("layout.status.choose")
+    : !settingsReady ? t("layout.status.settings")
+    : t("layout.status.ready");
+  const connError = conn.lastError ?? (stdb?.connectionError ? String(stdb.connectionError.message ?? stdb.connectionError) : null);
+  const splashErrors: string[] = [
+    connError ? t("layout.status.error").replace("{message}", connError) : null,
+    conn.tokenMissing ? t("layout.notConnected") : null,
+    (timedOut || conn.timedOut) && !dataReady ? t("layout.connectionTimedOut") : null,
+  ].filter((x): x is string => !!x);
 
   return (
     <>
@@ -581,11 +607,13 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
             hideWelcome
             onFinish={() => setSplashFinished(true)}
             tagline={t("layout.connecting")}
-            status={t("layout.connecting")}
+            status={splashStatus}
           />
-          {timedOut && !dataReady && (
-            <div className="absolute inset-x-0 bottom-12 flex flex-col items-center gap-2 z-10">
-              <p className="text-xs text-red-400">{t("layout.connectionTimedOut")}</p>
+          {splashErrors.length > 0 && !dataReady && (
+            <div className="absolute inset-x-0 bottom-12 flex flex-col items-center gap-2 z-10 px-6 text-center">
+              {splashErrors.map((e) => (
+                <p key={e} className="max-w-md break-words font-mono text-xs text-red-400">{e}</p>
+              ))}
               <button
                 onClick={handleSignOut}
                 className={`rounded border px-3 py-1.5 text-xs ${splashDark ? "border-stone-700 bg-stone-900 text-stone-300 hover:bg-stone-800" : "border-border bg-background text-muted-foreground hover:bg-muted"}`}

@@ -66,7 +66,7 @@ function SignupForm() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/manager/";
+  const next = searchParams.get("next") || "/choose";
   const { signIn } = useAuth();
 
   const [email, setEmail] = useState("");
@@ -99,7 +99,7 @@ function SignupForm() {
     try {
       const parsedUser = JSON.parse(user);
       addAccountToStorage(access_token, refresh_token, parsedUser);
-      window.location.href = redirect_to || "/manager/";
+      window.location.href = redirect_to || "/choose";
     } catch {
       setError(t("login.oauthFailed"));
     }
@@ -235,7 +235,7 @@ function SignupForm() {
     return subscribeCapacitorAuthCallback(completeNativeAuth);
   }, [completeNativeAuth]);
 
-  const loginHref = `/login${next !== "/manager/" ? `?next=${encodeURIComponent(next)}` : ""}`;
+  const loginHref = `/login${next !== "/choose" ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   /* ── Verify screen ──────────────────────────────── */
 

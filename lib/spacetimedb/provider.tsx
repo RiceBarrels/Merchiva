@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { SpacetimeDBProvider } from "spacetimedb/react";
 import { DbConnection } from "./generated";
 import {
@@ -19,6 +19,25 @@ import type { ReactNode } from "react";
 
 interface SpacetimeProviderProps {
   children: ReactNode;
+}
+
+/** Connection progress + last failure, for loading screens that want to say
+ *  what they are waiting on instead of a bare "Connecting…". */
+export interface SpacetimeStatus {
+  connected: boolean;
+  retryCount: number;
+  tokenMissing: boolean;
+  timedOut: boolean;
+  /** Message of the most recent connect error (cleared on a successful connect). */
+  lastError: string | null;
+}
+
+const SpacetimeStatusContext = createContext<SpacetimeStatus>({
+  connected: false, retryCount: 0, tokenMissing: false, timedOut: false, lastError: null,
+});
+
+export function useSpacetimeStatus(): SpacetimeStatus {
+  return useContext(SpacetimeStatusContext);
 }
 
 export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
@@ -51,6 +70,7 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
   const [connected, setConnected] = useState(false);
   const [tokenMissing, setTokenMissing] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -154,6 +174,7 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       .withToken(authToken)
       .withCompression("none")
       .onConnect((conn, _identity, newToken) => {
+        setLastError(null);
         console.log("ℹ️ INFO Connected to SpacetimeDB WS");
         if (retryCount > 0) setRetryCount(0);
         setConnected(true);
@@ -261,6 +282,7 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
       })
       .onConnectError((_ctx, error) => {
         console.error("[SpacetimeDB] Connection error:", error);
+        setLastError(error instanceof Error ? error.message : String(error));
         const MAX_RETRIES = 5;
         const delay = Math.min(2000 * 2 ** retryCount, 30000);
         if (retryCount < MAX_RETRIES) {
@@ -302,7 +324,9 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
 
   return (
     <SpacetimeDBProvider connectionBuilder={builder}>
-      {children}
+      <SpacetimeStatusContext.Provider value={{ connected, retryCount, tokenMissing, timedOut, lastError }}>
+        {children}
+      </SpacetimeStatusContext.Provider>
     </SpacetimeDBProvider>
   );
 }

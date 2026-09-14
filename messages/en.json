@@ -159,6 +159,19 @@
       "continue": "Continue",
       "saved": "Name saved!",
       "failed": "Failed to save name"
+    },
+    "status": {
+      "token": "Waiting for sign-in token…",
+      "connecting": "Connecting to database…",
+      "reconnecting": "Reconnecting to database (attempt {n})…",
+      "identity": "Authenticating with database…",
+      "members": "Loading your memberships…",
+      "stores": "Loading stores…",
+      "newUser": "No store yet — opening setup…",
+      "choose": "Waiting for store choice…",
+      "settings": "Loading store settings…",
+      "ready": "Ready",
+      "error": "Error: {message}"
     }
   },
   "components": {

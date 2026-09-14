@@ -159,6 +159,19 @@
       "continue": "Continuer",
       "saved": "Nom enregistré !",
       "failed": "Échec de l'enregistrement"
+    },
+    "status": {
+      "token": "En attente du jeton de connexion…",
+      "connecting": "Connexion à la base de données…",
+      "reconnecting": "Reconnexion à la base de données (tentative {n})…",
+      "identity": "Authentification auprès de la base de données…",
+      "members": "Chargement de vos adhésions…",
+      "stores": "Chargement des boutiques…",
+      "newUser": "Pas encore de boutique — ouverture de la configuration…",
+      "choose": "En attente du choix de boutique…",
+      "settings": "Chargement des paramètres de la boutique…",
+      "ready": "Prêt",
+      "error": "Erreur : {message}"
     }
   },
   "components": {

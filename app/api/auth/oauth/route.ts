@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const useProtocolCallback =
       client === "desktop" || client === "electron" || client === "capacitor";
     const statePayload = {
-      redirectTo: redirectTo || "/manager/",
+      redirectTo: redirectTo || "/choose",
       client: useProtocolCallback ? "desktop" : "web",
     };
 

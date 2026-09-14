@@ -336,7 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
     setUser(null);
     setAccounts([]);
-    window.location.href = "/login?logout=1&next=%2Fmanager%2F";
+    window.location.href = "/login?logout=1&next=%2Fchoose";
   }, []);
 
   const value = useMemo<AuthContextValue>(

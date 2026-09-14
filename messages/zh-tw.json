@@ -159,6 +159,19 @@
       "continue": "繼續",
       "saved": "名字已儲存！",
       "failed": "儲存失敗"
+    },
+    "status": {
+      "token": "等待登入權杖…",
+      "connecting": "正在連線資料庫…",
+      "reconnecting": "正在重新連線資料庫（第 {n} 次）…",
+      "identity": "正在與資料庫驗證身分…",
+      "members": "正在載入您的成員身分…",
+      "stores": "正在載入門市…",
+      "newUser": "還沒有門市 — 正在開啟設定…",
+      "choose": "等待選擇門市…",
+      "settings": "正在載入門市設定…",
+      "ready": "就緒",
+      "error": "錯誤：{message}"
     }
   },
   "components": {

@@ -159,6 +159,19 @@
       "continue": "继续",
       "saved": "名字已保存！",
       "failed": "保存失败"
+    },
+    "status": {
+      "token": "等待登录令牌…",
+      "connecting": "正在连接数据库…",
+      "reconnecting": "正在重新连接数据库（第 {n} 次）…",
+      "identity": "正在与数据库验证身份…",
+      "members": "正在加载您的成员身份…",
+      "stores": "正在加载门店…",
+      "newUser": "还没有门店 — 正在打开设置…",
+      "choose": "等待选择门店…",
+      "settings": "正在加载门店设置…",
+      "ready": "就绪",
+      "error": "错误：{message}"
     }
   },
   "components": {

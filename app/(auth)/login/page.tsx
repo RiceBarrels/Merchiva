@@ -25,7 +25,7 @@ function LoginForm() {
   const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/manager/";
+  const next = searchParams.get("next") || "/choose";
   const isAddAccount = searchParams.get("addAccount") === "1";
   const { isLoaded, isSignedIn, signIn, getToken } = useAuth();
 
@@ -76,7 +76,7 @@ function LoginForm() {
     try {
       const parsedUser = JSON.parse(user);
       addAccountToStorage(access_token, refresh_token, parsedUser);
-      window.location.href = redirect_to || "/manager/";
+      window.location.href = redirect_to || "/choose";
     } catch {
       setError(t("login.oauthFailed"));
     }
@@ -715,7 +715,7 @@ function LoginForm() {
             <p className="text-[12.5px] text-muted-foreground">
               {t("login.noAccount")}{" "}
               <Link
-                href={`/signup${next !== "/manager/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+                href={`/signup${next !== "/choose" ? `?next=${encodeURIComponent(next)}` : ""}`}
                 className="font-medium text-foreground hover:underline underline-offset-4"
               >
                 {t("login.register")}

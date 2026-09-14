@@ -134,7 +134,7 @@ function InviteInner({ token }: { token: string }) {
     try {
       await acceptInvitation(token);
       setSuccess(true);
-      setTimeout(() => router.push("/manager/"), 1500);
+      setTimeout(() => router.push("/choose"), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to accept invitation. Please try again.");
     } finally {
@@ -178,7 +178,7 @@ function InviteInner({ token }: { token: string }) {
             </div>
             <h2 className="font-bold text-lg">Invalid Invitation</h2>
             <p className="text-sm text-muted-foreground">{error}</p>
-            <Link href="/manager/" className="text-sm font-medium underline underline-offset-4 text-muted-foreground">
+            <Link href="/choose" className="text-sm font-medium underline underline-offset-4 text-muted-foreground">
               Go to dashboard
             </Link>
           </CardContent>

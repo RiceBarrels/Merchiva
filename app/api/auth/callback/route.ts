@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login?error=missing_code", req.url));
   }
 
-  let redirectTo = "/manager/";
+  let redirectTo = "/choose";
   // `desktop` covers the native shells, including legacy Electron state values
   // and Capacitor's in-app browser flow. They all register merchiva://.
   let client: "web" | "desktop" = "web";

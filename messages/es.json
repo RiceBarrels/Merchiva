@@ -159,6 +159,19 @@
       "continue": "Continuar",
       "saved": "¡Nombre guardado!",
       "failed": "Error al guardar"
+    },
+    "status": {
+      "token": "Esperando el token de sesión…",
+      "connecting": "Conectando con la base de datos…",
+      "reconnecting": "Reconectando con la base de datos (intento {n})…",
+      "identity": "Autenticando con la base de datos…",
+      "members": "Cargando tus membresías…",
+      "stores": "Cargando tiendas…",
+      "newUser": "Aún no hay tienda — abriendo la configuración…",
+      "choose": "Esperando la elección de tienda…",
+      "settings": "Cargando la configuración de la tienda…",
+      "ready": "Listo",
+      "error": "Error: {message}"
     }
   },
   "components": {

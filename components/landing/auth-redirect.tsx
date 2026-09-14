@@ -28,7 +28,7 @@ export function AuthRedirect() {
     if (!isLoaded || !isSignedIn) return;
     getToken().then((token) => {
       if (token) localStorage.setItem("stdb_token", token);
-      router.replace("/manager/");
+      router.replace("/choose");
     });
   }, [justLoggedOut, isLoaded, isSignedIn, router, getToken]);
 
