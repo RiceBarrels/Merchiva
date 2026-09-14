@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut, ShieldCheck, Coffee, Play, ClockAlert } from "lucide-react";
+import { LogOut, Coffee, Play, ClockAlert, DoorOpen } from "lucide-react";
+import { AdminModeIcon } from "@/components/device/app-icons";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { recordPunch } from "@/lib/spacetimedb/actions";
 import { DeviceDrawer, PinPad, type DeviceDrawerOption, type OnShiftEntry } from "@/components/device";
 import { findManagerByPin, isManagerRole, type StoreMember } from "./use-org-members";
+import { ExitStoreDrawer } from "./exit-store-drawer";
 
 export interface LogoutDrawerProps {
   open: boolean;
@@ -28,7 +30,7 @@ export function enterManagerMode() {
 
 export function LogoutDrawer({ open, onOpenChange, members, operator, shift, onLogout }: LogoutDrawerProps) {
   const t = useT();
-  const [pane, setPane] = useState<"options" | "managerPin">("options");
+  const [pane, setPane] = useState<"options" | "managerPin" | "exitPin">("options");
   const managerEligible = members.some((m) => isManagerRole(m.role) && !!m.punchInCode);
   const [busy, setBusy] = useState(false);
   // Punches go through the same PIN-based reducer as the terminal; a member
@@ -88,12 +90,21 @@ export function LogoutDrawer({ open, onOpenChange, members, operator, shift, onL
     },
     {
       id: "manager",
-      icon: ShieldCheck,
+      icon: AdminModeIcon,
       label: t("storeDevice.switchToManager"),
       sub: t("storeDevice.requiresManagerPin"),
       tone: "primary",
       hidden: !managerEligible,
       onSelect: () => setPane("managerPin"),
+    },
+    {
+      id: "exit-store",
+      icon: DoorOpen,
+      label: t("storeDevice.leaveStoreMode"),
+      sub: t("storeDevice.requiresManagerPin"),
+      tone: "warn",
+      hidden: !managerEligible,
+      onSelect: () => setPane("exitPin"),
     },
     {
       id: "logout",
@@ -120,6 +131,18 @@ export function LogoutDrawer({ open, onOpenChange, members, operator, shift, onL
     setTimeout(enterManagerMode, 300);
     return true;
   };
+
+  if (pane === "exitPin") {
+    return (
+      <ExitStoreDrawer
+        open={open}
+        onOpenChange={handleOpenChange}
+        members={members}
+        cancelLabel={t("storeDevice.back")}
+        onCancel={() => setPane("options")}
+      />
+    );
+  }
 
   if (pane === "managerPin") {
     return (

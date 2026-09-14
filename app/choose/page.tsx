@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTable, useSpacetimeDB } from "spacetimedb/react";
-import { ArrowRight, Briefcase, MonitorSmartphone, UserRound, type LucideIcon } from "lucide-react";
+import { ArrowRight, LogOut } from "lucide-react";
+import { AdminModeIcon, PersonalModeIcon, StoreModeIcon, type AppIcon } from "@/components/device/app-icons";
 import { MerchivaLogo } from "@/components/logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ function ModeCard({
   note,
   onSelect,
 }: {
-  icon: LucideIcon;
+  icon: AppIcon;
   title: string;
   description: string;
   selected: boolean;
@@ -61,8 +62,8 @@ function ModeCard({
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
       ].join(" ")}
     >
-      <div className="h-9 w-9 shrink-0 rounded-[0.3rem] border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 flex items-center justify-center">
-        <Icon className="h-4 w-4 text-stone-700 dark:text-stone-200" />
+      <div className="h-11 w-11 shrink-0 rounded-[0.3rem] border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 flex items-center justify-center">
+        <Icon className="h-7 w-7" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-[14px] font-semibold text-foreground">{title}</div>
@@ -79,7 +80,7 @@ function ChooseModeInner() {
   const sp = useSearchParams();
   // Also stay put when Stripe sends the user back here after checkout.
   const forceShow = sp.get("switch") === "1" || sp.has("status");
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { role, organizationId, organizations, currentOrg, pickOrg } = usePermissions();
   const showStores = organizations.length > 1;
   const stdb = useSpacetimeDB();
@@ -216,7 +217,7 @@ function ChooseModeInner() {
           <>
           <div className="space-y-2.5">
             <ModeCard
-              icon={Briefcase}
+              icon={AdminModeIcon}
               title={t("chooseMode.adminTitle")}
               description={t("chooseMode.adminDesc")}
               selected={mode === "admin"}
@@ -225,14 +226,14 @@ function ChooseModeInner() {
               onSelect={() => { hapticLight(); setMode("admin"); }}
             />
             <ModeCard
-              icon={UserRound}
+              icon={PersonalModeIcon}
               title={t("chooseMode.personalTitle")}
               description={t("chooseMode.personalDesc")}
               selected={mode === "personal"}
               onSelect={() => { hapticLight(); setMode("personal"); }}
             />
             <ModeCard
-              icon={MonitorSmartphone}
+              icon={StoreModeIcon}
               title={t("chooseMode.storeTitle")}
               description={t("chooseMode.storeDesc")}
               selected={mode === "store"}
@@ -286,11 +287,19 @@ function ChooseModeInner() {
           </>
           )}
 
-          {user?.email && (
-            <p className="mt-4 text-[11px] text-stone-400 dark:text-stone-500 font-mono truncate">
-              {t("chooseMode.signedInAs")} {user.email}
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-stone-200 dark:border-stone-700 pt-3">
+            <p className="min-w-0 text-[11px] text-stone-400 dark:text-stone-500 font-mono truncate">
+              {user?.email ? `${t("chooseMode.signedInAs")} ${user.email}` : ""}
             </p>
-          )}
+            <button
+              type="button"
+              onClick={() => { hapticLight(); signOut(); }}
+              className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-stone-500 hover:text-red-600 dark:text-stone-400 dark:hover:text-red-500 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              {t("common.signOut")}
+            </button>
+          </div>
         </div>
       </div>
     </div>

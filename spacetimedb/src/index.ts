@@ -12,13 +12,13 @@
  *   - Reducers enforce authorization by checking orgMember records
  */
 
-import { schema, t, table } from 'spacetimedb/server';
+import { schema, t, table, SenderError } from 'spacetimedb/server';
 import { Identity } from 'spacetimedb';
 
 // ─── Helper: throw on unauthorized ───────────────────────────────────────────
 
 function unauthorized(msg = 'Unauthorized'): never {
-  throw new Error(msg);
+  throw new SenderError(msg);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -207,6 +207,12 @@ const settingsTable = table(
     //   <supplierInboundPrefix>-inbound@merchiva.com
     // Optional for existing stores; missing rows derive a stable m-<orgid> prefix.
     supplierInboundPrefix: t.option(t.string()).default(undefined),
+    // JSON-encoded string[] of catalog app ids "installed" on the store /
+    // personal device surfaces (see lib/device-apps.ts). Required apps
+    // (punch-in, schedule, staff, channels, Mr. Merchiva, inventory) are
+    // always on and not stored here. null/missing = nothing extra installed.
+    // Kept at the END for safe migration.
+    deviceApps: t.option(t.string()).default(undefined),
   }
 );
 
@@ -1436,13 +1442,9 @@ const dailyBriefingTable = table(
     // briefing. Added at end of table per migration rules; .default(undefined)
     // lets existing rows migrate without data loss.
     actions: t.option(t.string()).default(undefined),
-    // JSON-encoded array of stable problem-signature strings present in this
-    // briefing. Each hourly run diffs against the prior run's keys to decide
-    // whether a NEW problem appeared (→ notify the manager). Added at end.
+    // Retired columns. Nothing writes them any more; they stay in the schema
+    // only because dropping a column is a destructive migration.
     problemKeys: t.option(t.string()).default(undefined),
-    // Hour (0–23, org-local) this snapshot was generated for. Lets the briefing
-    // keep one row per (org, date, hour) so the chat can browse the day's
-    // hourly history by time. null = legacy single daily row. Added at end.
     hour: t.option(t.i32()).default(undefined),
   }
 );
@@ -1585,10 +1587,44 @@ const serviceIdentityTable = table(
   }
 );
 
+// ─── Platform Admins (/merchivaAdmin console) ─────────────────────────────────
+//
+// Standalone username/password super-admin accounts for the /merchivaAdmin
+// console. Credentials are verified server-side (Next.js route handlers) via
+// the service identity — clients never touch these reducers directly.
+// `platform_admin` is public (username + audit fields only); the password hash
+// lives in the private `platform_admin_secret` table so only reducers can read
+// it. Both tables are keyed by username.
+//
+const platformAdminTable = table(
+  {
+    name: 'platform_admin',
+    public: true,
+  },
+  {
+    username: t.string().primaryKey(),
+    createdAt: t.timestamp(),
+    createdBy: t.string(),
+    lastLoginAt: t.option(t.timestamp()),
+  }
+);
+
+const platformAdminSecretTable = table(
+  {
+    name: 'platform_admin_secret',
+    public: false,
+  },
+  {
+    username: t.string().primaryKey(),
+    passwordHash: t.string(),
+    updatedAt: t.timestamp(),
+  }
+);
+
 // ─── User Briefing Preference ────────────────────────────────────────────────
 //
-// Per-user setting controlling when the daily briefing notification fires.
-// One row per user (userId = ctx.sender at write time).
+// Retired table. No reducer reads or writes it any more; it stays in the
+// schema only because dropping a table is a destructive migration.
 //
 const userBriefingPrefTable = table(
   {
@@ -1602,9 +1638,6 @@ const userBriefingPrefTable = table(
     enabled: t.bool(),
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
-    // JSON-encoded array of hours (0–23) at which the briefing regenerates and,
-    // if a NEW problem appears, notifies the manager. Empty/null → fall back to
-    // the single `briefingTime` hour. Added at end per migration rules.
     hours: t.option(t.string()).default(undefined),
   }
 );
@@ -1735,6 +1768,8 @@ const spacetimedb = schema({
   userBriefingPref: userBriefingPrefTable,
   aiUsage: aiUsageTable,
   aiUsageQuota: aiUsageQuotaTable,
+  platformAdmin: platformAdminTable,
+  platformAdminSecret: platformAdminSecretTable,
 });
 
 export default spacetimedb;
@@ -1808,9 +1843,9 @@ export const loginWithPassword = spacetimedb.reducer(
   (ctx, { email, passwordHash }) => {
     // Find existing account by email
     const existingUser = [...ctx.db.user.byEmail.filter(email)][0];
-    if (!existingUser) throw new Error('Invalid email or password');
-    if (!existingUser.passwordHash) throw new Error('Account has no password set');
-    if (existingUser.passwordHash !== passwordHash) throw new Error('Invalid email or password');
+    if (!existingUser) throw new SenderError('Invalid email or password');
+    if (!existingUser.passwordHash) throw new SenderError('Account has no password set');
+    if (existingUser.passwordHash !== passwordHash) throw new SenderError('Invalid email or password');
 
     const oldIdentity = existingUser.identity;
     const newIdentity = ctx.sender;
@@ -1891,12 +1926,12 @@ export const createOrg = spacetimedb.reducer(
     if (parentOrgId && parentOrgId.length > 0) {
       const parent = [...ctx.db.organization.iter()]
         .find(o => o.id.toString() === parentOrgId);
-      if (!parent) throw new Error('Parent organization not found');
-      if (parent.ownerId.toString() !== ctx.sender.toString()) {
+      if (!parent) throw new SenderError('Parent organization not found');
+      if (parent.ownerId.toString() !== ctx.sender.toString() && !isServiceCaller(ctx)) {
         unauthorized('Only the parent organization owner can add a sub-store');
       }
       if (parent.parentOrgId) {
-        throw new Error('Sub-stores cannot themselves have sub-stores');
+        throw new SenderError('Sub-stores cannot themselves have sub-stores');
       }
       resolvedParentId = parentOrgId;
     }
@@ -1977,6 +2012,7 @@ export const createOrg = spacetimedb.reducer(
       scheduleLastSyncStatus: undefined,
       scheduleLastSyncSummary: undefined,
       supplierInboundPrefix: defaultSupplierInboundPrefix(orgId.toString()),
+      deviceApps: undefined,
     });
   }
 );
@@ -1990,7 +2026,7 @@ export const updateOrg = spacetimedb.reducer(
 
     const org = [...ctx.db.organization.iter()]
       .find(o => o.id.toString() === organizationId);
-    if (!org) throw new Error('Organization not found');
+    if (!org) throw new SenderError('Organization not found');
     // Note: update requires primaryKey index – rebuild with delete + insert
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({ ...org, name });
@@ -2006,7 +2042,7 @@ export const updateOrgLogo = spacetimedb.reducer(
 
     const org = [...ctx.db.organization.iter()]
       .find(o => o.id.toString() === organizationId);
-    if (!org) throw new Error('Organization not found');
+    if (!org) throw new SenderError('Organization not found');
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({
       ...org,
@@ -2031,7 +2067,7 @@ export const updateOrgParent = spacetimedb.reducer(
 
     const org = [...ctx.db.organization.iter()]
       .find(o => o.id.toString() === organizationId);
-    if (!org) throw new Error('Organization not found');
+    if (!org) throw new SenderError('Organization not found');
 
     // Detach branch — accept null/undefined/"" to clear parent.
     if (!parentOrgId || parentOrgId.length === 0) {
@@ -2040,22 +2076,22 @@ export const updateOrgParent = spacetimedb.reducer(
       return;
     }
 
-    if (parentOrgId === organizationId) throw new Error('Org cannot be its own parent');
+    if (parentOrgId === organizationId) throw new SenderError('Org cannot be its own parent');
 
     const parent = [...ctx.db.organization.iter()]
       .find(o => o.id.toString() === parentOrgId);
-    if (!parent) throw new Error('Parent organization not found');
-    if (parent.ownerId.toString() !== ctx.sender.toString()) {
+    if (!parent) throw new SenderError('Parent organization not found');
+    if (parent.ownerId.toString() !== ctx.sender.toString() && !isServiceCaller(ctx)) {
       unauthorized('Only the parent organization owner can attach a sub-store');
     }
     if (parent.parentOrgId) {
-      throw new Error('Sub-stores cannot themselves have sub-stores');
+      throw new SenderError('Sub-stores cannot themselves have sub-stores');
     }
     // If this org is currently a parent of others, we can't make it a child too.
     const hasChildren = [...ctx.db.organization.iter()]
       .some(o => o.parentOrgId === organizationId);
     if (hasChildren) {
-      throw new Error('Cannot attach an org that already has sub-stores');
+      throw new SenderError('Cannot attach an org that already has sub-stores');
     }
 
     ctx.db.organization.delete(org);
@@ -2090,7 +2126,7 @@ export const updateOrgSubscription = spacetimedb.reducer(
 
     const org = [...ctx.db.organization.iter()]
       .find(o => o.id.toString() === args.organizationId);
-    if (!org) throw new Error('Organization not found');
+    if (!org) throw new SenderError('Organization not found');
 
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({
@@ -2146,10 +2182,10 @@ export const acceptInvitation = spacetimedb.reducer(
     if (!user) unauthorized('Must be logged in');
 
     const invite = [...ctx.db.orgInvitation.byToken.filter(token)][0];
-    if (!invite) throw new Error('Invitation not found');
-    if (invite.acceptedAt !== undefined) throw new Error('Invitation already used');
+    if (!invite) throw new SenderError('Invitation not found');
+    if (invite.acceptedAt !== undefined) throw new SenderError('Invitation already used');
     if (invite.expiresAt.microsSinceUnixEpoch < ctx.timestamp.microsSinceUnixEpoch) {
-      throw new Error('Invitation expired');
+      throw new SenderError('Invitation expired');
     }
 
     ctx.db.orgMember.insert({
@@ -2206,8 +2242,8 @@ export const updateMemberPermissions = spacetimedb.reducer(
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .find(m => m.id.toString() === memberId);
-    if (!target) throw new Error('Member not found');
-    if (target.role === 'owner') throw new Error('Cannot modify owner');
+    if (!target) throw new SenderError('Member not found');
+    if (target.role === 'owner') throw new SenderError('Cannot modify owner');
 
     ctx.db.orgMember.delete(target);
     ctx.db.orgMember.insert({ ...target, role, permissions });
@@ -2223,7 +2259,7 @@ export const setMemberStatus = spacetimedb.reducer(
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .find(m => m.id.toString() === memberId);
-    if (!target) throw new Error('Member not found');
+    if (!target) throw new SenderError('Member not found');
 
     ctx.db.orgMember.delete(target);
     ctx.db.orgMember.insert({ ...target, status });
@@ -2236,8 +2272,8 @@ export const leaveOrg = spacetimedb.reducer(
   (ctx, { organizationId }) => {
     const member = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
       .find(m => m.organizationId === organizationId);
-    if (!member) throw new Error('Not a member');
-    if (member.role === 'owner') throw new Error('Owner cannot leave; transfer ownership first');
+    if (!member) throw new SenderError('Not a member');
+    if (member.role === 'owner') throw new SenderError('Owner cannot leave; transfer ownership first');
     ctx.db.orgMember.delete(member);
   }
 );
@@ -2259,7 +2295,7 @@ export const setPunchInCode = spacetimedb.reducer(
     const caller = findActiveMember(ctx, organizationId);
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .find(m => m.id.toString() === memberId);
-    if (!target) throw new Error('Member not found');
+    if (!target) throw new SenderError('Member not found');
 
     const isSelf = target.id.toString() === caller.id.toString();
     if (!isSelf) {
@@ -2270,11 +2306,11 @@ export const setPunchInCode = spacetimedb.reducer(
 
     // Validate code shape when setting (exactly 4 digits). Clearing is always allowed.
     if (code !== undefined) {
-      if (!/^[0-9]{4}$/.test(code)) throw new Error('Code must be 4 digits');
+      if (!/^[0-9]{4}$/.test(code)) throw new SenderError('Code must be 4 digits');
       // Prevent collisions within the same org so punch-in lookups remain unambiguous.
       const collision = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
         .find(m => m.id.toString() !== memberId && m.punchInCode === code);
-      if (collision) throw new Error('Code already in use at this store');
+      if (collision) throw new SenderError('Code already in use at this store');
     }
 
     ctx.db.orgMember.delete(target);
@@ -2301,10 +2337,10 @@ export const setMemberHourlyRate = spacetimedb.reducer(
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .find(m => m.id.toString() === memberId);
-    if (!target) throw new Error('Member not found');
+    if (!target) throw new SenderError('Member not found');
 
     if (rate !== undefined && (!Number.isFinite(rate) || rate < 0)) {
-      throw new Error('Rate must be a non-negative number');
+      throw new SenderError('Rate must be a non-negative number');
     }
 
     ctx.db.orgMember.delete(target);
@@ -2354,26 +2390,26 @@ function applyPunch(
     if (action === 'auto') {
       if (!isOnShift) resolved = 'in';
       else if (isOnBreak) resolved = 'break-end';
-      else throw new Error('NEEDS_EXPLICIT_ACTION');
+      else throw new SenderError('NEEDS_EXPLICIT_ACTION');
     }
 
     switch (resolved) {
       case 'in':
-        if (isOnShift) throw new Error('Already on shift');
+        if (isOnShift) throw new SenderError('Already on shift');
         break;
       case 'out':
-        if (!isOnShift) throw new Error('Not on shift');
-        if (isOnBreak) throw new Error('End break before punching out');
+        if (!isOnShift) throw new SenderError('Not on shift');
+        if (isOnBreak) throw new SenderError('End break before punching out');
         break;
       case 'break-start':
-        if (!isOnShift) throw new Error('Not on shift');
-        if (isOnBreak) throw new Error('Already on break');
+        if (!isOnShift) throw new SenderError('Not on shift');
+        if (isOnBreak) throw new SenderError('Already on break');
         break;
       case 'break-end':
-        if (!isOnBreak) throw new Error('Not on break');
+        if (!isOnBreak) throw new SenderError('Not on break');
         break;
       default:
-        throw new Error('Invalid action: ' + resolved);
+        throw new SenderError('Invalid action: ' + resolved);
     }
 
     let pairId: string | undefined = undefined;
@@ -2416,7 +2452,7 @@ export const recordPunch = spacetimedb.reducer(
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .find(m => m.punchInCode === code && m.status === 'active');
-    if (!target) throw new Error('Invalid punch-in code');
+    if (!target) throw new SenderError('Invalid punch-in code');
 
     applyPunch(ctx, organizationId, target, action, code);
   }
@@ -2434,7 +2470,7 @@ export const managerRecordPunch = spacetimedb.reducer(
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .find(m => m.id.toString() === memberId && m.status === 'active');
-    if (!target) throw new Error('Member not found');
+    if (!target) throw new SenderError('Member not found');
 
     const memberEvents = [...ctx.db.punchEvent.byMemberId.filter(memberId)]
       .filter(e => e.organizationId === organizationId);
@@ -2442,7 +2478,7 @@ export const managerRecordPunch = spacetimedb.reducer(
     const openBreak = memberEvents.find(e => e.action === 'break-start' && !e.closed);
 
     if (action === 'in') {
-      if (openIn) throw new Error('Already on shift');
+      if (openIn) throw new SenderError('Already on shift');
       ctx.db.punchEvent.insert({
         id: ctx.newUuidV4(),
         organizationId,
@@ -2458,7 +2494,7 @@ export const managerRecordPunch = spacetimedb.reducer(
     }
 
     if (action === 'out') {
-      if (!openIn) throw new Error('Not on shift');
+      if (!openIn) throw new SenderError('Not on shift');
       const pairId = openIn.id.toString();
       ctx.db.punchEvent.delete(openIn);
       ctx.db.punchEvent.insert({ ...openIn, closed: true });
@@ -2480,7 +2516,7 @@ export const managerRecordPunch = spacetimedb.reducer(
       return;
     }
 
-    throw new Error('Invalid action: ' + action);
+    throw new SenderError('Invalid action: ' + action);
   }
 );
 
@@ -2502,13 +2538,13 @@ export const managerSetPunchWindow = spacetimedb.reducer(
     const startMicros = timestampMicros(startAt);
     const endMicros = endAt ? timestampMicros(endAt) : undefined;
 
-    if (dayEndMicros <= dayStartMicros) throw new Error('Invalid attendance date');
-    if (startMicros < dayStartMicros || startMicros >= dayEndMicros) throw new Error('Start time is outside selected date');
-    if (endMicros !== undefined && endMicros <= startMicros) throw new Error('End time must be after start time');
+    if (dayEndMicros <= dayStartMicros) throw new SenderError('Invalid attendance date');
+    if (startMicros < dayStartMicros || startMicros >= dayEndMicros) throw new SenderError('Start time is outside selected date');
+    if (endMicros !== undefined && endMicros <= startMicros) throw new SenderError('End time must be after start time');
 
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
       .find(m => m.id.toString() === memberId && m.status === 'active');
-    if (!target) throw new Error('Member not found');
+    if (!target) throw new SenderError('Member not found');
 
     const memberEvents = [...ctx.db.punchEvent.byMemberId.filter(memberId)]
       .filter(e => e.organizationId === organizationId);
@@ -2635,7 +2671,7 @@ export const updateStoreDevice = spacetimedb.reducer(
     findActiveMember(ctx, organizationId);
     const device = [...ctx.db.storeDevice.byOrganizationId.filter(organizationId)]
       .find(d => d.deviceId === deviceId);
-    if (!device) throw new Error('Device not found');
+    if (!device) throw new SenderError('Device not found');
     ctx.db.storeDevice.delete(device);
     ctx.db.storeDevice.insert({
       ...device,
@@ -2656,7 +2692,7 @@ export const removeStoreDevice = spacetimedb.reducer(
     if (member.role !== 'owner' && member.role !== 'manager') unauthorized('Only owners/managers can remove devices');
     const device = [...ctx.db.storeDevice.byOrganizationId.filter(organizationId)]
       .find(d => d.deviceId === deviceId);
-    if (!device) throw new Error('Device not found');
+    if (!device) throw new SenderError('Device not found');
     ctx.db.storeDevice.delete(device);
   }
 );
@@ -2676,7 +2712,7 @@ export const createDeviceLoginRequest = spacetimedb.reducer(
   },
   (ctx, { organizationId, deviceId, nonce }) => {
     findActiveMember(ctx, organizationId);
-    if (!nonce || nonce.length < 8) throw new Error('Invalid nonce');
+    if (!nonce || nonce.length < 8) throw new SenderError('Invalid nonce');
 
     const now = ctx.timestamp.microsSinceUnixEpoch;
     for (const row of [...ctx.db.deviceLoginRequest.byOrganizationId.filter(organizationId)]) {
@@ -2706,15 +2742,15 @@ export const approveDeviceLogin = spacetimedb.reducer(
   },
   (ctx, { nonce, intent }) => {
     const row = [...ctx.db.deviceLoginRequest.byNonce.filter(nonce)][0];
-    if (!row) throw new Error('QR code not recognised');
-    if (row.status !== 'pending') throw new Error('QR code already used');
+    if (!row) throw new SenderError('QR code not recognised');
+    if (row.status !== 'pending') throw new SenderError('QR code already used');
     if (row.expiresAt.microsSinceUnixEpoch < ctx.timestamp.microsSinceUnixEpoch) {
       ctx.db.deviceLoginRequest.delete(row);
       ctx.db.deviceLoginRequest.insert({ ...row, status: 'expired' });
-      throw new Error('QR code expired — refresh it on the store device');
+      throw new SenderError('QR code expired — refresh it on the store device');
     }
     if (intent !== 'login' && intent !== 'punch-in' && intent !== 'punch-out') {
-      throw new Error('Invalid intent: ' + intent);
+      throw new SenderError('Invalid intent: ' + intent);
     }
 
     const member = findActiveMember(ctx, row.organizationId) as unknown as {
@@ -2742,7 +2778,7 @@ export const consumeDeviceLogin = spacetimedb.reducer(
   },
   (ctx, { id }) => {
     const row = [...ctx.db.deviceLoginRequest.iter()].find(r => r.id.toString() === id.toString());
-    if (!row) throw new Error('Request not found');
+    if (!row) throw new SenderError('Request not found');
     findActiveMember(ctx, row.organizationId);
     ctx.db.deviceLoginRequest.delete(row);
     ctx.db.deviceLoginRequest.insert({ ...row, status: 'consumed' });
@@ -2770,7 +2806,7 @@ function normalizeSupplierInboundPrefix(prefix: string): string {
 
 function validateSupplierInboundPrefix(prefix: string): void {
   if (!/^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/.test(prefix)) {
-    throw new Error('Supplier inbox prefix must be 3-32 characters: lowercase letters, numbers, and hyphens only.');
+    throw new SenderError('Supplier inbox prefix must be 3-32 characters: lowercase letters, numbers, and hyphens only.');
   }
 }
 
@@ -2811,7 +2847,7 @@ export const updateSettings = spacetimedb.reducer(
     if (!perms.settings?.view) unauthorized('No settings permission');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
 
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
@@ -2842,11 +2878,11 @@ export const setSupplierInboundPrefix = spacetimedb.reducer(
     const normalized = normalizeSupplierInboundPrefix(prefix);
     validateSupplierInboundPrefix(normalized);
     if (!supplierInboundPrefixAvailable(ctx, organizationId, normalized)) {
-      throw new Error('Supplier inbox prefix is already taken.');
+      throw new SenderError('Supplier inbox prefix is already taken.');
     }
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
 
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
@@ -3212,12 +3248,12 @@ function resolveStaffForShift(
     const byId = staffRows.find((m: any) => m.id.toString() === memberId);
     if (byId) return { memberId: byId.id.toString(), name: byId.name };
   }
-  if (!wantedName) throw new Error('staffName is required');
+  if (!wantedName) throw new SenderError('staffName is required');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const match = staffRows.find((m: any) => m.name.trim().toLowerCase() === wantedLower);
   if (match) return { memberId: match.id.toString(), name: match.name };
 
-  throw new Error(
+  throw new SenderError(
     `Unknown staffName "${wantedName}" — not on the team roster. Add the person first or use an exact name.`,
   );
 }
@@ -3252,7 +3288,7 @@ export const addShift = spacetimedb.reducer(
       .map((r) => r.trim())
       .filter((r) => r !== '');
     if (rolesRequested.length === 0) {
-      throw new Error('At least one role is required for a shift (pass staffRoles, e.g. ["barista"]).');
+      throw new SenderError('At least one role is required for a shift (pass staffRoles, e.g. ["barista"]).');
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orgRoles = [...ctx.db.staffRole.byOrganizationId.filter(args.organizationId)] as any[];
@@ -3268,7 +3304,7 @@ export const addShift = spacetimedb.reducer(
     }
     if (missing.length > 0) {
       const valid = orgRoles.map((r) => String(r.name)).join(', ') || '(no roles defined yet)';
-      throw new Error(
+      throw new SenderError(
         `Unknown role(s) ${JSON.stringify(missing)} — use one of: ${valid}. Create the role first via addRole if it should exist.`,
       );
     }
@@ -3559,7 +3595,7 @@ export const updateTimeOffStatus = spacetimedb.reducer(
 
     const req = [...ctx.db.timeOffRequest.byOrganizationId.filter(organizationId)]
       .find(r => r.id.toString() === requestId);
-    if (!req) throw new Error('Request not found');
+    if (!req) throw new SenderError('Request not found');
 
     ctx.db.timeOffRequest.delete(req);
     ctx.db.timeOffRequest.insert({
@@ -3656,7 +3692,7 @@ export const updateShiftTradeStatus = spacetimedb.reducer(
 
     const trade = [...ctx.db.shiftTrade.byOrganizationId.filter(organizationId)]
       .find(t => t.id.toString() === tradeId);
-    if (!trade) throw new Error('Trade not found');
+    if (!trade) throw new SenderError('Trade not found');
 
     const canEditStaffing = member.role === 'owner' ||
       (() => { try { const p = JSON.parse(member.permissions); return p?.staffing?.edit === true; } catch { return false; } })();
@@ -3737,8 +3773,8 @@ export const refundPayment = spacetimedb.reducer(
 
     const payment = [...ctx.db.payment.byOrganizationId.filter(organizationId)]
       .find(p => p.id.toString() === paymentId);
-    if (!payment) throw new Error('Payment not found');
-    if (payment.status !== 'completed') throw new Error('Only completed payments can be refunded');
+    if (!payment) throw new SenderError('Payment not found');
+    if (payment.status !== 'completed') throw new SenderError('Only completed payments can be refunded');
 
     ctx.db.payment.delete(payment);
     ctx.db.payment.insert({
@@ -4116,7 +4152,7 @@ export const updatePage = spacetimedb.reducer(
 
     const page = [...ctx.db.sitePage.iter()]
       .find(p => p.id.toString() === args.pageId);
-    if (!page) throw new Error('Page not found');
+    if (!page) throw new SenderError('Page not found');
 
     ctx.db.sitePage.delete(page);
     ctx.db.sitePage.insert({
@@ -4392,7 +4428,7 @@ export const updateRoleTask = spacetimedb.reducer(
 
     const task = [...ctx.db.roleTask.byOrganizationId.filter(args.organizationId)]
       .find(r => r.id.toString() === args.roleTaskId);
-    if (!task) throw new Error('Role task not found');
+    if (!task) throw new SenderError('Role task not found');
 
     ctx.db.roleTask.delete(task);
     ctx.db.roleTask.insert({
@@ -4415,7 +4451,7 @@ export const deleteRoleTask = spacetimedb.reducer(
 
     const task = [...ctx.db.roleTask.byOrganizationId.filter(organizationId)]
       .find(r => r.id.toString() === roleTaskId);
-    if (!task) throw new Error('Role task not found');
+    if (!task) throw new SenderError('Role task not found');
 
     ctx.db.roleTask.delete(task);
   }
@@ -4497,7 +4533,7 @@ export const deletePage = spacetimedb.reducer(
 
     const page = [...ctx.db.sitePage.iter()]
       .find(p => p.id.toString() === pageId);
-    if (!page) throw new Error('Page not found');
+    if (!page) throw new SenderError('Page not found');
 
     ctx.db.sitePage.delete(page);
   }
@@ -4582,7 +4618,7 @@ export const deleteMessage = spacetimedb.reducer(
 
     const message = [...ctx.db.chatMessage.byConversationId.filter(conversationId)]
       .find(m => m.id.toString() === messageId);
-    if (!message) throw new Error('Message not found');
+    if (!message) throw new SenderError('Message not found');
 
     // Only the sender can delete their own message
     if (message.senderId.toString() !== ctx.sender.toString()) {
@@ -4615,7 +4651,7 @@ export const updateTier = spacetimedb.reducer(
 
     const tier = [...ctx.db.membershipTier.iter()]
       .find(t => t.id.toString() === args.tierId);
-    if (!tier) throw new Error('Tier not found');
+    if (!tier) throw new SenderError('Tier not found');
 
     ctx.db.membershipTier.delete(tier);
     ctx.db.membershipTier.insert({
@@ -4639,7 +4675,7 @@ export const deleteTier = spacetimedb.reducer(
 
     const tier = [...ctx.db.membershipTier.iter()]
       .find(t => t.id.toString() === tierId);
-    if (!tier) throw new Error('Tier not found');
+    if (!tier) throw new SenderError('Tier not found');
 
     ctx.db.membershipTier.delete(tier);
   }
@@ -4666,7 +4702,7 @@ export const updatePerk = spacetimedb.reducer(
 
     const perk = [...ctx.db.membershipPerk.iter()]
       .find(p => p.id.toString() === args.perkId);
-    if (!perk) throw new Error('Perk not found');
+    if (!perk) throw new SenderError('Perk not found');
 
     ctx.db.membershipPerk.delete(perk);
     ctx.db.membershipPerk.insert({
@@ -4693,7 +4729,7 @@ export const deletePerk = spacetimedb.reducer(
 
     const perk = [...ctx.db.membershipPerk.iter()]
       .find(p => p.id.toString() === perkId);
-    if (!perk) throw new Error('Perk not found');
+    if (!perk) throw new SenderError('Perk not found');
 
     ctx.db.membershipPerk.delete(perk);
   }
@@ -4739,7 +4775,7 @@ export const updateOrderStatus = spacetimedb.reducer(
 
     const order = [...ctx.db.siteOrder.iter()]
       .find(o => o.id.toString() === orderId);
-    if (!order) throw new Error('Order not found');
+    if (!order) throw new SenderError('Order not found');
 
     ctx.db.siteOrder.delete(order);
     ctx.db.siteOrder.insert({ ...order, status });
@@ -4757,7 +4793,7 @@ export const updateBookingStatus = spacetimedb.reducer(
 
     const booking = [...ctx.db.siteBooking.iter()]
       .find(b => b.id.toString() === bookingId);
-    if (!booking) throw new Error('Booking not found');
+    if (!booking) throw new SenderError('Booking not found');
 
     ctx.db.siteBooking.delete(booking);
     ctx.db.siteBooking.insert({ ...booking, status });
@@ -4773,8 +4809,8 @@ export const redeemPoints = spacetimedb.reducer(
   (ctx, { siteId, customerId, points }) => {
     const existing = [...ctx.db.customerPoints.byCustomerId.filter(customerId)]
       .find(cp => cp.siteId === siteId);
-    if (!existing) throw new Error('Customer points record not found');
-    if (existing.points < points) throw new Error('Insufficient points');
+    if (!existing) throw new SenderError('Customer points record not found');
+    if (existing.points < points) throw new SenderError('Insufficient points');
 
     ctx.db.customerPoints.delete(existing);
     ctx.db.customerPoints.insert({
@@ -4797,7 +4833,7 @@ export const cancelInvitation = spacetimedb.reducer(
 
     const invite = [...ctx.db.orgInvitation.byOrganizationId.filter(organizationId)]
       .find(i => i.id.toString() === invitationId);
-    if (!invite) throw new Error('Invitation not found');
+    if (!invite) throw new SenderError('Invitation not found');
 
     ctx.db.orgInvitation.delete(invite);
   }
@@ -4829,7 +4865,7 @@ export const toggleTodo = spacetimedb.reducer(
   (ctx, { todoId, completed }) => {
     const todo = [...ctx.db.todo.byUserId.filter(ctx.sender)]
       .find(t => t.id.toString() === todoId);
-    if (!todo) throw new Error('Todo not found');
+    if (!todo) throw new SenderError('Todo not found');
 
     ctx.db.todo.delete(todo);
     ctx.db.todo.insert({ ...todo, completed });
@@ -4841,7 +4877,7 @@ export const deleteTodo = spacetimedb.reducer(
   (ctx, { todoId }) => {
     const todo = [...ctx.db.todo.byUserId.filter(ctx.sender)]
       .find(t => t.id.toString() === todoId);
-    if (!todo) throw new Error('Todo not found');
+    if (!todo) throw new SenderError('Todo not found');
 
     // Verify ownership
     if (todo.userId.toString() !== ctx.sender.toString()) {
@@ -4886,7 +4922,7 @@ export const markNotificationRead = spacetimedb.reducer(
   (ctx, { notificationId }) => {
     const notif = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
       .find(n => n.id.toString() === notificationId);
-    if (!notif) throw new Error('Notification not found');
+    if (!notif) throw new SenderError('Notification not found');
     ctx.db.notification.id.update({ ...notif, read: true });
   }
 );
@@ -4907,7 +4943,7 @@ export const dismissNotification = spacetimedb.reducer(
   (ctx, { notificationId }) => {
     const notif = [...ctx.db.notification.byTargetId.filter(ctx.sender)]
       .find(n => n.id.toString() === notificationId);
-    if (!notif) throw new Error('Notification not found');
+    if (!notif) throw new SenderError('Notification not found');
     ctx.db.notification.delete(notif);
   }
 );
@@ -5001,7 +5037,7 @@ export const deleteWasteLog = spacetimedb.reducer(
 
     const log = [...ctx.db.wasteLog.byOrganizationId.filter(organizationId)]
       .find(w => w.id.toString() === wasteLogId);
-    if (!log) throw new Error('Waste log not found');
+    if (!log) throw new SenderError('Waste log not found');
     ctx.db.wasteLog.delete(log);
   }
 );
@@ -5061,7 +5097,7 @@ export const updateLocation = spacetimedb.reducer(
 
     const loc = [...ctx.db.location.byOrganizationId.filter(args.organizationId)]
       .find(l => l.id.toString() === args.locationId);
-    if (!loc) throw new Error('Location not found');
+    if (!loc) throw new SenderError('Location not found');
 
     if (args.isDefault && !loc.isDefault) {
       const others = [...ctx.db.location.byOrganizationId.filter(args.organizationId)]
@@ -5092,7 +5128,7 @@ export const deleteLocation = spacetimedb.reducer(
 
     const loc = [...ctx.db.location.byOrganizationId.filter(organizationId)]
       .find(l => l.id.toString() === locationId);
-    if (!loc) throw new Error('Location not found');
+    if (!loc) throw new SenderError('Location not found');
     ctx.db.location.delete(loc);
   }
 );
@@ -5152,7 +5188,7 @@ export const updateSupplier = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
     const sup = [...ctx.db.supplier.byOrganizationId.filter(args.organizationId)]
       .find(s => s.id.toString() === args.supplierId);
-    if (!sup) throw new Error('Supplier not found');
+    if (!sup) throw new SenderError('Supplier not found');
     ctx.db.supplier.delete(sup);
     ctx.db.supplier.insert({
       ...sup,
@@ -5176,7 +5212,7 @@ export const deleteSupplier = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
     const sup = [...ctx.db.supplier.byOrganizationId.filter(organizationId)]
       .find(s => s.id.toString() === supplierId);
-    if (!sup) throw new Error('Supplier not found');
+    if (!sup) throw new SenderError('Supplier not found');
     ctx.db.supplier.delete(sup);
   }
 );
@@ -5218,7 +5254,7 @@ export const updatePurchaseOrderStatus = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
     const po = [...ctx.db.purchaseOrder.byOrganizationId.filter(organizationId)]
       .find(p => p.id.toString() === orderId);
-    if (!po) throw new Error('Purchase order not found');
+    if (!po) throw new SenderError('Purchase order not found');
     ctx.db.purchaseOrder.delete(po);
     ctx.db.purchaseOrder.insert({
       ...po,
@@ -5457,7 +5493,7 @@ export const updateExpense = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
     const exp = [...ctx.db.expense.byOrganizationId.filter(args.organizationId)]
       .find(e => e.id.toString() === args.expenseId);
-    if (!exp) throw new Error('Expense not found');
+    if (!exp) throw new SenderError('Expense not found');
     ctx.db.expense.delete(exp);
     ctx.db.expense.insert({
       ...exp,
@@ -5480,7 +5516,7 @@ export const deleteExpense = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
     const exp = [...ctx.db.expense.byOrganizationId.filter(organizationId)]
       .find(e => e.id.toString() === expenseId);
-    if (!exp) throw new Error('Expense not found');
+    if (!exp) throw new SenderError('Expense not found');
     ctx.db.expense.delete(exp);
   }
 );
@@ -5520,7 +5556,7 @@ export const updateCoupon = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
     const c = [...ctx.db.coupon.byOrganizationId.filter(args.organizationId)]
       .find(c => c.id.toString() === args.couponId);
-    if (!c) throw new Error('Coupon not found');
+    if (!c) throw new SenderError('Coupon not found');
     ctx.db.coupon.delete(c);
     ctx.db.coupon.insert({ ...c, code: args.code.toUpperCase(), discountType: args.discountType,
       discountValue: args.discountValue, minPurchase: args.minPurchase, maxUses: args.maxUses,
@@ -5535,7 +5571,7 @@ export const deleteCoupon = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
     const c = [...ctx.db.coupon.byOrganizationId.filter(organizationId)]
       .find(c => c.id.toString() === couponId);
-    if (!c) throw new Error('Coupon not found');
+    if (!c) throw new SenderError('Coupon not found');
     ctx.db.coupon.delete(c);
   }
 );
@@ -5546,11 +5582,11 @@ export const redeemCoupon = spacetimedb.reducer(
     findActiveMember(ctx, organizationId);
     const c = [...ctx.db.coupon.byCode.filter(code.toUpperCase())]
       .find(c => c.organizationId === organizationId);
-    if (!c) throw new Error('Coupon not found');
-    if (!c.active) throw new Error('Coupon is inactive');
-    if (c.usedCount >= c.maxUses && c.maxUses > 0) throw new Error('Coupon usage limit reached');
+    if (!c) throw new SenderError('Coupon not found');
+    if (!c.active) throw new SenderError('Coupon is inactive');
+    if (c.usedCount >= c.maxUses && c.maxUses > 0) throw new SenderError('Coupon usage limit reached');
     const today = new Date().toISOString().slice(0, 10);
-    if (today < c.validFrom || today > c.validUntil) throw new Error('Coupon expired');
+    if (today < c.validFrom || today > c.validUntil) throw new SenderError('Coupon expired');
     ctx.db.coupon.delete(c);
     ctx.db.coupon.insert({ ...c, usedCount: c.usedCount + 1 });
   }
@@ -5582,7 +5618,7 @@ export const updateQueueStatus = spacetimedb.reducer(
     findActiveMember(ctx, organizationId);
     const e = [...ctx.db.queueEntry.byOrganizationId.filter(organizationId)]
       .find(e => e.id.toString() === entryId);
-    if (!e) throw new Error('Queue entry not found');
+    if (!e) throw new SenderError('Queue entry not found');
     ctx.db.queueEntry.delete(e);
     ctx.db.queueEntry.insert({ ...e, status,
       ...(status === 'seated' ? { seatedAt: ctx.timestamp } : {}),
@@ -5596,7 +5632,7 @@ export const deleteQueueEntry = spacetimedb.reducer(
     findActiveMember(ctx, organizationId);
     const e = [...ctx.db.queueEntry.byOrganizationId.filter(organizationId)]
       .find(e => e.id.toString() === entryId);
-    if (!e) throw new Error('Queue entry not found');
+    if (!e) throw new SenderError('Queue entry not found');
     ctx.db.queueEntry.delete(e);
   }
 );
@@ -5627,7 +5663,7 @@ export const setScheduleIntegration = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
       ...existing,
@@ -5650,7 +5686,7 @@ export const disconnectScheduleIntegration = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
       ...existing,
@@ -5681,7 +5717,7 @@ export const serviceSetScheduleIntegration = spacetimedb.reducer(
     if (!isServiceCaller(ctx)) unauthorized('Service identity required');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
       ...existing,
@@ -5708,7 +5744,7 @@ export const serviceRecordScheduleSync = spacetimedb.reducer(
     if (!isServiceCaller(ctx)) unauthorized('Service identity required');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
       ...existing,
@@ -5738,7 +5774,7 @@ function findItemInOrg<T extends { id: { toString(): string } }>(
 ): T {
   const item = [...tableHandle.byOrganizationId.filter(organizationId)]
     .find(r => r.id.toString() === itemId);
-  if (!item) throw new Error('Record not found');
+  if (!item) throw new SenderError('Record not found');
   return item;
 }
 
@@ -5763,8 +5799,59 @@ function notifyOrgMembers(ctx: any, organizationId: string, type: string, title:
 }
 
 /** Look up the calling user's active org membership, throwing if not found. */
+/**
+ * Synthetic "owner" membership row returned for the service identity so that
+ * every org-scoped reducer can be driven from the /merchivaAdmin console
+ * (server-side, service token) without a real org_member row.
+ */
+// Every permission section the reducers ever check, all granted. Mirrors the
+// shape of lib/db/team.ts ownerPermissions().
+const SERVICE_FULL_PERMISSIONS = JSON.stringify({
+  inventory: { view: true, edit: true },
+  sales: { view: true, edit: true },
+  staffing: { view: true, edit: true },
+  pos: { view: true, edit: true },
+  settings: { view: true, edit: true },
+  team: { view: true, invite: true, edit: true },
+  dashboard: { view: true },
+  merchiva: { view: true },
+  training_grading: { view: true, edit: true },
+  finances: { view: true, edit: true },
+  reports: { view: true, edit: true },
+  products: { view: true, edit: true },
+  pricing: { view: true, edit: true },
+  customers: { view: true, edit: true },
+  marketing: { view: true, edit: true },
+  bookings: { view: true, edit: true },
+  reviews: { view: true, edit: true },
+  suppliers: { view: true, edit: true },
+  training: { view: true, edit: true },
+  chat: { view: true, edit: true },
+  website: { view: true, edit: true },
+});
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function serviceMember(ctx: any, organizationId: string) {
+  return {
+    id: { toString: () => 'service' },
+    organizationId,
+    userId: ctx.sender,
+    role: 'owner',
+    displayName: 'Merchiva Admin',
+    email: '',
+    permissions: SERVICE_FULL_PERMISSIONS,
+    status: 'active',
+    joinedAt: ctx.timestamp,
+    punchInCode: undefined,
+    hourlyRate: undefined,
+  };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findActiveMember(ctx: any, organizationId: string) {
+  // The service identity (used by the /merchivaAdmin console and cron jobs)
+  // acts as a virtual owner of every organization.
+  if (isServiceCaller(ctx)) return serviceMember(ctx, organizationId);
   const member = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
     .find((m: { organizationId: string; status: string }) =>
       m.organizationId === organizationId && m.status === 'active'
@@ -5810,6 +5897,7 @@ function shareGroupOrgIds(ctx: any, organizationId: string): string[] {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findShareGroupMember(ctx: any, organizationId: string) {
+  if (isServiceCaller(ctx)) return serviceMember(ctx, organizationId);
   const groupIds = shareGroupOrgIds(ctx, organizationId);
   const member = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
     .find((m: { organizationId: string; status: string }) =>
@@ -5869,7 +5957,7 @@ export const saveAiChatSession = spacetimedb.reducer(
       .find((r: { id: { toString(): string }; organizationId: string }) =>
         r.id.toString() === args.sessionId && r.organizationId === args.organizationId
       );
-    if (!existing) throw new Error('Session not found');
+    if (!existing) throw new SenderError('Session not found');
     ctx.db.aiChatSession.id.update({
       ...existing,
       messages: args.messages,
@@ -5892,7 +5980,7 @@ export const archiveAiChatSession = spacetimedb.reducer(
       .find((r: { id: { toString(): string }; organizationId: string }) =>
         r.id.toString() === args.sessionId && r.organizationId === args.organizationId
       );
-    if (!existing) throw new Error('Session not found');
+    if (!existing) throw new SenderError('Session not found');
     ctx.db.aiChatSession.id.update({
       ...existing,
       archived: true,
@@ -5945,7 +6033,7 @@ export const appendAiJobChunk = spacetimedb.reducer(
       .find((r: { id: { toString(): string }; organizationId: string }) =>
         r.id.toString() === args.jobId && r.organizationId === args.organizationId
       );
-    if (!existing) throw new Error('Job not found');
+    if (!existing) throw new SenderError('Job not found');
     ctx.db.aiJob.id.update({
       ...existing,
       status: args.setRunning ? 'running' : existing.status,
@@ -5968,7 +6056,7 @@ export const finalizeAiJob = spacetimedb.reducer(
       .find((r: { id: { toString(): string }; organizationId: string }) =>
         r.id.toString() === args.jobId && r.organizationId === args.organizationId
       );
-    if (!existing) throw new Error('Job not found');
+    if (!existing) throw new SenderError('Job not found');
     ctx.db.aiJob.id.update({
       ...existing,
       status: args.error ? 'failed' : 'done',
@@ -5990,7 +6078,7 @@ export const consumeAiJob = spacetimedb.reducer(
       .find((r: { id: { toString(): string }; organizationId: string }) =>
         r.id.toString() === args.jobId && r.organizationId === args.organizationId
       );
-    if (!existing) throw new Error('Job not found');
+    if (!existing) throw new SenderError('Job not found');
     ctx.db.aiJob.id.update({
       ...existing,
       consumed: true,
@@ -6376,21 +6464,14 @@ export const saveDailyBriefing = spacetimedb.reducer(
     summary: t.option(t.string()),
     generatedBy: t.string(),
     actions: t.option(t.string()),
-    problemKeys: t.option(t.string()),
-    hour: t.option(t.i32()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
-    // Upsert the (org, date, hour) snapshot — other hours of the day are kept
-    // so the chat can browse the day's hourly history.
+    // One briefing per (org, date) — replace whatever the day already has.
     for (const row of [...ctx.db.dailyBriefing.iter()]) {
-      if (
-        row.organizationId === args.organizationId &&
-        row.date === args.date &&
-        row.hour === args.hour
-      ) {
+      if (row.organizationId === args.organizationId && row.date === args.date) {
         ctx.db.dailyBriefing.delete(row);
       }
     }
@@ -6404,8 +6485,8 @@ export const saveDailyBriefing = spacetimedb.reducer(
       generatedBy: args.generatedBy,
       generatedAt: ctx.timestamp,
       actions: args.actions,
-      problemKeys: args.problemKeys,
-      hour: args.hour,
+      problemKeys: undefined,
+      hour: undefined,
     });
   }
 );
@@ -6422,7 +6503,7 @@ export const setAssistantConfig = spacetimedb.reducer(
     if (member.role !== 'owner') unauthorized('Owner only');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
       ...existing,
@@ -6441,11 +6522,32 @@ export const setBetaFeatures = spacetimedb.reducer(
     if (!perms.settings?.view) unauthorized('No settings permission');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
       ...existing,
       betaFeatures: config,
+      updatedAt: ctx.timestamp,
+    });
+  }
+);
+
+/** Set which optional device apps are installed on /store + /personal.
+ *  Owners / managers, or anyone with settings edit permission. */
+export const setDeviceApps = spacetimedb.reducer(
+  { organizationId: t.string(), config: t.string() },
+  (ctx, { organizationId, config }) => {
+    const member = findActiveMember(ctx, organizationId);
+    const perms = JSON.parse(member.permissions);
+    const isManager = member.role === 'owner' || member.role === 'manager';
+    if (!isManager && !perms.settings?.edit) unauthorized('No permission to manage device apps');
+
+    const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
+    if (!existing) throw new SenderError('Settings not found');
+    ctx.db.settings.delete(existing);
+    ctx.db.settings.insert({
+      ...existing,
+      deviceApps: config,
       updatedAt: ctx.timestamp,
     });
   }
@@ -6465,7 +6567,7 @@ export const updateOpeningHours = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     const existing = [...ctx.db.settings.byOrganizationId.filter(organizationId)][0];
-    if (!existing) throw new Error('Settings not found');
+    if (!existing) throw new SenderError('Settings not found');
     ctx.db.settings.delete(existing);
     ctx.db.settings.insert({
       ...existing,
@@ -6494,10 +6596,10 @@ export const assignRoleTask = spacetimedb.reducer(
     // Sanity-check that the referenced task and member belong to this org.
     const task = [...ctx.db.roleTask.byOrganizationId.filter(organizationId)]
       .find(r => r.id.toString() === taskId);
-    if (!task) throw new Error('Role task not found');
+    if (!task) throw new SenderError('Role task not found');
     const member = [...ctx.db.staffMember.byOrganizationId.filter(organizationId)]
       .find(m => m.id.toString() === memberId);
-    if (!member) throw new Error('Staff member not found');
+    if (!member) throw new SenderError('Staff member not found');
 
     ctx.db.roleTaskAssignment.insert({
       id: ctx.newUuidV4(),
@@ -6535,7 +6637,7 @@ export const completeRoleTask = spacetimedb.reducer(
 
     const existing = [...ctx.db.roleTaskAssignment.byOrganizationId.filter(organizationId)]
       .find(a => a.id.toString() === assignmentId);
-    if (!existing) throw new Error('Assignment not found');
+    if (!existing) throw new SenderError('Assignment not found');
 
     ctx.db.roleTaskAssignment.delete(existing);
     ctx.db.roleTaskAssignment.insert({
@@ -6564,7 +6666,7 @@ export const skipRoleTask = spacetimedb.reducer(
 
     const existing = [...ctx.db.roleTaskAssignment.byOrganizationId.filter(organizationId)]
       .find(a => a.id.toString() === assignmentId);
-    if (!existing) throw new Error('Assignment not found');
+    if (!existing) throw new SenderError('Assignment not found');
 
     ctx.db.roleTaskAssignment.delete(existing);
     ctx.db.roleTaskAssignment.insert({
@@ -6585,7 +6687,7 @@ export const deleteRoleTaskAssignment = spacetimedb.reducer(
 
     const existing = [...ctx.db.roleTaskAssignment.byOrganizationId.filter(organizationId)]
       .find(a => a.id.toString() === assignmentId);
-    if (!existing) throw new Error('Assignment not found');
+    if (!existing) throw new SenderError('Assignment not found');
 
     ctx.db.roleTaskAssignment.delete(existing);
   }
@@ -6614,7 +6716,7 @@ export const recordTaskCompletion = spacetimedb.reducer(
 
     const task = [...ctx.db.roleTask.byOrganizationId.filter(organizationId)]
       .find(r => r.id.toString() === taskId);
-    if (!task) throw new Error('Role task not found');
+    if (!task) throw new SenderError('Role task not found');
 
     ctx.db.roleTaskAssignment.insert({
       id: ctx.newUuidV4(),
@@ -6698,6 +6800,7 @@ export const deletePushSubscription = spacetimedb.reducer(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function requireAdmin(ctx: any): void {
+  if (isServiceCaller(ctx)) return;
   const me = ctx.db.user.identity.find(ctx.sender);
   if (!me || me.isAdmin !== true) unauthorized('Admin only');
 }
@@ -6724,7 +6827,7 @@ export const setUserAdmin = spacetimedb.reducer(
   (ctx, { targetEmail, isAdmin }) => {
     requireAdmin(ctx);
     const target = [...ctx.db.user.byEmail.filter(targetEmail)][0];
-    if (!target) throw new Error('User not found');
+    if (!target) throw new SenderError('User not found');
     ctx.db.user.identity.update({ ...target, isAdmin });
   }
 );
@@ -6746,7 +6849,7 @@ export const createBlogPost = spacetimedb.reducer(
   (ctx, { slug, title, excerpt, contentMd, coverImage, status, authorName }) => {
     requireAdmin(ctx);
     const dup = [...ctx.db.blogPost.bySlug.filter(slug)][0];
-    if (dup) throw new Error('Slug already in use');
+    if (dup) throw new SenderError('Slug already in use');
     const published = status === 'published' ? ctx.timestamp : undefined;
     ctx.db.blogPost.insert({
       id: ctx.newUuidV4(),
@@ -6778,10 +6881,10 @@ export const updateBlogPost = spacetimedb.reducer(
   (ctx, { postId, slug, title, excerpt, contentMd, coverImage, status }) => {
     requireAdmin(ctx);
     const existing = [...ctx.db.blogPost.iter()].find((p) => p.id.toString() === postId);
-    if (!existing) throw new Error('Post not found');
+    if (!existing) throw new SenderError('Post not found');
     if (existing.slug !== slug) {
       const dup = [...ctx.db.blogPost.bySlug.filter(slug)][0];
-      if (dup) throw new Error('Slug already in use');
+      if (dup) throw new SenderError('Slug already in use');
     }
     const wasPublished = existing.status === 'published';
     const nowPublished = status === 'published';
@@ -6904,78 +7007,8 @@ export const deleteBlogPost = spacetimedb.reducer(
   (ctx, { postId }) => {
     requireAdmin(ctx);
     const existing = [...ctx.db.blogPost.iter()].find((p) => p.id.toString() === postId);
-    if (!existing) throw new Error('Post not found');
+    if (!existing) throw new SenderError('Post not found');
     ctx.db.blogPost.delete(existing);
-  }
-);
-
-type ServiceAiChatMessage = {
-  id: string;
-  from: 'merchiva';
-  text: string;
-  time: string;
-};
-
-function parseStoredAiChatMessages(raw: string): unknown[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function storedMessageId(message: unknown): string | null {
-  if (message == null || typeof message !== 'object' || !('id' in message)) return null;
-  const id = (message as { id?: unknown }).id;
-  return typeof id === 'string' ? id : null;
-}
-
-function timestampSortValue(timestamp: unknown): number {
-  if (timestamp != null && typeof timestamp === 'object' && 'microsSinceUnixEpoch' in timestamp) {
-    return Number((timestamp as { microsSinceUnixEpoch: bigint | number }).microsSinceUnixEpoch);
-  }
-  return 0;
-}
-
-/** Service-side: upsert today's daily briefing for an org. */
-export const serviceSaveDailyBriefing = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    date: t.string(),
-    content: t.string(),
-    summary: t.option(t.string()),
-    generatedBy: t.string(),
-    actions: t.option(t.string()),
-    problemKeys: t.option(t.string()),
-    hour: t.option(t.i32()),
-  },
-  (ctx, args) => {
-    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
-
-    // Upsert the (org, date, hour) snapshot — keep the day's other hours.
-    for (const row of [...ctx.db.dailyBriefing.iter()]) {
-      if (
-        row.organizationId === args.organizationId &&
-        row.date === args.date &&
-        row.hour === args.hour
-      ) {
-        ctx.db.dailyBriefing.delete(row);
-      }
-    }
-
-    ctx.db.dailyBriefing.insert({
-      id: ctx.newUuidV4(),
-      organizationId: args.organizationId,
-      date: args.date,
-      content: args.content,
-      summary: args.summary,
-      generatedBy: args.generatedBy,
-      generatedAt: ctx.timestamp,
-      actions: args.actions,
-      problemKeys: args.problemKeys,
-      hour: args.hour,
-    });
   }
 );
 
@@ -7002,111 +7035,6 @@ export const serviceCreateNotification = spacetimedb.reducer(
       read: false,
       createdAt: ctx.timestamp,
     });
-  }
-);
-
-/** Service-side: append an automated Mr. Merchiva message for an arbitrary user. */
-export const serviceAppendAiChatMessage = spacetimedb.reducer(
-  {
-    organizationId: t.string(),
-    targetIdentity: t.identity(),
-    title: t.string(),
-    message: t.string(),
-    time: t.string(),
-    messageId: t.option(t.string()),
-  },
-  (ctx, { organizationId, targetIdentity, title, message, time, messageId }) => {
-    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
-
-    const id = messageId ?? `service-${ctx.newUuidV4().toString()}`;
-    const nextMessage: ServiceAiChatMessage = {
-      id,
-      from: 'merchiva',
-      text: message,
-      time,
-    };
-
-    const sessions = [...ctx.db.aiChatSession.byUserId.filter(targetIdentity)]
-      .filter((row: { organizationId: string; archived: boolean }) =>
-        row.organizationId === organizationId && !row.archived
-      )
-      .sort((a: { updatedAt: unknown }, b: { updatedAt: unknown }) =>
-        timestampSortValue(b.updatedAt) - timestampSortValue(a.updatedAt)
-      );
-
-    if (sessions.length === 0) {
-      ctx.db.aiChatSession.insert({
-        id: ctx.newUuidV4(),
-        organizationId,
-        userId: targetIdentity,
-        title,
-        messages: JSON.stringify([nextMessage]),
-        summary: undefined,
-        archived: false,
-        createdAt: ctx.timestamp,
-        updatedAt: ctx.timestamp,
-      });
-      return;
-    }
-
-    const existing = sessions[0];
-    const messages = parseStoredAiChatMessages(existing.messages);
-    if (messages.some((stored) => storedMessageId(stored) === id)) return;
-
-    ctx.db.aiChatSession.id.update({
-      ...existing,
-      title: existing.title || title,
-      messages: JSON.stringify([...messages, nextMessage].slice(-50)),
-      updatedAt: ctx.timestamp,
-    });
-  }
-);
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// USER BRIEFING PREFERENCE REDUCERS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/** Upsert the caller's briefing preference (one row per user). */
-export const setBriefingPref = spacetimedb.reducer(
-  {
-    briefingTime: t.string(),
-    timezone: t.string(),
-    enabled: t.bool(),
-    hours: t.option(t.string()),
-  },
-  (ctx, { briefingTime, timezone, enabled, hours }) => {
-    const existing = ctx.db.userBriefingPref.userId.find(ctx.sender);
-    if (existing) {
-      ctx.db.userBriefingPref.userId.update({
-        ...existing,
-        briefingTime,
-        timezone,
-        enabled,
-        hours,
-        updatedAt: ctx.timestamp,
-      });
-    } else {
-      ctx.db.userBriefingPref.insert({
-        userId: ctx.sender,
-        briefingTime,
-        timezone,
-        enabled,
-        createdAt: ctx.timestamp,
-        updatedAt: ctx.timestamp,
-        hours,
-      });
-    }
-  }
-);
-
-/** Delete the caller's briefing preference. */
-export const deleteBriefingPref = spacetimedb.reducer(
-  {},
-  (ctx) => {
-    const existing = ctx.db.userBriefingPref.userId.find(ctx.sender);
-    if (existing) {
-      ctx.db.userBriefingPref.delete(existing);
-    }
   }
 );
 
@@ -7181,5 +7109,89 @@ export const setAiUsageQuota = spacetimedb.reducer(
         updatedAt: ctx.timestamp,
       });
     }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PLATFORM ADMIN REDUCERS (/merchivaAdmin console — service identity only)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// All password hashing happens in the Next.js server (scrypt); reducers only
+// compare opaque hash strings. Every reducer here requires the service
+// identity, so browsers can never call them directly.
+
+const PLATFORM_ADMIN_USERNAME_RE = /^[a-z0-9][a-z0-9._-]{1,31}$/;
+
+function normalizePlatformAdminUsername(username: string): string {
+  const u = username.trim().toLowerCase();
+  if (!PLATFORM_ADMIN_USERNAME_RE.test(u)) {
+    throw new SenderError('Username must be 2-32 chars: lowercase letters, digits, . _ -');
+  }
+  return u;
+}
+
+/** Create a platform admin. `createdBy` is the acting admin's username (or "seed"). */
+export const platformAdminAdd = spacetimedb.reducer(
+  { username: t.string(), passwordHash: t.string(), createdBy: t.string() },
+  (ctx, { username, passwordHash, createdBy }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    const u = normalizePlatformAdminUsername(username);
+    if (!passwordHash) throw new SenderError('Password hash required');
+    if (ctx.db.platformAdmin.username.find(u)) throw new SenderError('Admin already exists');
+    ctx.db.platformAdmin.insert({
+      username: u,
+      createdAt: ctx.timestamp,
+      createdBy,
+      lastLoginAt: undefined,
+    });
+    const secret = ctx.db.platformAdminSecret.username.find(u);
+    if (secret) ctx.db.platformAdminSecret.delete(secret);
+    ctx.db.platformAdminSecret.insert({ username: u, passwordHash, updatedAt: ctx.timestamp });
+  }
+);
+
+/** Delete a platform admin. The last remaining admin cannot be removed. */
+export const platformAdminRemove = spacetimedb.reducer(
+  { username: t.string() },
+  (ctx, { username }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    const u = username.trim().toLowerCase();
+    const row = ctx.db.platformAdmin.username.find(u);
+    if (!row) throw new SenderError('Admin not found');
+    if ([...ctx.db.platformAdmin.iter()].length <= 1) {
+      throw new SenderError('Cannot remove the last platform admin');
+    }
+    ctx.db.platformAdmin.delete(row);
+    const secret = ctx.db.platformAdminSecret.username.find(u);
+    if (secret) ctx.db.platformAdminSecret.delete(secret);
+  }
+);
+
+/** Verify a login. Throws on mismatch; stamps lastLoginAt on success. */
+export const platformAdminVerify = spacetimedb.reducer(
+  { username: t.string(), passwordHash: t.string() },
+  (ctx, { username, passwordHash }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    const u = username.trim().toLowerCase();
+    const secret = ctx.db.platformAdminSecret.username.find(u);
+    const row = ctx.db.platformAdmin.username.find(u);
+    if (!secret || !row || secret.passwordHash !== passwordHash) {
+      throw new SenderError('Invalid username or password');
+    }
+    ctx.db.platformAdmin.username.update({ ...row, lastLoginAt: ctx.timestamp });
+  }
+);
+
+/** Replace a platform admin's password hash. */
+export const platformAdminSetPassword = spacetimedb.reducer(
+  { username: t.string(), passwordHash: t.string() },
+  (ctx, { username, passwordHash }) => {
+    if (!isServiceCaller(ctx)) unauthorized('Service identity required');
+    const u = username.trim().toLowerCase();
+    if (!ctx.db.platformAdmin.username.find(u)) throw new SenderError('Admin not found');
+    if (!passwordHash) throw new SenderError('Password hash required');
+    const secret = ctx.db.platformAdminSecret.username.find(u);
+    if (secret) ctx.db.platformAdminSecret.delete(secret);
+    ctx.db.platformAdminSecret.insert({ username: u, passwordHash, updatedAt: ctx.timestamp });
   }
 );

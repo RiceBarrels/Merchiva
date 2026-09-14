@@ -2,10 +2,11 @@
 
 // iOS-style home grid + frosted dock.
 
-import { Clock, FileText, LayoutGrid, Mail, Settings, Users, type LucideIcon } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_ICONS } from "./app-icons";
 import { hapticLight } from "@/lib/haptics";
-import type { DeviceApp } from "./types";
+import type { DeviceApp, TileColor } from "./types";
 
 export interface AppsGridProps {
   apps: DeviceApp[];
@@ -16,23 +17,39 @@ export interface AppsGridProps {
 }
 
 export const DEFAULT_DEVICE_APPS: DeviceApp[] = [
-  { id: "punch-in", label: "Punch In", dark: true, dock: true },
-  { id: "requests", label: "Requests", dock: true },
-  { id: "docs", label: "Docs", dock: true },
-  { id: "directory", label: "Directory" },
-  { id: "settings", label: "Settings" },
+  { id: "punch-in", label: "Punch In", color: "ink", dock: true },
+  { id: "requests", label: "Requests", color: "blue", dock: true },
+  { id: "docs", label: "Docs", color: "amber", dock: true },
+  { id: "directory", label: "Directory", color: "teal" },
+  { id: "settings", label: "Settings", color: "slate" },
 ];
 
-const ICONS: Record<string, LucideIcon> = {
-  "punch-in": Clock,
-  requests: Mail,
-  docs: FileText,
-  directory: Users,
-  settings: Settings,
+/** Soft tinted tile behind each multi-colour glyph (light mode); dark mode
+ *  uses a uniform dark tile so the glyph colours carry the identity. */
+export const TILE_COLORS: Record<TileColor, string> = {
+  ink: "from-white to-neutral-200",
+  slate: "from-white to-slate-200",
+  red: "from-white to-red-100",
+  orange: "from-white to-orange-100",
+  amber: "from-white to-amber-100",
+  lime: "from-white to-lime-100",
+  green: "from-white to-green-100",
+  emerald: "from-white to-emerald-100",
+  teal: "from-white to-teal-100",
+  cyan: "from-white to-cyan-100",
+  sky: "from-white to-sky-100",
+  blue: "from-white to-blue-100",
+  indigo: "from-white to-indigo-100",
+  violet: "from-white to-violet-100",
+  purple: "from-white to-purple-100",
+  fuchsia: "from-white to-fuchsia-100",
+  pink: "from-white to-pink-100",
+  rose: "from-white to-rose-100",
 };
+const TILE_BASE = "bg-gradient-to-b shadow-[0_1px_2px_rgb(0_0_0/.08),inset_0_0_0_.5px_rgb(0_0_0/.06)] dark:from-[rgb(48_48_48)] dark:to-[rgb(30_30_30)]";
 
 function Tile({ app, size, showLabel, onOpen }: { app: DeviceApp; size: "md" | "lg"; showLabel: boolean; onOpen: (id: DeviceApp["id"]) => void }) {
-  const Icon = app.icon ?? ICONS[app.id] ?? LayoutGrid;
+  const Icon = app.icon ?? APP_ICONS[app.id] ?? LayoutGrid;
   const lg = size === "lg";
   return (
     <button
@@ -41,20 +58,20 @@ function Tile({ app, size, showLabel, onOpen }: { app: DeviceApp; size: "md" | "
         hapticLight();
         onOpen(app.id);
       }}
-      className="group flex flex-col items-center gap-[7px] text-[11.5px] font-medium tracking-[-0.01em] text-foreground"
+      className="group flex min-w-0 flex-col items-center gap-[7px] text-[11.5px] font-medium tracking-[-0.01em] text-foreground"
     >
       <span
         className={cn(
           "grid place-items-center transition-[transform,filter] duration-100 group-active:scale-[0.92] group-active:brightness-[0.92]",
           lg ? "h-[76px] w-[76px] rounded-[17px]" : "h-[60px] w-[60px] rounded-[14px]",
-          app.dark
-            ? "bg-gradient-to-b from-[rgb(60_60_60)] to-[rgb(20_20_20)] text-white"
-            : "bg-gradient-to-b from-white to-[rgb(240_240_240)] text-foreground shadow-[0_1px_2px_rgb(0_0_0/.08),inset_0_0_0_.5px_rgb(0_0_0/.06)] dark:from-[rgb(48_48_48)] dark:to-[rgb(30_30_30)] dark:text-[rgb(250_250_250)]",
+          TILE_BASE,
+          TILE_COLORS[app.color ?? (app.dark ? "ink" : "slate")],
+          "text-foreground",
         )}
       >
-        <Icon className={lg ? "h-8 w-8" : "h-[25px] w-[25px]"} strokeWidth={1.8} />
+        <Icon className={lg ? "h-10 w-10" : "h-8 w-8"} />
       </span>
-      {showLabel && <span className="truncate">{app.label}</span>}
+      {showLabel && <span className="w-full truncate text-center">{app.label}</span>}
     </button>
   );
 }

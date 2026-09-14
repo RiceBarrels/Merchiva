@@ -9,7 +9,7 @@ import { getConnection, getActiveOrgId } from "./client";
 import { getDictionary, lookup } from "@/lib/i18n/dictionaries";
 import { LOCALE_COOKIE, isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { isOnline, mutationQueue } from "@/lib/offline";
-import { parseBetaFeatures, writeLocalBetaFeatures } from "@/lib/beta-features";
+import { parseDeviceApps } from "@/lib/device-apps";
 import type { RoleTask, ShiftPreset } from "@/lib/types";
 import { Timestamp } from "spacetimedb";
 
@@ -1786,8 +1786,6 @@ export async function saveDailyBriefing(data: {
   summary?: string | null;
   generatedBy: string;
   actions?: string | null;
-  problemKeys?: string | null;
-  hour?: number | null;
 }): Promise<void> {
   return insightsReducer("saveDailyBriefing")({
     organizationId: orgId(),
@@ -1796,8 +1794,6 @@ export async function saveDailyBriefing(data: {
     summary: data.summary ?? undefined,
     generatedBy: data.generatedBy,
     actions: data.actions ?? undefined,
-    problemKeys: data.problemKeys ?? undefined,
-    hour: data.hour ?? undefined,
   });
 }
 
@@ -1818,24 +1814,13 @@ export async function setAssistantConfig(
   });
 }
 
-export async function setBetaFeatures(
-  config: unknown,
-  organizationId?: string,
-): Promise<void> {
+/** Org-wide list of optional device apps installed from the device App Store. */
+export async function setDeviceApps(ids: unknown, organizationId?: string): Promise<void> {
   const targetOrgId = organizationId ?? orgId();
-  const parsed = parseBetaFeatures(config);
-  const json = JSON.stringify(parsed);
+  const json = JSON.stringify(parseDeviceApps(ids));
   const reducers = conn().reducers as Record<string, ((args: unknown) => Promise<void>) | undefined>;
-  if (reducers.setBetaFeatures) {
-    return reducers.setBetaFeatures({
-      organizationId: targetOrgId,
-      config: json,
-    });
-  }
-
-  // Compatibility fallback for local dev before `spacetime generate` has
-  // refreshed the generated client with the new reducer.
-  writeLocalBetaFeatures(targetOrgId, parsed);
+  if (!reducers.setDeviceApps) throw new Error("setDeviceApps reducer is not available yet");
+  return reducers.setDeviceApps({ organizationId: targetOrgId, config: json });
 }
 
 // ─── Blog Posts ─────────────────────────────────────────────────────────────
@@ -1912,28 +1897,6 @@ export async function updateOpeningHours(data: {
     openingHours: data.openingHours ?? undefined,
     countryCode: data.countryCode ?? undefined,
   });
-}
-
-// ─── Morning briefing preference ────────────────────────────────────────────
-
-/** Upsert the current user's morning-briefing schedule. */
-export async function setBriefingPref(
-  briefingTime: string,
-  timezone: string,
-  enabled: boolean,
-  hours?: number[] | null,
-): Promise<void> {
-  return conn().reducers.setBriefingPref({
-    briefingTime,
-    timezone,
-    enabled,
-    hours: hours && hours.length ? JSON.stringify(hours) : undefined,
-  });
-}
-
-/** Remove the current user's morning-briefing schedule. */
-export async function deleteBriefingPref(): Promise<void> {
-  return conn().reducers.deleteBriefingPref({});
 }
 
 /**

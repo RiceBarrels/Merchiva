@@ -1,10 +1,10 @@
 /**
  * Pure builder for the morning-briefing AI context.
  *
- * Shared by the client (components/morning-briefing-card.tsx, from live
- * subscription rows) and the cron route (app/api/cron/morning-briefing,
- * from a server-side service connection). Both sources expose the same
- * camelCase SpacetimeDB row fields, so the logic lives here once.
+ * Used by the dashboard card (components/morning-briefing-card.tsx, from live
+ * subscription rows) and by the server-side store context builder
+ * (lib/spacetimedb/service-client.ts, from a service connection). Both sources
+ * expose the same camelCase SpacetimeDB row fields, so the logic lives here once.
  *
  * The shape intentionally mirrors the right-panel Mr. Merchiva `storeContext`
  * (components/merchiva-chat-dashboard.tsx) so the briefing model sees the exact
@@ -15,7 +15,7 @@
  * coupons, and a yesterday-vs-prior-week sales comparison.
  *
  * TIMEZONE: `today` is passed in already localized to the org/user timezone
- * (the cron computes it per-user; the client uses the browser's local date).
+ * (the server computes it from settings.timezone; the client uses the browser's local date).
  * Date-string columns (shift.date, sales_record.date) are treated as already
  * local. Timestamp columns (payment.createdAt, assignment.completedAt/dueAt) are
  * UTC instants, so we bucket them into the org's timezone (settings.timezone)
@@ -944,53 +944,4 @@ export function buildBriefingContext(
   };
 }
 
-const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-
-/**
- * Stable, order-independent set of "problem" signatures present in a briefing.
- * The hourly cron diffs this run's keys against the previous run's stored keys
- * to decide whether a NEW problem appeared (→ notify the manager). Keys must be
- * deterministic for the same underlying problem so an ongoing issue doesn't
- * re-notify every hour.
- */
-export function briefingProblemKeys(ctx: BriefingContext): string[] {
-  const keys: string[] = [];
-
-  for (const i of ctx.lowStock) keys.push(`${i.outOfStock ? "out" : "low"}:${i.name}`);
-
-  // No coverage today — only flag when the store is actually open today.
-  let openToday = true;
-  if (ctx.openingHours) {
-    const d = new Date(`${ctx.date}T00:00:00Z`);
-    const dayKey = WEEKDAY_KEYS[Number.isNaN(d.getTime()) ? 0 : d.getUTCDay()];
-    const th = (ctx.openingHours as Record<string, { closed?: boolean } | undefined>)[dayKey];
-    openToday = !(th?.closed === true);
-  }
-  if (openToday && ctx.todayShifts.length === 0 && ctx.team.length > 0) keys.push("coverage:none");
-
-  for (const o of ctx.taskCompliance.overdueExamples) keys.push(`overdue:${o.task}:${o.staff}`);
-  for (const o of ctx.todayTasks.overdue) {
-    keys.push(`today-task-overdue:${o.task}:${o.staff}:${o.dueTime ?? o.dueDate}`);
-  }
-  for (const e of ctx.yesterdayTaskEvidence) {
-    if (e.evidenceStatus === "missing_required") keys.push(`evidence:${e.task}:${e.staff}`);
-  }
-  // Attendance exceptions — late arrival / no-show and 晚下班 / overtime. Keyed
-  // by person + status so an ongoing issue doesn't re-notify, but a NEW one does.
-  for (const a of ctx.attendance.lateArrivals) keys.push(`${a.status}:${a.name}`);
-  for (const d of ctx.attendance.lateDepartures) {
-    keys.push(`${d.stillOn ? "overtime" : "lateout"}:${d.name}`);
-  }
-  // Forgot to clock out — keyed by person + punch day so a new incident on a
-  // later day re-notifies but an ongoing one doesn't re-fire every hour.
-  for (const o of ctx.attendance.overdueClockOuts) {
-    keys.push(`${o.kind === "stale" ? "stale-punch" : "overdue-out"}:${o.name}:${o.punchDate}`);
-  }
-  for (const r of ctx.timeOffRequests) keys.push(`timeoff:${r.staffName}:${r.startDate}`);
-  for (const s of ctx.shiftTrades) keys.push(`trade:${s.requester}:${s.type}`);
-  for (const c of ctx.expiringCoupons) keys.push(`coupon:${c.code}`);
-  for (const ins of ctx.insights) if (ins.severity === "high") keys.push(`insight:${ins.title}`);
-
-  return Array.from(new Set(keys));
-}
 /* eslint-enable @typescript-eslint/no-explicit-any */

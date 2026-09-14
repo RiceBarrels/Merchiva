@@ -100,7 +100,6 @@ export default function ProductsPage() {
   const t = useT();
   const { format } = useCurrency();
   const { organizationId, shareGroupOrgs } = usePermissions();
-  const router = useRouter();
   // Data via SpacetimeDB migration hook
   const { products, refreshing, userId } = useProducts(organizationId);
   const { items: inventoryItems } = useInventory(organizationId);
@@ -442,11 +441,7 @@ export default function ProductsPage() {
                       ? Math.round(((p.unitsSoldThisMonth - p.unitsSoldLastMonth) / p.unitsSoldLastMonth) * 100)
                       : 0;
                     return (
-                      <TableRow
-                        key={p.id}
-                        className="cursor-pointer"
-                        onClick={() => router.push(`/manager/products/${p.id}`)}
-                      >
+                      <TableRow key={p.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {p.imageUrl && (

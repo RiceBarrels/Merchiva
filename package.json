@@ -1,7 +1,7 @@
 {
   "name": "merchiva",
   "version": "0.1.1-beta",
-  "description": "Merchiva — daily management platform for small businesses.",
+  "description": "Merchiva \u2014 daily management platform for small businesses.",
   "author": {
     "name": "Merchiva",
     "email": "colinwilsonfan@gmail.com"
@@ -41,15 +41,7 @@
     "@capacitor/keyboard": "^8.0.2",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
-    "@craftjs/core": "^0.2.12",
-    "@craftjs/layers": "^0.2.7",
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "@eigenpal/docx-js-editor": "^0.5.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@monaco-editor/react": "^4.7.0",
-    "@stripe/stripe-js": "^9.5.0",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-deep-link": "^2",
     "@tauri-apps/plugin-dialog": "^2",

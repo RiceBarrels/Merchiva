@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/manager/", "/store", "/personal", "/api/", "/setup", "/auth-callback", "/invite/", "/preview/", "/s/"],
+        disallow: ["/manager/", "/store", "/personal", "/api/", "/setup", "/auth-callback", "/invite/"],
       },
     ],
     sitemap: "https://project-management-phi-red.vercel.app/sitemap.xml",

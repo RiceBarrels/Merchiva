@@ -5,7 +5,6 @@ import { Sales } from "./Sales.tsx";
 import { Products } from "./Products.tsx";
 import { Pricing } from "./Pricing.tsx";
 import { Personnel } from "./Personnel.tsx";
-import { Customers } from "./Customers.tsx";
 import { Chat } from "./Chat.tsx";
 import { Schedule } from "./Schedule.tsx";
 import { Suppliers } from "./Suppliers.tsx";
@@ -14,8 +13,6 @@ import { Finances } from "./Finances.tsx";
 import { Reports } from "./Reports.tsx";
 import { Roles } from "./Roles.tsx";
 import { Training } from "./Training.tsx";
-import { Marketing } from "./Marketing.tsx";
-import { Membership } from "./Membership.tsx";
 import { Settings } from "./Settings.tsx";
 import { Placeholder } from "./Placeholder.tsx";
 
@@ -52,10 +49,7 @@ const REGISTRY: Record<string, (p: PageProps) => React.ReactElement> = {
   schedule: full(Schedule),
   roles: full(Roles),
   training: full(Training),
-  customers: (p) => <Customers height={p.height} />,
-  marketing: full(Marketing),
   chat: (p) => <Chat focused={p.focused} height={p.height} />,
-  membership: () => <Membership />,
   settings: () => <Settings />,
 };
 

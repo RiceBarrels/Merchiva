@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
-import { betaFeatureForPath, betaFeaturesFromSettingsRow } from "@/lib/beta-features";
 import { getAppMode } from "@/lib/app-mode";
 
 import { tables } from "@/lib/spacetimedb/generated";
@@ -455,34 +454,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // positively read the org row and it's genuinely out of access — if the row
   // hasn't streamed in yet (or we're offline) we fail open, never locking a
   // legitimate user out. Returns null while undetermined.
-  const activeBetaFeatures = useMemo(() => {
-    if (!effectiveAuth) return null;
-    const row = settingsRows.find(
-      (r: { organizationId: string }) => r.organizationId === effectiveAuth.organizationId,
-    );
-    return betaFeaturesFromSettingsRow(row, effectiveAuth.organizationId);
-  }, [effectiveAuth, settingsRows]);
-
-  useEffect(() => {
-    if (!effectiveAuth || needsName) return;
-    if (setupComplete !== true) return;
-    if (!settingsReady || !activeBetaFeatures) return;
-    const requiredFeature = betaFeatureForPath(pathname);
-    if (!requiredFeature || activeBetaFeatures[requiredFeature]) return;
-
-    toast.info(t("settings.betaFeatureDisabledToast"));
-    setupRouter.replace("/manager/settings");
-  }, [
-    activeBetaFeatures,
-    effectiveAuth,
-    needsName,
-    pathname,
-    settingsReady,
-    setupComplete,
-    setupRouter,
-    t,
-  ]);
-
   const [subscriptionCheckAt, setSubscriptionCheckAt] = useState<number | null>(null);
   useEffect(() => {
     const updateNow = () => setSubscriptionCheckAt(Date.now());

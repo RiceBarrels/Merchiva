@@ -1,23 +1,29 @@
 "use client";
 
-// Every existing Merchiva feature (the pages under app/manager/*) that can be
-// opened as an "app" from the store-device and personal-device home grids.
-// Pages are loaded lazily (next/dynamic, ssr: false) and rendered inside the
-// surface's slide-over panel via <EmbeddedPage>.
+// Every Merchiva feature that can be opened as an "app" from the store-device
+// and personal-device home grids.
+//
+// Device apps are LITE versions built for frontline staff (see
+// components/device/apps/lite.tsx): an entry is shown on the grids only when
+// it has a `lite` component. The full manager pages (`component` / `pages`,
+// loaded lazily) are only ever shown in /manager; here they serve link
+// interception and any kiosk-style page flagged `keepManagerPage`.
 
 import { useMemo, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import {
-  Bell, CalendarCheck, LayoutDashboard, MessageSquare, Monitor, MonitorSmartphone,
-  Package, Palette, Settings2, Tag, TrendingUp, UserRoundSearch, Users, type LucideIcon,
-} from "lucide-react";
+  BookingsIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon,
+  NotificationsIcon, PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, StoreSettingsIcon, TasksIcon, TrainingIcon, type AppIcon,
+} from "./app-icons";
 import type { Permissions } from "@/lib/types";
-import type { BetaFeatureKey } from "@/lib/beta-features";
 import { usePermissions } from "@/lib/context/permissions";
-import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
+import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
+import { isDeviceAppInstalled } from "@/lib/device-apps";
+import { DEFAULT_DEVICE_APPS } from "./apps-grid";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
-import type { DeviceApp } from "./types";
+import type { DeviceApp, TileColor } from "./types";
+import type { LiteAppProps } from "./apps/types";
 
 export interface CatalogPage {
   /** Manager route of this page (used to intercept in-page tab links). */
@@ -25,27 +31,32 @@ export interface CatalogPage {
   component: ComponentType;
   /** Extra gating on top of the app's own (e.g. the website builder tab). */
   permissionKey?: keyof Permissions;
-  betaFeature?: BetaFeatureKey;
   managerOnly?: boolean;
 }
 
 export interface CatalogApp {
   /** Stable id, also used as the i18n key `device.catalog.<id>`. */
   id: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   /** Manager route this feature lives at (used to intercept in-page links). */
   route: string;
   /** Permission section gating the app (undefined = everyone). */
   permissionKey?: keyof Permissions;
-  /** Beta feature flag that must be on (same keys as the sidebar nav). */
-  betaFeature?: BetaFeatureKey;
-  /** Which surfaces show it by default. */
+  /** Which surfaces show it. Every app is on both today; the grid is gated
+   *  per user by `permissionKey` / `managerOnly` instead. */
   surfaces: Array<"store" | "personal">;
   /** Managers only (owner / manager role). */
   managerOnly?: boolean;
-  /** Lazy page component. */
+  /** Lazy manager page component (fallback / kiosk pages only). */
   component: ComponentType;
-  /** Dark tile / dock membership on the grid. */
+  /** Simplified device app. Entries without one are hidden from the grids
+   *  unless `keepManagerPage` is set. */
+  lite?: ComponentType<LiteAppProps>;
+  /** Show the manager page as-is (kiosk-style UIs such as the POS terminal). */
+  keepManagerPage?: boolean;
+  /** Tile colour on the grid (every app gets its own). */
+  color?: TileColor;
+  /** Dark tile (legacy; prefer `color`). */
   dark?: boolean;
   dock?: boolean;
   /** Dock membership per surface (overrides `dock`). */
@@ -67,61 +78,73 @@ function lazy(loader: () => Promise<{ default: ComponentType<any> }>): Component
   return dynamic(loader, { ssr: false, loading: Loading }) as ComponentType;
 }
 
+/** Lazy lite app (named export). Loaded on open, like the manager pages. */
+function lite(loader: () => Promise<ComponentType<LiteAppProps>>): ComponentType<LiteAppProps> {
+  return dynamic(() => loader().then((c) => ({ default: c })), { ssr: false, loading: Loading }) as ComponentType<LiteAppProps>;
+}
+
 export const APP_CATALOG: CatalogApp[] = [
-  { id: "dashboard", icon: LayoutDashboard, route: "/manager/dashboard", permissionKey: "dashboard", surfaces: ["store"], managerOnly: true,
+  { id: "dashboard", icon: DashboardIcon, route: "/manager/dashboard", color: "slate", permissionKey: "dashboard", surfaces: ["store", "personal"], managerOnly: true,
     component: lazy(() => import("@/app/manager/dashboard/page")) },
-  // Personnel hub: schedule · team · roles · training · pay share one app
-  // (the hub tab strip switches pages inside the panel).
-  { id: "personnel", icon: Users, route: "/manager/personnel/schedule", permissionKey: "staffing", surfaces: ["store", "personal"], dockOn: ["personal"],
+  // Personnel: the manager hub (schedule · team · roles · training · pay) is
+  // split into four single-purpose lite apps. Everyone sees their own data,
+  // so none of them is permission-gated; the hub entry below stays for link
+  // interception only (no lite → hidden from the grids).
+  { id: "schedule", icon: ScheduleIcon, route: "/manager/personnel/schedule", color: "indigo", surfaces: ["store", "personal"], dockOn: ["personal"],
+    component: lazy(() => import("@/app/manager/personnel/schedule/page")),
+    lite: lite(() => import("./apps/schedule").then((m) => m.ScheduleLite)) },
+  // Tasks = the manager's "Roles" tab (roles + their task lists); the lite
+  // app is today's to-do list. Installing it turns the roles tab on.
+  { id: "tasks", icon: TasksIcon, route: "/manager/personnel/roles", color: "green", surfaces: ["store", "personal"], dockOn: ["personal"],
+    component: lazy(() => import("@/app/manager/personnel/roles/page")),
+    lite: lite(() => import("./apps/tasks").then((m) => m.TasksLite)) },
+  { id: "training", icon: TrainingIcon, route: "/manager/personnel/training", color: "purple", surfaces: ["store", "personal"],
+    component: lazy(() => import("@/app/manager/personnel/training/page")),
+    lite: lite(() => import("./apps/training").then((m) => m.TrainingLite)) },
+  { id: "pay", icon: PayIcon, route: "/manager/personnel/pay", color: "emerald", surfaces: ["personal"],
+    component: lazy(() => import("@/app/manager/personnel/pay/page")),
+    lite: lite(() => import("./apps/pay").then((m) => m.PayLite)) },
+  { id: "personnel", icon: DirectoryIcon, route: "/manager/personnel/schedule", color: "indigo", permissionKey: "staffing", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/personnel/schedule/page")),
     pages: [
       { route: "/manager/personnel/team", permissionKey: "team", component: lazy(() => import("@/app/manager/personnel/team/page")) },
-      { route: "/manager/personnel/roles", permissionKey: "team", managerOnly: true, component: lazy(() => import("@/app/manager/personnel/roles/page")) },
-      { route: "/manager/personnel/training", component: lazy(() => import("@/app/manager/personnel/training/page")) },
-      { route: "/manager/personnel/pay", component: lazy(() => import("@/app/manager/personnel/pay/page")) },
     ] },
   // Inventory · Suppliers · Waste log are one tab group in the manager UI.
-  { id: "inventory", icon: Package, route: "/manager/inventory", permissionKey: "inventory", surfaces: ["store"], dockOn: ["store"],
+  { id: "inventory", icon: InventoryIcon, route: "/manager/inventory", color: "orange", permissionKey: "inventory", surfaces: ["store", "personal"], dockOn: ["store"],
     component: lazy(() => import("@/app/manager/inventory/page")),
+    lite: lite(() => import("./apps/inventory").then((m) => m.InventoryLite)),
     pages: [
       { route: "/manager/suppliers", component: lazy(() => import("@/app/manager/suppliers/page")) },
       { route: "/manager/inventory/waste", component: lazy(() => import("@/app/manager/inventory/waste/page")) },
     ] },
   // Products · Pricing
-  { id: "products", icon: Tag, route: "/manager/products", permissionKey: "products", surfaces: ["store"],
+  { id: "products", icon: ProductsIcon, route: "/manager/products", color: "pink", permissionKey: "products", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/products/page")),
+    lite: lite(() => import("./apps/products").then((m) => m.ProductsLite)),
     pages: [{ route: "/manager/pricing", component: lazy(() => import("@/app/manager/pricing/page")) }] },
   // Sales · Reports · Finances
-  { id: "sales", icon: TrendingUp, route: "/manager/sales", permissionKey: "sales", surfaces: ["store"],
+  { id: "sales", icon: SalesIcon, route: "/manager/sales", color: "red", permissionKey: "sales", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/sales/page")),
+    lite: lite(() => import("./apps/sales").then((m) => m.SalesLite)),
     pages: [
       { route: "/manager/reports", component: lazy(() => import("@/app/manager/reports/page")) },
       { route: "/manager/finances", component: lazy(() => import("@/app/manager/finances/page")) },
     ] },
-  { id: "pos", icon: MonitorSmartphone, route: "/manager/pos", permissionKey: "pos", betaFeature: "pos", surfaces: ["store"], dark: true, dockOn: ["store"],
-    component: lazy(() => import("@/app/manager/pos/page")) },
   // Bookings · Membership · Reviews · Website builder share the storefront tabs.
-  { id: "bookings", icon: CalendarCheck, route: "/manager/bookings", permissionKey: "settings", surfaces: ["store"],
+  { id: "bookings", icon: BookingsIcon, route: "/manager/bookings", color: "sky", permissionKey: "settings", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/bookings/page")),
+    lite: lite(() => import("./apps/bookings").then((m) => m.BookingsLite)),
     pages: [
-      { route: "/manager/membership", component: lazy(() => import("@/app/manager/membership/page")) },
       { route: "/manager/reviews", component: lazy(() => import("@/app/manager/reviews/page")) },
-      { route: "/manager/builder", permissionKey: "website", betaFeature: "website", managerOnly: true, component: lazy(() => import("@/app/manager/builder/page")) },
     ] },
   // Customers · Marketing
-  { id: "customers", icon: UserRoundSearch, route: "/manager/customers", permissionKey: "sales", betaFeature: "website", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/customers/page")),
-    pages: [{ route: "/manager/marketing", component: lazy(() => import("@/app/manager/marketing/page")) }] },
-  { id: "notifications", icon: Bell, route: "/manager/notifications", surfaces: ["store", "personal"],
-    component: lazy(() => import("@/app/manager/notifications/page")) },
-  { id: "channel", icon: MessageSquare, route: "/manager/channel", permissionKey: "staffing", surfaces: ["store", "personal"],
+  { id: "notifications", icon: NotificationsIcon, route: "/manager/notifications", color: "amber", surfaces: ["store", "personal"],
+    component: lazy(() => import("@/app/manager/notifications/page")),
+    lite: lite(() => import("./apps/notifications").then((m) => m.NotificationsLite)) },
+  { id: "channel", icon: ChannelIcon, route: "/manager/channel", color: "cyan", permissionKey: "staffing", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/channel/page")) },
-  { id: "display", icon: Monitor, route: "/manager/display", permissionKey: "pos", surfaces: ["store"],
-    component: lazy(() => import("@/app/manager/display/page")) },
-  { id: "design", icon: Palette, route: "/manager/design", permissionKey: "website", betaFeature: "design", surfaces: ["store"], managerOnly: true,
-    component: lazy(() => import("@/app/manager/design/page")) },
   // Store settings · Integrations
-  { id: "settings-org", icon: Settings2, route: "/manager/settings", permissionKey: "settings", surfaces: ["store"], managerOnly: true,
+  { id: "settings-org", icon: StoreSettingsIcon, route: "/manager/settings", color: "slate", permissionKey: "settings", surfaces: ["store", "personal"], managerOnly: true,
     component: lazy(() => import("@/app/manager/settings/page")),
     pages: [{ route: "/manager/api-settings", component: lazy(() => import("@/app/manager/api-settings/page")) }] },
 ];
@@ -174,11 +197,10 @@ export function catalogAppForRoute(pathname: string): CatalogApp | null {
 
 /** Whether `page` may be opened by an actor with these checks. */
 export function pageAllowed(
-  page: { permissionKey?: keyof Permissions; betaFeature?: BetaFeatureKey; managerOnly?: boolean },
-  ctx: { can: (section: keyof Permissions) => boolean; isManager: boolean; betaFeatures: Partial<Record<BetaFeatureKey, boolean>> },
+  page: { permissionKey?: keyof Permissions; managerOnly?: boolean },
+  ctx: { can: (section: keyof Permissions) => boolean; isManager: boolean },
 ): boolean {
   if (page.managerOnly && !ctx.isManager) return false;
-  if (page.betaFeature && !ctx.betaFeatures[page.betaFeature]) return false;
   if (page.permissionKey && !ctx.can(page.permissionKey)) return false;
   return true;
 }
@@ -192,10 +214,19 @@ export interface CatalogActor {
   permissions: Permissions;
 }
 
-export function useCatalogApps(surface: "store" | "personal", actor?: CatalogActor | null): DeviceApp[] {
-  const t = useT();
+/** Whether a catalog app can appear on a surface at all (has a device UI
+ *  and is listed for the surface). Permission / role and install state are
+ *  checked separately. */
+export function catalogAppOnSurface(a: CatalogApp, surface: "store" | "personal"): boolean {
+  if (!a.lite && !a.keepManagerPage) return false;
+  if (!a.surfaces.includes(surface)) return false;
+  return true;
+}
+
+/** Permission checks for the person using a surface (the operator on
+ *  /store, the signed-in member on /personal). */
+export function useCatalogActor(actor?: CatalogActor | null) {
   const { can: canSelf, role: selfRole } = usePermissions();
-  const { betaFeatures } = useBetaFeatures();
   const role = actor ? actor.role : selfRole;
   const isManager = role === "owner" || role === "manager";
   const can = useMemo(
@@ -205,12 +236,36 @@ export function useCatalogApps(surface: "store" | "personal", actor?: CatalogAct
         : (section: keyof Permissions) => canSelf(section, "view"),
     [actor, canSelf],
   );
+  return { role, isManager, can };
+}
+
+/** The surface's own (non-catalog) apps, filtered like the catalog: required
+ *  ones always, optional ones once installed from /manager/apps. The store
+ *  device has no Punch In tile (punching happens at log-in / log-out). */
+export function useDeviceBuiltins(surface: "store" | "personal"): DeviceApp[] {
+  const t = useT();
+  const { installed } = useDeviceApps();
+  const ns = surface === "store" ? "storeDevice" : "personalDevice";
+  return useMemo(
+    () =>
+      DEFAULT_DEVICE_APPS.filter((a) => {
+        if (surface === "store" && a.id === "punch-in") return false;
+        return isDeviceAppInstalled(a.id, installed);
+      }).map((a) => ({ ...a, label: t(`${ns}.apps.${a.id}`) })),
+    [surface, installed, t, ns],
+  );
+}
+
+export function useCatalogApps(surface: "store" | "personal", actor?: CatalogActor | null): DeviceApp[] {
+  const t = useT();
+  const { isManager, can } = useCatalogActor(actor);
+  const { installed } = useDeviceApps();
   return useMemo(
     () =>
       APP_CATALOG.filter((a) => {
-        if (!a.surfaces.includes(surface)) return false;
+        if (!catalogAppOnSurface(a, surface)) return false;
+        if (!isDeviceAppInstalled(a.id, installed)) return false;
         if (a.managerOnly && !isManager) return false;
-        if (a.betaFeature && !betaFeatures[a.betaFeature]) return false;
         if (a.permissionKey && !can(a.permissionKey)) return false;
         return true;
       }).map((a) => ({
@@ -218,8 +273,9 @@ export function useCatalogApps(surface: "store" | "personal", actor?: CatalogAct
         label: t(`device.catalog.${a.id}`),
         icon: a.icon,
         dark: a.dark,
+        color: a.color,
         dock: a.dockOn ? a.dockOn.includes(surface) : a.dock,
       })),
-    [surface, isManager, betaFeatures, can, t],
+    [surface, isManager, can, installed, t],
   );
 }

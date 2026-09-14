@@ -83,8 +83,6 @@ export default function ReviewsPage() {
           subtitle={t("reviews.pageSubtitle")}
         />
         <PageTabs tabs={[
-          { label: t("nav.website"), href: "/manager/builder" },
-          { label: t("nav.membership"), href: "/manager/membership" },
           { label: t("nav.bookings"), href: "/manager/bookings" },
           { label: t("nav.reviews"), href: "/manager/reviews" },
         ]} />
@@ -97,7 +95,7 @@ export default function ReviewsPage() {
                 <IconTile icon={Globe} />
                 <div>
                   <CardTitle className="text-base">{t("reviews.googleIntegrationTitle")}</CardTitle>
-                  <CardDescription>{t("marketing.campaigns.comingSoon")}</CardDescription>
+                  <CardDescription>{t("reviews.comingSoon")}</CardDescription>
                 </div>
                 <Badge variant="outline" className="ml-auto text-[10px]">
                   {t("reviews.plannedBadge")}

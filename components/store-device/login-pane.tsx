@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTable } from "spacetimedb/react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getConnection } from "@/lib/spacetimedb/client";
@@ -12,6 +12,7 @@ import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
 import { QrCodeView, PinPad, fmtMMSS, useNow } from "@/components/device";
 import { findMemberByPin, isManagerRole, type StoreMember } from "./use-org-members";
+import { ExitStoreDrawer } from "./exit-store-drawer";
 
 const QR_TTL_SECONDS = 60;
 
@@ -88,12 +89,16 @@ export interface LoginPaneProps {
   /** Pause QR issuing while the pane is hidden (idle lock). */
   active: boolean;
   onLogin: (member: StoreMember) => void;
+  /** Phone: smaller QR, tighter padding, medium PIN keys. */
+  compact?: boolean;
   className?: string;
 }
 
-export function LoginPane({ organizationId, deviceId, deviceName, members, active, onLogin, className }: LoginPaneProps) {
+export function LoginPane({ organizationId, deviceId, deviceName, members, active, onLogin, compact = false, className }: LoginPaneProps) {
   const t = useT();
   const [pinMode, setPinMode] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+  const canExit = members.some((m) => isManagerRole(m.role) && !!m.punchInCode);
   const { value, secondsLeft, refreshing, refresh, approved } = useDeviceLoginQr(organizationId, deviceId, active && !pinMode);
 
   // QR approved from a phone → show the check, consume the request, log in.
@@ -152,15 +157,15 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
   }, [deviceName, members, organizationId, t]);
 
   return (
-    <div className={cn("relative flex flex-col bg-background border-border md:border-r px-8 pt-8 pb-6 min-h-0", className)}>
+    <div className={cn("relative flex flex-col bg-background border-border min-h-0", compact ? "px-5 pt-5 pb-5" : "border-r px-8 pt-8 pb-6", className)}>
       {!pinMode ? (
         <>
           <QrCodeView
             value={value}
-            size={240}
+            size={compact ? 200 : 240}
             status={scanOk ? "ok" : refreshing ? "refreshing" : "idle"}
             caption={scanOk ? `✓ ${t("storeDevice.phoneVerified")} · ${scanOk}` : undefined}
-            className="mx-auto mt-4"
+            className={compact ? "mx-auto" : "mx-auto mt-4"}
           />
           <p className="text-center text-[13px] text-muted-foreground mt-3.5 mb-6">{t("storeDevice.scanToLogin")}</p>
           <button
@@ -185,11 +190,11 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
             <b className="block text-[20px] font-semibold tracking-tight">{t("storeDevice.enterPin")}</b>
             <span className="block text-[13px] text-muted-foreground mt-1">{t("storeDevice.enterPinSub")}</span>
           </div>
-          <PinPad size="lg" onComplete={handlePin} className="mt-8" />
+          <PinPad size={compact ? "md" : "lg"} onComplete={handlePin} className={compact ? "mt-5" : "mt-8"} />
           <button
             type="button"
             onClick={() => { hapticLight(); setPinMode(false); }}
-            className="mt-auto h-11 w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className={cn("h-11 w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors", compact ? "mt-4" : "mt-auto")}
           >
             {t("storeDevice.back")}
           </button>
@@ -197,13 +202,26 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
       )}
 
       {!pinMode && (
-        <div className="mt-auto pt-6 flex items-center justify-between text-[13px] font-medium">
+        <div className={cn("flex items-center justify-between text-[13px] font-medium", compact ? "pt-4" : "mt-auto pt-6")}>
           <button type="button" onClick={handleSos} className="inline-flex items-center gap-2.5 text-destructive">
             <i className="not-italic h-10 w-10 rounded-full bg-destructive/10 grid place-items-center text-[10px] font-bold tracking-wider">SOS</i>
             {t("storeDevice.emergency")}
           </button>
+          {canExit && (
+            <button
+              type="button"
+              onClick={() => { hapticLight(); setExitOpen(true); }}
+              className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              title={t("storeDevice.leaveStoreModeHint")}
+            >
+              <DoorOpen className="h-4 w-4" />
+              {t("storeDevice.leaveStoreMode")}
+            </button>
+          )}
         </div>
       )}
+
+      <ExitStoreDrawer open={exitOpen} onOpenChange={setExitOpen} members={members} />
     </div>
   );
 }

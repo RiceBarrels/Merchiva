@@ -44,4 +44,5 @@ export default __t.row({
   scheduleLastSyncStatus: __t.option(__t.string()).name("schedule_last_sync_status"),
   scheduleLastSyncSummary: __t.option(__t.string()).name("schedule_last_sync_summary"),
   supplierInboundPrefix: __t.option(__t.string()).name("supplier_inbound_prefix"),
+  deviceApps: __t.option(__t.string()).name("device_apps"),
 });

@@ -15,7 +15,7 @@ function getOpenRouter() {
     baseURL: "https://openrouter.ai/api/v1",
     headers: {
       "HTTP-Referer": "https://merchiva.com",
-      "X-Title": "Merchiva hourly briefing",
+      "X-Title": "Merchiva morning briefing",
     },
   });
 }
@@ -115,14 +115,14 @@ function buildSystemPrompt(context: Record<string, unknown>, lang: string, dateS
 
   // Same Mr. Merchiva persona as the right-panel assistant
   // (app/api/store-ai/route.ts buildSystemPrompt) and fed the same LIVE STORE
-  // DATA — the only difference is this surface is a read-only hourly briefing,
+  // DATA — the only difference is this surface is a read-only daily briefing,
   // so it emits a {summary, content} object instead of chat + action blocks.
   return `You are Mr. Merchiva, an AI ops agent for a small business. You have full access to the store's real-time data. You are direct, data-driven, and concise.
 
 🌐 USER LANGUAGE: ${languageName} (locale code: "${lang}")
 ALL of your output (summary + every bullet) MUST be written in ${languageName}. Do not switch languages even if the LIVE STORE DATA contains other languages. The user's interface is set to "${lang}" — match it.
 
-YOUR TASK: generate the OWNER'S hourly briefing snapshot for ${dateStr}. This route is called every hour, so summarize what deserves attention right now and compare against today's live data. Read EVERYTHING in LIVE STORE DATA below and call out every item that genuinely deserves the owner's attention today. Do not under-report: if the data shows a problem, surface it. Only say "all clear" when the data truly shows nothing actionable.
+YOUR TASK: generate the OWNER'S morning briefing for ${dateStr}. Summarize what deserves attention today based on the live data. Read EVERYTHING in LIVE STORE DATA below and call out every item that genuinely deserves the owner's attention today. Do not under-report: if the data shows a problem, surface it. Only say "all clear" when the data truly shows nothing actionable.
 
 WHAT TO CHECK (scan the data for each; include the ones that actually apply, with concrete numbers):
 - Pre-computed signals (\`insights\`): each has a type, title and severity — treat HIGH-severity insights as must-mention. Don't contradict them.
@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
     const today = dateStr || new Date().toISOString().slice(0, 10);
     const modelName = getModel();
     const system = buildSystemPrompt(context ?? {}, lang ?? "en", today);
-    const userMessage = "Generate this hour's briefing snapshot.";
+    const userMessage = "Generate today's morning briefing.";
     const openrouter = getOpenRouter();
 
     let briefing: Briefing | null = null;
@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
         organizationId: usageOrgId,
         feature: "morning_briefing",
         model: modelName,
-        description: "Generated hourly briefing",
+        description: "Generated morning briefing",
         ...normalizeUsage(objResult.usage),
       });
     } catch (err) {
@@ -264,7 +264,7 @@ OUTPUT FORMAT (CRITICAL): respond with ONLY a valid JSON object matching this sh
           organizationId: usageOrgId,
           feature: "morning_briefing",
           model: modelName,
-          description: "Generated hourly briefing",
+          description: "Generated morning briefing",
           ...normalizeUsage(textResult.usage),
         });
         briefing = recoverBriefingFromText(textResult.text);

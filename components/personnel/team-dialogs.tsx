@@ -39,10 +39,8 @@ const PERMISSION_SECTIONS: ReadonlyArray<{
   { key: "sales",            i18nKey: "sales",           actions: ["view"] },
   { key: "staffing",         i18nKey: "staffing",        actions: ["view", "edit"] },
   { key: "products",         i18nKey: "products",        actions: ["view", "edit"] },
-  { key: "pos",              i18nKey: "pos",             actions: ["view"] },
   { key: "settings",         i18nKey: "settings",        actions: ["view"] },
   { key: "team",             i18nKey: "team",            actions: ["view", "invite", "edit"] },
-  { key: "website",          i18nKey: "website",         actions: ["view", "edit"] },
   { key: "training_grading", i18nKey: "trainingGrading", actions: ["view", "edit"] },
   { key: "merchiva",         i18nKey: "merchiva",        actions: ["view"] },
 ];

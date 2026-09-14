@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   CalendarClock,
   CircleDollarSign,
+  ClipboardList,
   GraduationCap,
   Inbox,
-  Shield,
   Users,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
 import { usePersonnelHub } from "@/components/personnel/hub-context";
+import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
+import { isManagerRouteEnabled } from "@/lib/device-apps";
 
 interface HubTab {
   /** Route segment under /manager/personnel. */
@@ -26,7 +28,8 @@ interface HubTab {
 const TABS: HubTab[] = [
   { segment: "schedule", i18nKey: "schedule", icon: CalendarClock },
   { segment: "team", i18nKey: "team", icon: Users },
-  { segment: "roles", i18nKey: "roles", icon: Shield },
+  // "Roles" is the Tasks app in the manager UI: roles + their task lists.
+  { segment: "roles", i18nKey: "roles", icon: ClipboardList },
   { segment: "training", i18nKey: "training", icon: GraduationCap },
   { segment: "pay", i18nKey: "pay", icon: CircleDollarSign },
 ];
@@ -88,6 +91,9 @@ export function PersonnelTabsNav() {
   const t = useT();
   const pathname = usePathname();
   const { pending } = usePersonnelHub();
+  const { installed } = useDeviceApps();
+  // Tasks (roles) / training / pay are optional org apps (see /manager/apps).
+  const tabs = TABS.filter((tab) => isManagerRouteEnabled(hrefFor(tab.segment), installed));
 
   const isActive = (segment: HubTab["segment"]) => {
     const href = hrefFor(segment);
@@ -98,7 +104,7 @@ export function PersonnelTabsNav() {
     <div className="border-b border-border bg-background shrink-0">
       {/* Mobile: compact underline tabs (same style as PageTabs) */}
       <div className="flex md:hidden overflow-x-auto no-scrollbar">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = isActive(tab.segment);
           return (
             <Link
@@ -124,7 +130,7 @@ export function PersonnelTabsNav() {
       </div>
       {/* Desktop: segmented tab row with icons + subtitles */}
       <div className="hidden md:flex overflow-x-auto no-scrollbar">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const active = isActive(tab.segment);
           const Icon = tab.icon;
           const label = t(`personnel.tabs.${tab.i18nKey}`);

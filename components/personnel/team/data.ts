@@ -26,10 +26,8 @@ export type PermSectionKey =
   | "sales"
   | "staffing"
   | "products"
-  | "pos"
   | "settings"
   | "team"
-  | "website"
   | "training_grading"
   | "merchiva";
 
@@ -68,8 +66,6 @@ export const ORG_PERMS: PermGroup[] = [
     i18nKey: "groupStore",
     items: [
       { id: "sales.view",      section: "sales",     action: "view", i18nKey: "sales.view" },
-      { id: "pos.view",        section: "pos",       action: "view", i18nKey: "pos.view" },
-      { id: "pos.edit",        section: "pos",       action: "edit", i18nKey: "pos.edit" },
       { id: "inventory.view",  section: "inventory", action: "view", i18nKey: "inventory.view" },
       { id: "inventory.edit",  section: "inventory", action: "edit", i18nKey: "inventory.edit" },
     ],
@@ -83,14 +79,6 @@ export const ORG_PERMS: PermGroup[] = [
       { id: "products.edit",  section: "products",  action: "edit", i18nKey: "products.edit" },
       { id: "settings.view",  section: "settings",  action: "view", i18nKey: "settings.view", sensitive: true },
       { id: "merchiva.view",  section: "merchiva",  action: "view", i18nKey: "merchiva.view" },
-    ],
-  },
-  {
-    group: "site",
-    i18nKey: "groupSite",
-    items: [
-      { id: "website.view", section: "website", action: "view", i18nKey: "website.view" },
-      { id: "website.edit", section: "website", action: "edit", i18nKey: "website.edit" },
     ],
   },
 ];

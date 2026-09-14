@@ -103,15 +103,17 @@ export function RosterPages({ orgName, entries, closingTime, className }: Roster
             />
           </div>
         </div>
-        <div className="absolute left-0 right-0 bottom-3.5 flex justify-center gap-1.5 z-[2]">
+        <div className="absolute left-0 right-0 bottom-1.5 flex justify-center z-[2]">
           {[0, 1].map((i) => (
             <button
               key={i}
               type="button"
               aria-label={`page ${i + 1}`}
               onClick={() => setPage(i)}
-              className={cn("h-[5px] w-[5px] rounded-full", i === page ? (page === 1 ? "bg-[rgb(250_250_250)]" : "bg-foreground") : "bg-border")}
-            />
+              className="grid h-6 w-4 min-h-0! min-w-0! place-items-center"
+            >
+              <i className={cn("h-[5px] w-[5px] rounded-full", i === page ? (page === 1 ? "bg-[rgb(250_250_250)]" : "bg-foreground") : "bg-border")} />
+            </button>
           ))}
         </div>
       </div>

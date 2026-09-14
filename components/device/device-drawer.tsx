@@ -3,8 +3,7 @@
 // Bottom sheet: grab handle, title, 60px option rows, Cancel row. `children`
 // replaces the option list for custom panes (PIN pad, QR scanner).
 
-import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
@@ -12,7 +11,8 @@ import { useT } from "@/lib/i18n/context";
 
 export interface DeviceDrawerOption {
   id: string;
-  icon: LucideIcon;
+  /** Lucide icon or one of the custom glyphs in app-icons.tsx. */
+  icon: ComponentType<{ className?: string }>;
   label: string;
   sub?: string;
   tone?: "default" | "primary" | "warn";

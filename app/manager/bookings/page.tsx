@@ -229,8 +229,6 @@ export default function BookingsPage() {
     <PermissionGuard section="settings">
       <PageHeader title={t("bookings.title")} subtitle={t("bookings.subtitle")} />
       <PageTabs tabs={[
-        { label: t("nav.website"), href: "/manager/builder" },
-        { label: t("nav.membership"), href: "/manager/membership" },
         { label: t("nav.bookings"), href: "/manager/bookings" },
         { label: t("nav.reviews"), href: "/manager/reviews" },
       ]} />

@@ -23,13 +23,11 @@ import {
   Star,
   UserPlus,
   CreditCard,
-  MonitorSmartphone,
   KeyRound,
   Phone,
   ArrowLeft,
   Building2,
   Calendar,
-  Globe,
   PanelLeft,
   AlignHorizontalDistributeCenter,
   LogOut,
@@ -51,10 +49,10 @@ import {
   Plus,
   Coins,
   Loader2,
-  Palette,
   Bot,
   ShoppingCart,
 } from "lucide-react";
+import { StoreModeIcon } from "@/components/device/app-icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,7 +86,6 @@ import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSettings, type UserSettings } from "@/lib/db/settings";
 import { useAssistantConfig, useSettings } from "@/lib/spacetimedb/hooks/useSettings";
-import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { usePushNotifications } from "@/lib/spacetimedb/hooks/usePushNotifications";
 import { tauriNotificationsPref, requestTauriNotificationPermission } from "@/lib/spacetimedb/hooks/useTauriNotifications";
 import { useIsNativeShell } from "@/lib/native-shell";
@@ -104,7 +101,6 @@ import {
 } from "@/components/ui/select";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
-import { MorningBriefingSettings } from "@/components/settings/morning-briefing-settings";
 import { UsageSection } from "@/components/settings/usage-section";
 import { getCached, setCache, clearCache } from "@/lib/cache";
 import { getMyAvailability, getTimeOffRequests } from "@/lib/db/availability";
@@ -128,7 +124,6 @@ import { toast } from "sonner";
 import { useT, useI18n } from "@/lib/i18n/context";
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
 import { useThemeMode, type ThemeMode } from "@/lib/theme";
-import { BETA_FEATURES } from "@/lib/beta-features";
 import type { AutonomyMode } from "@/lib/merchiva/autonomy";
 import { LocationManager } from "@/components/location-manager";
 import { useLocations } from "@/lib/spacetimedb/hooks";
@@ -173,7 +168,6 @@ export default function SettingsPage() {
   // Settings data via SpacetimeDB migration hook
   const { settings, setSettings, loading } = useSettings();
   const { config: assistantConfig, save: saveAssistantConfig } = useAssistantConfig();
-  const { betaFeatures, savingKey: savingBetaFeature, setFeature: setBetaFeature } = useBetaFeatures();
   // Fallback: the organization's own name, for orgs whose settings.businessName was never set
   const [orgRows] = useTable(tables.organization);
   const orgName = (orgRows || []).find((o) => o.id.toString() === organizationId)?.name ?? "";
@@ -190,7 +184,6 @@ export default function SettingsPage() {
   const [gettingLocation, setGettingLocation] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved]   = useState(false);
-  const [betaFeaturesDialog, setBetaFeaturesDialog] = useState(false);
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -434,14 +427,6 @@ export default function SettingsPage() {
 
     // settings state is now managed by useSettings hook (SpacetimeDB migration)
 
-    import("@/lib/db/payments").then(({ getPaymentConfig }) => {
-      getPaymentConfig()
-        .then(({ taxRate, currency }) => {
-          setPaymentTaxRate(String(taxRate));
-          setPaymentCurrency(currency);
-        })
-        .catch(() => {});
-    });
   }, []);
 
   // Sync form fields when settings loads via hook.
@@ -1670,10 +1655,8 @@ export default function SettingsPage() {
                     { key: "sales" as const, label: t("settings.permSales"), actions: ["view"] as const },
                     { key: "staffing" as const, label: t("settings.permStaffing"), actions: ["view", "edit"] as const },
                     { key: "products" as const, label: t("settings.permProducts"), actions: ["view", "edit"] as const },
-                    { key: "pos" as const, label: t("settings.permPOS"), actions: ["view"] as const },
                     { key: "settings" as const, label: t("settings.permSettings"), actions: ["view"] as const },
                     { key: "team" as const, label: t("settings.permTeam"), actions: ["view", "invite", "edit"] as const },
-                    { key: "website" as const, label: t("settings.permWebsite"), actions: ["view", "edit"] as const },
                     { key: "training_grading" as const, label: t("settings.permTrainingGrading"), actions: ["view", "edit"] as const },
                     { key: "merchiva" as const, label: t("settings.permMerchiva"), actions: ["view"] as const },
                   ]).map(({ key, label, actions }) => (
@@ -1935,41 +1918,6 @@ export default function SettingsPage() {
           </DynamicUIElementContent>
         </DynamicUIElement>
 
-        {/* ─── Beta Features DynamicUIElement ────────────────────────────── */}
-        <DynamicUIElement open={betaFeaturesDialog} onOpenChange={setBetaFeaturesDialog}>
-          <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
-            <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("settings.betaFeaturesMobileTitle")}>{t("settings.betaFeaturesTitle")}</DynamicUIElementTitle>
-              <DynamicUIElementDescription>{t("settings.betaFeaturesDesc")}</DynamicUIElementDescription>
-            </DynamicUIElementHeader>
-            <div>
-              {BETA_FEATURES.map((feature, index) => {
-                const Icon =
-                  feature.key === "pos" ? MonitorSmartphone :
-                  feature.key === "website" ? Globe :
-                  Palette;
-                return (
-                  <SToggleRow
-                    key={feature.key}
-                    icon={<Icon className="h-4 w-4 text-foreground" />}
-                    title={t(feature.labelKey)}
-                    meta={t(feature.descriptionKey)}
-                    checked={betaFeatures[feature.key]}
-                    disabled={savingBetaFeature === feature.key}
-                    isFirst={index === 0}
-                    onChange={() => {
-                      void setBetaFeature(feature.key, !betaFeatures[feature.key])
-                        .then(() => toast.success(t("settings.toastBetaFeaturesSaved")))
-                        .catch((err) => {
-                          toast.error(err instanceof Error ? err.message : t("settings.toastSaveFailed"));
-                        });
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </DynamicUIElementContent>
-        </DynamicUIElement>
         {/* ─── Edit Member (role + permissions) ──────────────────────────── */}
         <EditMemberDialog
           member={editingMember}
@@ -2554,7 +2502,7 @@ export default function SettingsPage() {
           card
         />
         <SRow
-          icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+          icon={<StoreModeIcon className="h-5 w-5" />}
           title={t("settings.groupDevice")}
           meta={storeMachine ? t("settings.storeMachineMode") : (deviceName || t("settings.notSet"))}
           onClick={() => setSubPanel("device")}
@@ -2566,13 +2514,6 @@ export default function SettingsPage() {
           title={t("settings.groupData")}
           meta={t("settings.exportData")}
           onClick={() => setSubPanel("data")}
-          card
-        />
-        <SRow
-          icon={<Info className="h-4 w-4 text-foreground" />}
-          title={t("settings.betaFeatures")}
-          meta={t("settings.betaFeaturesAbout")}
-          onClick={() => setBetaFeaturesDialog(true)}
           card
         />
         <SRow
@@ -3064,9 +3005,6 @@ export default function SettingsPage() {
               onChange={() => setWeeklySummary(!weeklySummary)}
             />
           </div>
-                    <div className="px-[18px] pb-4">
-              <MorningBriefingSettings />
-            </div>
           </DynamicUIElementContent>
       </DynamicUIElement>
 
@@ -3174,7 +3112,7 @@ export default function SettingsPage() {
           </DynamicUIElementHeader>
           <div>
             <SToggleRow
-              icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+              icon={<StoreModeIcon className="h-5 w-5" />}
               title={t("settings.storeMachineMode")}
               meta={t("settings.restrictToStoreApps")}
               checked={storeMachine}
@@ -3204,7 +3142,7 @@ export default function SettingsPage() {
               isFirst
             />
             <SRow
-              icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+              icon={<StoreModeIcon className="h-5 w-5" />}
               title={t("settings.deviceName")}
               meta={deviceName || t("settings.notSet")}
               onClick={() => { setDeviceNameInput(deviceName); setDeviceNameDialog(true); }}
@@ -3232,7 +3170,7 @@ export default function SettingsPage() {
                 {orgDevices.map((device, i) => (
                   <SRow
                     key={device.id.toString()}
-                    icon={<MonitorSmartphone className="h-4 w-4 text-foreground" />}
+                    icon={<StoreModeIcon className="h-5 w-5" />}
                     title={device.name || t("settings.unnamedDevice")}
                     meta={device.deviceId.slice(0, 8)}
                     isFirst={i === 0}

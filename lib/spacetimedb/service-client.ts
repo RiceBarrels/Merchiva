@@ -175,7 +175,7 @@ export async function getSubscribedServiceConn(
 // model, but from the service connection — so the group-chat endpoint can be
 // as data-aware as the dedicated DM assistant without the client shipping a
 // context blob. Reuses buildBriefingContext (which intentionally mirrors that
-// shape). The table set matches the cron briefing snapshot.
+// shape).
 
 const STORE_CONTEXT_QUERIES = [
   "SELECT * FROM organization",
@@ -270,60 +270,6 @@ export async function getOrgStoreContext(
     today,
     locale,
   );
-}
-
-// ─── Typed row shapes (mirror the generated tables) ────────────────────────────
-
-export interface BriefingPrefRow {
-  userId: Identity;
-  briefingTime: string;
-  timezone: string;
-  enabled: boolean;
-  hours: string | null;   // JSON array of selected hours [0-23], or null (legacy)
-}
-
-export interface OrgMembershipRow {
-  userId: Identity;
-  organizationId: string;
-  role: string;
-  status: string;
-}
-
-/** All enabled briefing preferences. */
-export async function getEnabledBriefingPrefs(
-  conn: ServiceConn,
-): Promise<BriefingPrefRow[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return [...conn.db.userBriefingPref.iter()]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((r: any) => r.enabled)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((r: any) => ({
-      userId: r.userId,
-      briefingTime: r.briefingTime,
-      timezone: r.timezone,
-      enabled: r.enabled,
-      hours: r.hours ?? null,
-    }));
-}
-
-/** Active org memberships for a given user identity (manager/owner only). */
-export function getAdminOrgsForUser(
-  conn: ServiceConn,
-  userId: Identity,
-): string[] {
-  const hex = userId.toHexString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return [...conn.db.orgMember.iter()]
-    .filter(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (m: any) =>
-        m.userId?.toHexString?.() === hex &&
-        m.status === "active" &&
-        (m.role === "owner" || m.role === "manager"),
-    )
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((m: any) => m.organizationId as string);
 }
 
 // ─── Mr. Merchiva background-reply notification target ──────────────────────────
@@ -561,31 +507,6 @@ export async function getSupplierInboundAddressForOrg(
 
 // ─── Service reducer wrappers ──────────────────────────────────────────────────
 
-export async function serviceSaveDailyBriefing(
-  conn: ServiceConn,
-  args: {
-    organizationId: string;
-    date: string;
-    content: string;
-    summary?: string | null;
-    generatedBy: string;
-    actions?: string | null;
-    problemKeys?: string | null;
-    hour?: number | null;
-  },
-): Promise<void> {
-  conn.reducers.serviceSaveDailyBriefing({
-    organizationId: args.organizationId,
-    date: args.date,
-    content: args.content,
-    summary: args.summary ?? undefined,
-    generatedBy: args.generatedBy,
-    actions: args.actions ?? undefined,
-    problemKeys: args.problemKeys ?? undefined,
-    hour: args.hour ?? undefined,
-  });
-}
-
 export async function serviceCreateNotification(
   conn: ServiceConn,
   args: {
@@ -604,27 +525,6 @@ export async function serviceCreateNotification(
     title: args.title,
     body: args.body,
     link: args.link ?? undefined,
-  });
-}
-
-export async function serviceAppendAiChatMessage(
-  conn: ServiceConn,
-  args: {
-    organizationId: string;
-    targetIdentity: Identity;
-    title: string;
-    message: string;
-    time: string;
-    messageId?: string | null;
-  },
-): Promise<void> {
-  conn.reducers.serviceAppendAiChatMessage({
-    organizationId: args.organizationId,
-    targetIdentity: args.targetIdentity,
-    title: args.title,
-    message: args.message,
-    time: args.time,
-    messageId: args.messageId ?? undefined,
   });
 }
 

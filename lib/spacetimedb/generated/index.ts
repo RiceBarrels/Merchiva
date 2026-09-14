@@ -87,7 +87,6 @@ import CreateTimeOffRequestReducer from "./create_time_off_request_reducer";
 import CreateUserReducer from "./create_user_reducer";
 import DeleteAiJobReducer from "./delete_ai_job_reducer";
 import DeleteBlogPostReducer from "./delete_blog_post_reducer";
-import DeleteBriefingPrefReducer from "./delete_briefing_pref_reducer";
 import DeleteComponentReducer from "./delete_component_reducer";
 import DeleteCouponReducer from "./delete_coupon_reducer";
 import DeleteDesignReducer from "./delete_design_reducer";
@@ -126,6 +125,10 @@ import ManagerRecordPunchReducer from "./manager_record_punch_reducer";
 import ManagerSetPunchWindowReducer from "./manager_set_punch_window_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
+import PlatformAdminAddReducer from "./platform_admin_add_reducer";
+import PlatformAdminRemoveReducer from "./platform_admin_remove_reducer";
+import PlatformAdminSetPasswordReducer from "./platform_admin_set_password_reducer";
+import PlatformAdminVerifyReducer from "./platform_admin_verify_reducer";
 import RecordPunchReducer from "./record_punch_reducer";
 import RecordSupplierOrderReducer from "./record_supplier_order_reducer";
 import RecordTaskCompletionReducer from "./record_task_completion_reducer";
@@ -144,19 +147,17 @@ import SaveDailyBriefingReducer from "./save_daily_briefing_reducer";
 import SavePushSubscriptionReducer from "./save_push_subscription_reducer";
 import SendMerchivaMessageReducer from "./send_merchiva_message_reducer";
 import SendMessageReducer from "./send_message_reducer";
-import ServiceAppendAiChatMessageReducer from "./service_append_ai_chat_message_reducer";
 import ServiceCreateNotificationReducer from "./service_create_notification_reducer";
 import ServiceLogSupplierMessageReducer from "./service_log_supplier_message_reducer";
 import ServiceRecordAiUsageReducer from "./service_record_ai_usage_reducer";
 import ServiceRecordScheduleSyncReducer from "./service_record_schedule_sync_reducer";
 import ServiceRepairInventoryItemReducer from "./service_repair_inventory_item_reducer";
-import ServiceSaveDailyBriefingReducer from "./service_save_daily_briefing_reducer";
 import ServiceSetScheduleIntegrationReducer from "./service_set_schedule_integration_reducer";
 import SetAiUsageQuotaReducer from "./set_ai_usage_quota_reducer";
 import SetAssistantConfigReducer from "./set_assistant_config_reducer";
 import SetBetaFeaturesReducer from "./set_beta_features_reducer";
-import SetBriefingPrefReducer from "./set_briefing_pref_reducer";
 import SetConversationMerchivaReducer from "./set_conversation_merchiva_reducer";
+import SetDeviceAppsReducer from "./set_device_apps_reducer";
 import SetMemberHourlyRateReducer from "./set_member_hourly_rate_reducer";
 import SetMemberStatusReducer from "./set_member_status_reducer";
 import SetPunchInCodeReducer from "./set_punch_in_code_reducer";
@@ -229,6 +230,7 @@ import OrgMemberRow from "./org_member_table";
 import OrganizationRow from "./organization_table";
 import PaymentRow from "./payment_table";
 import PerkClaimRow from "./perk_claim_table";
+import PlatformAdminRow from "./platform_admin_table";
 import PunchEventRow from "./punch_event_table";
 import PurchaseOrderRow from "./purchase_order_table";
 import PushSubscriptionRow from "./push_subscription_table";
@@ -663,6 +665,17 @@ const tablesSchema = __schema({
       { name: 'perk_claim_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PerkClaimRow),
+  platformAdmin: __table({
+    name: 'platform_admin',
+    indexes: [
+      { accessor: 'username', name: 'platform_admin_username_idx_btree', algorithm: 'btree', columns: [
+        'username',
+      ] },
+    ],
+    constraints: [
+      { name: 'platform_admin_username_key', constraint: 'unique', columns: ['username'] },
+    ],
+  }, PlatformAdminRow),
   punchEvent: __table({
     name: 'punch_event',
     indexes: [
@@ -1286,7 +1299,6 @@ const reducersSchema = __reducers(
   __reducerSchema("create_user", CreateUserReducer),
   __reducerSchema("delete_ai_job", DeleteAiJobReducer),
   __reducerSchema("delete_blog_post", DeleteBlogPostReducer),
-  __reducerSchema("delete_briefing_pref", DeleteBriefingPrefReducer),
   __reducerSchema("delete_component", DeleteComponentReducer),
   __reducerSchema("delete_coupon", DeleteCouponReducer),
   __reducerSchema("delete_design", DeleteDesignReducer),
@@ -1325,6 +1337,10 @@ const reducersSchema = __reducers(
   __reducerSchema("manager_set_punch_window", ManagerSetPunchWindowReducer),
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
+  __reducerSchema("platform_admin_add", PlatformAdminAddReducer),
+  __reducerSchema("platform_admin_remove", PlatformAdminRemoveReducer),
+  __reducerSchema("platform_admin_set_password", PlatformAdminSetPasswordReducer),
+  __reducerSchema("platform_admin_verify", PlatformAdminVerifyReducer),
   __reducerSchema("record_punch", RecordPunchReducer),
   __reducerSchema("record_supplier_order", RecordSupplierOrderReducer),
   __reducerSchema("record_task_completion", RecordTaskCompletionReducer),
@@ -1343,19 +1359,17 @@ const reducersSchema = __reducers(
   __reducerSchema("save_push_subscription", SavePushSubscriptionReducer),
   __reducerSchema("send_merchiva_message", SendMerchivaMessageReducer),
   __reducerSchema("send_message", SendMessageReducer),
-  __reducerSchema("service_append_ai_chat_message", ServiceAppendAiChatMessageReducer),
   __reducerSchema("service_create_notification", ServiceCreateNotificationReducer),
   __reducerSchema("service_log_supplier_message", ServiceLogSupplierMessageReducer),
   __reducerSchema("service_record_ai_usage", ServiceRecordAiUsageReducer),
   __reducerSchema("service_record_schedule_sync", ServiceRecordScheduleSyncReducer),
   __reducerSchema("service_repair_inventory_item", ServiceRepairInventoryItemReducer),
-  __reducerSchema("service_save_daily_briefing", ServiceSaveDailyBriefingReducer),
   __reducerSchema("service_set_schedule_integration", ServiceSetScheduleIntegrationReducer),
   __reducerSchema("set_ai_usage_quota", SetAiUsageQuotaReducer),
   __reducerSchema("set_assistant_config", SetAssistantConfigReducer),
   __reducerSchema("set_beta_features", SetBetaFeaturesReducer),
-  __reducerSchema("set_briefing_pref", SetBriefingPrefReducer),
   __reducerSchema("set_conversation_merchiva", SetConversationMerchivaReducer),
+  __reducerSchema("set_device_apps", SetDeviceAppsReducer),
   __reducerSchema("set_member_hourly_rate", SetMemberHourlyRateReducer),
   __reducerSchema("set_member_status", SetMemberStatusReducer),
   __reducerSchema("set_punch_in_code", SetPunchInCodeReducer),

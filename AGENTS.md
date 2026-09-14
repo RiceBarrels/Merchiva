@@ -2,7 +2,7 @@
 
 ## What Is This
 
-Merchiva is a daily management platform for small businesses. It handles inventory, sales, staffing, products, pricing, customers, marketing, finances, reports, bookings, reviews, suppliers, training — plus a website builder and team chat. It connects to Square and Clover POS systems, uses SpacetimeDB as the sole data layer (no Supabase), and ships as a web app (Vercel) and native app (Capacitor).
+Merchiva is a daily management platform for small businesses. It handles inventory, sales, staffing, products, pricing, finances, reports, bookings, reviews, suppliers, training — plus team chat. It connects to Square and Clover POS systems, uses SpacetimeDB as the sole data layer (no Supabase), and ships as a web app (Vercel) and native app (Capacitor).
 
 ## Tech Stack
 
@@ -18,8 +18,7 @@ Merchiva is a daily management platform for small businesses. It handles invento
 | Database | SpacetimeDB | Sole data layer. Real-time subscriptions. Generated types in `lib/spacetimedb/generated/`. |
 | POS | Square SDK (v44+), Clover | OAuth flow, sync to SpacetimeDB. |
 | Auth | WorkOS (`lib/auth/workos.ts`) | Email/password, OAuth. Session via cookies. |
-| Builder | Craft.js (`@craftjs/core`) | Visual page builder with drag-and-drop components. |
-| File Upload | UploadThing | Image uploads for products, sites, avatars. |
+| File Upload | UploadThing | Image uploads for products, avatars. |
 | Email | Resend | Transactional emails (invites, etc.). |
 | i18n | Custom (`lib/i18n/`) | 6 locales: en, zh, es, fr, ar, hi. |
 | Native | Capacitor (iOS + Android) | Loads from Vercel URL. Haptics, safe area, status bar. |
@@ -38,23 +37,17 @@ app/
 │   ├── inventory/              # + inventory/waste/ sub-route
 │   ├── sales/
 │   ├── staffing/
-│   ├── products/               # + products/[productId]/ sub-route
+│   ├── products/
 │   ├── pricing/
-│   ├── customers/
-│   ├── marketing/
 │   ├── finances/
 │   ├── reports/
 │   ├── bookings/
 │   ├── reviews/
 │   ├── suppliers/
 │   ├── training/
-│   ├── membership/
-│   ├── builder/                # + builder/[siteId]/, [siteId]/theme/, [siteId]/membership/
 │   ├── chat/
 │   ├── settings/
-│   ├── pos/                    # POS terminal mode
 │   ├── punch-in/               # Staff punch clock
-│   ├── display/                # Store display mode
 │   └── api-settings/
 ├── (auth)/login/, signup/      # Public auth
 ├── choose/                     # Post-sign-in mode picker (admin / personal / store device); layout re-exports manager layout
@@ -66,15 +59,10 @@ app/
 │   ├── clover/                 # connect, callback, disconnect, sync
 │   ├── ai/                     # predict, train
 │   ├── forecast/               # forecast, weather, popular-times
-│   ├── payments/               # create-session, verify, refund
-│   ├── builder/                # chat, generate (AI site builder)
 │   ├── chat/                   # AI assistant
-│   ├── sites/publish/
 │   ├── store-ai/
 │   ├── team/                   # invite, accept, send-invite-email
 │   └── uploadthing/
-├── s/[slug]/                   # Published storefront (public)
-├── preview/[siteId]/           # Site preview
 ├── pricing/, features/, about/, changelog/   # Landing pages
 ├── setup/                      # First-time org setup
 └── invite/[token]/             # Accept team invite
@@ -94,7 +82,6 @@ lib/
 │   └── generated/              # Auto-generated tables + reducers (DO NOT EDIT)
 ├── db/                         # Legacy data access (being phased out)
 ├── auth/                       # WorkOS auth (context + server helpers)
-├── builder/                    # Craft.js bridge, page templates, site values
 ├── i18n/                       # Config, context, dictionary loader
 └── (other utilities)           # capacitor, haptics, theme, offline, forecast, etc.
 
@@ -103,9 +90,6 @@ components/
 ├── device/                     # Shared device-surface pieces (walkie-talkie, PIN pad, idle lock, QR, apps grid) used by /store and /personal
 ├── store-device/               # /store-only composition
 ├── personal-device/            # /personal-only composition
-├── builder/                    # Website builder (editor, panels, craft-components/, craft-settings/)
-├── site-elements/              # Published site components (booking-form, login, gallery, etc.)
-├── flowfn/                     # Visual flow/function editor
 ├── landing/                    # Public marketing pages
 ├── sidebar.tsx                 # Desktop navigation
 ├── bottom-bar.tsx              # Mobile navigation

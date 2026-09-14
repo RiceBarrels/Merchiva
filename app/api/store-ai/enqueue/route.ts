@@ -173,8 +173,6 @@ async function runJob(args: RunJobArgs): Promise<void> {
 
   try {
     const openrouter = getOpenRouter();
-    const isBuilderMode = !!(args.context && (args.context as Record<string, unknown>).builder);
-
     // Triage: cheap classifier decides direct-answer vs. escalate.
     let triage: { needsThinking: boolean; needsDeepThinking?: boolean; message: string };
     try {
@@ -226,12 +224,10 @@ async function runJob(args: RunJobArgs): Promise<void> {
     // delivers everything through the single ai_job row.
     if (triage.message) flusher.push("[[MERCHIVA_ACK]]" + triage.message + "[[/MERCHIVA_ACK]]");
 
-    // Read-tools: same as the streaming route. Not for builder/HTML mode, and
-    // only when the service connection + org id are available.
-    const toolsEnabled = merchivaToolsEnabled() && !!args.organizationId && !isBuilderMode;
-    const mcpContext = isBuilderMode
-      ? { tools: {}, clients: [], prompt: "", connected: [], errors: [] }
-      : await buildMcpToolContext(args.mcpServers);
+    // Read-tools: same as the streaming route, only when the service
+    // connection + org id are available.
+    const toolsEnabled = merchivaToolsEnabled() && !!args.organizationId;
+    const mcpContext = await buildMcpToolContext(args.mcpServers);
     const systemPrompt = buildSystemPrompt(
       args.context,
       args.lang,
@@ -266,7 +262,7 @@ async function runJob(args: RunJobArgs): Promise<void> {
           })),
           { role: "user" as const, content: args.message },
         ],
-        maxOutputTokens: isBuilderMode ? 3500 : 1500,
+        maxOutputTokens: 1500,
         temperature: 0.2,
         ...(Object.keys(allTools).length > 0
           ? { tools: allTools, stopWhen: stepCountIs(6) }

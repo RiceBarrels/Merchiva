@@ -126,11 +126,14 @@ export function TalkBar({
           rec ? "opacity-100" : "opacity-0",
         )}
       />
-      {/* Recording drawer */}
+      {/* Recording drawer. Slides down behind the bar when idle and goes
+          `invisible` once the slide finishes (visibility transitions keep it
+          shown for the whole duration), so it never peeks out when the bar is
+          narrower than its positioned ancestor (tablet two-column layouts). */}
       <div
         className={cn(
-          "absolute inset-x-0 bottom-[120px] z-[7] border-t border-border bg-background px-4 pb-4 transition-transform duration-250 ease-[cubic-bezier(.2,.7,.2,1)]",
-          rec ? "translate-y-0" : "translate-y-[110%]",
+          "absolute inset-x-0 bottom-[120px] z-[7] border-t border-border bg-background px-4 pb-4 transition-[transform,visibility] duration-250 ease-[cubic-bezier(.2,.7,.2,1)]",
+          rec ? "translate-y-0" : "invisible translate-y-[110%]",
         )}
       >
         <div className="mx-auto mb-2.5 mt-2 h-1 w-9 rounded-full bg-border" />

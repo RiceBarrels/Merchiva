@@ -384,6 +384,21 @@ export const PerkClaim = __t.object("PerkClaim", {
 });
 export type PerkClaim = __Infer<typeof PerkClaim>;
 
+export const PlatformAdmin = __t.object("PlatformAdmin", {
+  username: __t.string(),
+  createdAt: __t.timestamp(),
+  createdBy: __t.string(),
+  lastLoginAt: __t.option(__t.timestamp()),
+});
+export type PlatformAdmin = __Infer<typeof PlatformAdmin>;
+
+export const PlatformAdminSecret = __t.object("PlatformAdminSecret", {
+  username: __t.string(),
+  passwordHash: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type PlatformAdminSecret = __Infer<typeof PlatformAdminSecret>;
+
 export const PunchEvent = __t.object("PunchEvent", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -528,6 +543,7 @@ export const Settings = __t.object("Settings", {
   scheduleLastSyncStatus: __t.option(__t.string()),
   scheduleLastSyncSummary: __t.option(__t.string()),
   supplierInboundPrefix: __t.option(__t.string()),
+  deviceApps: __t.option(__t.string()),
 });
 export type Settings = __Infer<typeof Settings>;
 

@@ -10,25 +10,30 @@ import { hapticSuccess } from "@/lib/haptics";
 import { registerStoreDevice } from "@/lib/spacetimedb/actions";
 import { getOrCreateDeviceId, getStoreMachineMode, setStoreMachineMode, useDeviceName } from "@/lib/store-machine-mode";
 import { useAutolockSeconds, useCurrentOperator, setCurrentOperator } from "@/lib/store-device-lock";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { useNow, fmtStatusClock, useIdleTimer, useOnShift, IdleLock } from "@/components/device";
 import { useOrgMembers, type StoreMember } from "./use-org-members";
 import { LoginPane } from "./login-pane";
 import { RosterPages, StoreClockCard, useClosingTime } from "./roster-pages";
-import { WorkPane } from "./work-pane";
+import { LoggedInScreen } from "./logged-in-screen";
 import { PunchPrompt } from "./punch-prompt";
-import { AppsPane } from "./apps-pane";
 
 /**
  * /store — the shared store device. Logged out it shows the QR / PIN log-in
  * and the on-work roster; logged in it becomes the operator's walkie-talkie
  * plus a home screen of apps. Auto-locks (logged out) or auto-logs-out
  * (logged in) after the device's autolock interval.
+ *
+ * Tablet (≥768px): two columns — log-in / walkie-talkie on the left, roster /
+ * apps on the right. Phone: the log-in pane stacks above the roster and the
+ * logged-in view becomes swipeable Channel | Apps pages over the talk bar.
  */
 export function StoreDeviceScreen() {
   const t = useT();
   const { organizationId, currentOrg } = usePermissions();
   const now = useNow(1000);
+  const phone = useIsMobile();
   const [deviceName] = useDeviceName();
   const [deviceId, setDeviceId] = useState("");
   const { members, ready: membersReady } = useOrgMembers(organizationId || null);
@@ -142,28 +147,32 @@ export function StoreDeviceScreen() {
           {loggedIn && operatorMember ? (
             <motion.div
               key="in"
-              className="absolute inset-0 grid grid-cols-1 grid-rows-2 md:grid-rows-1 md:grid-cols-[400px_1fr] min-h-0"
+              className="absolute inset-0 flex flex-col min-h-0"
               initial={{ opacity: 0, y: 80, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -60, scale: 0.94 }}
               transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
             >
-              <WorkPane
+              <LoggedInScreen
                 organizationId={organizationId}
                 operator={operatorMember}
                 shift={operatorShift}
                 loginAt={loginAt}
                 members={members}
+                forMember={onShift.forMember}
                 onLogout={() => handleLogout()}
                 onRecordingChange={setRecording}
-                className="min-h-0"
+                phone={phone}
+                className="min-h-0 flex-1"
               />
-              <AppsPane members={members} operator={operatorMember} forMember={onShift.forMember} className="min-h-0" />
             </motion.div>
           ) : (
             <motion.div
               key="out"
-              className="absolute inset-0 grid grid-cols-1 grid-rows-[auto_1fr] md:grid-rows-1 md:grid-cols-[400px_1fr] min-h-0"
+              className={cn(
+                "absolute inset-0 min-h-0",
+                phone ? "flex flex-col overflow-y-auto overscroll-contain" : "grid grid-cols-[400px_1fr]",
+              )}
               initial={{ opacity: 0, y: 40, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -60, scale: 0.94 }}
@@ -176,9 +185,10 @@ export function StoreDeviceScreen() {
                 members={members}
                 active={!idleLocked}
                 onLogin={handleLogin}
-                className="min-h-0"
+                compact={phone}
+                className={phone ? "shrink-0 border-b" : "min-h-0"}
               />
-              <RosterPages orgName={orgName} entries={onShift.entries} closingTime={closingTime} className="min-h-0" />
+              <RosterPages orgName={orgName} entries={onShift.entries} closingTime={closingTime} className={phone ? "h-[440px] shrink-0" : "min-h-0"} />
             </motion.div>
           )}
         </AnimatePresence>

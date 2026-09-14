@@ -1,0 +1,58 @@
+"use client";
+
+import { toast } from "sonner";
+import { useT } from "@/lib/i18n/context";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
+import { clearAppMode } from "@/lib/app-mode";
+import { setCurrentOperator } from "@/lib/store-device-lock";
+import { DeviceDrawer, PinPad } from "@/components/device";
+import { findManagerByPin, type StoreMember } from "./use-org-members";
+
+/**
+ * Drops this device out of store mode: forgets the app mode + operator and
+ * returns to the chooser. Callers must have verified a manager PIN first.
+ */
+export function leaveStoreMode() {
+  clearAppMode();
+  setCurrentOperator(null);
+  window.location.href = "/choose?switch=1";
+}
+
+export interface ExitStoreDrawerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  members: StoreMember[];
+  cancelLabel?: string;
+  onCancel?: () => void;
+}
+
+/** Manager-PIN gate in front of `leaveStoreMode()`. */
+export function ExitStoreDrawer({ open, onOpenChange, members, cancelLabel, onCancel }: ExitStoreDrawerProps) {
+  const t = useT();
+
+  const handlePin = async (pin: string) => {
+    if (!findManagerByPin(members, pin)) {
+      hapticError();
+      return false;
+    }
+    hapticSuccess();
+    toast(t("storeDevice.leaveStoreMode"));
+    onOpenChange(false);
+    setTimeout(leaveStoreMode, 250);
+    return true;
+  };
+
+  return (
+    <DeviceDrawer
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t("storeDevice.leaveStoreMode")}
+      cancelLabel={cancelLabel ?? t("storeDevice.cancel")}
+      onCancel={onCancel}
+      maxWidth={400}
+    >
+      <p className="text-center text-[13px] text-muted-foreground mb-3 leading-relaxed">{t("storeDevice.leaveStoreModePinPrompt")}</p>
+      <PinPad onComplete={handlePin} />
+    </DeviceDrawer>
+  );
+}

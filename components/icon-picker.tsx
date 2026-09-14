@@ -185,7 +185,7 @@ export function IconPicker({ value, onValueChange, onClose }: IconPickerProps) {
   );
 }
 
-// Render a Lucide icon by name (used in site-renderer)
+// Render a Lucide icon by name
 export function DynamicIcon({ name, size = 24, color, className }: { name: string; size?: number; color?: string; className?: string }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const IconComp = (LucideIcons as any)[name];

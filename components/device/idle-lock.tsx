@@ -2,9 +2,9 @@
 
 // Full-bleed dark lock screen with clock, info card and a swipe-to-unlock pill.
 
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, useAnimate } from "motion/react";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import { useT } from "@/lib/i18n/context";
@@ -29,10 +29,21 @@ const PAD = 6;
 export function IdleLock({ active, onUnlock, channelName, card, showStatusStrip, className }: IdleLockProps) {
   const t = useT();
   const now = useNow(1000);
-  const pillRef = useRef<HTMLDivElement>(null);
+  // useAnimate lets us replay the shake imperatively on every tap without
+  // remounting the pill (a key-based remount re-ran the stagger fade-in and
+  // made the slider vanish instead of shaking).
+  const [pillRef, animatePill] = useAnimate<HTMLDivElement>();
   const [drag, setDrag] = useState<{ startX: number; dx: number } | null>(null);
-  const [nudge, setNudge] = useState(0);
   const [travel, setTravel] = useState(240);
+
+  const shake = () => {
+    if (!pillRef.current) return;
+    void animatePill(
+      pillRef.current,
+      { x: [0, 10, -7, 4, 0] },
+      { duration: 0.5, ease: [0.36, 0.07, 0.19, 0.97] },
+    );
+  };
 
   const measure = () => {
     const w = pillRef.current ? pillRef.current.clientWidth - KNOB - PAD * 2 : 240;
@@ -78,9 +89,9 @@ export function IdleLock({ active, onUnlock, channelName, card, showStatusStrip,
       )}
       style={{ colorScheme: "dark" }}
       onPointerDown={(e) => {
-        if ((e.target as HTMLElement).closest("[data-knob]")) return;
+        if (drag || (e.target as HTMLElement).closest("[data-knob]")) return;
         hapticLight();
-        setNudge((n) => n + 1);
+        shake();
       }}
     >
       {showStatusStrip && (
@@ -103,15 +114,9 @@ export function IdleLock({ active, onUnlock, channelName, card, showStatusStrip,
             {card}
           </motion.div>
         )}
-        <motion.div
-          {...stagger(0.54)}
-          className="w-full"
-          key={`n${nudge}`}
-        >
-          <motion.div
+        <motion.div {...stagger(0.54)} className="w-full">
+          <div
             ref={pillRef}
-            animate={nudge > 0 && !drag ? { x: [0, 10, -7, 4, 0] } : { x: 0 }}
-            transition={{ duration: 0.5, ease: [0.36, 0.07, 0.19, 0.97] }}
             className="flex h-16 w-full touch-none items-center gap-4 rounded-full border border-[rgb(40_40_40)] bg-[rgb(38_38_38)] px-1.5 text-[16px] font-medium text-[rgb(161_161_161)]"
           >
             <span
@@ -131,7 +136,7 @@ export function IdleLock({ active, onUnlock, channelName, card, showStatusStrip,
             <span style={{ opacity: Math.max(0, 1 - progress * 1.5), transition: drag ? "none" : "opacity .2s" }}>
               {t("device.swipeToUnlock")}
             </span>
-          </motion.div>
+          </div>
         </motion.div>
       </div>
     </div>

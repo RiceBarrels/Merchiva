@@ -50,16 +50,12 @@ const PERM_LABEL: Record<string, string> = {
   "training_grading.view": "查看培训记录",
   "training_grading.edit": "评估学员",
   "sales.view": "查看销售",
-  "pos.view": "查看 POS",
-  "pos.edit": "操作 POS",
   "inventory.view": "查看库存",
   "inventory.edit": "编辑库存",
   "dashboard.view": "仪表盘",
   "products.view": "查看商品",
   "products.edit": "编辑商品",
   "settings.view": "设置",
-  "website.view": "查看网站",
-  "website.edit": "编辑网站",
   "merchiva.view": "使用 Mr. Merchiva",
 };
 

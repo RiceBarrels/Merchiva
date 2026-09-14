@@ -7,6 +7,7 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { useAuth } from "@/lib/auth/context";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { getSafeAreaInsets } from "@/lib/safe-area";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import { hapticLight } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -14,31 +15,33 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   APP_CATALOG,
+  AppsGrid,
   ChannelHeader,
   ClockCard,
   DEFAULT_DEVICE_APPS,
   EmbeddedPage,
   IdleLock,
   MessageList,
+  PagesTrack,
   TalkBar,
   fmtDurationHMS,
-  fmtStatusClock,
   shortName,
   useCatalogApps,
   useChannels,
+  useDeviceBuiltins,
   useIdleTimer,
   useNow,
   useOnShift,
   type DeviceApp,
 } from "@/components/device";
 import { useMe } from "./use-me";
-import { PagesTrack } from "./pages-track";
 import { AppPanel } from "./app-panel";
-import { AppsHome } from "./apps-home";
 import { LeaveDrawer } from "./leave-drawer";
 import { PunchPanel } from "./punch-panel";
 import { DirectoryPanel } from "./directory-panel";
 import { SettingsPanel } from "./settings-panel";
+import { PersonalPunchPrompt } from "./punch-prompt";
+import { usePunchAsk } from "./use-punch-ask";
 
 interface ShiftRow {
   organizationId: string;
@@ -63,6 +66,9 @@ export function PersonalDeviceScreen() {
   const me = useMe();
   const now = useNow();
   const safeArea = getSafeAreaInsets();
+  // Phone: swipeable Channel | Apps pages. Tablet (≥768px): 400px channel
+  // column beside a 6-column apps grid — the same shape as /store.
+  const phone = useIsMobile();
 
   const chat = useChannels({ organizationId: me.organizationId, meUserId: me.meUserId, locale });
   const shifts = useOnShift(me.organizationId);
@@ -84,14 +90,19 @@ export function PersonalDeviceScreen() {
   const [openRoute, setOpenRoute] = useState<string | null>(null);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [locked, setLocked] = useState(false);
+  // The phone always boots onto the lock screen; the first swipe-to-unlock is
+  // what triggers the punch-in check below.
+  const [locked, setLocked] = useState(true);
   // Lazy initialiser is safe: the manager layout only renders this screen
   // client-side once auth has loaded, so there is no SSR pass to mismatch.
   const [managerMode] = useState(() => {
     try { return sessionStorage.getItem("merchiva_manager_override") === "1"; } catch { return false; }
   });
 
-  const lock = () => { setLeaveOpen(false); setOpenApp(null); setLocked(true); };
+  // "Punch in now?" after every unlock while off shift (no snooze).
+  const punchAsk = usePunchAsk({ ready: me.ready && !!me.myMember && shifts.ready, myCode: me.myCode, onShift: !!myShift });
+
+  const lock = () => { setLeaveOpen(false); setOpenApp(null); punchAsk.dismiss(); setLocked(true); };
   const { dimming, reset: resetIdle } = useIdleTimer({
     idleMs: IDLE_MS,
     dimMs: DIM_MS,
@@ -101,7 +112,7 @@ export function PersonalDeviceScreen() {
     paused: recording,
     onIdle: lock,
   });
-  const unlock = () => { setLocked(false); resetIdle(); };
+  const unlock = () => { setLocked(false); resetIdle(); punchAsk.request(); };
 
   // Switching channel returns to the messages page, like the prototype.
   const selectChannel = (i: number) => { chat.setActiveIndex(i); setPage(0); };
@@ -109,13 +120,14 @@ export function PersonalDeviceScreen() {
   const prevChannel = () => { chat.prev(); setPage(0); };
 
   // Home grid: the surface's built-in apps first, then every Merchiva
-  // feature the member may open (permission-filtered by the catalog).
+  // feature the member may open (permission-filtered by the catalog and
+  // limited to the apps installed from /manager/apps).
+  const builtIns = useDeviceBuiltins("personal");
   const catalogApps = useCatalogApps("personal");
   const apps: DeviceApp[] = useMemo(() => {
-    const builtIns = DEFAULT_DEVICE_APPS.map((a) => ({ ...a, label: t(`personalDevice.apps.${a.id}`) }));
     const seen = new Set(builtIns.map((a) => a.id));
     return [...builtIns, ...catalogApps.filter((a) => !seen.has(a.id))];
-  }, [t, catalogApps]);
+  }, [builtIns, catalogApps]);
   // Built-in ids always win over a same-named catalog entry.
   const isBuiltIn = !!openApp && DEFAULT_DEVICE_APPS.some((a) => a.id === openApp);
   const openCatalogEntry = openApp && !isBuiltIn ? APP_CATALOG.find((a) => a.id === openApp) ?? null : null;
@@ -135,10 +147,103 @@ export function PersonalDeviceScreen() {
   const channelShort = chat.activeChannel?.name.split("·")[0].trim() ?? "";
   const shiftElapsed = myShift ? fmtDurationHMS(now.getTime() - myShift.since.getTime()) : "--:--:--";
 
+  const channelHeader = (
+    <ChannelHeader
+      channels={chat.channels}
+      activeIndex={chat.activeIndex}
+      onSelect={selectChannel}
+      right={
+        managerMode && me.isManager ? (
+          <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-primary px-2 text-[12px] font-medium text-primary-foreground">
+            {t("personalDevice.managerBadge")} · {shortName(me.myName)}
+          </span>
+        ) : (
+          <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-secondary px-2 text-[12px] font-medium">
+            {shortName(me.myName)}
+          </span>
+        )
+      }
+      className="shrink-0"
+    />
+  );
+
+  const messagesPage =
+    chat.ready && chat.channels.length === 0 ? (
+      <EmptyState
+        key="empty"
+        icon={MessageSquare}
+        title={t("personalDevice.noChannelsTitle")}
+        description={t("personalDevice.noChannelsDesc")}
+        className="h-full"
+      />
+    ) : !chat.ready ? (
+      <div key="loading" className="flex h-full items-center justify-center">
+        <Spinner size={20} className="text-muted-foreground" />
+      </div>
+    ) : (
+      <MessageList key="messages" messages={chat.messages} className="h-full" />
+    );
+
+  const appPanel = (
+    <AppPanel open={openApp !== null} title={appTitle} onClose={() => setOpenApp(null)}>
+      {openApp === "punch-in" && (
+        <PunchPanel
+          organizationId={me.organizationId}
+          myMemberId={me.myMemberId}
+          myCode={me.myCode}
+          shift={myShift}
+        />
+      )}
+      {openApp === "directory" && (
+        <DirectoryPanel members={me.orgMembers} onShift={shifts.entries} myMemberId={me.myMemberId} />
+      )}
+      {openApp === "settings" && (
+        <SettingsPanel name={me.myName} email={user?.email} orgName={me.orgName} />
+      )}
+      {openApp && CatalogComponent && (
+        <EmbeddedPage
+          appId={openApp}
+          route={openRoute}
+          member={{ id: me.myMemberId ?? "", displayName: me.myName, role: me.role ?? "staff", userIdHex: me.meUserId, punchInCode: me.myCode }}
+          onNavigate={(next, route) => { setOpenApp(next); setOpenRoute(route); }}
+          className="h-full"
+        />
+      )}
+      {(openApp === "requests" || openApp === "docs") && !CatalogComponent && (
+        <EmptyState
+          icon={FileText}
+          title={t("personalDevice.comingSoonTitle")}
+          description={t("personalDevice.comingSoonDesc")}
+          className="h-full"
+        />
+      )}
+    </AppPanel>
+  );
+
+  const talkBar = (
+    <TalkBar
+      leftAction={{ icon: LogOut, label: t("personalDevice.leaveBtn"), onClick: () => { hapticLight(); setLeaveOpen(true); } }}
+      channelLabel={t("personalDevice.channelBtn")}
+      onPrevChannel={prevChannel}
+      onNextChannel={nextChannel}
+      onSend={async (r) => {
+        const status = await chat.sendVoice(r);
+        setPage(0);
+        return status;
+      }}
+      onRecordingChange={setRecording}
+      disabled={!chat.activeChannel}
+      className="shrink-0"
+    />
+  );
+
   return (
     <div className="h-[100dvh] w-full bg-muted/40 text-foreground">
       <div
-        className="relative mx-auto flex h-full w-full max-w-[480px] select-none flex-col overflow-hidden bg-background sm:border-x sm:border-border"
+        className={cn(
+          "relative mx-auto flex h-full w-full select-none flex-col overflow-hidden bg-background",
+          phone && "max-w-[480px] sm:border-x sm:border-border",
+        )}
         style={{ paddingTop: safeArea.top }}
       >
         {/* ── Main (blurs while dimming / locked) ─────────────────────── */}
@@ -149,121 +254,52 @@ export function PersonalDeviceScreen() {
             locked && "scale-[.9] blur-[8px] opacity-60",
           )}
         >
-          {/* status strip */}
-          <div className="flex h-7 shrink-0 items-center justify-between px-4 text-[13px] font-semibold">
-            <span>{fmtStatusClock(now)}</span>
-            <span className="truncate text-[11px] font-medium text-muted-foreground">{me.orgName}</span>
-          </div>
-
-          <ChannelHeader
-            channels={chat.channels}
-            activeIndex={chat.activeIndex}
-            onSelect={selectChannel}
-            right={
-              managerMode && me.isManager ? (
-                <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-primary px-2 text-[12px] font-medium text-primary-foreground">
-                  {t("personalDevice.managerBadge")} · {shortName(me.myName)}
-                </span>
-              ) : (
-                <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-secondary px-2 text-[12px] font-medium">
-                  {shortName(me.myName)}
-                </span>
-              )
-            }
-            className="shrink-0"
-          />
-
-          {/* pages */}
-          <div className="relative min-h-0 flex-1">
-            <PagesTrack
-              page={page}
-              onPageChange={(p) => { hapticLight(); setPage(p); }}
-              className="h-full"
-              pages={[
-                chat.ready && chat.channels.length === 0 ? (
-                  <EmptyState
-                    key="empty"
-                    icon={MessageSquare}
-                    title={t("personalDevice.noChannelsTitle")}
-                    description={t("personalDevice.noChannelsDesc")}
-                    className="h-full"
-                  />
-                ) : !chat.ready ? (
-                  <div key="loading" className="flex h-full items-center justify-center">
-                    <Spinner size={20} className="text-muted-foreground" />
-                  </div>
-                ) : (
-                  <MessageList key="messages" messages={chat.messages} className="h-full" />
-                ),
-                <AppsHome
-                  key="apps"
-                  apps={apps}
-                  onOpen={(id) => setOpenApp(id)}
+          {phone ? (
+            <>
+              {channelHeader}
+              <div className="relative min-h-0 flex-1">
+                <PagesTrack
+                  page={page}
+                  onPageChange={(p) => { hapticLight(); setPage(p); }}
                   className="h-full"
-                />,
-              ]}
-            />
-
-            <AppPanel open={openApp !== null} title={appTitle} onClose={() => setOpenApp(null)}>
-              {openApp === "punch-in" && (
-                <PunchPanel
-                  organizationId={me.organizationId}
-                  myMemberId={me.myMemberId}
-                  myCode={me.myCode}
-                  shift={myShift}
+                  pages={[
+                    messagesPage,
+                    <AppsGrid key="apps" apps={apps} onOpen={(id) => setOpenApp(id)} columns={4} size="md" className="h-full" />,
+                  ]}
                 />
-              )}
-              {openApp === "directory" && (
-                <DirectoryPanel members={me.orgMembers} onShift={shifts.entries} myMemberId={me.myMemberId} />
-              )}
-              {openApp === "settings" && (
-                <SettingsPanel name={me.myName} email={user?.email} orgName={me.orgName} />
-              )}
-              {openApp && CatalogComponent && (
-                <EmbeddedPage
-                  appId={openApp}
-                  route={openRoute}
-                  onNavigate={(next, route) => { setOpenApp(next); setOpenRoute(route); }}
-                  className="h-full"
-                />
-              )}
-              {(openApp === "requests" || openApp === "docs") && !CatalogComponent && (
-                <EmptyState
-                  icon={FileText}
-                  title={t("personalDevice.comingSoonTitle")}
-                  description={t("personalDevice.comingSoonDesc")}
-                  className="h-full"
-                />
-              )}
-            </AppPanel>
-          </div>
-
-          <TalkBar
-            leftAction={{ icon: LogOut, label: t("personalDevice.leaveBtn"), onClick: () => { hapticLight(); setLeaveOpen(true); } }}
-            channelLabel={t("personalDevice.channelBtn")}
-            onPrevChannel={prevChannel}
-            onNextChannel={nextChannel}
-            onSend={async (r) => {
-              const status = await chat.sendVoice(r);
-              setPage(0);
-              return status;
-            }}
-            onRecordingChange={setRecording}
-            disabled={!chat.activeChannel}
-            className="shrink-0"
-          />
+                {appPanel}
+              </div>
+              {talkBar}
+            </>
+          ) : (
+            <div className="grid min-h-0 flex-1 grid-cols-[400px_1fr]">
+              <div className="relative flex min-h-0 flex-col overflow-hidden border-r border-border">
+                {channelHeader}
+                <div className="relative min-h-0 flex-1">{messagesPage}</div>
+                {talkBar}
+              </div>
+              <div className="relative min-h-0 overflow-hidden">
+                <AppsGrid apps={apps} onOpen={(id) => setOpenApp(id)} columns={6} size="lg" className="absolute inset-0" />
+                {appPanel}
+              </div>
+            </div>
+          )}
           {safeArea.bottom > 0 && <div style={{ height: safeArea.bottom }} className="shrink-0 bg-background" />}
         </div>
 
         <LeaveDrawer
           open={leaveOpen}
           onOpenChange={setLeaveOpen}
-          organizationId={me.organizationId}
-          myCode={me.myCode}
-          onShift={!!myShift}
-          onBreak={!!myShift?.onBreak}
           isManager={me.isManager}
           onLock={lock}
+        />
+
+        <PersonalPunchPrompt
+          open={punchAsk.ask && !locked}
+          organizationId={me.organizationId}
+          myCode={me.myCode}
+          onDone={punchAsk.resolve}
+          onSkip={punchAsk.resolve}
         />
 
         <IdleLock

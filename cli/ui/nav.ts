@@ -16,9 +16,7 @@ export type PermKey =
   | "staffing"
   | "products"
   | "settings"
-  | "pos"
   | "team"
-  | "website"
   | "training_grading";
 
 export interface NavSection {
@@ -35,7 +33,6 @@ export interface NavSection {
 // Order and labels match the web sidebar's `navItems`.
 export const NAV: NavSection[] = [
   { page: "dashboard", label: "Dashboard", icon: "◧", perm: "dashboard" },
-  { page: "pos", label: "POS", icon: "▣", perm: "pos" },
   {
     page: "inventory",
     label: "Inventory",
@@ -80,21 +77,7 @@ export const NAV: NavSection[] = [
       { label: "Training", page: "training" },
     ],
   },
-  {
-    page: "customers",
-    label: "Customers",
-    icon: "◎",
-    perm: "sales",
-    tabs: [
-      { label: "Customers", page: "customers" },
-      { label: "Marketing", page: "marketing" },
-    ],
-  },
   { page: "chat", label: "Chat", icon: "✦", perm: "staffing" },
-  { page: "website", label: "Website", icon: "◇", perm: "website" },
-  { page: "design", label: "Design", icon: "◈", perm: "website" },
-  // Membership + Settings are always visible (no permission gate), like the web.
-  { page: "membership", label: "Membership", icon: "♔" },
   { page: "settings", label: "Settings", icon: "⚙" },
 ];
 

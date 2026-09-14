@@ -58,8 +58,7 @@ import {
   addShift,
   createNotification,
 } from "@/lib/spacetimedb/actions";
-import { buildBriefingContext as buildBriefingContextShared, briefingProblemKeys } from "@/lib/insights/build-context";
-import { buildFallbackBriefing } from "@/lib/insights/fallback-briefing";
+import { buildBriefingContext as buildBriefingContextShared } from "@/lib/insights/build-context";
 import { parseOpeningHours, dayKeyForDate } from "@/lib/holidays";
 import { executeAction } from "@/lib/merchiva/skills/registry";
 import { useI18n, useT } from "@/lib/i18n/context";
@@ -84,8 +83,7 @@ interface BriefingRow {
   summary?: string | null;
   generatedBy: string;
   actions?: string | null;     // JSON: [{ label, action, paramsJson }]
-  hour?: number | null;        // org-local hour (0-23) this snapshot was generated for
-  problemKeys?: string | null; // JSON array of problem signatures (for the "new problem" dot)
+  generatedAt?: unknown;       // SpacetimeDB timestamp
 }
 
 // One AI-proposed one-click action persisted with the briefing.
@@ -95,22 +93,9 @@ interface AiAction {
   params: Record<string, unknown>;
 }
 
-function parseBriefingKeys(s?: string | null): string[] {
-  if (!s) return [];
-  try {
-    const a = JSON.parse(s);
-    return Array.isArray(a) ? a.map(String) : [];
-  } catch {
-    return [];
-  }
-}
-
 function monthDay(date: string): string {
   const p = date.split("-");
   return p.length === 3 ? `${Number(p[1])}/${Number(p[2])}` : date;
-}
-function slotTitle(date: string, hour: number | null | undefined): string {
-  return hour == null ? date : `${date} ${String(hour).padStart(2, "0")}:00`;
 }
 
 type AgentState = "working" | "done" | "idle" | "attention";
@@ -471,8 +456,8 @@ export function MorningBriefingCard() {
 
   // Second element is the SDK's `subscribeApplied` flag — true once the
   // daily_briefing subscription has delivered its snapshot (NOT a "loading"
-  // spinner flag). The auto-gen safety net must wait for it, or a fresh page
-  // load sees an empty table and wrongly regenerates every time.
+  // spinner flag). The once-a-day auto-generate must wait for it, or a fresh
+  // page load sees an empty table and wrongly regenerates every time.
   const [rawBriefings, briefingsReady] = useDailyBriefings() as [unknown[], boolean];
   const [shifts] = useShifts() as [unknown[], boolean];
   const [staffMembers] = useStaffMembers() as [unknown[], boolean];
@@ -499,93 +484,51 @@ export function MorningBriefingCard() {
 
   const today = todayLocal();
 
-  // Today's CURRENT briefing = the latest-hour snapshot for today.
-  const todaysBriefing = useMemo<BriefingRow | null>(() => {
-    if (!organizationId) return null;
-    let best: BriefingRow | null = null;
-    for (const r of rawBriefings as BriefingRow[]) {
-      if (r.organizationId !== organizationId || r.date !== today) continue;
-      if (!best || (r.hour ?? -1) > (best.hour ?? -1)) best = r;
-    }
-    return best;
-  }, [rawBriefings, organizationId, today]);
-
-  // Past briefings — one row per past day (the latest-hour snapshot of that day).
-  const briefingHistory = useMemo<BriefingRow[]>(() => {
-    if (!organizationId) return [];
-    const latestPerDay = new Map<string, BriefingRow>();
-    for (const r of rawBriefings as BriefingRow[]) {
-      if (r.organizationId !== organizationId || r.date === today) continue;
-      const cur = latestPerDay.get(r.date);
-      if (!cur || (r.hour ?? -1) > (cur.hour ?? -1)) latestPerDay.set(r.date, r);
-    }
-    return Array.from(latestPerDay.values())
-      .sort((a, b) => (a.date < b.date ? 1 : -1))
-      .slice(0, 14);
-  }, [rawBriefings, organizationId, today]);
-
-  // ── 24-hour briefing timeline (the on-card "graph") ─────────────────────
-  // Left rail shows ALL 24 hours of the viewed day. An hour only lights up and
-  // becomes clickable when its snapshot detected a problem. ◀ ▶ switch days.
-  const [viewDate, setViewDate] = useState<string>(today);
-  const [viewHour, setViewHour] = useState<number | null>(null);
-
-  // All briefings for this org, grouped by date and sorted by hour.
+  // One briefing per day — if a day has several rows, the newest wins.
   const byDate = useMemo(() => {
-    const m = new Map<string, BriefingRow[]>();
+    const m = new Map<string, BriefingRow>();
     if (!organizationId) return m;
     for (const r of rawBriefings as BriefingRow[]) {
       if (r.organizationId !== organizationId) continue;
-      const arr = m.get(r.date) ?? [];
-      arr.push(r);
-      m.set(r.date, arr);
+      const cur = m.get(r.date);
+      if (!cur || tsToMs(r.generatedAt) > tsToMs(cur.generatedAt)) m.set(r.date, r);
     }
-    for (const arr of m.values()) arr.sort((a, b) => (a.hour ?? -1) - (b.hour ?? -1));
     return m;
   }, [rawBriefings, organizationId]);
 
-  // Days we can page through with ◀ ▶ — every day that has a briefing, plus today.
+  const todaysBriefing = byDate.get(today) ?? null;
+
+  // Past briefings — newest first.
+  const briefingHistory = useMemo<BriefingRow[]>(() => {
+    return Array.from(byDate.values())
+      .filter((r) => r.date !== today)
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .slice(0, 14);
+  }, [byDate, today]);
+
+  // ◀ ▶ page through past days' briefings.
+  const [viewDate, setViewDate] = useState<string>(today);
+
+  // Days we can page through — every day that has a briefing, plus today.
   const navDates = useMemo(() => {
     const set = new Set<string>(byDate.keys());
     set.add(today);
     return Array.from(set).sort();
   }, [byDate, today]);
 
-  // Snapshot for each hour of the viewed day (null-hour legacy rows excluded).
-  const hourMap = useMemo(() => {
-    const m = new Map<number, BriefingRow>();
-    for (const r of byDate.get(viewDate) ?? []) {
-      if (r.hour != null) m.set(r.hour, r);
-    }
-    return m;
-  }, [byDate, viewDate]);
+  const displayedBriefing = byDate.get(viewDate) ?? null;
 
-  const dayLatest = useMemo<BriefingRow | null>(() => {
-    const arr = byDate.get(viewDate) ?? [];
-    return arr.length ? arr[arr.length - 1] : null;
-  }, [byDate, viewDate]);
-
-  // The briefing currently shown — a picked hour, else the day's latest.
-  const displayedBriefing = useMemo<BriefingRow | null>(() => {
-    if (viewHour != null) {
-      const s = hourMap.get(viewHour);
-      if (s) return s;
-    }
-    if (viewDate === today) return todaysBriefing ?? dayLatest;
-    return dayLatest;
-  }, [viewHour, hourMap, viewDate, today, todaysBriefing, dayLatest]);
-
-  // Live actions + issues only when showing today's current (latest) briefing.
-  const viewingLatest = viewDate === today && viewHour == null;
+  // Live actions + issues only when showing today.
+  const viewingLatest = viewDate === today;
 
   const viewIdx = navDates.indexOf(viewDate);
   const goPrevDay = useCallback(() => {
     const i = navDates.indexOf(viewDate);
-    if (i > 0) { setViewDate(navDates[i - 1]); setViewHour(null); }
+    if (i > 0) setViewDate(navDates[i - 1]);
   }, [navDates, viewDate]);
   const goNextDay = useCallback(() => {
     const i = navDates.indexOf(viewDate);
-    if (i >= 0 && i < navDates.length - 1) { setViewDate(navDates[i + 1]); setViewHour(null); }
+    if (i >= 0 && i < navDates.length - 1) setViewDate(navDates[i + 1]);
   }, [navDates, viewDate]);
 
   // AI-proposed one-click actions persisted with today's briefing. Stored as a
@@ -897,10 +840,6 @@ export function MorningBriefingCard() {
     return out.sort((a, b) => weight(a.severity) - weight(b.severity));
   }, [organizationId, today, timeOff, shiftTrades, inventoryItems, shifts, orgMembers, staffMembers, staffRoles, roleTasks, roleTaskAssignments, settingsRows]);
 
-  // Current local hour — drives the live pulse, "next scan" time, and which
-  // timeline hours read as "not scanned yet" vs "scanned & clear".
-  const nowHour = new Date().getHours();
-
   const orgSetting = useMemo(
     () =>
       (settingsRows as Array<Record<string, unknown>>).find(
@@ -977,86 +916,13 @@ export function MorningBriefingCard() {
     return { onShift, punchedInToday, dueY, doneY, skippedY, notDoneY, dueT, doneT, skippedT, pendingT };
   }, [organizationId, today, tz, punchEvents, orgMembers, roleTaskAssignments]);
 
-  // ── Horizontal hourly-scan timeline ("the pulse") ──────────────────────
-  // Mr. Merchiva scans the store every hour; each scan that ran becomes a dot
-  // on a single horizontal track for the viewed day. Hours where it flagged a
-  // problem light up rose (and stay clickable to read that snapshot); quiet
-  // hours are small grey dots; hours still ahead of "now" are hollow. This
-  // replaces the old 64px greyed-out vertical 24-hour rail.
-  type ScanState = "issue" | "clear" | "pending" | "skip";
-  const scanTimeline = useMemo(() => {
-    // Business window from the store's opening hours, widened so it always
-    // covers every hour that actually has a scan (and "now" on today).
-    let openH = 6;
-    let closeH = 22;
-    const oh = parseOpeningHours((orgSetting?.openingHours as string) ?? null);
-    const dh = oh?.[dayKeyForDate(new Date(`${viewDate}T00:00:00`))];
-    if (dh && !dh.closed) {
-      const o = Number.parseInt(String(dh.open ?? "").slice(0, 2), 10);
-      const c = Number.parseInt(String(dh.close ?? "").slice(0, 2), 10);
-      if (Number.isFinite(o)) openH = o;
-      if (Number.isFinite(c)) closeH = c;
-    }
-    for (const h of hourMap.keys()) {
-      openH = Math.min(openH, h);
-      closeH = Math.max(closeH, h);
-    }
-    if (viewDate === today) closeH = Math.max(closeH, nowHour);
-    openH = Math.max(0, Math.min(openH, 23));
-    closeH = Math.min(23, Math.max(closeH, openH + 1));
-
-    // One row per hour. The view lays these out as equal flex columns, so we
-    // don't compute pixel positions here — only state + which labels to show.
-    let issueCount = 0;
-    const hh = (h: number) => String(h).padStart(2, "0");
-    const rows: {
-      h: number;
-      state: ScanState;
-      snap: BriefingRow | null;
-      clickable: boolean;
-      flag: boolean;
-      tickLabel: string | null;
-    }[] = [];
-    for (let h = openH; h <= closeH; h++) {
-      const snap = hourMap.get(h) ?? null;
-      const problem = snap ? parseBriefingKeys(snap.problemKeys).length > 0 : false;
-      if (problem) issueCount++;
-      const future = viewDate === today && h > nowHour;
-      const state: ScanState = problem ? "issue" : snap ? "clear" : future ? "pending" : "skip";
-      rows.push({ h, state, snap, clickable: !!snap, flag: problem, tickLabel: null });
-    }
-
-    // Sparse context ticks (open · mid · close), but never on — or right next
-    // to — an hour that already shows its own rose HH:00 label, so they can't
-    // collide. Each tick lives in its own column, centred under its hour.
-    const span = Math.max(1, closeH - openH);
-    const issueHours = rows.filter((r) => r.state === "issue").map((r) => r.h);
-    const gap = Math.max(1, Math.round(span * 0.12));
-    const near = (h: number) => issueHours.some((ih) => Math.abs(ih - h) <= gap);
-    const mid = Math.round((openH + closeH) / 2);
-    for (const h of new Set([openH, mid, closeH])) {
-      if (near(h)) continue;
-      const r = rows.find((x) => x.h === h);
-      if (r && r.state !== "issue") r.tickLabel = hh(h);
-    }
-
-    return {
-      rows,
-      openH,
-      closeH,
-      scanCount: hourMap.size,
-      issueCount,
-      isToday: viewDate === today,
-    };
-  }, [orgSetting, viewDate, today, nowHour, hourMap]);
-
   const [busyBriefing, setBusyBriefing] = useState(false);
   const [busyActions, setBusyActions] = useState<Set<string>>(new Set());
   const [briefingExpanded, setBriefingExpanded] = useState(true);
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
   // ── Build briefing context for the AI ──────────────────────────────────
-  // Shared with the server-side cron via lib/insights/build-context.ts.
+  // Shared with the server-side store context via lib/insights/build-context.ts.
   const buildBriefingContext = useCallback(() => {
     return buildBriefingContextShared(
       {
@@ -1092,60 +958,18 @@ export function MorningBriefingCard() {
     settingsRows, punchEvents, organizationId, today, locale,
   ]);
 
-  // Hours of today that already have a snapshot — kept in a ref so the
-  // fallback path below can consult a fresh value without re-creating the
-  // generate callback on every briefing update.
-  const todayHoursRef = useRef<Set<number>>(new Set());
-  useEffect(() => {
-    todayHoursRef.current = new Set(
-      (byDate.get(todayLocal()) ?? [])
-        .map((r) => r.hour)
-        .filter((h): h is number => h != null),
-    );
-  }, [byDate]);
-
   // ── Generate briefing ──────────────────────────────────────────────────
-  // fallbackOnError (auto path): when the LLM route fails, still persist a
-  // deterministic no-AI snapshot so the hour is never left empty — but only
-  // if the hour has no snapshot yet, so a good one is never downgraded.
-  const generateBriefing = useCallback(async (opts?: { fallbackOnError?: boolean }) => {
+  const generateBriefing = useCallback(async () => {
     if (!organizationId || busyBriefing) return;
     setBusyBriefing(true);
     try {
       const context = buildBriefingContext();
-      const problemKeys = briefingProblemKeys(context);
-      const saveFallback = async () => {
-        const hour = new Date().getHours();
-        if (todayHoursRef.current.has(hour)) return;
-        const fb = buildFallbackBriefing(problemKeys, locale, {
-          done: context.todayTasks.completed,
-          total: context.todayTasks.total,
-        });
-        await saveDailyBriefing({
-          date: today,
-          content: fb.content,
-          summary: fb.summary,
-          generatedBy: "auto-fallback",
-          problemKeys: JSON.stringify(problemKeys),
-          hour,
-        });
-      };
-      let res: Response;
-      try {
-        res = await fetch("/api/insights/morning-briefing", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ context, lang: locale, dateStr: today, organizationId }),
-        });
-      } catch (e) {
-        if (opts?.fallbackOnError) await saveFallback();
-        throw e;
-      }
+      const res = await fetch("/api/insights/morning-briefing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ context, lang: locale, dateStr: today, organizationId }),
+      });
       if (!res.ok) {
-        if (opts?.fallbackOnError) {
-          await saveFallback();
-          return;
-        }
         const err = await res.json().catch(() => ({}));
         toast.error("Briefing failed", { description: err.error });
         return;
@@ -1163,10 +987,6 @@ export function MorningBriefingCard() {
         summary: data.summary,
         generatedBy: data.generatedBy,
         actions: data.actions && data.actions.length ? JSON.stringify(data.actions) : undefined,
-        // Keep problemKeys fresh so the hourly cron's new-problem diff is accurate.
-        problemKeys: JSON.stringify(problemKeys),
-        // Snapshot this hour so the chat's time-rail can browse the day's runs.
-        hour: new Date().getHours(),
       });
     } catch (e) {
       console.error("[briefing] error:", e);
@@ -1175,63 +995,43 @@ export function MorningBriefingCard() {
     }
   }, [organizationId, busyBriefing, buildBriefingContext, locale, today]);
 
-  // The hourly cron (/api/cron/morning-briefing) is the PRIMARY generator — it
-  // scans every active-admin org each hour whether or not anyone is on the
-  // dashboard. But every hour MUST get a snapshot, so this is the client-side
-  // safety net: if the dashboard is open and the current hour still has no
-  // snapshot a few minutes past the top of the hour (cron missed/failed, local
-  // dev without a cron runner, org created mid-hour), generate one from here.
-  // The reducer upserts on (org, date, hour), so overlapping with the cron is
-  // harmless. Capped at 2 attempts per hour so a failing API isn't hammered.
+  // Once a day: when an admin opens the dashboard and today has no briefing
+  // yet, generate one. Capped at 2 attempts per (org, day) so a failing API
+  // isn't hammered; attempts persist in localStorage across refreshes.
   const autoGenAttempts = useRef<Map<string, number>>(new Map());
   useEffect(() => {
     // Staff can't save briefings (reducer requires manager/owner) — admins only.
-    // Waiting for `briefingsReady` means an empty byDate really is "no snapshot
-    // for this hour yet", never "subscription still loading" — entering or
-    // refreshing the page must NOT re-generate when the hour already ran.
+    // Waiting for `briefingsReady` means an empty byDate really is "no briefing
+    // today yet", never "subscription still loading".
     if (!organizationId || !briefingsReady || !isAdmin) return;
-    // Attempts are persisted per (org, date, hour) so page refreshes don't
-    // reset the budget; in-memory map is the private-mode fallback.
-    const readAttempts = (key: string): number => {
+    if (busyBriefing) return;
+    const dateStr = todayLocal();
+    if (byDate.has(dateStr)) return;
+    const key = `${organizationId}:${dateStr}`;
+    const readAttempts = (): number => {
       try {
         const v = window.localStorage.getItem(`mbAutoGen:${key}`);
         if (v != null) return Number(v) || 0;
       } catch { /* storage unavailable */ }
       return autoGenAttempts.current.get(key) ?? 0;
     };
-    const writeAttempts = (key: string, n: number) => {
+    const writeAttempts = (n: number) => {
       autoGenAttempts.current.set(key, n);
       try { window.localStorage.setItem(`mbAutoGen:${key}`, String(n)); } catch { /* ignore */ }
     };
     // Prune markers from previous days so the store doesn't accumulate.
     try {
-      const dateStr = todayLocal();
       for (let i = window.localStorage.length - 1; i >= 0; i--) {
         const k = window.localStorage.key(i);
-        if (k && k.startsWith("mbAutoGen:") && !k.includes(`:${dateStr}:`)) {
+        if (k && k.startsWith("mbAutoGen:") && !k.endsWith(`:${dateStr}`)) {
           window.localStorage.removeItem(k);
         }
       }
     } catch { /* ignore */ }
-    const check = () => {
-      const now = new Date();
-      if (now.getMinutes() < 3) return; // give the server cron a head start
-      const dateStr = todayLocal();
-      const hour = now.getHours();
-      if (busyBriefing) return;
-      // Snapshot already exists for this hour (cron, another tab, earlier
-      // visit) — nothing to do. This is the normal path on page entry.
-      const hasSnapshot = (byDate.get(dateStr) ?? []).some((r) => r.hour === hour);
-      if (hasSnapshot) return;
-      const key = `${organizationId}:${dateStr}:${hour}`;
-      const attempts = readAttempts(key);
-      if (attempts >= 2) return; // don't hammer a failing API — next hour retries
-      writeAttempts(key, attempts + 1);
-      void generateBriefing({ fallbackOnError: true });
-    };
-    check();
-    const id = setInterval(check, 60_000);
-    return () => clearInterval(id);
+    const attempts = readAttempts();
+    if (attempts >= 2) return;
+    writeAttempts(attempts + 1);
+    void generateBriefing();
   }, [organizationId, briefingsReady, isAdmin, byDate, busyBriefing, generateBriefing]);
 
   // ── Quick-action dispatcher (re-uses Mr. Merchiva's reducer wrappers) ─
@@ -1401,11 +1201,6 @@ export function MorningBriefingCard() {
 
   // Header / footer display helpers.
   const onToday = viewDate === today;
-  const fmtHour = (h: number) => `${String(h).padStart(2, "0")}:00`;
-  // Latest scan time for the viewed day (drives the header "· latest HH:00").
-  const latestHour = displayedBriefing?.hour ?? dayLatest?.hour ?? null;
-  // Next hourly scan (today only) — the cron runs on the hour.
-  const nextScanHour = (nowHour + 1) % 24;
   const weekdayLabel = (() => {
     try {
       return new Intl.DateTimeFormat(locale, { weekday: "short" }).format(
@@ -1418,15 +1213,14 @@ export function MorningBriefingCard() {
   // All-clear when nothing is queued for the manager on the live view.
   const allClear =
     viewingLatest && issueCount === 0 && pendingAiActions.length === 0 && !!displayedBriefing;
-  const hasFooter = briefingHistory.length > 0 || onToday;
+  const hasFooter = briefingHistory.length > 0;
 
   return (
     <div className="space-y-3">
       <Card>
         <CardHeader>
-          {/* Header — identity + a live "Hourly scan · latest HH:00" status.
-              The day pager and regenerate move to the right where they belong;
-              only the identity block toggles collapse. */}
+          {/* Header — identity + status. The day pager and regenerate sit on
+              the right; only the identity block toggles collapse. */}
           <div className="flex w-full items-center gap-2.5">
             <div
               role="button"
@@ -1466,17 +1260,9 @@ export function MorningBriefingCard() {
                   />
                   <Eyebrow as="span" size="xs">
                     {busyBriefing
-                      ? t("dashboard.scanning") || "scanning…"
-                      : t("dashboard.hourlyScan") || "Hourly scan"}
+                      ? t("dashboard.generating") || "Generating today's briefing…"
+                      : t("dashboard.morningBriefing") || "Morning Briefing"}
                   </Eyebrow>
-                  {latestHour != null && (
-                    <>
-                      <span className="text-border">·</span>
-                      <span className="font-mono text-[10px] tabular-nums">
-                        {t("dashboard.latest") || "latest"} {fmtHour(latestHour)}
-                      </span>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
@@ -1548,123 +1334,6 @@ export function MorningBriefingCard() {
 
         {briefingExpanded && (
           <CardContent className="space-y-4 pt-0">
-            {/* ── Hourly-scan pulse ───────────────────────────────────────────
-                Mr. Merchiva scans the store every hour; each scan that ran is a
-                dot on one horizontal track. Quiet hours are small grey dots, the
-                hour it flagged a problem lights up rose (and stays clickable to
-                read that snapshot), hours still ahead of "now" are hollow. This
-                replaces the greyed-out 64px vertical 24-hour rail. */}
-            <div>
-              <div className="mb-2 flex items-baseline justify-between gap-2">
-                <Eyebrow as="span" size="xs">
-                  {scanTimeline.isToday
-                    ? t("dashboard.todayScan") || "Today's scan"
-                    : t("dashboard.hourlyScan") || "Hourly scan"}
-                  <span className="text-muted-foreground/60">
-                    {" · "}
-                    {t("dashboard.perHour") || "hourly"}
-                  </span>
-                </Eyebrow>
-                <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                  {scanTimeline.scanCount === 0 ? (
-                    t("dashboard.awaitingScan") || "Awaiting first scan"
-                  ) : (
-                    <>
-                      {scanTimeline.scanCount} {t("dashboard.scans") || "scans"}
-                      {scanTimeline.issueCount > 0 && (
-                        <span className="text-destructive">
-                          {" · "}
-                          {scanTimeline.issueCount} {t("dashboard.flagged") || "flagged"}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </span>
-              </div>
-
-              {/* Equal flex columns — one per hour. Flex centring keeps every
-                  dot exactly on the track, and each label is bounded to its own
-                  column so flags/hour-labels/ticks can never overlap. Each hour
-                  is a full-height click column (a comfortable tap target). */}
-              <div className="relative mx-1.5 flex items-stretch">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-[19px] h-[3px] -translate-y-1/2 rounded-full bg-border"
-                />
-                {scanTimeline.rows.map((r) => {
-                  const active =
-                    !!r.snap && displayedBriefing?.id.toString() === r.snap.id.toString();
-                  const dot =
-                    r.state === "issue"
-                      ? cn(
-                          "rounded-full bg-destructive ring-4 ring-destructive/15",
-                          active ? "h-3 w-3 ring-destructive/30" : "h-2.5 w-2.5",
-                        )
-                      : r.state === "clear"
-                      ? cn(
-                          "rounded-full bg-muted-foreground/80",
-                          active ? "h-2.5 w-2.5 bg-muted-foreground ring-2 ring-muted-foreground/30" : "h-1.5 w-1.5",
-                        )
-                      : r.state === "pending"
-                      ? "h-1.5 w-1.5 rounded-full border border-border bg-card"
-                      : "h-1 w-1 rounded-full bg-border";
-                  const hourLabel = `${String(r.h).padStart(2, "0")}:00`;
-                  const inner = (
-                    <>
-                      {/* flag row (fixed height so every dot lines up) */}
-                      <span className="flex h-[11px] items-end leading-none">
-                        {r.flag && (
-                          <span className="font-mono text-[8px] font-semibold uppercase tracking-[0.06em] text-destructive">
-                            {t("dashboard.issueFlag") || "issue"}
-                          </span>
-                        )}
-                      </span>
-                      {/* dot row — fixed height centres each dot on the track */}
-                      <span className="relative z-10 flex h-4 items-center">
-                        <span className={cn("block transition-all", dot)} />
-                      </span>
-                      {/* label row (issue HH:00, else a sparse context tick) */}
-                      <span className="flex h-[12px] items-start leading-none">
-                        {r.state === "issue" ? (
-                          <span className="font-mono text-[9px] font-semibold tabular-nums text-destructive">
-                            {hourLabel}
-                          </span>
-                        ) : r.tickLabel ? (
-                          <span className="font-mono text-[8.5px] tabular-nums text-muted-foreground/70">
-                            {r.tickLabel}
-                          </span>
-                        ) : null}
-                      </span>
-                    </>
-                  );
-                  return r.clickable ? (
-                    <button
-                      key={r.h}
-                      type="button"
-                      onClick={() => setViewHour(r.h)}
-                      title={`${viewDate} ${hourLabel}`}
-                      aria-label={
-                        r.state === "issue"
-                          ? `${hourLabel} — ${t("dashboard.issueFlag") || "issue"}`
-                          : hourLabel
-                      }
-                      className="flex min-w-0 flex-1 flex-col items-center rounded hover:bg-muted/50"
-                    >
-                      {inner}
-                    </button>
-                  ) : (
-                    <span
-                      key={r.h}
-                      aria-hidden
-                      className="flex min-w-0 flex-1 flex-col items-center"
-                    >
-                      {inner}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* ── Today's attendance + yesterday's tasks (deterministic) ──
                 Answers "who's clocked in today" and "did yesterday's tasks get
                 done" straight from live punch + role-task rows, independent of
@@ -1820,20 +1489,17 @@ export function MorningBriefingCard() {
               </div>
             )}
 
-            {/* Viewing a past snapshot — jump back to the live view. */}
+            {/* Viewing a past briefing — jump back to today. */}
             {!viewingLatest && displayedBriefing && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setViewDate(today);
-                  setViewHour(null);
-                }}
+                onClick={() => setViewDate(today)}
                 className="w-full justify-start gap-1.5 px-2 text-[11px] text-muted-foreground"
               >
                 <History className="h-3 w-3" />
-                {slotTitle(displayedBriefing.date, displayedBriefing.hour)}
+                {displayedBriefing.date}
                 <Eyebrow as="span" size="xs" className="ml-auto text-current">
                   {t("dashboard.backToNow") || "Back to now"}
                 </Eyebrow>
@@ -1888,8 +1554,7 @@ export function MorningBriefingCard() {
                 <span className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
                   <Check className="h-3 w-3" />
                 </span>
-                {t("dashboard.allClear") ||
-                  "This scan came back clean — nothing needs your attention right now."}
+                {t("dashboard.allClear") || "Nothing needs your attention right now."}
               </div>
             )}
 
@@ -1979,33 +1644,22 @@ export function MorningBriefingCard() {
               </p>
             )}
 
-            {/* ── Footer — past-briefings access + next-scan time ── */}
+            {/* ── Footer — past-briefings access ── */}
             {hasFooter && (
               <div className="flex items-center gap-2 border-t border-border pt-2.5">
-                {briefingHistory.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setHistoryExpanded((v) => !v)}
-                    className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
-                  >
-                    <History className="h-3 w-3" />
-                    <Eyebrow as="span" size="xs" className="text-current">
-                      {t("dashboard.pastBriefings") || "Past briefings"} · {briefingHistory.length}
-                    </Eyebrow>
-                    <ChevronDown
-                      className={cn("h-3 w-3 transition-transform", historyExpanded && "rotate-180")}
-                    />
-                  </button>
-                ) : (
-                  <span />
-                )}
-                <span className="flex-1" />
-                {onToday && (
-                  <span className="inline-flex items-center gap-1.5 font-mono text-[10px] tabular-nums text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {t("dashboard.nextScan") || "Next scan"} {fmtHour(nextScanHour)}
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setHistoryExpanded((v) => !v)}
+                  className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <History className="h-3 w-3" />
+                  <Eyebrow as="span" size="xs" className="text-current">
+                    {t("dashboard.pastBriefings") || "Past briefings"} · {briefingHistory.length}
+                  </Eyebrow>
+                  <ChevronDown
+                    className={cn("h-3 w-3 transition-transform", historyExpanded && "rotate-180")}
+                  />
+                </button>
               </div>
             )}
 

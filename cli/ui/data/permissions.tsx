@@ -28,9 +28,7 @@ function defaultPermissions(): Perms {
     staffing: { view: true, edit: false },
     products: { view: true, edit: false },
     settings: { view: true },
-    pos: { view: true, edit: false },
     team: { view: false, invite: false, edit: false },
-    website: { view: false, edit: false },
     training_grading: { view: false, edit: false },
   };
 }

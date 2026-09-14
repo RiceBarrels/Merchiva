@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, MonitorSmartphone } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { StoreModeIcon } from "@/components/device/app-icons";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -8,6 +9,7 @@ import { useThemeMode, type ThemeMode } from "@/lib/theme";
 import { useAuth } from "@/lib/auth/context";
 import { useT } from "@/lib/i18n/context";
 import { hapticLight } from "@/lib/haptics";
+import { clearAppMode } from "@/lib/app-mode";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -47,9 +49,9 @@ export function SettingsPanel({ name, email, orgName }: { name: string; email?: 
         <Button
           variant="outline"
           className="h-11 w-full justify-start gap-2"
-          onClick={() => { hapticLight(); window.location.href = "/choose?switch=1"; }}
+          onClick={() => { hapticLight(); clearAppMode(); window.location.href = "/choose?switch=1"; }}
         >
-          <MonitorSmartphone className="h-4 w-4" />{t("personalDevice.settings.switchMode")}
+          <StoreModeIcon className="h-5 w-5" />{t("personalDevice.settings.switchMode")}
         </Button>
         <Button
           variant="destructive"

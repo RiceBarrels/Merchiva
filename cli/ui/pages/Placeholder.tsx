@@ -14,10 +14,6 @@ const NOTES: Record<string, string> = {
   schedule: "Shift schedule & rota. (web: /manager/personnel/schedule)",
   roles: "Staff roles & task assignment. (web: /manager/personnel/roles)",
   training: "Training days & objectives. (web: /manager/personnel/training)",
-  marketing: "Campaigns, coupons, loyalty. (web: /manager/marketing)",
-  website: "Website builder (Craft.js). (web: /manager/builder)",
-  design: "Brand & design system. (web: /manager/design)",
-  membership: "Plan & billing (Stripe). (web: /manager/membership)",
   settings: "Org & account settings. (web: /manager/settings)",
 };
 

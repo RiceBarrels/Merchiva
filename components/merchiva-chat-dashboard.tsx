@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, cloneElement, Children, type ReactNode, type ReactElement } from "react";
-import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones, Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, MousePointer2, Copy, RotateCcw } from "lucide-react";
+import { Package, Users, Eye, ChevronRight, ChevronDown, ChevronUp, Bell, Paperclip, Mic, AtSign, ArrowUp, ArrowRight, Check, Calendar, Sparkles, ArrowLeftRight, CalendarX, Truck, Trash2, Plus, User, Coffee, Utensils, ChefHat, Clipboard, Wrench, Headphones, Store, Banknote, Box, ShoppingCart, Receipt, HeartPulse, Baby, Dog, Leaf, Music, Camera, Palette, Hammer, Zap, Star, Award, Briefcase, Phone, Mail, Clock, Wine, Shield, MoonStar, Sun, ReceiptText, HandPlatter, Pencil, UserPlus, UserMinus, ListChecks, Tag, Ticket, X, CheckCircle2, AlertTriangle, Copy, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -782,17 +782,6 @@ const ACTION_META: Record<string, { icon: React.ReactNode; fields: string[]; ris
   // Notifications
   createNotification:  { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
   sendNotification:    { icon: <Bell className="h-3 w-3" />, fields: ["title", "body", "type"] },
-  // Builder
-  addBuilderElement:    { icon: <Plus className="h-3 w-3" />, fields: ["elements"] },
-  deleteBuilderElement: { icon: <Trash2 className="h-3 w-3" />, fields: ["targets"], risk: "medium" },
-  addBuilderFunction:   { icon: <Sparkles className="h-3 w-3" />, fields: ["name"] },
-  editBuilderHtml:      { icon: <Pencil className="h-3 w-3" />, fields: ["old_string", "new_string", "replace_all"], risk: "medium" },
-  setBuilderHtml:       { icon: <Pencil className="h-3 w-3" />, fields: ["html"], risk: "medium" },
-  appendBuilderHtml:    { icon: <Plus className="h-3 w-3" />, fields: ["html"] },
-  replaceBuilderHtml:   { icon: <Pencil className="h-3 w-3" />, fields: ["selector", "html"], risk: "medium" },
-  deleteBuilderHtml:    { icon: <Trash2 className="h-3 w-3" />, fields: ["selector"], risk: "medium" },
-  updateBuilderPage:    { icon: <Pencil className="h-3 w-3" />, fields: ["pageId", "name", "slug", "title", "description", "keywords", "ogImage", "ogTitle", "ogDescription", "canonicalUrl", "robots"] },
-  updateBuilderSite:    { icon: <Pencil className="h-3 w-3" />, fields: ["name", "slug", "customDomain", "published", "plugins"], risk: "medium" },
 };
 
 function formatActionValue(val: unknown, depth = 0): string {
@@ -1024,76 +1013,6 @@ function SupplierOrderPreview({ action, supplierNameById }: {
   );
 }
 
-function BuilderAddPreview({ action }: { action: Record<string, unknown> }) {
-  const t = useT();
-  const elements = Array.isArray(action.elements) ? action.elements as Array<Record<string, unknown>> : [];
-  if (elements.length === 0) return null;
-  return (
-    <div className="mt-1 mb-1">
-      <div className="text-[10.5px] text-muted-foreground font-mono mb-1">
-        {(elements.length === 1 ? t("merchiva.builder.elementCount") : t("merchiva.builder.elementCountPlural")).replace("{count}", String(elements.length))}
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {elements.slice(0, 12).map((el, i) => {
-          const type = String(el.type ?? "?");
-          const props = (el.props ?? {}) as Record<string, unknown>;
-          const tag = props.tag ? String(props.tag) : null;
-          const label = tag ? `${type}/${tag}` : type;
-          const content = el.content ? String(el.content).slice(0, 24) : null;
-          return (
-            <span key={i} className="inline-flex items-center gap-1.5 h-5 px-1.5 rounded bg-muted border border-border text-[10.5px]">
-              <span className="font-mono text-muted-foreground">{label}</span>
-              {content && <span className="text-foreground truncate max-w-[140px]">{content}</span>}
-            </span>
-          );
-        })}
-        {elements.length > 12 && (
-          <span className="text-[10.5px] text-muted-foreground">{t("merchiva.builder.moreCount").replace("{count}", String(elements.length - 12))}</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BuilderDeletePreview({ action }: { action: Record<string, unknown> }) {
-  const targets = Array.isArray(action.targets) ? action.targets as unknown[] : [];
-  if (targets.length === 0) return null;
-  return (
-    <div className="mt-1 mb-1 flex flex-wrap gap-1">
-      {targets.map((t, i) => (
-        <span key={i} className={cn("inline-flex items-center h-5 px-1.5 rounded border text-[10.5px] font-mono", STATUS_TONE_CLASSES.danger)}>
-          {String(t)}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// Renders a Claude-Code-style old/new diff for the editBuilderHtml action.
-function BuilderEditPreview({ action }: { action: Record<string, unknown> }) {
-  const oldStr = action.old_string == null ? "" : String(action.old_string);
-  const newStr = action.new_string == null ? "" : String(action.new_string);
-  const replaceAll = Boolean(action.replace_all);
-  if (!oldStr && !newStr) return null;
-  const MAX = 360;
-  const clip = (s: string) => (s.length > MAX ? s.slice(0, MAX) + "…" : s);
-  return (
-    <div className="mt-1 mb-1 space-y-1">
-      {replaceAll && (
-        <div className="inline-flex items-center h-4 px-1.5 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-[9.5px] font-mono uppercase tracking-wider">
-          replace_all
-        </div>
-      )}
-      <div className={cn("rounded border px-2 py-1 font-mono text-[10.5px] whitespace-pre-wrap break-all", STATUS_TONE_CLASSES.danger)}>
-        <span className="select-none opacity-60 mr-1">-</span>{clip(oldStr)}
-      </div>
-      <div className="rounded border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30 px-2 py-1 font-mono text-[10.5px] text-emerald-800 dark:text-emerald-200 whitespace-pre-wrap break-all">
-        <span className="select-none text-emerald-400 dark:text-emerald-500 mr-1">+</span>{clip(newStr)}
-      </div>
-    </div>
-  );
-}
-
 function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecuted, decision, reason, validRoleNamesLower, supplierNameById }: {
   action: Record<string, unknown>;
   onApprove: () => void;
@@ -1126,9 +1045,6 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
   const canUndo = isUndoable(actionName);
   const isShiftAction = actionName === "addShift" || actionName === "updateShift";
   const isRoleAction = actionName === "addRole" || actionName === "updateRole";
-  const isBuilderAdd = actionName === "addBuilderElement";
-  const isBuilderDelete = actionName === "deleteBuilderElement";
-  const isBuilderEdit = actionName === "editBuilderHtml";
   const isSupplierOrder = actionName === "orderFromSupplier" || actionName === "createPurchaseOrder";
 
   useEffect(() => {
@@ -1210,13 +1126,10 @@ function ActionApprovalCard({ action, onApprove, onReject, status, alreadyExecut
       {/* Rich preview for specific action types */}
       {isShiftAction && status !== "rejected" && <ShiftPreviewStrip action={action} validRoleNamesLower={validRoleNamesLower} />}
       {isRoleAction && status !== "rejected" && <RolePreviewStrip action={action} />}
-      {isBuilderAdd && status !== "rejected" && <BuilderAddPreview action={action} />}
-      {isBuilderDelete && status !== "rejected" && <BuilderDeletePreview action={action} />}
-      {isBuilderEdit && status !== "rejected" && <BuilderEditPreview action={action} />}
       {isSupplierOrder && status !== "rejected" && <SupplierOrderPreview action={action} supplierNameById={supplierNameById} />}
 
       {/* Field grid (skip fields already shown in rich preview) */}
-      {!isShiftAction && !isRoleAction && !isBuilderAdd && !isBuilderDelete && !isBuilderEdit && !isSupplierOrder && (
+      {!isShiftAction && !isRoleAction && !isSupplierOrder && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-2">
           {displayFields.map((key) => {
             const val = action[key];
@@ -2537,12 +2450,6 @@ const THINKING_PATTERNS: [RegExp, string][] = [
 
 // Truncate a CSS selector for chip display — keep the tail, since that's where
 // the disambiguating tag/nth-of-type lives (the root prefix is shared).
-function shortSelector(selector: string): string {
-  const trimmed = selector.replace(/^#__merchiva_root\s*>\s*/, "");
-  if (trimmed.length <= 20) return trimmed;
-  return "…" + trimmed.slice(-19);
-}
-
 function getThinkingLabel(
   text: string,
   phase: "analyze" | "fetch" | "process",
@@ -2557,42 +2464,9 @@ function getThinkingLabel(
   return t(`merchiva.thinking.default${phaseKey}`);
 }
 
-export interface BuilderModeContext {
-  siteId: string;
-  siteName: string;
-  pageId: string;
-  pageName: string;
-  // Legacy Craft.js path — empty array when in HTML mode.
-  elements: Array<{ name: string; type: string; props: Record<string, unknown> }>;
-  theme?: Record<string, unknown>;
-  // HTML mode — present means the AI should use setBuilderHtml/replaceBuilderHtml etc.
-  html?: string;
-  // Currently selected element's CSS selector in HTML mode (helps the AI target edits)
-  selectedSelector?: string | null;
-  // Site-wide values authored in the Values panel. Keys can be referenced in
-  // HTML as `{key}` and are resolved at render time alongside system values
-  // like {userName}, {siteName}, {currentYear}.
-  customValues?: Record<string, string>;
-  // All pages in the current site so the AI can switch / delete by id.
-  pages?: Array<{ id: string; name: string; slug: string }>;
-  // Names of FlowFn functions stored in this site's local list — the AI uses
-  // these to know what to edit (replace by name) or delete.
-  functions?: string[];
-  // Page SEO metadata so the AI sees current title/description/OG fields and
-  // can update them via updateBuilderPage.
-  pageSlug?: string;
-  pageMetadata?: Record<string, string | undefined>;
-  // Site identity + plugin flags so the AI can update them via updateBuilderSite.
-  siteSlug?: string;
-  customDomain?: string | null;
-  sitePublished?: boolean;
-  siteFeatures?: Record<string, boolean>;
-}
-
 interface MerchivaChatProps {
   compact?: boolean;
   header?: boolean;
-  builderContext?: BuilderModeContext;
 }
 
 /** Permission gate: admins can disable Mr. Merchiva per member via the
@@ -2619,13 +2493,11 @@ export function MerchivaChat(props: MerchivaChatProps = {}) {
 function MerchivaChatInner({
   compact = false,
   header = true,
-  builderContext,
 }: MerchivaChatProps = {}) {
   const { currentOrg, organizationId, isOwner, role: orgRole, permissions: userPermissions, can } = usePermissions();
   const { getToken } = useAuth();
   const { locale } = useI18n();
   const t = useT();
-  const builderMode = !!builderContext;
   // Mr. Merchiva autonomy config for the active org (defaults to low-risk auto /
   // sensitive proposed). Drives the per-action gate below.
   const { config: autonomyConfig } = useAssistantConfig();
@@ -2686,20 +2558,9 @@ function MerchivaChatInner({
   // is reloaded — sendMessage falls straight through to the streaming route.
   const enqueueDisabledRef = useRef(false);
 
-  // Builder mode uses site-scoped localStorage instead of SpacetimeDB sessions
-  const builderStorageKey = builderMode ? `merchiva_builder_chat_${builderContext!.siteId}` : null;
-
-  // Initialize: load most recent session or create one (or hydrate from localStorage in builder mode)
+  // Initialize: load most recent session or create one
   useEffect(() => {
     if (sessionInitDone.current) return;
-    if (builderMode && builderStorageKey) {
-      try {
-        const raw = localStorage.getItem(builderStorageKey);
-        if (raw) setMessages(parseSessionMessages(raw));
-      } catch {}
-      sessionInitDone.current = true;
-      return;
-    }
     if (!organizationId || !sessionsReady || !myIdentityHex) return;
     if (mySessions.length > 0) {
       const latest = mySessions.find((s) => !s.archived) ?? mySessions[0];
@@ -2711,31 +2572,21 @@ function MerchivaChatInner({
       execCreateSession(t("merchiva.newConversation")).catch(() => {});
       sessionInitDone.current = true;
     }
-  }, [organizationId, mySessions, sessionsReady, myIdentityHex, builderMode, builderStorageKey, t]);
+  }, [organizationId, mySessions, sessionsReady, myIdentityHex, t]);
 
-  // When sessions update and we just created one, pick the newest (skip in builder mode)
+  // When sessions update and we just created one, pick the newest
   useEffect(() => {
-    if (builderMode) return;
     if (activeSessionId || !sessionInitDone.current || mySessions.length === 0) return;
     const latest = mySessions[0];
     const sid = rowIdString(latest.id);
     setActiveSessionId(sid);
     setMessages(parseSessionMessages(latest.messages ?? ""));
-  }, [mySessions, activeSessionId, builderMode]);
+  }, [mySessions, activeSessionId]);
 
-  // Save messages on change — to SpacetimeDB session or to localStorage (builder mode)
+  // Save messages on change to the SpacetimeDB session
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (messages.length === 0) return;
-    if (builderMode && builderStorageKey) {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        try {
-          localStorage.setItem(builderStorageKey, JSON.stringify(messages.slice(-50)));
-        } catch {}
-      }, 500);
-      return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-    }
     if (!activeSessionId || !organizationId) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
@@ -2743,23 +2594,18 @@ function MerchivaChatInner({
       execSaveSession(activeSessionId, json).catch(() => {});
     }, 1000);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [messages, activeSessionId, organizationId, builderMode, builderStorageKey]);
+  }, [messages, activeSessionId, organizationId]);
 
   // Each user keeps a single persistent Mr. Merchiva history. "Clear history"
   // empties the current session in place (no new session is ever created), so
   // there's exactly one conversation thread per user.
   const handleClearHistory = useCallback(async () => {
-    if (builderMode && builderStorageKey) {
-      try { localStorage.removeItem(builderStorageKey); } catch {}
-      setMessages([]);
-      return;
-    }
     if (!confirm(t("merchiva.clearHistoryConfirm"))) return;
     setMessages([]);
     if (activeSessionId) {
       execSaveSession(activeSessionId, JSON.stringify([])).catch(() => {});
     }
-  }, [activeSessionId, builderMode, builderStorageKey, t]);
+  }, [activeSessionId, t]);
 
   // @data mention
   const [dataMentionOpen, setDataMentionOpen] = useState(false);
@@ -2773,57 +2619,6 @@ function MerchivaChatInner({
   // File upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [attachedFiles, setAttachedFiles] = useState<{ name: string; url: string; type: string }[]>([]);
-
-  // Element picker (builder mode only) — lets the user click any element in
-  // the canvas iframe and attach it as context to the next prompt.
-  const [pickMode, setPickMode] = useState(false);
-  const [attachedElements, setAttachedElements] = useState<Array<{ selector: string; tag: string; outerHtml: string }>>([]);
-
-  // Listen for picked elements dispatched by html-editor when pickMode is active.
-  useEffect(() => {
-    function onPicked(e: Event) {
-      const detail = (e as CustomEvent).detail as { selector?: string; tag?: string; outerHtml?: string } | undefined;
-      if (!detail?.selector) return;
-      setAttachedElements((prev) =>
-        prev.some((el) => el.selector === detail.selector)
-          ? prev
-          : [...prev, { selector: detail.selector!, tag: detail.tag ?? "?", outerHtml: detail.outerHtml ?? "" }],
-      );
-      setPickMode(false);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("builder:set-pick-mode", { detail: { active: false } }));
-      }
-    }
-    window.addEventListener("builder:element-picked", onPicked);
-    return () => window.removeEventListener("builder:element-picked", onPicked);
-  }, []);
-
-  // Esc cancels pick mode.
-  useEffect(() => {
-    if (!pickMode) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setPickMode(false);
-        window.dispatchEvent(new CustomEvent("builder:set-pick-mode", { detail: { active: false } }));
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [pickMode]);
-
-  const togglePickMode = useCallback(() => {
-    setPickMode((prev) => {
-      const next = !prev;
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("builder:set-pick-mode", { detail: { active: next } }));
-      }
-      return next;
-    });
-  }, []);
-
-  const removeAttachedElement = useCallback((idx: number) => {
-    setAttachedElements((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
 
   const orgName = currentOrg?.name ?? t("merchiva.yourStore");
 
@@ -3047,34 +2842,8 @@ function MerchivaChatInner({
             .map((o) => ({ id: o.id, text: o.text, mediaType: o.mediaType })),
         })),
       },
-      // Builder mode: editing a website page in the visual builder
-      builder: builderContext ? {
-        siteId: builderContext.siteId,
-        siteName: builderContext.siteName,
-        pageId: builderContext.pageId,
-        pageName: builderContext.pageName,
-        elements: builderContext.elements,
-        theme: builderContext.theme,
-        // HTML mode fields — only set when the editor is in HTML mode
-        html: builderContext.html,
-        selectedSelector: builderContext.selectedSelector,
-        mode: builderContext.html != null ? "html" : "craft",
-        // Global values — AI can reference these as {key} in HTML output
-        customValues: builderContext.customValues,
-        // Page list (for addBuilderPage / deleteBuilderPage)
-        pages: builderContext.pages,
-        // FlowFn function names (for addBuilderFunction replace + deleteBuilderFunction)
-        functions: builderContext.functions,
-        // Page metadata + site identity / plugins (for updateBuilderPage / updateBuilderSite)
-        pageSlug: builderContext.pageSlug,
-        pageMetadata: builderContext.pageMetadata,
-        siteSlug: builderContext.siteSlug,
-        customDomain: builderContext.customDomain,
-        sitePublished: builderContext.sitePublished,
-        siteFeatures: builderContext.siteFeatures,
-      } : undefined,
     };
-  }, [orgName, today, invItems, suppliers, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, trainingDays, trainingObjectives, builderContext, orgSettings, locale]);
+  }, [orgName, today, invItems, suppliers, shifts, team, salesHistory, salesHourly, products, rawNotifs, insights, staffRoles, roleTasks, shiftPresets, allAvailability, timeOffRequests, shiftTrades, trainingDays, trainingObjectives, orgSettings, locale]);
 
   // Scroll to bottom only when a new message is added
   const prevMsgCount = useRef(messages.length);
@@ -3449,20 +3218,11 @@ function MerchivaChatInner({
     const filePrefix = attachedFiles.length > 0
       ? `[User attached ${attachedFiles.length} file(s): ${attachedFiles.map((f) => f.name).join(", ")}]\n`
       : "";
-    // Attached elements: give the AI the exact HTML it can use as old_string for
-    // editBuilderHtml, plus the CSS selector for fallback selector-based actions.
-    const elementPrefix = attachedElements.length > 0
-      ? `[User pinned ${attachedElements.length} element${attachedElements.length === 1 ? "" : "s"} from the page — apply edits to THESE specifically]\n${attachedElements
-          .map((el, i) => `Element ${i + 1}: <${el.tag}> at selector \`${el.selector}\`\n\`\`\`html\n${el.outerHtml}\n\`\`\``)
-          .join("\n")}\n`
-      : "";
-
-    const fullText = `${dataPrefix}${filePrefix}${elementPrefix}${text.trim()}`;
+    const fullText = `${dataPrefix}${filePrefix}${text.trim()}`;
 
     const displayParts: string[] = [];
     if (attachedData.length > 0) displayParts.push(`@${attachedData.join(" @")}`);
     if (attachedFiles.length > 0) displayParts.push(`📎 ${attachedFiles.map((f) => f.name).join(", ")}`);
-    if (attachedElements.length > 0) displayParts.push(`📌 ${attachedElements.map((el) => `<${el.tag}>`).join(" ")}`);
     const displayText = displayParts.length > 0
       ? `${text.trim()}\n${displayParts.join(" · ")}`
       : text.trim();
@@ -3477,7 +3237,6 @@ function MerchivaChatInner({
     setDraft("");
     setAttachedData([]);
     setAttachedFiles([]);
-    setAttachedElements([]);
     setDataMentionOpen(false);
     setSending(true);
     setThinkingPhase(getThinkingLabel(text, "analyze", t));
@@ -3815,7 +3574,7 @@ function MerchivaChatInner({
       setSending(false);
       setThinkingPhase("");
     }
-  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, attachedElements, isOwner, orgRole, userPermissions, locale, t, tx, activeSessionId, invItems, suppliers, decorateActions, getToken]);
+  }, [sending, messages, storeContext, organizationId, bufferAndMaybeSummarize, attachedData, attachedFiles, isOwner, orgRole, userPermissions, locale, t, tx, activeSessionId, invItems, suppliers, decorateActions, getToken]);
 
   const handleApprove = useCallback(async (msgId: string, actionId: string) => {
     // Read action data from current messages state BEFORE updating
@@ -3993,15 +3752,6 @@ function MerchivaChatInner({
   }, [sendMessage]);
 
   const quickChips = useMemo(() => {
-    if (builderMode) {
-      return [
-        t("merchiva.builderChips.heroSection"),
-        t("merchiva.builderChips.contactForm"),
-        t("merchiva.builderChips.mobileFriendly"),
-        t("merchiva.builderChips.deleteFooter"),
-        t("merchiva.builderChips.pricingTable"),
-      ];
-    }
     const chips: string[] = [];
 
     // Context-aware chips based on pending requests
@@ -4028,7 +3778,7 @@ function MerchivaChatInner({
     chips.push(t("merchiva.quickChips.inventoryAlerts"));
 
     return chips.slice(0, 5);
-  }, [timeOffRequests, shiftTrades, staffRoles, t, builderMode]);
+  }, [timeOffRequests, shiftTrades, staffRoles, t]);
 
   const todayStr = new Date().toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric" }).toLowerCase();
 
@@ -4296,8 +4046,8 @@ function MerchivaChatInner({
         ))}
       </div>
 
-      {/* Attached data/files/elements preview */}
-      {(attachedData.length > 0 || attachedFiles.length > 0 || attachedElements.length > 0) && (
+      {/* Attached data/files preview */}
+      {(attachedData.length > 0 || attachedFiles.length > 0) && (
         <div className={cn("pt-2 flex items-center gap-1.5 flex-wrap shrink-0", compact ? "px-4" : "px-6")}>
           {attachedData.map((d) => (
             <span key={d} className="h-6 px-2 rounded inline-flex items-center gap-1.5 text-[11px] font-mono font-medium"
@@ -4312,20 +4062,6 @@ function MerchivaChatInner({
               <Paperclip className="h-3 w-3" />
               {f.name.length > 20 ? f.name.slice(0, 17) + "..." : f.name}
               <button onClick={() => removeFile(i)} className="ml-0.5 hover:text-foreground">×</button>
-            </span>
-          ))}
-          {attachedElements.map((el, i) => (
-            <span
-              key={`${el.selector}-${i}`}
-              title={el.selector}
-              className={cn("h-6 px-2 rounded inline-flex items-center gap-1.5 border text-[11px] font-mono", STATUS_TONE_CLASSES.info)}
-            >
-              <MousePointer2 className="h-3 w-3" />
-              &lt;{el.tag}&gt;
-              <span className="opacity-70 max-w-[120px] truncate">
-                {shortSelector(el.selector)}
-              </span>
-              <button onClick={() => removeAttachedElement(i)} className="ml-0.5 hover:text-foreground">×</button>
             </span>
           ))}
         </div>
@@ -4388,50 +4124,26 @@ function MerchivaChatInner({
               )} title={recording ? t("merchiva.stopRecording") : t("merchiva.voiceInput")}>
               <Mic className="h-[15px] w-[15px]" />
             </Button>
-            {!builderMode && (
-              <Button variant="ghost" size="icon" onClick={() => setCallOpen(true)}
-                className="hidden @[300px]:inline-flex text-muted-foreground"
-                title={t("merchiva.startCall")}>
-                <Phone className="h-[15px] w-[15px]" />
-              </Button>
-            )}
-            {!builderMode && (
-              <Button variant="ghost" size="icon" onClick={() => setDataMentionOpen((v) => !v)}
-                className={cn(
-                  "gap-1.5 @[340px]:w-auto @[340px]:px-2 @[340px]:justify-start",
-                  dataMentionOpen || attachedData.length > 0
-                    ? "text-foreground bg-muted"
-                    : "text-muted-foreground"
-                )} title={t("merchiva.mentionData")}>
-                <AtSign className="h-[14px] w-[14px]" />
-                <span className="hidden @[340px]:inline text-[11.5px]">{t("merchiva.dataLabel")}{attachedData.length > 0 ? ` · ${attachedData.length}` : ""}</span>
-              </Button>
-            )}
-            {builderMode && (
-              <Button
-                variant="ghost"
-                onClick={togglePickMode}
-                className={cn(
-                  "px-2",
-                  pickMode
-                    ? "bg-primary text-primary-foreground hover:bg-primary/80 hover:text-primary-foreground"
-                    : attachedElements.length > 0
-                      ? "text-foreground bg-muted"
-                      : "text-muted-foreground",
-                )}
-                title={pickMode ? t("merchiva.pick.titleActive") : t("merchiva.pick.titleIdle")}
-              >
-                <MousePointer2 className="h-[14px] w-[14px]" />
-                <span className="text-[11.5px]">
-                  {pickMode ? t("merchiva.pick.clicking") : `${t("merchiva.pick.element")}${attachedElements.length > 0 ? ` · ${attachedElements.length}` : ""}`}
-                </span>
-              </Button>
-            )}
+            <Button variant="ghost" size="icon" onClick={() => setCallOpen(true)}
+              className="hidden @[300px]:inline-flex text-muted-foreground"
+              title={t("merchiva.startCall")}>
+              <Phone className="h-[15px] w-[15px]" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setDataMentionOpen((v) => !v)}
+              className={cn(
+                "gap-1.5 @[340px]:w-auto @[340px]:px-2 @[340px]:justify-start",
+                dataMentionOpen || attachedData.length > 0
+                  ? "text-foreground bg-muted"
+                  : "text-muted-foreground"
+              )} title={t("merchiva.mentionData")}>
+              <AtSign className="h-[14px] w-[14px]" />
+              <span className="hidden @[340px]:inline text-[11.5px]">{t("merchiva.dataLabel")}{attachedData.length > 0 ? ` · ${attachedData.length}` : ""}</span>
+            </Button>
             <div className="flex-1" />
             <kbd className="hidden @[420px]:inline-block font-mono text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">⏎ {t("merchiva.sendShortcut")}</kbd>
             <Button
               size="lg"
-              disabled={(!draft.trim() && attachedFiles.length === 0 && attachedElements.length === 0) || sending}
+              disabled={(!draft.trim() && attachedFiles.length === 0) || sending}
               onClick={() => sendMessage(draft)}
               className="w-9 px-0 @[300px]:w-auto @[300px]:px-4 gap-2 disabled:opacity-30"
             >

@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
 import { EmptyState } from "@/components/ui/empty-state";
-import { AppsGrid, DEFAULT_DEVICE_APPS, EmbeddedPage, catalogApp, useCatalogApps, type DeviceApp, type OnShiftEntry } from "@/components/device";
+import { AppsGrid, EmbeddedPage, catalogApp, useCatalogApps, useDeviceBuiltins, type DeviceApp, type OnShiftEntry } from "@/components/device";
 import type { StoreMember } from "./use-org-members";
 import { DirectoryPanel } from "./directory-panel";
 import { DeviceSettingsPanel } from "./device-settings-panel";
@@ -18,19 +18,22 @@ export interface AppsPaneProps {
   operator: StoreMember;
   forMember: (memberId: string) => OnShiftEntry | null;
   onPanelOpenChange?: (open: boolean) => void;
+  /** Phone: 4-column grid, medium tiles. Tablet: 6 columns, large tiles. */
+  phone?: boolean;
   className?: string;
 }
 
 /** Logged-in right pane: home-screen grid; apps open as a sliding panel. */
-export function AppsPane({ operator, members, forMember, onPanelOpenChange, className }: AppsPaneProps) {
+export function AppsPane({ operator, members, forMember, onPanelOpenChange, phone = false, className }: AppsPaneProps) {
   const t = useT();
   const [openApp, setOpenApp] = useState<DeviceApp["id"] | null>(null);
   const [openRoute, setOpenRoute] = useState<string | null>(null);
 
   // Punching happens at log-in (PunchPrompt) and in the log-out drawer, so
   // there is no separate Punch In app on the store device. Every other
-  // Merchiva feature the operator may view comes from the shared catalog.
-  const builtins: DeviceApp[] = DEFAULT_DEVICE_APPS.filter((a) => a.id !== "punch-in").map((a) => ({ ...a, label: t(`storeDevice.apps.${a.id}`) }));
+  // Merchiva feature the operator may view comes from the shared catalog,
+  // filtered to the apps installed from /manager/apps.
+  const builtins = useDeviceBuiltins("store");
   const catalogApps = useCatalogApps("store", operator);
   const apps: DeviceApp[] = [...builtins, ...catalogApps];
   const openCatalog = openApp ? catalogApp(openApp) : null;
@@ -51,11 +54,12 @@ export function AppsPane({ operator, members, forMember, onPanelOpenChange, clas
 
   return (
     <div className={cn("relative min-h-0 overflow-hidden bg-background", className)}>
-      <AppsGrid apps={apps} onOpen={open} columns={6} size="lg" className="absolute inset-0" />
+      <AppsGrid apps={apps} onOpen={open} columns={phone ? 4 : 6} size={phone ? "md" : "lg"} className="absolute inset-0" />
       <AnimatePresence>
         {openApp && (
           <motion.div
             key={openApp}
+            data-no-swipe
             className="absolute inset-0 z-10 flex flex-col bg-background"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -74,6 +78,7 @@ export function AppsPane({ operator, members, forMember, onPanelOpenChange, clas
                   appId={openCatalog.id}
                   route={openRoute}
                   actor={operator}
+                  member={{ id: operator.id, displayName: operator.displayName, role: operator.role, userIdHex: operator.userIdHex, punchInCode: operator.punchInCode }}
                   onNavigate={(id, route) => { hapticLight(); setOpenApp(id); setOpenRoute(route); }}
                 />
               )}

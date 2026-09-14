@@ -1,6 +1,8 @@
 "use client";
 
-// Renders one manager page inside a device panel: Suspense + spinner, hides
+// Renders one catalog app inside a device panel. Entries with a `lite`
+// component render that (the simplified staff UI); otherwise the manager
+// page is embedded: Suspense + spinner, hides
 // the desktop PageHeader chrome, and intercepts clicks on internal
 // `/manager/...` links so they open the matching catalog app in place (via
 // onNavigate) instead of leaving the kiosk surface. Personnel pages get the
@@ -14,9 +16,9 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 import { PersonnelHubProvider } from "@/components/personnel/hub-context";
 import { PersonnelTabsNav } from "@/components/personnel/hub-nav";
 import { catalogApp, catalogPage, catalogPageForRoute, pageAllowed, type CatalogActor } from "./app-catalog";
-import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { PermissionsProvider, usePermissions } from "@/lib/context/permissions";
 import type { OrgRole, Permissions } from "@/lib/types";
+import type { LiteMember } from "./apps/types";
 
 export interface EmbeddedPageProps {
   /** Catalog app id being shown (for link interception context). */
@@ -32,6 +34,8 @@ export interface EmbeddedPageProps {
   /** Evaluate the page's permission checks as this member (the store-device
    *  operator) instead of the account the device is signed in with. */
   actor?: CatalogActor | null;
+  /** Who is using the app (drives the lite apps' "my" data). */
+  member?: LiteMember | null;
   className?: string;
 }
 
@@ -60,22 +64,27 @@ function Fallback() {
   );
 }
 
-export function EmbeddedPage({ appId, route, children, onNavigate, actor, className }: EmbeddedPageProps) {
+export function EmbeddedPage({ appId, route, children, onNavigate, actor, member, className }: EmbeddedPageProps) {
   const t = useT();
   const app = catalogApp(appId);
-  const { can: canSelf, role: selfRole } = usePermissions();
-  const { betaFeatures } = useBetaFeatures();
+  const { can: canSelf, role: selfRole, organizationId } = usePermissions();
   const role = actor ? actor.role : selfRole;
+  const Lite = app?.lite ?? null;
   const gate = {
     isManager: role === "owner" || role === "manager",
-    betaFeatures,
     can: (section: keyof Permissions) =>
       actor ? actor.role === "owner" || actor.permissions[section]?.view === true : canSelf(section, "view"),
   };
   const page = app ? catalogPage(app, route) : null;
   const Page = page?.component ?? null;
-  const content = children ?? (Page ? <Page /> : null);
-  const isPersonnel = !!app && app.route.startsWith("/manager/personnel");
+  const content =
+    children ??
+    (Lite && member && organizationId ? (
+      <Lite surface={actor ? "store" : "personal"} organizationId={organizationId} member={member} isManager={gate.isManager} />
+    ) : Page ? (
+      <Page />
+    ) : null);
+  const isPersonnel = !Lite && !!app && app.route.startsWith("/manager/personnel");
 
   const onClickCapture = (e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement | null;
@@ -90,7 +99,9 @@ export function EmbeddedPage({ appId, route, children, onNavigate, actor, classN
       toast(t("device.notAvailableHere"));
       return;
     }
-    if (hit.app.id === appId && hit.page.route === (page?.route ?? "")) return;
+    // Several apps share a route (lite "schedule" / "tasks", the personnel
+    // hub): a link to the route already on screen is a no-op.
+    if (hit.page.route === (page?.route ?? "")) return;
     onNavigate?.(hit.app.id, hit.page.route);
   };
 

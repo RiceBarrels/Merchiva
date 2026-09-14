@@ -3,17 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard, Package, TrendingUp, Users,
-  MonitorSmartphone, MessageSquare, Globe, Crown,
-  Settings, MoreHorizontal, X, FileBarChart, UserRoundSearch,
-  Palette, Bell,
-} from "lucide-react";
+import { MoreHorizontal, X } from "lucide-react";
+import { AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon, NotificationsIcon, ReportsIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
 import { usePermissions } from "@/lib/context/permissions";
 import { useUnreadCount } from "@/components/notification-center";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
-import type { BetaFeatureKey } from "@/lib/beta-features";
-import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
+import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
+import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { hapticLight, hapticMedium } from "@/lib/haptics";
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
@@ -34,27 +30,22 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permissionKey?: keyof Permissions;
-  betaFeature?: BetaFeatureKey;
   mobileOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { labelKey: "nav.home",      href: "/manager/",      icon: LayoutDashboard, permissionKey: "dashboard" },
-  { labelKey: "nav.inventory", href: "/manager/inventory",       icon: Package,         permissionKey: "inventory" },
-  { labelKey: "nav.sales",     href: "/manager/sales",           icon: TrendingUp,      permissionKey: "sales" },
-  { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: Users,        permissionKey: "staffing" },
-  { labelKey: "nav.reports",   href: "/manager/reports",         icon: FileBarChart,    permissionKey: "sales" },
-  { labelKey: "nav.customers", href: "/manager/customers",       icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website" },
-  { labelKey: "nav.pos",       href: "/manager/pos",             icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
-  { labelKey: "nav.chat",      href: "/manager/channel",            icon: MessageSquare,   permissionKey: "staffing" },
-  { labelKey: "nav.notifications", href: "/manager/notifications", icon: Bell },
-  { labelKey: "nav.website",   href: "/manager/builder",         icon: Globe,           permissionKey: "website", betaFeature: "website" },
-  { labelKey: "nav.design",    href: "/manager/design",          icon: Palette,         permissionKey: "website", betaFeature: "design" },
-  { labelKey: "nav.membership", href: "/manager/membership",     icon: Crown },
-  { labelKey: "nav.settings",  href: "/manager/settings",        icon: Settings },
+  { labelKey: "nav.home",      href: "/manager/",      icon: DashboardIcon, permissionKey: "dashboard" },
+  { labelKey: "nav.inventory", href: "/manager/inventory",       icon: InventoryIcon,   permissionKey: "inventory" },
+  { labelKey: "nav.sales",     href: "/manager/sales",           icon: SalesIcon,       permissionKey: "sales" },
+  { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: DirectoryIcon, permissionKey: "staffing" },
+  { labelKey: "nav.reports",   href: "/manager/reports",         icon: ReportsIcon,     permissionKey: "sales" },
+  { labelKey: "nav.chat",      href: "/manager/channel",            icon: ChannelIcon,     permissionKey: "staffing" },
+  { labelKey: "nav.notifications", href: "/manager/notifications", icon: NotificationsIcon },
+  { labelKey: "nav.apps",      href: "/manager/apps",            icon: AppStoreIcon,    permissionKey: "settings" },
+  { labelKey: "nav.settings",  href: "/manager/settings",        icon: SettingsIcon },
 ];
 
-const STORE_MACHINE_HREFS = new Set(["/manager/pos", "/manager/inventory", "/manager/channel"]);
+const STORE_MACHINE_HREFS = new Set(["/manager/inventory", "/manager/channel"]);
 
 const PRIMARY_HREFS = ["/manager/", "/manager/personnel", "/manager/channel", "/manager/notifications"];
 
@@ -63,16 +54,16 @@ export function BottomBar() {
   const pathname = usePathname();
   const { can } = usePermissions();
   const [storeMachine] = useStoreMachineMode();
-  const { betaFeatures } = useBetaFeatures();
   const safeArea = getSafeAreaInsets();
   const [moreOpen, setMoreOpen] = useState(false);
   const unreadCount = useUnreadCount();
   const badgeFor = (href: string) =>
     href === "/manager/notifications" && unreadCount > 0 ? unreadCount : 0;
 
+  const { installed: installedApps } = useDeviceApps();
   const permitted = NAV_ITEMS.filter((item) => {
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
-    if (item.betaFeature && !betaFeatures[item.betaFeature]) return false;
+    if (!isManagerRouteEnabled(item.href, installedApps)) return false;
     if (!item.permissionKey) return true;
     return can(item.permissionKey, "view");
   });
@@ -115,7 +106,7 @@ export function BottomBar() {
                     active ? "bg-foreground/5 text-foreground" : "text-muted-foreground"
                   )}
                 >
-                  <Icon className="h-[20px] w-[20px]" />
+                  <Icon className="h-[24px] w-[24px]" />
                   <span className={cn("text-[10.5px] leading-tight text-center tracking-tight", active ? "font-semibold" : "font-medium")}>
                     {t(item.labelKey)}
                   </span>
@@ -153,7 +144,7 @@ export function BottomBar() {
                     />
                   )}
                   <div className={cn("relative h-8 w-14 flex justify-center items-center rounded-full transition-colors", active && "bg-foreground/8")}>
-                    <Icon className="w-[19px] h-[19px]" />
+                    <Icon className="w-[23px] h-[23px]" />
                     {badgeFor(item.href) > 0 && (
                       <span className="absolute -top-0.5 right-2 h-4 min-w-[16px] px-1 flex items-center justify-center bg-foreground text-background text-[9.5px] font-bold rounded-full leading-none">
                         {badgeFor(item.href) > 99 ? "99+" : badgeFor(item.href)}

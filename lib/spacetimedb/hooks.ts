@@ -158,11 +158,6 @@ export function useDailyBriefings() {
   const tbl = (tables as any).dailyBriefing;
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
-export function useBriefingPrefs() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tbl = (tables as any).userBriefingPref;
-  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
-}
 
 // ── Punch / Attendance ───────────────────────────────────────────────────────
 // Clock in/out/break events (one row per punch). Used by the punch-in terminal

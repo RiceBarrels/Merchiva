@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ClockCard, fmtDurationHMS, fmtHM, useNow, type OnShiftEntry, type PunchAction } from "@/components/device";
 import { recordPunch, setPunchInCode, type DeviceLoginIntent } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
@@ -30,8 +29,10 @@ export function PunchPanel({
   const [busy, setBusy] = useState<PunchAction | null>(null);
   const [codeInput, setCodeInput] = useState("");
   const [savingCode, setSavingCode] = useState(false);
-  const [scanOpen, setScanOpen] = useState(false);
-  const [intent, setIntent] = useState<DeviceLoginIntent>("login");
+  // Punching in / out on the phone always goes through the store QR: the
+  // scanner approves the store's nonce with a punch intent and the server
+  // records the punch. Only breaks are recorded directly.
+  const [scanIntent, setScanIntent] = useState<DeviceLoginIntent | null>(null);
 
   const onShift = !!shift;
   const onBreak = !!shift?.onBreak;
@@ -51,6 +52,8 @@ export function PunchPanel({
       setSavingCode(false);
     }
   };
+
+  const openScan = (intent: DeviceLoginIntent) => { hapticLight(); setScanIntent(intent); };
 
   const punch = async (action: PunchAction) => {
     if (!myCode || busy) return;
@@ -119,71 +122,69 @@ export function PunchPanel({
         footRight={<span className="font-mono tabular-nums">{fmtHM(now)}</span>}
       />
 
-      <div className="grid grid-cols-2 gap-2">
-        {!onShift && (
-          <Button className="col-span-2 h-12 gap-2" onClick={() => punch("in")} disabled={busy !== null}>
-            <LogIn className="h-4 w-4" />{t("personalDevice.punch.punchIn")}
-          </Button>
-        )}
-        {onShift && !onBreak && (
-          <>
-            <Button variant="outline" className="h-12 gap-2" onClick={() => punch("break-start")} disabled={busy !== null}>
-              <Coffee className="h-4 w-4" />{t("personalDevice.punch.startBreak")}
-            </Button>
-            <Button variant="destructive" className="h-12 gap-2" onClick={() => punch("out")} disabled={busy !== null}>
-              <LogOut className="h-4 w-4" />{t("personalDevice.punch.punchOut")}
-            </Button>
-          </>
-        )}
-        {onShift && onBreak && (
-          <Button className="col-span-2 h-12 gap-2" onClick={() => punch("break-end")} disabled={busy !== null}>
-            <Undo2 className="h-4 w-4" />{t("personalDevice.punch.endBreak")}
-          </Button>
-        )}
-      </div>
-
-      <div className="border-t border-border pt-4">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("personalDevice.punch.scanSection")}
-          </span>
-          {scanOpen && (
-            <button type="button" className="text-[12px] text-muted-foreground" onClick={() => setScanOpen(false)}>
+      {scanIntent ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] font-semibold">
+              {scanIntent === "login" ? t("personalDevice.scan.titleLogin")
+                : scanIntent === "punch-in" ? t("personalDevice.scan.titleIn")
+                : t("personalDevice.scan.titleOut")}
+            </span>
+            <button type="button" className="text-[12px] text-muted-foreground" onClick={() => setScanIntent(null)}>
               {t("common.cancel")}
             </button>
-          )}
-        </div>
-        {!scanOpen ? (
-          <Button variant="outline" className="h-11 w-full gap-2" onClick={() => { hapticLight(); setScanOpen(true); }}>
-            <ScanLine className="h-4 w-4" />{t("personalDevice.punch.scanStoreQr")}
-          </Button>
-        ) : (
-          <div className="space-y-3">
-            <SegmentedControl
-              value={intent}
-              onChange={(v) => setIntent(v)}
-              options={[
-                { value: "login", label: t("personalDevice.punch.intentLogin") },
-                { value: "punch-in", label: t("personalDevice.punch.intentIn") },
-                { value: "punch-out", label: t("personalDevice.punch.intentOut") },
-              ]}
-            />
-            <ScanPane
-              active={scanOpen}
-              organizationId={organizationId}
-              intent={intent}
-              onDone={() => {
-                setScanOpen(false);
-                toast.success(
-                  intent === "login" ? t("personalDevice.scan.loggedIn")
-                  : intent === "punch-in" ? t("personalDevice.scan.punchedIn")
-                  : t("personalDevice.scan.punchedOut"),
-                );
-              }}
-            />
           </div>
-        )}
-      </div>
+          <p className="text-[13px] text-muted-foreground leading-relaxed">{t("personalDevice.scan.holdUp")}</p>
+          <ScanPane
+            active
+            organizationId={organizationId}
+            intent={scanIntent}
+            onDone={() => {
+              const intent = scanIntent;
+              setScanIntent(null);
+              toast.success(
+                intent === "login" ? t("personalDevice.scan.loggedIn")
+                : intent === "punch-in" ? t("personalDevice.scan.punchedIn")
+                : t("personalDevice.scan.punchedOut"),
+              );
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            {!onShift && (
+              <Button className="col-span-2 h-12 gap-2" onClick={() => openScan("punch-in")} disabled={busy !== null}>
+                <LogIn className="h-4 w-4" />{t("personalDevice.punch.punchIn")}
+              </Button>
+            )}
+            {onShift && !onBreak && (
+              <>
+                <Button variant="outline" className="h-12 gap-2" onClick={() => punch("break-start")} disabled={busy !== null}>
+                  <Coffee className="h-4 w-4" />{t("personalDevice.punch.startBreak")}
+                </Button>
+                <Button variant="destructive" className="h-12 gap-2" onClick={() => openScan("punch-out")} disabled={busy !== null}>
+                  <LogOut className="h-4 w-4" />{t("personalDevice.punch.punchOut")}
+                </Button>
+              </>
+            )}
+            {onShift && onBreak && (
+              <Button className="col-span-2 h-12 gap-2" onClick={() => punch("break-end")} disabled={busy !== null}>
+                <Undo2 className="h-4 w-4" />{t("personalDevice.punch.endBreak")}
+              </Button>
+            )}
+          </div>
+
+          <div className="border-t border-border pt-4">
+            <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("personalDevice.punch.scanSection")}
+            </div>
+            <Button variant="outline" className="h-11 w-full gap-2" onClick={() => openScan("login")}>
+              <ScanLine className="h-4 w-4" />{t("personalDevice.punch.scanStoreQr")}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

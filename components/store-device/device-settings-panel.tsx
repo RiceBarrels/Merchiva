@@ -4,16 +4,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
-import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
+import { hapticLight } from "@/lib/haptics";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useDeviceName } from "@/lib/store-machine-mode";
-import { AUTOLOCK_OPTIONS, useAutolockSeconds, setCurrentOperator, type AutolockSeconds } from "@/lib/store-device-lock";
-import { clearAppMode } from "@/lib/app-mode";
-import { DeviceDrawer, PinPad } from "@/components/device";
-import { findManagerByPin, type StoreMember } from "./use-org-members";
+import { AUTOLOCK_OPTIONS, useAutolockSeconds, type AutolockSeconds } from "@/lib/store-device-lock";
+import type { StoreMember } from "./use-org-members";
+import { ExitStoreDrawer } from "./exit-store-drawer";
 
 export interface DeviceSettingsPanelProps {
   members: StoreMember[];
@@ -35,18 +34,6 @@ export function DeviceSettingsPanel({ members, className }: DeviceSettingsPanelP
     if (!next || next === deviceName) return;
     setDeviceName(next);
     toast.success(t("storeDevice.deviceNameSaved"));
-  };
-
-  const handleLeavePin = async (pin: string) => {
-    if (!findManagerByPin(members, pin)) {
-      hapticError();
-      return false;
-    }
-    hapticSuccess();
-    clearAppMode();
-    setCurrentOperator(null);
-    window.location.href = "/choose?switch=1";
-    return true;
   };
 
   return (
@@ -79,16 +66,7 @@ export function DeviceSettingsPanel({ members, className }: DeviceSettingsPanelP
         </Button>
         <p className="text-[11px] text-muted-foreground mt-2">{t("storeDevice.leaveStoreModeHint")}</p>
       </div>
-      <DeviceDrawer
-        open={leaveOpen}
-        onOpenChange={setLeaveOpen}
-        title={t("storeDevice.leaveStoreMode")}
-        cancelLabel={t("storeDevice.cancel")}
-        maxWidth={400}
-      >
-        <p className="text-center text-[13px] text-muted-foreground mb-3 leading-relaxed">{t("storeDevice.managerPinPrompt")}</p>
-        <PinPad onComplete={handleLeavePin} />
-      </DeviceDrawer>
+      <ExitStoreDrawer open={leaveOpen} onOpenChange={setLeaveOpen} members={members} />
     </div>
   );
 }

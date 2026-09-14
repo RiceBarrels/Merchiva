@@ -1,7 +1,7 @@
 // Shared types for the store-device (/store) and personal-device (/personal)
 // surfaces. Both UIs are built from the components in this folder.
 
-import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
 
 export interface Channel {
   id: string;            // chat_conversation id
@@ -34,15 +34,22 @@ export interface PttResult {
   durationSec: number;
 }
 
+export type TileColor =
+  | "ink" | "slate" | "red" | "orange" | "amber" | "lime" | "green" | "emerald" | "teal"
+  | "cyan" | "sky" | "blue" | "indigo" | "violet" | "purple" | "fuchsia" | "pink" | "rose";
+
 export interface DeviceApp {
   /** Catalog id (see components/device/app-catalog.tsx) or one of the
    *  built-in surface apps: "punch-in" | "requests" | "docs" | "directory" | "settings". */
   id: string;
   label: string;
-  /** Tile icon; built-in ids fall back to the AppsGrid icon map. */
-  icon?: LucideIcon;
+  /** Tile icon (custom glyph from app-icons.tsx or any component taking
+   *  className); ids without one fall back to APP_ICONS. */
+  icon?: ComponentType<{ className?: string }>;
   /** Rendered dark (primary) tile like the prototype's Punch In. */
   dark?: boolean;
+  /** Tile colour key (see TILE_COLORS in apps-grid.tsx); every app gets its own. */
+  color?: TileColor;
   /** Also shown in the dock strip. */
   dock?: boolean;
 }

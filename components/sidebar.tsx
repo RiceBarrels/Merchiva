@@ -28,13 +28,16 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 }
 
 import type { StoredAccount } from "@/lib/auth/context";
-import { LayoutDashboard, Package, TrendingUp, Users, Globe, Settings, LogOut, UserCog, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, MessageSquare, MonitorSmartphone, Bell, UserRoundSearch, UserPlus, Palette, SwatchBook, UserRound } from "lucide-react";
+import { LogOut, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, UserPlus } from "lucide-react";
+import { APP_MODE_ICONS, AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon, NotificationsIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
 import { BottomBar } from "@/components/bottom-bar";
 import { MerchivaLogo } from "@/components/logo";
 import { useNavMode } from "@/lib/nav-mode";
+import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
+import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { useUnreadCount } from "@/components/notification-center";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
@@ -53,8 +56,6 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
-import type { BetaFeatureKey } from "@/lib/beta-features";
-import { useBetaFeatures } from "@/lib/spacetimedb/hooks/useBetaFeatures";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { RightPanel, MobileRightPanel, RightPanelMobileProvider, useRightPanelMobile } from "@/components/right-panel";
 import { PageTransition } from "@/components/page-transition";
@@ -73,7 +74,6 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   permissionKey?: keyof Permissions;
-  betaFeature?: BetaFeatureKey;
 };
 
 // Punch-in is only shown in store-machine mode; see `visibleNavItems` below.
@@ -85,31 +85,25 @@ type SubNavItem = { labelKey: string; href: string };
 type NavItemExt = NavItem & { mobileOnly?: boolean; children?: SubNavItem[] };
 
 const navItems: NavItemExt[] = [
-  { labelKey: "nav.home",      href: "/manager/",  icon: LayoutDashboard, permissionKey: "dashboard" },
-  { labelKey: "nav.pos",       href: "/manager/pos",         icon: MonitorSmartphone, permissionKey: "pos", betaFeature: "pos" },
-  { labelKey: "nav.inventory", href: "/manager/inventory",   icon: Package,         permissionKey: "inventory",
+  { labelKey: "nav.home",      href: "/manager/",  icon: DashboardIcon, permissionKey: "dashboard" },
+  { labelKey: "nav.inventory", href: "/manager/inventory",   icon: InventoryIcon,   permissionKey: "inventory",
     children: [
       { labelKey: "nav.suppliers", href: "/manager/suppliers" },
     ] },
-  { labelKey: "nav.sales",     href: "/manager/sales",       icon: TrendingUp,      permissionKey: "sales",
+  { labelKey: "nav.sales",     href: "/manager/sales",       icon: SalesIcon,       permissionKey: "sales",
     children: [
       { labelKey: "nav.reports",  href: "/manager/reports" },
       { labelKey: "nav.finances", href: "/manager/finances" },
     ] },
-  { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: Users,    permissionKey: "staffing",
+  { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: DirectoryIcon, permissionKey: "staffing",
     children: [
       { labelKey: "personnel.tabs.schedule", href: "/manager/personnel/schedule" },
       { labelKey: "personnel.tabs.team",     href: "/manager/personnel/team" },
       { labelKey: "personnel.tabs.roles",    href: "/manager/personnel/roles" },
       { labelKey: "personnel.tabs.training", href: "/manager/personnel/training" },
     ] },
-  { labelKey: "nav.customers", href: "/manager/customers",   icon: UserRoundSearch, permissionKey: "sales", betaFeature: "website",
-    children: [
-      { labelKey: "nav.marketing", href: "/manager/marketing" },
-    ] },
-  { labelKey: "nav.chat",      href: "/manager/channel",        icon: MessageSquare,   permissionKey: "staffing"  },
-  { labelKey: "nav.website",   href: "/manager/builder",     icon: Globe,           permissionKey: "website", betaFeature: "website" },
-  { labelKey: "nav.design",    href: "/manager/design",      icon: Palette,         permissionKey: "website", betaFeature: "design" },
+  { labelKey: "nav.chat",      href: "/manager/channel",        icon: ChannelIcon,     permissionKey: "staffing"  },
+  { labelKey: "nav.apps",      href: "/manager/apps",        icon: AppStoreIcon,    permissionKey: "settings" },
 ];
 
 function StoreSwitcher({ onClose }: { onClose?: () => void }) {
@@ -723,13 +717,7 @@ function WorkspaceDropdown({
 
       <div className="border-t border-border py-1">
         <BackToDeviceLink />
-        <Link
-          href="/choose?switch=1"
-          className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <SwatchBook className="h-3.5 w-3.5 shrink-0" />
-          {t("chooseMode.switchMode")}
-        </Link>
+        <SwitchModeLink />
       </div>
 
       <div className="border-t border-border py-1">
@@ -848,14 +836,7 @@ function AccountSwitcher({ onClose, collapsed }: { onClose?: () => void; collaps
             </div>
             <div className="border-t border-border py-1">
               <BackToDeviceLink onClick={onClose} />
-              <Link
-                href="/choose?switch=1"
-                onClick={onClose}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <SwatchBook className="h-3.5 w-3.5 shrink-0" />
-                {t("chooseMode.switchMode")}
-              </Link>
+              <SwitchModeLink onClick={onClose} />
             </div>
             <div className="border-t border-border py-1">
               <button
@@ -881,16 +862,16 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const { signOut } = useAuth();
   const isCapacitor = useIsCapacitor();
   const [storeMachine] = useStoreMachineMode();
+  const { installed: installedApps } = useDeviceApps();
   const [deviceName] = useDeviceName();
   const [appMode] = useAppMode();
   const personalMode = appMode === "personal" && !storeMachine;
-  const { betaFeatures } = useBetaFeatures();
   const unreadCount = useUnreadCount();
   // Which sections (keyed by parent href) are expanded to show sub-pages.
   const [expandedHrefs, setExpandedHrefs] = useState<Set<string>>(() => new Set());
 
   // Paths allowed when the device is in store-machine mode.
-  const STORE_MACHINE_HREFS = new Set(["/manager/pos", "/manager/inventory", "/manager/channel"]);
+  const STORE_MACHINE_HREFS = new Set(["/manager/inventory", "/manager/channel"]);
 
   // True when `pathname` sits inside the section (its main page or any sub-page).
   const isInSection = (item: NavItemExt) =>
@@ -933,6 +914,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
   const visibleNavItems = navItems.filter((item) => {
     if (item.mobileOnly && isDesktop) return false;
+    // Optional org features only show once installed from /manager/apps.
+    if (!isManagerRouteEnabled(item.href, installedApps)) return false;
     if (storeMachine && !STORE_MACHINE_HREFS.has(item.href)) return false;
     // Personal mode: only the member's own surfaces (schedule, tasks, training, pay, chat).
     if (personalMode && !PERSONAL_MODE_HREFS.has(item.href) &&
@@ -940,7 +923,6 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
     // Hide public-facing/SEO surfaces (storefront builder, marketing) inside
     // the native Capacitor shell.
     if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(item.href)) return false;
-    if (item.betaFeature && !betaFeatures[item.betaFeature]) return false;
     if (!item.permissionKey) return true;
     return can(item.permissionKey, "view");
   });
@@ -980,6 +962,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
           // hide some surfaces). Collapsible sub-nav is desktop-exclusive and only
           // in the expanded (non-icon) sidebar.
           const subItems = (item.children ?? []).filter((c) => {
+            if (!isManagerRouteEnabled(c.href, installedApps)) return false;
             if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(c.href)) return false;
             if (storeMachine && !STORE_MACHINE_HREFS.has(c.href)) return false;
             if (personalMode && !PERSONAL_MODE_HREFS.has(c.href)) return false;
@@ -1003,7 +986,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                 >
-                  <item.icon className="h-[15px] w-[15px] shrink-0" />
+                  <item.icon className="h-[18px] w-[18px] shrink-0" />
                   {!collapsed && <span className="flex-1 truncate">{label}</span>}
                 </Link>
               </SidebarTooltip>
@@ -1031,7 +1014,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
                       : "text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                 >
-                  <item.icon className="h-[15px] w-[15px] shrink-0" />
+                  <item.icon className="h-[18px] w-[18px] shrink-0" />
                   <span className="flex-1 truncate">{label}</span>
                 </Link>
                 <button
@@ -1096,7 +1079,8 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
       {/* Bottom links */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
         <SidebarTooltip label={t("notifications.title")} show={!!collapsed}>
-          <Link
+          {isManagerRouteEnabled("/manager/notifications", installedApps) && (
+<Link
             href="/manager/notifications"
             onClick={handleNavClick}
             className={cn(
@@ -1107,7 +1091,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
-            <Bell className="h-[15px] w-[15px] shrink-0" />
+            <NotificationsIcon className="h-[18px] w-[18px] shrink-0" />
             {!collapsed && t("notifications.title")}
             {unreadCount > 0 && (
               <span className={cn(
@@ -1119,6 +1103,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
               </span>
             )}
           </Link>
+)}
         </SidebarTooltip>
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
@@ -1132,7 +1117,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
-            <Settings className="h-[15px] w-[15px] shrink-0" />
+            <SettingsIcon className="h-[18px] w-[18px] shrink-0" />
             {!collapsed && t("nav.settings")}
           </Link>
         </SidebarTooltip>
@@ -1161,6 +1146,27 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   );
 }
 
+// "Switch mode" row in the account menus: shows the current mode (admin /
+// personal / store) with its colour glyph and links back to the chooser.
+function SwitchModeLink({ onClick }: { onClick?: () => void }) {
+  const t = useT();
+  const [appMode] = useAppMode();
+  const mode = appMode ?? "admin";
+  const Icon = APP_MODE_ICONS[mode];
+  const modeLabel = t(mode === "admin" ? "chooseMode.adminTitle" : mode === "store" ? "chooseMode.storeTitle" : "chooseMode.personalTitle");
+  return (
+    <Link
+      href="/choose?switch=1"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{t("chooseMode.switchMode")}</span>
+      <span className="shrink-0 text-[11px] text-muted-foreground/70">{modeLabel}</span>
+    </Link>
+  );
+}
+
 // Shown in the account menus when this device is a store or personal device
 // whose user switched into the manager UI: one tap returns to that surface.
 function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
@@ -1168,7 +1174,7 @@ function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
   const [appMode] = useAppMode();
   if (appMode !== "store" && appMode !== "personal") return null;
   const isStore = appMode === "store";
-  const Icon = isStore ? MonitorSmartphone : UserRound;
+  const Icon = APP_MODE_ICONS[appMode];
   return (
     <Link
       href={isStore ? "/store" : "/personal"}
@@ -1178,7 +1184,7 @@ function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
       }}
       className="flex w-full items-center gap-2 px-3 py-1.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
     >
-      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <Icon className="h-4 w-4 shrink-0" />
       {t(isStore ? "chooseMode.backToStore" : "chooseMode.backToPersonal")}
     </Link>
   );
@@ -1306,8 +1312,6 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   };
   const [navMode] = useNavMode();
   const useBottomBar = navMode === "bottombar" && !storeMachineMode;
-  // Builder subpages (/builder/[siteId]/...) need full viewport — force drawer mode
-  const isBuilderPage = pathname.startsWith("/manager/builder/");
   const openDialogs = useOpenDynamicUIElementCount();
   const hasDialog = openDialogs > 0;
   const dialogTitle = useDynamicUIElementTitle();
@@ -1517,12 +1521,12 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     <SidebarOpenContext.Provider value={() => { hapticLight(); setIsOpen(true); }}>
     <RightPanelMobileProvider>
     <>
-      {/* ── Mobile / tablet layout (touch devices) + builder full-viewport ── */}
-      <div className={cn("relative h-[100dvh] min-h-0 w-full overflow-hidden bg-background", (isBuilderPage || isMobile !== false) ? "flex flex-1" : "hidden")}>
+      {/* ── Mobile / tablet layout (touch devices) ── */}
+      <div className={cn("relative h-[100dvh] min-h-0 w-full overflow-hidden bg-background", isMobile !== false ? "flex flex-1" : "hidden")}>
         {/* Right panel (swipe from right, appears behind content like sidebar) */}
-        {isMobile && !isBuilderPage && <MobileRightPanel />}
+        {isMobile && <MobileRightPanel />}
         {/* Floating hamburger / back button — always mount so AnimatePresence exit animations play */}
-        {!isBuilderPage && (
+        {(
           <FloatingNavButton
             mode="menu"
             title={dialogTitle}
@@ -1597,12 +1601,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
             </AnimatePresence>
           )}
 
-          {/* Builder pages: no top spacer, no scroll wrapper — builder manages its own layout */}
-          {isBuilderPage ? (
-            <main className="flex-1 overflow-hidden">
-              {children}
-            </main>
-          ) : storeMachineMode ? (
+          {storeMachineMode ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               <StoreTopBar deviceName={smDeviceName} />
               <main className="flex-1 overflow-y-auto overflow-x-hidden"><PageTransition>{(isMobile === null || isMobile) && children}</PageTransition></main>
@@ -1623,12 +1622,12 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           )}
 
           {/* Bottom bar navigation */}
-          {useBottomBar && !isBuilderPage && <BottomBar />}
+          {useBottomBar && <BottomBar />}
         </div>
       </div>
 
-      {/* ── Desktop layout (non-touch): resizable shell — not shown on builder pages ── */}
-      {!isBuilderPage && (
+      {/* ── Desktop layout (non-touch): resizable shell ── */}
+      {(
         <ResizablePanelGroup
           orientation="horizontal"
           defaultLayout={defaultLayout}
