@@ -53,7 +53,6 @@
     "pricing": "मूल्य निर्धारण",
     "api": "API",
     "reviews": "समीक्षाएँ",
-    "notifications": "सूचनाएँ",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -411,7 +410,6 @@
       "overview": "अवलोकन",
       "schedule": "शेड्यूल",
       "attendance": "उपस्थिति",
-      "myShifts": "मेरी शिफ्ट",
       "roles": "भूमिकाएँ",
       "table": "तालिका"
     },
@@ -470,14 +468,6 @@
       "worked": "काम किया",
       "punchDays": "पंच दिन",
       "weekTotal": "इस सप्ताह"
-    },
-    "myShifts": {
-      "trade": "ट्रेड",
-      "cover": "कवर",
-      "todaysTasks": "आज के कार्य",
-      "loadingTasks": "कार्य लोड हो रहे हैं...",
-      "noShiftsToday": "आज कोई शिफ्ट नहीं",
-      "noTasksAssigned": "कोई कार्य नहीं सौंपा गया"
     },
     "overview": {
       "onShiftNow": "अभी शिफ्ट पर",
@@ -799,7 +789,186 @@
       "toastUpdateFailed": "सदस्य अपडेट नहीं हो सका",
       "removeConfirm": "{name} को हटाएँ?",
       "toastRemoved": "सदस्य हटाया गया",
-      "toastRemoveFailed": "सदस्य हटाया नहीं जा सका"
+      "toastRemoveFailed": "सदस्य हटाया नहीं जा सका",
+      "org": {
+        "permGroup": {
+          "people": "लोग",
+          "store": "स्टोर",
+          "ops": "संचालन"
+        },
+        "groupKind": {
+          "store": "स्टोर टीम",
+          "region": "क्षेत्रीय टीम",
+          "ops": "मुख्यालय",
+          "custom": "कस्टम"
+        },
+        "statusDisabled": "निष्क्रिय",
+        "noGroup": "कोई समूह नहीं",
+        "ungrouped": "बिना समूह",
+        "sensitive": "संवेदनशील",
+        "managedBy": "रिपोर्ट करता है",
+        "manages": "प्रबंधन करता है",
+        "lockedOwner": "मालिक की भूमिका और अनुमतियाँ यहाँ नहीं बदली जा सकतीं।",
+        "lockedInvite": "आमंत्रण लंबित है। जुड़ने के बाद भूमिका और अनुमतियाँ बदली जा सकती हैं।",
+        "ownerOnly": "केवल मालिक भूमिकाएँ और अनुमतियाँ बदल सकता है।",
+        "peopleCount": "{n} लोग",
+        "roleMissing": "भूमिका हटाई गई",
+        "graph": {
+          "joinedGroup": "{name} में जोड़ा गया",
+          "leftGroup": "समूह से हटाया गया",
+          "edgeExists": "यह रिपोर्टिंग संबंध पहले से मौजूद है",
+          "edgeCreated": "रिपोर्टिंग संबंध जोड़ा गया",
+          "newGroup": "नया समूह",
+          "newGroupDesc": "कस्टम समूह",
+          "copySuffix": "(प्रतिलिपि)",
+          "newRole": "नई भूमिका",
+          "roleDescOwner": "पूर्ण एक्सेस",
+          "roleDescManager": "स्टोर या टीम का प्रबंधन करता है",
+          "roleDescStaff": "दैनिक संचालन",
+          "roleCreated": "भूमिका जोड़ी गई",
+          "roleCreateFailed": "भूमिका नहीं जोड़ी जा सकी",
+          "roleSaveFailed": "भूमिका सहेजी नहीं जा सकी",
+          "roleNameRequired": "भूमिका का नाम दर्ज करें",
+          "roleNameTaken": "इस नाम की भूमिका पहले से मौजूद है",
+          "roleDeleted": "भूमिका हटाई गई",
+          "roleDeleteFailed": "भूमिका हटाई नहीं जा सकी",
+          "builtinNoDelete": "बिल्ट-इन भूमिकाएँ हटाई नहीं जा सकतीं",
+          "membersRoleUpdated": "अपडेट किए गए सदस्य: {n}",
+          "membersRoleUpdateFailed": "कुछ सदस्यों की भूमिका अपडेट नहीं हो सकी",
+          "ownerNotAssignable": "मालिक की भूमिका असाइन नहीं की जा सकती",
+          "inviteCancelled": "आमंत्रण रद्द किया गया",
+          "inviteCancelFailed": "आमंत्रण रद्द नहीं किया जा सका",
+          "onlyOwnerRoleInUse": "जिस भूमिका में सदस्य हैं, उसका नाम केवल मालिक बदल या हटा सकता है",
+          "roleMembersNotMovedOffline": "आप ऑफ़लाइन हैं। भूमिका का बदलाव कतार में है, लेकिन इस भूमिका वाले सदस्य अपडेट नहीं हुए।"
+        },
+        "list": {
+          "groupBy": "समूह के अनुसार दिखाएँ",
+          "colGroup": "समूह",
+          "colRelations": "रिपोर्टिंग",
+          "colActions": "कार्रवाइयाँ",
+          "permCount": "{n} अनुमतियाँ",
+          "emptyGroup": "अभी कोई सदस्य नहीं।",
+          "emptyGroupHint": "किसी सदस्य के समूह कॉलम में यह समूह चुनें।",
+          "emptyGroupHintMobile": "किसी सदस्य को खोलें और यह समूह चुनें।"
+        },
+        "inspector": {
+          "emptyTitle": "कुछ भी चयनित नहीं",
+          "emptyList": "विवरण देखने के लिए कोई पंक्ति चुनें।",
+          "emptyGraph": "विवरण देखने के लिए कैनवास पर किसी व्यक्ति कार्ड या समूह को चुनें।",
+          "emptyGraphConnect": "कौन किसे प्रबंधित करता है, यह दिखाने के लिए कार्ड के नीचे वाले बिंदु को दूसरे कार्ड या समूह पर खींचें।",
+          "tipJoinTitle": "समूह में जोड़ें",
+          "tipJoinBody": "कार्ड को समूह के फ़्रेम के अंदर छोड़ें",
+          "tipMoveTitle": "समूह खिसकाएँ",
+          "tipMoveBody": "समूह का शीर्षक खींचें",
+          "tipZoomTitle": "ज़ूम",
+          "tipZoomBody": "स्क्रॉल करें या पिंच करें",
+          "tipUnlinkTitle": "लिंक हटाएँ",
+          "tipUnlinkBody": "जोड़ने वाली रेखा पर क्लिक करें",
+          "sheetDescription": "विवरण, संबंध और अनुमतियाँ",
+          "manageRoles": "भूमिकाएँ प्रबंधित करें",
+          "fieldGroup": "समूह",
+          "editInDialog": "डायलॉग में संपादित करें",
+          "groupDescPlaceholder": "इस समूह का वर्णन करें",
+          "tidyGroup": "सदस्यों को व्यवस्थित करें",
+          "members": "सदस्य",
+          "noMembers": "अभी कोई सदस्य नहीं है।",
+          "noMembersHint": "व्यक्ति कार्ड इस समूह में खींचें।",
+          "none": "कोई नहीं",
+          "selectAll": "सभी चुनें",
+          "clearAll": "सभी हटाएँ",
+          "resetToRole": "भूमिका के डिफ़ॉल्ट पर रीसेट करें",
+          "deleteGroup": "समूह हटाएँ",
+          "confirmDeleteGroup": "समूह {name} हटाएँ? इसके कनेक्शन भी हटा दिए जाएँगे।",
+          "addManager": "प्रबंधक जोड़ें",
+          "addReport": "अधीनस्थ जोड़ें",
+          "removeManagerLink": "रिपोर्टिंग लाइन हटाएँ",
+          "removeReportLink": "रिपोर्टिंग लाइन हटाएँ"
+        },
+        "toolbar": {
+          "viewLabel": "दृश्य",
+          "viewGraph": "चार्ट",
+          "viewList": "सूची",
+          "groupsCount": "{n} समूह",
+          "edgesCount": "{n} संबंध",
+          "searchPlaceholder": "नाम, ईमेल या भूमिका खोजें…",
+          "clearSearch": "खोज साफ़ करें",
+          "closeSearch": "खोज बंद करें",
+          "matches": "{n} मिलान",
+          "addGroup": "समूह जोड़ें",
+          "roles": "भूमिकाएँ",
+          "manageRoles": "भूमिकाएँ प्रबंधित करें",
+          "add": "जोड़ें",
+          "graphTools": "चार्ट टूल",
+          "autoLayout": "व्यवस्थित करें",
+          "autoLayoutHint": "चार्ट अपने आप व्यवस्थित करें",
+          "focus": "फ़ोकस",
+          "focusHint": "केवल चयनित की रिपोर्टिंग लाइन दिखाएँ",
+          "focusNeedsSelection": "पहले कोई व्यक्ति या समूह चुनें",
+          "zoomIn": "ज़ूम इन",
+          "zoomOut": "ज़ूम आउट",
+          "fit": "फ़िट",
+          "fitHint": "चार्ट को स्क्रीन पर फ़िट करें"
+        },
+        "canvas": {
+          "ariaLabel": "संगठन चार्ट",
+          "connectHandle": "रिपोर्टिंग संबंध जोड़ने के लिए दूसरे कार्ड पर खींचें",
+          "resizeHandle": "आकार बदलने के लिए खींचें",
+          "dropHere": "लोगों को यहाँ खींचें",
+          "permCount": "{n} अनुमतियाँ",
+          "personAria": "{name}, {role}, {status}",
+          "groupAria": "{name}, {kind}",
+          "removeFromGroup": "समूह से हटाएँ",
+          "clearPersonLinks": "समूह और संबंध हटाएँ",
+          "editGroup": "समूह संपादित करें",
+          "duplicateGroup": "समूह की प्रतिलिपि बनाएँ",
+          "deleteGroup": "समूह हटाएँ",
+          "deleteEdge": "संबंध हटाएँ",
+          "addGroup": "समूह जोड़ें",
+          "fitView": "स्क्रीन में फ़िट करें",
+          "confirmDeleteGroup": "समूह “{name}” हटाएँ? इसके सदस्य टीम में बने रहेंगे।",
+          "confirmClearPerson": "{name} को उनके समूह से हटाएँ और उनके रिपोर्टिंग संबंध साफ़ करें?"
+        },
+        "roles": {
+          "title": "भूमिकाएँ",
+          "subtitle": "हर भूमिका का रंग और डिफ़ॉल्ट अनुमतियाँ सेट करें।",
+          "readOnly": "केवल स्वामी और प्रबंधक भूमिकाएँ संपादित कर सकते हैं।",
+          "builtin": "अंतर्निहित",
+          "custom": "कस्टम",
+          "permCount": "अनुमतियाँ: {n}",
+          "usage": "सदस्य: {n}",
+          "add": "नई भूमिका",
+          "empty": "कोई भूमिका चुनें या नई बनाएँ।",
+          "nameRequired": "भूमिका का नाम खाली नहीं हो सकता।",
+          "nameTaken": "“{name}” नाम की भूमिका पहले से मौजूद है।",
+          "saveFailed": "भूमिका सहेजी नहीं जा सकी।",
+          "saved": "भूमिकाएँ सहेजी गईं",
+          "createFailed": "भूमिका बनाई नहीं जा सकी।",
+          "deleteFailed": "भूमिका हटाई नहीं जा सकी।",
+          "confirmDeleteInUse": "“{name}” हटाएँ? इस भूमिका वाले सदस्य ({n}) स्टाफ में बदल जाएँगे।",
+          "confirmDelete": "भूमिका “{name}” हटाएँ?",
+          "builtinNameHint": "अंतर्निहित भूमिकाओं के नाम बदले नहीं जा सकते।",
+          "defaultPerms": "डिफ़ॉल्ट अनुमतियाँ",
+          "defaultPermsHint": "यह भूमिका किसी सदस्य को देने पर लागू होती हैं।",
+          "selectAll": "सभी चुनें",
+          "clearAll": "साफ़ करें",
+          "footerNote": "जिन सदस्यों के पास यह भूमिका पहले से है, उनकी मौजूदा अनुमतियाँ बनी रहती हैं।",
+          "done": "हो गया",
+          "ownerOnlyInUse": "जो भूमिका अभी भी सदस्यों के पास है, उसका नाम केवल स्वामी बदल सकता है या उसे हटा सकता है।"
+        },
+        "panel": {
+          "legend": "संकेत",
+          "groupAddedGraph": "समूह जोड़ा गया। लोगों को जोड़ने के लिए उन्हें इसके फ़्रेम में खींचें।",
+          "groupAddedList": "समूह जोड़ा गया। सदस्यों को उनके समूह फ़ील्ड से असाइन करें।",
+          "tidied": "लेआउट व्यवस्थित किया गया",
+          "groupTidied": "समूह के सदस्य व्यवस्थित किए गए",
+          "cancelInviteFailed": "आमंत्रण रद्द नहीं किया जा सका",
+          "legendMore": "+{n} और"
+        },
+        "dialog": {
+          "alreadyMember": "यह व्यक्ति पहले से टीम में है।",
+          "alreadyInvited": "इस ईमेल के लिए पहले से एक आमंत्रण लंबित है।"
+        }
+      }
     },
     "dialog": {
       "inviteTitle": "नया सदस्य आमंत्रित करें",
@@ -1454,18 +1623,6 @@
       "afternoon": "नमस्कार",
       "evening": "शुभ संध्या"
     },
-    "morningBriefing": "सुबह की ब्रीफिंग",
-    "approveAll": "सभी स्वीकृत करें",
-    "suggestedActions": "सुझाई गई कार्रवाइयाँ",
-    "approve": "स्वीकृत करें",
-    "dismiss": "खारिज करें",
-    "backToNow": "अभी पर लौटें",
-    "needsAttention": "ध्यान देने की आवश्यकता",
-    "allClear": "सब ठीक है — अभी आपके ध्यान की ज़रूरत वाली कोई बात नहीं है।",
-    "pastBriefings": "पिछली ब्रीफिंग",
-    "regenerate": "पुनः जनरेट करें",
-    "generating": "आज की ब्रीफिंग बन रही है…",
-    "noBriefing": "अभी तक कोई ब्रीफिंग नहीं। जनरेट करने के लिए रिफ़्रेश दबाएँ।",
     "time": {
       "justNow": "अभी",
       "minutesAgo": "{n} मिनट पहले",
@@ -1502,27 +1659,6 @@
       "addMore": "और जोड़ें",
       "choose": "फ़ाइल चुनें",
       "complete": "पूर्ण"
-    },
-    "attendance": {
-      "title": "आज की उपस्थिति",
-      "punchedIn": "पंच इन",
-      "onBreak": "ब्रेक पर",
-      "nobody": "अभी तक किसी ने पंच इन नहीं किया।",
-      "allOut": "सभी पंच आउट कर चुके हैं।"
-    },
-    "todayTasks": {
-      "title": "आज के कार्य",
-      "done": "पूर्ण",
-      "pending": "लंबित",
-      "skipped": "छोड़े गए",
-      "none": "आज कोई कार्य देय नहीं है।"
-    },
-    "yesterdayTasks": {
-      "title": "कल के कार्य",
-      "done": "पूर्ण",
-      "notDone": "अधूरे",
-      "skipped": "छोड़े गए",
-      "none": "कल कोई कार्य देय नहीं था।"
     },
     "widgets": {
       "salesToday": {
@@ -2774,8 +2910,6 @@
       "dismiss": "खारिज करें",
       "empty": "कोई नई सूचना नहीं"
     },
-    "collapsePanel": "पैनल संक्षिप्त करें",
-    "openPanel": "Mr. Merchiva खोलें",
     "noAccess": "आपके खाते के लिए Mr. Merchiva अक्षम है। इसे सक्षम करने के लिए मैनेजर से कहें।"
   },
   "admins": {
@@ -4130,13 +4264,7 @@
     "saved": "बग रिपोर्ट सहेजी गई"
   },
   "myTasks": {
-    "title": "आज के कार्य",
-    "doneCount": "{done} / {total} पूर्ण",
-    "all": "सभी",
-    "allCompleted": "आज के सभी कार्य पूरे हो गए।",
     "evidenceBadge": "प्रमाण",
-    "done": "पूर्ण",
-    "moreCount": "+ {count} और",
     "evidenceRequiredError": "इस कार्य के लिए प्रमाण के रूप में एक फ़ोटो या वीडियो आवश्यक है",
     "chatHeader": "✅ कार्य पूर्ण: {title}",
     "chatAttachments": "📎 {count} अटैचमेंट",
@@ -4294,7 +4422,6 @@
       "products": "उत्पाद",
       "sales": "बिक्री",
       "bookings": "बुकिंग",
-      "notifications": "सूचनाएँ",
       "channel": "चैट",
       "settings-org": "स्टोर सेटिंग"
     },
@@ -4366,17 +4493,6 @@
         "noteReceived": "दुकान पर माल आया",
         "noteRecount": "दुकान पर दोबारा गिनती"
       },
-      "notifications": {
-        "list": "सूचनाएँ",
-        "unreadCount": "{n} नई",
-        "markAllRead": "सब पढ़ा हुआ करें",
-        "allRead": "सब पढ़ा हुआ हो गया",
-        "markFailed": "अपडेट नहीं हो सका। फिर कोशिश करें।",
-        "empty": "कोई सूचना नहीं",
-        "emptyHint": "सब देख लिया।",
-        "details": "सूचना",
-        "close": "बंद करें"
-      },
       "pay": {
         "thisWeek": "इस हफ़्ते",
         "thisMonth": "इस महीने",
@@ -4447,13 +4563,17 @@
         "emptyTitle": "आज कोई काम नहीं",
         "emptyDesc": "अभी कुछ करना नहीं है।",
         "photoNeeded": "फोटो चाहिए",
-        "photoLater": "फोटो बाद में पूरे ऐप में जोड़ें",
         "markDone": "हाँ, हो गया",
         "notYet": "अभी नहीं",
         "saving": "सहेज रहे हैं…",
         "failed": "सहेज नहीं सका। फिर से कोशिश के लिए टैप करें।",
         "teamOpen": "टीम के बाकी काम",
-        "teamAllDone": "टीम का सब काम हो गया"
+        "teamAllDone": "टीम का सब काम हो गया",
+        "takePhoto": "फ़ोटो लें",
+        "retake": "फिर से लें",
+        "photoRequired": "इस काम को पूरा करने के लिए फ़ोटो लें",
+        "uploadingPhoto": "फ़ोटो अपलोड हो रही है…",
+        "uploadFailed": "फ़ोटो अपलोड नहीं हो सकी। फिर से कोशिश करें।"
       },
       "training": {
         "title": "मेरी ट्रेनिंग",
@@ -4497,8 +4617,7 @@
       "inventory": "स्टॉक गिनें, कम सामान चिह्नित करें, बर्बादी दर्ज करें।",
       "products": "उत्पाद और दाम देखें।",
       "sales": "आज की बिक्री एक नज़र में।",
-      "bookings": "आज और कल की बुकिंग।",
-      "notifications": "स्टोर के अलर्ट और संदेश।"
+      "bookings": "आज और कल की बुकिंग।"
     },
     "appStore": {
       "hint": "चुनें कि यह स्टोर कौन-से फ़ीचर इस्तेमाल करे। जोड़ा गया ऐप मैनेजर बैक-ऑफ़िस, स्टोर टैबलेट और स्टाफ़ फ़ोन पर दिखता है; ज़रूरी ऐप हमेशा चालू रहते हैं।",
@@ -4708,5 +4827,43 @@
     "surfaceManager": "मैनेजर",
     "notEnabled": "यह फ़ीचर आपके स्टोर के लिए अभी चालू नहीं है।",
     "openStore": "डिवाइस ऐप में चालू करें"
+  },
+  "devicePermissions": {
+    "title": "Merchiva को कुछ अनुमतियाँ चाहिए",
+    "subtitle": "इस डिवाइस पर ऐप चलाने के लिए ये ज़रूरी हैं। आपकी दुकान के बाहर कुछ भी साझा नहीं होता।",
+    "items": {
+      "notifications": {
+        "title": "सूचनाएँ",
+        "why": "कम स्टॉक अलर्ट, शिफ्ट अदला-बदली, टीम संदेश और Mr. Merchiva के जवाब, ऐप बंद होने पर भी।"
+      },
+      "microphone": {
+        "title": "माइक्रोफ़ोन",
+        "why": "वॉकी-टॉकी चैनल और Mr. Merchiva के साथ वॉइस कॉल।"
+      },
+      "camera": {
+        "title": "कैमरा",
+        "why": "स्टोर डिवाइस पर लॉग इन करने के लिए अपने फ़ोन का QR कोड स्कैन करें।"
+      },
+      "location": {
+        "title": "लोकेशन",
+        "why": "दुकान का पता सेट करता है और मौसम-आधारित बिक्री पूर्वानुमान चलाता है।"
+      }
+    },
+    "status": {
+      "granted": "अनुमति दी",
+      "prompt": "अभी नहीं",
+      "denied": "ब्लॉक",
+      "unsupported": "उपलब्ध नहीं",
+      "asking": "पूछ रहे हैं…"
+    },
+    "allowAll": "सभी की अनुमति दें",
+    "askAgain": "फिर से पूछें",
+    "required": "आगे बढ़ने के लिए सभी अनुमतियाँ ज़रूरी हैं।",
+    "dismissedTitle": "अनुरोध बिना जवाब के बंद हो गया",
+    "dismissedBody": "ब्राउज़र पूछे तो \"अनुमति दें\" दबाएँ। सभी अनुमतियाँ मिलने तक हम पूछते रहेंगे।",
+    "blockedTitle": "एक अनुमति ब्लॉक है",
+    "blockedHelpWeb": "एड्रेस बार के पास लॉक आइकन पर क्लिक करें, साइट सेटिंग खोलें और हर ब्लॉक आइटम को \"अनुमति दें\" पर सेट करें।",
+    "blockedHelpNative": "सेटिंग्स → Merchiva खोलें, हर ब्लॉक आइटम चालू करें और वापस आएँ।",
+    "autoDetect": "सब कुछ अनुमत होते ही यह स्क्रीन अपने आप बंद हो जाती है।"
   }
 }

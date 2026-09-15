@@ -1477,7 +1477,8 @@ export default function SettingsPage() {
                             size="xs"
                             className="shrink-0 px-0 text-muted-foreground"
                             onClick={() => {
-                              const role = (m.role === "manager" ? "manager" : "staff") as "staff" | "manager";
+                              // Raw role: custom staff-role names must survive a save.
+                              const role = String(m.role || "staff");
                               const perms: Permissions = { ...defaultPermissions(), ...(m.permissions ?? {}) } as Permissions;
                               setEditingMember({
                                 id: m.id,

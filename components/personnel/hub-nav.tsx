@@ -7,16 +7,16 @@ import {
   CircleDollarSign,
   ClipboardList,
   GraduationCap,
-  Inbox,
   Users,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { hapticLight } from "@/lib/haptics";
-import { Button } from "@/components/ui/button";
 import { usePersonnelHub } from "@/components/personnel/hub-context";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
 import { isManagerRouteEnabled } from "@/lib/device-apps";
+import { usePermissions } from "@/lib/context/permissions";
+import { useNavMode } from "@/lib/nav-mode";
 
 interface HubTab {
   /** Route segment under /manager/personnel. */
@@ -53,11 +53,12 @@ export function PersonnelLoading() {
 
 export function PersonnelHeader() {
   const t = useT();
-  const { pending, openRequests } = usePersonnelHub();
-
+  // In sidebar nav mode phones/tablets get a floating hamburger pinned over the
+  // top-left corner (lg:hidden) — leave room for it like PageHeader does.
+  const [navMode] = useNavMode();
   return (
-    <div className="h-14 px-4 lg:px-6 border-b border-border bg-background flex items-center gap-3 shrink-0 -mx-2">
-      <div className="min-w-0 flex-1">
+    <div className="h-14 px-4 lg:px-6 border-b border-border bg-background flex items-center gap-3 shrink-0">
+      <div className={cn("min-w-0 flex-1", navMode === "sidebar" && "pl-14 lg:pl-0")}>
         <h1 className="text-[15px] font-semibold leading-tight truncate">
           {t("personnel.title")}
         </h1>
@@ -65,22 +66,6 @@ export function PersonnelHeader() {
           {t("personnel.subtitle")}
         </div>
       </div>
-      {/* Inbox button — opens the requests panel (all sizes) */}
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={openRequests}
-        className="relative text-muted-foreground"
-        aria-label={t("personnel.pendingRequests")}
-      >
-        <Inbox className="h-4 w-4" strokeWidth={1.75} />
-        {pending > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-foreground text-background text-[9.5px] font-mono font-bold tabular-nums inline-flex items-center justify-center border-[1.5px] border-background">
-            {pending}
-          </span>
-        )}
-      </Button>
     </div>
   );
 }
@@ -92,8 +77,14 @@ export function PersonnelTabsNav() {
   const pathname = usePathname();
   const { pending } = usePersonnelHub();
   const { installed } = useDeviceApps();
+  const { can } = usePermissions();
   // Tasks (roles) / training / pay are optional org apps (see /manager/apps).
-  const tabs = TABS.filter((tab) => isManagerRouteEnabled(hrefFor(tab.segment), installed));
+  // The Team tab additionally needs team.view (the page itself is guarded).
+  const tabs = TABS.filter(
+    (tab) =>
+      isManagerRouteEnabled(hrefFor(tab.segment), installed) &&
+      (tab.segment !== "team" || can("team", "view")),
+  );
 
   const isActive = (segment: HubTab["segment"]) => {
     const href = hrefFor(segment);

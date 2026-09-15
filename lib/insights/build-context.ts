@@ -1,7 +1,7 @@
 /**
  * Pure builder for the morning-briefing AI context.
  *
- * Used by the dashboard card (components/morning-briefing-card.tsx, from live
+ * Used by the briefing API (from live
  * subscription rows) and by the server-side store context builder
  * (lib/spacetimedb/service-client.ts, from a service connection). Both sources
  * expose the same camelCase SpacetimeDB row fields, so the logic lives here once.

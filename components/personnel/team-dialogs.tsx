@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   inviteToOrg,
@@ -9,6 +9,7 @@ import {
   cancelInvitation,
 } from "@/lib/spacetimedb/actions";
 import { defaultPermissions, getInvitations } from "@/lib/db/team";
+import { useOrgInvitations, useOrgMembers } from "@/lib/spacetimedb/hooks";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import type { Permissions } from "@/lib/types";
@@ -94,6 +95,49 @@ export function PermissionsEditor({
 
 // ── Invite dialog ───────────────────────────────────────────────────────────
 
+interface MemberRowLike { organizationId: string; email?: string | null; status?: string | null }
+interface InvitationRowLike {
+  organizationId: string;
+  email?: string | null;
+  acceptedAt?: unknown;
+  expiresAt?: unknown;
+}
+
+function timestampToMs(value: unknown): number | null {
+  if (value == null) return null;
+  const ts = value as { toDate?: () => Date; microsSinceUnixEpoch?: unknown };
+  if (typeof ts.toDate === "function") {
+    const ms = ts.toDate().getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  if (typeof ts.microsSinceUnixEpoch === "bigint") return Number(ts.microsSinceUnixEpoch / BigInt(1000));
+  const ms = new Date(String(value)).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** Why an email can't be invited to this org right now, or null. */
+function inviteConflict(
+  orgId: string,
+  email: string,
+  members: readonly MemberRowLike[],
+  invitations: readonly InvitationRowLike[],
+): "member" | "invited" | null {
+  const wanted = email.trim().toLowerCase();
+  if (!wanted) return null;
+  const isMember = members.some(
+    (m) => m.organizationId === orgId && m.status !== "removed" && (m.email ?? "").trim().toLowerCase() === wanted,
+  );
+  if (isMember) return "member";
+  const now = Date.now();
+  const pending = invitations.some((i) => {
+    if (i.organizationId !== orgId || i.acceptedAt != null) return false;
+    if ((i.email ?? "").trim().toLowerCase() !== wanted) return false;
+    const expires = timestampToMs(i.expiresAt);
+    return expires == null || expires > now;
+  });
+  return pending ? "invited" : null;
+}
+
 export function InviteMemberDialog({
   open,
   onClose,
@@ -104,10 +148,13 @@ export function InviteMemberDialog({
   orgId: string;
 }) {
   const t = useT();
-  const { currentOrg } = usePermissions();
+  const { currentOrg, isOwner } = usePermissions();
   const { user } = useAuth();
   const orgName = currentOrg?.name ?? null;
   const userEmail = user?.email ?? null;
+  // Generated rows are structurally compatible with the *RowLike shapes.
+  const [rawMembers] = useOrgMembers();
+  const [rawInvitations] = useOrgInvitations();
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"staff" | "manager">("staff");
@@ -125,6 +172,13 @@ export function InviteMemberDialog({
   async function handleSubmit() {
     const v = email.trim();
     if (!v || busy) return;
+    // The server rejects these too once the module is published; checking here
+    // avoids duplicate invitations (and a second seat for existing members).
+    const conflict = inviteConflict(orgId, v, rawMembers ?? [], rawInvitations ?? []);
+    if (conflict) {
+      toast.error(t(conflict === "member" ? "personnel.team.org.dialog.alreadyMember" : "personnel.team.org.dialog.alreadyInvited"));
+      return;
+    }
     setBusy(true);
     try {
       await inviteToOrg({ email: v, role, permissions: JSON.stringify(perms) });
@@ -162,7 +216,8 @@ export function InviteMemberDialog({
           toast.warning(t("personnel.team.toastInviteEmailFailed"));
         }
       } else {
-        toast.warning(t("personnel.team.toastInviteNoToken"));
+        // The invitation was created; only the email lookup timed out.
+        toast.warning(t("personnel.team.toastInviteEmailFailed"));
       }
       onClose();
     } catch (err) {
@@ -200,7 +255,7 @@ export function InviteMemberDialog({
               fullWidth
               value={role}
               onChange={setRole}
-              options={(["staff", "manager"] as const).map((r) => ({ value: r, label: t(`personnel.team.role.${r}`) }))}
+              options={(isOwner ? (["staff", "manager"] as const) : (["staff"] as const)).map((r) => ({ value: r, label: t(`personnel.team.role.${r}`) }))}
             />
           </div>
           <div className="space-y-1.5">
@@ -230,7 +285,10 @@ export interface EditMemberInput {
   id: string;
   displayName: string;
   email: string;
-  role: "staff" | "manager";
+  /** Raw org_member.role: "staff" | "manager" or a staff-role name. It is sent
+   *  back unchanged unless the user picks another option, so custom roles
+   *  survive a permissions-only save. */
+  role: string;
   perms: Permissions;
 }
 
@@ -242,7 +300,7 @@ export function EditMemberDialog({
   onClose: () => void;
 }) {
   const t = useT();
-  const [role, setRole] = useState<"staff" | "manager">(member?.role ?? "staff");
+  const [role, setRole] = useState<string>(member?.role ?? "staff");
   const [perms, setPerms] = useState<Permissions>(member?.perms ?? defaultPermissions());
   const [busy, setBusy] = useState(false);
 
@@ -252,6 +310,17 @@ export function EditMemberDialog({
       setPerms(member.perms);
     }
   }, [member]);
+
+  const roleOptions = useMemo(() => {
+    const base = (["staff", "manager"] as const).map((r) => ({
+      value: r as string,
+      label: t(`personnel.team.role.${r}`),
+    }));
+    const current = member?.role;
+    return current && current !== "staff" && current !== "manager"
+      ? [{ value: current, label: current }, ...base]
+      : base;
+  }, [member?.role, t]);
 
   async function handleSave() {
     if (!member || busy) return;
@@ -296,11 +365,11 @@ export function EditMemberDialog({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Eyebrow>{t("personnel.team.fieldRole")}</Eyebrow>
-            <SegmentedControl
+            <SegmentedControl<string>
               fullWidth
               value={role}
               onChange={setRole}
-              options={(["staff", "manager"] as const).map((r) => ({ value: r, label: t(`personnel.team.role.${r}`) }))}
+              options={roleOptions}
             />
           </div>
           <div className="space-y-1.5">

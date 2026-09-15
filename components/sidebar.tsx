@@ -29,7 +29,7 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 
 import type { StoredAccount } from "@/lib/auth/context";
 import { LogOut, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, UserPlus } from "lucide-react";
-import { APP_MODE_ICONS, AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon, NotificationsIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
+import { APP_MODE_ICONS, AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
@@ -38,7 +38,6 @@ import { MerchivaLogo } from "@/components/logo";
 import { useNavMode } from "@/lib/nav-mode";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
 import { isManagerRouteEnabled } from "@/lib/device-apps";
-import { useUnreadCount } from "@/components/notification-center";
 import { cn } from "@/lib/utils";
 import { hapticLight, hapticMedium, hapticHeavy, hapticSuccess } from "@/lib/haptics";
 import { useIsCapacitor, isCapacitorHiddenPath, CAPACITOR_HIDDEN_HREFS } from "@/lib/capacitor";
@@ -57,7 +56,6 @@ import type { Permissions } from "@/lib/types";
 import { getSafeAreaInsets, getScreenCornerRadius } from "@/lib/safe-area";
 import { useT } from "@/lib/i18n/context";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { RightPanel, MobileRightPanel, RightPanelMobileProvider, useRightPanelMobile } from "@/components/right-panel";
 import { PageTransition } from "@/components/page-transition";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
@@ -866,7 +864,6 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
   const [deviceName] = useDeviceName();
   const [appMode] = useAppMode();
   const personalMode = appMode === "personal" && !storeMachine;
-  const unreadCount = useUnreadCount();
   // Which sections (keyed by parent href) are expanded to show sub-pages.
   const [expandedHrefs, setExpandedHrefs] = useState<Set<string>>(() => new Set());
 
@@ -966,6 +963,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
             if (isCapacitor && CAPACITOR_HIDDEN_HREFS.has(c.href)) return false;
             if (storeMachine && !STORE_MACHINE_HREFS.has(c.href)) return false;
             if (personalMode && !PERSONAL_MODE_HREFS.has(c.href)) return false;
+            if (c.href === "/manager/personnel/team" && !can("team", "view")) return false;
             return true;
           });
           const showSubNav = isDesktop && !collapsed && subItems.length > 0;
@@ -1078,33 +1076,6 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
       {/* Bottom links */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
-        <SidebarTooltip label={t("notifications.title")} show={!!collapsed}>
-          {isManagerRouteEnabled("/manager/notifications", installedApps) && (
-<Link
-            href="/manager/notifications"
-            onClick={handleNavClick}
-            className={cn(
-              "flex w-full items-center rounded text-[13px] font-medium transition-colors relative",
-              collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
-              pathname === "/manager/notifications"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            )}
-          >
-            <NotificationsIcon className="h-[18px] w-[18px] shrink-0" />
-            {!collapsed && t("notifications.title")}
-            {unreadCount > 0 && (
-              <span className={cn(
-                "flex items-center justify-center rounded-full text-[10px] font-bold leading-none",
-                pathname === "/manager/notifications" ? "bg-background text-foreground" : "bg-foreground text-background",
-                collapsed ? "absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1" : "ml-auto h-4 min-w-[16px] px-1"
-              )}>
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </Link>
-)}
-        </SidebarTooltip>
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
             href="/manager/settings"
@@ -1286,26 +1257,17 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   // - Each side panel is `collapsible` — dragging the handle below `minSize`
   //   automatically snaps the panel to `collapsedSize`.
   // - We mirror that collapsed state into React via `onResize` so the inner
-  //   SidebarContent / RightPanel can switch between expanded and icon-only
-  //   layouts.
+  //   SidebarContent can switch between expanded and icon-only layouts.
   // - `useDefaultLayout` persists pane sizes (and collapsed state) across
   //   reloads via localStorage.
   const leftPanelRef = usePanelRef();
-  const rightPanelRef = usePanelRef();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [rightCollapsed, setRightCollapsed] = useState(false);
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
-    id: "merchiva-shell-layout-v1",
-    panelIds: ["shell-left", "shell-main", "shell-right"],
+    id: "merchiva-shell-layout-v2",
+    panelIds: ["shell-left", "shell-main"],
   });
   const toggleSidebarCollapse = () => {
     const p = leftPanelRef.current;
-    if (!p) return;
-    if (p.isCollapsed()) p.expand();
-    else p.collapse();
-  };
-  const toggleRightPanel = () => {
-    const p = rightPanelRef.current;
     if (!p) return;
     if (p.isCollapsed()) p.expand();
     else p.collapse();
@@ -1519,12 +1481,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarCollapsedContext.Provider value={{ collapsed: sidebarCollapsed, toggle: toggleSidebarCollapse }}>
     <SidebarOpenContext.Provider value={() => { hapticLight(); setIsOpen(true); }}>
-    <RightPanelMobileProvider>
     <>
       {/* ── Mobile / tablet layout (touch devices) ── */}
       <div className={cn("relative h-[100dvh] min-h-0 w-full overflow-hidden bg-background", isMobile !== false ? "flex flex-1" : "hidden")}>
-        {/* Right panel (swipe from right, appears behind content like sidebar) */}
-        {isMobile && <MobileRightPanel />}
         {/* Floating hamburger / back button — always mount so AnimatePresence exit animations play */}
         {(
           <FloatingNavButton
@@ -1667,27 +1626,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
               {storeMachineMode && <StoreFooter />}
             </div>
           </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel
-            id="shell-right"
-            panelRef={rightPanelRef}
-            defaultSize={420}
-            minSize={220}
-            maxSize={680}
-            collapsible
-            collapsedSize={44}
-            onResize={(size) => setRightCollapsed(size.inPixels <= 50)}
-          >
-            <RightPanel
-              collapsed={rightCollapsed}
-              onToggleCollapse={toggleRightPanel}
-            />
-          </ResizablePanel>
         </ResizablePanelGroup>
       )}
       <StoreDeviceLock />
     </>
-    </RightPanelMobileProvider>
     </SidebarOpenContext.Provider>
     </SidebarCollapsedContext.Provider>
   );

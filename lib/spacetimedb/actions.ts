@@ -461,14 +461,31 @@ export async function deleteShift(shiftId: string): Promise<void> {
 
 // ─── Staffing: Staff Roles ────────────────────────────────────────────────────
 
+/** staff_role.permissions is a JSON string column. The staffing Roles dialog
+ *  passes a StaffRolePermissions object, the team page a pre-serialised string —
+ *  serialise here so objects are never sent as "[object Object]". */
+function serializeRolePermissions(value: unknown): string {
+  if (typeof value === "string") return value;
+  return JSON.stringify(value ?? {});
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addStaffRole(data: any, _userId?: string, _orgIdParam?: string): Promise<void> {
-  return offlineAware("addStaffRole", { organizationId: orgId(), ...data });
+  return offlineAware("addStaffRole", {
+    organizationId: orgId(),
+    ...data,
+    permissions: serializeRolePermissions(data?.permissions),
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateStaffRole(roleId: string, data: any): Promise<void> {
-  return offlineAware("updateStaffRole", { organizationId: orgId(), roleId, ...data });
+  return offlineAware("updateStaffRole", {
+    organizationId: orgId(),
+    roleId,
+    ...data,
+    permissions: serializeRolePermissions(data?.permissions),
+  });
 }
 
 export async function deleteStaffRole(roleId: string): Promise<void> {
@@ -1184,8 +1201,19 @@ export async function inviteToOrg(data: any): Promise<void> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateMember(memberId: string, data: any): Promise<void> {
-  return conn().reducers.updateMemberPermissions({ organizationId: orgId(), memberId, ...data });
+export async function updateMember(
+  memberId: string,
+  data: { role: string; permissions: string },
+): Promise<void> {
+  // The reducer takes BOTH fields and overwrites both — a missing role would be
+  // stored as "" and silently strip the member's role.
+  if (!data.role?.trim()) throw new Error("Member role is required");
+  return conn().reducers.updateMemberPermissions({
+    organizationId: orgId(),
+    memberId,
+    role: data.role,
+    permissions: data.permissions,
+  });
 }
 
 export async function removeMember(memberId: string): Promise<void> {

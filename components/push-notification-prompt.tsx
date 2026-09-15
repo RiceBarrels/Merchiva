@@ -6,7 +6,7 @@
 // dismissed it. Dismissal is persisted in localStorage so we don't re-ask on
 // every navigation.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import {
   AlertDialog,
@@ -28,6 +28,19 @@ export function PushNotificationPrompt() {
   const t = useT();
   const push = usePushNotifications();
   const [open, setOpen] = useState(false);
+  const autoEnabled = useRef(false);
+
+  // The device-permission gate already obtained OS-level notification
+  // permission before the app rendered — finish the job by registering the
+  // push subscription without showing a dialog. Runs once per mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isNativeShell()) return;
+    if (!push.supported || push.permission !== "granted") return;
+    if (push.isSubscribed || push.busy || autoEnabled.current) return;
+    autoEnabled.current = true;
+    push.enable().catch(() => {});
+  }, [push]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

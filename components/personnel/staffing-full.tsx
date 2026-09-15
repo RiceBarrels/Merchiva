@@ -3,7 +3,7 @@
 import { cn, uuid } from "@/lib/utils";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, ChevronLeft, ChevronRight, X, Shield, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Camera, Clock, ClipboardList, Pencil, Download, Sun, RefreshCw, Bell } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, X, Shield, Trash2, ArrowLeftRight, UserPlus, Users, CalendarX, Search, Check, Ban, ChevronDown, ChevronUp, User, Camera, Clock, ClipboardList, Pencil, Download, RefreshCw, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, type AvatarProps } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
@@ -63,7 +63,7 @@ import {
 } from "@/components/personnel/role-dialogs";
 import { RoleTasksOverview } from "@/components/personnel/tasks-overview";
 import { TaskRow } from "@/components/personnel/task-row";
-import { TaskCompleteDialog } from "@/components/my-tasks-card";
+import { TaskCompleteDialog } from "@/components/task-complete-dialog";
 import { useRoleTaskAssignments } from "@/lib/spacetimedb/hooks";
 import { AttendanceWeek } from "@/components/personnel/attendance";
 
@@ -136,7 +136,6 @@ function formatDateShort(iso: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-type MainTab = "myShifts" | "schedule" | "table" | "roles";
 
 const DEFAULT_DAY_TIMES = [false, true, true, true, true, true, false].map((on) => ({
   enabled: on, fullDay: true, startTime: "09:00", endTime: "17:00",
@@ -168,7 +167,7 @@ function normalizeDayTimes(dt: unknown): typeof DEFAULT_DAY_TIMES {
 // Desktop Layout
 // ─────────────────────────────────────────────────────────────────────────────
 
-type DesktopTab = "schedule" | "attendance" | "myShifts" | "roles";
+type DesktopTab = "schedule" | "attendance" | "roles";
 
 interface PunchEventRow {
   id: { toString(): string };
@@ -379,14 +378,9 @@ interface StaffingDesktopProps {
   setWeekStart: React.Dispatch<React.SetStateAction<Date>>;
   weekDates: Date[];
   weekShifts: Shift[];
-  myShifts: Shift[];
   todayStr: string;
   selectedDay: string;
   setSelectedDay: (d: string) => void;
-  todayTasks: RoleTask[];
-  taskCompletions: Record<string, boolean>;
-  toggleTaskDone: (taskId: string) => void;
-  loadingTodayTasks: boolean;
   orgTimeOffRequests: TimeOffRequest[];
   orgShiftTrades: ShiftTrade[];
   pendingCount: number;
@@ -405,6 +399,7 @@ interface StaffingDesktopProps {
   }>>;
   setAddDialog: (b: boolean) => void;
   roleTasksCache: Record<string, RoleTask[]>;
+  roleTaskCounts: Record<string, number>;
   loadRoleTasksFor: (roleId: string) => Promise<void>;
   loadingTasks: boolean;
   selectedRole: StaffRole | null;
@@ -433,7 +428,7 @@ interface StaffingDesktopProps {
   refreshing: boolean;
   /** Restrict which inner subtabs are shown. When set, the tab bar is hidden
    *  if only one entry remains. Used by the Personnel hub to split this page
-   *  across its own top tabs (Schedule shows schedule/myShifts; Roles shows
+   *  across its own top tabs (Schedule shows schedule; Roles shows
    *  just the roles tab). */
   subtabs?: DesktopTab[];
 }
@@ -442,12 +437,12 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   const t = useT();
   const {
     canEdit, isStaff, currentOrg, team, shifts, roles,
-    weekStart, setWeekStart, weekDates, weekShifts, myShifts,
-    todayStr, todayTasks, taskCompletions, toggleTaskDone, loadingTodayTasks,
+    weekStart, setWeekStart, weekDates, weekShifts,
+    todayStr,
     orgTimeOffRequests, orgShiftTrades, pendingCount,
     getMemberName, handleTimeOffStatusUpdate, handleTradeStatusUpdate,
     handleDeleteShift, setEditingShift, setShiftForm, setAddDialog,
-    roleTasksCache, loadRoleTasksFor, loadingTasks,
+    roleTasksCache, roleTaskCounts, loadRoleTasksFor, loadingTasks,
     selectedRole, setSelectedRole, handleSelectRole, handleDeleteRole,
     setEditingRole, setRoleForm, setRoleDialog,
     setTaskDialog, setTaskForm, refreshing, myMemberId, selectedDay, setSelectedDay,
@@ -708,150 +703,11 @@ function StaffingDesktop(props: StaffingDesktopProps) {
     );
   }
 
-  // ─── My Shifts Tab ────────────────────────────────────────
-  function MyShiftsTab() {
-    const todayShifts = shifts.filter((s) => s.memberId === myMemberId && s.date === todayStr);
-    const doneCount = todayTasks.filter((t) => taskCompletions[t.id]).length;
-
-    return (
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Left: week list */}
-        <div className="flex-1 min-w-0 overflow-y-auto px-6 py-4">
-          {/* Week nav */}
-          <div className="flex items-center gap-3 mb-4">
-            <Button variant="ghost" size="icon-sm" onClick={prevWeekD}>
-              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-            </Button>
-            <span className="text-[13px] font-semibold text-foreground">{monthYearD}</span>
-            <Button variant="ghost" size="icon-sm" onClick={nextWeekD}>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </div>
-
-          <div className="divide-y divide-border">
-            {weekDates.map((d) => {
-              const ds = isoDate(d);
-              const dayShifts = myShifts.filter((s) => s.date === ds);
-              const today = isTodayD(d);
-              return (
-                <div key={ds} className="flex gap-4 py-3">
-                  {/* Date column */}
-                  <div className={`w-14 shrink-0 text-center py-1.5 rounded-lg ${today ? "bg-foreground text-background" : ""}`}>
-                    <div className={`text-[10.5px] font-semibold uppercase tracking-wide ${today ? "text-muted-foreground" : "text-muted-foreground"}`}>
-                      {d.toLocaleDateString("en-US", { weekday: "short" })}
-                    </div>
-                    <div className={`text-[15px] font-bold ${today ? "text-background" : "text-foreground"}`}>
-                      {d.getDate()}
-                    </div>
-                  </div>
-
-                  {/* Shifts */}
-                  <div className="flex-1 min-w-0">
-                    {dayShifts.length === 0 ? (
-                      <p className="text-[13px] text-muted-foreground py-2">{t("staffing.schedule.noShifts")}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {dayShifts.map((shift) => {
-                          const matchedRoles = (shift.staffRoles ?? [])
-                            .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
-                            .filter(Boolean) as StaffRole[];
-                          return (
-                            <div
-                              key={shift.id}
-                              className="flex items-center gap-3 px-3 py-2 border border-border rounded-lg hover:border-border transition-colors"
-                            >
-                              <div
-                                className="w-[3px] rounded-full self-stretch shrink-0"
-                                style={{ backgroundColor: SHIFT_COLORS[shift.shiftType] }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-[13px] font-medium text-foreground font-mono tabular-nums">
-                                  {formatTime(shift.startTime)} &ndash; {formatTime(shift.endTime)}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[11px] text-muted-foreground">{t(SHIFT_LABEL_KEYS[shift.shiftType])}</span>
-                                  {matchedRoles.map((r) => (
-                                    <span key={r.id} className="inline-flex items-center gap-1">
-                                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
-                                      <span className="text-[11px] text-muted-foreground">{r.name}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <Button variant="outline" size="xs" className="text-muted-foreground">
-                                  {t("staffing.myShifts.trade")}
-                                </Button>
-                                <Button variant="outline" size="xs" className="text-muted-foreground">
-                                  {t("staffing.myShifts.cover")}
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right: Today's tasks */}
-        <div className="w-[320px] shrink-0 border-l border-border bg-background overflow-y-auto">
-          <div className="px-5 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Sun className="h-4 w-4 text-muted-foreground" />
-                <span className="text-[13px] font-semibold text-foreground">{t("staffing.myShifts.todaysTasks")}</span>
-              </div>
-              {todayTasks.length > 0 && (
-                <span className="text-[11px] font-medium bg-muted text-muted-foreground px-2 py-0.5 border border-border rounded">
-                  {doneCount}/{todayTasks.length}
-                </span>
-              )}
-            </div>
-
-            {todayTasks.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">
-                {loadingTodayTasks ? t("staffing.myShifts.loadingTasks") : todayShifts.length === 0 ? t("staffing.myShifts.noShiftsToday") : t("staffing.myShifts.noTasksAssigned")}
-              </p>
-            ) : (
-              <div className="space-y-0.5">
-                {todayTasks.map((task) => {
-                  const done = !!taskCompletions[task.id];
-                  return (
-                    <button
-                      key={task.id}
-                      onClick={() => toggleTaskDone(task.id)}
-                      className="flex items-start gap-2.5 w-full text-left py-1.5 hover:bg-muted -mx-1 px-1 transition-colors rounded-lg"
-                    >
-                      <div className={`mt-0.5 h-4 w-4 shrink-0 border rounded-[2px] flex items-center justify-center transition-colors ${done ? "bg-foreground border-foreground" : "border-border"}`}>
-                        {done && <Check className="h-2.5 w-2.5 text-background" />}
-                      </div>
-                      <div className="flex items-center gap-2 min-w-0">
-                        {task.startTime && task.endTime && (
-                          <span className="font-mono text-[11px] text-muted-foreground shrink-0 tabular-nums">
-                            {task.startTime.slice(0, 5)}&ndash;{task.endTime.slice(0, 5)}
-                          </span>
-                        )}
-                        <span className={`text-[13px] leading-snug ${done ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                          {task.title}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // ─── Roles Tab ────────────────────────────────────────────
+  // ScheduleGrid / RolesTab are render helpers, NOT components: they are
+  // declared inside StaffingDesktop, so using them as <JSX /> would hand React
+  // a new component type on every parent render and remount the whole tab
+  // (which killed the task-completion dialog the moment a table ticked).
   function RolesTab() {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -889,7 +745,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           ) : (
             <div className="divide-y divide-border">
               {roles.map((r) => {
-                const tasks = roleTasksCache[r.id] ?? [];
+                const taskCount = roleTaskCounts[r.id] ?? 0;
                 const isActive = selectedRole?.id === r.id;
                 return (
                   <button
@@ -907,7 +763,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] font-medium text-foreground truncate">{r.name}</div>
-                      <div className="text-[11px] text-muted-foreground">{(tasks.length === 1 ? t("staffing.roles.tasksCountSingular") : t("staffing.roles.tasksCountPlural")).replace("{count}", String(tasks.length))}</div>
+                      <div className="text-[11px] text-muted-foreground">{(taskCount === 1 ? t("staffing.roles.tasksCountSingular") : t("staffing.roles.tasksCountPlural")).replace("{count}", String(taskCount))}</div>
                     </div>
                   </button>
                 );
@@ -1115,12 +971,11 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   const tabLabels: Record<DesktopTab, string> = {
     schedule: t("staffing.tabs.schedule"),
     attendance: t("staffing.tabs.attendance"),
-    myShifts: t("staffing.tabs.myShifts"),
     roles: t("staffing.tabs.roles"),
   };
   const defaultDesktopTabs: DesktopTab[] = isStaff
-    ? ["myShifts", "roles"]
-    : ["schedule", ...(canManageAttendance ? ["attendance" as const] : []), "myShifts", "roles"];
+    ? ["schedule", "roles"]
+    : ["schedule", ...(canManageAttendance ? ["attendance" as const] : []), "roles"];
   const desktopTabs: DesktopTab[] = subtabsFilter
     ? defaultDesktopTabs.filter((t) => subtabsFilter.includes(t))
     : defaultDesktopTabs;
@@ -1165,12 +1020,11 @@ function StaffingDesktop(props: StaffingDesktopProps) {
           )}
 
           {/* Tab content */}
-          {dTab === "schedule" && !isStaff && <ScheduleGrid />}
+          {dTab === "schedule" && ScheduleGrid()}
           {dTab === "attendance" && canManageAttendance && organizationId && (
             <AttendanceWeek orgId={organizationId} />
           )}
-          {dTab === "myShifts" && <MyShiftsTab />}
-          {dTab === "roles" && <RolesTab />}
+          {dTab === "roles" && RolesTab()}
         </div>
       </div>
     </div>
@@ -1195,7 +1049,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const userId = stdb?.identity?.toHexString() ?? null;
   const [myMemberId, setMyMemberId] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<MainTab>("myShifts");
   const [mobileSection, setMobileSection] = useState<"overview" | "schedule" | "attendance">("overview");
   const [scheduleView, setScheduleView] = useState<"day" | "people">("day");
 
@@ -1322,6 +1175,15 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     loading, refreshing,
   } = useStaffing(organizationId, userId, isStaff);
   const [punchEvents] = useTable(tables.punchEvent);
+  // Live per-role task counts for the roles list. The lazily filled
+  // roleTasksCache only knows about roles the user has opened, so it can't
+  // drive the count (every unopened role would show 0).
+  const [roleTaskRows] = useTable(tables.roleTask);
+  const roleTaskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const row of roleTaskRows) counts[row.roleId] = (counts[row.roleId] ?? 0) + 1;
+    return counts;
+  }, [roleTaskRows]);
   const [managerPunchingId, setManagerPunchingId] = useState<string | null>(null);
   const [managerSavingAttendanceId, setManagerSavingAttendanceId] = useState<string | null>(null);
 
@@ -1397,7 +1259,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const weekShifts = shifts.filter(
     (s) => s.date >= isoDate(weekDates[0]) && s.date <= isoDate(weekDates[6])
   );
-  const myShifts = weekShifts.filter((s) => s.memberId === myMemberId);
   const activeMembers = useMemo(() => team.filter((m) => m.status === "active"), [team]);
   const orgPunchEvents = useMemo(() => {
     if (!organizationId) return [];
@@ -1431,7 +1292,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const pendingCount = orgTimeOffRequests.filter((r) => r.status === "pending").length
     + orgShiftTrades.filter((t) => t.status === "pending" || (t.status === "accepted" && !t.managerApproved)).length;
 
-  const visibleTabs: MainTab[] = isStaff ? ["myShifts", "roles"] : ["myShifts", "schedule", "table", "roles"];
 
   const filteredCoworkers = useMemo(() => {
     return coworkersCache.filter((c) => {
@@ -2558,14 +2418,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
         setWeekStart={setWeekStart}
         weekDates={weekDates}
         weekShifts={weekShifts}
-        myShifts={myShifts}
         todayStr={todayStr}
         selectedDay={selectedDay}
         setSelectedDay={setSelectedDay}
-        todayTasks={todayTasks}
-        taskCompletions={taskCompletions}
-        toggleTaskDone={toggleTaskDone}
-        loadingTodayTasks={loadingTodayTasks}
         orgTimeOffRequests={orgTimeOffRequests}
         orgShiftTrades={orgShiftTrades}
         pendingCount={pendingCount}
@@ -2577,6 +2432,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
         setShiftForm={setShiftForm}
         setAddDialog={setAddDialog}
         roleTasksCache={roleTasksCache}
+        roleTaskCounts={roleTaskCounts}
         loadRoleTasksFor={loadRoleTasksFor}
         loadingTasks={loadingTasks}
         selectedRole={selectedRole}
@@ -2607,14 +2463,11 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             <div className="flex-1 overflow-y-auto">
               <div className="px-4 pt-2 pb-4 space-y-4">
                 <div className="flex items-center gap-3 py-2 border-b border-border">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input type="date" value={shiftForm.date} onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))} className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0" />
                 </div>
                 <div className="flex items-center gap-2 py-2 border-b border-border">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input type="time" value={shiftForm.startTime} onChange={(e) => setShiftForm((f) => ({ ...f, startTime: e.target.value }))} className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1" />
                   <span className="text-muted-foreground">&mdash;</span>
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input type="time" value={shiftForm.endTime} onChange={(e) => setShiftForm((f) => ({ ...f, endTime: e.target.value }))} className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1" />
                 </div>
               </div>
@@ -3705,7 +3558,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               <div className="px-4 pt-2 pb-4 space-y-4">
                 {/* Date */}
                 <div className="flex items-center gap-3 py-2 border-b border-border">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
                     type="date"
                     value={shiftForm.date}
@@ -3716,7 +3568,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
                 {/* Time range */}
                 <div className="flex items-center gap-2 py-2 border-b border-border">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
                     type="time"
                     value={shiftForm.startTime}
@@ -3724,7 +3575,6 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                     className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1"
                   />
                   <span className="text-muted-foreground">—</span>
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
                     type="time"
                     value={shiftForm.endTime}

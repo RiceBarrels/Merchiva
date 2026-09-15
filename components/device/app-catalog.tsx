@@ -13,7 +13,7 @@ import { useMemo, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import {
   BookingsIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon,
-  NotificationsIcon, PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, StoreSettingsIcon, TasksIcon, TrainingIcon, type AppIcon,
+  PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, StoreSettingsIcon, TasksIcon, TrainingIcon, type AppIcon,
 } from "./app-icons";
 import type { Permissions } from "@/lib/types";
 import { usePermissions } from "@/lib/context/permissions";
@@ -137,10 +137,6 @@ export const APP_CATALOG: CatalogApp[] = [
     pages: [
       { route: "/manager/reviews", component: lazy(() => import("@/app/manager/reviews/page")) },
     ] },
-  // Customers · Marketing
-  { id: "notifications", icon: NotificationsIcon, route: "/manager/notifications", color: "amber", surfaces: ["store", "personal"],
-    component: lazy(() => import("@/app/manager/notifications/page")),
-    lite: lite(() => import("./apps/notifications").then((m) => m.NotificationsLite)) },
   { id: "channel", icon: ChannelIcon, route: "/manager/channel", color: "cyan", permissionKey: "staffing", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/channel/page")) },
   // Store settings · Integrations

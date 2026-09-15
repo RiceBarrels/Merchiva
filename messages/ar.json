@@ -53,7 +53,6 @@
     "pricing": "التسعير",
     "api": "API",
     "reviews": "المراجعات",
-    "notifications": "الإشعارات",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -411,7 +410,6 @@
       "overview": "نظرة عامة",
       "schedule": "الجدول",
       "attendance": "الحضور",
-      "myShifts": "ورديّاتي",
       "roles": "الأدوار",
       "table": "جدول"
     },
@@ -470,14 +468,6 @@
       "worked": "المدة الفعلية",
       "punchDays": "أيام الحضور",
       "weekTotal": "هذا الأسبوع"
-    },
-    "myShifts": {
-      "trade": "تبادل",
-      "cover": "تغطية",
-      "todaysTasks": "مهام اليوم",
-      "loadingTasks": "جارٍ تحميل المهام...",
-      "noShiftsToday": "لا توجد ورديات اليوم",
-      "noTasksAssigned": "لم يتم تعيين مهام"
     },
     "overview": {
       "onShiftNow": "في الوردية الآن",
@@ -799,7 +789,186 @@
       "toastUpdateFailed": "تعذّر تحديث العضو",
       "removeConfirm": "إزالة {name}؟",
       "toastRemoved": "تمت إزالة العضو",
-      "toastRemoveFailed": "تعذّر إزالة العضو"
+      "toastRemoveFailed": "تعذّر إزالة العضو",
+      "org": {
+        "permGroup": {
+          "people": "الأفراد",
+          "store": "المتجر",
+          "ops": "العمليات"
+        },
+        "groupKind": {
+          "store": "فريق المتجر",
+          "region": "فريق إقليمي",
+          "ops": "المقر الرئيسي",
+          "custom": "مخصص"
+        },
+        "statusDisabled": "معطّل",
+        "noGroup": "بلا مجموعة",
+        "ungrouped": "غير مجمّع",
+        "sensitive": "حساس",
+        "managedBy": "يتبع لـ",
+        "manages": "يدير",
+        "lockedOwner": "لا يمكن تغيير دور المالك وصلاحياته هنا.",
+        "lockedInvite": "الدعوة معلّقة. يمكن تعديل الدور والصلاحيات بعد الانضمام.",
+        "ownerOnly": "المالك فقط يمكنه تغيير الأدوار والصلاحيات.",
+        "peopleCount": "{n} أشخاص",
+        "roleMissing": "تم حذف الدور",
+        "graph": {
+          "joinedGroup": "تمت الإضافة إلى {name}",
+          "leftGroup": "تمت الإزالة من المجموعة",
+          "edgeExists": "علاقة التبعية هذه موجودة بالفعل",
+          "edgeCreated": "تمت إضافة علاقة التبعية",
+          "newGroup": "مجموعة جديدة",
+          "newGroupDesc": "مجموعة مخصصة",
+          "copySuffix": "(نسخة)",
+          "newRole": "دور جديد",
+          "roleDescOwner": "وصول كامل",
+          "roleDescManager": "يدير متجرًا أو فريقًا",
+          "roleDescStaff": "العمليات اليومية",
+          "roleCreated": "تمت إضافة الدور",
+          "roleCreateFailed": "تعذّرت إضافة الدور",
+          "roleSaveFailed": "تعذّر حفظ الدور",
+          "roleNameRequired": "أدخل اسم الدور",
+          "roleNameTaken": "يوجد دور بهذا الاسم بالفعل",
+          "roleDeleted": "تم حذف الدور",
+          "roleDeleteFailed": "تعذّر حذف الدور",
+          "builtinNoDelete": "لا يمكن حذف الأدوار المدمجة",
+          "membersRoleUpdated": "الأعضاء المحدَّثون: {n}",
+          "membersRoleUpdateFailed": "تعذّر تحديث دور بعض الأعضاء",
+          "ownerNotAssignable": "لا يمكن تعيين دور المالك",
+          "inviteCancelled": "تم إلغاء الدعوة",
+          "inviteCancelFailed": "تعذّر إلغاء الدعوة",
+          "onlyOwnerRoleInUse": "يمكن للمالك وحده إعادة تسمية دور يشغله أعضاء أو حذفه",
+          "roleMembersNotMovedOffline": "أنت غير متصل. تمت جدولة تغيير الدور، لكن لم يتم تحديث الأعضاء الذين لديهم هذا الدور."
+        },
+        "list": {
+          "groupBy": "عرض حسب المجموعة",
+          "colGroup": "المجموعة",
+          "colRelations": "التبعية",
+          "colActions": "الإجراءات",
+          "permCount": "{n} صلاحيات",
+          "emptyGroup": "لا يوجد أعضاء بعد.",
+          "emptyGroupHint": "اختر هذه المجموعة من عمود المجموعة لدى أي عضو.",
+          "emptyGroupHintMobile": "افتح أحد الأعضاء واختر هذه المجموعة."
+        },
+        "inspector": {
+          "emptyTitle": "لم يتم تحديد شيء",
+          "emptyList": "حدد صفًا لعرض تفاصيله.",
+          "emptyGraph": "حدد بطاقة شخص أو مجموعة على اللوحة لعرض تفاصيلها.",
+          "emptyGraphConnect": "اسحب النقطة أسفل البطاقة إلى بطاقة أو مجموعة أخرى لتحديد من يدير من.",
+          "tipJoinTitle": "إضافة إلى مجموعة",
+          "tipJoinBody": "أفلت البطاقة داخل إطار المجموعة",
+          "tipMoveTitle": "نقل المجموعة",
+          "tipMoveBody": "اسحب رأس المجموعة",
+          "tipZoomTitle": "التكبير",
+          "tipZoomBody": "مرّر أو استخدم إصبعين",
+          "tipUnlinkTitle": "إزالة الرابط",
+          "tipUnlinkBody": "انقر على خط الربط",
+          "sheetDescription": "التفاصيل والعلاقات والأذونات",
+          "manageRoles": "إدارة الأدوار",
+          "fieldGroup": "المجموعة",
+          "editInDialog": "تعديل في نافذة حوار",
+          "groupDescPlaceholder": "صف هذه المجموعة",
+          "tidyGroup": "ترتيب الأعضاء",
+          "members": "الأعضاء",
+          "noMembers": "لا يوجد أعضاء بعد.",
+          "noMembersHint": "اسحب بطاقات الأشخاص إلى هذه المجموعة.",
+          "none": "لا يوجد",
+          "selectAll": "تحديد الكل",
+          "clearAll": "مسح الكل",
+          "resetToRole": "إعادة التعيين إلى افتراضيات الدور",
+          "deleteGroup": "حذف المجموعة",
+          "confirmDeleteGroup": "حذف المجموعة {name}؟ ستتم إزالة روابطها أيضًا.",
+          "addManager": "إضافة مدير",
+          "addReport": "إضافة مرؤوس",
+          "removeManagerLink": "إزالة خط التبعية",
+          "removeReportLink": "إزالة خط التبعية"
+        },
+        "toolbar": {
+          "viewLabel": "العرض",
+          "viewGraph": "مخطط",
+          "viewList": "قائمة",
+          "groupsCount": "{n} مجموعات",
+          "edgesCount": "{n} علاقات",
+          "searchPlaceholder": "ابحث بالاسم أو البريد أو الدور…",
+          "clearSearch": "مسح البحث",
+          "closeSearch": "إغلاق البحث",
+          "matches": "{n} نتائج",
+          "addGroup": "إضافة مجموعة",
+          "roles": "الأدوار",
+          "manageRoles": "إدارة الأدوار",
+          "add": "إضافة",
+          "graphTools": "أدوات المخطط",
+          "autoLayout": "ترتيب",
+          "autoLayoutHint": "ترتيب المخطط تلقائيًا",
+          "focus": "تركيز",
+          "focusHint": "عرض التسلسل الإداري للعنصر المحدد فقط",
+          "focusNeedsSelection": "اختر شخصًا أو مجموعة أولًا",
+          "zoomIn": "تكبير",
+          "zoomOut": "تصغير",
+          "fit": "ملاءمة",
+          "fitHint": "ملاءمة المخطط للشاشة"
+        },
+        "canvas": {
+          "ariaLabel": "المخطط التنظيمي",
+          "connectHandle": "اسحب إلى بطاقة أخرى لإضافة علاقة تبعية",
+          "resizeHandle": "اسحب لتغيير الحجم",
+          "dropHere": "اسحب الأشخاص إلى هنا",
+          "permCount": "{n} صلاحيات",
+          "personAria": "{name}، {role}، {status}",
+          "groupAria": "{name}، {kind}",
+          "removeFromGroup": "إزالة من المجموعة",
+          "clearPersonLinks": "مسح المجموعة والعلاقات",
+          "editGroup": "تعديل المجموعة",
+          "duplicateGroup": "تكرار المجموعة",
+          "deleteGroup": "حذف المجموعة",
+          "deleteEdge": "حذف العلاقة",
+          "addGroup": "إضافة مجموعة",
+          "fitView": "ملاءمة الشاشة",
+          "confirmDeleteGroup": "حذف المجموعة «{name}»؟ سيبقى أعضاؤها في الفريق.",
+          "confirmClearPerson": "إزالة {name} من مجموعته ومسح علاقات التبعية الخاصة به؟"
+        },
+        "roles": {
+          "title": "الأدوار",
+          "subtitle": "حدّد لون كل دور وصلاحياته الافتراضية.",
+          "readOnly": "يمكن للمالكين والمديرين فقط تعديل الأدوار.",
+          "builtin": "مدمج",
+          "custom": "مخصص",
+          "permCount": "الصلاحيات: {n}",
+          "usage": "الأعضاء: {n}",
+          "add": "دور جديد",
+          "empty": "اختر دورًا أو أنشئ دورًا جديدًا.",
+          "nameRequired": "لا يمكن أن يكون اسم الدور فارغًا.",
+          "nameTaken": "يوجد دور باسم «{name}» بالفعل.",
+          "saveFailed": "تعذّر حفظ الدور.",
+          "saved": "تم حفظ الأدوار",
+          "createFailed": "تعذّر إنشاء الدور.",
+          "deleteFailed": "تعذّر حذف الدور.",
+          "confirmDeleteInUse": "حذف «{name}»؟ سيعود الأعضاء الذين لديهم هذا الدور ({n}) إلى دور موظف.",
+          "confirmDelete": "حذف الدور «{name}»؟",
+          "builtinNameHint": "لا يمكن تغيير أسماء الأدوار المدمجة.",
+          "defaultPerms": "الصلاحيات الافتراضية",
+          "defaultPermsHint": "تُطبَّق عند تعيين هذا الدور لأحد الأعضاء.",
+          "selectAll": "تحديد الكل",
+          "clearAll": "مسح",
+          "footerNote": "يحتفظ الأعضاء الذين لديهم هذا الدور بصلاحياتهم الحالية.",
+          "done": "تم",
+          "ownerOnlyInUse": "لا يمكن إلا للمالك إعادة تسمية دور لا يزال مُسندًا إلى أعضاء أو حذفه."
+        },
+        "panel": {
+          "legend": "دليل الألوان",
+          "groupAddedGraph": "تمت إضافة المجموعة. اسحب الأشخاص إلى إطارها لإضافتهم.",
+          "groupAddedList": "تمت إضافة المجموعة. عيّن الأعضاء من حقل المجموعة الخاص بهم.",
+          "tidied": "تم ترتيب المخطط",
+          "groupTidied": "تم ترتيب أعضاء المجموعة",
+          "cancelInviteFailed": "تعذّر إلغاء الدعوة",
+          "legendMore": "+{n} أخرى"
+        },
+        "dialog": {
+          "alreadyMember": "هذا الشخص عضو في الفريق بالفعل.",
+          "alreadyInvited": "هناك دعوة معلّقة لهذا البريد الإلكتروني بالفعل."
+        }
+      }
     },
     "dialog": {
       "inviteTitle": "دعوة عضو جديد",
@@ -1454,18 +1623,6 @@
       "afternoon": "مساء الخير",
       "evening": "مساء الخير"
     },
-    "morningBriefing": "إحاطة الصباح",
-    "approveAll": "الموافقة على الكل",
-    "suggestedActions": "إجراءات مقترحة",
-    "approve": "موافقة",
-    "dismiss": "تجاهل",
-    "backToNow": "العودة إلى الآن",
-    "needsAttention": "يتطلب الانتباه",
-    "allClear": "كل شيء على ما يرام — لا شيء يتطلب انتباهك في الوقت الحالي.",
-    "pastBriefings": "الإحاطات السابقة",
-    "regenerate": "إعادة الإنشاء",
-    "generating": "جارٍ إنشاء إحاطة اليوم…",
-    "noBriefing": "لا توجد إحاطة بعد. اضغط على تحديث لإنشاء واحدة.",
     "time": {
       "justNow": "الآن",
       "minutesAgo": "قبل {n} د",
@@ -1502,27 +1659,6 @@
       "addMore": "إضافة المزيد",
       "choose": "اختر ملفًا",
       "complete": "إكمال"
-    },
-    "attendance": {
-      "title": "حضور اليوم",
-      "punchedIn": "سجّلوا الدخول",
-      "onBreak": "في استراحة",
-      "nobody": "لم يسجّل أحد الدخول بعد.",
-      "allOut": "سجّل الجميع الخروج."
-    },
-    "todayTasks": {
-      "title": "مهام اليوم",
-      "done": "مكتملة",
-      "pending": "معلقة",
-      "skipped": "متخطاة",
-      "none": "لا مهام مستحقة اليوم."
-    },
-    "yesterdayTasks": {
-      "title": "مهام الأمس",
-      "done": "منجزة",
-      "notDone": "غير منجزة",
-      "skipped": "متخطّاة",
-      "none": "لا توجد مهام مستحقة بالأمس."
     },
     "widgets": {
       "salesToday": {
@@ -2774,8 +2910,6 @@
       "dismiss": "تجاهل",
       "empty": "لا توجد إشعارات جديدة"
     },
-    "collapsePanel": "طيّ اللوحة",
-    "openPanel": "فتح Mr. Merchiva",
     "noAccess": "تم تعطيل Mr. Merchiva لحسابك. اطلب من المدير تفعيله."
   },
   "admins": {
@@ -4130,13 +4264,7 @@
     "saved": "تم حفظ بلاغ الخطأ"
   },
   "myTasks": {
-    "title": "مهام اليوم",
-    "doneCount": "{done} / {total} مكتمل",
-    "all": "الكل",
-    "allCompleted": "اكتملت جميع المهام اليوم.",
     "evidenceBadge": "دليل",
-    "done": "مكتمل",
-    "moreCount": "+ {count} إضافية",
     "evidenceRequiredError": "تتطلب هذه المهمة صورة أو مقطع فيديو كدليل",
     "chatHeader": "✅ تم إكمال المهمة: {title}",
     "chatAttachments": "📎 {count} مرفق(ات)",
@@ -4294,7 +4422,6 @@
       "products": "المنتجات",
       "sales": "المبيعات",
       "bookings": "الحجوزات",
-      "notifications": "الإشعارات",
       "channel": "الدردشة",
       "settings-org": "إعدادات المتجر"
     },
@@ -4366,17 +4493,6 @@
         "noteReceived": "استلام في المتجر",
         "noteRecount": "إعادة عدّ في المتجر"
       },
-      "notifications": {
-        "list": "الإشعارات",
-        "unreadCount": "{n} جديد",
-        "markAllRead": "تعليم الكل كمقروء",
-        "allRead": "تم تعليم الكل كمقروء",
-        "markFailed": "تعذر التحديث. حاول مرة أخرى.",
-        "empty": "لا توجد إشعارات",
-        "emptyHint": "لا جديد لديك.",
-        "details": "إشعار",
-        "close": "إغلاق"
-      },
       "pay": {
         "thisWeek": "هذا الأسبوع",
         "thisMonth": "هذا الشهر",
@@ -4447,13 +4563,17 @@
         "emptyTitle": "لا مهام اليوم",
         "emptyDesc": "لا شيء للعمل الآن.",
         "photoNeeded": "تحتاج صورة",
-        "photoLater": "أضف الصورة لاحقًا في التطبيق الكامل",
         "markDone": "نعم، أُنجزت",
         "notYet": "ليس بعد",
         "saving": "جارٍ الحفظ…",
         "failed": "تعذر الحفظ. اضغط للمحاولة مرة أخرى.",
         "teamOpen": "مهام الفريق المتبقية",
-        "teamAllDone": "الفريق أنجز كل شيء"
+        "teamAllDone": "الفريق أنجز كل شيء",
+        "takePhoto": "التقاط صورة",
+        "retake": "إعادة الالتقاط",
+        "photoRequired": "التقط صورة لإنهاء هذه المهمة",
+        "uploadingPhoto": "جارٍ رفع الصورة…",
+        "uploadFailed": "فشل رفع الصورة. حاول مرة أخرى."
       },
       "training": {
         "title": "تدريبي",
@@ -4497,8 +4617,7 @@
       "inventory": "جرد المخزون وتحديد النواقص وتسجيل الهدر.",
       "products": "ابحث عن المنتجات والأسعار.",
       "sales": "مبيعات اليوم بنظرة سريعة.",
-      "bookings": "حجوزات اليوم والغد.",
-      "notifications": "تنبيهات ورسائل المتجر."
+      "bookings": "حجوزات اليوم والغد."
     },
     "appStore": {
       "hint": "اختر الميزات التي يستخدمها هذا المتجر. يظهر التطبيق المثبّت في لوحة الإدارة وعلى جهاز المتجر اللوحي وهواتف الموظفين؛ التطبيقات الأساسية مفعّلة دائمًا.",
@@ -4708,5 +4827,43 @@
     "surfaceManager": "الإدارة",
     "notEnabled": "هذه الميزة غير مفعّلة لمتجرك بعد.",
     "openStore": "فعّلها من تطبيقات الأجهزة"
+  },
+  "devicePermissions": {
+    "title": "يحتاج Merchiva إلى بعض الأذونات",
+    "subtitle": "هذه الأذونات ضرورية لعمل التطبيق على هذا الجهاز. لا تتم مشاركة أي شيء خارج متجرك.",
+    "items": {
+      "notifications": {
+        "title": "الإشعارات",
+        "why": "تنبيهات انخفاض المخزون، وتبادل الورديات، ورسائل الفريق، وردود Mr. Merchiva حتى عند إغلاق التطبيق."
+      },
+      "microphone": {
+        "title": "الميكروفون",
+        "why": "قنوات اللاسلكي والمكالمات الصوتية مع Mr. Merchiva."
+      },
+      "camera": {
+        "title": "الكاميرا",
+        "why": "امسح رمز QR على هاتفك لتسجيل الدخول على جهاز المتجر."
+      },
+      "location": {
+        "title": "الموقع",
+        "why": "يحدد عنوان المتجر ويشغّل توقعات المبيعات المرتبطة بالطقس."
+      }
+    },
+    "status": {
+      "granted": "مسموح",
+      "prompt": "لم يُمنح بعد",
+      "denied": "محظور",
+      "unsupported": "غير متاح",
+      "asking": "جارٍ الطلب…"
+    },
+    "allowAll": "السماح للكل",
+    "askAgain": "الطلب مرة أخرى",
+    "required": "جميع الأذونات مطلوبة للمتابعة.",
+    "dismissedTitle": "تم إغلاق الطلب دون إجابة",
+    "dismissedBody": "اضغط \"السماح\" عندما يطلب المتصفح ذلك. سنستمر في الطلب حتى تُمنح جميع الأذونات.",
+    "blockedTitle": "أحد الأذونات محظور",
+    "blockedHelpWeb": "انقر على رمز القفل بجوار شريط العنوان، وافتح إعدادات الموقع، وغيّر كل عنصر محظور إلى \"السماح\".",
+    "blockedHelpNative": "افتح الإعدادات ← Merchiva وفعّل كل عنصر محظور ثم عد.",
+    "autoDetect": "تُغلق هذه الشاشة تلقائيًا عند السماح بكل شيء."
   }
 }

@@ -6,6 +6,8 @@ Merchiva is a daily management platform for small businesses. It handles invento
 
 ## Tech Stack
 
+Dependencies are in `package.json`; these are the rules the manifest can't tell you:
+
 | Layer | Tool | Notes |
 |:---|:---|:---|
 | Runtime | Bun | `bun install`, `bun run dev`. No npm/yarn. |
@@ -14,92 +16,15 @@ Merchiva is a daily management platform for small businesses. It handles invento
 | UI | shadcn/ui v4 | Only import what you use. |
 | Styling | Tailwind CSS v4 | Utility-first. No per-component CSS files. |
 | Icons | Lucide React | `h-4 w-4` default, `h-5 w-5` for nav. |
-| Charts | Recharts | All data visualization. |
 | Database | SpacetimeDB | Sole data layer. Real-time subscriptions. Generated types in `lib/spacetimedb/generated/`. |
-| POS | Square SDK (v44+), Clover | OAuth flow, sync to SpacetimeDB. |
+| POS | Square SDK (v44+), Clover | OAuth flow, sync to SpacetimeDB. Credentials stored in DB, not env vars. |
 | Auth | WorkOS (`lib/auth/workos.ts`) | Email/password, OAuth. Session via cookies. |
-| File Upload | UploadThing | Image uploads for products, avatars. |
-| Email | Resend | Transactional emails (invites, etc.). |
-| i18n | Custom (`lib/i18n/`) | 6 locales: en, zh, es, fr, ar, hi. |
+| i18n | Custom (`lib/i18n/`) | One JSON per locale in `messages/`; every key goes in every locale file. |
 | Native | Capacitor (iOS + Android) | Loads from Vercel URL. Haptics, safe area, status bar. |
-| Animation | Motion (Framer Motion) | Page transitions, micro-interactions. |
-| Deploy | Vercel | `npx vercel --prod --yes`. |
 
 ## Route Structure
 
-All authenticated pages live under `/manager/`. Public pages are at root.
-
-```
-app/
-├── manager/                        # Authenticated app (sidebar + bottom bar)
-│   ├── layout.tsx              # Auth guard, SpacetimeDB provider, sidebar
-│   ├── dashboard/
-│   ├── inventory/              # + inventory/waste/ sub-route
-│   ├── sales/
-│   ├── staffing/
-│   ├── products/
-│   ├── pricing/
-│   ├── finances/
-│   ├── reports/
-│   ├── bookings/
-│   ├── reviews/
-│   ├── suppliers/
-│   ├── training/
-│   ├── chat/
-│   ├── settings/
-│   ├── punch-in/               # Staff punch clock
-│   └── api-settings/
-├── (auth)/login/, signup/      # Public auth
-├── choose/                     # Post-sign-in mode picker (admin / personal / store device); layout re-exports manager layout
-├── store/                      # Store device surface (shared tablet: QR/PIN log-in, walkie-talkie, apps); bare route, reuses manager layout for auth
-├── personal/                   # Personal device surface (employee phone: channels, punch-in, leave drawer); bare route, reuses manager layout for auth
-├── api/                        # Route handlers
-│   ├── auth/                   # sign-in, sign-up, callback, oauth, refresh, verify-*
-│   ├── square/                 # catalog, inventory, orders, sync, validate, oauth/*
-│   ├── clover/                 # connect, callback, disconnect, sync
-│   ├── ai/                     # predict, train
-│   ├── forecast/               # forecast, weather, popular-times
-│   ├── chat/                   # AI assistant
-│   ├── store-ai/
-│   ├── team/                   # invite, accept, send-invite-email
-│   └── uploadthing/
-├── pricing/, features/, about/, changelog/   # Landing pages
-├── setup/                      # First-time org setup
-└── invite/[token]/             # Accept team invite
-```
-
-## Key Directories
-
-```
-lib/
-├── spacetimedb/
-│   ├── client.ts               # SpacetimeDB connection
-│   ├── provider.tsx            # React context provider
-│   ├── auth.ts                 # SpacetimeDB auth bridge
-│   ├── actions.ts              # Reducer call wrappers
-│   ├── hooks.ts                # Data subscription hooks
-│   ├── hooks/                  # Domain-specific hooks (useInventory, useSales, etc.)
-│   └── generated/              # Auto-generated tables + reducers (DO NOT EDIT)
-├── db/                         # Legacy data access (being phased out)
-├── auth/                       # WorkOS auth (context + server helpers)
-├── i18n/                       # Config, context, dictionary loader
-└── (other utilities)           # capacitor, haptics, theme, offline, forecast, etc.
-
-components/
-├── ui/                         # shadcn/ui primitives
-├── device/                     # Shared device-surface pieces (walkie-talkie, PIN pad, idle lock, QR, apps grid) used by /store and /personal
-├── store-device/               # /store-only composition
-├── personal-device/            # /personal-only composition
-├── landing/                    # Public marketing pages
-├── sidebar.tsx                 # Desktop navigation
-├── bottom-bar.tsx              # Mobile navigation
-├── page-tabs.tsx               # Sub-page tab groups
-├── page-header.tsx             # Page title bar
-├── page-transition.tsx         # Route transition animation
-├── permission-guard.tsx        # Client-side permission gate
-├── notification-center.tsx     # In-app notifications
-└── mobile-shell.tsx            # Capacitor native shell
-```
+All authenticated pages live under `app/manager/` (its `layout.tsx` holds the auth guard, SpacetimeDB provider, and sidebar). Public pages are at root. `/choose`, `/store` and `/personal` are bare root routes that reuse the manager layout for auth — see App modes below.
 
 ## Data Layer (SpacetimeDB)
 
@@ -181,14 +106,9 @@ Build tools, not demos. Professional software, not AI templates.
 - `NEXT_PUBLIC_APP_URL` — fallback origin for Stripe success/cancel URLs (used when request `origin` header is empty)
 - Square / Clover credentials stored in DB, not env vars
 
-## Stripe Setup
+## Stripe Billing
 
-Source of truth for plans/prices is Stripe Dashboard (no local plan table).
-
-1. Stripe Dashboard → Products → create "Merchiva Pro" with two recurring prices: monthly + yearly.
-2. Copy each price id into env (`STRIPE_PRO_MONTHLY_PRICE_ID`, `STRIPE_PRO_YEARLY_PRICE_ID`).
-3. Stripe Dashboard → Webhooks → add endpoint `https://<host>/api/billing/webhook`, listen for: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `checkout.session.completed`. Copy the signing secret into `STRIPE_WEBHOOK_SECRET`.
-4. Local dev: `stripe listen --forward-to localhost:3000/api/billing/webhook` then paste the printed `whsec_…` into `.env.local`.
+Source of truth for plans/prices is Stripe Dashboard (no local plan table). Setup steps (products, price ids, webhook, `stripe listen`) live in the `stripe-billing-setup` skill.
 
 Subscription state on org rows (`organization.stripeCustomerId`, `subscriptionStatus`, `subscriptionPriceId`, `subscriptionInterval`, `currentPeriodEnd`) is a CACHE — Stripe is canonical. The `/api/billing/sync` route refreshes from Stripe and the client persists via the `updateOrgSubscription` reducer. The webhook currently just verifies signatures and logs; once a server-side SpacetimeDB service identity is wired up it can write directly.
 

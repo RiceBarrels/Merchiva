@@ -53,7 +53,6 @@
     "pricing": "Pricing",
     "api": "API",
     "reviews": "Reviews",
-    "notifications": "Notifications",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -419,7 +418,6 @@
       "overview": "Overview",
       "schedule": "Schedule",
       "attendance": "Attendance",
-      "myShifts": "My Shifts",
       "roles": "Roles",
       "table": "Table"
     },
@@ -478,14 +476,6 @@
       "worked": "Worked",
       "punchDays": "Punch days",
       "weekTotal": "This week"
-    },
-    "myShifts": {
-      "trade": "Trade",
-      "cover": "Cover",
-      "todaysTasks": "Today's Tasks",
-      "loadingTasks": "Loading tasks...",
-      "noShiftsToday": "No shifts today",
-      "noTasksAssigned": "No tasks assigned"
     },
     "overview": {
       "onShiftNow": "On shift now",
@@ -807,7 +797,186 @@
       "toastUpdateFailed": "Could not update member",
       "removeConfirm": "Remove {name}?",
       "toastRemoved": "Member removed",
-      "toastRemoveFailed": "Could not remove member"
+      "toastRemoveFailed": "Could not remove member",
+      "org": {
+        "permGroup": {
+          "people": "People",
+          "store": "Store",
+          "ops": "Operations"
+        },
+        "groupKind": {
+          "store": "Store team",
+          "region": "Regional team",
+          "ops": "Head office",
+          "custom": "Custom"
+        },
+        "statusDisabled": "Disabled",
+        "noGroup": "No group",
+        "ungrouped": "Ungrouped",
+        "sensitive": "Sensitive",
+        "managedBy": "Reports to",
+        "manages": "Manages",
+        "lockedOwner": "The owner's role and permissions can't be changed here.",
+        "lockedInvite": "Pending invitation. Role and permissions can be edited after they join.",
+        "ownerOnly": "Only the owner can change roles and permissions.",
+        "peopleCount": "{n} people",
+        "roleMissing": "Role removed",
+        "graph": {
+          "joinedGroup": "Added to {name}",
+          "leftGroup": "Removed from group",
+          "edgeExists": "This reporting line already exists",
+          "edgeCreated": "Reporting line added",
+          "newGroup": "New group",
+          "newGroupDesc": "Custom group",
+          "copySuffix": "(copy)",
+          "newRole": "New role",
+          "roleDescOwner": "Full access",
+          "roleDescManager": "Manages a store or team",
+          "roleDescStaff": "Day-to-day operations",
+          "roleCreated": "Role added",
+          "roleCreateFailed": "Couldn't add the role",
+          "roleSaveFailed": "Couldn't save the role",
+          "roleNameRequired": "Enter a role name",
+          "roleNameTaken": "A role with this name already exists",
+          "roleDeleted": "Role deleted",
+          "roleDeleteFailed": "Couldn't delete the role",
+          "builtinNoDelete": "Built-in roles can't be deleted",
+          "membersRoleUpdated": "Members updated: {n}",
+          "membersRoleUpdateFailed": "Some members' roles couldn't be updated",
+          "ownerNotAssignable": "The owner role can't be assigned",
+          "inviteCancelled": "Invitation cancelled",
+          "inviteCancelFailed": "Couldn't cancel the invitation",
+          "onlyOwnerRoleInUse": "Only the owner can rename or delete a role that members hold",
+          "roleMembersNotMovedOffline": "You're offline. The role change is queued, but members with this role were not updated."
+        },
+        "list": {
+          "groupBy": "Show groups",
+          "colGroup": "Group",
+          "colRelations": "Reporting",
+          "colActions": "Actions",
+          "permCount": "{n} permissions",
+          "emptyGroup": "No members yet.",
+          "emptyGroupHint": "Choose this group in a member's Group column.",
+          "emptyGroupHintMobile": "Open a member and choose this group."
+        },
+        "inspector": {
+          "emptyTitle": "Nothing selected",
+          "emptyList": "Select a row to view its details.",
+          "emptyGraph": "Select a person card or group on the canvas to view its details.",
+          "emptyGraphConnect": "Drag the dot at the bottom of a card onto another card or group to show who manages whom.",
+          "tipJoinTitle": "Add to group",
+          "tipJoinBody": "Drop a card inside a group frame",
+          "tipMoveTitle": "Move group",
+          "tipMoveBody": "Drag the group header",
+          "tipZoomTitle": "Zoom",
+          "tipZoomBody": "Scroll or pinch",
+          "tipUnlinkTitle": "Remove link",
+          "tipUnlinkBody": "Click a connecting line",
+          "sheetDescription": "Details, relationships and permissions",
+          "manageRoles": "Manage roles",
+          "fieldGroup": "Group",
+          "editInDialog": "Edit in dialog",
+          "groupDescPlaceholder": "Describe this group",
+          "tidyGroup": "Tidy members",
+          "members": "Members",
+          "noMembers": "No members yet.",
+          "noMembersHint": "Drag person cards into this group.",
+          "none": "None",
+          "selectAll": "Select all",
+          "clearAll": "Clear all",
+          "resetToRole": "Reset to role defaults",
+          "deleteGroup": "Delete group",
+          "confirmDeleteGroup": "Delete group {name}? Its connections will be removed too.",
+          "addManager": "Add manager",
+          "addReport": "Add report",
+          "removeManagerLink": "Remove reporting line",
+          "removeReportLink": "Remove reporting line"
+        },
+        "toolbar": {
+          "viewLabel": "View",
+          "viewGraph": "Chart",
+          "viewList": "List",
+          "groupsCount": "{n} groups",
+          "edgesCount": "{n} relationships",
+          "searchPlaceholder": "Search name, email or role…",
+          "clearSearch": "Clear search",
+          "closeSearch": "Close search",
+          "matches": "{n} matches",
+          "addGroup": "Add group",
+          "roles": "Roles",
+          "manageRoles": "Manage roles",
+          "add": "Add",
+          "graphTools": "Chart tools",
+          "autoLayout": "Tidy up",
+          "autoLayoutHint": "Arrange the chart automatically",
+          "focus": "Focus",
+          "focusHint": "Show only the selected item's reporting line",
+          "focusNeedsSelection": "Select a person or group first",
+          "zoomIn": "Zoom in",
+          "zoomOut": "Zoom out",
+          "fit": "Fit",
+          "fitHint": "Fit the chart to the screen"
+        },
+        "canvas": {
+          "ariaLabel": "Org chart",
+          "connectHandle": "Drag onto another card to add a reporting line",
+          "resizeHandle": "Drag to resize",
+          "dropHere": "Drag people here",
+          "permCount": "{n} permissions",
+          "personAria": "{name}, {role}, {status}",
+          "groupAria": "{name}, {kind}",
+          "removeFromGroup": "Remove from group",
+          "clearPersonLinks": "Clear group & relationships",
+          "editGroup": "Edit group",
+          "duplicateGroup": "Duplicate group",
+          "deleteGroup": "Delete group",
+          "deleteEdge": "Delete relationship",
+          "addGroup": "Add group",
+          "fitView": "Fit to screen",
+          "confirmDeleteGroup": "Delete group “{name}”? Its members stay on the team.",
+          "confirmClearPerson": "Remove {name} from their group and clear their reporting lines?"
+        },
+        "roles": {
+          "title": "Roles",
+          "subtitle": "Set each role's color and default permissions.",
+          "readOnly": "Only owners and managers can edit roles.",
+          "builtin": "Built-in",
+          "custom": "Custom",
+          "permCount": "Permissions: {n}",
+          "usage": "Members: {n}",
+          "add": "New role",
+          "empty": "Select a role or create a new one.",
+          "nameRequired": "Role name can't be empty.",
+          "nameTaken": "A role named “{name}” already exists.",
+          "saveFailed": "Couldn't save the role.",
+          "saved": "Roles saved",
+          "createFailed": "Couldn't create the role.",
+          "deleteFailed": "Couldn't delete the role.",
+          "confirmDeleteInUse": "Delete “{name}”? Members with this role ({n}) will fall back to Staff.",
+          "confirmDelete": "Delete the role “{name}”?",
+          "builtinNameHint": "Built-in role names can't be changed.",
+          "defaultPerms": "Default permissions",
+          "defaultPermsHint": "Applied when this role is assigned to a member.",
+          "selectAll": "Select all",
+          "clearAll": "Clear",
+          "footerNote": "Members who already have this role keep their current permissions.",
+          "done": "Done",
+          "ownerOnlyInUse": "Only the owner can rename or delete a role that members still have."
+        },
+        "panel": {
+          "legend": "Legend",
+          "groupAddedGraph": "Group added. Drag people into its frame to add them.",
+          "groupAddedList": "Group added. Assign members from their Group field.",
+          "tidied": "Layout tidied",
+          "groupTidied": "Group members arranged",
+          "cancelInviteFailed": "Could not cancel invitation",
+          "legendMore": "+{n} more"
+        },
+        "dialog": {
+          "alreadyMember": "This person is already on the team.",
+          "alreadyInvited": "An invitation to this email is already pending."
+        }
+      }
     },
     "dialog": {
       "inviteTitle": "Invite member",
@@ -1462,18 +1631,6 @@
       "afternoon": "Good afternoon",
       "evening": "Good evening"
     },
-    "morningBriefing": "Morning Briefing",
-    "approveAll": "Approve all",
-    "suggestedActions": "Suggested actions",
-    "approve": "Approve",
-    "dismiss": "Dismiss",
-    "backToNow": "Back to now",
-    "needsAttention": "Needs attention",
-    "allClear": "Nothing needs your attention right now.",
-    "pastBriefings": "Past briefings",
-    "regenerate": "Regenerate",
-    "generating": "Generating today's briefing…",
-    "noBriefing": "No briefing yet. Tap refresh to generate one.",
     "time": {
       "justNow": "just now",
       "minutesAgo": "{n}m ago",
@@ -1510,27 +1667,6 @@
       "addMore": "Add more",
       "choose": "Choose file",
       "complete": "Complete"
-    },
-    "attendance": {
-      "title": "Today's attendance",
-      "punchedIn": "punched in",
-      "onBreak": "on break",
-      "nobody": "No one has punched in yet.",
-      "allOut": "Everyone has clocked out."
-    },
-    "todayTasks": {
-      "title": "Today's tasks",
-      "done": "completed",
-      "pending": "pending",
-      "skipped": "skipped",
-      "none": "No tasks due today."
-    },
-    "yesterdayTasks": {
-      "title": "Yesterday's tasks",
-      "done": "done",
-      "notDone": "not done",
-      "skipped": "skipped",
-      "none": "No tasks were due yesterday."
     },
     "widgets": {
       "salesToday": {
@@ -2794,8 +2930,6 @@
       "dismiss": "Dismiss",
       "empty": "No new notifications"
     },
-    "collapsePanel": "Collapse panel",
-    "openPanel": "Open Mr. Merchiva",
     "noAccess": "Mr. Merchiva is disabled for your account. Ask a manager to enable it."
   },
   "admins": {
@@ -4170,13 +4304,7 @@
     "saved": "Bug report saved"
   },
   "myTasks": {
-    "title": "Today’s tasks",
-    "doneCount": "{done} / {total} done",
-    "all": "All",
-    "allCompleted": "All tasks completed today.",
     "evidenceBadge": "evidence",
-    "done": "Done",
-    "moreCount": "+ {count} more",
     "evidenceRequiredError": "This task requires a photo or video as evidence",
     "chatHeader": "✅ Task completed: {title}",
     "chatAttachments": "📎 {count} attachment(s)",
@@ -4334,7 +4462,6 @@
       "products": "Products",
       "sales": "Sales",
       "bookings": "Bookings",
-      "notifications": "Notifications",
       "channel": "Chat",
       "settings-org": "Store settings"
     },
@@ -4406,17 +4533,6 @@
         "noteReceived": "Received at store",
         "noteRecount": "Recount at store"
       },
-      "notifications": {
-        "list": "Notifications",
-        "unreadCount": "{n} new",
-        "markAllRead": "Mark all read",
-        "allRead": "All marked read",
-        "markFailed": "Could not update. Try again.",
-        "empty": "No notifications",
-        "emptyHint": "You're all caught up.",
-        "details": "Notification",
-        "close": "Close"
-      },
       "pay": {
         "thisWeek": "This week",
         "thisMonth": "This month",
@@ -4487,13 +4603,17 @@
         "emptyTitle": "No tasks today",
         "emptyDesc": "Nothing to do right now.",
         "photoNeeded": "Photo needed",
-        "photoLater": "Add the photo in the full app later",
         "markDone": "Yes, it's done",
         "notYet": "Not yet",
         "saving": "Saving…",
         "failed": "Could not save. Tap to try again.",
         "teamOpen": "Team tasks left",
-        "teamAllDone": "The team is all done"
+        "teamAllDone": "The team is all done",
+        "takePhoto": "Take a photo",
+        "retake": "Retake",
+        "photoRequired": "Take a photo to finish this task",
+        "uploadingPhoto": "Uploading photo…",
+        "uploadFailed": "Photo upload failed. Try again."
       },
       "training": {
         "title": "My training",
@@ -4537,8 +4657,7 @@
       "inventory": "Count stock, mark low items, log waste.",
       "products": "Look up products and prices.",
       "sales": "Today's sales at a glance.",
-      "bookings": "Today's and tomorrow's reservations.",
-      "notifications": "Alerts and messages from the store."
+      "bookings": "Today's and tomorrow's reservations."
     },
     "appStore": {
       "hint": "Pick which features this store uses. An installed app shows up in the manager back office, on the store tablet and on staff phones; required apps are always on.",
@@ -4748,5 +4867,43 @@
     "surfaceManager": "Manager",
     "notEnabled": "This feature isn't turned on for your store yet.",
     "openStore": "Turn it on in Device apps"
+  },
+  "devicePermissions": {
+    "title": "Merchiva needs a few permissions",
+    "subtitle": "These are required for the app to work on this device. Nothing is shared outside your store.",
+    "items": {
+      "notifications": {
+        "title": "Notifications",
+        "why": "Low-stock alerts, shift trades, team messages and Mr. Merchiva replies reach you even when the app is closed."
+      },
+      "microphone": {
+        "title": "Microphone",
+        "why": "Walkie-talkie channels and voice calls with Mr. Merchiva."
+      },
+      "camera": {
+        "title": "Camera",
+        "why": "Scan the QR code on your phone to log in on the store device."
+      },
+      "location": {
+        "title": "Location",
+        "why": "Sets the store address and powers weather-aware sales forecasts."
+      }
+    },
+    "status": {
+      "granted": "Allowed",
+      "prompt": "Not yet",
+      "denied": "Blocked",
+      "unsupported": "Not available",
+      "asking": "Asking…"
+    },
+    "allowAll": "Allow all",
+    "askAgain": "Ask again",
+    "required": "All permissions are required to continue.",
+    "dismissedTitle": "The prompt was closed without an answer",
+    "dismissedBody": "Tap Allow when the browser asks. We'll keep asking until every permission is granted.",
+    "blockedTitle": "A permission is blocked",
+    "blockedHelpWeb": "Click the lock icon next to the address bar, open Site settings, and set each blocked item to Allow.",
+    "blockedHelpNative": "Open Settings → Merchiva and turn on each blocked item, then come back.",
+    "autoDetect": "This screen closes on its own once everything is allowed."
   }
 }

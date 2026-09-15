@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Calendar, Clock, X, Sunrise, Sun, Moon } from "lucide-react"
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from "@/components/ui/drawer"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -67,23 +68,41 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   )
 }
 
-// ─── Desktop dropdown shell ────────────────────────────────────────────────
+// ─── Picker shell ──────────────────────────────────────────────────────────
+// Mobile: bottom drawer. Desktop: a portaled Base UI popover anchored to the
+// trigger, so the panel is never clipped by a scrolling dialog body and flips
+// above the trigger when there's no room below.
 
-function DesktopDropdown({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
-    document.addEventListener("mousedown", onClick)
-    return () => document.removeEventListener("mousedown", onClick)
-  }, [open, onClose])
-  if (!open) return null
+function PickerShell({ open, onOpenChange, isMobile, trigger, title, description, children }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  isMobile: boolean
+  trigger: React.ReactElement
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  if (isMobile) {
+    return (
+      <>
+        {React.cloneElement(trigger as React.ReactElement<{ onClick?: () => void }>, { onClick: () => onOpenChange(!open) })}
+        <Drawer open={open} onOpenChange={onOpenChange} shouldScaleBackground>
+          <DrawerContent className="max-h-[85vh]">
+            <DrawerTitle className="sr-only">{title}</DrawerTitle>
+            <DrawerDescription className="sr-only">{description}</DrawerDescription>
+            {children}
+          </DrawerContent>
+        </Drawer>
+      </>
+    )
+  }
   return (
-    <div ref={ref} className="absolute left-0 top-full z-50 mt-1 rounded-[0.3rem] border border-border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
-      {children}
-    </div>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger render={trigger} />
+      <PopoverContent align="start" sideOffset={4} className="w-auto p-0">
+        {children}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -144,31 +163,27 @@ function DateInput({
 
   return (
     <div className="relative" ref={triggerRef}>
-      <Button
-        variant="outline"
-        disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
-        className={cn("h-8 w-full justify-start gap-2 font-normal", !current && "text-muted-foreground", className)}
+      <PickerShell
+        open={open}
+        onOpenChange={setOpen}
+        isMobile={isMobile}
+        title="Pick date"
+        description="Select a date"
+        trigger={
+          <Button
+            variant="outline"
+            disabled={disabled}
+            className={cn("h-8 w-full justify-start gap-2 font-normal", !current && "text-muted-foreground", className)}
+          >
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="flex-1 truncate text-left text-sm">
+              {current ? formatDateDisplay(current) : (placeholder as string) || "Select date"}
+            </span>
+          </Button>
+        }
       >
-        <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="flex-1 truncate text-left text-sm">
-          {current ? formatDateDisplay(current) : (placeholder as string) || "Select date"}
-        </span>
-      </Button>
-
-      {isMobile ? (
-        <Drawer open={open} onOpenChange={setOpen} shouldScaleBackground>
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerTitle className="sr-only">Pick date</DrawerTitle>
-            <DrawerDescription className="sr-only">Select a date</DrawerDescription>
-            {content}
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <DesktopDropdown open={open} onClose={() => setOpen(false)}>
-          {content}
-        </DesktopDropdown>
-      )}
+        {content}
+      </PickerShell>
       <input type="hidden" name={name} value={current} />
     </div>
   )
@@ -312,31 +327,27 @@ function TimeInput({
 
   return (
     <div className="relative" ref={triggerRef}>
-      <Button
-        variant="outline"
-        disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
-        className={cn("h-8 w-full justify-start gap-2 font-normal", !current && "text-muted-foreground", className)}
+      <PickerShell
+        open={open}
+        onOpenChange={setOpen}
+        isMobile={isMobile}
+        title="Pick time"
+        description="Select a time"
+        trigger={
+          <Button
+            variant="outline"
+            disabled={disabled}
+            className={cn("h-8 w-full justify-start gap-2 font-normal", !current && "text-muted-foreground", className)}
+          >
+            <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="flex-1 truncate text-left text-sm">
+              {current ? formatTimeDisplay(current) : (placeholder as string) || "Select time"}
+            </span>
+          </Button>
+        }
       >
-        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="flex-1 truncate text-left text-sm">
-          {current ? formatTimeDisplay(current) : (placeholder as string) || "Select time"}
-        </span>
-      </Button>
-
-      {isMobile ? (
-        <Drawer open={open} onOpenChange={setOpen} shouldScaleBackground>
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerTitle className="sr-only">Pick time</DrawerTitle>
-            <DrawerDescription className="sr-only">Select a time</DrawerDescription>
-            {content}
-          </DrawerContent>
-        </Drawer>
-      ) : (
-        <DesktopDropdown open={open} onClose={() => setOpen(false)}>
-          {content}
-        </DesktopDropdown>
-      )}
+        {content}
+      </PickerShell>
       <input type="hidden" name={name} value={current} />
     </div>
   )

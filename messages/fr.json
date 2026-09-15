@@ -53,7 +53,6 @@
     "pricing": "Tarification",
     "api": "API",
     "reviews": "Avis",
-    "notifications": "Notifications",
     "group": {
       "operations": "Operations",
       "sales": "Sales & Finance",
@@ -411,7 +410,6 @@
       "overview": "Vue d'ensemble",
       "schedule": "Planning",
       "attendance": "Pointage",
-      "myShifts": "Mes quarts",
       "roles": "Rôles",
       "table": "Tableau"
     },
@@ -470,14 +468,6 @@
       "worked": "Travaillé",
       "punchDays": "Jours pointés",
       "weekTotal": "Cette semaine"
-    },
-    "myShifts": {
-      "trade": "Échanger",
-      "cover": "Remplacer",
-      "todaysTasks": "Tâches du jour",
-      "loadingTasks": "Chargement des tâches…",
-      "noShiftsToday": "Aucun quart aujourd'hui",
-      "noTasksAssigned": "Aucune tâche attribuée"
     },
     "overview": {
       "onShiftNow": "En service",
@@ -799,7 +789,186 @@
       "toastUpdateFailed": "Impossible de mettre à jour le membre",
       "removeConfirm": "Retirer {name} ?",
       "toastRemoved": "Membre retiré",
-      "toastRemoveFailed": "Impossible de retirer le membre"
+      "toastRemoveFailed": "Impossible de retirer le membre",
+      "org": {
+        "permGroup": {
+          "people": "Personnel",
+          "store": "Magasin",
+          "ops": "Opérations"
+        },
+        "groupKind": {
+          "store": "Équipe magasin",
+          "region": "Équipe régionale",
+          "ops": "Siège",
+          "custom": "Personnalisé"
+        },
+        "statusDisabled": "Désactivé",
+        "noGroup": "Aucun groupe",
+        "ungrouped": "Sans groupe",
+        "sensitive": "Sensible",
+        "managedBy": "Rend compte à",
+        "manages": "Gère",
+        "lockedOwner": "Le rôle et les autorisations du propriétaire ne peuvent pas être modifiés ici.",
+        "lockedInvite": "Invitation en attente. Le rôle et les autorisations seront modifiables après l'arrivée du membre.",
+        "ownerOnly": "Seul le propriétaire peut modifier les rôles et les autorisations.",
+        "peopleCount": "{n} personnes",
+        "roleMissing": "Rôle supprimé",
+        "graph": {
+          "joinedGroup": "Ajouté à {name}",
+          "leftGroup": "Retiré du groupe",
+          "edgeExists": "Ce lien hiérarchique existe déjà",
+          "edgeCreated": "Lien hiérarchique ajouté",
+          "newGroup": "Nouveau groupe",
+          "newGroupDesc": "Groupe personnalisé",
+          "copySuffix": "(copie)",
+          "newRole": "Nouveau rôle",
+          "roleDescOwner": "Accès complet",
+          "roleDescManager": "Gère un magasin ou une équipe",
+          "roleDescStaff": "Opérations quotidiennes",
+          "roleCreated": "Rôle ajouté",
+          "roleCreateFailed": "Impossible d'ajouter le rôle",
+          "roleSaveFailed": "Impossible d'enregistrer le rôle",
+          "roleNameRequired": "Saisissez un nom de rôle",
+          "roleNameTaken": "Un rôle portant ce nom existe déjà",
+          "roleDeleted": "Rôle supprimé",
+          "roleDeleteFailed": "Impossible de supprimer le rôle",
+          "builtinNoDelete": "Les rôles intégrés ne peuvent pas être supprimés",
+          "membersRoleUpdated": "Membres mis à jour : {n}",
+          "membersRoleUpdateFailed": "Le rôle de certains membres n'a pas pu être mis à jour",
+          "ownerNotAssignable": "Le rôle de propriétaire ne peut pas être attribué",
+          "inviteCancelled": "Invitation annulée",
+          "inviteCancelFailed": "Impossible d'annuler l'invitation",
+          "onlyOwnerRoleInUse": "Seul le propriétaire peut renommer ou supprimer un rôle attribué à des membres",
+          "roleMembersNotMovedOffline": "Vous êtes hors ligne. La modification du rôle est en attente, mais les membres ayant ce rôle n'ont pas été mis à jour."
+        },
+        "list": {
+          "groupBy": "Afficher par groupe",
+          "colGroup": "Groupe",
+          "colRelations": "Hiérarchie",
+          "colActions": "Actions",
+          "permCount": "{n} autorisations",
+          "emptyGroup": "Aucun membre pour l'instant.",
+          "emptyGroupHint": "Choisissez ce groupe dans la colonne Groupe d'un membre.",
+          "emptyGroupHintMobile": "Ouvrez un membre et choisissez ce groupe."
+        },
+        "inspector": {
+          "emptyTitle": "Aucune sélection",
+          "emptyList": "Sélectionnez une ligne pour afficher ses détails.",
+          "emptyGraph": "Sélectionnez une fiche ou un groupe sur le canevas pour afficher ses détails.",
+          "emptyGraphConnect": "Faites glisser le point en bas d'une fiche vers une autre fiche ou un groupe pour indiquer qui gère qui.",
+          "tipJoinTitle": "Ajouter au groupe",
+          "tipJoinBody": "Déposez une fiche dans le cadre d'un groupe",
+          "tipMoveTitle": "Déplacer un groupe",
+          "tipMoveBody": "Faites glisser l'en-tête du groupe",
+          "tipZoomTitle": "Zoom",
+          "tipZoomBody": "Molette ou pincement",
+          "tipUnlinkTitle": "Supprimer un lien",
+          "tipUnlinkBody": "Cliquez sur une ligne de liaison",
+          "sheetDescription": "Détails, relations et autorisations",
+          "manageRoles": "Gérer les rôles",
+          "fieldGroup": "Groupe",
+          "editInDialog": "Modifier dans une fenêtre",
+          "groupDescPlaceholder": "Décrivez ce groupe",
+          "tidyGroup": "Réorganiser les membres",
+          "members": "Membres",
+          "noMembers": "Aucun membre pour l'instant.",
+          "noMembersHint": "Faites glisser des fiches dans ce groupe.",
+          "none": "Aucun",
+          "selectAll": "Tout sélectionner",
+          "clearAll": "Tout effacer",
+          "resetToRole": "Rétablir les valeurs du rôle",
+          "deleteGroup": "Supprimer le groupe",
+          "confirmDeleteGroup": "Supprimer le groupe {name} ? Ses liens seront aussi supprimés.",
+          "addManager": "Ajouter un responsable",
+          "addReport": "Ajouter un subordonné",
+          "removeManagerLink": "Supprimer le lien hiérarchique",
+          "removeReportLink": "Supprimer le lien hiérarchique"
+        },
+        "toolbar": {
+          "viewLabel": "Affichage",
+          "viewGraph": "Organigramme",
+          "viewList": "Liste",
+          "groupsCount": "{n} groupes",
+          "edgesCount": "{n} relations",
+          "searchPlaceholder": "Rechercher nom, e-mail ou rôle…",
+          "clearSearch": "Effacer la recherche",
+          "closeSearch": "Fermer la recherche",
+          "matches": "{n} résultats",
+          "addGroup": "Ajouter un groupe",
+          "roles": "Rôles",
+          "manageRoles": "Gérer les rôles",
+          "add": "Ajouter",
+          "graphTools": "Outils de l'organigramme",
+          "autoLayout": "Réorganiser",
+          "autoLayoutHint": "Réorganiser l'organigramme automatiquement",
+          "focus": "Focus",
+          "focusHint": "Afficher uniquement la ligne hiérarchique de la sélection",
+          "focusNeedsSelection": "Sélectionnez d'abord une personne ou un groupe",
+          "zoomIn": "Zoom avant",
+          "zoomOut": "Zoom arrière",
+          "fit": "Ajuster",
+          "fitHint": "Ajuster l'organigramme à l'écran"
+        },
+        "canvas": {
+          "ariaLabel": "Organigramme",
+          "connectHandle": "Glissez sur une autre carte pour ajouter un lien hiérarchique",
+          "resizeHandle": "Glissez pour redimensionner",
+          "dropHere": "Glissez des personnes ici",
+          "permCount": "{n} autorisations",
+          "personAria": "{name}, {role}, {status}",
+          "groupAria": "{name}, {kind}",
+          "removeFromGroup": "Retirer du groupe",
+          "clearPersonLinks": "Retirer du groupe et des liens",
+          "editGroup": "Modifier le groupe",
+          "duplicateGroup": "Dupliquer le groupe",
+          "deleteGroup": "Supprimer le groupe",
+          "deleteEdge": "Supprimer le lien",
+          "addGroup": "Ajouter un groupe",
+          "fitView": "Ajuster à l'écran",
+          "confirmDeleteGroup": "Supprimer le groupe « {name} » ? Ses membres restent dans l'équipe.",
+          "confirmClearPerson": "Retirer {name} de son groupe et supprimer ses liens hiérarchiques ?"
+        },
+        "roles": {
+          "title": "Rôles",
+          "subtitle": "Définissez la couleur et les autorisations par défaut de chaque rôle.",
+          "readOnly": "Seuls les propriétaires et les responsables peuvent modifier les rôles.",
+          "builtin": "Intégré",
+          "custom": "Personnalisé",
+          "permCount": "Autorisations : {n}",
+          "usage": "Membres : {n}",
+          "add": "Nouveau rôle",
+          "empty": "Sélectionnez un rôle ou créez-en un.",
+          "nameRequired": "Le nom du rôle est obligatoire.",
+          "nameTaken": "Un rôle nommé « {name} » existe déjà.",
+          "saveFailed": "Impossible d'enregistrer le rôle.",
+          "saved": "Rôles enregistrés",
+          "createFailed": "Impossible de créer le rôle.",
+          "deleteFailed": "Impossible de supprimer le rôle.",
+          "confirmDeleteInUse": "Supprimer « {name} » ? Les membres ayant ce rôle ({n}) passeront au rôle Personnel.",
+          "confirmDelete": "Supprimer le rôle « {name} » ?",
+          "builtinNameHint": "Le nom des rôles intégrés ne peut pas être modifié.",
+          "defaultPerms": "Autorisations par défaut",
+          "defaultPermsHint": "Appliquées lorsque ce rôle est attribué à un membre.",
+          "selectAll": "Tout sélectionner",
+          "clearAll": "Effacer",
+          "footerNote": "Les membres ayant déjà ce rôle conservent leurs autorisations actuelles.",
+          "done": "Terminé",
+          "ownerOnlyInUse": "Seul le propriétaire peut renommer ou supprimer un rôle encore attribué à des membres."
+        },
+        "panel": {
+          "legend": "Légende",
+          "groupAddedGraph": "Groupe ajouté. Glissez des personnes dans son cadre pour les ajouter.",
+          "groupAddedList": "Groupe ajouté. Affectez des membres via leur champ Groupe.",
+          "tidied": "Disposition réorganisée",
+          "groupTidied": "Membres du groupe réorganisés",
+          "cancelInviteFailed": "Impossible d'annuler l'invitation",
+          "legendMore": "+{n} de plus"
+        },
+        "dialog": {
+          "alreadyMember": "Cette personne fait déjà partie de l'équipe.",
+          "alreadyInvited": "Une invitation est déjà en attente pour cet e-mail."
+        }
+      }
     },
     "dialog": {
       "inviteTitle": "Inviter un membre",
@@ -1454,18 +1623,6 @@
       "afternoon": "Bon après-midi",
       "evening": "Bonsoir"
     },
-    "morningBriefing": "Briefing matinal",
-    "approveAll": "Tout approuver",
-    "suggestedActions": "Actions suggérées",
-    "approve": "Approuver",
-    "dismiss": "Ignorer",
-    "backToNow": "Revenir à maintenant",
-    "needsAttention": "Nécessite votre attention",
-    "allClear": "Tout est en ordre — rien ne requiert votre attention pour le moment.",
-    "pastBriefings": "Briefings précédents",
-    "regenerate": "Régénérer",
-    "generating": "Génération du briefing du jour…",
-    "noBriefing": "Aucun briefing pour l'instant. Appuyez sur actualiser pour en générer un.",
     "time": {
       "justNow": "à l'instant",
       "minutesAgo": "il y a {n} min",
@@ -1502,27 +1659,6 @@
       "addMore": "Ajouter plus",
       "choose": "Choisir un fichier",
       "complete": "Terminer"
-    },
-    "attendance": {
-      "title": "Présence du jour",
-      "punchedIn": "pointés",
-      "onBreak": "en pause",
-      "nobody": "Personne n'a encore pointé.",
-      "allOut": "Tout le monde a pointé la sortie."
-    },
-    "todayTasks": {
-      "title": "Tâches du jour",
-      "done": "terminées",
-      "pending": "en attente",
-      "skipped": "ignorées",
-      "none": "Aucune tâche prévue aujourd'hui."
-    },
-    "yesterdayTasks": {
-      "title": "Tâches d'hier",
-      "done": "faites",
-      "notDone": "non faites",
-      "skipped": "ignorées",
-      "none": "Aucune tâche prévue hier."
     },
     "widgets": {
       "salesToday": {
@@ -2774,8 +2910,6 @@
       "dismiss": "Ignorer",
       "empty": "Aucune nouvelle notification"
     },
-    "collapsePanel": "Réduire le panneau",
-    "openPanel": "Ouvrir Mr. Merchiva",
     "noAccess": "Mr. Merchiva est désactivé pour votre compte. Demandez à un responsable de l'activer."
   },
   "admins": {
@@ -4130,13 +4264,7 @@
     "saved": "Rapport de bug enregistré"
   },
   "myTasks": {
-    "title": "Tâches du jour",
-    "doneCount": "{done} / {total} terminé(s)",
-    "all": "Toutes",
-    "allCompleted": "Toutes les tâches du jour sont terminées.",
     "evidenceBadge": "preuve",
-    "done": "Terminé",
-    "moreCount": "+ {count} de plus",
     "evidenceRequiredError": "Cette tâche nécessite une photo ou une vidéo comme preuve",
     "chatHeader": "✅ Tâche terminée : {title}",
     "chatAttachments": "📎 {count} pièce(s) jointe(s)",
@@ -4294,7 +4422,6 @@
       "products": "Produits",
       "sales": "Ventes",
       "bookings": "Réservations",
-      "notifications": "Notifications",
       "channel": "Chat",
       "settings-org": "Réglages boutique"
     },
@@ -4366,17 +4493,6 @@
         "noteReceived": "Reçu en magasin",
         "noteRecount": "Recomptage en magasin"
       },
-      "notifications": {
-        "list": "Notifications",
-        "unreadCount": "{n} nouvelles",
-        "markAllRead": "Tout marquer comme lu",
-        "allRead": "Tout est marqué comme lu",
-        "markFailed": "Mise à jour impossible. Réessayez.",
-        "empty": "Aucune notification",
-        "emptyHint": "Vous êtes à jour.",
-        "details": "Notification",
-        "close": "Fermer"
-      },
       "pay": {
         "thisWeek": "Cette semaine",
         "thisMonth": "Ce mois-ci",
@@ -4447,13 +4563,17 @@
         "emptyTitle": "Pas de tâche aujourd'hui",
         "emptyDesc": "Rien à faire pour le moment.",
         "photoNeeded": "Photo requise",
-        "photoLater": "Ajoutez la photo plus tard dans l'app complète",
         "markDone": "Oui, c'est fait",
         "notYet": "Pas encore",
         "saving": "Enregistrement…",
         "failed": "Échec de l'enregistrement. Touchez pour réessayer.",
         "teamOpen": "Tâches d'équipe restantes",
-        "teamAllDone": "L'équipe a tout fini"
+        "teamAllDone": "L'équipe a tout fini",
+        "takePhoto": "Prendre une photo",
+        "retake": "Reprendre",
+        "photoRequired": "Prenez une photo pour terminer cette tâche",
+        "uploadingPhoto": "Envoi de la photo…",
+        "uploadFailed": "Échec de l'envoi de la photo. Réessayez."
       },
       "training": {
         "title": "Ma formation",
@@ -4497,8 +4617,7 @@
       "inventory": "Comptez le stock, signalez les manques, notez les pertes.",
       "products": "Consultez produits et prix.",
       "sales": "Les ventes du jour en un coup d'œil.",
-      "bookings": "Réservations d'aujourd'hui et de demain.",
-      "notifications": "Alertes et messages du magasin."
+      "bookings": "Réservations d'aujourd'hui et de demain."
     },
     "appStore": {
       "hint": "Choisissez les fonctions utilisées par ce magasin. Une app installée apparaît dans le back-office, sur la tablette du magasin et sur les téléphones de l'équipe ; les apps obligatoires sont toujours actives.",
@@ -4708,5 +4827,43 @@
     "surfaceManager": "Back-office",
     "notEnabled": "Cette fonction n'est pas encore activée pour votre magasin.",
     "openStore": "L'activer dans Apps appareil"
+  },
+  "devicePermissions": {
+    "title": "Merchiva a besoin de quelques autorisations",
+    "subtitle": "Elles sont indispensables au fonctionnement de l'app sur cet appareil. Rien n'est partagé en dehors de votre boutique.",
+    "items": {
+      "notifications": {
+        "title": "Notifications",
+        "why": "Alertes de stock bas, échanges de créneaux, messages d'équipe et réponses de Mr. Merchiva, même app fermée."
+      },
+      "microphone": {
+        "title": "Micro",
+        "why": "Canaux talkie-walkie et appels vocaux avec Mr. Merchiva."
+      },
+      "camera": {
+        "title": "Caméra",
+        "why": "Scannez le QR code de votre téléphone pour vous connecter sur l'appareil de la boutique."
+      },
+      "location": {
+        "title": "Position",
+        "why": "Définit l'adresse de la boutique et alimente les prévisions de ventes selon la météo."
+      }
+    },
+    "status": {
+      "granted": "Autorisé",
+      "prompt": "En attente",
+      "denied": "Bloqué",
+      "unsupported": "Indisponible",
+      "asking": "Demande…"
+    },
+    "allowAll": "Tout autoriser",
+    "askAgain": "Redemander",
+    "required": "Toutes les autorisations sont requises pour continuer.",
+    "dismissedTitle": "La demande a été fermée sans réponse",
+    "dismissedBody": "Appuyez sur Autoriser lorsque le navigateur le demande. Nous redemanderons jusqu'à ce que tout soit accordé.",
+    "blockedTitle": "Une autorisation est bloquée",
+    "blockedHelpWeb": "Cliquez sur le cadenas à côté de la barre d'adresse, ouvrez Paramètres du site et passez chaque élément bloqué sur Autoriser.",
+    "blockedHelpNative": "Ouvrez Réglages → Merchiva, activez chaque élément bloqué, puis revenez.",
+    "autoDetect": "Cet écran se ferme tout seul dès que tout est autorisé."
   }
 }

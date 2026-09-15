@@ -64,21 +64,27 @@ function SelectContent({
   align = "center",
   alignOffset = 0,
   alignItemWithTrigger = true,
+  container,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
-  >) {
+  > &
+  Pick<SelectPrimitive.Portal.Props, "container">) {
   return (
-    <SelectPrimitive.Portal>
+    // pointer-events-auto on the portal (not just the positioner) keeps the
+    // popup AND its dismiss backdrop hit-testable when a modal vaul/Radix
+    // drawer has set body pointer-events:none. `container` lets callers inside
+    // such a drawer portal into it so its scroll lock doesn't block the list.
+    <SelectPrimitive.Portal container={container} className="pointer-events-auto">
       <SelectPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={alignItemWithTrigger}
-        className="isolate z-50"
+        className="isolate z-50 pointer-events-auto"
       >
         <SelectPrimitive.Popup
           data-slot="select-content"

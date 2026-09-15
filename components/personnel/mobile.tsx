@@ -16,7 +16,7 @@ import {
 import { RoleTasksOverview } from "@/components/personnel/tasks-overview";
 import { TaskRow } from "@/components/personnel/task-row";
 import { AttendanceWeek } from "@/components/personnel/attendance";
-import { TaskCompleteDialog } from "@/components/my-tasks-card";
+import { TaskCompleteDialog } from "@/components/task-complete-dialog";
 import {
   useChatConversations,
   useOrgMembers,
@@ -854,7 +854,6 @@ export function MobileSchedule({
             <div className="flex-1 overflow-y-auto">
               <div className="px-4 pt-2 pb-4 space-y-4">
                 <div className="flex items-center gap-3 py-2 border-b border-border">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
                     type="date"
                     value={addShiftForm.date}
@@ -864,7 +863,6 @@ export function MobileSchedule({
                 </div>
 
                 <div className="flex items-center gap-2 py-2 border-b border-border">
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
                     type="time"
                     value={addShiftForm.startTime}
@@ -872,7 +870,6 @@ export function MobileSchedule({
                     className="border-0 p-0 h-auto text-sm font-medium shadow-none focus-visible:ring-0 flex-1"
                   />
                   <span className="text-muted-foreground">—</span>
-                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Input
                     type="time"
                     value={addShiftForm.endTime}

@@ -95,6 +95,8 @@ export interface GroupPreset {
   color: string;
 }
 
+export const GROUP_KINDS: readonly GroupKind[] = ["store", "region", "ops", "custom"];
+
 export const ORG_GROUP_PRESETS: Record<GroupKind, GroupPreset> = {
   store:  { i18nKey: "presetStore",  icon: "store",       color: "#0891b2" },
   region: { i18nKey: "presetRegion", icon: "map",         color: "#7c3aed" },
@@ -133,6 +135,14 @@ export interface ViewLayout {
   ty: number;
 }
 
+/** Initial canvas view. Always spread it (`{ ...DEFAULT_VIEW }`) — never mutate. */
+export const DEFAULT_VIEW: Readonly<ViewLayout> = { zoom: 0.7, tx: 40, ty: 70 };
+export const MIN_ZOOM = 0.3;
+export const MAX_ZOOM = 2;
+export function clampZoom(z: number): number {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+}
+
 export interface OrgLayout {
   positions: Record<string, PersonLayout>;
   groups: GroupNodeLayout[];
@@ -141,7 +151,7 @@ export interface OrgLayout {
 }
 
 export function emptyLayout(): OrgLayout {
-  return { positions: {}, groups: [], edges: [], view: { zoom: 0.7, tx: 40, ty: 70 } };
+  return { positions: {}, groups: [], edges: [], view: { ...DEFAULT_VIEW } };
 }
 
 export function loadLayout(orgId: string): OrgLayout {
@@ -154,7 +164,7 @@ export function loadLayout(orgId: string): OrgLayout {
       positions: parsed.positions ?? {},
       groups: Array.isArray(parsed.groups) ? parsed.groups : [],
       edges: Array.isArray(parsed.edges) ? parsed.edges : [],
-      view: parsed.view ?? { zoom: 0.7, tx: 40, ty: 70 },
+      view: parsed.view ?? { ...DEFAULT_VIEW },
     };
   } catch {
     return emptyLayout();
@@ -436,4 +446,101 @@ export function initials(name: string): string {
 
 export function nextId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ─── i18n helpers (shared by toolbar / list / inspector / role manager / canvas)
+//
+// Keys live under personnel.team.* in messages/*.json. `t` is the useT() fn.
+
+type TFn = (key: string) => string;
+
+/** Fill `{name}`-style placeholders. Uses a function replacer so user text
+ *  containing `$&`, `$$`, … is inserted literally. Replaces every occurrence. */
+export function fmt(template: string, vars: Record<string, string | number>): string {
+  let out = template;
+  for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(String(v));
+  return out;
+}
+
+/** A group's display name; falls back to its kind label when the name is blank. */
+export function groupDisplayName(t: TFn, g: { name: string; groupKind: GroupKind | string }): string {
+  return g.name.trim() || groupKindLabel(t, g.groupKind);
+}
+
+/** "Team · Invite" — composed from the existing section + action keys. */
+export function permLabel(t: TFn, leaf: PermLeaf): string {
+  const section = leaf.i18nKey.split(".")[0];
+  return `${t(`personnel.team.permissionSection.${section}`)} · ${t(`personnel.team.permissionAction.${leaf.action}`)}`;
+}
+
+export function permGroupLabel(t: TFn, group: PermGroup["group"]): string {
+  return t(`personnel.team.org.permGroup.${group}`);
+}
+
+export function groupKindLabel(t: TFn, kind: GroupKind | string): string {
+  const k = (GROUP_KINDS as readonly string[]).includes(kind) ? kind : "custom";
+  return t(`personnel.team.org.groupKind.${k}`);
+}
+
+/** Display name for a role key: built-ins are translated, custom names shown as-is. */
+export function builtinRoleName(t: TFn, key: string): string | null {
+  return key === "owner" || key === "manager" || key === "staff"
+    ? t(`personnel.team.role.${key}`)
+    : null;
+}
+
+/** Label for a member status (active / invited / disabled). */
+export function statusLabel(t: TFn, status: string): string {
+  if (status === "invited") return t("personnel.team.statusInvited");
+  if (status === "disabled") return t("personnel.team.org.statusDisabled");
+  return t("personnel.team.statusActive");
+}
+
+// ─── staff_role.permissions shape ──────────────────────────────────────────
+//
+// The column is shared with the staffing Roles dialog (role-dialogs.tsx),
+// which stores a StaffRolePermissions object ({ canViewSchedule, … }). The
+// team page keeps its flat ORG_PERMS ids under an `app` array inside that
+// same object, so neither editor wipes the other's data. Legacy rows may hold
+// a bare array of ids or a nested Permissions object — both are still read.
+
+function parseRolePermissionsJSON(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+const ORG_PERM_IDS = new Set(ORG_PERMS_FLAT.map((leaf) => leaf.id));
+
+export function readRoleAppPerms(raw: unknown): string[] {
+  const parsed = parseRolePermissionsJSON(raw);
+  if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
+  if (parsed && typeof parsed === "object") {
+    const obj = parsed as Record<string, unknown>;
+    const app = obj.app;
+    if (Array.isArray(app)) return app.filter((x): x is string => typeof x === "string");
+    const looksLikePermissions = ORG_PERMS_FLAT.some((leaf) => {
+      const sec = obj[leaf.section];
+      return !!sec && typeof sec === "object";
+    });
+    if (looksLikePermissions) return permsToFlat(parsed as Permissions);
+    // A legacy bare array edited by the staffing dialog gets spread into an
+    // object ({"0":"team.view","1":…,"canViewSchedule":true}) — recover the ids.
+    return Object.values(obj).filter((v): v is string => typeof v === "string" && ORG_PERM_IDS.has(v));
+  }
+  return [];
+}
+
+/** Serialise `ids` into the role's permissions JSON, preserving other keys. */
+export function writeRoleAppPerms(raw: unknown, ids: string[]): string {
+  const parsed = parseRolePermissionsJSON(raw);
+  const base: Record<string, unknown> =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? { ...(parsed as Record<string, unknown>) }
+      : {};
+  // Drop index keys left behind by a spread legacy array; `app` supersedes them.
+  for (const [k, v] of Object.entries(base)) {
+    if (/^\d+$/.test(k) && typeof v === "string" && ORG_PERM_IDS.has(v)) delete base[k];
+  }
+  base.app = Array.from(new Set(ids));
+  return JSON.stringify(base);
 }

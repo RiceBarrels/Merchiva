@@ -53,7 +53,6 @@
     "pricing": "定价",
     "api": "API",
     "reviews": "评价",
-    "notifications": "通知",
     "group": {
       "operations": "运营",
       "sales": "销售与财务",
@@ -419,7 +418,6 @@
       "overview": "概览",
       "schedule": "日程",
       "attendance": "打卡记录",
-      "myShifts": "我的班次",
       "roles": "岗位",
       "table": "表格"
     },
@@ -478,14 +476,6 @@
       "worked": "实际",
       "punchDays": "打卡人次",
       "weekTotal": "本周"
-    },
-    "myShifts": {
-      "trade": "换班",
-      "cover": "代班",
-      "todaysTasks": "今日任务",
-      "loadingTasks": "任务加载中…",
-      "noShiftsToday": "今日无班次",
-      "noTasksAssigned": "未分配任务"
     },
     "overview": {
       "onShiftNow": "当前在岗",
@@ -807,7 +797,186 @@
       "toastUpdateFailed": "无法更新成员",
       "removeConfirm": "移除 {name}？",
       "toastRemoved": "成员已移除",
-      "toastRemoveFailed": "无法移除成员"
+      "toastRemoveFailed": "无法移除成员",
+      "org": {
+        "permGroup": {
+          "people": "人员",
+          "store": "门店",
+          "ops": "运营"
+        },
+        "groupKind": {
+          "store": "门店团队",
+          "region": "区域团队",
+          "ops": "总部",
+          "custom": "自定义"
+        },
+        "statusDisabled": "已停用",
+        "noGroup": "无分组",
+        "ungrouped": "未分组",
+        "sensitive": "敏感",
+        "managedBy": "上级",
+        "manages": "管理",
+        "lockedOwner": "店主的角色和权限不能在这里修改。",
+        "lockedInvite": "邀请待接受。对方加入后才能修改角色和权限。",
+        "ownerOnly": "只有店主可以修改角色和权限。",
+        "peopleCount": "{n} 人",
+        "roleMissing": "角色已删除",
+        "graph": {
+          "joinedGroup": "已加入 {name}",
+          "leftGroup": "已移出分组",
+          "edgeExists": "该汇报关系已存在",
+          "edgeCreated": "已添加汇报关系",
+          "newGroup": "新分组",
+          "newGroupDesc": "自定义分组",
+          "copySuffix": "（副本）",
+          "newRole": "新角色",
+          "roleDescOwner": "完全访问权限",
+          "roleDescManager": "管理门店或团队",
+          "roleDescStaff": "日常运营",
+          "roleCreated": "已新增角色",
+          "roleCreateFailed": "无法新增角色",
+          "roleSaveFailed": "无法保存角色",
+          "roleNameRequired": "请输入角色名称",
+          "roleNameTaken": "已存在同名角色",
+          "roleDeleted": "已删除角色",
+          "roleDeleteFailed": "无法删除角色",
+          "builtinNoDelete": "内置角色不能删除",
+          "membersRoleUpdated": "已更新 {n} 名成员的角色",
+          "membersRoleUpdateFailed": "部分成员的角色未能更新",
+          "ownerNotAssignable": "无法分配所有者角色",
+          "inviteCancelled": "已取消邀请",
+          "inviteCancelFailed": "无法取消邀请",
+          "onlyOwnerRoleInUse": "只有所有者可以重命名或删除有成员在用的角色",
+          "roleMembersNotMovedOffline": "当前离线。角色更改已排队，但使用此角色的成员未更新。"
+        },
+        "list": {
+          "groupBy": "按分组显示",
+          "colGroup": "分组",
+          "colRelations": "汇报关系",
+          "colActions": "操作",
+          "permCount": "{n} 项权限",
+          "emptyGroup": "还没有成员。",
+          "emptyGroupHint": "在成员的“分组”列中选择此分组即可加入。",
+          "emptyGroupHintMobile": "打开成员并选择此分组即可加入。"
+        },
+        "inspector": {
+          "emptyTitle": "未选择",
+          "emptyList": "选择一行以查看详情。",
+          "emptyGraph": "选择画布上的人员卡片或分组以查看详情。",
+          "emptyGraphConnect": "拖动卡片底部的圆点到另一张卡片或分组上，即可建立管理关系。",
+          "tipJoinTitle": "加入分组",
+          "tipJoinBody": "把卡片拖进分组框内",
+          "tipMoveTitle": "移动分组",
+          "tipMoveBody": "拖动分组标题",
+          "tipZoomTitle": "缩放",
+          "tipZoomBody": "滚动滚轮或双指缩放",
+          "tipUnlinkTitle": "删除关系",
+          "tipUnlinkBody": "点击连线",
+          "sheetDescription": "详情、管理关系与权限",
+          "manageRoles": "管理角色",
+          "fieldGroup": "所在分组",
+          "editInDialog": "在弹窗中编辑",
+          "groupDescPlaceholder": "为这个分组写一句说明",
+          "tidyGroup": "整理成员排列",
+          "members": "成员",
+          "noMembers": "还没有成员。",
+          "noMembersHint": "把人员卡片拖进这个分组。",
+          "none": "无",
+          "selectAll": "全选",
+          "clearAll": "清空",
+          "resetToRole": "重置为角色默认",
+          "deleteGroup": "删除分组",
+          "confirmDeleteGroup": "删除分组 {name}？相关连接也会被删除。",
+          "addManager": "添加上级",
+          "addReport": "添加下属",
+          "removeManagerLink": "删除汇报关系",
+          "removeReportLink": "删除汇报关系"
+        },
+        "toolbar": {
+          "viewLabel": "视图",
+          "viewGraph": "图谱",
+          "viewList": "列表",
+          "groupsCount": "{n} 组",
+          "edgesCount": "{n} 条关系",
+          "searchPlaceholder": "搜索姓名、邮箱或角色…",
+          "clearSearch": "清除搜索",
+          "closeSearch": "关闭搜索",
+          "matches": "{n} 个匹配",
+          "addGroup": "添加分组",
+          "roles": "角色",
+          "manageRoles": "管理角色",
+          "add": "添加",
+          "graphTools": "图谱工具",
+          "autoLayout": "整理",
+          "autoLayoutHint": "自动整理图谱",
+          "focus": "聚焦",
+          "focusHint": "只看选中节点的上下级",
+          "focusNeedsSelection": "请先选中成员或分组",
+          "zoomIn": "放大",
+          "zoomOut": "缩小",
+          "fit": "适配",
+          "fitHint": "让图谱适配屏幕"
+        },
+        "canvas": {
+          "ariaLabel": "组织架构图",
+          "connectHandle": "拖到另一张卡片上以建立汇报关系",
+          "resizeHandle": "拖动以调整大小",
+          "dropHere": "把成员拖到这里",
+          "permCount": "{n} 项权限",
+          "personAria": "{name}，{role}，{status}",
+          "groupAria": "{name}，{kind}",
+          "removeFromGroup": "移出分组",
+          "clearPersonLinks": "清除分组与汇报关系",
+          "editGroup": "编辑分组",
+          "duplicateGroup": "复制分组",
+          "deleteGroup": "删除分组",
+          "deleteEdge": "删除汇报关系",
+          "addGroup": "新增分组",
+          "fitView": "适应屏幕",
+          "confirmDeleteGroup": "删除分组“{name}”？成员仍保留在团队中。",
+          "confirmClearPerson": "将 {name} 移出分组并清除其汇报关系？"
+        },
+        "roles": {
+          "title": "岗位角色",
+          "subtitle": "设置每个角色的颜色和默认权限。",
+          "readOnly": "仅所有者和经理可以编辑角色。",
+          "builtin": "内置",
+          "custom": "自定义",
+          "permCount": "权限：{n}",
+          "usage": "成员：{n}",
+          "add": "新增角色",
+          "empty": "选择一个角色或新建一个。",
+          "nameRequired": "角色名称不能为空。",
+          "nameTaken": "已存在名为“{name}”的角色。",
+          "saveFailed": "无法保存角色。",
+          "saved": "角色已保存",
+          "createFailed": "无法创建角色。",
+          "deleteFailed": "无法删除角色。",
+          "confirmDeleteInUse": "删除“{name}”？使用此角色的成员（{n}）将回退为员工。",
+          "confirmDelete": "删除角色“{name}”？",
+          "builtinNameHint": "内置角色的名称不能修改。",
+          "defaultPerms": "默认权限",
+          "defaultPermsHint": "为成员分配此角色时套用。",
+          "selectAll": "全选",
+          "clearAll": "清空",
+          "footerNote": "已分配此角色的成员保留其当前权限。",
+          "done": "完成",
+          "ownerOnlyInUse": "只有所有者可以重命名或删除仍有成员使用的角色。"
+        },
+        "panel": {
+          "legend": "图例",
+          "groupAddedGraph": "已添加分组，把人员拖进框内即可加入。",
+          "groupAddedList": "已添加分组，在成员的分组选项中选择即可加入。",
+          "tidied": "已重新排列",
+          "groupTidied": "已整理分组成员",
+          "cancelInviteFailed": "无法取消邀请",
+          "legendMore": "另外 {n} 个"
+        },
+        "dialog": {
+          "alreadyMember": "此人已经是团队成员。",
+          "alreadyInvited": "该邮箱已有待接受的邀请。"
+        }
+      }
     },
     "dialog": {
       "inviteTitle": "邀请新成员",
@@ -1462,18 +1631,6 @@
       "afternoon": "下午好",
       "evening": "晚上好"
     },
-    "morningBriefing": "晨间简报",
-    "approveAll": "一键批准全部",
-    "suggestedActions": "建议操作",
-    "approve": "批准",
-    "dismiss": "忽略",
-    "backToNow": "回到当前",
-    "needsAttention": "需要处理",
-    "allClear": "一切正常 — 暂无需要处理的事项。",
-    "pastBriefings": "过往简报",
-    "regenerate": "重新生成",
-    "generating": "正在生成今日简报…",
-    "noBriefing": "暂无简报，点击刷新生成。",
     "time": {
       "justNow": "刚刚",
       "minutesAgo": "{n} 分钟前",
@@ -1510,27 +1667,6 @@
       "addMore": "继续添加",
       "choose": "选择文件",
       "complete": "完成"
-    },
-    "attendance": {
-      "title": "今日打卡",
-      "punchedIn": "已打卡",
-      "onBreak": "休息中",
-      "nobody": "还没有人打卡。",
-      "allOut": "所有人都已下班打卡。"
-    },
-    "todayTasks": {
-      "title": "今日任务",
-      "done": "已完成",
-      "pending": "待完成",
-      "skipped": "已跳过",
-      "none": "今天没有到期的任务。"
-    },
-    "yesterdayTasks": {
-      "title": "昨日任务",
-      "done": "已完成",
-      "notDone": "未完成",
-      "skipped": "已跳过",
-      "none": "昨天没有到期的任务。"
     },
     "widgets": {
       "salesToday": {
@@ -2794,8 +2930,6 @@
       "dismiss": "忽略",
       "empty": "暂无新通知"
     },
-    "collapsePanel": "收起面板",
-    "openPanel": "打开 Mr. Merchiva",
     "noAccess": "你的账号已被禁用 Mr. Merchiva，请联系管理员开启。"
   },
   "admins": {
@@ -4150,13 +4284,7 @@
     "saved": "Bug 报告已保存"
   },
   "myTasks": {
-    "title": "今日任务",
-    "doneCount": "已完成 {done} / {total}",
-    "all": "全部",
-    "allCompleted": "今日任务已全部完成。",
     "evidenceBadge": "凭证",
-    "done": "已完成",
-    "moreCount": "+ 还有 {count} 项",
     "evidenceRequiredError": "此任务需要照片或视频作为凭证",
     "chatHeader": "✅ 任务已完成：{title}",
     "chatAttachments": "📎 {count} 个附件",
@@ -4314,7 +4442,6 @@
       "products": "产品",
       "sales": "销售",
       "bookings": "预约",
-      "notifications": "通知",
       "channel": "聊天",
       "settings-org": "门店设置"
     },
@@ -4386,17 +4513,6 @@
         "noteReceived": "门店收货",
         "noteRecount": "门店盘点"
       },
-      "notifications": {
-        "list": "通知",
-        "unreadCount": "{n} 条新",
-        "markAllRead": "全部标为已读",
-        "allRead": "已全部标为已读",
-        "markFailed": "更新失败，请重试。",
-        "empty": "没有通知",
-        "emptyHint": "都看完了。",
-        "details": "通知",
-        "close": "关闭"
-      },
       "pay": {
         "thisWeek": "本周",
         "thisMonth": "本月",
@@ -4467,13 +4583,17 @@
         "emptyTitle": "今天没有任务",
         "emptyDesc": "现在没有要做的事。",
         "photoNeeded": "需要照片",
-        "photoLater": "稍后在完整版里补照片",
         "markDone": "对，做完了",
         "notYet": "还没有",
         "saving": "保存中…",
         "failed": "保存失败，点一下重试。",
         "teamOpen": "团队还没做的",
-        "teamAllDone": "团队全部完成"
+        "teamAllDone": "团队全部完成",
+        "takePhoto": "拍照",
+        "retake": "重拍",
+        "photoRequired": "完成这个任务需要先拍照",
+        "uploadingPhoto": "正在上传照片…",
+        "uploadFailed": "照片上传失败，请重试。"
       },
       "training": {
         "title": "我的培训",
@@ -4517,8 +4637,7 @@
       "inventory": "盘点库存、标记缺货、记录损耗。",
       "products": "查看产品和价格。",
       "sales": "今日销售一览。",
-      "bookings": "今天和明天的预约。",
-      "notifications": "门店的提醒和消息。"
+      "bookings": "今天和明天的预约。"
     },
     "appStore": {
       "hint": "选择这家店使用哪些功能。添加后的应用会同时出现在后台、门店平板和员工手机上；必备应用始终开启。",
@@ -4728,5 +4847,43 @@
     "surfaceManager": "后台",
     "notEnabled": "这家店还没有开启这个功能。",
     "openStore": "去设备应用里开启"
+  },
+  "devicePermissions": {
+    "title": "Merchiva 需要以下权限",
+    "subtitle": "这些权限是应用在此设备上正常运行所必需的，数据不会分享到店铺之外。",
+    "items": {
+      "notifications": {
+        "title": "通知",
+        "why": "库存不足提醒、换班请求、团队消息和 Mr. Merchiva 的回复，即使关闭应用也能收到。"
+      },
+      "microphone": {
+        "title": "麦克风",
+        "why": "对讲频道以及与 Mr. Merchiva 的语音通话。"
+      },
+      "camera": {
+        "title": "相机",
+        "why": "扫描手机上的二维码，在店铺设备上登录。"
+      },
+      "location": {
+        "title": "位置",
+        "why": "设置店铺地址，并提供结合天气的销量预测。"
+      }
+    },
+    "status": {
+      "granted": "已允许",
+      "prompt": "尚未允许",
+      "denied": "已拒绝",
+      "unsupported": "不可用",
+      "asking": "请求中…"
+    },
+    "allowAll": "全部允许",
+    "askAgain": "再次请求",
+    "required": "必须授予全部权限才能继续。",
+    "dismissedTitle": "权限请求被关闭了",
+    "dismissedBody": "浏览器弹出请求时请点击“允许”。在所有权限授予之前，我们会一直请求。",
+    "blockedTitle": "有权限被拒绝",
+    "blockedHelpWeb": "点击地址栏旁的锁形图标，打开“网站设置”，把被拒绝的项目改为“允许”。",
+    "blockedHelpNative": "打开 设置 → Merchiva，开启被拒绝的项目后再回来。",
+    "autoDetect": "全部允许后，此页面会自动关闭。"
   }
 }

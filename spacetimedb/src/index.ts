@@ -2155,6 +2155,25 @@ export const inviteToOrg = spacetimedb.reducer(
     // Only owner can invite managers
     if (role === 'manager' && member.role !== 'owner') unauthorized('Owner only can invite managers');
 
+    // One live seat per email: no invite for existing members, no duplicate
+    // pending invitations (each would show up as another pending person).
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) throw new SenderError('Email is required');
+    for (const m of ctx.db.orgMember.byOrganizationId.filter(organizationId)) {
+      if (m.status !== 'removed' && String(m.email).trim().toLowerCase() === normalizedEmail) {
+        throw new SenderError('This person is already a member of the organization');
+      }
+    }
+    for (const inv of ctx.db.orgInvitation.byOrganizationId.filter(organizationId)) {
+      if (
+        inv.acceptedAt === undefined &&
+        inv.expiresAt.microsSinceUnixEpoch > ctx.timestamp.microsSinceUnixEpoch &&
+        String(inv.email).trim().toLowerCase() === normalizedEmail
+      ) {
+        throw new SenderError('An invitation for this email is already pending');
+      }
+    }
+
     const token = ctx.newUuidV4().toString();
     const expiresAt = new (ctx.timestamp.constructor as any)(
       ctx.timestamp.microsSinceUnixEpoch + BigInt(7 * 24 * 60 * 60 * 1_000_000) // 7 days
@@ -2163,7 +2182,7 @@ export const inviteToOrg = spacetimedb.reducer(
     ctx.db.orgInvitation.insert({
       id: ctx.newUuidV4(),
       organizationId,
-      email,
+      email: normalizedEmail,
       role,
       permissions,
       token,
@@ -2244,6 +2263,10 @@ export const updateMemberPermissions = spacetimedb.reducer(
       .find(m => m.id.toString() === memberId);
     if (!target) throw new SenderError('Member not found');
     if (target.role === 'owner') throw new SenderError('Cannot modify owner');
+    // Clients that omit a field send "" — persisting it would strip the
+    // member's role (and slip past `role === 'staff'` gates elsewhere).
+    if (!role.trim()) throw new SenderError('Role is required');
+    if (!permissions.trim()) throw new SenderError('Permissions are required');
 
     ctx.db.orgMember.delete(target);
     ctx.db.orgMember.insert({ ...target, role, permissions });
@@ -3395,6 +3418,42 @@ export const deleteShift = spacetimedb.reducer(
 
 // ─── Staff Roles ──────────────────────────────────────────────────────────────
 
+// org_member.role holds "owner" | "manager" | "staff" or a staff_role name.
+const BUILTIN_MEMBER_ROLES = new Set(['owner', 'manager', 'staff']);
+
+/** Staff roles are looked up by case-insensitive name across the app, so two
+ *  rows with the same name collapse into one and edit/delete the wrong row. */
+function assertUniqueStaffRoleName(ctx: any, organizationId: string, name: string, exceptRoleId?: string) {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) throw new SenderError('Role name is required');
+  for (const r of ctx.db.staffRole.byOrganizationId.filter(organizationId)) {
+    if (exceptRoleId && r.id.toString() === exceptRoleId) continue;
+    if (String(r.name).trim().toLowerCase() === wanted) {
+      throw new SenderError(`A role named "${name.trim()}" already exists`);
+    }
+  }
+}
+
+/** Point members holding staff-role `fromName` at `toName`. Built-in org
+ *  roles (owner / manager / staff) are never rewritten, members are never
+ *  moved ONTO owner/manager, and nothing moves while another staff_role row
+ *  (legacy duplicate) still carries the same name. */
+function reassignMembersRole(ctx: any, organizationId: string, roleId: string, fromName: string, toName: string) {
+  const from = fromName.trim().toLowerCase();
+  const to = toName.trim().toLowerCase();
+  if (!from || BUILTIN_MEMBER_ROLES.has(from)) return;
+  if (to === 'owner' || to === 'manager') return;
+  for (const r of ctx.db.staffRole.byOrganizationId.filter(organizationId)) {
+    if (r.id.toString() !== roleId && String(r.name).trim().toLowerCase() === from) return;
+  }
+  for (const m of [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]) {
+    if (m.role === 'owner') continue;
+    if (String(m.role).trim().toLowerCase() !== from) continue;
+    ctx.db.orgMember.delete(m);
+    ctx.db.orgMember.insert({ ...m, role: toName });
+  }
+}
+
 export const addStaffRole = spacetimedb.reducer(
   {
     organizationId: t.string(),
@@ -3407,6 +3466,7 @@ export const addStaffRole = spacetimedb.reducer(
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     if (member.role === 'staff') unauthorized('Manager or owner required');
+    assertUniqueStaffRoleName(ctx, args.organizationId, args.name);
 
     ctx.db.staffRole.insert({
       id: ctx.newUuidV4(),
@@ -3437,6 +3497,16 @@ export const updateStaffRole = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     const role = findItemInOrg(ctx.db.staffRole, args.organizationId, args.roleId);
+    const oldName = String(role.name);
+    if (!args.name.trim()) throw new SenderError('Role name is required');
+    if (oldName.trim().toLowerCase() !== args.name.trim().toLowerCase()) {
+      // Renaming onto a built-in org role would move every holder to it
+      // (e.g. "Cashier" → "Owner" promotes all cashiers).
+      if (BUILTIN_MEMBER_ROLES.has(args.name.trim().toLowerCase())) {
+        throw new SenderError('This role name is reserved');
+      }
+      assertUniqueStaffRoleName(ctx, args.organizationId, args.name, args.roleId);
+    }
     ctx.db.staffRole.delete(role);
     ctx.db.staffRole.insert({
       ...role,
@@ -3447,6 +3517,8 @@ export const updateStaffRole = spacetimedb.reducer(
       permissions: args.permissions,
       updatedAt: ctx.timestamp,
     });
+    // Members reference the role by name — carry them over to the new name.
+    if (oldName !== args.name) reassignMembersRole(ctx, args.organizationId, args.roleId, oldName, args.name);
   }
 );
 
@@ -3466,6 +3538,9 @@ export const deleteStaffRole = spacetimedb.reducer(
       }
     }
 
+    // Members holding this role fall back to plain staff instead of pointing
+    // at a role that no longer exists.
+    reassignMembersRole(ctx, organizationId, roleId, String(role.name), 'staff');
     ctx.db.staffRole.delete(role);
   }
 );

@@ -227,20 +227,6 @@ export function BookingsIcon({ className }: P) {
   );
 }
 
-/** Yellow bell with a red badge. */
-export function NotificationsIcon({ className }: P) {
-  return (
-    <Svg className={className}>
-      <path d="M12 3a6.3 6.3 0 0 0-6.3 6.3v3.5L4 16.2c-.4.6 0 1.3.7 1.3h14.6c.7 0 1.1-.7.7-1.3l-1.7-3.4V9.3A6.3 6.3 0 0 0 12 3z" fill={YELLOW} />
-      <path d="M8 9.3a4 4 0 0 1 4-4" fill="none" stroke={WHITE} strokeWidth="1.2" strokeLinecap="round" opacity=".8" />
-      <path d="M4.7 17.5h14.6" stroke={AMBER} strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M9.5 19a2.5 2.5 0 0 0 5 0z" fill={AMBER} />
-      <circle cx="17.8" cy="5.8" r="3.2" fill={RED} />
-      <circle cx="17.8" cy="5.8" r="3.2" fill="none" stroke={WHITE} strokeWidth="1" />
-    </Svg>
-  );
-}
-
 /** Cash register: dark body, blue screen, green receipt. */
 /** Screen with a sky display and a play mark. */
 /** Four coloured tiles. */
@@ -387,7 +373,6 @@ export const APP_ICONS: Record<string, AppIcon> = {
   products: ProductsIcon,
   sales: SalesIcon,
   bookings: BookingsIcon,
-  notifications: NotificationsIcon,
   channel: ChannelIcon,
   "settings-org": StoreSettingsIcon,
 };

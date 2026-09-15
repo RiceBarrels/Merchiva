@@ -8,6 +8,7 @@ import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { TauriNotificationBridge } from "@/components/tauri-notification-bridge";
+import { DevicePermissionGate } from "@/components/device-permission-gate";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { useSpacetimeStatus, SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { OfflineModeProvider, useOfflineMode } from "@/lib/offline-mode";
@@ -549,6 +550,10 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     );
   } else if (effectiveAuth) {
     setActiveOrgId(effectiveAuth.organizationId);
+    // DevicePermissionGate sits at the door of every app surface — /choose,
+    // /manager, /personal and /store all come through here — and holds the
+    // user on a full-screen explainer until notifications, microphone, camera
+    // and location are granted (see components/device-permission-gate.tsx).
     realContent = (
       <PermissionsProvider
         role={effectiveAuth.role}
@@ -558,18 +563,25 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         currentOrg={effectiveAuth.currentOrg}
         onPickOrg={setPickedOrgId}
       >
-        {needsName ? (
-          <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
-        ) : isSetupPath ? (
-          children
-        ) : (
-          <>
-            <MobileShell>{children}</MobileShell>
-            <MerchivaQuickDialog />
-            <PushNotificationPrompt />
-            <TauriNotificationBridge />
-          </>
-        )}
+        <DevicePermissionGate>
+          {needsName ? (
+            <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
+          ) : isSetupPath ? (
+            <>
+              {children}
+              {/* Device surfaces get no shell, but once the gate has granted
+                  notifications they should still register for push. */}
+              <PushNotificationPrompt />
+            </>
+          ) : (
+            <>
+              <MobileShell>{children}</MobileShell>
+              <MerchivaQuickDialog />
+              <PushNotificationPrompt />
+              <TauriNotificationBridge />
+            </>
+          )}
+        </DevicePermissionGate>
       </PermissionsProvider>
     );
   }

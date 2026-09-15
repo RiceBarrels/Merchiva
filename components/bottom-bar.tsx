@@ -4,9 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MoreHorizontal, X } from "lucide-react";
-import { AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon, NotificationsIcon, ReportsIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
+import { AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon, ReportsIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
 import { usePermissions } from "@/lib/context/permissions";
-import { useUnreadCount } from "@/components/notification-center";
 import { useStoreMachineMode } from "@/lib/store-machine-mode";
 import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
 import { isManagerRouteEnabled } from "@/lib/device-apps";
@@ -40,14 +39,13 @@ const NAV_ITEMS: NavItem[] = [
   { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: DirectoryIcon, permissionKey: "staffing" },
   { labelKey: "nav.reports",   href: "/manager/reports",         icon: ReportsIcon,     permissionKey: "sales" },
   { labelKey: "nav.chat",      href: "/manager/channel",            icon: ChannelIcon,     permissionKey: "staffing" },
-  { labelKey: "nav.notifications", href: "/manager/notifications", icon: NotificationsIcon },
   { labelKey: "nav.apps",      href: "/manager/apps",            icon: AppStoreIcon,    permissionKey: "settings" },
   { labelKey: "nav.settings",  href: "/manager/settings",        icon: SettingsIcon },
 ];
 
 const STORE_MACHINE_HREFS = new Set(["/manager/inventory", "/manager/channel"]);
 
-const PRIMARY_HREFS = ["/manager/", "/manager/personnel", "/manager/channel", "/manager/notifications"];
+const PRIMARY_HREFS = ["/manager/", "/manager/personnel", "/manager/channel"];
 
 export function BottomBar() {
   const t = useT();
@@ -56,9 +54,6 @@ export function BottomBar() {
   const [storeMachine] = useStoreMachineMode();
   const safeArea = getSafeAreaInsets();
   const [moreOpen, setMoreOpen] = useState(false);
-  const unreadCount = useUnreadCount();
-  const badgeFor = (href: string) =>
-    href === "/manager/notifications" && unreadCount > 0 ? unreadCount : 0;
 
   const { installed: installedApps } = useDeviceApps();
   const permitted = NAV_ITEMS.filter((item) => {
@@ -145,11 +140,6 @@ export function BottomBar() {
                   )}
                   <div className={cn("relative h-8 w-14 flex justify-center items-center rounded-full transition-colors", active && "bg-foreground/8")}>
                     <Icon className="w-[23px] h-[23px]" />
-                    {badgeFor(item.href) > 0 && (
-                      <span className="absolute -top-0.5 right-2 h-4 min-w-[16px] px-1 flex items-center justify-center bg-foreground text-background text-[9.5px] font-bold rounded-full leading-none">
-                        {badgeFor(item.href) > 99 ? "99+" : badgeFor(item.href)}
-                      </span>
-                    )}
                   </div>
                   <span className={cn("text-[10.5px] leading-none tracking-tight", active ? "font-semibold" : "font-medium")}>{t(item.labelKey)}</span>
                 </Link>

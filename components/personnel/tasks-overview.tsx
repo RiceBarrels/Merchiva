@@ -12,7 +12,7 @@ import { useOrgMembers, useRoleTaskAssignments, useRoleTasks } from "@/lib/space
 import type { StaffRole } from "@/lib/types";
 import { RoleIconComp, taskCompletionsForDate } from "@/components/personnel/role-dialogs";
 import { TaskRow, parseNotifyChats, type TaskRowTask } from "@/components/personnel/task-row";
-import { TaskCompleteDialog } from "@/components/my-tasks-card";
+import { TaskCompleteDialog } from "@/components/task-complete-dialog";
 
 function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

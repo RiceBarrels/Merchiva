@@ -12,7 +12,7 @@ export default function PersonnelLayout({
   return (
     <PermissionGuard section="staffing">
       <PersonnelHubProvider>
-        <div className="flex flex-col h-[calc(100dvh-3.5rem)]">
+        <div className="-mx-2 flex flex-col flex-1 min-h-0">
           <PersonnelHeader />
           <PersonnelTabsNav />
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">

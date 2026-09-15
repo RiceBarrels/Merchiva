@@ -26,8 +26,20 @@ function PopoverContent({
   anchor?: PopoverPrimitive.Positioner.Props["anchor"];
 }) {
   return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner align={align} side={side} sideOffset={sideOffset} anchor={anchor}>
+    // The Positioner is the element that is actually positioned, so the
+    // stacking context has to live on it (like select / tooltip / context
+    // menu) — z-index on the inner Popup alone left the panel under a
+    // dialog's z-50 overlay, blurred and unclickable. z-[100] clears nested
+    // dialog pages (50 + depth) but stays below the floating nav pill (200).
+    // pointer-events-auto keeps it usable inside a modal vaul drawer.
+    <PopoverPrimitive.Portal className="pointer-events-auto">
+      <PopoverPrimitive.Positioner
+        align={align}
+        side={side}
+        sideOffset={sideOffset}
+        anchor={anchor}
+        className="isolate z-[100] pointer-events-auto"
+      >
         <PopoverPrimitive.Popup
           className={cn(
             "z-50 rounded-[0.3rem] border border-border bg-popover p-3 text-popover-foreground shadow-md outline-none",
