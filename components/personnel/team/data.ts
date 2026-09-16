@@ -457,9 +457,9 @@ type TFn = (key: string) => string;
 /** Fill `{name}`-style placeholders. Uses a function replacer so user text
  *  containing `$&`, `$$`, … is inserted literally. Replaces every occurrence. */
 export function fmt(template: string, vars: Record<string, string | number>): string {
-  let out = template;
-  for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(String(v));
-  return out;
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : match,
+  );
 }
 
 /** A group's display name; falls back to its kind label when the name is blank. */

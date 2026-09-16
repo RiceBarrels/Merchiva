@@ -5,7 +5,7 @@ import { AdminModeIcon } from "@/components/device/app-icons";
 import { DeviceDrawer, type DeviceDrawerOption } from "@/components/device";
 import { useT } from "@/lib/i18n/context";
 import { hapticLight } from "@/lib/haptics";
-import { clearAppMode } from "@/lib/app-mode";
+import { APP_MODE_HOME, clearAppMode, setManagerOverride } from "@/lib/app-mode";
 
 /**
  * Bottom-left "Leave" sheet. Punching (in / out / breaks) and the store-device
@@ -43,8 +43,8 @@ export function LeaveDrawer({
       hidden: !isManager,
       onSelect: () => {
         hapticLight();
-        try { sessionStorage.setItem("merchiva_manager_override", "1"); } catch {}
-        window.location.href = "/manager/dashboard";
+        setManagerOverride(true);
+        window.location.href = APP_MODE_HOME.admin;
       },
     },
     {

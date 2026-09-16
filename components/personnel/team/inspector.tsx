@@ -953,7 +953,11 @@ function InspectorPanel({
                 const message = fmt(t(k("inspector.confirmDeleteGroup")), { name: displayName });
                 // confirm() is another layer: on phones it waits for the sheet to close (F22).
                 runOutsideSheet(() => {
-                  if (!confirm(message)) return;
+                  if (!confirm(message)) {
+                    // On phones the sheet closed first; bring it back on cancel.
+                    if (mobile) onSelect(groupId);
+                    return;
+                  }
                   onDeleteNode(groupId);
                   onClose();
                 });

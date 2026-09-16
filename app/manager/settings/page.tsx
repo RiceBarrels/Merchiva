@@ -29,6 +29,7 @@ import {
   Building2,
   Calendar,
   PanelLeft,
+  PanelTop,
   AlignHorizontalDistributeCenter,
   LogOut,
   Shield,
@@ -117,8 +118,10 @@ import { hapticSuccess, hapticMedium } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth/context";
 import { useStoreMachineMode, useDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
 import { useAutolockSeconds, AUTOLOCK_OPTIONS, type AutolockSeconds } from "@/lib/store-device-lock";
-import { registerStoreDevice, removeStoreDevice, updateStoreDevice } from "@/lib/spacetimedb/actions";
+import { registerStoreDevice, removeStoreDevice, updateStoreDevice, verifyManagerPin } from "@/lib/spacetimedb/actions";
 import { useNavMode, type NavMode } from "@/lib/nav-mode";
+import { useShellInfo } from "@/lib/browser-shell/shell-context";
+import { useBookmarksBarVisible } from "@/components/browser-shell/desktop/bookmarks-bar-state";
 import { uploadFiles } from "@/lib/uploadthing";
 import { toast } from "sonner";
 import { useT, useI18n } from "@/lib/i18n/context";
@@ -313,6 +316,9 @@ export default function SettingsPage() {
 
   // Navigation mode (sidebar or bottom bar — mobile only)
   const [navMode, setNavMode] = useNavMode();
+  // Inside the browser shell the navigation-mode row is replaced by the bookmarks bar toggle (desktop).
+  const shellInfo = useShellInfo();
+  const [barVisible, setBarVisible] = useBookmarksBarVisible();
 
   // Store machine mode (per-device: restricts app to POS / Inventory / Punch-in)
   const [storeMachine, setStoreMachine] = useStoreMachineMode();
@@ -326,6 +332,33 @@ export default function SettingsPage() {
   const [exitPinDialog, setExitPinDialog] = useState(false);
   const [exitPinInput, setExitPinInput] = useState("");
   const [exitPinError, setExitPinError] = useState("");
+  const [exitPinBusy, setExitPinBusy] = useState(false);
+
+  /**
+   * Leave kiosk mode. The PIN is checked by the `verifyManagerPin` reducer,
+   * which resolves only for an active owner/manager of this org.
+   *
+   * This used to compare `exitPinInput` against the `punchInCode` of every
+   * subscribed org_member row — which meant any staff member's browser held
+   * every manager's unlock PIN. The codes are no longer readable by anyone but
+   * their owner, so the comparison has to happen server-side.
+   */
+  async function confirmExitPin(invalidMessage: string) {
+    if (exitPinInput.length !== 4 || exitPinBusy) return;
+    setExitPinBusy(true);
+    try {
+      await verifyManagerPin(exitPinInput);
+      setStoreMachine(false);
+      updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
+      setExitPinDialog(false);
+      hapticSuccess();
+      toast.success(t("settings.toastStoreModeDisabled"));
+    } catch {
+      setExitPinError(invalidMessage);
+    } finally {
+      setExitPinBusy(false);
+    }
+  }
 
   // Store devices management
   const storeDeviceTable = (tables as typeof tables & { storeDevice?: typeof tables.orgMember }).storeDevice;
@@ -362,7 +395,6 @@ export default function SettingsPage() {
     userId: { toString(): string };
     organizationId: string;
     status: string;
-    punchInCode?: string;
   }>).find(
     (m) =>
       identityString &&
@@ -370,9 +402,20 @@ export default function SettingsPage() {
       m.organizationId === organizationId &&
       m.status === "active",
   );
-  const myCode = typeof myMember?.punchInCode === "string" && myMember.punchInCode.length > 0
-    ? myMember.punchInCode
-    : null;
+  // Punch-in codes live in `member_punch_code`, whose RLS rule is
+  // `userId = :sender`, so this subscription only ever contains the current
+  // user's own code. Showing a colleague's is no longer possible — and that is
+  // the point: the same 4 digits unlock the store tablet.
+  const [punchCodeRows] = useTable(tables.memberPunchCode);
+  const myCode = useMemo(() => {
+    const mine = (punchCodeRows ?? []).find(
+      (c) =>
+        identityString &&
+        c.userId.toString() === identityString &&
+        c.organizationId === organizationId,
+    );
+    return typeof mine?.code === "string" && mine.code.length > 0 ? mine.code : null;
+  }, [punchCodeRows, identityString, organizationId]);
 
   useEffect(() => {
     if (!identityString) return;
@@ -1760,35 +1803,15 @@ export default function SettingsPage() {
                   autoFocus
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && exitPinInput.length === 4) {
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      const match = (memberRows as unknown as any[]).find(
-                        (m) => m.organizationId === organizationId && m.status === "active" && m.punchInCode === exitPinInput && (m.role === "owner" || m.role === "manager"),
-                      );
-                      if (!match) { setExitPinError(t("settings.exitPinInvalid")); return; }
-                      setStoreMachine(false);
-                      updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
-                      setExitPinDialog(false);
-                      hapticSuccess();
-                      toast.success(t("settings.toastStoreModeDisabled"));
+                      void confirmExitPin(t("settings.exitPinInvalid"));
                     }
                   }}
                 />
                 {exitPinError && <p className="text-xs text-destructive mt-1">{exitPinError}</p>}
               </div>
               <Button
-                onClick={() => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const match = (memberRows as unknown as any[]).find(
-                    (m) => m.organizationId === organizationId && m.status === "active" && m.punchInCode === exitPinInput && (m.role === "owner" || m.role === "manager"),
-                  );
-                  if (!match) { setExitPinError(t("settings.exitPinInvalidRole")); return; }
-                  setStoreMachine(false);
-                  updateStoreDevice(getOrCreateDeviceId(), { enabled: false }).catch(console.error);
-                  setExitPinDialog(false);
-                  hapticSuccess();
-                  toast.success(t("settings.toastStoreModeDisabled"));
-                }}
-                disabled={exitPinInput.length !== 4}
+                onClick={() => { void confirmExitPin(t("settings.exitPinInvalidRole")); }}
+                disabled={exitPinInput.length !== 4 || exitPinBusy}
                 className="w-full"
               >
                 {t("settings.disableStoreMode")}
@@ -3028,26 +3051,44 @@ export default function SettingsPage() {
             <DynamicUIElementDescription className="hidden">{t("settings.groupPreferences")}</DynamicUIElementDescription>
           </DynamicUIElementHeader>
           <div>
+            {shellInfo?.layout === "desktop" && (
+              <SRow
+                icon={<PanelTop className="h-4 w-4 text-foreground" />}
+                title={t("browserDesktop.bookmarks.showBar")}
+                right={
+                  <Switch
+                    size="sm"
+                    aria-label={t("browserDesktop.bookmarks.showBar")}
+                    checked={barVisible}
+                    onCheckedChange={(v) => { hapticSuccess(); setBarVisible(v); }}
+                  />
+                }
+                isFirst
+              />
+            )}
+            {!shellInfo && (
+              <SRow
+                icon={<PanelLeft className="h-4 w-4 text-foreground" />}
+                title={t("settings.navigationMode")}
+                meta={navMode === "sidebar" ? t("settings.sidebar") : t("settings.bottomBar")}
+                right={
+                  <SegmentedControl
+                    size="sm"
+                    className="shrink-0"
+                    aria-label={t("settings.navigationMode")}
+                    value={navMode}
+                    onChange={(mode) => { hapticSuccess(); setNavMode(mode); }}
+                    options={[
+                      { value: "sidebar" as NavMode, label: t("settings.side") },
+                      { value: "bottombar" as NavMode, label: t("settings.tab") },
+                    ]}
+                  />
+                }
+                isFirst
+              />
+            )}
             <SRow
-              icon={<PanelLeft className="h-4 w-4 text-foreground" />}
-              title={t("settings.navigationMode")}
-              meta={navMode === "sidebar" ? t("settings.sidebar") : t("settings.bottomBar")}
-              right={
-                <SegmentedControl
-                  size="sm"
-                  className="shrink-0"
-                  aria-label={t("settings.navigationMode")}
-                  value={navMode}
-                  onChange={(mode) => { hapticSuccess(); setNavMode(mode); }}
-                  options={[
-                    { value: "sidebar" as NavMode, label: t("settings.side") },
-                    { value: "bottombar" as NavMode, label: t("settings.tab") },
-                  ]}
-                />
-              }
-              isFirst
-            />
-            <SRow
+              isFirst={shellInfo?.layout === "mobile"}
               icon={<Moon className="h-4 w-4 text-foreground" />}
               title={t("settings.darkMode")}
               meta={

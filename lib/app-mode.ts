@@ -11,7 +11,7 @@ import { getStoreMachineMode } from "@/lib/store-machine-mode";
  *   store    — a shared store device (POS, inventory, punch-in); implies
  *              store-machine mode from lib/store-machine-mode
  *
- * Homes: admin → /manager (the original back-office UI), personal →
+ * Homes: admin → /manager/new-tab (the back-office home page), personal →
  * /personal, store → /store. Store/personal devices that jump into /manager
  * ("Switch to manager mode") set the session-scoped manager override first so
  * the manager shell knows to offer a "Back to store device / personal" link.
@@ -21,8 +21,13 @@ export type AppMode = "admin" | "personal" | "store";
 const KEY = "app_mode";
 const EVENT = "app-mode-change";
 
+/**
+ * Where each mode lands after the chooser. The admin home is the New Tab page — kept in sync
+ * with HOME_URL (lib/browser-shell/types.ts), which can't be imported here because that module
+ * imports AppMode from this one.
+ */
 export const APP_MODE_HOME: Record<AppMode, string> = {
-  admin: "/manager/dashboard",
+  admin: "/manager/new-tab",
   personal: "/personal",
   store: "/store",
 };

@@ -12,6 +12,8 @@ import {
   X,
   CheckCheck,
   Inbox,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -47,6 +49,12 @@ const typeIcon: Record<NotificationType, typeof Bell> = {
   general: Info,
 };
 
+// Docs notifications (WP-4 server types, not part of NotificationType).
+const docTypeIcon: Readonly<Record<string, typeof Bell>> = {
+  doc_comment: MessageSquare,
+  doc_share: FileText,
+};
+
 export function useUnreadCount(): number {
   const stdb = useSpacetimeDB();
   const [notifications] = useNotifications();
@@ -64,7 +72,7 @@ export function useUnreadCount(): number {
   }, [notifications, identity, organizationId]);
 }
 
-export function NotificationCenter() {
+export function NotificationCenter({ onNavigate }: { onNavigate?: (href: string) => void } = {}) {
   const t = useT();
   const stdb = useSpacetimeDB();
   const [notifications] = useNotifications();
@@ -120,7 +128,7 @@ export function NotificationCenter() {
       )}
       <div className="flex flex-col gap-0.5 px-4 pb-4">
         {myNotifications.map((notif) => {
-          const Icon = typeIcon[(notif.type as NotificationType) || "general"] ?? Info;
+          const Icon = typeIcon[(notif.type as NotificationType) || "general"] ?? docTypeIcon[notif.type] ?? Info;
           const createdStr =
             typeof notif.createdAt === "object" && "seconds" in (notif.createdAt as object)
               ? new Date((notif.createdAt as unknown as { seconds: number }).seconds * 1000).toISOString()
@@ -143,7 +151,8 @@ export function NotificationCenter() {
                     markNotificationRead(notif.id.toString()).catch(console.error);
                   }
                   if (notif.link) {
-                    window.location.href = notif.link;
+                    if (onNavigate) onNavigate(notif.link);
+                    else window.location.href = notif.link;
                   }
                 }}
               >

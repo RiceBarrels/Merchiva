@@ -1,6 +1,8 @@
 {
   "description": "Routes and directories to exclude from the static (output: export) build. Supports glob patterns like app/api/*. Edit this list as needed.",
   "ignore": [
-    "app/api/*"
+    "app/api/*",
+    "app/merchivaAdmin/page.tsx",
+    "app/merchivaAdmin/*/page.tsx"
   ]
 }

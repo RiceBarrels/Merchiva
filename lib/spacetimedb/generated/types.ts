@@ -183,6 +183,132 @@ export const DeviceLoginRequest = __t.object("DeviceLoginRequest", {
 });
 export type DeviceLoginRequest = __Infer<typeof DeviceLoginRequest>;
 
+export const DeviceOperatorSession = __t.object("DeviceOperatorSession", {
+  identity: __t.identity(),
+  organizationId: __t.string(),
+  memberId: __t.string(),
+  memberName: __t.string(),
+  role: __t.string(),
+  resolvedAt: __t.timestamp(),
+});
+export type DeviceOperatorSession = __Infer<typeof DeviceOperatorSession>;
+
+export const Document = __t.object("Document", {
+  id: __t.string(),
+  organizationId: __t.string(),
+  ownerMemberId: __t.string(),
+  title: __t.string(),
+  excerpt: __t.string(),
+  icon: __t.option(__t.string()),
+  visibility: __t.string(),
+  templateId: __t.option(__t.string()),
+  pageSetup: __t.option(__t.string()),
+  wordCount: __t.u32(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+  lastEditorMemberId: __t.option(__t.string()),
+  trashedAt: __t.option(__t.timestamp()),
+  trashedByMemberId: __t.option(__t.string()),
+});
+export type Document = __Infer<typeof Document>;
+
+export const DocumentAccess = __t.object("DocumentAccess", {
+  id: __t.uuid(),
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  memberId: __t.string(),
+  role: __t.string(),
+  grantedByMemberId: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type DocumentAccess = __Infer<typeof DocumentAccess>;
+
+export const DocumentComment = __t.object("DocumentComment", {
+  id: __t.uuid(),
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  threadId: __t.string(),
+  parentId: __t.option(__t.string()),
+  authorMemberId: __t.string(),
+  authorIdentity: __t.identity(),
+  body: __t.string(),
+  quotedText: __t.option(__t.string()),
+  mentions: __t.option(__t.string()),
+  status: __t.string(),
+  resolvedAt: __t.option(__t.timestamp()),
+  resolvedByMemberId: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  editedAt: __t.option(__t.timestamp()),
+  anchor: __t.option(__t.byteArray()),
+});
+export type DocumentComment = __Infer<typeof DocumentComment>;
+
+export const DocumentPresence = __t.object("DocumentPresence", {
+  id: __t.uuid(),
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  connectionId: __t.string(),
+  identity: __t.identity(),
+  memberId: __t.string(),
+  yClientId: __t.u32(),
+  name: __t.string(),
+  color: __t.string(),
+  canEdit: __t.bool(),
+  awareness: __t.byteArray(),
+  updatedAt: __t.timestamp(),
+});
+export type DocumentPresence = __Infer<typeof DocumentPresence>;
+
+export const DocumentSnapshot = __t.object("DocumentSnapshot", {
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  state: __t.byteArray(),
+  throughUpdateId: __t.u64(),
+  byteLength: __t.u32(),
+  html: __t.string(),
+  plainText: __t.string(),
+  compactedAt: __t.timestamp(),
+  compactedByMemberId: __t.string(),
+});
+export type DocumentSnapshot = __Infer<typeof DocumentSnapshot>;
+
+export const DocumentStar = __t.object("DocumentStar", {
+  id: __t.uuid(),
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  memberId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type DocumentStar = __Infer<typeof DocumentStar>;
+
+export const DocumentUpdate = __t.object("DocumentUpdate", {
+  id: __t.u64(),
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  payload: __t.byteArray(),
+  byteLength: __t.u32(),
+  sessionId: __t.string(),
+  memberId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type DocumentUpdate = __Infer<typeof DocumentUpdate>;
+
+export const DocumentVersion = __t.object("DocumentVersion", {
+  id: __t.uuid(),
+  documentId: __t.string(),
+  organizationId: __t.string(),
+  kind: __t.string(),
+  name: __t.option(__t.string()),
+  state: __t.byteArray(),
+  throughUpdateId: __t.u64(),
+  byteLength: __t.u32(),
+  wordCount: __t.u32(),
+  createdAt: __t.timestamp(),
+  createdByMemberId: __t.string(),
+});
+export type DocumentVersion = __Infer<typeof DocumentVersion>;
+
 export const Expense = __t.object("Expense", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -195,6 +321,7 @@ export const Expense = __t.object("Expense", {
   receiptUrl: __t.option(__t.string()),
   notes: __t.option(__t.string()),
   createdAt: __t.timestamp(),
+  amountCents: __t.option(__t.i64()),
 });
 export type Expense = __Infer<typeof Expense>;
 
@@ -226,6 +353,8 @@ export const InventoryItem = __t.object("InventoryItem", {
   retailUsageQty: __t.option(__t.f64()),
   expirationDate: __t.option(__t.string()),
   expirationBatches: __t.option(__t.string()),
+  costPerUnitCents: __t.option(__t.i64()),
+  retailPriceCents: __t.option(__t.i64()),
 });
 export type InventoryItem = __Infer<typeof InventoryItem>;
 
@@ -258,6 +387,15 @@ export const Location = __t.object("Location", {
   createdAt: __t.timestamp(),
 });
 export type Location = __Infer<typeof Location>;
+
+export const MemberPunchCode = __t.object("MemberPunchCode", {
+  memberId: __t.string(),
+  organizationId: __t.string(),
+  userId: __t.identity(),
+  code: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type MemberPunchCode = __Infer<typeof MemberPunchCode>;
 
 export const MembershipPerk = __t.object("MembershipPerk", {
   id: __t.uuid(),
@@ -293,6 +431,13 @@ export const MembershipTier = __t.object("MembershipTier", {
   createdAt: __t.timestamp(),
 });
 export type MembershipTier = __Infer<typeof MembershipTier>;
+
+export const MigrationState = __t.object("MigrationState", {
+  name: __t.string(),
+  appliedAt: __t.timestamp(),
+  note: __t.string(),
+});
+export type MigrationState = __Infer<typeof MigrationState>;
 
 export const Notification = __t.object("Notification", {
   id: __t.uuid(),
@@ -332,8 +477,20 @@ export const OrgMember = __t.object("OrgMember", {
   joinedAt: __t.timestamp(),
   punchInCode: __t.option(__t.string()),
   hourlyRate: __t.option(__t.f64()),
+  hourlyRateCents: __t.option(__t.i64()),
 });
 export type OrgMember = __Infer<typeof OrgMember>;
+
+export const OrgSecret = __t.object("OrgSecret", {
+  organizationId: __t.string(),
+  squareAccessToken: __t.option(__t.string()),
+  squareRefreshToken: __t.option(__t.string()),
+  squareTokenExpiresAt: __t.option(__t.timestamp()),
+  cloverAccessToken: __t.option(__t.string()),
+  cloverMerchantId: __t.option(__t.string()),
+  updatedAt: __t.timestamp(),
+});
+export type OrgSecret = __Infer<typeof OrgSecret>;
 
 export const Organization = __t.object("Organization", {
   id: __t.uuid(),
@@ -347,6 +504,8 @@ export const Organization = __t.object("Organization", {
   currentPeriodEnd: __t.option(__t.timestamp()),
   parentOrgId: __t.option(__t.string()),
   logoUrl: __t.option(__t.string()),
+  orgIdText: __t.string(),
+  rootOrgId: __t.string(),
 });
 export type Organization = __Infer<typeof Organization>;
 
@@ -370,6 +529,10 @@ export const Payment = __t.object("Payment", {
   refundReason: __t.option(__t.string()),
   refundedAt: __t.option(__t.timestamp()),
   createdAt: __t.timestamp(),
+  amountCents: __t.option(__t.i64()),
+  taxAmountCents: __t.option(__t.i64()),
+  discountAmountCents: __t.option(__t.i64()),
+  refundAmountCents: __t.option(__t.i64()),
 });
 export type Payment = __Infer<typeof Payment>;
 
@@ -425,6 +588,9 @@ export const PurchaseOrder = __t.object("PurchaseOrder", {
   sentAt: __t.option(__t.timestamp()),
   receivedAt: __t.option(__t.timestamp()),
   createdAt: __t.timestamp(),
+  subtotalCents: __t.option(__t.i64()),
+  taxCents: __t.option(__t.i64()),
+  totalCents: __t.option(__t.i64()),
 });
 export type PurchaseOrder = __Infer<typeof PurchaseOrder>;
 
@@ -466,6 +632,7 @@ export const RoleTask = __t.object("RoleTask", {
   requiresEvidence: __t.bool(),
   notifyChats: __t.string(),
   createdAt: __t.timestamp(),
+  orgId: __t.string(),
 });
 export type RoleTask = __Infer<typeof RoleTask>;
 
@@ -620,6 +787,7 @@ export const SiteBooking = __t.object("SiteBooking", {
   notes: __t.option(__t.string()),
   status: __t.string(),
   createdAt: __t.timestamp(),
+  organizationId: __t.string(),
 });
 export type SiteBooking = __Infer<typeof SiteBooking>;
 
@@ -710,6 +878,7 @@ export const StaffMember = __t.object("StaffMember", {
   availability: __t.string(),
   createdAt: __t.timestamp(),
   updatedAt: __t.timestamp(),
+  hourlyRateCents: __t.option(__t.i64()),
 });
 export type StaffMember = __Infer<typeof StaffMember>;
 
@@ -880,6 +1049,13 @@ export const UserBriefingPref = __t.object("UserBriefingPref", {
 });
 export type UserBriefingPref = __Infer<typeof UserBriefingPref>;
 
+export const UserSecret = __t.object("UserSecret", {
+  identity: __t.identity(),
+  passwordHash: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type UserSecret = __Infer<typeof UserSecret>;
+
 export const WasteLog = __t.object("WasteLog", {
   id: __t.uuid(),
   organizationId: __t.string(),
@@ -894,6 +1070,8 @@ export const WasteLog = __t.object("WasteLog", {
   notes: __t.option(__t.string()),
   createdBy: __t.option(__t.string()),
   createdAt: __t.timestamp(),
+  costPerUnitCents: __t.option(__t.i64()),
+  totalCostCents: __t.option(__t.i64()),
 });
 export type WasteLog = __Infer<typeof WasteLog>;
 

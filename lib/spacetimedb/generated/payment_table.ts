@@ -30,4 +30,8 @@ export default __t.row({
   refundReason: __t.option(__t.string()).name("refund_reason"),
   refundedAt: __t.option(__t.timestamp()).name("refunded_at"),
   createdAt: __t.timestamp().name("created_at"),
+  amountCents: __t.option(__t.i64()).name("amount_cents"),
+  taxAmountCents: __t.option(__t.i64()).name("tax_amount_cents"),
+  discountAmountCents: __t.option(__t.i64()).name("discount_amount_cents"),
+  refundAmountCents: __t.option(__t.i64()).name("refund_amount_cents"),
 });

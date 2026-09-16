@@ -217,7 +217,7 @@ function firstInventoryUsageLine(value: unknown): Record<string, any> | null {
     : value;
   if (!Array.isArray(parsed) || parsed.length === 0) return null;
   const line = parsed[0];
-  return line && typeof line === "object" ? line as Record<string, any> : null;
+  return line && typeof line === "object" ? line as Record<string, unknown> : null;
 }
 
 // updateInventoryItem is a full-row reducer. AI actions and undo operations often
@@ -1971,4 +1971,303 @@ export async function approveDeviceLogin(nonce: string, intent: DeviceLoginInten
  *  operator in so it can't be replayed. */
 export async function consumeDeviceLogin(requestId: string): Promise<void> {
   return conn().reducers.consumeDeviceLogin({ id: requestId });
+}
+
+// ─── Docs ────────────────────────────────────────────────────────────────────
+// Collaborative documents (`document*` tables). Calls go straight to the
+// reducers and never through `mutationQueue`: that queue replays FIFO and drops
+// calls after N attempts, which is wrong for CRDT pushes — SpacetimeYjsProvider
+// retries on its own. Reducers fail with `[doc.<code>] …` (lib/docs/errors.ts).
+// The imports live with this section so it stays one additive block; module
+// imports are hoisted, so their position has no runtime effect.
+import { newDocumentId } from "@/lib/docs/ids";
+import type { DocGrantRole, DocPageSetup, DocVersionKind, DocVisibility } from "@/lib/docs/types";
+
+function docsReducer(name: string): (args: Record<string, unknown>) => Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const reducers = conn().reducers as any;
+  const reducer = reducers[name];
+  if (typeof reducer !== "function") {
+    throw new Error(
+      `[doc.not_published] Reducer "${name}" is not available. Run \`spacetime publish\` + \`spacetime generate\` to enable Docs.`,
+    );
+  }
+  return (args) => reducer.call(reducers, args);
+}
+
+/** Document / thread ids are lowercase UUIDs on the server. */
+function docKey(id: string): string {
+  return String(id).trim().toLowerCase();
+}
+
+/** u32 reducer args: finite, non-negative integers. */
+function docU32(value: number): number {
+  const n = Math.trunc(Number(value));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 0xffffffff) : 0;
+}
+
+function docMentions(mentions: readonly string[] | undefined): string | undefined {
+  if (!mentions || mentions.length === 0) return undefined;
+  const ids = [...new Set(mentions.filter((id) => typeof id === "string" && id.length > 0))];
+  return ids.length > 0 ? JSON.stringify(ids) : undefined;
+}
+
+/** Creates a document and returns its id. New documents default to `org_edit` (plan D40). */
+export async function createDocument(input: {
+  organizationId?: string;
+  documentId?: string;
+  title?: string;
+  visibility?: DocVisibility;
+  templateId?: string | null;
+  initialState?: Uint8Array | null;
+  html?: string | null;
+  plainText?: string | null;
+  wordCount?: number;
+} = {}): Promise<string> {
+  const documentId = docKey(input.documentId ?? newDocumentId());
+  await docsReducer("createDocument")({
+    organizationId: input.organizationId ?? orgId(),
+    documentId,
+    title: input.title ?? "",
+    visibility: input.visibility ?? "org_edit",
+    templateId: input.templateId ?? undefined,
+    initialState: input.initialState && input.initialState.byteLength > 0 ? input.initialState : undefined,
+    html: input.html ?? undefined,
+    plainText: input.plainText ?? undefined,
+    wordCount: input.wordCount === undefined || input.wordCount === null ? undefined : docU32(input.wordCount),
+  });
+  return documentId;
+}
+
+/** "Make a copy": the server copies snapshot + update rows; returns the new id. */
+export async function duplicateDocument(input: { sourceDocumentId: string; title: string; documentId?: string }): Promise<string> {
+  const documentId = docKey(input.documentId ?? newDocumentId());
+  await docsReducer("duplicateDocument")({
+    sourceDocumentId: docKey(input.sourceDocumentId),
+    documentId,
+    title: input.title,
+  });
+  return documentId;
+}
+
+export async function renameDocument(documentId: string, title: string): Promise<void> {
+  return docsReducer("renameDocument")({ documentId: docKey(documentId), title });
+}
+
+/** Omitted fields stay unchanged; `null` clears the icon / page setup. */
+export async function updateDocumentMeta(
+  documentId: string,
+  patch: { excerpt?: string; icon?: string | null; pageSetup?: DocPageSetup | null },
+): Promise<void> {
+  return docsReducer("updateDocumentMeta")({
+    documentId: docKey(documentId),
+    excerpt: patch.excerpt,
+    icon: patch.icon === undefined ? undefined : (patch.icon ?? ""),
+    pageSetup: patch.pageSetup === undefined ? undefined : patch.pageSetup === null ? "" : JSON.stringify(patch.pageSetup),
+  });
+}
+
+export async function setDocumentVisibility(documentId: string, visibility: DocVisibility): Promise<void> {
+  return docsReducer("setDocumentVisibility")({ documentId: docKey(documentId), visibility });
+}
+
+export async function grantDocumentAccess(documentId: string, memberId: string, role: DocGrantRole): Promise<void> {
+  return docsReducer("grantDocumentAccess")({ documentId: docKey(documentId), memberId, role });
+}
+
+export async function revokeDocumentAccess(documentId: string, memberId: string): Promise<void> {
+  return docsReducer("revokeDocumentAccess")({ documentId: docKey(documentId), memberId });
+}
+
+export async function trashDocument(documentId: string): Promise<void> {
+  return docsReducer("trashDocument")({ documentId: docKey(documentId) });
+}
+
+export async function restoreDocument(documentId: string): Promise<void> {
+  return docsReducer("restoreDocument")({ documentId: docKey(documentId) });
+}
+
+/** Only works on a trashed document. */
+export async function deleteDocumentForever(documentId: string): Promise<void> {
+  return docsReducer("deleteDocumentForever")({ documentId: docKey(documentId) });
+}
+
+export async function toggleDocumentStar(documentId: string): Promise<void> {
+  return docsReducer("toggleDocumentStar")({ documentId: docKey(documentId) });
+}
+
+export async function pushDocumentUpdate(documentId: string, sessionId: string, payload: Uint8Array): Promise<void> {
+  return docsReducer("pushDocumentUpdate")({ documentId: docKey(documentId), sessionId, payload });
+}
+
+export async function compactDocument(input: {
+  documentId: string;
+  throughUpdateId: bigint;
+  state: Uint8Array;
+  html: string;
+  plainText: string;
+  wordCount: number;
+}): Promise<void> {
+  return docsReducer("compactDocument")({
+    documentId: docKey(input.documentId),
+    throughUpdateId: BigInt(input.throughUpdateId),
+    state: input.state,
+    html: input.html,
+    plainText: input.plainText,
+    wordCount: docU32(input.wordCount),
+  });
+}
+
+export async function saveDocumentVersion(input: {
+  documentId: string;
+  kind: DocVersionKind;
+  name?: string;
+  state: Uint8Array;
+  throughUpdateId: bigint;
+  wordCount: number;
+}): Promise<void> {
+  return docsReducer("saveDocumentVersion")({
+    documentId: docKey(input.documentId),
+    kind: input.kind,
+    name: input.name ?? undefined,
+    state: input.state,
+    throughUpdateId: BigInt(input.throughUpdateId),
+    wordCount: docU32(input.wordCount),
+  });
+}
+
+/**
+ * Naming a version promotes it to `named`; an empty name reverts it (a `restore`
+ * version keeps its kind). Clearing the name of a `named` version needs its
+ * creator or a document manager, like deleting it, because it re-enters
+ * autosave pruning.
+ */
+export async function renameDocumentVersion(documentId: string, versionId: string, name: string): Promise<void> {
+  return docsReducer("renameDocumentVersion")({ documentId: docKey(documentId), versionId, name });
+}
+
+export async function deleteDocumentVersion(documentId: string, versionId: string): Promise<void> {
+  return docsReducer("deleteDocumentVersion")({ documentId: docKey(documentId), versionId });
+}
+
+export async function upsertDocumentPresence(input: {
+  documentId: string;
+  yClientId: number;
+  name: string;
+  color: string;
+  awareness: Uint8Array;
+}): Promise<void> {
+  return docsReducer("upsertDocumentPresence")({
+    documentId: docKey(input.documentId),
+    yClientId: docU32(input.yClientId),
+    name: input.name,
+    color: input.color,
+    awareness: input.awareness,
+  });
+}
+
+export async function removeDocumentPresence(documentId: string, yClientId: number): Promise<void> {
+  return docsReducer("removeDocumentPresence")({ documentId: docKey(documentId), yClientId: docU32(yClientId) });
+}
+
+/**
+ * Starts a thread; `threadId` is the client UUID also stored on the comment mark. `anchor` is the selection as encoded
+ * Yjs relative positions (`encodeCommentAnchor` in lib/docs/comment-anchors.ts, at most 1024 bytes), the only anchor a
+ * commenter can write.
+ */
+export async function addDocumentComment(input: {
+  documentId: string;
+  threadId: string;
+  body: string;
+  quotedText?: string;
+  mentions?: string[];
+  anchor?: Uint8Array;
+}): Promise<void> {
+  return docsReducer("addDocumentComment")({
+    documentId: docKey(input.documentId),
+    threadId: docKey(input.threadId),
+    body: input.body,
+    quotedText: input.quotedText || undefined,
+    mentions: docMentions(input.mentions),
+    anchor: input.anchor && input.anchor.byteLength > 0 ? input.anchor : undefined,
+  });
+}
+
+/** Replying to a resolved thread reopens it. */
+export async function replyDocumentComment(input: {
+  documentId: string;
+  threadId: string;
+  body: string;
+  mentions?: string[];
+}): Promise<void> {
+  return docsReducer("replyDocumentComment")({
+    documentId: docKey(input.documentId),
+    threadId: docKey(input.threadId),
+    body: input.body,
+    mentions: docMentions(input.mentions),
+  });
+}
+
+export async function editDocumentComment(documentId: string, commentId: string, body: string): Promise<void> {
+  return docsReducer("editDocumentComment")({ documentId: docKey(documentId), commentId, body });
+}
+
+/** Thread roots only. */
+export async function resolveDocumentComment(documentId: string, commentId: string, resolved: boolean): Promise<void> {
+  return docsReducer("resolveDocumentComment")({ documentId: docKey(documentId), commentId, resolved });
+}
+
+/** Deleting a thread root deletes the whole thread. */
+export async function deleteDocumentComment(documentId: string, commentId: string): Promise<void> {
+  return docsReducer("deleteDocumentComment")({ documentId: docKey(documentId), commentId });
+}
+
+// ─── Punch-in codes (server-side verification) ───────────────────────────────
+//
+// Punch-in PINs moved out of `org_member` into `member_punch_code`, whose RLS
+// rule is `userId = :sender` — a client can read its own code and nobody
+// else's. The three flows that used to compare PINs in the browser (device
+// unlock, manager exit-kiosk, "do I have a PIN set") now go through the module.
+
+/**
+ * Resolve a PIN to the member standing at the shared store tablet. On success
+ * the module writes the answer to `device_operator_session` for this identity;
+ * read it with `useDeviceOperatorSession()`. Rejects on an unknown PIN.
+ */
+export async function resolveDeviceOperator(code: string): Promise<void> {
+  return conn().reducers.resolveDeviceOperator({ organizationId: orgId(), code });
+}
+
+/** Forget the resolved operator (device re-lock / sign-out). */
+export async function clearDeviceOperator(): Promise<void> {
+  return conn().reducers.clearDeviceOperator({});
+}
+
+/**
+ * Check that a PIN belongs to an active owner/manager of this org — used by the
+ * "leave kiosk mode" gate. Resolves on success, rejects on a bad PIN; the PIN
+ * itself never reaches the browser.
+ */
+export async function verifyManagerPin(code: string): Promise<void> {
+  return conn().reducers.verifyManagerPin({ organizationId: orgId(), code });
+}
+
+// ─── Maintenance ─────────────────────────────────────────────────────────────
+
+/**
+ * One-shot backfill for the row-level-security rollout: mirrors the org uuid
+ * into `orgIdText`/`rootOrgId`, stamps `site_booking.organizationId`, and moves
+ * password hashes, POS tokens and punch PINs into tables clients cannot read.
+ * Idempotent. Owner/service only.
+ */
+export async function migrateSecurityV1(): Promise<void> {
+  return conn().reducers.migrateSecurityV1({});
+}
+
+/**
+ * Delete append-only history older than `keepDays` for the active org.
+ * `dryRun` counts without deleting. Owner/service only; refuses < 30 days.
+ */
+export async function pruneOrgHistory(keepDays: number, dryRun = true): Promise<void> {
+  return conn().reducers.pruneOrgHistory({ organizationId: orgId(), keepDays, dryRun });
 }

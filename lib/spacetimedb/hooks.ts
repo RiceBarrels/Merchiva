@@ -168,3 +168,41 @@ export function usePunchEvents() {
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 /* eslint-enable */
+
+// ── Docs ────────────────────────────────────────────────────────────────────
+// New document* tables. Until `spacetime generate` runs `tables.document` is
+// undefined → EMPTY_TABLE_RESULT (same pattern as training above). Always scoped
+// with a WHERE so the client never downloads other orgs' docs. The heavy per-doc
+// tables (update/snapshot/presence) are subscribed by SpacetimeYjsProvider, not here.
+// Domain hooks with mapping + access rules: lib/spacetimedb/hooks/useDocs.ts.
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/rules-of-hooks */
+const __docTables = tables as any;
+function useScopedDocTable(accessor: string, column: string, value: string | null, enabled = true) {
+  const tbl = __docTables[accessor];
+  if (!tbl) return EMPTY_TABLE_RESULT as unknown as [unknown[], boolean];
+  return useTable(tbl.where((r: any) => r[column].eq(value ?? "")), { enabled: enabled && !!value });
+}
+export function useDocumentRows(organizationId: string | null) { return useScopedDocTable("document", "organizationId", organizationId); }
+export function useDocumentStarRows(organizationId: string | null) { return useScopedDocTable("documentStar", "organizationId", organizationId); }
+export function useDocumentAccessRows(organizationId: string | null) { return useScopedDocTable("documentAccess", "organizationId", organizationId); }
+export function useDocumentCommentRows(documentId: string | null) { return useScopedDocTable("documentComment", "documentId", documentId); }
+export function useDocumentVersionRows(documentId: string | null, enabled: boolean) { return useScopedDocTable("documentVersion", "documentId", documentId, enabled); }
+/* eslint-enable */
+
+// ── Punch-in codes / device operator ─────────────────────────────────────────
+// `member_punch_code` and `device_operator_session` are RLS-scoped to the
+// calling identity, so these return only the current user's own rows no matter
+// how many colleagues exist. There is deliberately no hook that lists an org's
+// codes — that is exactly what used to leak every manager's unlock PIN to every
+// staff phone. Verification lives in the `verifyManagerPin` /
+// `resolveDeviceOperator` reducers.
+/* eslint-disable react-hooks/rules-of-hooks */
+export function useMyPunchCode() {
+  const tbl = tables.memberPunchCode;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+export function useDeviceOperatorSession() {
+  const tbl = tables.deviceOperatorSession;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+/* eslint-enable */

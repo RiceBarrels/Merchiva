@@ -14,7 +14,7 @@
 //   getNativeShellPlatform()  — "macos" | "windows" | "linux" | null
 //   getNativeShell()          — returns the bridge object (or null on web)
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 export type AuthCallbackParams = {
   access_token?: string;
@@ -182,4 +182,89 @@ export function useIsNativeShell(): boolean {
 
 export function getNativeShell(): NativeShellBridge | null {
   return getBridge();
+}
+
+// ─── Synchronous detection + window state (desktop browser chrome) ─────────
+
+function subscribeNever(): () => void {
+  return () => {};
+}
+
+function readNativeShellClass(): boolean {
+  return document.documentElement.classList.contains("native-shell");
+}
+
+function readNativeShellServer(): boolean {
+  return false;
+}
+
+/**
+ * Tauri detection that is already correct on the first client render: it reads the
+ * `html.native-shell` class set by the pre-paint script in app/layout.tsx (unlike
+ * `useIsNativeShell`, which resolves in an effect). Server snapshot: false.
+ */
+export function useIsNativeShellSync(): boolean {
+  return useSyncExternalStore(subscribeNever, readNativeShellClass, readNativeShellServer);
+}
+
+export interface NativeWindowState {
+  fullscreen: boolean;
+  maximized: boolean;
+}
+
+const INITIAL_WINDOW_STATE: NativeWindowState = Object.freeze({ fullscreen: false, maximized: false });
+let nativeWindowState: NativeWindowState = INITIAL_WINDOW_STATE;
+const nativeWindowStateListeners = new Set<() => void>();
+let nativeWindowStateTracking = false;
+
+function setNativeWindowState(next: NativeWindowState): void {
+  if (next.fullscreen === nativeWindowState.fullscreen && next.maximized === nativeWindowState.maximized) return;
+  nativeWindowState = Object.freeze({ fullscreen: next.fullscreen, maximized: next.maximized });
+  for (const listener of Array.from(nativeWindowStateListeners)) listener();
+}
+
+// One `onResized` subscription for the app's lifetime: macOS fullscreen (green button)
+// and Windows maximize both fire a resize.
+async function startNativeWindowStateTracking(): Promise<void> {
+  if (nativeWindowStateTracking || !isInTauri()) return;
+  nativeWindowStateTracking = true;
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const win = getCurrentWindow();
+    const refresh = async () => {
+      try {
+        const [fullscreen, maximized] = await Promise.all([win.isFullscreen(), win.isMaximized()]);
+        setNativeWindowState({ fullscreen, maximized });
+      } catch {
+        // Window closing or API unavailable: keep the last state.
+      }
+    };
+    await refresh();
+    await win.onResized(() => {
+      void refresh();
+    });
+  } catch {
+    nativeWindowStateTracking = false;
+  }
+}
+
+function subscribeNativeWindowState(onChange: () => void): () => void {
+  nativeWindowStateListeners.add(onChange);
+  void startNativeWindowStateTracking();
+  return () => {
+    nativeWindowStateListeners.delete(onChange);
+  };
+}
+
+function readNativeWindowState(): NativeWindowState {
+  return nativeWindowState;
+}
+
+function readNativeWindowStateServer(): NativeWindowState {
+  return INITIAL_WINDOW_STATE;
+}
+
+/** Fullscreen / maximized state of the Tauri window (always false on the web). */
+export function useNativeWindowState(): { fullscreen: boolean; maximized: boolean } {
+  return useSyncExternalStore(subscribeNativeWindowState, readNativeWindowState, readNativeWindowStateServer);
 }

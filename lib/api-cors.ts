@@ -14,6 +14,8 @@ const ALLOWED_ORIGINS = [
 function getAllowedOrigin(req: Request): string | null {
   const origin = req.headers.get("origin");
   if (!origin) return null;
+  // Capacitor Android WebView; exact match (see proxy.ts).
+  if (origin === "https://localhost") return origin;
   if (ALLOWED_ORIGINS.some((o) => origin.startsWith(o))) return origin;
   return null;
 }

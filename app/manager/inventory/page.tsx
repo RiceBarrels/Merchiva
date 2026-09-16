@@ -66,7 +66,7 @@ import { generateRestockSuggestions, formatPurchaseOrder, type RestockSuggestion
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { PageTabs } from "@/components/page-tabs";
+import { SectionNav } from "@/components/section-nav";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { INVENTORY_CONTENT_UNITS, formatInventoryContentAmount } from "@/lib/inventory-units";
 import { useUploadThing } from "@/lib/uploadthing";
@@ -519,10 +519,7 @@ export default function InventoryPage() {
       />
 
       <div className="flex flex-col gap-3 m-3">
-        <PageTabs tabs={[
-          { label: t("nav.inventory"), href: "/manager/inventory" },
-          { label: t("nav.suppliers"), href: "/manager/suppliers" },
-        ]} />
+        <SectionNav section="inventory" />
         {/* Summary cards */}
         <StatGrid>
           <StatTile icon={Package}      label={t("inventory.summary.totalItems")}  value={String(items.length)} />

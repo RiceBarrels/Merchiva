@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { usePermissions } from "@/lib/context/permissions";
 import { getSafeAreaInsets } from "@/lib/safe-area";
 import { useNavMode } from "@/lib/nav-mode";
+import { useShellInfo } from "@/lib/browser-shell/shell-context";
 
 interface PageHeaderAction {
   icon: React.ReactNode;
@@ -30,14 +31,16 @@ export function PageHeader({
   const { currentOrg } = usePermissions();
   const crumbs = breadcrumbs ?? (currentOrg ? [currentOrg.name, title] : [title]);
   const SafeArea = getSafeAreaInsets();
+  const shell = useShellInfo();
   const [navMode] = useNavMode();
-  const isSideBarMode = navMode === "sidebar";
+  const isSideBarMode = !shell && navMode === "sidebar";
+  const showCrumbs = shell?.layout !== "desktop";
   return (
     <>
       {/* Desktop */}
       <header data-slot="page-header" className="hidden lg:flex h-14 border-b border-border bg-background items-center px-6 gap-3 shrink-0 -mx-2">
         <div className="min-w-0 flex-1 flex items-center gap-3">
-          {crumbs.length > 0 && (
+          {showCrumbs && crumbs.length > 0 && (
             <div className="hidden xl:flex items-center gap-1.5 text-xs text-muted-foreground">
               {crumbs.map((b, i) => (
                 <span key={i} className="flex items-center gap-1.5">

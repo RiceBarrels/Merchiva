@@ -186,6 +186,48 @@ export function InventoryIcon({ className }: P) {
 }
 
 /** Pink price tag with a string and a yellow dollar. */
+/** Wallet with a green bill and a coin — the sales & finance family. */
+export function FinancesIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <rect x="2.5" y="5.5" width="19" height="14" rx="2.2" fill={INK} />
+      <rect x="4.6" y="3.2" width="13" height="4.6" rx="1.6" fill={GRAY} />
+      <rect x="2.5" y="9.2" width="19" height="2" fill={WHITE} opacity=".18" />
+      <rect x="13.5" y="12" width="8" height="5" rx="1.3" fill={GREEN} />
+      <circle cx="17.5" cy="14.5" r="1.5" fill={YELLOW} />
+    </Svg>
+  );
+}
+
+/** Delivery truck: brown cab, amber box, dark wheels — the inventory family. */
+export function SuppliersIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <rect x="1.5" y="6.5" width="12" height="10" rx="1.3" fill={AMBER} />
+      <path d="M13.5 9.5h4.2l3.3 3.4v3.6h-7.5z" fill={BROWN} />
+      <rect x="15" y="10.8" width="3.4" height="2.6" rx=".6" fill={WHITE} opacity=".85" />
+      <rect x="1.5" y="16.5" width="19.5" height="1.4" fill={INK} opacity=".25" />
+      <circle cx="6.5" cy="18.4" r="2.6" fill={INK} />
+      <circle cx="6.5" cy="18.4" r="1.1" fill={LIGHT} />
+      <circle cx="17" cy="18.4" r="2.6" fill={INK} />
+      <circle cx="17" cy="18.4" r="1.1" fill={LIGHT} />
+    </Svg>
+  );
+}
+
+/** Waste bin: red body, dark lid, white discard arrow. */
+export function WasteIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <rect x="8.5" y="1.8" width="7" height="2.2" rx="1.1" fill={INK} />
+      <rect x="3.8" y="4.2" width="16.4" height="2.8" rx="1.4" fill={INK} />
+      <path d="M5.6 7.6h12.8l-1.1 12.1a2 2 0 0 1-2 1.8H8.7a2 2 0 0 1-2-1.8z" fill={RED} />
+      <rect x="9" y="10.4" width="1.7" height="7.6" rx=".85" fill={WHITE} opacity=".75" />
+      <rect x="13.3" y="10.4" width="1.7" height="7.6" rx=".85" fill={WHITE} opacity=".75" />
+    </Svg>
+  );
+}
+
 export function ProductsIcon({ className }: P) {
   return (
     <Svg className={className}>
@@ -370,6 +412,9 @@ export const APP_ICONS: Record<string, AppIcon> = {
   pay: PayIcon,
   personnel: DirectoryIcon,
   inventory: InventoryIcon,
+  suppliers: SuppliersIcon,
+  waste: WasteIcon,
+  finances: FinancesIcon,
   products: ProductsIcon,
   sales: SalesIcon,
   bookings: BookingsIcon,

@@ -233,5 +233,22 @@ export function fmtHM(ms: number): string {
 }
 
 export function grossPay(paidMs: number, hourlyRate: number): number {
-  return Math.round((paidMs / 3_600_000) * hourlyRate * 100) / 100;
+  return grossPayCents(paidMs, Math.round(hourlyRate * 100)) / 100;
+}
+
+/**
+ * Gross pay in exact minor units.
+ *
+ * Pay is the one number in this app that is both derived by multiplication and
+ * then summed across people, so f64 error compounds twice. Taking the rate in
+ * cents and rounding once, at the end, keeps a payroll run reconcilable:
+ * `sum(grossPayCents(...))` is exact, whereas summing the rounded float
+ * `grossPay` results drifts by a cent per employee.
+ *
+ * Read the rate with `centsOf(member, "hourlyRate")` from lib/money so it comes
+ * from the exact `hourlyRateCents` column when present.
+ */
+export function grossPayCents(paidMs: number, hourlyRateCents: number): number {
+  if (!Number.isFinite(paidMs) || !Number.isFinite(hourlyRateCents)) return 0;
+  return Math.round((paidMs / 3_600_000) * hourlyRateCents);
 }

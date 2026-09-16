@@ -29,7 +29,8 @@ function SidebarTooltip({ label, show, children }: { label: string; show: boolea
 
 import type { StoredAccount } from "@/lib/auth/context";
 import { LogOut, ChevronDown, ChevronRight, ChevronsUpDown, Plus, Check, UserPlus } from "lucide-react";
-import { APP_MODE_ICONS, AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon, SalesIcon, SettingsIcon } from "@/components/device/app-icons";
+import { APP_MODE_ICONS, AppStoreIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, FinancesIcon, InventoryIcon, ReportsIcon, SalesIcon, ScheduleIcon, SettingsIcon, SuppliersIcon, TasksIcon, TrainingIcon, WasteIcon, type AppIcon } from "@/components/device/app-icons";
+import { useTabActions } from "@/lib/browser-shell/hooks";
 import { useOpenDynamicUIElementCount, useDynamicUIElementTitle, useDynamicUIElementSwipeProgress } from "@/components/ui/dynamic-ui-element";
 import { motion, AnimatePresence } from "motion/react";
 import { FloatingNavButton } from "@/components/floating-nav-button";
@@ -79,28 +80,30 @@ type NavItem = {
 // `children` are the sub-pages of a section (mirrors the page's `PageTabs`).
 // On desktop the section can be expanded via the chevron button to pick a
 // sub-page; clicking the row itself always navigates to the main page.
-type SubNavItem = { labelKey: string; href: string };
+type SubNavItem = { labelKey: string; href: string; icon: AppIcon };
 type NavItemExt = NavItem & { mobileOnly?: boolean; children?: SubNavItem[] };
 
 const navItems: NavItemExt[] = [
   { labelKey: "nav.home",      href: "/manager/",  icon: DashboardIcon, permissionKey: "dashboard" },
   { labelKey: "nav.inventory", href: "/manager/inventory",   icon: InventoryIcon,   permissionKey: "inventory",
     children: [
-      { labelKey: "nav.suppliers", href: "/manager/suppliers" },
+      { labelKey: "nav.suppliers", href: "/manager/suppliers", icon: SuppliersIcon },
+      { labelKey: "nav.wasteLog",  href: "/manager/inventory/waste", icon: WasteIcon },
     ] },
   { labelKey: "nav.sales",     href: "/manager/sales",       icon: SalesIcon,       permissionKey: "sales",
     children: [
-      { labelKey: "nav.reports",  href: "/manager/reports" },
-      { labelKey: "nav.finances", href: "/manager/finances" },
+      { labelKey: "nav.reports",  href: "/manager/reports",  icon: ReportsIcon },
+      { labelKey: "nav.finances", href: "/manager/finances", icon: FinancesIcon },
     ] },
   { labelKey: "nav.personnel", href: "/manager/personnel/schedule", icon: DirectoryIcon, permissionKey: "staffing",
     children: [
-      { labelKey: "personnel.tabs.schedule", href: "/manager/personnel/schedule" },
-      { labelKey: "personnel.tabs.team",     href: "/manager/personnel/team" },
-      { labelKey: "personnel.tabs.roles",    href: "/manager/personnel/roles" },
-      { labelKey: "personnel.tabs.training", href: "/manager/personnel/training" },
+      { labelKey: "personnel.tabs.schedule", href: "/manager/personnel/schedule", icon: ScheduleIcon },
+      { labelKey: "personnel.tabs.team",     href: "/manager/personnel/team",     icon: DirectoryIcon },
+      { labelKey: "personnel.tabs.roles",    href: "/manager/personnel/roles",    icon: TasksIcon },
+      { labelKey: "personnel.tabs.training", href: "/manager/personnel/training", icon: TrainingIcon },
     ] },
   { labelKey: "nav.chat",      href: "/manager/channel",        icon: ChannelIcon,     permissionKey: "staffing"  },
+  { labelKey: "nav.docs", href: "/manager/docs", icon: DocsIcon, permissionKey: "dashboard" },
   { labelKey: "nav.apps",      href: "/manager/apps",        icon: AppStoreIcon,    permissionKey: "settings" },
 ];
 
@@ -902,8 +905,17 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
     signOut();
   };
 
-  const handleNavClick = () => {
+  const tabActions = useTabActions();
+
+  // Every sidebar destination opens as its own shell tab. A modified click
+  // (Cmd / middle / Shift) is already turned into a tab by the shell's global
+  // link interceptor, so those are left alone. Outside the browser shell
+  // `openTab` falls back to a plain router push (lib/browser-shell/fallback.ts).
+  const handleNavClick = (e: React.MouseEvent, href: string) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
     hapticLight();
+    tabActions.openTab(href, { dedupe: "activateExisting" });
     onClose?.();
   };
 
@@ -975,7 +987,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
               <SidebarTooltip key={item.href} label={label} show={!!collapsed}>
                 <Link
                   href={item.href}
-                  onClick={handleNavClick}
+                  onClick={(e) => handleNavClick(e, item.href)}
                   className={cn(
                     "flex items-center rounded text-[13px] font-medium transition-colors",
                     collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
@@ -1004,7 +1016,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
               <div className="flex items-center gap-0.5">
                 <Link
                   href={item.href}
-                  onClick={handleNavClick}
+                  onClick={(e) => handleNavClick(e, item.href)}
                   className={cn(
                     "flex flex-1 items-center gap-2.5 rounded px-2.5 py-1.5 text-[13px] font-medium transition-colors min-w-0",
                     parentActive
@@ -1051,15 +1063,16 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
                           <Link
                             key={child.href}
                             href={child.href}
-                            onClick={handleNavClick}
+                            onClick={(e) => handleNavClick(e, child.href)}
                             className={cn(
-                              "block truncate rounded px-2.5 py-1.5 text-[12.5px] font-medium transition-colors",
+                              "flex items-center gap-2 rounded px-2.5 py-1.5 text-[12.5px] font-medium transition-colors",
                               cActive
                                 ? "bg-foreground text-background"
                                 : "text-muted-foreground hover:text-foreground hover:bg-muted",
                             )}
                           >
-                            {t(child.labelKey)}
+                            <child.icon className="h-[15px] w-[15px] shrink-0" />
+                            <span className="flex-1 truncate">{t(child.labelKey)}</span>
                           </Link>
                         );
                       })}
@@ -1079,7 +1092,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
         <SidebarTooltip label={t("nav.settings")} show={!!collapsed}>
           <Link
             href="/manager/settings"
-            onClick={handleNavClick}
+            onClick={(e) => handleNavClick(e, "/manager/settings")}
             className={cn(
               "flex items-center rounded text-[13px] font-medium transition-colors",
               collapsed ? "justify-center px-2.5 py-1.5" : "gap-2.5 px-2.5 py-1.5",
@@ -1119,7 +1132,7 @@ export function SidebarContent({ onClose, collapsed, onToggleCollapse }: { onClo
 
 // "Switch mode" row in the account menus: shows the current mode (admin /
 // personal / store) with its colour glyph and links back to the chooser.
-function SwitchModeLink({ onClick }: { onClick?: () => void }) {
+export function SwitchModeLink({ onClick }: { onClick?: () => void }) {
   const t = useT();
   const [appMode] = useAppMode();
   const mode = appMode ?? "admin";
@@ -1140,7 +1153,7 @@ function SwitchModeLink({ onClick }: { onClick?: () => void }) {
 
 // Shown in the account menus when this device is a store or personal device
 // whose user switched into the manager UI: one tap returns to that surface.
-function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
+export function BackToDeviceLink({ onClick }: { onClick?: () => void }) {
   const t = useT();
   const [appMode] = useAppMode();
   if (appMode !== "store" && appMode !== "personal") return null;

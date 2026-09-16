@@ -14,10 +14,11 @@ import { hapticLight, hapticSuccess } from "@/lib/haptics";
 import {
   computeMemberPayroll,
   fmtHM,
-  grossPay,
+  grossPayCents,
   toPayrollEvents,
   type MemberPayroll,
 } from "@/lib/payroll";
+import { centsOrNull, toMajor } from "@/lib/money";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -52,12 +53,14 @@ interface MemberRow {
   avatarUrl?: string | null;
   role: string;
   hourlyRate: number | null;
+  hourlyRateCents: number | null;
 }
 
 interface PayRow {
   member: MemberRow;
   pay: MemberPayroll;
-  gross: number | null; // null when no rate set
+  /** Exact minor units; null when no rate is set. Convert with toMajor only for display. */
+  grossCents: number | null;
 }
 
 // ─── Period helpers ──────────────────────────────────────────────────────────
@@ -144,7 +147,8 @@ function PayDetailSheet({
   const [saving, setSaving] = useState(false);
 
   if (!row) return null;
-  const { member, pay, gross } = row;
+  const { member, pay, grossCents } = row;
+  const gross = grossCents != null ? toMajor(grossCents) : null;
 
   const startEdit = () => {
     setRateDraft(member.hourlyRate != null ? String(member.hourlyRate) : "");
@@ -254,7 +258,7 @@ function PayDetailSheet({
                         {fmtHM(d.paidMs)}
                         {d.open && <span className="text-emerald-600 dark:text-emerald-400"> ·</span>}
                         {member.hourlyRate != null && (
-                          <span className="text-muted-foreground"> · {format(grossPay(d.paidMs, member.hourlyRate))}</span>
+                          <span className="text-muted-foreground"> · {format(toMajor(grossPayCents(d.paidMs, member.hourlyRateCents ?? 0)))}</span>
                         )}
                       </>
                     } />
@@ -355,6 +359,9 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
         displayName: String(m.displayName ?? "—"),
         avatarUrl: avatarByUser.get(m.userId?.toHexString?.() ?? String(m.userId ?? "")) ?? null,
         role: String(m.role ?? "staff"),
+        // Exact minor units from `hourlyRateCents` when present, else the
+        // legacy f64. Everything downstream accumulates in cents.
+        hourlyRateCents: centsOrNull(m, "hourlyRate"),
         hourlyRate: m.hourlyRate != null ? Number(m.hourlyRate) : null,
       }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -374,15 +381,19 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
     return visible
       .map((member) => {
         const pay = computeMemberPayroll(byMember.get(member.id) ?? [], start.getTime(), end.getTime(), now.getTime());
-        const gross = member.hourlyRate != null ? grossPay(pay.paidMs, member.hourlyRate) : null;
-        return { member, pay, gross };
+        const grossCents =
+          member.hourlyRateCents != null
+            ? grossPayCents(pay.paidMs, member.hourlyRateCents)
+            : null;
+        return { member, pay, grossCents };
       })
       .sort((a, b) => b.pay.paidMs - a.pay.paidMs);
   }, [rawPunches, orgId, members, start, end, canViewAll, myMemberId]);
 
   const totals = useMemo(() => {
     const paidMs = rows.reduce((s, r) => s + r.pay.paidMs, 0);
-    const gross = rows.reduce((s, r) => s + (r.gross ?? 0), 0);
+    // Summed as integers, converted once — see lib/money.
+    const gross = toMajor(rows.reduce((s, r) => s + (r.grossCents ?? 0), 0));
     const missingRate = rows.filter((r) => r.member.hourlyRate == null && r.pay.paidMs > 0).length;
     const onClock = rows.filter((r) => r.pay.openNow).length;
     return { paidMs, gross, missingRate, onClock };
@@ -495,7 +506,7 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
             </p>
           </div>
           <span className="font-mono text-[14px] font-semibold tabular-nums text-foreground shrink-0">
-            {r.gross != null ? format(r.gross) : "—"}
+            {r.grossCents != null ? format(toMajor(r.grossCents)) : "—"}
           </span>
           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </button>

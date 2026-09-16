@@ -10,6 +10,7 @@ import {
 } from "@/lib/spacetimedb/actions";
 import { defaultPermissions, getInvitations } from "@/lib/db/team";
 import { useOrgInvitations, useOrgMembers } from "@/lib/spacetimedb/hooks";
+import { fmt } from "@/components/personnel/team/data";
 import { usePermissions } from "@/lib/context/permissions";
 import { useAuth } from "@/lib/auth/context";
 import type { Permissions } from "@/lib/types";
@@ -338,7 +339,7 @@ export function EditMemberDialog({
 
   async function handleRemove() {
     if (!member || busy) return;
-    if (!confirm(t("personnel.team.removeConfirm").replace("{name}", member.displayName))) return;
+    if (!confirm(fmt(t("personnel.team.removeConfirm"), { name: member.displayName }))) return;
     setBusy(true);
     try {
       await removeMember(member.id);

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { cn } from "@/lib/utils";
 import { MerchivaLogo } from "./logo";
 import { DOWNLOAD_PAGE_ENABLED } from "@/lib/download-page";
+import { useMountedBrowserShell } from "@/lib/browser-shell/shell-dom";
 
 const APP_PROMO_DISMISSED_KEY = "isAppAsked";
 const APP_PROMO_DISMISSED_EVENT = "merchiva-app-promo-dismissed";
@@ -56,6 +57,7 @@ function subscribeToAppPromoDismissed(callback: () => void) {
 export function NativeTitleBar() {
   const isNative = useIsNativeShell();
   const pathname = usePathname();
+  const browserShell = useMountedBrowserShell();
   const isAppAsked = useSyncExternalStore(
     subscribeToAppPromoDismissed,
     getAppPromoDismissedSnapshot,
@@ -124,7 +126,7 @@ export function NativeTitleBar() {
     pathname === "/personal" || pathname.startsWith("/personal/");
   const showAppPromo =
     DOWNLOAD_PAGE_ENABLED && isMounted && !isNative && !isAppAsked &&
-    pathname !== "/quick-overlay" && !isDeviceRoute;
+    pathname !== "/quick-overlay" && !isDeviceRoute && !browserShell;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -139,7 +141,7 @@ export function NativeTitleBar() {
     };
   }, [showAppPromo]);
 
-  const chromeVisible = pathname !== "/quick-overlay" && (showAppPromo || isManagerRoute);
+  const chromeVisible = pathname !== "/quick-overlay" && (showAppPromo || isManagerRoute) && !browserShell;
   useEffect(() => {
     const root = document.documentElement;
     const el = barRef.current;
@@ -160,6 +162,8 @@ export function NativeTitleBar() {
     };
   }, [chromeVisible, showAppPromo, isManagerRoute]);
 
+  // The browser shell's tab strip is the window chrome (drag regions, caption buttons).
+  if (browserShell) return null;
   if (pathname === "/quick-overlay") return null;
 
   if (showAppPromo) {

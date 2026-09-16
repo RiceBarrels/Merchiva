@@ -760,3 +760,172 @@ html.quick-overlay #vaul-wrapper > div {
 html.quick-overlay #tauri-boot-splash { display: none !important; }
 html.quick-overlay { overflow: hidden; }
 
+/* ─── Docs editor ─────────────────────────────────────────────────────────
+ * Page sheet, prose, collaboration carets, comments/search highlights and the
+ * print portal (docs-editor-ui spec §4.11). The paper stays light in dark mode
+ * on purpose: user-chosen text colours must stay readable; the canvas around
+ * it (bg-muted) follows the theme. Logical properties keep RTL mirrored.
+ * ───────────────────────────────────────────────────────────────────────── */
+/* The paper. `.doc-paper` is the whole stack; each `.doc-page` is one sheet drawn behind the text by the
+   pagination plugin's page rectangles (lib/docs/extensions/pagination.ts). Page margins live on `.doc-paper-body`
+   so the editor element itself is the text column, which is what the plugin measures against. */
+.doc-paper {
+  --doc-ink: rgb(10 10 10);
+  --doc-muted: rgb(82 82 82);
+  --doc-rule: rgb(229 229 229);
+  --doc-paper-bg: #fff;
+  --doc-scale: 1;
+  color-scheme: light;
+  color: var(--doc-ink);
+  box-sizing: border-box;
+}
+.doc-paper[data-paged="false"] { background: var(--doc-paper-bg); box-shadow: inset 0 0 0 1px var(--border); }
+.doc-paper.is-mobile { width: 100%; min-height: 100%; box-shadow: none; --doc-scale: 1.09; }
+.doc-paper.is-mobile .doc-paper-body { padding: 20px 16px 32px; }
+.doc-paper-sheets { position: absolute; inset: 0; pointer-events: none; }
+.doc-paper-sheets .doc-page { position: absolute; inset-inline: 0; background: var(--doc-paper-bg); box-shadow: inset 0 0 0 1px var(--border); }
+.doc-paper-body { position: relative; z-index: 1; box-sizing: border-box; }
+/* Spacers injected by the pagination plugin: they carry the text across a page boundary. */
+.doc-page-gap { display: block; width: 100%; pointer-events: none; user-select: none; -webkit-user-modify: read-only; }
+/* Header / footer boxes, one pair per sheet, drawn in the page margins (docs-editor-ui spec §4.13). */
+.doc-hf-layer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.doc-hf { position: absolute; min-height: 1.5em; pointer-events: auto; }
+.doc-hf-footer { display: flex; flex-direction: column; justify-content: flex-end; }
+.doc-hf .doc-hf-body { font-size: calc(10pt * var(--doc-scale, 1)); color: var(--doc-muted); line-height: 1.2; outline: none; }
+.doc-hf .doc-hf-body p { margin: 0; }
+.doc-hf-hint { font: 400 calc(9pt * var(--doc-scale, 1))/1.4 var(--font-sans); color: rgb(163 163 163); opacity: 0; transition: opacity 120ms; }
+.doc-hf.is-editable:hover .doc-hf-hint { opacity: 1; }
+.doc-hf.is-editable:hover { box-shadow: inset 0 0 0 1px var(--border); }
+.doc-hf.is-editing { box-shadow: inset 0 0 0 1px rgb(37 99 239 / 0.55); }
+.doc-hf-edit { position: relative; }
+.doc-hf-chip { position: absolute; inset-block-end: 100%; inset-inline-start: -1px; display: flex; align-items: center; gap: 2px; max-width: 100%; margin-block-end: 2px; padding: 1px 2px 1px 6px; border: 1px solid var(--border); background: var(--background); font: 600 10px/1.6 var(--font-sans); color: var(--muted-foreground); user-select: none; }
+.doc-hf-chip button { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; color: var(--muted-foreground); }
+.doc-hf-chip button:hover { background: var(--muted); color: var(--foreground); }
+.doc-page-field { background: rgb(37 99 239 / 0.08); padding: 0 1px; }
+/* Rulers (docs-editor-ui spec §4.15). Drawn in layout px at the sheet's zoom, positioned physically. */
+.doc-ruler { position: relative; flex: none; background: #fff; box-shadow: inset 0 0 0 1px var(--border); color-scheme: light; user-select: none; touch-action: none; }
+.doc-ruler-h { height: 20px; }
+.doc-ruler-v { width: 20px; }
+.doc-ruler.is-dragging { cursor: grabbing; }
+.doc-ruler-band { position: absolute; background: rgb(229 229 229); }
+.doc-ruler-h .doc-ruler-band { top: 0; bottom: 0; }
+.doc-ruler-v .doc-ruler-band { left: 0; right: 0; }
+.doc-ruler-tick { position: absolute; background: rgb(115 115 115); }
+.doc-ruler-h .doc-ruler-tick { top: 8px; width: 1px; height: 4px; margin-inline-start: -0.5px; }
+.doc-ruler-h .doc-ruler-tick.is-major { top: 6px; height: 8px; }
+.doc-ruler-v .doc-ruler-tick { left: 8px; height: 1px; width: 4px; margin-top: -0.5px; }
+.doc-ruler-v .doc-ruler-tick.is-major { left: 6px; width: 8px; }
+.doc-ruler-tick i { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 0 2px; background: #fff; font: 600 9px/1 var(--font-sans); font-style: normal; color: rgb(82 82 82); }
+.doc-ruler-v .doc-ruler-tick i { transform: translate(-50%, -50%) rotate(-90deg); }
+.doc-ruler-margin { position: absolute; }
+.doc-ruler-h .doc-ruler-margin { top: 0; bottom: 0; width: 9px; margin-inline-start: -4.5px; cursor: col-resize; }
+.doc-ruler-v .doc-ruler-margin { left: 0; right: 0; height: 9px; margin-top: -4.5px; cursor: row-resize; }
+.doc-ruler-margin::after { content: ""; position: absolute; background: rgb(82 82 82); }
+.doc-ruler-h .doc-ruler-margin::after { left: 4px; top: 3px; bottom: 3px; width: 1px; }
+.doc-ruler-v .doc-ruler-margin::after { top: 4px; left: 3px; right: 3px; height: 1px; }
+.doc-ruler-marker { position: absolute; width: 0; height: 0; margin-inline-start: -5px; border-inline: 5px solid transparent; cursor: col-resize; }
+.doc-ruler-marker.is-first { top: 1px; border-top: 6px solid rgb(64 64 64); }
+.doc-ruler-marker.is-left, .doc-ruler-marker.is-right { bottom: 1px; border-bottom: 6px solid rgb(64 64 64); }
+.doc-ruler-marker:hover, .doc-ruler-marker:focus-visible { outline: none; filter: drop-shadow(0 0 0 rgb(37 99 239)); }
+.doc-ruler-marker:hover.is-first { border-top-color: rgb(37 99 239); }
+.doc-ruler-marker:hover.is-left, .doc-ruler-marker:hover.is-right { border-bottom-color: rgb(37 99 239); }
+.doc-prose { position: relative; font-family: Arial, Helvetica, sans-serif; font-size: calc(11pt * var(--doc-scale, 1)); line-height: 1.15; outline: none; overflow-wrap: anywhere; caret-color: var(--doc-ink, #0a0a0a); }
+.doc-prose p { margin: 0 0 0.5em; }
+.doc-prose p[data-doc-style="title"] { font-size: 2.36em; margin: 0 0 0.25em; }
+.doc-prose p[data-doc-style="subtitle"] { font-size: 1.36em; color: var(--doc-muted); margin: 0 0 1em; }
+.doc-prose h1 { font-size: 1.82em; font-weight: 400; margin: 1em 0 0.35em; }
+.doc-prose h2 { font-size: 1.45em; font-weight: 400; margin: 0.9em 0 0.3em; }
+.doc-prose h3 { font-size: 1.27em; font-weight: 600; margin: 0.8em 0 0.25em; }
+.doc-prose > :first-child { margin-top: 0; }
+.doc-prose ul, .doc-prose ol { padding-inline-start: 1.5em; margin: 0 0 0.5em; }
+.doc-prose ul { list-style: disc; }
+.doc-prose ol { list-style: decimal; }
+.doc-prose li > p { margin: 0 0 0.2em; }
+.doc-prose ul[data-type="taskList"] { list-style: none; padding-inline-start: 0.25em; }
+.doc-prose li[data-type="taskItem"] { display: flex; gap: 0.5em; align-items: flex-start; }
+.doc-prose li[data-type="taskItem"] > label { margin-top: 0.15em; flex: none; user-select: none; }
+.doc-prose li[data-type="taskItem"] > label input[type="checkbox"] { width: 1em; height: 1em; accent-color: #0a0a0a; cursor: pointer; }
+.doc-prose li[data-type="taskItem"] > div { flex: 1 1 auto; min-width: 0; }
+.doc-prose li[data-type="taskItem"][data-checked="true"] > div { color: var(--doc-muted); text-decoration: line-through; }
+.doc-prose a { color: #1f3fad; text-decoration: underline; text-underline-offset: 2px; }
+.doc-prose blockquote { border-inline-start: 2px solid var(--doc-rule); padding-inline-start: 0.9em; color: var(--doc-muted); margin: 0 0 0.5em; }
+.doc-prose code { font-family: "Courier New", monospace; background: rgb(245 245 245); padding: 0 0.25em; }
+.doc-prose pre { font-family: "Courier New", monospace; background: rgb(245 245 245); padding: 0.75em; overflow-x: auto; }
+.doc-prose pre code { background: none; padding: 0; }
+.doc-prose hr { border: 0; border-top: 1px solid var(--doc-rule); margin: 1em 0; }
+.doc-prose img { max-width: 100%; height: auto; }
+.doc-prose .ProseMirror-selectednode { outline: 2px solid rgb(37 99 239); outline-offset: 1px; }
+.doc-prose .tableWrapper { overflow-x: auto; margin: 0.5em 0; }
+.doc-prose table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 0; }
+.doc-prose td, .doc-prose th { border: 1px solid rgb(212 212 212); padding: 0.3em 0.5em; vertical-align: top; position: relative; min-width: 3em; box-sizing: border-box; }
+.doc-prose td > p, .doc-prose th > p { margin: 0; }
+.doc-prose th { background: rgb(245 245 245); font-weight: 600; text-align: start; }
+.doc-prose .selectedCell::after { content: ""; position: absolute; inset: 0; background: rgb(37 99 239 / 0.12); pointer-events: none; }
+.doc-prose .column-resize-handle { position: absolute; inset-inline-end: -2px; top: 0; bottom: 0; width: 4px; background: rgb(37 99 239); pointer-events: none; }
+.doc-prose.resize-cursor { cursor: col-resize; }
+.doc-prose p.is-editor-empty:first-child::before,
+.doc-prose .is-empty::before { content: attr(data-placeholder); color: rgb(163 163 163); float: inline-start; height: 0; pointer-events: none; }
+.doc-page-break { position: relative; height: 24px; margin: 16px 0; background: var(--muted); border-block: 1px solid var(--border); user-select: none; }
+.doc-paper.is-mobile .doc-page-break { margin: 16px -16px; }
+.doc-page-break::after { content: attr(data-label); position: absolute; inset-inline-start: 8px; top: 6px; font: 600 10px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-foreground); }
+.doc-paper.is-mobile .doc-page-break::after { inset-inline-start: 16px; }
+.doc-page-break.ProseMirror-selectednode { outline-offset: -2px; }
+/* Paged: the gap between two sheets already shows the break, so the node itself is only a thin handle. */
+.doc-paper[data-paged="true"] .doc-page-break { height: 2px; margin: 0; background: none; border: 0; }
+.doc-paper[data-paged="true"] .doc-page-break::after { content: none; }
+.doc-comment-hl { background: rgb(254 243 199); border-bottom: 2px solid rgb(252 211 77); cursor: pointer; }
+.doc-comment-hl.is-active { background: rgb(253 230 138); border-bottom-color: rgb(217 119 6); }
+.doc-comment-draft { background: rgb(254 243 199); }
+.doc-search-match { background: rgb(224 242 254); }
+.doc-search-current { background: rgb(125 211 252); }
+.doc-selection { background: rgb(37 99 239 / 0.18); }
+.doc-upload-placeholder { display: block; height: 96px; margin: 0.5em 0; border: 1px dashed rgb(212 212 212); background: rgb(250 250 250); animation: doc-upload-pulse 1.2s ease-in-out infinite; }
+@keyframes doc-upload-pulse { 50% { background: rgb(240 240 240); } }
+.collaboration-carets__caret { position: relative; margin-inline: -1px; border-inline: 1px solid; word-break: normal; pointer-events: none; }
+.collaboration-carets__label { position: absolute; top: -1.35em; inset-inline-start: -1px; padding: 1px 4px; border-radius: 2px 2px 2px 0; font: 600 10px/1.3 var(--font-sans); color: #fff; white-space: nowrap; user-select: none; pointer-events: none; }
+.doc-prose [data-resize-container] { position: relative; display: inline-block; max-width: 100%; }
+.doc-prose [data-resize-wrapper] { display: block; max-width: 100%; }
+.doc-prose [data-resize-handle] { z-index: 2; opacity: 0; background: #fff; border: 1px solid rgb(37 99 239); transition: opacity 120ms; }
+.doc-prose [data-resize-handle="top-left"],
+.doc-prose [data-resize-handle="top-right"],
+.doc-prose [data-resize-handle="bottom-left"],
+.doc-prose [data-resize-handle="bottom-right"] { width: 10px; height: 10px; margin: -5px; border-radius: 1px; }
+.doc-prose [data-resize-handle="top-left"], .doc-prose [data-resize-handle="bottom-right"] { cursor: nwse-resize; }
+.doc-prose [data-resize-handle="top-right"], .doc-prose [data-resize-handle="bottom-left"] { cursor: nesw-resize; }
+.doc-prose [data-resize-handle="top"], .doc-prose [data-resize-handle="bottom"] { height: 6px; margin-block: -3px; cursor: ns-resize; }
+.doc-prose [data-resize-handle="left"], .doc-prose [data-resize-handle="right"] { width: 6px; margin-inline: -3px; cursor: ew-resize; }
+.doc-prose [data-resize-container]:hover [data-resize-handle],
+.doc-prose .ProseMirror-selectednode [data-resize-handle],
+.doc-prose [data-resize-state="true"] [data-resize-handle] { opacity: 1; }
+.doc-print-portal { display: none; }
+.doc-print-hf { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .doc-upload-placeholder { animation: none; }
+}
+/* Print rules take effect only while the docs editor's print portal is mounted as a direct child of body (the
+   editor's `beforeprint` listener fills it for menu Print, Mod+P and the browser menu). Every other page prints
+   as it did before. The 1in margin is a named page used only by the portal; browsers without named pages keep
+   their default margin. Guarded by scripts/tests/integration/print-css-scope.test.ts. */
+@media print {
+  @page doc-print { margin: 1in; }
+  html:has(> body > .doc-print-portal),
+  body:has(> .doc-print-portal) { height: auto !important; overflow: visible !important; background: #fff !important; }
+  body:has(> .doc-print-portal) { display: block !important; padding: 0 !important; }
+  body:has(> .doc-print-portal) > *:not(.doc-print-portal) { display: none !important; }
+  .doc-print-portal { display: block !important; page: doc-print; color: #000; }
+  .doc-print-portal .doc-prose { --doc-scale: 1; --doc-muted: rgb(82 82 82); --doc-rule: rgb(229 229 229); }
+  .doc-print-portal .doc-print-hf { display: block !important; position: fixed; left: 0; right: 0; font-size: 10pt; line-height: 1.2; color: rgb(82 82 82); }
+  .doc-print-portal .doc-print-hf p { margin: 0; }
+  .doc-print-portal [data-page-break] { break-after: page; height: 0; margin: 0; border: 0; background: none; }
+  .doc-print-portal [data-page-break]::after { content: none; }
+  .doc-print-portal h1, .doc-print-portal h2, .doc-print-portal h3 { break-after: avoid; }
+  .doc-print-portal tr, .doc-print-portal img { break-inside: avoid; }
+}
+
+/* ── Browser shell (desktop): top-center toasts sit below the tab strip, toolbar and bookmarks
+   bar instead of covering the omnibox (desktop spec §11). 109px = 40 strip + 40 toolbar + 28 bar + 1
+   border; coarse density (44 + 48 + 36 + 1 = 129) still clears it with sonner's 24px offset. */
+html[data-browser-shell="desktop"] [data-sonner-toaster][data-y-position="top"] {
+  top: calc(var(--offset-top) + 109px);
+}
+

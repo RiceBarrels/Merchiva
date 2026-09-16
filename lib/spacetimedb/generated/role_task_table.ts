@@ -22,4 +22,5 @@ export default __t.row({
   requiresEvidence: __t.bool().name("requires_evidence"),
   notifyChats: __t.string().name("notify_chats"),
   createdAt: __t.timestamp().name("created_at"),
+  orgId: __t.string().name("org_id"),
 });

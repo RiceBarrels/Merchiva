@@ -28,7 +28,6 @@ interface MemberRow {
   userId: { toString(): string };
   organizationId: string;
   status: string;
-  punchInCode?: string;
 }
 
 function ModeCard({
@@ -99,7 +98,23 @@ function ChooseModeInner() {
       ) ?? null,
     [memberRows, identityString, organizationId],
   );
-  const hasPin = typeof myMember?.punchInCode === "string" && myMember.punchInCode.length > 0;
+  // The PIN itself lives in `member_punch_code`, which RLS scopes to
+  // `userId = :sender` — this subscription therefore returns at most the
+  // current user's own code, never a colleague's. `org_member.punchInCode` is
+  // a drained legacy column and is no longer read.
+  const [punchCodeRows] = useTable(tables.memberPunchCode);
+  const hasPin = useMemo(
+    () =>
+      (punchCodeRows ?? []).some(
+        (c) =>
+          identityString &&
+          c.userId.toString() === identityString &&
+          c.organizationId === organizationId &&
+          typeof c.code === "string" &&
+          c.code.length > 0,
+      ),
+    [punchCodeRows, identityString, organizationId],
+  );
   const canAdmin = role === "owner" || role === "manager";
 
   // The paywall lives here, not behind the mode cards: if the selected store's

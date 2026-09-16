@@ -17,6 +17,144 @@ import { mutationQueue } from "@/lib/offline";
 import { isCapacitorNative } from "@/lib/capacitor";
 import type { ReactNode } from "react";
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUBSCRIPTION NOTES
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// This file used to open ~44 subscriptions of the form `SELECT * FROM <table>`
+// with no WHERE clause. Every signed-in browser therefore downloaded every row
+// of every table for every tenant on the platform and filtered in JavaScript.
+//
+// Two separate problems, and they need two separate fixes:
+//
+//   * SECURITY — fixed in the module, not here. The queries below are chosen by
+//     the client, so a client can always choose different ones; scoping them is
+//     not a boundary. The actual boundary is the `clientVisibilityFilter` set in
+//     spacetimedb/src/index.ts, which the database applies to the WebSocket and
+//     the HTTP /sql endpoint alike.
+//
+//   * VOLUME — fixed here. RLS stops the browser from receiving other tenants'
+//     rows, but without a WHERE the server still evaluates every subscription
+//     against the whole table, and the client still receives its own tenant's
+//     entire history on every connect. These queries ask for one store and, for
+//     the append-only tables, a recent window.
+//
+// Two dialect limits shaped the windows below:
+//   * a `timestamp` column cannot be compared to a literal
+//     ("cannot be parsed as type (__timestamp_micros_since_unix_epoch__: I64)"),
+//     so tables whose only date is a timestamp (punch_event, chat_message,
+//     notification) cannot be windowed from a subscription at all. They are
+//     bounded by the `pruneOrgHistory` reducer instead.
+//   * `option` columns cannot be compared at all, so no window may use one.
+
+/** Days of append-only history to keep in the live client cache. */
+const HISTORY_WINDOW_DAYS = 120;
+/** Sales history is small per row and drives year-over-year comparisons. */
+const SALES_WINDOW_DAYS = 400;
+
+function isoDaysAgo(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The org the user last selected. `switchOrg` hard-reloads, so this is stable
+ *  for the lifetime of a connection. */
+function activeOrgId(): string | null {
+  try {
+    return localStorage.getItem("active_org_id");
+  } catch {
+    return null;
+  }
+}
+
+/** SpacetimeDB SQL has no parameter binding — ids are uuids, so reject anything
+ *  that is not one rather than interpolating it into a query. */
+function isUuid(v: string): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(v);
+}
+
+/**
+ * Identity-scoped tables. These carry no WHERE because their RLS rules already
+ * reduce them to "rows belonging to :sender" — the user's own profile, their
+ * memberships, their colleagues, their notifications. All are small and all are
+ * needed before an organization has even been chosen.
+ */
+const BOOTSTRAP_SUBSCRIPTIONS = [
+  "SELECT * FROM user",
+  "SELECT * FROM organization",
+  "SELECT * FROM org_member",
+  "SELECT * FROM member_punch_code",
+  "SELECT * FROM notification",
+  "SELECT * FROM push_subscription",
+  "SELECT * FROM todo",
+];
+
+/**
+ * Everything else, scoped to one store.
+ *
+ * `settings` stays out: its option(timestamp) columns still trip the client
+ * deserializer, and the settings page reads it over HTTP instead.
+ */
+function orgSubscriptions(orgId: string): string[] {
+  if (!isUuid(orgId)) return [];
+  const org = `organization_id = '${orgId}'`;
+  const since = isoDaysAgo(HISTORY_WINDOW_DAYS);
+  const salesSince = isoDaysAgo(SALES_WINDOW_DAYS);
+
+  return [
+    // ── Reference data: small, read constantly ──────────────────────────────
+    `SELECT * FROM org_invitation WHERE ${org}`,
+    `SELECT * FROM inventory_item WHERE ${org}`,
+    `SELECT * FROM staff_member WHERE ${org}`,
+    `SELECT * FROM staff_role WHERE ${org}`,
+    `SELECT * FROM role_task WHERE ${org}`,
+    `SELECT * FROM shift WHERE ${org}`,
+    `SELECT * FROM shift_preset WHERE ${org}`,
+    `SELECT * FROM shift_trade WHERE ${org}`,
+    `SELECT * FROM staff_availability WHERE ${org}`,
+    `SELECT * FROM time_off_request WHERE ${org}`,
+    `SELECT * FROM location WHERE ${org}`,
+    `SELECT * FROM supplier WHERE ${org}`,
+    `SELECT * FROM coupon WHERE ${org}`,
+    `SELECT * FROM store_device WHERE ${org}`,
+
+    // ── Chat: RLS already narrows these to conversations the user is in ─────
+    `SELECT * FROM chat_conversation WHERE ${org}`,
+    "SELECT * FROM chat_member",
+    "SELECT * FROM chat_message",
+
+    // ── Append-only history: windowed ───────────────────────────────────────
+    `SELECT * FROM inventory_transaction WHERE ${org} AND date >= '${since}'`,
+    `SELECT * FROM sales_record WHERE ${org} AND date >= '${salesSince}'`,
+    `SELECT * FROM waste_log WHERE ${org} AND date >= '${since}'`,
+
+    // ── Unwindowable (timestamp-only); bounded by pruneOrgHistory ───────────
+    `SELECT * FROM punch_event WHERE ${org}`,
+    `SELECT * FROM payment WHERE ${org}`,
+    `SELECT * FROM purchase_order WHERE ${org}`,
+    `SELECT * FROM expense WHERE ${org}`,
+    `SELECT * FROM supplier_message WHERE ${org}`,
+    `SELECT * FROM ai_chat_session WHERE ${org}`,
+    `SELECT * FROM ai_job WHERE ${org}`,
+    `SELECT * FROM ai_usage WHERE ${org}`,
+    `SELECT * FROM ai_usage_quota WHERE ${org}`,
+    `SELECT * FROM daily_briefing WHERE ${org}`,
+    `SELECT * FROM role_task_assignment WHERE ${org}`,
+
+    // ── Training ────────────────────────────────────────────────────────────
+    `SELECT * FROM training_day WHERE ${org}`,
+    `SELECT * FROM training_objective WHERE ${org}`,
+    `SELECT * FROM training_objective_grade WHERE ${org}`,
+    `SELECT * FROM training_day_grade WHERE ${org}`,
+    `SELECT * FROM training_review_request WHERE ${org}`,
+
+    // ── Bookings (the only surviving site_* surface) ────────────────────────
+    `SELECT * FROM site WHERE ${org}`,
+    `SELECT * FROM site_booking WHERE ${org}`,
+  ];
+}
+
 interface SpacetimeProviderProps {
   children: ReactNode;
 }
@@ -193,87 +331,16 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
             console.warn("[SpacetimeDB] Queue flush failed:", err);
           }
         }, 3000);
-        conn.subscriptionBuilder().subscribe([
-          "SELECT * FROM user",
-          "SELECT * FROM organization",
-          "SELECT * FROM org_member",
-          "SELECT * FROM org_invitation",
-          "SELECT * FROM inventory_item",
-          "SELECT * FROM inventory_transaction",
-          "SELECT * FROM sales_record",
-          // NOTE: no `product` table — sellable products live on inventory_item
-          // rows (retailEnabled). Subscribing to a nonexistent table fails the
-          // whole subscription set.
-          "SELECT * FROM staff_member",
-          "SELECT * FROM staff_role",
-          "SELECT * FROM role_task",
-          "SELECT * FROM shift",
-          "SELECT * FROM shift_preset",
-          "SELECT * FROM shift_trade",
-          "SELECT * FROM staff_availability",
-          "SELECT * FROM time_off_request",
-          "SELECT * FROM payment",
-          "SELECT * FROM chat_conversation",
-          "SELECT * FROM chat_member",
-          "SELECT * FROM chat_message",
-          "SELECT * FROM site",
-          "SELECT * FROM site_page",
-          "SELECT * FROM site_component",
-          "SELECT * FROM site_customer",
-          "SELECT * FROM site_order",
-          "SELECT * FROM site_booking",
-          "SELECT * FROM site_membership",
-          "SELECT * FROM membership_tier",
-          "SELECT * FROM membership_perk",
-          "SELECT * FROM perk_claim",
-          "SELECT * FROM customer_points",
-          "SELECT * FROM todo",
-          "SELECT * FROM punch_event",
-        ]);
-        // NOTE: settings table is NOT subscribed — its option(timestamp) fields
-        // cause "Can't deserialize an option type" errors due to client/server schema mismatch.
-        // Settings are read via the settings page's own API calls instead.
-        // Subscribe to newer tables separately — these may not exist on older server versions
-        try {
-          conn.subscriptionBuilder().subscribe([
-            "SELECT * FROM notification",
-            "SELECT * FROM waste_log",
-            "SELECT * FROM location",
-            "SELECT * FROM supplier",
-            "SELECT * FROM purchase_order",
-            "SELECT * FROM expense",
-          ]);
-        } catch {
-          console.warn("[SpacetimeDB] Some newer tables not available on server");
-        }
-        try {
-          conn.subscriptionBuilder().subscribe([
-            "SELECT * FROM coupon",
-            "SELECT * FROM queue_entry",
-            "SELECT * FROM ai_chat_session",
-          ]);
-        } catch {
-          console.warn("[SpacetimeDB] Coupon/queue tables not available on server");
-        }
-        try {
-          // Background AI generation jobs created by /api/store-ai/enqueue.
-          // Separate try/catch so the table being absent on an older server
-          // doesn't break the rest of the subscriptions.
-          conn.subscriptionBuilder().subscribe([
-            "SELECT * FROM ai_job",
-          ]);
-        } catch {
-          console.warn("[SpacetimeDB] ai_job table not available on server");
-        }
-        try {
-          // AI usage tracking + per-org quota. Separate try/catch so older
-          // servers without these tables don't break other subscriptions.
-          conn.subscriptionBuilder().subscribe([
-            "SELECT * FROM ai_usage",
-            "SELECT * FROM ai_usage_quota",
-          ]);
-        } catch {
-          console.warn("[SpacetimeDB] ai_usage tables not available on server");
+        // Subscribe only to what this identity may see, and only for the
+        // active store. See SUBSCRIPTION NOTES at the bottom of this file.
+        conn.subscriptionBuilder().subscribe(BOOTSTRAP_SUBSCRIPTIONS);
+        const bootOrgId = activeOrgId();
+        if (bootOrgId) {
+          try {
+            conn.subscriptionBuilder().subscribe(orgSubscriptions(bootOrgId));
+          } catch (err) {
+            console.warn("[SpacetimeDB] Org subscription failed:", err);
+          }
         }
       })
       .onDisconnect(() => {

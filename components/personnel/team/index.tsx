@@ -190,7 +190,10 @@ export function OrgPanel({ orgId }: { orgId: string }) {
   const matchCount = useMemo(() => {
     if (!searchMatchIds) return 0;
     if (viewMode === "graph") return searchMatchIds.size;
-    return graph.nodes.filter((n) => n.kind === "person" && searchMatchIds.has(n.id)).length;
+    // The list shows direct matches plus every member of a group whose name matched.
+    return graph.nodes.filter(
+      (n) => n.kind === "person" && (searchMatchIds.has(n.id) || (!!n.groupId && searchMatchIds.has(n.groupId))),
+    ).length;
   }, [searchMatchIds, viewMode, graph.nodes]);
 
   const totals = useMemo(() => ({
@@ -271,7 +274,11 @@ export function OrgPanel({ orgId }: { orgId: string }) {
 
   async function handleRemoveMember(p: PersonNode) {
     if (!canEditMembers || isLockedPerson(p)) return;
-    if (!confirm(fmt(t("personnel.team.confirmRemove"), { name: p.name }))) return;
+    if (!confirm(fmt(t("personnel.team.confirmRemove"), { name: p.name }))) {
+      // On phones the sheet was closed first so confirm() isn't stacked on it.
+      if (isMobile) setPickedId(p.id);
+      return;
+    }
     try {
       await removeMember(p.id);
       toast.success(t("personnel.team.toastRemoved"));
@@ -283,7 +290,10 @@ export function OrgPanel({ orgId }: { orgId: string }) {
 
   async function handleCancelInvite(p: PersonNode) {
     if (!canInvite || !p.id.startsWith("inv-")) return;
-    if (!confirm(fmt(t("personnel.team.confirmCancelInvite"), { email: p.email }))) return;
+    if (!confirm(fmt(t("personnel.team.confirmCancelInvite"), { email: p.email }))) {
+      if (isMobile) setPickedId(p.id);
+      return;
+    }
     try {
       const ok = await graph.cancelInvite(p.id);
       if (ok && pickedId === p.id) clearSelection();
