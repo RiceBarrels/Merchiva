@@ -1,8 +1,8 @@
 diff --git a/dist/server/index.mjs b/dist/server/index.mjs
-index 1ae88a3e11707dbb74c188d2da1543cdac601758..dcc3426e92446b662f264def95ad8c809002ea7b 100644
+index 6ecb70b51f51a71040955bc15ee9a7e3a3d17e3f..2741911f45d056e12c5d75cf4a4d1c03625bc3e4 100644
 --- a/dist/server/index.mjs
 +++ b/dist/server/index.mjs
-@@ -1612,6 +1612,9 @@ function toCamelCase(s) {
+@@ -1218,6 +1218,9 @@ function toCamelCase(s) {
    const str = s.replace(/[-_]+/g, "_").replace(/_([a-zA-Z0-9])/g, (_, c) => c.toUpperCase());
    return str.charAt(0).toLowerCase() + str.slice(1);
  }
@@ -12,7 +12,7 @@ index 1ae88a3e11707dbb74c188d2da1543cdac601758..dcc3426e92446b662f264def95ad8c80
  function bsatnBaseSize(typespace, ty) {
    const assumedArrayLength = 4;
    while (ty.tag === "Ref") ty = typespace.types[ty.value];
-@@ -5423,8 +5426,8 @@ function table(opts, row, ..._) {
+@@ -5925,8 +5928,8 @@ function table(opts, row, ..._) {
        }
        for (const index of indexes) {
          const cols = index.algorithm.tag === "Direct" ? [index.algorithm.value] : index.algorithm.value;

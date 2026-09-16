@@ -10,7 +10,7 @@ import {
   setCurrentOperator,
   getCurrentOperator,
 } from "@/lib/store-device-lock";
-import { recordPunch } from "@/lib/spacetimedb/actions";
+import { recordPunch, resolveDeviceOperator } from "@/lib/spacetimedb/actions";
 import { useT } from "@/lib/i18n/context";
 import { hapticSuccess, hapticMedium, hapticLight } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -21,7 +21,6 @@ interface MemberRow {
   organizationId: string;
   status: string;
   displayName: string;
-  punchInCode?: string;
 }
 
 const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"] as const;
@@ -60,6 +59,14 @@ function Corners() {
   );
 }
 
+interface OperatorSessionRow {
+  organizationId: string;
+  memberId: string;
+  memberName: string;
+  role: string;
+  resolvedAt: { toDate?: () => Date };
+}
+
 type Stage = "entry" | "verifying" | "success";
 
 export function StoreDeviceLock() {
@@ -69,6 +76,9 @@ export function StoreDeviceLock() {
   const [storeMachine] = useStoreMachineMode();
   const [deviceName] = useDeviceName();
   const [memberRows] = useTable(tables.orgMember);
+  // Written by the `resolveDeviceOperator` reducer; RLS scopes it to this
+  // device's identity, so it only ever holds this tablet's own result.
+  const [operatorRows] = useTable(tables.deviceOperatorSession);
 
   // In store-machine mode the device is locked by default — even on a fresh
   // load or refresh. The next user has to identify themselves with their PIN
@@ -210,60 +220,97 @@ export function StoreDeviceLock() {
     setError(null);
   }, [locked, stage]);
 
-  // Try to unlock once 4 digits are in.
+  // Unlocking is a two-step handshake because SpacetimeDB reducers cannot
+  // return a value.
+  //
+  //   1. 4 digits entered  → call `resolveDeviceOperator(code)`. The module
+  //      matches the PIN against `member_punch_code` (which this tablet cannot
+  //      read) and, on success, writes the operator to
+  //      `device_operator_session` for this identity.
+  //   2. The matching session row arrives over the subscription → finish the
+  //      unlock. Awaiting the reducer is NOT enough: it resolves when the write
+  //      commits, before the row has streamed back into the client cache.
+  //
+  // `awaitingSince` marks step 1 as done so step 2 only accepts a row that was
+  // resolved after this attempt started, never a stale one from an earlier
+  // unlock.
+  const [awaitingSince, setAwaitingSince] = useState<number | null>(null);
+
   useEffect(() => {
     if (!locked || stage !== "entry" || pin.length !== 4) return;
     const code = pin;
     setStage("verifying");
+    setAwaitingSince(Date.now());
+    void resolveDeviceOperator(code).catch(() => {
+      hapticMedium();
+      setError(t("lock.pinNotRecognized"));
+      setStage("entry");
+      setAwaitingSince(null);
+    });
+  }, [pin, locked, stage, t]);
+
+  useEffect(() => {
+    if (stage !== "verifying" || awaitingSince === null) return;
+
+    const session = (operatorRows as unknown as OperatorSessionRow[]).find(
+      (r) => r.organizationId === organizationId,
+    );
+    if (!session) return;   // not streamed back yet — wait for the next update
+
+    setAwaitingSince(null);
+    const member: MemberRow = {
+      id: { toString: () => session.memberId },
+      organizationId: session.organizationId,
+      status: "active",
+      displayName: session.memberName,
+    };
+    const code = pin;
+
+    // Set operator first so any reducer kicked off below tags rows with the
+    // correct identity (e.g. inventory actions read this from localStorage).
+    setCurrentOperator({ memberId: member.id.toString(), name: member.displayName ?? "" });
+
     (async () => {
+      // Auto punch — server-side "auto" resolves to:
+      //   not on shift → in
+      //   on break     → break-end
+      //   on shift     → NEEDS_EXPLICIT_ACTION (we ignore, treat as plain unlock)
+      let action: string | null = null;
       try {
-        const member = (memberRows as unknown as MemberRow[]).find(
-          (m) =>
-            m.organizationId === organizationId &&
-            m.status === "active" &&
-            typeof m.punchInCode === "string" &&
-            m.punchInCode === code,
-        );
-        if (!member) {
-          throw new Error("PIN_NOT_RECOGNIZED");
+        await recordPunch(code, "auto");
+        action = "in"; // optimistic — server logged it
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("NEEDS_EXPLICIT_ACTION")) {
+          action = null; // already on shift — just unlocking
+        } else {
+          // Punch failed for an unexpected reason. Don't block the unlock —
+          // the user identified themselves correctly with their PIN. Surface
+          // it to the console for diagnostics.
+          console.warn("[StoreDeviceLock] auto punch failed:", msg);
+          action = null;
         }
-
-        // Set operator first so any reducer kicked off below tags rows with the
-        // correct identity (e.g. inventory actions read this from localStorage).
-        setCurrentOperator({ memberId: member.id.toString(), name: member.displayName ?? "" });
-
-        // Auto punch — server-side "auto" resolves to:
-        //   not on shift → in
-        //   on break     → break-end
-        //   on shift     → NEEDS_EXPLICIT_ACTION (we ignore, treat as plain unlock)
-        let action: string | null = null;
-        try {
-          await recordPunch(code, "auto");
-          action = "in"; // optimistic — server logged it
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (msg.includes("NEEDS_EXPLICIT_ACTION")) {
-            action = null; // already on shift — just unlocking
-          } else {
-            // Punch failed for an unexpected reason. Don't block the unlock —
-            // the user identified themselves correctly with their PIN. Surface
-            // it to the console for diagnostics.
-            console.warn("[StoreDeviceLock] auto punch failed:", msg);
-            action = null;
-          }
-        }
-
-        hapticSuccess();
-        setPunchedMember(member);
-        setPunchedAction(action);
-        setStage("success");
-      } catch {
-        hapticMedium();
-        setError(t("lock.pinNotRecognized"));
-        setStage("entry");
       }
+
+      hapticSuccess();
+      setPunchedMember(member);
+      setPunchedAction(action);
+      setStage("success");
     })();
-  }, [pin, locked, stage, memberRows, organizationId, t]);
+  }, [stage, awaitingSince, operatorRows, organizationId, pin]);
+
+  // A resolve that never streams back must not strand the keypad in
+  // "verifying" — fall back to the normal error path after a few seconds.
+  useEffect(() => {
+    if (stage !== "verifying" || awaitingSince === null) return;
+    const id = setTimeout(() => {
+      setAwaitingSince(null);
+      hapticMedium();
+      setError(t("lock.pinNotRecognized"));
+      setStage("entry");
+    }, 6000);
+    return () => clearTimeout(id);
+  }, [stage, awaitingSince, t]);
 
   // Hardware keyboard input — works alongside the on-screen keypad.
   useEffect(() => {

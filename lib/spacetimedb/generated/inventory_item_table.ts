@@ -38,4 +38,6 @@ export default __t.row({
   retailUsageQty: __t.option(__t.f64()).name("retail_usage_qty"),
   expirationDate: __t.option(__t.string()).name("expiration_date"),
   expirationBatches: __t.option(__t.string()).name("expiration_batches"),
+  costPerUnitCents: __t.option(__t.i64()).name("cost_per_unit_cents"),
+  retailPriceCents: __t.option(__t.i64()).name("retail_price_cents"),
 });

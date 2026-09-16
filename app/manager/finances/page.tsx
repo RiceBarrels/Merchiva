@@ -71,7 +71,8 @@ import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
 import { usePermissions } from "@/lib/context/permissions";
 import { useExpenses, usePayments, useSalesRecords, usePurchaseOrders, useOrgMembers, usePunchEvents } from "@/lib/spacetimedb/hooks";
-import { computeMemberPayroll, grossPay, toPayrollEvents } from "@/lib/payroll";
+import { computeMemberPayroll, grossPayCents, toPayrollEvents } from "@/lib/payroll";
+import { centsOf, toMajor } from "@/lib/money";
 import { addExpense, updateExpense, deleteExpense } from "@/lib/spacetimedb/actions";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
@@ -1026,13 +1027,19 @@ function PayrollTab() {
       .map((m) => {
         const id = m.id?.toString?.() ?? String(m.id);
         const pay = computeMemberPayroll(byMember.get(id) ?? [], start.getTime(), end.getTime(), now);
-        const rate = m.hourlyRate != null ? Number(m.hourlyRate) : DEFAULT_HOURLY_RATE;
+        // Read the rate from the exact `hourlyRateCents` column when the row
+        // has been migrated, falling back to the legacy f64 otherwise. Pay is
+        // computed and accumulated in whole cents; see grossPayCents.
+        const rateCents =
+          m.hourlyRate != null || m.hourlyRateCents != null
+            ? centsOf(m, "hourlyRate")
+            : DEFAULT_HOURLY_RATE * 100;
         return {
           id,
           name: String(m.displayName ?? "—"),
           hours: Math.round((pay.paidMs / 3_600_000) * 100) / 100,
-          rate,
-          grossPay: grossPay(pay.paidMs, rate),
+          rate: toMajor(rateCents),
+          grossPayCents: grossPayCents(pay.paidMs, rateCents),
         };
       })
       .filter((r) => r.hours > 0)
@@ -1040,7 +1047,10 @@ function PayrollTab() {
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }, [rawPunches, rawMembers, organizationId, start, end]);
 
-  const totalPayroll = payrollData.reduce((s, d) => s + d.grossPay, 0);
+  // Summed in integer cents, converted once — the float version drifted by a
+  // cent per employee on a large roster.
+  const totalPayrollCents = payrollData.reduce((s, d) => s + d.grossPayCents, 0);
+  const totalPayroll = toMajor(totalPayrollCents);
   const totalHours = payrollData.reduce((s, d) => s + d.hours, 0);
 
   const handleExportCSV = () => {
@@ -1049,7 +1059,7 @@ function PayrollTab() {
       d.name,
       d.hours.toFixed(2),
       format(d.rate),
-      format(d.grossPay),
+      format(toMajor(d.grossPayCents)),
     ]);
     rows.push(["TOTAL", totalHours.toFixed(2), "", format(totalPayroll)]);
     downloadCSV("payroll-report", headers, rows);
@@ -1061,7 +1071,7 @@ function PayrollTab() {
       d.name,
       d.hours.toFixed(2),
       format(d.rate),
-      format(d.grossPay),
+      format(toMajor(d.grossPayCents)),
     ]);
     rows.push(["TOTAL", totalHours.toFixed(2), "", format(totalPayroll)]);
     downloadPDF("Payroll Report", headers, rows, {
@@ -1129,7 +1139,7 @@ function PayrollTab() {
                   <TableCell className="text-xs font-medium">{row.name}</TableCell>
                   <NumCell className="text-xs">{row.hours.toFixed(2)}</NumCell>
                   <NumCell className="text-xs">{format(row.rate)}</NumCell>
-                  <NumCell className="text-xs text-destructive">{format(row.grossPay)}</NumCell>
+                  <NumCell className="text-xs text-destructive">{format(toMajor(row.grossPayCents))}</NumCell>
                 </TableRow>
               ))}
               <TableRow className="border-t-2 border-border bg-muted/30">

@@ -22,4 +22,5 @@ export default __t.row({
   receiptUrl: __t.option(__t.string()).name("receipt_url"),
   notes: __t.option(__t.string()),
   createdAt: __t.timestamp().name("created_at"),
+  amountCents: __t.option(__t.i64()).name("amount_cents"),
 });

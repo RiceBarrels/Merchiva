@@ -22,4 +22,6 @@ export default __t.row({
   currentPeriodEnd: __t.option(__t.timestamp()).name("current_period_end"),
   parentOrgId: __t.option(__t.string()).name("parent_org_id"),
   logoUrl: __t.option(__t.string()).name("logo_url"),
+  orgIdText: __t.string().name("org_id_text"),
+  rootOrgId: __t.string().name("root_org_id"),
 });

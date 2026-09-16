@@ -24,4 +24,6 @@ export default __t.row({
   notes: __t.option(__t.string()),
   createdBy: __t.option(__t.string()).name("created_by"),
   createdAt: __t.timestamp().name("created_at"),
+  costPerUnitCents: __t.option(__t.i64()).name("cost_per_unit_cents"),
+  totalCostCents: __t.option(__t.i64()).name("total_cost_cents"),
 });

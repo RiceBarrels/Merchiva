@@ -13,9 +13,75 @@
  */
 
 import { schema, t, table, SenderError } from 'spacetimedb/server';
-import { Identity } from 'spacetimedb';
+import { Identity, Uuid } from 'spacetimedb';
 
 // ─── Helper: throw on unauthorized ───────────────────────────────────────────
+
+
+/**
+ * Parse the canonical string form of a uuid back into a `Uuid`.
+ *
+ * Every table in this module has a `t.uuid()` primary key, but every reducer
+ * argument and every cross-table reference is a `string` — so the natural
+ * lookup `ctx.db.foo.id.find(someIdString)` does not type-check, and the code
+ * fell back to `[...ctx.db.foo.iter()].find(r => r.id.toString() === id)`:
+ * a full table scan to find one row by its primary key. The SDK ships no
+ * string parser for `Uuid` (only `fromRandomBytesV4` / `fromCounterV7`), hence
+ * this.
+ *
+ * Returns `undefined` for anything that is not a well-formed uuid, so callers
+ * can treat a malformed id the same as a missing row instead of throwing.
+ */
+function uuidFromString(id: string): Uuid | undefined {
+  const hex = id.replace(/-/g, '');
+  if (hex.length !== 32 || !/^[0-9a-fA-F]{32}$/.test(hex)) return undefined;
+  try {
+    return new Uuid(BigInt('0x' + hex));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Primary-key lookup by string id. Replaces a full scan; the row type is
+ * inferred from the table handle, so call sites keep full type safety.
+ */
+function findById<Row>(
+  tbl: { id: { find(key: Uuid): Row | undefined } },
+  id: string,
+): Row | undefined {
+  const uuid = uuidFromString(id);
+  return uuid ? tbl.id.find(uuid) : undefined;
+}
+
+// ─── Money ───────────────────────────────────────────────────────────────────
+//
+// Every currency column in this module is an f64, which cannot represent most
+// decimal amounts exactly. Summing a day of sales, or subtracting a refund from
+// a charge, drifts. SpacetimeDB has no way to change a column's type in place,
+// so each money column has gained a sibling `*Cents` column holding the exact
+// value as an integer number of minor units. Writers set both; `migrateMoneyV1`
+// backfills the history; readers should prefer the cents column and treat the
+// f64 as a legacy fallback (see lib/money.ts on the client).
+
+/** Round a major-unit amount to an exact minor-unit integer. */
+function toCents(amount: number): bigint {
+  if (!Number.isFinite(amount)) return 0n;
+  // `amount * 100` is itself a float operation and carries its own error:
+  // 1.005 * 100 is 100.49999999999999, which Math.round sends DOWN to 100 —
+  // half a cent lost on exactly the values a person is most likely to type.
+  // Normalising through a fixed-precision string first pins the product to the
+  // decimal that was actually meant, and only then rounds to the nearest cent.
+  return BigInt(Math.round(Number((amount * 100).toFixed(4))));
+}
+
+/** Same, preserving "not set" for optional columns. */
+function toCentsOpt(amount: number | undefined): bigint | undefined {
+  return amount === undefined || amount === null ? undefined : toCents(amount);
+}
+
+/** Placeholder written into punch_event.pin — the real code is never stored. */
+const PUNCH_PIN_REDACTED = '----';
 
 function unauthorized(msg = 'Unauthorized'): never {
   throw new SenderError(msg);
@@ -57,6 +123,8 @@ const organizationTable = table(
     public: true,
     indexes: [
       { accessor: 'byOwnerId', algorithm: 'btree', columns: ['ownerId'] },
+      { accessor: 'byOrgIdText', algorithm: 'btree', columns: ['orgIdText'] },
+      { accessor: 'byRootOrgId', algorithm: 'btree', columns: ['rootOrgId'] },
     ],
   },
   {
@@ -81,6 +149,19 @@ const organizationTable = table(
     parentOrgId: t.option(t.string()).default(undefined),
     // Store image (UploadThing URL) — shown wherever the user picks a store.
     logoUrl: t.option(t.string()).default(undefined),
+    // ── RLS / query support (appended; keep at the END) ──────────────────────
+    // `id` is a uuid, but every other table references an org by a STRING
+    // column. SpacetimeDB SQL refuses to join uuid against string, and refuses
+    // to compare `option` columns AT ALL — so neither `id` nor `parentOrgId`
+    // can appear in a row-level-security rule or in a subscription WHERE.
+    // These two plain-string mirrors exist so they can:
+    //   orgIdText  = id.toString()
+    //   rootOrgId  = parentOrgId ?? id.toString()   (share-group root)
+    // Backfilled by the `migrateSecurityV1` reducer and maintained by
+    // createOrganization / updateOrgParent. Also lets reducers replace
+    // `[...organization.iter()].find(...)` full scans with an index lookup.
+    orgIdText: t.string().default(''),
+    rootOrgId: t.string().default(''),
   }
 );
 
@@ -109,6 +190,13 @@ const orgMemberTable = table(
     // Hourly pay rate for payroll. Optional so pre-existing rows default to
     // null ("rate not set"). MUST stay the last column — see migration rules.
     hourlyRate: t.option(t.number()).default(undefined),
+    // ── Money in minor units (appended; keep at the END) ─────────────────────
+    // The f64 columns above accumulate representation error: 0.1 + 0.2 is not
+    // 0.3, so refunds stop reconciling with charges and payroll totals drift a
+    // cent at a time. SpacetimeDB cannot change a column's type, so the exact
+    // value lives alongside as an integer count of minor units and the f64 is
+    // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
+    hourlyRateCents: t.option(t.i64()).default(undefined),
   }
 );
 
@@ -266,6 +354,14 @@ const inventoryItemTable = table(
     // JSON array of batch-level expiration quantities:
     // [{ expiresOn: "YYYY-MM-DD" | null, quantity: number }].
     expirationBatches: t.option(t.string()).default(undefined),
+    // ── Money in minor units (appended; keep at the END) ─────────────────────
+    // The f64 columns above accumulate representation error: 0.1 + 0.2 is not
+    // 0.3, so refunds stop reconciling with charges and payroll totals drift a
+    // cent at a time. SpacetimeDB cannot change a column's type, so the exact
+    // value lives alongside as an integer count of minor units and the f64 is
+    // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
+    costPerUnitCents: t.option(t.i64()).default(undefined),
+    retailPriceCents: t.option(t.i64()).default(undefined),
   }
 );
 
@@ -363,11 +459,14 @@ const roleTaskTable = table(
     indexes: [
       { accessor: 'byRoleId', algorithm: 'btree', columns: ['roleId'] },
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byOrgId', algorithm: 'btree', columns: ['orgId'] },
     ],
   },
   {
     id: t.uuid().primaryKey(),
     roleId: t.string(),
+    // Legacy. `option` columns cannot be compared or joined in SpacetimeDB SQL,
+    // so this one cannot appear in an RLS rule — see `orgId` below.
     organizationId: t.option(t.string()),
     title: t.string(),
     description: t.string(),
@@ -377,6 +476,13 @@ const roleTaskTable = table(
     requiresEvidence: t.bool(),
     notifyChats: t.string(),  // JSON-encoded string[]
     createdAt: t.timestamp(),
+    // Non-option mirror of `organizationId` (appended; keep at the END). This
+    // is the column the row-level-security rule joins on — the original is
+    // `t.option(t.string())`, and publishing an RLS rule that references it
+    // fails with "Unexpected type: (expected) String != (some: String |
+    // none: ())". Backfilled by `migrateSecurityV1`; written by both role-task
+    // reducers alongside the legacy column.
+    orgId: t.string().default(''),
   }
 );
 
@@ -399,6 +505,13 @@ const staffMemberTable = table(
     availability: t.string(),  // JSON-encoded string[]
     createdAt: t.timestamp(),
     updatedAt: t.timestamp(),
+    // ── Money in minor units (appended; keep at the END) ─────────────────────
+    // The f64 columns above accumulate representation error: 0.1 + 0.2 is not
+    // 0.3, so refunds stop reconciling with charges and payroll totals drift a
+    // cent at a time. SpacetimeDB cannot change a column's type, so the exact
+    // value lives alongside as an integer count of minor units and the f64 is
+    // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
+    hourlyRateCents: t.option(t.i64()).default(undefined),
   }
 );
 
@@ -570,6 +683,16 @@ const paymentTable = table(
     refundReason: t.option(t.string()),
     refundedAt: t.option(t.timestamp()),
     createdAt: t.timestamp(),
+    // ── Money in minor units (appended; keep at the END) ─────────────────────
+    // The f64 columns above accumulate representation error: 0.1 + 0.2 is not
+    // 0.3, so refunds stop reconciling with charges and payroll totals drift a
+    // cent at a time. SpacetimeDB cannot change a column's type, so the exact
+    // value lives alongside as an integer count of minor units and the f64 is
+    // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
+    amountCents: t.option(t.i64()).default(undefined),
+    taxAmountCents: t.option(t.i64()).default(undefined),
+    discountAmountCents: t.option(t.i64()).default(undefined),
+    refundAmountCents: t.option(t.i64()).default(undefined),
   }
 );
 
@@ -986,6 +1109,7 @@ const siteBookingTable = table(
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
       { accessor: 'byDate', algorithm: 'btree', columns: ['date'] },
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
   },
   {
@@ -1001,6 +1125,12 @@ const siteBookingTable = table(
     notes: t.option(t.string()),
     status: t.string(),        // "pending" | "confirmed" | "cancelled"
     createdAt: t.timestamp(),
+    // Denormalised owning org (appended; keep at the END). Bookings carry
+    // customer PII (name/phone/email) and previously could only be traced to an
+    // org via site.id — a uuid, which SpacetimeDB SQL cannot join against this
+    // table's string `siteId`. Without this column the table cannot be covered
+    // by RLS at all. Backfilled by `migrateSecurityV1`.
+    organizationId: t.string().default(''),
   }
 );
 
@@ -1101,6 +1231,15 @@ const purchaseOrderTable = table(
     sentAt: t.option(t.timestamp()),
     receivedAt: t.option(t.timestamp()),
     createdAt: t.timestamp(),
+    // ── Money in minor units (appended; keep at the END) ─────────────────────
+    // The f64 columns above accumulate representation error: 0.1 + 0.2 is not
+    // 0.3, so refunds stop reconciling with charges and payroll totals drift a
+    // cent at a time. SpacetimeDB cannot change a column's type, so the exact
+    // value lives alongside as an integer count of minor units and the f64 is
+    // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
+    subtotalCents: t.option(t.i64()).default(undefined),
+    taxCents: t.option(t.i64()).default(undefined),
+    totalCents: t.option(t.i64()).default(undefined),
   }
 );
 
@@ -1155,6 +1294,13 @@ const expenseTable = table(
     receiptUrl: t.option(t.string()),
     notes: t.option(t.string()),
     createdAt: t.timestamp(),
+    // ── Money in minor units (appended; keep at the END) ─────────────────────
+    // The f64 columns above accumulate representation error: 0.1 + 0.2 is not
+    // 0.3, so refunds stop reconciling with charges and payroll totals drift a
+    // cent at a time. SpacetimeDB cannot change a column's type, so the exact
+    // value lives alongside as an integer count of minor units and the f64 is
+    // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
+    amountCents: t.option(t.i64()).default(undefined),
   }
 );
 
@@ -1235,6 +1381,14 @@ const wasteLogTable = table(
     notes: t.option(t.string()),
     createdBy: t.option(t.string()), // member display name
     createdAt: t.timestamp(),
+    // ── Money in minor units (appended; keep at the END) ─────────────────────
+    // The f64 columns above accumulate representation error: 0.1 + 0.2 is not
+    // 0.3, so refunds stop reconciling with charges and payroll totals drift a
+    // cent at a time. SpacetimeDB cannot change a column's type, so the exact
+    // value lives alongside as an integer count of minor units and the f64 is
+    // kept only as a legacy mirror. Backfilled by `migrateMoneyV1`.
+    costPerUnitCents: t.option(t.i64()).default(undefined),
+    totalCostCents: t.option(t.i64()).default(undefined),
   }
 );
 
@@ -1569,6 +1723,126 @@ const blogPostTable = table(
   }
 );
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SECRET TABLES (private — never readable by a client, at any access level)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Row-level security scopes a client to its own organization's rows, but RLS is
+// ROW level: it cannot hide one column of a row the client is otherwise allowed
+// to see. Anything that must never reach a client — even a client that legally
+// owns the surrounding row — has to live in its own `public: false` table.
+//
+// Three things qualified, and all three used to sit in world-readable tables:
+//   user.passwordHash            → user_secret
+//   settings square/clover tokens -> org_secret
+//   org_member.punchInCode       → member_punch_code (public, but RLS'd to self)
+//
+// `migrateSecurityV1` copies existing values across and blanks the originals.
+// The legacy columns stay in their tables (SpacetimeDB cannot drop columns via
+// automatic migration) but are never read or written again.
+
+/** Password hashes. Only `loginWithPassword` / `setPassword` read this. */
+const userSecretTable = table(
+  {
+    name: 'user_secret',
+    public: false,
+  },
+  {
+    identity: t.identity().primaryKey(),
+    passwordHash: t.string(),
+    updatedAt: t.timestamp(),
+  }
+);
+
+/** Per-org POS OAuth credentials. Only reducers and the service identity read this. */
+const orgSecretTable = table(
+  {
+    name: 'org_secret',
+    public: false,
+  },
+  {
+    organizationId: t.string().primaryKey(),
+    squareAccessToken: t.option(t.string()),
+    squareRefreshToken: t.option(t.string()),
+    squareTokenExpiresAt: t.option(t.timestamp()),
+    cloverAccessToken: t.option(t.string()),
+    cloverMerchantId: t.option(t.string()),
+    updatedAt: t.timestamp(),
+  }
+);
+
+// ─── Member punch codes ──────────────────────────────────────────────────────
+//
+// The punch-in PIN doubles as the manager "unlock this device" secret, so it is
+// NOT enough to scope it to the organization: a staff member who can read every
+// colleague's row can read their manager's unlock PIN and take the store tablet
+// out of kiosk mode. This table is public so a user can still see THEIR OWN
+// code, but its RLS rule matches `userId = :sender` only.
+//
+// Verification of somebody else's PIN is done by the `verifyManagerPin`
+// reducer, never by comparing strings in the browser.
+//
+const memberPunchCodeTable = table(
+  {
+    name: 'member_punch_code',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
+    ],
+  },
+  {
+    memberId: t.string().primaryKey(),
+    organizationId: t.string(),
+    userId: t.identity(),
+    code: t.string(),
+    updatedAt: t.timestamp(),
+  }
+);
+
+
+/**
+ * Result of the most recent PIN → operator resolution for one device identity.
+ *
+ * The shared store tablet identifies whoever is standing in front of it by a
+ * 4-digit PIN. It used to do that by scanning the subscribed org_member rows in
+ * the browser, which only worked because every client held every colleague's
+ * PIN. `resolveDeviceOperator` does the match inside the database and writes
+ * the answer here; the RLS rule on this table is `identity = :sender`, so a
+ * device only ever sees its own result. Reducers cannot return values, hence
+ * the round trip through a row.
+ */
+const deviceOperatorSessionTable = table(
+  {
+    name: 'device_operator_session',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    identity: t.identity().primaryKey(),
+    organizationId: t.string(),
+    memberId: t.string(),
+    memberName: t.string(),
+    role: t.string(),
+    resolvedAt: t.timestamp(),
+  }
+);
+
+/** One row; records which one-shot data migrations have already run. */
+const migrationStateTable = table(
+  {
+    name: 'migration_state',
+    public: false,
+  },
+  {
+    name: t.string().primaryKey(),
+    appliedAt: t.timestamp(),
+    note: t.string(),
+  }
+);
+
 // ─── Service Identity ────────────────────────────────────────────────────────
 //
 // Approved identities allowed to call service-only reducers (cron, server-side
@@ -1577,8 +1851,16 @@ const blogPostTable = table(
 //
 const serviceIdentityTable = table(
   {
+    // MUST be public. Every table's RLS rule joins this one to grant the
+    // server-side service identity cross-tenant read access, and an RLS rule
+    // cannot reference a private table: the whole rule set fails to evaluate
+    // with "no such table: `service_identity`" and EVERY query returns that
+    // error, for every caller. (Found the hard way in production on
+    // 2026-09-15 — the database is effectively unreadable until this is
+    // public.) It holds no secret: an identity is a public key hash, not a
+    // credential, and calling a service reducer still requires the token.
     name: 'service_identity',
-    public: false,
+    public: true,
   },
   {
     identity: t.identity().primaryKey(),
@@ -1704,6 +1986,199 @@ const aiUsageQuotaTable = table(
   }
 );
 
+// ─── Docs ────────────────────────────────────────────────────────────────────
+//
+// Collaborative documents (Merchiva Docs). Content is a Yjs CRDT: the latest
+// compacted state lives in document_snapshot; edits made since then are
+// appended to document_update (auto-inc id = commit order) and clients merge
+// snapshot + log. Like every table in this module these are public — reads are
+// NOT access-filtered server-side; every write is authorized by the docs
+// reducers (requireDoc / docRoleFor, near the end of this file).
+//
+const documentTable = table(
+  {
+    name: 'document',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.string().primaryKey(),              // client-generated lowercase UUID v4 (reducers can't return ids)
+    organizationId: t.string(),
+    ownerMemberId: t.string(),                // org_member id
+    title: t.string(),                        // '' → UI shows "Untitled document"
+    excerpt: t.string(),                      // ≤ 280 chars of plain text
+    icon: t.option(t.string()),               // emoji
+    visibility: t.string(),                   // 'org_edit' | 'org_view' | 'private'
+    templateId: t.option(t.string()),         // 'blank' | template key | 'import:docx' | …
+    pageSetup: t.option(t.string()),          // JSON DocPageSetup
+    wordCount: t.u32(),                       // computed client-side (Intl.Segmenter)
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),                 // content writes bump it at most every 30 s
+    lastEditorMemberId: t.option(t.string()),
+    trashedAt: t.option(t.timestamp()),
+    trashedByMemberId: t.option(t.string()),
+  }
+);
+
+const documentUpdateTable = table(
+  {
+    name: 'document_update',
+    public: true,
+    indexes: [
+      { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+    ],
+  },
+  {
+    id: t.u64().primaryKey().autoInc(),       // monotone in commit order (gaps possible)
+    documentId: t.string(),
+    organizationId: t.string(),
+    payload: t.byteArray(),                   // Yjs update (v1 encoding)
+    byteLength: t.u32(),
+    sessionId: t.string(),                    // SpacetimeYjsProvider instance — echo suppression only
+    memberId: t.string(),
+    createdAt: t.timestamp(),
+  }
+);
+
+const documentSnapshotTable = table(
+  {
+    name: 'document_snapshot',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    documentId: t.string().primaryKey(),
+    organizationId: t.string(),
+    state: t.byteArray(),                     // Y.encodeStateAsUpdate — covers every update id ≤ throughUpdateId
+    throughUpdateId: t.u64(),                 // 0 = seeded at creation (template / import / copy)
+    byteLength: t.u32(),
+    html: t.string(),                         // export / server-side readers
+    plainText: t.string(),
+    compactedAt: t.timestamp(),
+    compactedByMemberId: t.string(),
+  }
+);
+
+const documentPresenceTable = table(
+  {
+    name: 'document_presence',
+    public: true,
+    indexes: [
+      { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+      { accessor: 'byConnectionId', algorithm: 'btree', columns: ['connectionId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    documentId: t.string(),
+    organizationId: t.string(),
+    connectionId: t.string(),                 // server-stamped ctx.connectionId hex
+    identity: t.identity(),                   // ctx.sender
+    memberId: t.string(),
+    yClientId: t.u32(),                       // Y.Doc clientID of that tab
+    name: t.string(),
+    color: t.string(),                        // '#rrggbb'
+    canEdit: t.bool(),                        // server-computed; compaction election
+    awareness: t.byteArray(),                 // y-protocols encodeAwarenessUpdate(awareness, [yClientId])
+    updatedAt: t.timestamp(),
+  }
+);
+
+const documentCommentTable = table(
+  {
+    name: 'document_comment',
+    public: true,
+    indexes: [
+      { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+      { accessor: 'byThreadId', algorithm: 'btree', columns: ['threadId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    documentId: t.string(),
+    organizationId: t.string(),
+    threadId: t.string(),                     // client UUID; equals the Tiptap comment mark attr `threadId`
+    parentId: t.option(t.string()),           // undefined = thread root; otherwise the root comment id
+    authorMemberId: t.string(),
+    authorIdentity: t.identity(),
+    body: t.string(),
+    quotedText: t.option(t.string()),         // root only
+    mentions: t.option(t.string()),           // JSON string[] of org_member ids
+    status: t.string(),                       // root: 'open' | 'resolved'; replies: 'open'
+    resolvedAt: t.option(t.timestamp()),
+    resolvedByMemberId: t.option(t.string()),
+    createdAt: t.timestamp(),
+    editedAt: t.option(t.timestamp()),
+    anchor: t.option(t.byteArray()),          // root only: encoded Yjs relative positions (lib/docs/comment-anchors.ts); commenters can't write the mark
+  }
+);
+
+const documentVersionTable = table(
+  {
+    name: 'document_version',
+    public: true,
+    indexes: [
+      { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    documentId: t.string(),
+    organizationId: t.string(),
+    kind: t.string(),                         // 'auto' | 'named' | 'restore'
+    name: t.option(t.string()),
+    state: t.byteArray(),                     // full Y state (independent of gc)
+    throughUpdateId: t.u64(),
+    byteLength: t.u32(),
+    wordCount: t.u32(),
+    createdAt: t.timestamp(),
+    createdByMemberId: t.string(),
+  }
+);
+
+const documentStarTable = table(
+  {
+    name: 'document_star',
+    public: true,
+    indexes: [
+      { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    documentId: t.string(),
+    organizationId: t.string(),
+    memberId: t.string(),
+    createdAt: t.timestamp(),
+  }
+);
+
+const documentAccessTable = table(
+  {
+    name: 'document_access',
+    public: true,
+    indexes: [
+      { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+    ],
+  },
+  {
+    id: t.uuid().primaryKey(),
+    documentId: t.string(),
+    organizationId: t.string(),
+    memberId: t.string(),
+    role: t.string(),                         // 'viewer' | 'commenter' | 'editor'
+    grantedByMemberId: t.string(),
+    createdAt: t.timestamp(),
+    updatedAt: t.timestamp(),
+  }
+);
+
 // SCHEMA
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1765,14 +2240,234 @@ const spacetimedb = schema({
   pushSubscription: pushSubscriptionTable,
   blogPost: blogPostTable,
   serviceIdentity: serviceIdentityTable,
+  userSecret: userSecretTable,
+  orgSecret: orgSecretTable,
+  memberPunchCode: memberPunchCodeTable,
+  deviceOperatorSession: deviceOperatorSessionTable,
+  migrationState: migrationStateTable,
   userBriefingPref: userBriefingPrefTable,
   aiUsage: aiUsageTable,
   aiUsageQuota: aiUsageQuotaTable,
   platformAdmin: platformAdminTable,
   platformAdminSecret: platformAdminSecretTable,
+  document: documentTable,
+  documentUpdate: documentUpdateTable,
+  documentSnapshot: documentSnapshotTable,
+  documentPresence: documentPresenceTable,
+  documentComment: documentCommentTable,
+  documentVersion: documentVersionTable,
+  documentStar: documentStarTable,
+  documentAccess: documentAccessTable,
 });
 
 export default spacetimedb;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROW-LEVEL SECURITY
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// WHY THIS EXISTS
+// ---------------
+// Every table below used to be readable, in full, by anyone who knew the module
+// name — and the module name ships in the client bundle as
+// NEXT_PUBLIC_SPACETIMEDB_MODULE. A plain unauthenticated
+//
+//     curl -d "SELECT * FROM settings" https://<host>/v1/database/<module>/sql
+//
+// returned every tenant's Square OAuth tokens. `public: true` in SpacetimeDB
+// means "any client may read every row", not "any authenticated client may read
+// its own rows". Scoping the client's subscription query does nothing: the
+// client chooses its own query.
+//
+// A `clientVisibilityFilter` is the only real boundary. It is enforced by the
+// database for BOTH the WebSocket subscription path and the HTTP /sql path.
+//
+// HOW IT WORKS
+// ------------
+//   * A rule is `SELECT <alias>.* FROM ...` returning rows of exactly ONE table.
+//   * Several rules on the same table are OR'd together.
+//   * A table with NO rule stays fully world-readable — so the default is
+//     dangerous, and every new table must be added here. See RLS_UNFILTERED.
+//   * `:sender` binds to the calling identity.
+//
+// DIALECT LIMITS THAT SHAPED THESE RULES (all verified against the live module)
+// ---------------------------------------------------------------------------
+//   * `option` columns cannot be compared or joined AT ALL:
+//         Unexpected type: (expected) String != (some: String | none: ())
+//     So no rule may reference an `t.option(...)` column. This is also why
+//     `organization.parentOrgId` cannot drive share-group visibility.
+//   * uuid cannot be joined against string:
+//         Unexpected type: (expected) String != (__uuid__: U128)
+//     Every table keys its parent by a STRING column while primary keys are
+//     `t.uuid()`, so joins to `organization.id` / `site.id` / `chat_conversation.id`
+//     are impossible. `organization.orgIdText` and `site_booking.organizationId`
+//     were added to work around exactly this.
+//   * `IN` is not supported ("Unsupported expression"); only
+//     = < > <= >= != <> combined with AND / OR against literals.
+//
+// THE SERVICE RULE
+// ----------------
+// /merchivaAdmin and the server-side cron/fan-out routes read across every
+// tenant using SPACETIMEDB_SERVICE_TOKEN, which is an ordinary identity and is
+// therefore subject to RLS. Each table gets a second rule granting that
+// identity full read access, following the documented "admin" pattern
+// (`JOIN service_identity s WHERE s.identity = :sender`). Without it the whole
+// admin console goes blank the moment these filters are published.
+
+/**
+ * Tables scoped to "an active membership in the owning organization".
+ *
+ * Each entry is a table name, or `[table, column]` when the scoping column is
+ * not called `organizationId`. The column MUST NOT be `t.option(...)`: publish
+ * rejects a rule that touches one with
+ *   Unexpected type: (expected) String != (some: String | none: ())
+ * `role_task` is the case in point — its `organizationId` is an option, so it
+ * scopes on the `orgId` mirror instead. `bun run check:rls` enforces this.
+ */
+const RLS_ORG_SCOPED: Array<string | [table: string, column: string]> = [
+  'ai_chat_session', 'ai_job', 'ai_usage', 'ai_usage_quota',
+  'chat_conversation', 'coupon', 'daily_briefing', 'design',
+  'device_login_request', 'document', 'document_access', 'document_comment',
+  'document_presence', 'document_snapshot', 'document_star', 'document_update',
+  'document_version', 'expense', 'inventory_item', 'inventory_transaction',
+  'location', 'org_invitation', 'payment', 'punch_event', 'purchase_order',
+  'queue_entry', ['role_task', 'orgId'], 'role_task_assignment', 'sales_record',
+  'settings', 'shift', 'shift_preset', 'shift_trade', 'site', 'site_booking',
+  'site_component', 'staff_availability', 'staff_member', 'staff_role',
+  'store_device', 'supplier', 'supplier_message', 'time_off_request',
+  'training_day', 'training_day_grade', 'training_objective',
+  'training_objective_grade', 'training_review_request', 'waste_log',
+];
+
+/**
+ * Tables scoped to a single user by an `identity` column. These hold personal
+ * data that colleagues have no business reading — a browser push keypair, a
+ * private notification, a personal todo list, a punch-in PIN.
+ */
+const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
+  ['notification', 'targetId'],
+  ['push_subscription', 'targetId'],
+  ['todo', 'userId'],
+  ['user_briefing_pref', 'userId'],
+  ['member_punch_code', 'userId'],
+  ['device_operator_session', 'identity'],
+];
+
+/**
+ * Website-builder / loyalty tables. The features were removed in "slim down to
+ * core ops", but the tables, their reducers and their customer PII are still
+ * deployed. Until they are dropped for real they are readable by nothing except
+ * the service identity — no client rule at all.
+ */
+const RLS_SERVICE_ONLY = [
+  'site_page', 'site_customer', 'site_order', 'site_membership',
+  'membership_tier', 'membership_perk', 'perk_claim', 'customer_points',
+  'platform_admin',
+];
+
+/**
+ * Deliberately NOT filtered, with the reason. Anything not listed here and not
+ * covered by a rule above is an oversight, not a decision.
+ *
+ *   blog_post        — public marketing content rendered by unauthenticated SSR
+ *                      (lib/spacetimedb/sql.ts). Holds no tenant data.
+ *   service_identity — every other table's service rule joins it, and a rule
+ *                      that references a private table makes the ENTIRE rule
+ *                      set fail to evaluate. It cannot carry its own rule
+ *                      either: that would be self-referential. Contents are
+ *                      identity hashes and labels — not credentials.
+ *
+ * Private (`public: false`) tables need no rule; they are unreadable by any
+ * client: platform_admin_secret, user_secret, org_secret, migration_state.
+ */
+const RLS_UNFILTERED = ['blog_post', 'service_identity'];
+void RLS_UNFILTERED;
+
+const rlsRules: Record<string, ReturnType<typeof spacetimedb.clientVisibilityFilter.sql>> = {};
+
+/** Full read access for the server-side service identity. */
+function serviceRule(tableName: string) {
+  return `SELECT x.* FROM ${tableName} x JOIN service_identity s WHERE s.identity = :sender`;
+}
+
+/** ['table', 'column'] for every org-scoped entry, defaulting the column. */
+const orgScopedPairs: Array<[string, string]> = RLS_ORG_SCOPED.map((e) =>
+  typeof e === 'string' ? [e, 'organizationId'] : e
+);
+
+for (const [tbl, col] of orgScopedPairs) {
+  rlsRules[`rls_${tbl}_member`] = spacetimedb.clientVisibilityFilter.sql(
+    `SELECT x.* FROM ${tbl} x ` +
+    `JOIN org_member m ON x.${col} = m.organizationId ` +
+    `WHERE m.userId = :sender AND m.status = 'active'`
+  );
+}
+for (const [tbl, col] of RLS_SELF_SCOPED) {
+  rlsRules[`rls_${tbl}_self`] = spacetimedb.clientVisibilityFilter.sql(
+    `SELECT * FROM ${tbl} WHERE ${col} = :sender`
+  );
+}
+for (const tbl of [...orgScopedPairs.map(([t2]) => t2), ...RLS_SELF_SCOPED.map(([t2]) => t2),
+                   ...RLS_SERVICE_ONLY,
+                   'org_member', 'organization', 'user', 'chat_member', 'chat_message']) {
+  rlsRules[`rls_${tbl}_service`] = spacetimedb.clientVisibilityFilter.sql(serviceRule(tbl));
+}
+
+// ─── Hand-written rules ──────────────────────────────────────────────────────
+
+// org_member: your own memberships, plus everyone in an org where you are an
+// active member (the team page, chat author names and the schedule all need
+// colleague rows). The punch-in PIN is NOT in this table any more — RLS is row
+// level and could not have hidden that one column from a colleague.
+rlsRules.rls_org_member_self = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT * FROM org_member WHERE userId = :sender`
+);
+rlsRules.rls_org_member_colleagues = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT peer.* FROM org_member peer ` +
+  `JOIN org_member me ON peer.organizationId = me.organizationId ` +
+  `WHERE me.userId = :sender AND me.status = 'active'`
+);
+
+// organization: orgs you own, plus orgs you are an active member of. Joins go
+// through `orgIdText` because `id` is a uuid — see the dialect notes above.
+rlsRules.rls_organization_owner = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT * FROM organization WHERE ownerId = :sender`
+);
+rlsRules.rls_organization_member = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT o.* FROM organization o ` +
+  `JOIN org_member m ON o.orgIdText = m.organizationId ` +
+  `WHERE m.userId = :sender AND m.status = 'active'`
+);
+
+// user: yourself, plus colleagues (needed for display names / avatars).
+// `passwordHash` has moved to the private `user_secret` table, so the colleague
+// rule no longer hands out credentials.
+rlsRules.rls_user_self = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT * FROM user WHERE identity = :sender`
+);
+rlsRules.rls_user_colleagues = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT u.* FROM user u ` +
+  `JOIN org_member theirs ON u.identity = theirs.userId ` +
+  `JOIN org_member mine ON theirs.organizationId = mine.organizationId ` +
+  `WHERE mine.userId = :sender AND mine.status = 'active'`
+);
+
+// chat: membership-scoped rather than org-scoped — you see a conversation's
+// messages only if you are in it. `chat_conversation.id` is a uuid and
+// `chat_message.conversationId` a string, so the join has to go through
+// chat_member, which keys the conversation the same (string) way.
+rlsRules.rls_chat_member_peers = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT peer.* FROM chat_member peer ` +
+  `JOIN chat_member me ON peer.conversationId = me.conversationId ` +
+  `WHERE me.userId = :sender`
+);
+rlsRules.rls_chat_message_mine = spacetimedb.clientVisibilityFilter.sql(
+  `SELECT msg.* FROM chat_message msg ` +
+  `JOIN chat_member me ON msg.conversationId = me.conversationId ` +
+  `WHERE me.userId = :sender`
+);
+
+export const rowLevelSecurity = spacetimedb.exportGroup(rlsRules);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LIFECYCLE REDUCERS
@@ -1799,6 +2494,35 @@ export const onConnect = spacetimedb.clientConnected((ctx) => {
 // AUTH REDUCERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ─── Password storage ────────────────────────────────────────────────────────
+//
+// `user` is a public table: a client can read its own row, and (via RLS) its
+// colleagues' rows. A password hash must not be in there — RLS is row level and
+// cannot hide a single column. Hashes live in the private `user_secret` table,
+// which no client can read at any access level.
+//
+// The legacy `user.passwordHash` column cannot be dropped (SpacetimeDB has no
+// automatic column removal), so it is blanked by `migrateSecurityV1` and never
+// written again. `readPasswordHash` still falls back to it so a login attempt
+// that arrives before the migration has run does not fail.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function readPasswordHash(ctx: any, user: { identity: unknown; passwordHash?: string }): string | undefined {
+  const secret = ctx.db.userSecret.identity.find(user.identity);
+  if (secret) return secret.passwordHash as string;
+  return user.passwordHash;               // pre-migration fallback
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function writePasswordHash(ctx: any, identity: unknown, passwordHash: string): void {
+  const existing = ctx.db.userSecret.identity.find(identity);
+  if (existing) {
+    ctx.db.userSecret.identity.update({ ...existing, passwordHash, updatedAt: ctx.timestamp });
+  } else {
+    ctx.db.userSecret.insert({ identity, passwordHash, updatedAt: ctx.timestamp });
+  }
+}
+
 /** Set the user's email, password hash, and display name after first connect. */
 export const createUser = spacetimedb.reducer(
   {
@@ -1807,19 +2531,21 @@ export const createUser = spacetimedb.reducer(
     displayName: t.option(t.string()),
   },
   (ctx, { email, passwordHash, displayName }) => {
+    if (passwordHash) writePasswordHash(ctx, ctx.sender, passwordHash);
     const existing = ctx.db.user.identity.find(ctx.sender);
     if (existing) {
       ctx.db.user.identity.update({
         ...existing,
         email,
-        passwordHash: passwordHash ?? existing.passwordHash,
+        // Never store the hash on the public row again.
+        passwordHash: undefined,
         displayName: displayName ?? existing.displayName,
       });
     } else {
       ctx.db.user.insert({
         identity: ctx.sender,
         email,
-        passwordHash,
+        passwordHash: undefined,
         displayName,
         avatarUrl: undefined,
         lastActiveOrgId: undefined,
@@ -1844,8 +2570,9 @@ export const loginWithPassword = spacetimedb.reducer(
     // Find existing account by email
     const existingUser = [...ctx.db.user.byEmail.filter(email)][0];
     if (!existingUser) throw new SenderError('Invalid email or password');
-    if (!existingUser.passwordHash) throw new SenderError('Account has no password set');
-    if (existingUser.passwordHash !== passwordHash) throw new SenderError('Invalid email or password');
+    const storedHash = readPasswordHash(ctx, existingUser);
+    if (!storedHash) throw new SenderError('Account has no password set');
+    if (storedHash !== passwordHash) throw new SenderError('Invalid email or password');
 
     const oldIdentity = existingUser.identity;
     const newIdentity = ctx.sender;
@@ -1861,7 +2588,12 @@ export const loginWithPassword = spacetimedb.reducer(
 
     // Migrate user record to new identity
     ctx.db.user.delete(existingUser);
-    ctx.db.user.insert({ ...existingUser, identity: newIdentity });
+    ctx.db.user.insert({ ...existingUser, identity: newIdentity, passwordHash: undefined });
+
+    // Move the password hash onto the new identity, then drop the old secret.
+    const oldSecret = ctx.db.userSecret.identity.find(oldIdentity);
+    writePasswordHash(ctx, newIdentity, storedHash);
+    if (oldSecret) ctx.db.userSecret.delete(oldSecret);
 
     // Migrate org memberships
     for (const m of [...ctx.db.orgMember.byUserId.filter(oldIdentity)]) {
@@ -1886,6 +2618,31 @@ export const loginWithPassword = spacetimedb.reducer(
     // Migrate todos
     for (const td of [...ctx.db.todo.byUserId.filter(oldIdentity)]) {
       ctx.db.todo.id.update({ ...td, userId: newIdentity });
+    }
+
+    // ── Identity-keyed rows that were previously left behind ────────────────
+    // These were never migrated before. It did not show because every client
+    // subscribed to every row of these tables and filtered in JavaScript; now
+    // that RLS scopes them by `:sender`, an un-migrated row would simply
+    // vanish for the user (lost notifications, dead push subscriptions, a
+    // punch-in PIN that no longer opens the store device).
+    for (const n of [...ctx.db.notification.iter()]) {
+      if (n.targetId.toString() === oldIdentity.toString()) {
+        ctx.db.notification.id.update({ ...n, targetId: newIdentity });
+      }
+    }
+    for (const p of [...ctx.db.pushSubscription.iter()]) {
+      if (p.targetId.toString() === oldIdentity.toString()) {
+        ctx.db.pushSubscription.id.update({ ...p, targetId: newIdentity });
+      }
+    }
+    for (const c of [...ctx.db.memberPunchCode.byUserId.filter(oldIdentity)]) {
+      ctx.db.memberPunchCode.memberId.update({ ...c, userId: newIdentity });
+    }
+    const pref = ctx.db.userBriefingPref.userId.find(oldIdentity);
+    if (pref) {
+      ctx.db.userBriefingPref.delete(pref);
+      ctx.db.userBriefingPref.insert({ ...pref, userId: newIdentity });
     }
   }
 );
@@ -1924,8 +2681,7 @@ export const createOrg = spacetimedb.reducer(
     // Validate parent if provided.
     let resolvedParentId: string | undefined = undefined;
     if (parentOrgId && parentOrgId.length > 0) {
-      const parent = [...ctx.db.organization.iter()]
-        .find(o => o.id.toString() === parentOrgId);
+      const parent = [...ctx.db.organization.byOrgIdText.filter(parentOrgId)][0];
       if (!parent) throw new SenderError('Parent organization not found');
       if (parent.ownerId.toString() !== ctx.sender.toString() && !isServiceCaller(ctx)) {
         unauthorized('Only the parent organization owner can add a sub-store');
@@ -1937,6 +2693,7 @@ export const createOrg = spacetimedb.reducer(
     }
 
     const orgId = ctx.newUuidV4();
+    const orgIdText = orgId.toString();
     ctx.db.organization.insert({
       id: orgId,
       ownerId: ctx.sender,
@@ -1949,6 +2706,12 @@ export const createOrg = spacetimedb.reducer(
       currentPeriodEnd: undefined,
       parentOrgId: resolvedParentId,
       logoUrl: undefined,
+      // Mirrors of `id` / `parentOrgId` as plain strings. RLS and subscription
+      // WHERE clauses cannot touch a uuid or an option column, so these are the
+      // only way this row is reachable by a filter. Keep them in sync on every
+      // write that changes id or parent.
+      orgIdText,
+      rootOrgId: resolvedParentId ?? orgIdText,
     });
 
     const defaultPermissions = JSON.stringify({
@@ -1975,6 +2738,7 @@ export const createOrg = spacetimedb.reducer(
       joinedAt: ctx.timestamp,
       punchInCode: undefined,
       hourlyRate: undefined,
+      hourlyRateCents: undefined,
     });
 
     // Initialize default settings for the org — seed businessName from org name
@@ -2024,8 +2788,7 @@ export const updateOrg = spacetimedb.reducer(
     const member = findActiveMember(ctx, organizationId);
     if (member.role !== 'owner') unauthorized('Owner only');
 
-    const org = [...ctx.db.organization.iter()]
-      .find(o => o.id.toString() === organizationId);
+    const org = [...ctx.db.organization.byOrgIdText.filter(organizationId)][0];
     if (!org) throw new SenderError('Organization not found');
     // Note: update requires primaryKey index – rebuild with delete + insert
     ctx.db.organization.delete(org);
@@ -2040,8 +2803,7 @@ export const updateOrgLogo = spacetimedb.reducer(
     const member = findActiveMember(ctx, organizationId);
     if (member.role !== 'owner') unauthorized('Owner only');
 
-    const org = [...ctx.db.organization.iter()]
-      .find(o => o.id.toString() === organizationId);
+    const org = [...ctx.db.organization.byOrgIdText.filter(organizationId)][0];
     if (!org) throw new SenderError('Organization not found');
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({
@@ -2065,21 +2827,21 @@ export const updateOrgParent = spacetimedb.reducer(
     const member = findActiveMember(ctx, organizationId);
     if (member.role !== 'owner') unauthorized('Owner only');
 
-    const org = [...ctx.db.organization.iter()]
-      .find(o => o.id.toString() === organizationId);
+    const org = [...ctx.db.organization.byOrgIdText.filter(organizationId)][0];
     if (!org) throw new SenderError('Organization not found');
 
     // Detach branch — accept null/undefined/"" to clear parent.
     if (!parentOrgId || parentOrgId.length === 0) {
       ctx.db.organization.delete(org);
-      ctx.db.organization.insert({ ...org, parentOrgId: undefined });
+      ctx.db.organization.insert({
+        ...org, parentOrgId: undefined, rootOrgId: org.id.toString(),
+      });
       return;
     }
 
     if (parentOrgId === organizationId) throw new SenderError('Org cannot be its own parent');
 
-    const parent = [...ctx.db.organization.iter()]
-      .find(o => o.id.toString() === parentOrgId);
+    const parent = [...ctx.db.organization.byOrgIdText.filter(parentOrgId)][0];
     if (!parent) throw new SenderError('Parent organization not found');
     if (parent.ownerId.toString() !== ctx.sender.toString() && !isServiceCaller(ctx)) {
       unauthorized('Only the parent organization owner can attach a sub-store');
@@ -2088,14 +2850,14 @@ export const updateOrgParent = spacetimedb.reducer(
       throw new SenderError('Sub-stores cannot themselves have sub-stores');
     }
     // If this org is currently a parent of others, we can't make it a child too.
-    const hasChildren = [...ctx.db.organization.iter()]
-      .some(o => o.parentOrgId === organizationId);
+    const hasChildren = [...ctx.db.organization.byRootOrgId.filter(organizationId)]
+      .some(o => o.orgIdText !== organizationId);
     if (hasChildren) {
       throw new SenderError('Cannot attach an org that already has sub-stores');
     }
 
     ctx.db.organization.delete(org);
-    ctx.db.organization.insert({ ...org, parentOrgId });
+    ctx.db.organization.insert({ ...org, parentOrgId, rootOrgId: parentOrgId });
   }
 );
 
@@ -2124,8 +2886,7 @@ export const updateOrgSubscription = spacetimedb.reducer(
     const member = findActiveMember(ctx, args.organizationId);
     if (member.role !== 'owner') unauthorized('Owner only');
 
-    const org = [...ctx.db.organization.iter()]
-      .find(o => o.id.toString() === args.organizationId);
+    const org = [...ctx.db.organization.byOrgIdText.filter(args.organizationId)][0];
     if (!org) throw new SenderError('Organization not found');
 
     ctx.db.organization.delete(org);
@@ -2219,6 +2980,7 @@ export const acceptInvitation = spacetimedb.reducer(
       joinedAt: ctx.timestamp,
       punchInCode: undefined,
       hourlyRate: undefined,
+      hourlyRateCents: undefined,
     });
 
     // Mark invitation as accepted (delete + reinsert)
@@ -2331,13 +3093,105 @@ export const setPunchInCode = spacetimedb.reducer(
     if (code !== undefined) {
       if (!/^[0-9]{4}$/.test(code)) throw new SenderError('Code must be 4 digits');
       // Prevent collisions within the same org so punch-in lookups remain unambiguous.
-      const collision = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-        .find(m => m.id.toString() !== memberId && m.punchInCode === code);
+      const collision = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
+        .find(c => c.memberId !== memberId && c.code === code);
       if (collision) throw new SenderError('Code already in use at this store');
     }
 
-    ctx.db.orgMember.delete(target);
-    ctx.db.orgMember.insert({ ...target, punchInCode: code });
+    // The code now lives in `member_punch_code`, whose RLS rule matches
+    // `userId = :sender` — a colleague can no longer read it. Writing it back
+    // onto the org_member row would undo that, so the legacy column is always
+    // cleared here.
+    const existingCode = ctx.db.memberPunchCode.memberId.find(memberId);
+    if (code === undefined) {
+      if (existingCode) ctx.db.memberPunchCode.delete(existingCode);
+    } else if (existingCode) {
+      ctx.db.memberPunchCode.memberId.update({
+        ...existingCode, organizationId, userId: target.userId, code, updatedAt: ctx.timestamp,
+      });
+    } else {
+      ctx.db.memberPunchCode.insert({
+        memberId, organizationId, userId: target.userId, code, updatedAt: ctx.timestamp,
+      });
+    }
+
+    if (target.punchInCode !== undefined) {
+      ctx.db.orgMember.delete(target);
+      ctx.db.orgMember.insert({ ...target, punchInCode: undefined });
+    }
+  }
+);
+
+/**
+ * Verify that `code` belongs to an active owner/manager of this org.
+ *
+ * The store tablet's "exit kiosk mode" gate and the settings page used to do
+ * this by scanning the subscribed org_member rows in the browser and comparing
+ * `m.punchInCode === input`. That required every staff member's client to hold
+ * every manager's unlock PIN — the check and the secret were on the same side
+ * of the trust boundary. Both callers now go through this reducer, and the PIN
+ * never leaves the database.
+ */
+/**
+ * Resolve a punch-in PIN to the member it belongs to, for the shared store
+ * tablet. Writes the answer to `device_operator_session` for the calling
+ * identity only. Throws if the PIN matches nobody, so a failed unlock is
+ * indistinguishable from a wrong code.
+ */
+export const resolveDeviceOperator = spacetimedb.reducer(
+  { organizationId: t.string(), code: t.string() },
+  (ctx, { organizationId, code }) => {
+    findActiveMember(ctx, organizationId);
+    if (!/^[0-9]{4}$/.test(code)) throw new SenderError('PIN_NOT_RECOGNIZED');
+
+    const entry = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
+      .find(c => c.code === code);
+    if (!entry) throw new SenderError('PIN_NOT_RECOGNIZED');
+
+    const member = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.id.toString() === entry.memberId);
+    if (!member || member.status !== 'active') throw new SenderError('PIN_NOT_RECOGNIZED');
+
+    const row = {
+      identity: ctx.sender,
+      organizationId,
+      memberId: member.id.toString(),
+      memberName: member.displayName,
+      role: member.role,
+      resolvedAt: ctx.timestamp,
+    };
+    const existing = ctx.db.deviceOperatorSession.identity.find(ctx.sender);
+    if (existing) ctx.db.deviceOperatorSession.identity.update(row);
+    else ctx.db.deviceOperatorSession.insert(row);
+  }
+);
+
+/** Forget the resolved operator (device lock / sign-out). */
+export const clearDeviceOperator = spacetimedb.reducer(
+  {},
+  (ctx) => {
+    const existing = ctx.db.deviceOperatorSession.identity.find(ctx.sender);
+    if (existing) ctx.db.deviceOperatorSession.delete(existing);
+  }
+);
+
+export const verifyManagerPin = spacetimedb.reducer(
+  { organizationId: t.string(), code: t.string() },
+  (ctx, { organizationId, code }) => {
+    findActiveMember(ctx, organizationId);   // caller must belong to this org
+    if (!/^[0-9]{4}$/.test(code)) throw new SenderError('Invalid code');
+
+    const match = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
+      .find(c => c.code === code);
+    if (!match) throw new SenderError('Invalid code');
+
+    const member = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .find(m => m.id.toString() === match.memberId);
+    if (!member || member.status !== 'active') throw new SenderError('Invalid code');
+    if (member.role !== 'owner' && member.role !== 'manager') {
+      throw new SenderError('Invalid code');
+    }
+    // Success is the absence of a SenderError — reducers cannot return values.
   }
 );
 
@@ -2367,7 +3221,11 @@ export const setMemberHourlyRate = spacetimedb.reducer(
     }
 
     ctx.db.orgMember.delete(target);
-    ctx.db.orgMember.insert({ ...target, hourlyRate: rate });
+    ctx.db.orgMember.insert({
+      ...target,
+      hourlyRate: rate,
+      hourlyRateCents: toCentsOpt(rate),
+    });
   }
 );
 
@@ -2397,9 +3255,7 @@ function applyPunch(
   organizationId: string,
   member: { id: { toString(): string } },
   action: string,
-  pin: string,
 ) {
-    const code = pin;
     const memberId = member.id.toString();
     const memberEvents = [...ctx.db.punchEvent.byMemberId.filter(memberId)]
       .filter(e => e.organizationId === organizationId);
@@ -2455,7 +3311,10 @@ function applyPunch(
       id: ctx.newUuidV4(),
       organizationId,
       memberId,
-      pin: code,
+      // The raw PIN is deliberately not persisted — punch_event rows are
+      // visible to the whole org and the code doubles as the manager unlock
+      // secret. It is verified above and then discarded.
+      pin: PUNCH_PIN_REDACTED,
       action: resolved,
       at: ctx.timestamp,
       closed: resolved === 'out' || resolved === 'break-end',
@@ -2473,11 +3332,18 @@ export const recordPunch = spacetimedb.reducer(
   (ctx, { organizationId, code, action }) => {
     findActiveMember(ctx, organizationId);
 
+    // Codes moved to the private-by-RLS `member_punch_code` table.
+    const entry = [...ctx.db.memberPunchCode.byOrganizationId.filter(organizationId)]
+      .find(c => c.code === code);
+    if (!entry) throw new SenderError('Invalid punch-in code');
+
     const target = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
-      .find(m => m.punchInCode === code && m.status === 'active');
+      .find(m => m.id.toString() === entry.memberId && m.status === 'active');
     if (!target) throw new SenderError('Invalid punch-in code');
 
-    applyPunch(ctx, organizationId, target, action, code);
+    // The PIN was verified above; it is deliberately not passed on, because
+    // nothing downstream may persist it — see PUNCH_PIN_REDACTED.
+    applyPunch(ctx, organizationId, target, action);
   }
 );
 
@@ -2506,7 +3372,7 @@ export const managerRecordPunch = spacetimedb.reducer(
         id: ctx.newUuidV4(),
         organizationId,
         memberId,
-        pin: 'manager',
+        pin: PUNCH_PIN_REDACTED,
         action: 'in',
         at: ctx.timestamp,
         closed: false,
@@ -2529,7 +3395,7 @@ export const managerRecordPunch = spacetimedb.reducer(
         id: ctx.newUuidV4(),
         organizationId,
         memberId,
-        pin: 'manager',
+        pin: PUNCH_PIN_REDACTED,
         action: 'out',
         at: ctx.timestamp,
         closed: true,
@@ -2588,7 +3454,7 @@ export const managerSetPunchWindow = spacetimedb.reducer(
       ctx.db.punchEvent.delete(inEvent);
       ctx.db.punchEvent.insert({
         ...inEvent,
-        pin: inEvent.pin || 'manager',
+        pin: PUNCH_PIN_REDACTED,
         at: startAt,
         closed,
       });
@@ -2599,7 +3465,7 @@ export const managerSetPunchWindow = spacetimedb.reducer(
         id,
         organizationId,
         memberId,
-        pin: 'manager',
+        pin: PUNCH_PIN_REDACTED,
         action: 'in',
         at: startAt,
         closed,
@@ -2616,7 +3482,7 @@ export const managerSetPunchWindow = spacetimedb.reducer(
         ctx.db.punchEvent.delete(existingOut);
         ctx.db.punchEvent.insert({
           ...existingOut,
-          pin: existingOut.pin || 'manager',
+          pin: PUNCH_PIN_REDACTED,
           at: endAt,
           closed: true,
           pairEventId: inEventId,
@@ -2626,7 +3492,7 @@ export const managerSetPunchWindow = spacetimedb.reducer(
           id: ctx.newUuidV4(),
           organizationId,
           memberId,
-          pin: 'manager',
+          pin: PUNCH_PIN_REDACTED,
           action: 'out',
           at: endAt,
           closed: true,
@@ -2782,7 +3648,7 @@ export const approveDeviceLogin = spacetimedb.reducer(
     };
 
     if (intent === 'punch-in' || intent === 'punch-out') {
-      applyPunch(ctx, row.organizationId, member, intent === 'punch-in' ? 'in' : 'out', member.punchInCode ?? '');
+      applyPunch(ctx, row.organizationId, member, intent === 'punch-in' ? 'in' : 'out');
     }
 
     ctx.db.deviceLoginRequest.delete(row);
@@ -2800,7 +3666,8 @@ export const consumeDeviceLogin = spacetimedb.reducer(
     id: t.uuid(),
   },
   (ctx, { id }) => {
-    const row = [...ctx.db.deviceLoginRequest.iter()].find(r => r.id.toString() === id.toString());
+    // `id` already arrives as a uuid here, so this is a direct PK lookup.
+    const row = ctx.db.deviceLoginRequest.id.find(id);
     if (!row) throw new SenderError('Request not found');
     findActiveMember(ctx, row.organizationId);
     ctx.db.deviceLoginRequest.delete(row);
@@ -2959,6 +3826,7 @@ export const addInventoryItem = spacetimedb.reducer(
       maxStock: args.maxStock,
       unit: args.unit,
       costPerUnit: args.costPerUnit,
+      costPerUnitCents: toCents(args.costPerUnit),
       supplier: args.supplier,
       lastRestocked: args.lastRestocked,
       lossRate: 0,
@@ -2972,6 +3840,7 @@ export const addInventoryItem = spacetimedb.reducer(
       unitContentUnit: args.unitContentUnit,
       retailEnabled: args.retailEnabled,
       retailPrice: args.retailPrice,
+      retailPriceCents: toCentsOpt(args.retailPrice),
       retailDescription: args.retailDescription,
       retailImageUrl: args.retailImageUrl,
       retailUsageQty: args.retailUsageQty,
@@ -3030,6 +3899,7 @@ export const updateInventoryItem = spacetimedb.reducer(
       maxStock: args.maxStock,
       unit: args.unit,
       costPerUnit: args.costPerUnit,
+      costPerUnitCents: toCents(args.costPerUnit),
       supplier: args.supplier,
       lastRestocked: args.lastRestocked,
       lossRate: args.lossRate,
@@ -3041,6 +3911,7 @@ export const updateInventoryItem = spacetimedb.reducer(
       unitContentUnit: args.unitContentUnit,
       retailEnabled: args.retailEnabled,
       retailPrice: args.retailPrice,
+      retailPriceCents: toCentsOpt(args.retailPrice),
       retailDescription: args.retailDescription,
       retailImageUrl: args.retailImageUrl,
       retailUsageQty: args.retailUsageQty,
@@ -3187,6 +4058,7 @@ export const addStaffMember = spacetimedb.reducer(
       name: args.name,
       role: args.role,
       hourlyRate: args.hourlyRate,
+      hourlyRateCents: toCents(args.hourlyRate),
       availability: '[]',
       createdAt: ctx.timestamp,
       updatedAt: ctx.timestamp,
@@ -3215,6 +4087,7 @@ export const updateStaffMember = spacetimedb.reducer(
       name: args.name,
       role: args.role,
       hourlyRate: args.hourlyRate,
+      hourlyRateCents: toCents(args.hourlyRate),
       availability: args.availability,
       updatedAt: ctx.timestamp,
     });
@@ -3532,8 +4405,8 @@ export const deleteStaffRole = spacetimedb.reducer(
 
     // Cascade: drop the role's tasks so they don't appear in the daily checklist
     // as ghost entries under a missing role.
-    for (const task of [...ctx.db.roleTask.iter()]) {
-      if (task.organizationId === organizationId && task.roleId === roleId) {
+    for (const task of [...ctx.db.roleTask.byRoleId.filter(roleId)]) {
+      if (task.organizationId === organizationId) {
         ctx.db.roleTask.delete(task);
       }
     }
@@ -3817,6 +4690,7 @@ export const createPayment = spacetimedb.reducer(
       userId: ctx.sender.toString(),
       orderId: undefined,
       amount: args.amount,
+      amountCents: toCents(args.amount),
       currency: args.currency,
       method: args.method,
       status: 'completed',
@@ -3826,8 +4700,11 @@ export const createPayment = spacetimedb.reducer(
       notes: args.notes,
       items: args.items,
       taxAmount: args.taxAmount,
+      taxAmountCents: toCents(args.taxAmount),
       discountAmount: args.discountAmount,
+      discountAmountCents: toCents(args.discountAmount),
       refundAmount: undefined,
+      refundAmountCents: undefined,
       refundReason: undefined,
       refundedAt: undefined,
       createdAt: ctx.timestamp,
@@ -3856,6 +4733,7 @@ export const refundPayment = spacetimedb.reducer(
       ...payment,
       status: 'refunded',
       refundAmount,
+      refundAmountCents: toCents(refundAmount),
       refundReason,
       refundedAt: ctx.timestamp,
     });
@@ -3934,8 +4812,7 @@ export const sendMessage = spacetimedb.reducer(
     });
 
     // Bump conversation updatedAt
-    const conv = [...ctx.db.chatConversation.iter()]
-      .find(c => c.id.toString() === conversationId);
+    const conv = findById(ctx.db.chatConversation, conversationId);
     if (conv) {
       ctx.db.chatConversation.delete(conv);
       ctx.db.chatConversation.insert({ ...conv, updatedAt: ctx.timestamp });
@@ -3981,8 +4858,7 @@ export const setConversationMerchiva = spacetimedb.reducer(
       .some(m => m.conversationId === conversationId);
     if (!isMember) unauthorized('Not a conversation member');
 
-    const conv = [...ctx.db.chatConversation.iter()]
-      .find(c => c.id.toString() === conversationId);
+    const conv = findById(ctx.db.chatConversation, conversationId);
     if (!conv) return;
     ctx.db.chatConversation.delete(conv);
     ctx.db.chatConversation.insert({
@@ -4008,8 +4884,7 @@ export const sendMerchivaMessage = spacetimedb.reducer(
       .some(m => m.conversationId === conversationId);
     if (!isMember) unauthorized('Not a conversation member');
 
-    const conv = [...ctx.db.chatConversation.iter()]
-      .find(c => c.id.toString() === conversationId);
+    const conv = findById(ctx.db.chatConversation, conversationId);
     if (!conv || conv.merchivaEnabled !== true) {
       unauthorized('Mr. Merchiva is not in this conversation');
       return;
@@ -4434,8 +5309,13 @@ export const createSiteBooking = spacetimedb.reducer(
     notes: t.option(t.string()),
   },
   (ctx, args) => {
+    // Resolve the owning org so the row can be covered by RLS. site.id is a
+    // uuid and args.siteId a string, so this mapping cannot live in SQL.
+    const site = findById(ctx.db.site, args.siteId);
+    if (!site) throw new SenderError('Site not found');
     ctx.db.siteBooking.insert({
       id: ctx.newUuidV4(),
+      organizationId: site.organizationId,
       siteId: args.siteId,
       customerId: args.customerId,
       date: args.date,
@@ -4474,6 +5354,7 @@ export const addRoleTask = spacetimedb.reducer(
       id: ctx.newUuidV4(),
       roleId: args.roleId,
       organizationId: args.organizationId,
+      orgId: args.organizationId,
       title: args.title,
       description: args.description,
       startTime: args.startTime,
@@ -4508,6 +5389,7 @@ export const updateRoleTask = spacetimedb.reducer(
     ctx.db.roleTask.delete(task);
     ctx.db.roleTask.insert({
       ...task,
+      orgId: args.organizationId,
       title: args.title,
       description: args.description,
       startTime: args.startTime,
@@ -5057,7 +5939,9 @@ export const addWasteLog = spacetimedb.reducer(
       unit: args.unit,
       reason: args.reason,
       costPerUnit: args.costPerUnit,
+      costPerUnitCents: toCents(args.costPerUnit),
       totalCost,
+      totalCostCents: toCents(totalCost),
       date: args.date,
       notes: args.notes,
       createdBy: (member as { displayName?: string }).displayName ?? undefined,
@@ -5312,8 +6196,11 @@ export const createPurchaseOrder = spacetimedb.reducer(
       status: 'draft',
       items: args.items,
       subtotal: args.subtotal,
+      subtotalCents: toCents(args.subtotal),
       tax: args.tax,
+      taxCents: toCents(args.tax),
       total: args.total,
+      totalCents: toCents(args.total),
       notes: args.notes,
       sentAt: undefined,
       receivedAt: undefined,
@@ -5393,8 +6280,11 @@ export const recordSupplierOrder = spacetimedb.reducer(
       status: args.emailed ? 'sent' : 'draft',
       items: args.items,
       subtotal: args.subtotal,
+      subtotalCents: toCents(args.subtotal),
       tax: args.tax,
+      taxCents: toCents(args.tax),
       total: args.total,
+      totalCents: toCents(args.total),
       notes: args.notes,
       sentAt: args.emailed ? ctx.timestamp : undefined,
       receivedAt: undefined,
@@ -5540,6 +6430,7 @@ export const addExpense = spacetimedb.reducer(
       category: args.category,
       description: args.description,
       amount: args.amount,
+      amountCents: toCents(args.amount),
       date: args.date,
       recurring: args.recurring,
       recurringPeriod: args.recurringPeriod,
@@ -5575,6 +6466,7 @@ export const updateExpense = spacetimedb.reducer(
       category: args.category,
       description: args.description,
       amount: args.amount,
+      amountCents: toCents(args.amount),
       date: args.date,
       recurring: args.recurring,
       recurringPeriod: args.recurringPeriod,
@@ -5952,15 +6844,14 @@ function findActiveMember(ctx: any, organizationId: string) {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function shareGroupOrgIds(ctx: any, organizationId: string): string[] {
-  const org = [...ctx.db.organization.iter()]
-    .find((o: { id: { toString(): string } }) => o.id.toString() === organizationId);
+  const org = [...ctx.db.organization.byOrgIdText.filter(organizationId)][0];
   if (!org) return [organizationId];
-  const rootId: string = (org.parentOrgId as string | undefined) ?? organizationId;
+  // `rootOrgId` is maintained as (parentOrgId ?? own id), so one indexed lookup
+  // returns the whole share group instead of scanning every organization twice.
+  const rootId: string = (org.rootOrgId as string) || organizationId;
   const ids = new Set<string>([rootId]);
-  for (const o of ctx.db.organization.iter()) {
-    if ((o as { parentOrgId?: string }).parentOrgId === rootId) {
-      ids.add((o as { id: { toString(): string } }).id.toString());
-    }
+  for (const o of ctx.db.organization.byRootOrgId.filter(rootId)) {
+    ids.add((o as { orgIdText: string }).orgIdText);
   }
   return [...ids];
 }
@@ -6104,10 +6995,12 @@ export const appendAiJobChunk = spacetimedb.reducer(
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
-    const existing = [...ctx.db.aiJob.iter()]
-      .find((r: { id: { toString(): string }; organizationId: string }) =>
-        r.id.toString() === args.jobId && r.organizationId === args.organizationId
-      );
+    // Primary-key lookup; the org check stays as an authorization guard so a
+    // caller cannot touch another tenant's job by guessing its id.
+    const existing = findById(ctx.db.aiJob, args.jobId);
+    if (existing && existing.organizationId !== args.organizationId) {
+      unauthorized('Job belongs to another organization');
+    }
     if (!existing) throw new SenderError('Job not found');
     ctx.db.aiJob.id.update({
       ...existing,
@@ -6127,10 +7020,12 @@ export const finalizeAiJob = spacetimedb.reducer(
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
-    const existing = [...ctx.db.aiJob.iter()]
-      .find((r: { id: { toString(): string }; organizationId: string }) =>
-        r.id.toString() === args.jobId && r.organizationId === args.organizationId
-      );
+    // Primary-key lookup; the org check stays as an authorization guard so a
+    // caller cannot touch another tenant's job by guessing its id.
+    const existing = findById(ctx.db.aiJob, args.jobId);
+    if (existing && existing.organizationId !== args.organizationId) {
+      unauthorized('Job belongs to another organization');
+    }
     if (!existing) throw new SenderError('Job not found');
     ctx.db.aiJob.id.update({
       ...existing,
@@ -6149,10 +7044,12 @@ export const consumeAiJob = spacetimedb.reducer(
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
-    const existing = [...ctx.db.aiJob.iter()]
-      .find((r: { id: { toString(): string }; organizationId: string }) =>
-        r.id.toString() === args.jobId && r.organizationId === args.organizationId
-      );
+    // Primary-key lookup; the org check stays as an authorization guard so a
+    // caller cannot touch another tenant's job by guessing its id.
+    const existing = findById(ctx.db.aiJob, args.jobId);
+    if (existing && existing.organizationId !== args.organizationId) {
+      unauthorized('Job belongs to another organization');
+    }
     if (!existing) throw new SenderError('Job not found');
     ctx.db.aiJob.id.update({
       ...existing,
@@ -6169,10 +7066,12 @@ export const deleteAiJob = spacetimedb.reducer(
   },
   (ctx, args) => {
     findActiveMember(ctx, args.organizationId);
-    const existing = [...ctx.db.aiJob.iter()]
-      .find((r: { id: { toString(): string }; organizationId: string }) =>
-        r.id.toString() === args.jobId && r.organizationId === args.organizationId
-      );
+    // Primary-key lookup; the org check stays as an authorization guard so a
+    // caller cannot touch another tenant's job by guessing its id.
+    const existing = findById(ctx.db.aiJob, args.jobId);
+    if (existing && existing.organizationId !== args.organizationId) {
+      unauthorized('Job belongs to another organization');
+    }
     if (existing) ctx.db.aiJob.delete(existing);
   }
 );
@@ -6190,6 +7089,15 @@ function requireGradingPermission(member: { role: string; permissions: string })
     /* noop */
   }
   if (!perms.training_grading?.edit) unauthorized('No training_grading permission');
+}
+
+/** Trainers grade other people. A member with grading rights who is also a
+ *  trainee must not pass, fail, clear, sign off or dismiss their own training.
+ *  The service identity's virtual member id ('service') never matches. */
+function forbidSelfGrading(member: { id: { toString(): string } }, traineeId: string) {
+  if (member.id.toString() === traineeId) {
+    throw new SenderError("You can't grade your own training");
+  }
 }
 
 // ── Curriculum: Days ─────────────────────────────────────────────────────────
@@ -6253,25 +7161,22 @@ export const deleteTrainingDay = spacetimedb.reducer(
 
     const day = findItemInOrg(ctx.db.trainingDay, organizationId, dayId);
 
-    // Cascade: delete objectives, day-grades, and objective-grades attached to this day.
-    for (const obj of [...ctx.db.trainingObjective.iter()]) {
-      if (obj.organizationId !== organizationId || obj.dayId !== dayId) continue;
-      for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
-        if (g.organizationId === organizationId && g.objectiveId === obj.id.toString()) {
-          ctx.db.trainingObjectiveGrade.delete(g);
-        }
+    // Cascade: delete objectives, day-grades, and objective-grades attached to
+    // this day. Every lookup below goes through an existing btree index. The
+    // previous version scanned training_objective_grade once per objective —
+    // O(objectives x grades) on tables that only ever grow.
+    for (const obj of [...ctx.db.trainingObjective.byDayId.filter(dayId)]) {
+      if (obj.organizationId !== organizationId) continue;
+      for (const g of [...ctx.db.trainingObjectiveGrade.byObjectiveId.filter(obj.id.toString())]) {
+        if (g.organizationId === organizationId) ctx.db.trainingObjectiveGrade.delete(g);
       }
       ctx.db.trainingObjective.delete(obj);
     }
-    for (const g of [...ctx.db.trainingDayGrade.iter()]) {
-      if (g.organizationId === organizationId && g.dayId === dayId) {
-        ctx.db.trainingDayGrade.delete(g);
-      }
+    for (const g of [...ctx.db.trainingDayGrade.byDayId.filter(dayId)]) {
+      if (g.organizationId === organizationId) ctx.db.trainingDayGrade.delete(g);
     }
-    for (const r of [...ctx.db.trainingReviewRequest.iter()]) {
-      if (r.organizationId === organizationId && r.dayId === dayId) {
-        ctx.db.trainingReviewRequest.delete(r);
-      }
+    for (const r of [...ctx.db.trainingReviewRequest.byDayId.filter(dayId)]) {
+      if (r.organizationId === organizationId) ctx.db.trainingReviewRequest.delete(r);
     }
 
     ctx.db.trainingDay.delete(day);
@@ -6343,10 +7248,8 @@ export const deleteTrainingObjective = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     const obj = findItemInOrg(ctx.db.trainingObjective, organizationId, objectiveId);
-    for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
-      if (g.organizationId === organizationId && g.objectiveId === objectiveId) {
-        ctx.db.trainingObjectiveGrade.delete(g);
-      }
+    for (const g of [...ctx.db.trainingObjectiveGrade.byObjectiveId.filter(objectiveId)]) {
+      if (g.organizationId === organizationId) ctx.db.trainingObjectiveGrade.delete(g);
     }
     ctx.db.trainingObjective.delete(obj);
   }
@@ -6365,16 +7268,13 @@ export const gradeTrainingObjective = spacetimedb.reducer(
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     requireGradingPermission(member);
+    forbidSelfGrading(member, args.traineeId);
 
     // Verify the objective belongs to this org.
     findItemInOrg(ctx.db.trainingObjective, args.organizationId, args.objectiveId);
 
-    for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
-      if (
-        g.organizationId === args.organizationId &&
-        g.traineeId === args.traineeId &&
-        g.objectiveId === args.objectiveId
-      ) {
+    for (const g of [...ctx.db.trainingObjectiveGrade.byObjectiveId.filter(args.objectiveId)]) {
+      if (g.organizationId === args.organizationId && g.traineeId === args.traineeId) {
         ctx.db.trainingObjectiveGrade.delete(g);
       }
     }
@@ -6401,13 +7301,10 @@ export const clearTrainingObjectiveGrade = spacetimedb.reducer(
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     requireGradingPermission(member);
+    forbidSelfGrading(member, args.traineeId);
 
-    for (const g of [...ctx.db.trainingObjectiveGrade.iter()]) {
-      if (
-        g.organizationId === args.organizationId &&
-        g.traineeId === args.traineeId &&
-        g.objectiveId === args.objectiveId
-      ) {
+    for (const g of [...ctx.db.trainingObjectiveGrade.byObjectiveId.filter(args.objectiveId)]) {
+      if (g.organizationId === args.organizationId && g.traineeId === args.traineeId) {
         ctx.db.trainingObjectiveGrade.delete(g);
       }
     }
@@ -6427,14 +7324,14 @@ export const gradeTrainingDay = spacetimedb.reducer(
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     requireGradingPermission(member);
+    forbidSelfGrading(member, args.traineeId);
 
     findItemInOrg(ctx.db.trainingDay, args.organizationId, args.dayId);
 
-    for (const g of [...ctx.db.trainingDayGrade.iter()]) {
+    for (const g of [...ctx.db.trainingDayGrade.byDayId.filter(args.dayId)]) {
       if (
         g.organizationId === args.organizationId &&
-        g.traineeId === args.traineeId &&
-        g.dayId === args.dayId
+        g.traineeId === args.traineeId
       ) {
         ctx.db.trainingDayGrade.delete(g);
       }
@@ -6452,11 +7349,10 @@ export const gradeTrainingDay = spacetimedb.reducer(
     });
 
     // Grading a day settles any pending review request for it.
-    for (const r of [...ctx.db.trainingReviewRequest.iter()]) {
+    for (const r of [...ctx.db.trainingReviewRequest.byDayId.filter(args.dayId)]) {
       if (
         r.organizationId === args.organizationId &&
         r.traineeId === args.traineeId &&
-        r.dayId === args.dayId &&
         r.status === 'pending'
       ) {
         ctx.db.trainingReviewRequest.delete(r);
@@ -6484,11 +7380,10 @@ export const requestTrainingReview = spacetimedb.reducer(
     findItemInOrg(ctx.db.trainingDay, args.organizationId, args.dayId);
 
     const traineeId = member.id.toString();
-    const existing = [...ctx.db.trainingReviewRequest.iter()].find(
+    const existing = [...ctx.db.trainingReviewRequest.byDayId.filter(args.dayId)].find(
       (r) =>
         r.organizationId === args.organizationId &&
         r.traineeId === traineeId &&
-        r.dayId === args.dayId &&
         r.status === 'pending'
     );
     if (existing) return;
@@ -6513,6 +7408,7 @@ export const resolveTrainingReview = spacetimedb.reducer(
     requireGradingPermission(member);
 
     const req = findItemInOrg(ctx.db.trainingReviewRequest, args.organizationId, args.requestId);
+    forbidSelfGrading(member, String(req.traineeId));
     ctx.db.trainingReviewRequest.delete(req);
     ctx.db.trainingReviewRequest.insert({
       ...req,
@@ -6545,10 +7441,8 @@ export const saveDailyBriefing = spacetimedb.reducer(
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
     // One briefing per (org, date) — replace whatever the day already has.
-    for (const row of [...ctx.db.dailyBriefing.iter()]) {
-      if (row.organizationId === args.organizationId && row.date === args.date) {
-        ctx.db.dailyBriefing.delete(row);
-      }
+    for (const row of [...ctx.db.dailyBriefing.byOrganizationId.filter(args.organizationId)]) {
+      if (row.date === args.date) ctx.db.dailyBriefing.delete(row);
     }
 
     ctx.db.dailyBriefing.insert({
@@ -7057,6 +7951,7 @@ export const serviceRepairInventoryItem = spacetimedb.reducer(
       maxStock: args.maxStock,
       unit: args.unit,
       costPerUnit: args.costPerUnit,
+      costPerUnitCents: toCents(args.costPerUnit),
       supplier: args.supplier,
       lastRestocked: args.lastRestocked,
       lossRate: args.lossRate,
@@ -7068,6 +7963,7 @@ export const serviceRepairInventoryItem = spacetimedb.reducer(
       unitContentUnit: args.unitContentUnit,
       retailEnabled: args.retailEnabled,
       retailPrice: args.retailPrice,
+      retailPriceCents: toCentsOpt(args.retailPrice),
       retailDescription: args.retailDescription,
       retailImageUrl: args.retailImageUrl,
       retailUsageQty: args.retailUsageQty,
@@ -7268,5 +8164,1328 @@ export const platformAdminSetPassword = spacetimedb.reducer(
     const secret = ctx.db.platformAdminSecret.username.find(u);
     if (secret) ctx.db.platformAdminSecret.delete(secret);
     ctx.db.platformAdminSecret.insert({ username: u, passwordHash, updatedAt: ctx.timestamp });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DOCS REDUCERS (Merchiva Docs — collaborative documents)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Access model — lib/docs/access.ts resolveDocAccess MUST match:
+//   - Gate: the org owner (the service identity resolves to serviceMember(), a
+//     virtual owner) or a member whose permissions resolve dashboard.view ===
+//     true — the same check as can('dashboard','view') + PermissionGuard
+//     section="dashboard" on the client (see docMemberGate).
+//   - Inside the gate: org owners, org managers and the doc's owner → 'manager';
+//     everyone else → the higher of the visibility role (org_edit → editor,
+//     org_view → viewer, private → none) and any document_access grant.
+//   - viewer: open, star, presence · commenter: + comment, reply, resolve ·
+//     editor: + push, compact, versions, rename, meta · manager: + visibility,
+//     grants, trash/restore/delete forever, delete any comment or version.
+// Writes to a trashed doc are rejected except restore / delete forever.
+// Presence is not a write to the doc: it stays allowed on a trashed doc, which
+// managers can still open (a rejected heartbeat would end a session for good).
+// Clearing a named version's name puts it back into autosave pruning, so it
+// needs the same rights as deleting the version (creator or manager).
+// Reducer errors carry a stable prefix `[doc.<code>] Human text` that
+// lib/docs/errors.ts docErrorCode parses.
+
+const DOC_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const DOC_VISIBILITIES = ['org_edit', 'org_view', 'private'] as const;
+const DOC_GRANT_ROLES = ['viewer', 'commenter', 'editor'] as const;
+const DOC_ROLE_RANK = { none: 0, viewer: 1, commenter: 2, editor: 3, manager: 4 } as const;
+type DocRole = keyof typeof DOC_ROLE_RANK;
+type DocGrantRole = (typeof DOC_GRANT_ROLES)[number];
+type DocErrorCode = 'not_found' | 'forbidden' | 'trashed' | 'too_large' | 'invalid';
+const DOC_TITLE_MAX = 200;
+const DOC_EXCERPT_MAX = 280;
+const DOC_TEXT_MAX_CHARS = 200_000;
+const DOC_HTML_MAX_CHARS = 1_000_000;
+const DOC_UPDATE_MAX_BYTES = 1_048_576;          // = DEFAULT_DOC_TUNING.updateMaxBytes
+const DOC_STATE_MAX_BYTES = 8_388_608;           // = DEFAULT_DOC_TUNING.stateMaxBytes
+const DOC_PRESENCE_MAX_BYTES = 16_384;
+const DOC_PRESENCE_TTL_MICROS = 90_000_000n;
+const DOC_TOUCH_GAP_MICROS = 30_000_000n;
+const DOC_AUTO_VERSION_GAP_MICROS = 600_000_000n;
+const DOC_AUTO_VERSION_KEEP = 50;
+const DOC_NAMED_VERSION_MAX = 200;
+const DOC_VERSION_NAME_MAX = 80;
+const DOC_COMMENT_MAX = 4_000;
+const DOC_QUOTE_MAX = 500;
+const DOC_COMMENT_ANCHOR_MAX_BYTES = 1_024;       // = COMMENT_ANCHOR_MAX_BYTES in lib/docs/comment-anchors.ts
+const DOC_COMMENT_ANCHOR_FORMAT = 1;
+const DOC_MENTIONS_MAX = 20;
+const DOC_TEMPLATE_ID_MAX = 64;
+const DOC_SESSION_ID_MAX = 64;
+const DOC_PAGE_SETUP_MAX = 512;
+const DOC_ICON_MAX_CODEPOINTS = 8;               // one emoji, including ZWJ sequences
+const DOC_PRESENCE_NAME_MAX = 80;
+const DOC_PRESENCE_DEFAULT_COLOR = '#57534e';
+const DOC_NOTIFY_BODY_MAX = 200;
+
+/** The member shape the docs helpers need (a real org_member row or serviceMember()). */
+type DocMemberLike = { id: { toString(): string }; role: string; permissions: string };
+/** The document fields that decide access. */
+type DocAccessSubject = { id: string; ownerMemberId: string; visibility: string };
+
+function docError(code: DocErrorCode, message: string): SenderError {
+  return new SenderError(`[doc.${code}] ${message}`);
+}
+
+function clampChars(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max) : s;
+}
+
+function cleanDocTitle(s: string): string {
+  return s.replace(/\s+/g, ' ').trim().slice(0, DOC_TITLE_MAX);
+}
+
+/** MUST stay identical to lib/docs/text.ts docExcerpt. */
+function docExcerpt(plainText: string): string {
+  return plainText.replace(/\s+/g, ' ').trim().slice(0, DOC_EXCERPT_MAX);
+}
+
+function isDocVisibility(v: string): boolean {
+  return (DOC_VISIBILITIES as readonly string[]).includes(v);
+}
+
+function isDocGrantRole(v: string): v is DocGrantRole {
+  return (DOC_GRANT_ROLES as readonly string[]).includes(v);
+}
+
+/**
+ * Docs section gate. Mirrors the client exactly: app/manager/layout.tsx merges
+ * the stored JSON over the role defaults (`{ ...defaults, ...JSON.parse(p) }`,
+ * falling back to the defaults when the JSON is unreadable), and can() then
+ * requires `dashboard.view === true` for non-owners. Both role defaults grant
+ * dashboard.view, so a missing `dashboard` key or unreadable JSON passes, while
+ * an explicit `dashboard: { view: false }` (or any non-true view) fails.
+ */
+function docMemberGate(member: { role: string; permissions: string }): boolean {
+  if (member.role === 'owner') return true;
+  let stored: unknown;
+  try {
+    stored = JSON.parse(member.permissions || '{}');
+  } catch {
+    return true;
+  }
+  if (stored === null || typeof stored !== 'object' || !('dashboard' in stored)) return true;
+  const dashboard = (stored as { dashboard: unknown }).dashboard;
+  return typeof dashboard === 'object' && dashboard !== null && (dashboard as { view?: unknown }).view === true;
+}
+
+/**
+ * Role of `member` on `doc`. Evaluates the given member, never ctx.sender, so
+ * notifyDocMembers / pruneDocPresence can use it for other members too. The
+ * service identity is covered by its virtual owner member.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function docRoleFor(ctx: any, doc: DocAccessSubject, member: DocMemberLike): DocRole {
+  if (member.role === 'owner') return 'manager';
+  if (!docMemberGate(member)) return 'none';
+  const memberId = member.id.toString();
+  if (member.role === 'manager' || doc.ownerMemberId === memberId) return 'manager';
+  let role: DocRole = doc.visibility === 'org_edit' ? 'editor' : doc.visibility === 'org_view' ? 'viewer' : 'none';
+  for (const grant of ctx.db.documentAccess.byDocumentId.filter(doc.id)) {
+    if (grant.memberId !== memberId) continue;
+    const granted = String(grant.role);
+    if (isDocGrantRole(granted) && DOC_ROLE_RANK[granted] > DOC_ROLE_RANK[role]) role = granted;
+  }
+  return role;
+}
+
+/** findActiveMember, with its "Not an active member…" failure mapped to [doc.forbidden]. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findDocMember(ctx: any, organizationId: string): DocMemberLike {
+  try {
+    return findActiveMember(ctx, organizationId);
+  } catch {
+    throw docError('forbidden', 'Not an active member of this organization');
+  }
+}
+
+/** Load a doc, resolve the caller's membership in ITS org and enforce a minimum role. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function requireDoc(ctx: any, documentId: string, min: Exclude<DocRole, 'none'>, opts: { allowTrashed?: boolean } = {}) {
+  const doc = ctx.db.document.id.find(String(documentId).toLowerCase());
+  if (!doc) throw docError('not_found', 'Document not found');
+  const member = findDocMember(ctx, doc.organizationId);
+  const role = docRoleFor(ctx, doc, member);
+  if (DOC_ROLE_RANK[role] < DOC_ROLE_RANK[min]) throw docError('forbidden', 'You do not have access to this document');
+  if (doc.trashedAt !== undefined && !opts.allowTrashed) throw docError('trashed', 'Document is in the trash');
+  return { doc, member, role, memberId: member.id.toString() };
+}
+
+/** Throttled metadata bump so every keystroke batch doesn't rebroadcast the doc row. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function touchDocument(ctx: any, doc: any, memberId: string): void {
+  const now: bigint = ctx.timestamp.microsSinceUnixEpoch;
+  const lastTouched: bigint = doc.updatedAt.microsSinceUnixEpoch;
+  if (doc.lastEditorMemberId === memberId && now - lastTouched < DOC_TOUCH_GAP_MICROS) return;
+  ctx.db.document.id.update({ ...doc, updatedAt: ctx.timestamp, lastEditorMemberId: memberId });
+}
+
+/** After visibility / grant changes: drop presence of members who lost access and refresh canEdit. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pruneDocPresence(ctx: any, doc: any): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const members = new Map<string, any>();
+  for (const m of ctx.db.orgMember.byOrganizationId.filter(doc.organizationId)) members.set(m.id.toString(), m);
+  for (const p of [...ctx.db.documentPresence.byDocumentId.filter(doc.id)]) {
+    const m = members.get(p.memberId);
+    const role: DocRole = m && m.status === 'active' ? docRoleFor(ctx, doc, m) : 'none';
+    if (DOC_ROLE_RANK[role] < DOC_ROLE_RANK.viewer) {
+      ctx.db.documentPresence.delete(p);
+      continue;
+    }
+    const canEdit = DOC_ROLE_RANK[role] >= DOC_ROLE_RANK.editor;
+    if (canEdit !== p.canEdit) ctx.db.documentPresence.id.update({ ...p, canEdit });
+  }
+}
+
+/** Delete every row that belongs to a document, then the document itself. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function purgeDocumentRows(ctx: any, doc: any): void {
+  const id: string = doc.id;
+  for (const r of [...ctx.db.documentUpdate.byDocumentId.filter(id)]) ctx.db.documentUpdate.delete(r);
+  const snap = ctx.db.documentSnapshot.documentId.find(id);
+  if (snap) ctx.db.documentSnapshot.delete(snap);
+  for (const r of [...ctx.db.documentPresence.byDocumentId.filter(id)]) ctx.db.documentPresence.delete(r);
+  for (const r of [...ctx.db.documentComment.byDocumentId.filter(id)]) ctx.db.documentComment.delete(r);
+  for (const r of [...ctx.db.documentVersion.byDocumentId.filter(id)]) ctx.db.documentVersion.delete(r);
+  for (const r of [...ctx.db.documentStar.byDocumentId.filter(id)]) ctx.db.documentStar.delete(r);
+  for (const r of [...ctx.db.documentAccess.byDocumentId.filter(id)]) ctx.db.documentAccess.delete(r);
+  ctx.db.document.delete(doc);
+}
+
+function cleanCommentBody(raw: string): string {
+  const body = raw.trim();
+  if (!body) throw docError('invalid', 'Comment cannot be empty');
+  if (body.length > DOC_COMMENT_MAX) throw docError('invalid', `Comments are limited to ${DOC_COMMENT_MAX} characters`);
+  return body;
+}
+
+/**
+ * Optional position anchor of a new thread: [format, count (2 or 4), (varuint length, bytes) × count], each entry a
+ * Yjs relative position (range start/end, then the blocks holding them). Only this envelope and the size are checked;
+ * clients resolve the positions and treat anything unusable as detached. Empty means none.
+ */
+function cleanCommentAnchor(raw: Uint8Array | undefined): Uint8Array | undefined {
+  if (raw === undefined || raw.length === 0) return undefined;
+  if (raw.length > DOC_COMMENT_ANCHOR_MAX_BYTES) throw docError('too_large', 'Comment anchor is too large');
+  const invalid = () => docError('invalid', 'Invalid comment anchor');
+  if (raw[0] !== DOC_COMMENT_ANCHOR_FORMAT || raw.length < 2 || (raw[1] !== 2 && raw[1] !== 4)) throw invalid();
+  let offset = 2;
+  for (let i = 0; i < raw[1]; i++) {
+    let length = 0;
+    let factor = 1;
+    for (let used = 0; ; used++) {
+      if (offset >= raw.length || used === 3) throw invalid();
+      const byte = raw[offset++];
+      length += (byte & 0x7f) * factor;
+      if (byte < 0x80) break;
+      factor *= 0x80;
+    }
+    // A relative position takes at least two bytes.
+    if (length < 2 || offset + length > raw.length) throw invalid();
+    offset += length;
+  }
+  if (offset !== raw.length) throw invalid();
+  return raw;
+}
+
+/** JSON string[] → de-duplicated ids of ACTIVE members of the org (input order kept), at most DOC_MENTIONS_MAX. Bad JSON → []. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseMentionIds(ctx: any, organizationId: string, raw: string | undefined): string[] {
+  if (!raw) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return [];
+  const active = new Set<string>();
+  for (const m of ctx.db.orgMember.byOrganizationId.filter(organizationId)) {
+    if (m.status === 'active') active.add(m.id.toString());
+  }
+  const out: string[] = [];
+  for (const value of parsed) {
+    if (out.length >= DOC_MENTIONS_MAX) break;
+    if (typeof value !== 'string' || !active.has(value) || out.includes(value)) continue;
+    out.push(value);
+  }
+  return out;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findDocComment(ctx: any, documentId: string, commentId: string) {
+  const wanted = String(commentId).toLowerCase();
+  for (const c of ctx.db.documentComment.byDocumentId.filter(documentId)) {
+    if (c.id.toString().toLowerCase() === wanted) return c;
+  }
+  throw docError('not_found', 'Comment not found');
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findDocVersion(ctx: any, documentId: string, versionId: string) {
+  const wanted = String(versionId).toLowerCase();
+  for (const v of ctx.db.documentVersion.byDocumentId.filter(documentId)) {
+    if (v.id.toString().toLowerCase() === wanted) return v;
+  }
+  return undefined;
+}
+
+function docLink(documentId: string, threadId?: string): string {
+  return `/manager/docs/edit?id=${documentId}${threadId ? `&comment=${threadId}` : ''}`;
+}
+
+/**
+ * Notify each distinct active member in `memberIds` (never the actor) who can
+ * at least view the doc. Same row shape as notifyManagers; English copy like
+ * the rest of the module's notifications.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function notifyDocMembers(ctx: any, doc: any, actorMemberId: string, memberIds: readonly string[], title: string, body: string, threadId?: string, type = 'doc_comment'): void {
+  const wanted = new Set(memberIds.filter((id) => id && id !== actorMemberId));
+  if (wanted.size === 0) return;
+  const docTitle: string = doc.title || 'Untitled document';
+  for (const m of [...ctx.db.orgMember.byOrganizationId.filter(doc.organizationId)]) {
+    const memberId: string = m.id.toString();
+    if (m.status !== 'active' || !wanted.has(memberId)) continue;
+    wanted.delete(memberId);
+    if (DOC_ROLE_RANK[docRoleFor(ctx, doc, m)] < DOC_ROLE_RANK.viewer) continue;
+    ctx.db.notification.insert({
+      id: ctx.newUuidV4(),
+      organizationId: doc.organizationId,
+      targetId: m.userId,
+      type,
+      title,
+      body: clampChars(`${docTitle}: ${body}`, DOC_NOTIFY_BODY_MAX),
+      link: docLink(doc.id, threadId),
+      read: false,
+      createdAt: ctx.timestamp,
+    });
+  }
+}
+
+// ── Documents ────────────────────────────────────────────────────────────────
+
+/** The client generates the id (reducers can't return values). */
+export const createDocument = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    documentId: t.string(),
+    title: t.string(),
+    visibility: t.string(),
+    templateId: t.option(t.string()),
+    initialState: t.option(t.byteArray()),
+    html: t.option(t.string()),
+    plainText: t.option(t.string()),
+    wordCount: t.option(t.u32()),
+  },
+  (ctx, args) => {
+    const member = findDocMember(ctx, args.organizationId);
+    if (!isServiceCaller(ctx) && !docMemberGate(member)) throw docError('forbidden', 'No access to Docs');
+    const id = String(args.documentId).toLowerCase();
+    if (!DOC_UUID_RE.test(id)) throw docError('invalid', 'Invalid document id');
+    if (ctx.db.document.id.find(id)) throw docError('invalid', 'Document id already exists');
+    if (!isDocVisibility(args.visibility)) throw docError('invalid', 'Unknown visibility');
+    const init = args.initialState;
+    if (init && init.length > DOC_STATE_MAX_BYTES) throw docError('too_large', 'Document is too large');
+
+    const memberId = member.id.toString();
+    const plainText = clampChars(args.plainText ?? '', DOC_TEXT_MAX_CHARS);
+    const templateId = args.templateId ? clampChars(args.templateId.trim(), DOC_TEMPLATE_ID_MAX) : '';
+    ctx.db.document.insert({
+      id,
+      organizationId: args.organizationId,
+      ownerMemberId: memberId,
+      title: cleanDocTitle(args.title),
+      excerpt: docExcerpt(plainText),
+      icon: undefined,
+      visibility: args.visibility,
+      templateId: templateId || undefined,
+      pageSetup: undefined,
+      wordCount: args.wordCount ?? 0,
+      createdAt: ctx.timestamp,
+      updatedAt: ctx.timestamp,
+      lastEditorMemberId: memberId,
+      trashedAt: undefined,
+      trashedByMemberId: undefined,
+    });
+    if (init && init.length > 0) {
+      ctx.db.documentSnapshot.insert({
+        documentId: id,
+        organizationId: args.organizationId,
+        state: init,
+        throughUpdateId: 0n,
+        byteLength: init.length,
+        html: clampChars(args.html ?? '', DOC_HTML_MAX_CHARS),
+        plainText,
+        compactedAt: ctx.timestamp,
+        compactedByMemberId: memberId,
+      });
+    }
+  }
+);
+
+/**
+ * "Make a copy": copies the snapshot and update-log bytes server-side so the
+ * client never has to load the source. The copied snapshot restarts at
+ * throughUpdateId 0 and the copied rows get fresh auto-inc ids (in the source's
+ * commit order), so the provider's maxAppliedId and compactDocument's strictly
+ * increasing check both stay valid. The copy keeps the source's visibility.
+ */
+export const duplicateDocument = spacetimedb.reducer(
+  { sourceDocumentId: t.string(), documentId: t.string(), title: t.string() },
+  (ctx, args) => {
+    const { doc: src, memberId } = requireDoc(ctx, args.sourceDocumentId, 'viewer');
+    const id = String(args.documentId).toLowerCase();
+    if (!DOC_UUID_RE.test(id)) throw docError('invalid', 'Invalid document id');
+    if (ctx.db.document.id.find(id)) throw docError('invalid', 'Document id already exists');
+    const now = ctx.timestamp;
+    ctx.db.document.insert({
+      ...src,
+      id,
+      ownerMemberId: memberId,
+      title: cleanDocTitle(args.title),
+      createdAt: now,
+      updatedAt: now,
+      lastEditorMemberId: memberId,
+      trashedAt: undefined,
+      trashedByMemberId: undefined,
+    });
+    const snap = ctx.db.documentSnapshot.documentId.find(src.id);
+    if (snap) {
+      ctx.db.documentSnapshot.insert({ ...snap, documentId: id, throughUpdateId: 0n, compactedAt: now, compactedByMemberId: memberId });
+    }
+    const rows = [...ctx.db.documentUpdate.byDocumentId.filter(src.id)]
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    for (const r of rows) {
+      ctx.db.documentUpdate.insert({ ...r, id: 0n, documentId: id, memberId, createdAt: now });
+    }
+  }
+);
+
+export const renameDocument = spacetimedb.reducer(
+  { documentId: t.string(), title: t.string() },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    const title = cleanDocTitle(args.title);
+    if (title === doc.title) return;
+    // The row is rewritten anyway, so the rename also counts as a touch.
+    ctx.db.document.id.update({ ...doc, title, updatedAt: ctx.timestamp, lastEditorMemberId: memberId });
+  }
+);
+
+/** undefined = unchanged; '' clears icon / pageSetup (and empties the excerpt). */
+export const updateDocumentMeta = spacetimedb.reducer(
+  { documentId: t.string(), excerpt: t.option(t.string()), icon: t.option(t.string()), pageSetup: t.option(t.string()) },
+  (ctx, args) => {
+    const { doc } = requireDoc(ctx, args.documentId, 'editor');
+    const next = { ...doc };
+    if (args.excerpt !== undefined) next.excerpt = docExcerpt(args.excerpt);
+    if (args.icon !== undefined) {
+      const icon = [...args.icon.trim()].slice(0, DOC_ICON_MAX_CODEPOINTS).join('');
+      next.icon = icon || undefined;
+    }
+    if (args.pageSetup !== undefined) {
+      if (args.pageSetup === '') {
+        next.pageSetup = undefined;
+      } else {
+        if (args.pageSetup.length > DOC_PAGE_SETUP_MAX) throw docError('invalid', 'Page setup is too large');
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(args.pageSetup);
+        } catch {
+          throw docError('invalid', 'Page setup must be JSON');
+        }
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw docError('invalid', 'Page setup must be a JSON object');
+        }
+        next.pageSetup = args.pageSetup;
+      }
+    }
+    if (next.excerpt === doc.excerpt && next.icon === doc.icon && next.pageSetup === doc.pageSetup) return;
+    ctx.db.document.id.update(next);
+  }
+);
+
+export const setDocumentVisibility = spacetimedb.reducer(
+  { documentId: t.string(), visibility: t.string() },
+  (ctx, args) => {
+    const { doc } = requireDoc(ctx, args.documentId, 'manager');
+    if (!isDocVisibility(args.visibility)) throw docError('invalid', 'Unknown visibility');
+    if (doc.visibility === args.visibility) return;
+    const next = { ...doc, visibility: args.visibility };
+    ctx.db.document.id.update(next);
+    pruneDocPresence(ctx, next);
+  }
+);
+
+export const grantDocumentAccess = spacetimedb.reducer(
+  { documentId: t.string(), memberId: t.string(), role: t.string() },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'manager');
+    if (!isDocGrantRole(args.role)) throw docError('invalid', 'Unknown role');
+    const targetId = String(args.memberId);
+    if (targetId === doc.ownerMemberId) throw docError('invalid', 'The document owner already has full access');
+    const target = [...ctx.db.orgMember.byOrganizationId.filter(doc.organizationId)]
+      .find((m) => m.id.toString() === targetId && m.status === 'active');
+    if (!target) throw docError('invalid', 'Member not found');
+
+    const existing = [...ctx.db.documentAccess.byDocumentId.filter(doc.id)].find((g) => g.memberId === targetId);
+    if (existing) {
+      if (existing.role === args.role) return;
+      ctx.db.documentAccess.id.update({ ...existing, role: args.role, grantedByMemberId: memberId, updatedAt: ctx.timestamp });
+    } else {
+      ctx.db.documentAccess.insert({
+        id: ctx.newUuidV4(),
+        documentId: doc.id,
+        organizationId: doc.organizationId,
+        memberId: targetId,
+        role: args.role,
+        grantedByMemberId: memberId,
+        createdAt: ctx.timestamp,
+        updatedAt: ctx.timestamp,
+      });
+      const verb = args.role === 'viewer' ? 'view' : args.role === 'commenter' ? 'comment on' : 'edit';
+      notifyDocMembers(ctx, doc, memberId, [targetId], 'Document shared with you', `You can now ${verb} it`, undefined, 'doc_share');
+    }
+    pruneDocPresence(ctx, doc);
+  }
+);
+
+export const revokeDocumentAccess = spacetimedb.reducer(
+  { documentId: t.string(), memberId: t.string() },
+  (ctx, args) => {
+    const { doc } = requireDoc(ctx, args.documentId, 'manager');
+    const targetId = String(args.memberId);
+    for (const g of [...ctx.db.documentAccess.byDocumentId.filter(doc.id)]) {
+      if (g.memberId === targetId) ctx.db.documentAccess.delete(g);
+    }
+    pruneDocPresence(ctx, doc);
+  }
+);
+
+export const trashDocument = spacetimedb.reducer(
+  { documentId: t.string() },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'manager', { allowTrashed: true });
+    if (doc.trashedAt !== undefined) return;
+    ctx.db.document.id.update({ ...doc, trashedAt: ctx.timestamp, trashedByMemberId: memberId });
+    for (const p of [...ctx.db.documentPresence.byDocumentId.filter(doc.id)]) ctx.db.documentPresence.delete(p);
+  }
+);
+
+export const restoreDocument = spacetimedb.reducer(
+  { documentId: t.string() },
+  (ctx, args) => {
+    const { doc } = requireDoc(ctx, args.documentId, 'manager', { allowTrashed: true });
+    if (doc.trashedAt === undefined) return;
+    ctx.db.document.id.update({ ...doc, trashedAt: undefined, trashedByMemberId: undefined });
+  }
+);
+
+export const deleteDocumentForever = spacetimedb.reducer(
+  { documentId: t.string() },
+  (ctx, args) => {
+    const { doc } = requireDoc(ctx, args.documentId, 'manager', { allowTrashed: true });
+    if (doc.trashedAt === undefined) throw docError('invalid', 'Move the document to the trash first');
+    purgeDocumentRows(ctx, doc);
+  }
+);
+
+export const toggleDocumentStar = spacetimedb.reducer(
+  { documentId: t.string() },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'viewer');
+    const existing = [...ctx.db.documentStar.byDocumentId.filter(doc.id)].find((s) => s.memberId === memberId);
+    if (existing) {
+      ctx.db.documentStar.delete(existing);
+      return;
+    }
+    ctx.db.documentStar.insert({
+      id: ctx.newUuidV4(),
+      documentId: doc.id,
+      organizationId: doc.organizationId,
+      memberId,
+      createdAt: ctx.timestamp,
+    });
+  }
+);
+
+// ── Content sync ─────────────────────────────────────────────────────────────
+
+export const pushDocumentUpdate = spacetimedb.reducer(
+  { documentId: t.string(), sessionId: t.string(), payload: t.byteArray() },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    const size = args.payload.length;
+    if (size === 0) return;
+    if (size > DOC_UPDATE_MAX_BYTES) throw docError('too_large', 'Edit is too large to sync');
+    ctx.db.documentUpdate.insert({
+      id: 0n,
+      documentId: doc.id,
+      organizationId: doc.organizationId,
+      payload: args.payload,
+      byteLength: size,
+      sessionId: args.sessionId.slice(0, DOC_SESSION_ID_MAX),
+      memberId,
+      createdAt: ctx.timestamp,
+    });
+    touchDocument(ctx, doc, memberId);
+  }
+);
+
+/**
+ * Replace the snapshot with `state` (which MUST contain every update id ≤
+ * throughUpdateId) and delete those update rows. Reducers run serially and
+ * transactionally, so the check-then-delete is atomic. throughUpdateId must
+ * STRICTLY advance: an equal-N race (two compactors) is a silent no-op for the
+ * loser, never an overwrite.
+ */
+export const compactDocument = spacetimedb.reducer(
+  {
+    documentId: t.string(),
+    throughUpdateId: t.u64(),
+    state: t.byteArray(),
+    html: t.string(),
+    plainText: t.string(),
+    wordCount: t.u32(),
+  },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    if (args.state.length === 0 || args.state.length > DOC_STATE_MAX_BYTES) {
+      throw docError('too_large', 'Document is too large');
+    }
+    const current = ctx.db.documentSnapshot.documentId.find(doc.id);
+    if (current && args.throughUpdateId <= current.throughUpdateId) return; // stale / duplicate
+
+    const rows = [...ctx.db.documentUpdate.byDocumentId.filter(doc.id)];
+    let maxId = current ? current.throughUpdateId : 0n;
+    for (const r of rows) if (r.id > maxId) maxId = r.id;
+    if (args.throughUpdateId > maxId) throw docError('invalid', 'Snapshot is ahead of the update log');
+
+    const plainText = clampChars(args.plainText, DOC_TEXT_MAX_CHARS);
+    const snapshot = {
+      documentId: doc.id,
+      organizationId: doc.organizationId,
+      state: args.state,
+      throughUpdateId: args.throughUpdateId,
+      byteLength: args.state.length,
+      html: clampChars(args.html, DOC_HTML_MAX_CHARS),
+      plainText,
+      compactedAt: ctx.timestamp,
+      compactedByMemberId: memberId,
+    };
+    if (current) ctx.db.documentSnapshot.documentId.update(snapshot);
+    else ctx.db.documentSnapshot.insert(snapshot);
+
+    for (const r of rows) if (r.id <= args.throughUpdateId) ctx.db.documentUpdate.delete(r);
+
+    const excerpt = docExcerpt(plainText);
+    if (excerpt !== doc.excerpt || args.wordCount !== doc.wordCount) {
+      ctx.db.document.id.update({ ...doc, excerpt, wordCount: args.wordCount });
+    }
+  }
+);
+
+// ── Versions ─────────────────────────────────────────────────────────────────
+
+export const saveDocumentVersion = spacetimedb.reducer(
+  {
+    documentId: t.string(),
+    kind: t.string(),
+    name: t.option(t.string()),
+    state: t.byteArray(),
+    throughUpdateId: t.u64(),
+    wordCount: t.u32(),
+  },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    if (args.kind !== 'auto' && args.kind !== 'named' && args.kind !== 'restore') {
+      throw docError('invalid', 'Unknown version kind');
+    }
+    if (args.state.length === 0 || args.state.length > DOC_STATE_MAX_BYTES) {
+      throw docError('too_large', 'Version is too large');
+    }
+    const name = args.name ? args.name.replace(/\s+/g, ' ').trim().slice(0, DOC_VERSION_NAME_MAX) : '';
+    if (args.kind === 'named' && !name) throw docError('invalid', 'Named versions need a name');
+
+    const versions = [...ctx.db.documentVersion.byDocumentId.filter(doc.id)];
+    if (args.kind === 'auto') {
+      let latest: (typeof versions)[number] | undefined;
+      for (const v of versions) {
+        if (v.kind !== 'auto') continue;
+        if (!latest || v.createdAt.microsSinceUnixEpoch > latest.createdAt.microsSinceUnixEpoch) latest = v;
+      }
+      if (latest) {
+        if (ctx.timestamp.microsSinceUnixEpoch - latest.createdAt.microsSinceUnixEpoch < DOC_AUTO_VERSION_GAP_MICROS) return;
+        if (latest.throughUpdateId === args.throughUpdateId && latest.byteLength === args.state.length) return;
+      }
+    } else if (versions.filter((v) => v.kind !== 'auto').length >= DOC_NAMED_VERSION_MAX) {
+      throw docError('invalid', 'Too many saved versions — delete some first');
+    }
+
+    ctx.db.documentVersion.insert({
+      id: ctx.newUuidV4(),
+      documentId: doc.id,
+      organizationId: doc.organizationId,
+      kind: args.kind,
+      name: name || undefined,
+      state: args.state,
+      throughUpdateId: args.throughUpdateId,
+      byteLength: args.state.length,
+      wordCount: args.wordCount,
+      createdAt: ctx.timestamp,
+      createdByMemberId: memberId,
+    });
+
+    if (args.kind === 'auto') {
+      const autos = [...ctx.db.documentVersion.byDocumentId.filter(doc.id)]
+        .filter((v) => v.kind === 'auto')
+        .sort((a, b) => (b.createdAt.microsSinceUnixEpoch > a.createdAt.microsSinceUnixEpoch ? 1 : -1));
+      for (const old of autos.slice(DOC_AUTO_VERSION_KEEP)) ctx.db.documentVersion.delete(old);
+    }
+  }
+);
+
+export const renameDocumentVersion = spacetimedb.reducer(
+  { documentId: t.string(), versionId: t.string(), name: t.string() },
+  (ctx, args) => {
+    const { doc, role, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    const v = findDocVersion(ctx, doc.id, args.versionId);
+    if (!v) throw docError('not_found', 'Version not found');
+    const name = args.name.replace(/\s+/g, ' ').trim().slice(0, DOC_VERSION_NAME_MAX);
+    // Naming promotes to 'named' (exempt from auto pruning); clearing the name reverts.
+    const kind = name ? 'named' : v.kind === 'restore' ? 'restore' : 'auto';
+    if ((v.name ?? '') === name && v.kind === kind) return;
+    // A demoted version is pruned once DOC_AUTO_VERSION_KEEP newer autosaves exist, so
+    // demoting is a delayed delete: same rule as deleteDocumentVersion.
+    if (v.kind === 'named' && kind === 'auto' && role !== 'manager' && v.createdByMemberId !== memberId) {
+      throw docError('forbidden', 'Only the creator or a manager can clear the name of a version');
+    }
+    ctx.db.documentVersion.id.update({ ...v, name: name || undefined, kind });
+  }
+);
+
+export const deleteDocumentVersion = spacetimedb.reducer(
+  { documentId: t.string(), versionId: t.string() },
+  (ctx, args) => {
+    const { doc, role, memberId } = requireDoc(ctx, args.documentId, 'editor');
+    const v = findDocVersion(ctx, doc.id, args.versionId);
+    if (!v) return;
+    if (role !== 'manager' && v.createdByMemberId !== memberId) {
+      throw docError('forbidden', 'Only the creator or a manager can delete a version');
+    }
+    ctx.db.documentVersion.delete(v);
+  }
+);
+
+// ── Presence ─────────────────────────────────────────────────────────────────
+
+const DOC_AWARENESS_TEXT_ENCODER = new TextEncoder();
+const DOC_AWARENESS_TEXT_DECODER = new TextDecoder();
+
+/**
+ * Pins presence awareness bytes to the caller. Peers feed the stored bytes to
+ * y-protocols applyAwarenessUpdate, which applies EVERY (clientID, clock,
+ * state) entry in them, so verbatim bytes would let any viewer relabel or move
+ * another collaborator's caret (their clientID with a higher clock).
+ *
+ * Accepts exactly what encodeAwarenessUpdate(awareness, [yClientId]) produces
+ * for the caller's own client: lib0 varUint count (1), varUint clientID
+ * (= yClientId), varUint clock, varUint byteLength + UTF-8 JSON state (an
+ * object or null), nothing after it. A non-null state is re-encoded with
+ * `user.name` / `user.color` / `user.memberId` set to the server's values;
+ * the clock and every other field are kept. Returns null for anything else.
+ */
+function sanitizeDocAwareness(
+  bytes: Uint8Array,
+  yClientId: number,
+  user: { name: string; color: string; memberId: string },
+): Uint8Array | null {
+  let pos = 0;
+  const readVarUint = (): number | null => {
+    let num = 0;
+    let mult = 1;
+    while (pos < bytes.length) {
+      const byte = bytes[pos++];
+      num += (byte & 0x7f) * mult;
+      if (byte < 0x80) return Number.isSafeInteger(num) ? num : null;
+      mult *= 128;
+    }
+    return null;
+  };
+  if (readVarUint() !== 1) return null;
+  const clientId = readVarUint();
+  const clock = readVarUint();
+  const length = readVarUint();
+  if (clientId !== yClientId || clock === null || length === null || length !== bytes.length - pos) return null;
+
+  let state: unknown;
+  try {
+    state = JSON.parse(DOC_AWARENESS_TEXT_DECODER.decode(bytes.subarray(pos)));
+  } catch {
+    return null;
+  }
+  if (state !== null && (typeof state !== 'object' || Array.isArray(state))) return null;
+  if (state !== null) {
+    const record = state as Record<string, unknown>;
+    const prev = record.user;
+    const base = prev !== null && typeof prev === 'object' && !Array.isArray(prev) ? prev : {};
+    record.user = { ...base, name: user.name, color: user.color, memberId: user.memberId };
+  }
+
+  const json = DOC_AWARENESS_TEXT_ENCODER.encode(JSON.stringify(state));
+  const head: number[] = [];
+  for (let n of [1, clientId, clock, json.length]) {
+    while (n > 0x7f) {
+      head.push(0x80 | (n % 128));
+      n = Math.floor(n / 128);
+    }
+    head.push(n);
+  }
+  const out = new Uint8Array(head.length + json.length);
+  out.set(head, 0);
+  out.set(json, head.length);
+  return out;
+}
+
+export const upsertDocumentPresence = spacetimedb.reducer(
+  { documentId: t.string(), yClientId: t.u32(), name: t.string(), color: t.string(), awareness: t.byteArray() },
+  (ctx, args) => {
+    // allowTrashed: presence is ephemeral and a trashed doc stays open for its managers.
+    const { doc, role, memberId } = requireDoc(ctx, args.documentId, 'viewer', { allowTrashed: true });
+    if (!ctx.connectionId) throw docError('invalid', 'Presence requires a live connection');
+    if (args.awareness.length > DOC_PRESENCE_MAX_BYTES) throw docError('too_large', 'Presence state is too large');
+    const name = args.name.replace(/\s+/g, ' ').trim().slice(0, DOC_PRESENCE_NAME_MAX);
+    const color = /^#[0-9a-f]{6}$/i.test(args.color) ? args.color.toLowerCase() : DOC_PRESENCE_DEFAULT_COLOR;
+    const awareness = sanitizeDocAwareness(args.awareness, args.yClientId, { name, color, memberId });
+    if (!awareness) throw docError('invalid', 'Presence must be an awareness update for this client only');
+    if (awareness.length > DOC_PRESENCE_MAX_BYTES) throw docError('too_large', 'Presence state is too large');
+    const connectionId = ctx.connectionId.toHexString();
+    const now = ctx.timestamp.microsSinceUnixEpoch;
+
+    const rows = [...ctx.db.documentPresence.byDocumentId.filter(doc.id)];
+    let mine: (typeof rows)[number] | undefined;
+    for (const p of rows) {
+      if (p.connectionId === connectionId && p.yClientId === args.yClientId) {
+        mine = p;
+        continue;
+      }
+      // Backstop for disconnects that were never delivered.
+      if (now - p.updatedAt.microsSinceUnixEpoch > DOC_PRESENCE_TTL_MICROS) ctx.db.documentPresence.delete(p);
+    }
+    const row = {
+      documentId: doc.id,
+      organizationId: doc.organizationId,
+      connectionId,
+      identity: ctx.sender,
+      memberId,
+      yClientId: args.yClientId,
+      name: name || 'Anonymous',
+      color,
+      canEdit: DOC_ROLE_RANK[role] >= DOC_ROLE_RANK.editor,
+      awareness,
+      updatedAt: ctx.timestamp,
+    };
+    if (mine) ctx.db.documentPresence.id.update({ ...row, id: mine.id });
+    else ctx.db.documentPresence.insert({ ...row, id: ctx.newUuidV4() });
+  }
+);
+
+/** Needs no role: removes only the caller's own rows (same connection or same identity). */
+export const removeDocumentPresence = spacetimedb.reducer(
+  { documentId: t.string(), yClientId: t.u32() },
+  (ctx, args) => {
+    const connectionId = ctx.connectionId ? ctx.connectionId.toHexString() : '';
+    for (const p of [...ctx.db.documentPresence.byDocumentId.filter(String(args.documentId).toLowerCase())]) {
+      if (p.yClientId !== args.yClientId) continue;
+      if ((connectionId && p.connectionId === connectionId) || p.identity.isEqual(ctx.sender)) {
+        ctx.db.documentPresence.delete(p);
+      }
+    }
+  }
+);
+
+/**
+ * Lifecycle: drop presence rows of the disconnecting connection. Must never
+ * throw — the 90 s TTL sweep in upsertDocumentPresence and the client's
+ * awareness timeout are the backstops if this doesn't run or fails.
+ */
+export const onDisconnect = spacetimedb.clientDisconnected((ctx) => {
+  try {
+    if (!ctx.connectionId) return;
+    const connectionId = ctx.connectionId.toHexString();
+    for (const p of [...ctx.db.documentPresence.byConnectionId.filter(connectionId)]) {
+      ctx.db.documentPresence.delete(p);
+    }
+  } catch {
+    // Best effort by design (see above).
+  }
+});
+
+// ── Comments ─────────────────────────────────────────────────────────────────
+
+/** `anchor` (optional) positions the thread for members who can't write the comment mark (see cleanCommentAnchor). */
+export const addDocumentComment = spacetimedb.reducer(
+  {
+    documentId: t.string(),
+    threadId: t.string(),
+    body: t.string(),
+    quotedText: t.option(t.string()),
+    mentions: t.option(t.string()),
+    anchor: t.option(t.byteArray()),
+  },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'commenter');
+    const threadId = String(args.threadId).toLowerCase();
+    if (!DOC_UUID_RE.test(threadId)) throw docError('invalid', 'Invalid thread id');
+    if (!ctx.db.documentComment.byThreadId.filter(threadId).next().done) throw docError('invalid', 'Thread already exists');
+    const body = cleanCommentBody(args.body);
+    const quotedText = args.quotedText ? clampChars(args.quotedText.trim(), DOC_QUOTE_MAX) : '';
+    const anchor = cleanCommentAnchor(args.anchor);
+    const mentionIds = parseMentionIds(ctx, doc.organizationId, args.mentions);
+    ctx.db.documentComment.insert({
+      id: ctx.newUuidV4(),
+      documentId: doc.id,
+      organizationId: doc.organizationId,
+      threadId,
+      parentId: undefined,
+      authorMemberId: memberId,
+      authorIdentity: ctx.sender,
+      body,
+      quotedText: quotedText || undefined,
+      mentions: mentionIds.length ? JSON.stringify(mentionIds) : undefined,
+      status: 'open',
+      resolvedAt: undefined,
+      resolvedByMemberId: undefined,
+      createdAt: ctx.timestamp,
+      editedAt: undefined,
+      anchor,
+    });
+    notifyDocMembers(ctx, doc, memberId, [doc.ownerMemberId, ...mentionIds], 'New comment', body, threadId);
+  }
+);
+
+/** Replying to a resolved thread reopens it. */
+export const replyDocumentComment = spacetimedb.reducer(
+  { documentId: t.string(), threadId: t.string(), body: t.string(), mentions: t.option(t.string()) },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'commenter');
+    const threadId = String(args.threadId).toLowerCase();
+    const thread = [...ctx.db.documentComment.byThreadId.filter(threadId)].filter((c) => c.documentId === doc.id);
+    const root = thread.find((c) => c.parentId === undefined);
+    if (!root) throw docError('not_found', 'Thread not found');
+    const body = cleanCommentBody(args.body);
+    const mentionIds = parseMentionIds(ctx, doc.organizationId, args.mentions);
+    ctx.db.documentComment.insert({
+      id: ctx.newUuidV4(),
+      documentId: doc.id,
+      organizationId: doc.organizationId,
+      threadId,
+      parentId: root.id.toString(),
+      authorMemberId: memberId,
+      authorIdentity: ctx.sender,
+      body,
+      quotedText: undefined,
+      mentions: mentionIds.length ? JSON.stringify(mentionIds) : undefined,
+      status: 'open',
+      resolvedAt: undefined,
+      resolvedByMemberId: undefined,
+      createdAt: ctx.timestamp,
+      editedAt: undefined,
+      anchor: undefined,
+    });
+    if (root.status === 'resolved') {
+      ctx.db.documentComment.id.update({ ...root, status: 'open', resolvedAt: undefined, resolvedByMemberId: undefined });
+    }
+    const participants = thread.map((c) => c.authorMemberId);
+    notifyDocMembers(ctx, doc, memberId, [...participants, ...mentionIds], 'New reply', body, threadId);
+  }
+);
+
+export const editDocumentComment = spacetimedb.reducer(
+  { documentId: t.string(), commentId: t.string(), body: t.string() },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'commenter');
+    const c = findDocComment(ctx, doc.id, args.commentId);
+    if (c.authorMemberId !== memberId) throw docError('forbidden', 'Only the author can edit a comment');
+    const body = cleanCommentBody(args.body);
+    if (body === c.body) return;
+    ctx.db.documentComment.id.update({ ...c, body, editedAt: ctx.timestamp });
+  }
+);
+
+export const resolveDocumentComment = spacetimedb.reducer(
+  { documentId: t.string(), commentId: t.string(), resolved: t.bool() },
+  (ctx, args) => {
+    const { doc, memberId } = requireDoc(ctx, args.documentId, 'commenter');
+    const c = findDocComment(ctx, doc.id, args.commentId);
+    if (c.parentId !== undefined) throw docError('invalid', 'Only a thread can be resolved');
+    const status = args.resolved ? 'resolved' : 'open';
+    if (c.status === status) return;
+    ctx.db.documentComment.id.update({
+      ...c,
+      status,
+      resolvedAt: args.resolved ? ctx.timestamp : undefined,
+      resolvedByMemberId: args.resolved ? memberId : undefined,
+    });
+  }
+);
+
+/** Deleting a thread's root deletes the whole thread. */
+export const deleteDocumentComment = spacetimedb.reducer(
+  { documentId: t.string(), commentId: t.string() },
+  (ctx, args) => {
+    const { doc, role, memberId } = requireDoc(ctx, args.documentId, 'viewer');
+    const c = findDocComment(ctx, doc.id, args.commentId);
+    if (c.authorMemberId !== memberId && role !== 'manager') {
+      throw docError('forbidden', 'Only the author or a manager can delete a comment');
+    }
+    if (c.parentId === undefined) {
+      for (const r of [...ctx.db.documentComment.byThreadId.filter(c.threadId)]) {
+        if (r.documentId === doc.id) ctx.db.documentComment.delete(r);
+      }
+    } else {
+      ctx.db.documentComment.delete(c);
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ONE-SHOT DATA MIGRATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Backfills everything the row-level-security work needs, and evacuates the
+ * secrets that used to sit in world-readable tables.
+ *
+ * Run ONCE after publishing, as the service identity or a site admin:
+ *
+ *     bun run scripts/migrate-security-v1.ts
+ *
+ * Idempotent: re-running is a no-op apart from re-reporting. It is also safe to
+ * run before the client is redeployed — the readers all fall back to the legacy
+ * columns until this has run.
+ *
+ * Steps:
+ *   1. organization.orgIdText / rootOrgId  — plain-string mirrors of the uuid
+ *      primary key, required by the RLS joins and by the index lookups that
+ *      replaced `[...organization.iter()].find(...)`.
+ *   2. site_booking.organizationId         — bookings carry customer PII and
+ *      previously could not be scoped to a tenant at all.
+ *   3. user.passwordHash        → user_secret         (private table)
+ *   4. settings square/clover tokens -> org_secret     (private table)
+ *   5. org_member.punchInCode   → member_punch_code   (RLS: self only)
+ *   6. punch_event.pin          → redacted in place
+ *
+ * Steps 3-6 blank the source column afterwards. SpacetimeDB cannot drop a
+ * column via automatic migration, so the legacy columns remain in the schema
+ * forever — but after this runs they are empty and nothing writes them.
+ */
+export const migrateSecurityV1 = spacetimedb.reducer(
+  {},
+  (ctx) => {
+    if (!isServiceCaller(ctx)) requireAdmin(ctx);
+
+    let orgs = 0, bookings = 0, secrets = 0, posTokens = 0, pins = 0, punches = 0;
+
+    // ── 1. organization.orgIdText / rootOrgId ────────────────────────────────
+    for (const org of [...ctx.db.organization.iter()]) {
+      const idText = org.id.toString();
+      const root = (org.parentOrgId as string | undefined) ?? idText;
+      if (org.orgIdText === idText && org.rootOrgId === root) continue;
+      ctx.db.organization.id.update({ ...org, orgIdText: idText, rootOrgId: root });
+      orgs++;
+    }
+
+    // ── 2. site_booking.organizationId ───────────────────────────────────────
+    // site.id is a uuid and site_booking.siteId a string, so this mapping has
+    // to be built in JS — the database cannot express the join.
+    const siteOrgById = new Map<string, string>();
+    for (const site of ctx.db.site.iter()) {
+      siteOrgById.set(site.id.toString(), site.organizationId);
+    }
+    for (const b of [...ctx.db.siteBooking.iter()]) {
+      if (b.organizationId) continue;
+      const orgId = siteOrgById.get(b.siteId);
+      if (!orgId) continue;   // orphaned booking; stays invisible to every client
+      ctx.db.siteBooking.id.update({ ...b, organizationId: orgId });
+      bookings++;
+    }
+
+    // ── 2b. role_task.orgId ──────────────────────────────────────────────────
+    let roleTasks = 0;
+    for (const rt of [...ctx.db.roleTask.iter()]) {
+      const orgId = (rt.organizationId as string | undefined) ?? '';
+      if (rt.orgId === orgId) continue;
+      ctx.db.roleTask.id.update({ ...rt, orgId });
+      roleTasks++;
+    }
+
+    // ── 3. user.passwordHash → user_secret ───────────────────────────────────
+    for (const u of [...ctx.db.user.iter()]) {
+      const hash = u.passwordHash as string | undefined;
+      if (!hash) continue;
+      if (!ctx.db.userSecret.identity.find(u.identity)) {
+        ctx.db.userSecret.insert({
+          identity: u.identity, passwordHash: hash, updatedAt: ctx.timestamp,
+        });
+      }
+      ctx.db.user.identity.update({ ...u, passwordHash: undefined });
+      secrets++;
+    }
+
+    // ── 4. settings POS tokens → org_secret ──────────────────────────────────
+    for (const s of [...ctx.db.settings.iter()]) {
+      const hasToken = s.squareAccessToken !== undefined
+        || s.squareRefreshToken !== undefined
+        || s.squareTokenExpiresAt !== undefined;
+      if (!hasToken) continue;
+      const existing = ctx.db.orgSecret.organizationId.find(s.organizationId);
+      const row = {
+        organizationId: s.organizationId,
+        squareAccessToken: s.squareAccessToken,
+        squareRefreshToken: s.squareRefreshToken,
+        squareTokenExpiresAt: s.squareTokenExpiresAt,
+        cloverAccessToken: existing?.cloverAccessToken,
+        cloverMerchantId: existing?.cloverMerchantId,
+        updatedAt: ctx.timestamp,
+      };
+      if (existing) ctx.db.orgSecret.organizationId.update(row);
+      else ctx.db.orgSecret.insert(row);
+      ctx.db.settings.delete(s);
+      ctx.db.settings.insert({
+        ...s,
+        squareAccessToken: undefined,
+        squareRefreshToken: undefined,
+        squareTokenExpiresAt: undefined,
+      });
+      posTokens++;
+    }
+
+    // ── 5. org_member.punchInCode → member_punch_code ────────────────────────
+    for (const m of [...ctx.db.orgMember.iter()]) {
+      const code = m.punchInCode as string | undefined;
+      if (!code) continue;
+      const memberId = m.id.toString();
+      if (!ctx.db.memberPunchCode.memberId.find(memberId)) {
+        ctx.db.memberPunchCode.insert({
+          memberId,
+          organizationId: m.organizationId,
+          userId: m.userId,
+          code,
+          updatedAt: ctx.timestamp,
+        });
+      }
+      ctx.db.orgMember.delete(m);
+      ctx.db.orgMember.insert({ ...m, punchInCode: undefined });
+      pins++;
+    }
+
+    // ── 6. punch_event.pin → redacted ────────────────────────────────────────
+    for (const e of [...ctx.db.punchEvent.iter()]) {
+      if (e.pin === PUNCH_PIN_REDACTED) continue;
+      ctx.db.punchEvent.id.update({ ...e, pin: PUNCH_PIN_REDACTED });
+      punches++;
+    }
+
+    const note = `orgs=${orgs} bookings=${bookings} roleTasks=${roleTasks} `
+      + `passwords=${secrets} posTokens=${posTokens} pins=${pins} punchEvents=${punches}`;
+    const prev = ctx.db.migrationState.name.find('security_v1');
+    if (prev) ctx.db.migrationState.name.update({ ...prev, appliedAt: ctx.timestamp, note });
+    else ctx.db.migrationState.insert({ name: 'security_v1', appliedAt: ctx.timestamp, note });
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RETENTION
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// SpacetimeDB keeps the whole database resident in memory, and none of these
+// tables ever shrank on their own: every punch, every stock movement, every
+// notification and every AI job stayed forever, and every client downloaded all
+// of it on connect. Subscriptions are now time-windowed on the client side
+// (lib/spacetimedb/provider.tsx), which fixes the transfer but not the growth.
+//
+// `pruneOrgHistory` is the other half: it deletes rows older than `keepDays`
+// for one organization. Owner/service only, and it refuses windows shorter than
+// 30 days so a mistyped argument cannot wipe live data.
+//
+// Chat messages and documents are deliberately NOT pruned — they are content,
+// not telemetry. Document history has its own compaction (`compactDocument`).
+
+const MIN_RETENTION_DAYS = 30;
+const MICROS_PER_DAY = 86_400_000_000n;
+
+export const pruneOrgHistory = spacetimedb.reducer(
+  {
+    organizationId: t.string(),
+    keepDays: t.i32(),
+    dryRun: t.bool(),
+  },
+  (ctx, { organizationId, keepDays, dryRun }) => {
+    const member = findActiveMember(ctx, organizationId);
+    if (member.role !== 'owner' && !isServiceCaller(ctx)) {
+      unauthorized('Owner or service identity required');
+    }
+    if (keepDays < MIN_RETENTION_DAYS) {
+      throw new SenderError(`keepDays must be at least ${MIN_RETENTION_DAYS}`);
+    }
+
+    const cutoff = timestampMicros(ctx.timestamp) - BigInt(keepDays) * MICROS_PER_DAY;
+    const older = (ts: { microsSinceUnixEpoch?: bigint }) => timestampMicros(ts) < cutoff;
+
+    let punches = 0, transactions = 0, notifications = 0, jobs = 0, usage = 0, briefings = 0;
+
+    // Only closed punch pairs are removable — an open shift is live state.
+    for (const e of [...ctx.db.punchEvent.byOrganizationId.filter(organizationId)]) {
+      if (!e.closed || !older(e.createdAt)) continue;
+      if (!dryRun) ctx.db.punchEvent.delete(e);
+      punches++;
+    }
+    for (const tr of [...ctx.db.inventoryTransaction.byOrganizationId.filter(organizationId)]) {
+      if (!older(tr.createdAt)) continue;
+      if (!dryRun) ctx.db.inventoryTransaction.delete(tr);
+      transactions++;
+    }
+    for (const n of [...ctx.db.notification.byOrganizationId.filter(organizationId)]) {
+      if (!n.read || !older(n.createdAt)) continue;
+      if (!dryRun) ctx.db.notification.delete(n);
+      notifications++;
+    }
+    for (const j of [...ctx.db.aiJob.byOrganizationId.filter(organizationId)]) {
+      if (j.status === 'pending' || j.status === 'running') continue;
+      if (!older(j.createdAt)) continue;
+      if (!dryRun) ctx.db.aiJob.delete(j);
+      jobs++;
+    }
+    for (const u of [...ctx.db.aiUsage.byOrganizationId.filter(organizationId)]) {
+      if (!older(u.createdAt)) continue;
+      if (!dryRun) ctx.db.aiUsage.delete(u);
+      usage++;
+    }
+    for (const b of [...ctx.db.dailyBriefing.byOrganizationId.filter(organizationId)]) {
+      if (!older(b.generatedAt)) continue;
+      if (!dryRun) ctx.db.dailyBriefing.delete(b);
+      briefings++;
+    }
+
+    const note = `${dryRun ? 'dryRun ' : ''}org=${organizationId} keepDays=${keepDays} `
+      + `punch=${punches} tx=${transactions} notif=${notifications} `
+      + `aiJob=${jobs} aiUsage=${usage} briefing=${briefings}`;
+    const key = `prune:${organizationId}`;
+    const prev = ctx.db.migrationState.name.find(key);
+    if (prev) ctx.db.migrationState.name.update({ ...prev, appliedAt: ctx.timestamp, note });
+    else ctx.db.migrationState.insert({ name: key, appliedAt: ctx.timestamp, note });
+  }
+);
+
+/** Delete expired device-login handshakes and stale document presence rows. */
+export const pruneEphemeral = spacetimedb.reducer(
+  {},
+  (ctx) => {
+    if (!isServiceCaller(ctx)) requireAdmin(ctx);
+    const now = timestampMicros(ctx.timestamp);
+    for (const r of [...ctx.db.deviceLoginRequest.iter()]) {
+      if (timestampMicros(r.expiresAt) < now) ctx.db.deviceLoginRequest.delete(r);
+    }
+    // Presence rows are removed on disconnect, but a hard client crash leaves
+    // one behind and it then renders as a permanent phantom cursor.
+    const staleBefore = now - 3_600_000_000n;   // 1 hour
+    for (const p of [...ctx.db.documentPresence.iter()]) {
+      if (timestampMicros(p.updatedAt) < staleBefore) ctx.db.documentPresence.delete(p);
+    }
+  }
+);
+
+/**
+ * Backfill the `*Cents` columns from their legacy f64 siblings.
+ *
+ * Run once after publishing, alongside `migrateSecurityV1`. Idempotent: a row
+ * whose cents column is already set is skipped, so a partially-completed run
+ * can simply be repeated.
+ *
+ * Conversion is `Math.round(value * 100)`. For values that were only ever
+ * entered as ordinary prices this recovers the number the user actually typed —
+ * an amount stored as 19.989999999999998 becomes 1999. It cannot recover an
+ * amount that has already drifted by more than half a cent through repeated
+ * arithmetic, which is precisely why the f64 columns are being retired.
+ *
+ * Ratios (settings.paymentTaxRate, inventory_item.lossRate), physical
+ * quantities (unitContentAmount) and sub-cent AI cost telemetry are NOT
+ * converted — they are not currency and cents would be the wrong unit.
+ */
+export const migrateMoneyV1 = spacetimedb.reducer(
+  {},
+  (ctx) => {
+    if (!isServiceCaller(ctx)) requireAdmin(ctx);
+    let payments = 0, expenses = 0, pos = 0, waste = 0, items = 0, staff = 0, members = 0;
+
+    for (const r of [...ctx.db.payment.iter()]) {
+      if (r.amountCents !== undefined) continue;
+      ctx.db.payment.id.update({
+        ...r,
+        amountCents: toCents(r.amount),
+        taxAmountCents: toCents(r.taxAmount),
+        discountAmountCents: toCents(r.discountAmount),
+        refundAmountCents: toCentsOpt(r.refundAmount),
+      });
+      payments++;
+    }
+    for (const r of [...ctx.db.expense.iter()]) {
+      if (r.amountCents !== undefined) continue;
+      ctx.db.expense.id.update({ ...r, amountCents: toCents(r.amount) });
+      expenses++;
+    }
+    for (const r of [...ctx.db.purchaseOrder.iter()]) {
+      if (r.totalCents !== undefined) continue;
+      ctx.db.purchaseOrder.id.update({
+        ...r,
+        subtotalCents: toCents(r.subtotal),
+        taxCents: toCents(r.tax),
+        totalCents: toCents(r.total),
+      });
+      pos++;
+    }
+    for (const r of [...ctx.db.wasteLog.iter()]) {
+      if (r.totalCostCents !== undefined) continue;
+      ctx.db.wasteLog.id.update({
+        ...r,
+        costPerUnitCents: toCents(r.costPerUnit),
+        totalCostCents: toCents(r.totalCost),
+      });
+      waste++;
+    }
+    for (const r of [...ctx.db.inventoryItem.iter()]) {
+      if (r.costPerUnitCents !== undefined) continue;
+      ctx.db.inventoryItem.id.update({
+        ...r,
+        costPerUnitCents: toCents(r.costPerUnit),
+        retailPriceCents: toCentsOpt(r.retailPrice),
+      });
+      items++;
+    }
+    for (const r of [...ctx.db.staffMember.iter()]) {
+      if (r.hourlyRateCents !== undefined) continue;
+      ctx.db.staffMember.id.update({ ...r, hourlyRateCents: toCents(r.hourlyRate) });
+      staff++;
+    }
+    for (const r of [...ctx.db.orgMember.iter()]) {
+      if (r.hourlyRateCents !== undefined || r.hourlyRate === undefined) continue;
+      ctx.db.orgMember.delete(r);
+      ctx.db.orgMember.insert({ ...r, hourlyRateCents: toCentsOpt(r.hourlyRate) });
+      members++;
+    }
+
+    const note = `payment=${payments} expense=${expenses} po=${pos} waste=${waste} `
+      + `item=${items} staffMember=${staff} orgMember=${members}`;
+    const prev = ctx.db.migrationState.name.find('money_v1');
+    if (prev) ctx.db.migrationState.name.update({ ...prev, appliedAt: ctx.timestamp, note });
+    else ctx.db.migrationState.insert({ name: 'money_v1', appliedAt: ctx.timestamp, note });
   }
 );

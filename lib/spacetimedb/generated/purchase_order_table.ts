@@ -23,4 +23,7 @@ export default __t.row({
   sentAt: __t.option(__t.timestamp()).name("sent_at"),
   receivedAt: __t.option(__t.timestamp()).name("received_at"),
   createdAt: __t.timestamp().name("created_at"),
+  subtotalCents: __t.option(__t.i64()).name("subtotal_cents"),
+  taxCents: __t.option(__t.i64()).name("tax_cents"),
+  totalCents: __t.option(__t.i64()).name("total_cents"),
 });

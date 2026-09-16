@@ -23,4 +23,5 @@ export default __t.row({
   notes: __t.option(__t.string()),
   status: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
+  organizationId: __t.string().name("organization_id"),
 });

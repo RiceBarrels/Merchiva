@@ -10,12 +10,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "spacetimedb": "^2.2.0"
+    "spacetimedb": "^2.10.1"
   },
   "devDependencies": {
     "typescript": "~5.6.2"
   },
   "patchedDependencies": {
-    "spacetimedb@2.2.0": "patches/spacetimedb@2.2.0.patch"
+    "spacetimedb@2.10.1": "patches/spacetimedb@2.10.1.patch"
   }
 }

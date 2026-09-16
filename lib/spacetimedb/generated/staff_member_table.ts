@@ -19,4 +19,5 @@ export default __t.row({
   availability: __t.string(),
   createdAt: __t.timestamp().name("created_at"),
   updatedAt: __t.timestamp().name("updated_at"),
+  hourlyRateCents: __t.option(__t.i64()).name("hourly_rate_cents"),
 });
