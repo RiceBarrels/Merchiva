@@ -47,7 +47,7 @@ import { addWasteLog, deleteWasteLog } from "@/lib/spacetimedb/actions";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
-import { PageTabs } from "@/components/page-tabs";
+import { SectionNav } from "@/components/section-nav";
 import { toast } from "sonner";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
@@ -410,11 +410,7 @@ function WasteLogPage() {
           </Button>
         }
       />
-      <PageTabs tabs={[
-        { label: t("nav.inventory"), href: "/manager/inventory" },
-        { label: t("nav.suppliers"), href: "/manager/suppliers" },
-        { label: t("nav.wasteLog"), href: "/manager/inventory/waste" },
-      ]} />
+      <SectionNav section="inventory" />
 
       <div className="p-4 lg:p-6 space-y-6">
         {/* ── Summary Cards ─────────────────────────────────────────────── */}

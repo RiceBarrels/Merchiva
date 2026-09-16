@@ -25,6 +25,7 @@ import {
   useTrainingReviewRequests,
 } from "@/lib/spacetimedb/hooks";
 import { gradeTrainingDay, gradeTrainingObjective } from "@/lib/spacetimedb/actions";
+import { usePersonnelHub } from "@/components/personnel/hub-context";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { Avatar } from "@/components/ui/avatar";
@@ -106,6 +107,10 @@ function timestampMs(value: any): number {
 
 export function TrainingTrainerView({ orgId }: { orgId: string }) {
   const t = useT();
+  // Trainers never see themselves as a trainee: no self-grading, no signing
+  // off their own days, no handling their own review requests (the module
+  // rejects these too).
+  const { myMemberId } = usePersonnelHub();
   const [rawDays] = useTrainingDays() as [unknown[], boolean];
   const [rawObjectives] = useTrainingObjectives() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
@@ -167,14 +172,15 @@ export function TrainingTrainerView({ orgId }: { orgId: string }) {
           (m) =>
             m.organizationId === orgId &&
             m.status === "active" &&
-            m.role === "staff",
+            m.role === "staff" &&
+            m.id.toString() !== myMemberId,
         )
         .map((m) => ({
           id: m.id.toString(),
           displayName: m.displayName || "—",
           role: m.role,
         })),
-    [rawMembers, orgId],
+    [rawMembers, orgId, myMemberId],
   );
 
   const gradeByTarget = useMemo(() => {

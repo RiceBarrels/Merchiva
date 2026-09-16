@@ -17,6 +17,7 @@ import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
 import { isManagerRouteEnabled } from "@/lib/device-apps";
 import { usePermissions } from "@/lib/context/permissions";
 import { useNavMode } from "@/lib/nav-mode";
+import { useShellInfo } from "@/lib/browser-shell/shell-context";
 
 interface HubTab {
   /** Route segment under /manager/personnel. */
@@ -55,10 +56,11 @@ export function PersonnelHeader() {
   const t = useT();
   // In sidebar nav mode phones/tablets get a floating hamburger pinned over the
   // top-left corner (lg:hidden) — leave room for it like PageHeader does.
+  const shell = useShellInfo();
   const [navMode] = useNavMode();
   return (
     <div className="h-14 px-4 lg:px-6 border-b border-border bg-background flex items-center gap-3 shrink-0">
-      <div className={cn("min-w-0 flex-1", navMode === "sidebar" && "pl-14 lg:pl-0")}>
+      <div className={cn("min-w-0 flex-1", !shell && navMode === "sidebar" && "pl-14 lg:pl-0")}>
         <h1 className="text-[15px] font-semibold leading-tight truncate">
           {t("personnel.title")}
         </h1>

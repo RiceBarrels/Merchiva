@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { apiUrl } from "@/lib/api-client";
+import { SHELL_SIGN_OUT_EVENT } from "@/lib/browser-shell/shell-dom";
 
 export interface AuthUser {
   id: string;
@@ -54,6 +55,7 @@ const AuthContext = createContext<AuthContextValue>({
 
 const TOKEN_KEY = "workos_access_token";
 const REFRESH_KEY = "workos_refresh_token";
+// Keep in sync with AUTH_USER_STORAGE_KEY in lib/browser-shell/persistence.ts (the tab store stops persisting once it is gone).
 const USER_KEY = "workos_user";
 const ACCOUNTS_KEY = "merchiva_accounts";
 
@@ -327,6 +329,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // multi-account list, app/store-device mode, cached org id, theme, offline
   // caches. Nothing from the previous session may survive on a shared device.
   const signOut = useCallback(() => {
+    // Every sign-out path: the browser shell stops persisting and purges its tab state (lib/browser-shell/sign-out.ts).
+    // shell-dom has no store import, so there is no cycle back into lib/auth.
+    try {
+      window.dispatchEvent(new Event(SHELL_SIGN_OUT_EVENT));
+    } catch {}
     try {
       localStorage.clear();
     } catch {}

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { MobileShell } from "@/components/sidebar";
+import { ManagerShell } from "@/components/browser-shell/manager-shell";
 import { MerchivaQuickDialog } from "@/components/merchiva-quick-dialog";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
@@ -575,7 +575,7 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
             </>
           ) : (
             <>
-              <MobileShell>{children}</MobileShell>
+              <ManagerShell>{children}</ManagerShell>
               <MerchivaQuickDialog />
               <PushNotificationPrompt />
               <TauriNotificationBridge />

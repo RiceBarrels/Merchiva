@@ -77,7 +77,7 @@ import { toast } from "sonner";
 import { downloadCSV } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
-import { PageTabs } from "@/components/page-tabs";
+import { SectionNav } from "@/components/section-nav";
 import { Spinner } from "@/components/ui/loaders/geometric";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -676,11 +676,8 @@ export default function SuppliersPage() {
   if (suppliersLoading || ordersLoading || messagesLoading) {
     return (
       <PermissionGuard section="inventory">
-        <PageHeader title={t("nav.suppliers")} />
-        <PageTabs tabs={[
-          { label: t("nav.inventory"), href: "/manager/inventory" },
-          { label: t("nav.suppliers"), href: "/manager/suppliers" },
-        ]} />
+        <PageHeader title={t("suppliers.title")} subtitle={t("suppliers.subtitle")} />
+        <SectionNav section="inventory" />
         <div className="flex h-[60vh] items-center justify-center">
           <Spinner size={24} className="text-muted-foreground" />
         </div>
@@ -692,7 +689,8 @@ export default function SuppliersPage() {
     <PermissionGuard section="inventory">
       <div className="">
         <PageHeader
-          title={t("nav.suppliers")}
+          title={t("suppliers.title")}
+          subtitle={t("suppliers.subtitle")}
           right={
             <div className="flex items-center gap-2">
               <Button
@@ -714,10 +712,7 @@ export default function SuppliersPage() {
             </div>
           }
         />
-        <PageTabs tabs={[
-          { label: t("nav.inventory"), href: "/manager/inventory" },
-          { label: t("nav.suppliers"), href: "/manager/suppliers" },
-        ]} />
+        <SectionNav section="inventory" />
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 px-4 sm:px-6">

@@ -543,7 +543,7 @@ function MobileDynamicUIElementPage({
             }}
             className="hidden"
           />
-          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ padding: noPadding ? 0 : 16, paddingTop: noPadding ? 64 : 64 }}>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingInline: noPadding ? 0 : 16, paddingTop: 64, paddingBottom: `calc(${noPadding ? 0 : 16}px + var(--shell-dialog-bottom, 0px))` }}>
             {children}
           </div>
         </div>

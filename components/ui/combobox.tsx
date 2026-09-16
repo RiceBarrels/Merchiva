@@ -58,8 +58,20 @@ export function Combobox({
         setQuery("");
       }
     }
+    // Escape closes only the list: capture phase on document, so an enclosing Base UI dialog's document listener
+    // doesn't close too. Android back (lib/browser-shell/android-back.ts) closes it with a dispatched Escape.
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape" || e.isComposing) return;
+      e.stopPropagation();
+      setOpen(false);
+      setQuery("");
+    }
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", onKeyDown, true);
+    };
   }, [open]);
 
   // Focus search input when opening
@@ -87,7 +99,8 @@ export function Combobox({
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full min-w-[140px] rounded border border-border bg-background shadow-md">
+        // data-slot + data-open: overlay detection (mobile chrome, Android back) sees the open list.
+        <div data-slot="combobox-content" data-open="" className="absolute z-50 mt-1 w-full min-w-[140px] rounded border border-border bg-background shadow-md">
           {showSearch && (
             <div className="flex items-center border-b border-border px-2 py-1.5">
               <Search className="h-3 w-3 shrink-0 text-muted-foreground mr-1.5" />

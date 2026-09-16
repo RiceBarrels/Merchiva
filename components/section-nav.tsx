@@ -1,0 +1,135 @@
+"use client";
+
+// The section navigation shown at the top of every manager page that has
+// sub-pages. Replaces the old text-only PageTabs: each tab carries the same
+// multi-colour icon the sidebar and the device grids use, plus a one-line
+// description, so a section reads the same everywhere in Merchiva.
+//
+// Tabs come from lib/manager-sections.ts — the sidebar's expanded sub-nav
+// renders from that same list, so the two can't drift apart.
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { hapticLight } from "@/lib/haptics";
+import { skipNextPageTransition } from "@/components/page-tabs";
+import { isTabActive, sectionById, type SectionTab } from "@/lib/manager-sections";
+import { isManagerRouteEnabled } from "@/lib/device-apps";
+import { useDeviceApps } from "@/lib/spacetimedb/hooks/useDeviceApps";
+import { usePermissions } from "@/lib/context/permissions";
+import { useT } from "@/lib/i18n/context";
+
+export function SectionNav({ section }: { section: string }) {
+  const t = useT();
+  const pathname = usePathname();
+  const { installed } = useDeviceApps();
+  const { can } = usePermissions();
+
+  const def = sectionById(section);
+  const tabs = (def?.tabs ?? []).filter(
+    (tab) =>
+      isManagerRouteEnabled(tab.href, installed) &&
+      (!tab.permissionKey || can(tab.permissionKey, "view")),
+  );
+
+  if (tabs.length < 2) return null;
+
+  const onNavigate = () => {
+    hapticLight();
+    skipNextPageTransition();
+  };
+
+  return (
+    <div className="border-b border-border bg-background shrink-0">
+      {/* Mobile: compact underline tabs. */}
+      <div className="flex md:hidden overflow-x-auto no-scrollbar">
+        {tabs.map((tab) => (
+          <MobileTab key={tab.href} tab={tab} active={isTabActive(tab, pathname)} label={t(tab.labelKey)} onNavigate={onNavigate} />
+        ))}
+      </div>
+      {/* Desktop: segmented cards with icon + description. */}
+      <div className="hidden md:flex overflow-x-auto no-scrollbar">
+        {tabs.map((tab) => (
+          <DesktopTab
+            key={tab.href}
+            tab={tab}
+            active={isTabActive(tab, pathname)}
+            label={t(tab.labelKey)}
+            sub={t(tab.subKey)}
+            onNavigate={onNavigate}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileTab({ tab, active, label, onNavigate }: {
+  tab: SectionTab;
+  active: boolean;
+  label: string;
+  onNavigate: () => void;
+}) {
+  const Icon = tab.icon;
+  return (
+    <Link
+      href={tab.href}
+      onClick={onNavigate}
+      className={cn(
+        "flex-1 shrink-0 flex items-center justify-center gap-1.5 px-3.5 py-2 text-[12px] font-medium border-b-2 transition-colors whitespace-nowrap",
+        active ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <Icon className="h-[15px] w-[15px] shrink-0" />
+      {label}
+    </Link>
+  );
+}
+
+function DesktopTab({ tab, active, label, sub, onNavigate }: {
+  tab: SectionTab;
+  active: boolean;
+  label: string;
+  sub: string;
+  onNavigate: () => void;
+}) {
+  const Icon = tab.icon;
+  return (
+    <Link
+      href={tab.href}
+      onClick={onNavigate}
+      className={cn(
+        "flex-1 shrink-0 flex items-center gap-2 lg:gap-2.5 px-3 lg:px-4 py-2 lg:py-2.5 transition-colors border-r border-border last:border-r-0 relative whitespace-nowrap",
+        active ? "bg-muted" : "bg-background hover:bg-muted/50",
+      )}
+    >
+      <span
+        className={cn(
+          "w-7 h-7 lg:w-8 lg:h-8 rounded-lg inline-flex items-center justify-center shrink-0 transition-colors",
+          active ? "bg-background shadow-[inset_0_0_0_.5px_rgb(0_0_0/.08)]" : "bg-muted",
+        )}
+      >
+        <Icon className="h-[17px] w-[17px] lg:h-[18px] lg:w-[18px]" />
+      </span>
+      <div className="text-left min-w-0">
+        <div
+          className={cn(
+            "text-[13px] lg:text-[13.5px] font-semibold tracking-[-0.01em] truncate",
+            active ? "text-foreground" : "text-foreground/80",
+          )}
+        >
+          {label}
+        </div>
+        <div
+          className={cn(
+            "text-[11px] truncate hidden lg:block",
+            active ? "text-muted-foreground" : "text-muted-foreground/80",
+          )}
+        >
+          {sub}
+        </div>
+      </div>
+      {active && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
+    </Link>
+  );
+}

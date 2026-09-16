@@ -256,7 +256,11 @@ export function OrgListView({
   }, [effectiveDir, effectiveSortKey, groupIndex, collator, t, rolesByKey]);
 
   const visible = useMemo(() => {
-    const arr = searchMatchIds ? persons.filter((p) => searchMatchIds.has(p.id)) : persons.slice();
+    // A group whose name matched brings all of its members, in flat and grouped mode
+    // alike (the toolbar counter uses the same rule).
+    const arr = searchMatchIds
+      ? persons.filter((p) => searchMatchIds.has(p.id) || (!!p.groupId && searchMatchIds.has(p.groupId)))
+      : persons.slice();
     return arr.sort(comparePersons);
   }, [persons, searchMatchIds, comparePersons]);
 
@@ -776,7 +780,9 @@ function PersonRow({
               if (v == null || v === p.role || !roleEditable) return;
               const r = rolesByKey[v];
               if (!r || r.key === "owner") return;
-              onUpdateNode(p.id, { role: v, perms: r.perms.length > 0 ? r.perms : p.perms });
+              // No role defaults → send the role only; the hook merges it with any
+              // permission write that is still in flight (p.perms may be stale).
+              onUpdateNode(p.id, r.perms.length > 0 ? { role: v, perms: r.perms } : { role: v });
             }}
           >
             <SelectTrigger

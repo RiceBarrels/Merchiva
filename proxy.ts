@@ -18,8 +18,13 @@ const ALLOWED_ORIGINS = [
   "http://localhost:3000",
 ];
 
+// Capacitor Android WebView (androidScheme "https"). Exact match only: a prefix match would also accept
+// https://localhost.attacker.com, and credentials are allowed.
+const EXACT_ALLOWED_ORIGINS = ["https://localhost"];
+
 function getAllowedOrigin(origin: string | null): string | null {
   if (!origin) return null;
+  if (EXACT_ALLOWED_ORIGINS.includes(origin)) return origin;
   if (ALLOWED_ORIGINS.some((o) => origin.startsWith(o))) return origin;
   return null;
 }
@@ -35,7 +40,8 @@ function handleApiCors(req: NextRequest): NextResponse {
         ...(allowed && {
           "Access-Control-Allow-Origin": allowed,
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+          // x-uploadthing-*, b3, traceparent: sent by the uploadthing client (Docs image upload from the static app).
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, x-uploadthing-package, x-uploadthing-version, b3, traceparent",
           "Access-Control-Allow-Credentials": "true",
           "Access-Control-Max-Age": "86400",
         }),

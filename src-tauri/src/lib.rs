@@ -252,7 +252,10 @@ pub fn run() {
                 .title("")
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(1024.0, 600.0)
-                .background_color(tauri::webview::Color(0, 0, 0, 255));
+                .background_color(tauri::webview::Color(0, 0, 0, 255))
+                // HTML5 drag and drop must reach the page on Windows (WebView2), e.g. the Docs import drop
+                // zones; nothing listens for Tauri's own drag-drop events.
+                .disable_drag_drop_handler();
 
             #[cfg(target_os = "macos")]
             {

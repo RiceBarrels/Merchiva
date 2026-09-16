@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LogOut, Coffee, Play, ClockAlert, DoorOpen } from "lucide-react";
 import { AdminModeIcon } from "@/components/device/app-icons";
 import { toast } from "sonner";
+import { APP_MODE_HOME, setManagerOverride } from "@/lib/app-mode";
 import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { recordPunch } from "@/lib/spacetimedb/actions";
@@ -24,8 +25,8 @@ export interface LogoutDrawerProps {
 
 /** Switches the device to the back-office UI after a manager PIN. */
 export function enterManagerMode() {
-  try { sessionStorage.setItem("merchiva_manager_override", "1"); } catch {}
-  window.location.href = "/manager/dashboard";
+  setManagerOverride(true);
+  window.location.href = APP_MODE_HOME.admin;
 }
 
 export function LogoutDrawer({ open, onOpenChange, members, operator, shift, onLogout }: LogoutDrawerProps) {
