@@ -23,16 +23,36 @@ for (const m of src.matchAll(/name: '([a-z_0-9]+)',\s*\n\s*public: (true|false)/
   (m[2] === "true" ? publicTables : privateTables).add(m[1]);
 }
 
-/** Column type per table, e.g. columnTypes["role_task"]["organizationId"]. */
+/**
+ * Parse each `table(...)` definition. The options object contains an `indexes`
+ * array of objects, so a lazy `\{...\}` regex stops at the first inner brace and
+ * silently sees only the first index — which is how four missing indexes got
+ * past this check once. Match braces properly instead.
+ */
 const columnTypes: Record<string, Record<string, string>> = {};
-for (const block of src.matchAll(
-  /const \w+Table = table\(\s*\{([\s\S]*?)\}\s*,\s*\{([\s\S]*?)\n  \}\s*\)/g,
-)) {
-  const name = /name: '([a-z_0-9]+)'/.exec(block[1])?.[1];
+const indexedColumns: Record<string, Set<string>> = {};
+
+for (const m of src.matchAll(/const \w+Table = table\(/g)) {
+  const start = m.index! + m[0].length;
+  const end = src.indexOf("\n);", start);
+  if (end < 0) continue;
+  const body = src.slice(start, end);
+  const name = /name: '([a-z_0-9]+)'/.exec(body)?.[1];
   if (!name) continue;
+
   columnTypes[name] = {};
-  for (const col of block[2].matchAll(/^ {4}(\w+):\s*(t\.[^,\n]+)/gm)) {
-    columnTypes[name][col[1]] = col[2].trim();
+  indexedColumns[name] = new Set();
+
+  // Columns: `    someCol: t.something(...)` at exactly four spaces of indent.
+  for (const col of body.matchAll(/^ {4}(\w+):\s*(t\.[^,\n]+)/gm)) {
+    const [, colName, colType] = col;
+    columnTypes[name][colName] = colType.trim();
+    // A primary key or unique constraint is itself an index.
+    if (/primaryKey\(|unique\(/.test(colType)) indexedColumns[name].add(colName);
+  }
+  // Explicit indexes: `columns: ['a', 'b']`.
+  for (const idx of body.matchAll(/columns:\s*\[([^\]]+)\]/g)) {
+    for (const c of idx[1].matchAll(/'(\w+)'/g)) indexedColumns[name].add(c[1]);
   }
 }
 
@@ -50,7 +70,7 @@ if (orgBlock) {
   }
 }
 const orgScoped = new Set(orgPairs.map(([t]) => t));
-const serviceOnly = arrayLiteral("RLS_SERVICE_ONLY");
+const noClientAccess = arrayLiteral("RLS_NO_CLIENT_ACCESS");
 const unfiltered = arrayLiteral("RLS_UNFILTERED");
 
 const selfBlock = /RLS_SELF_SCOPED[^=]*= \[([\s\S]*?)\];/.exec(src);
@@ -64,7 +84,7 @@ const handWritten = new Set(
 );
 
 const covered = new Set([
-  ...orgScoped, ...serviceOnly, ...selfScoped, ...handWritten, ...unfiltered,
+  ...orgScoped, ...noClientAccess, ...selfScoped, ...handWritten, ...unfiltered,
 ]);
 
 /**
@@ -84,13 +104,36 @@ for (const [table, column] of [...orgPairs, ...[...selfScoped].map((t): [string,
   else if (type.includes("option")) optionRefs.push(`${table}.${column} — ${type}`);
 }
 
+/**
+ * Every RLS join column must be indexed on BOTH sides. A subscription against a
+ * table whose rule joins an unindexed column is rejected at runtime with
+ *   Subscriptions require indexes on join columns
+ * and because rules are unioned per table, one bad rule makes that table
+ * unsubscribable for every client — the screen just hangs on its loading state.
+ * Publish does not catch this; only an actual subscription does.
+ */
+const unindexed: string[] = [];
+function requireIndex(table: string, column: string, why: string) {
+  if (!columnTypes[table]) return;
+  if (!indexedColumns[table]?.has(column)) unindexed.push(`${table}.${column} — ${why}`);
+}
+for (const [table, column] of orgPairs) {
+  requireIndex(table, column, "joined by its org-scoped rule");
+}
+requireIndex("org_member", "organizationId", "join target of every org-scoped rule");
+requireIndex("org_member", "userId", "matched against :sender by most rules");
+requireIndex("organization", "orgIdText", "joined by the organization rule");
+requireIndex("user", "identity", "joined by the user colleague rule");
+requireIndex("chat_member", "conversationId", "joined by both chat rules");
+requireIndex("chat_message", "conversationId", "joined by the chat_message rule");
+
 const uncovered = [...publicTables].filter((t) => !covered.has(t)).sort();
 const ghosts = [...covered].filter((t) => !publicTables.has(t) && !privateTables.has(t)).sort();
 
 console.log(
   `${publicTables.size} public / ${privateTables.size} private tables; ` +
   `${orgScoped.size} org-scoped, ${selfScoped.size} self-scoped, ` +
-  `${serviceOnly.size} service-only, ${handWritten.size} hand-written rules.`,
+  `${noClientAccess.size} no-client-access, ${handWritten.size} hand-written rules.`,
 );
 
 let failed = false;
@@ -101,6 +144,15 @@ if (uncovered.length) {
     uncovered.map((t) => `  - ${t}`).join("\n") +
     `\n\nAdd each to a list in ${SRC}, or set public: false, or — if it really is` +
     `\nmeant to be world-readable — add it to RLS_UNFILTERED with a reason.`,
+  );
+}
+if (unindexed.length) {
+  failed = true;
+  console.error(
+    `\nUNSUBSCRIBABLE: ${unindexed.length} RLS join column(s) are not indexed:\n` +
+    unindexed.map((r) => `  - ${r}`).join("\n") +
+    `\n\nAdd a btree index on each, or every client's subscription to that table` +
+    `\nwill hang. Publish will NOT report this.`,
   );
 }
 if (optionRefs.length) {

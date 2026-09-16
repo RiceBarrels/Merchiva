@@ -101,6 +101,13 @@ export const ChatMember = __t.object("ChatMember", {
 });
 export type ChatMember = __Infer<typeof ChatMember>;
 
+export const ChatMembershipIndex = __t.object("ChatMembershipIndex", {
+  chatMemberId: __t.string(),
+  conversationId: __t.string(),
+  userId: __t.identity(),
+});
+export type ChatMembershipIndex = __Infer<typeof ChatMembershipIndex>;
+
 export const ChatMessage = __t.object("ChatMessage", {
   id: __t.uuid(),
   conversationId: __t.string(),
@@ -480,6 +487,13 @@ export const OrgMember = __t.object("OrgMember", {
   hourlyRateCents: __t.option(__t.i64()),
 });
 export type OrgMember = __Infer<typeof OrgMember>;
+
+export const OrgMembershipIndex = __t.object("OrgMembershipIndex", {
+  memberId: __t.string(),
+  organizationId: __t.string(),
+  userId: __t.identity(),
+});
+export type OrgMembershipIndex = __Infer<typeof OrgMembershipIndex>;
 
 export const OrgSecret = __t.object("OrgSecret", {
   organizationId: __t.string(),

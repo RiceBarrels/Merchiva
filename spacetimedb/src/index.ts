@@ -80,6 +80,50 @@ function toCentsOpt(amount: number | undefined): bigint | undefined {
   return amount === undefined || amount === null ? undefined : toCents(amount);
 }
 
+// ─── Membership indexes ──────────────────────────────────────────────────────
+//
+// `org_membership_index` and `chat_membership_index` are flat (scope, identity)
+// pairs that exist purely so RLS rules can join something rule-free — see the
+// comment on each table. They are derived data: keep them in step with every
+// change to org_member / chat_member membership, or a user silently loses
+// access to their own store.
+//
+// Only ACTIVE members get a row, so the rules need no extra status filter.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function syncOrgMembershipIndex(
+  ctx: any,
+  member: { id: { toString(): string }; organizationId: string; userId: unknown; status: string },
+): void {
+  const memberId = member.id.toString();
+  const existing = ctx.db.orgMembershipIndex.memberId.find(memberId);
+  if (member.status !== 'active') {
+    if (existing) ctx.db.orgMembershipIndex.delete(existing);
+    return;
+  }
+  const row = { memberId, organizationId: member.organizationId, userId: member.userId };
+  if (existing) ctx.db.orgMembershipIndex.memberId.update(row);
+  else ctx.db.orgMembershipIndex.insert(row);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dropOrgMembershipIndex(ctx: any, memberId: string): void {
+  const existing = ctx.db.orgMembershipIndex.memberId.find(memberId);
+  if (existing) ctx.db.orgMembershipIndex.delete(existing);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function syncChatMembershipIndex(
+  ctx: any,
+  cm: { id: { toString(): string }; conversationId: string; userId: unknown },
+): void {
+  const chatMemberId = cm.id.toString();
+  const row = { chatMemberId, conversationId: cm.conversationId, userId: cm.userId };
+  const existing = ctx.db.chatMembershipIndex.chatMemberId.find(chatMemberId);
+  if (existing) ctx.db.chatMembershipIndex.chatMemberId.update(row);
+  else ctx.db.chatMembershipIndex.insert(row);
+}
+
 /** Placeholder written into punch_event.pin — the real code is never stored. */
 const PUNCH_PIN_REDACTED = '----';
 
@@ -1830,6 +1874,60 @@ const deviceOperatorSessionTable = table(
   }
 );
 
+
+/**
+ * Flat (organizationId, userId) membership index — the join target for every
+ * org-scoped RLS rule.
+ *
+ * Rules cannot join `org_member` directly: RLS expansion is recursive, and a
+ * subscription is limited to two tables, so `x JOIN org_member` becomes three
+ * the moment org_member's own rules expand ("Invalid number of tables in
+ * subscription: 3"). This table carries NO rule of its own, so it never
+ * expands, keeping every org rule at exactly two tables.
+ *
+ * It is world-readable, and deliberately holds nothing but the pairing: which
+ * identity belongs to which organization. No name, email, role, PIN or pay.
+ * Maintained by syncMembershipIndex() on every org_member write.
+ */
+const orgMembershipIndexTable = table(
+  {
+    name: 'org_membership_index',
+    public: true,
+    indexes: [
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
+      { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
+    ],
+  },
+  {
+    memberId: t.string().primaryKey(),
+    organizationId: t.string(),
+    userId: t.identity(),
+  }
+);
+
+
+/**
+ * Flat (conversationId, userId) index — the join target for the chat rules.
+ * Same reason as org_membership_index: `chat_message JOIN chat_member` is three
+ * tables once chat_member's own rule expands. Carries no rule, so it does not
+ * expand. Reveals only conversation membership, never message content.
+ */
+const chatMembershipIndexTable = table(
+  {
+    name: 'chat_membership_index',
+    public: true,
+    indexes: [
+      { accessor: 'byConversationId', algorithm: 'btree', columns: ['conversationId'] },
+      { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
+    ],
+  },
+  {
+    chatMemberId: t.string().primaryKey(),
+    conversationId: t.string(),
+    userId: t.identity(),
+  }
+);
+
 /** One row; records which one-shot data migrations have already run. */
 const migrationStateTable = table(
   {
@@ -2028,6 +2126,10 @@ const documentUpdateTable = table(
     public: true,
     indexes: [
       { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+      // Required by the row-level-security rule: a subscription against a
+      // table whose RLS rule joins on an unindexed column is rejected with
+      // "Subscriptions require indexes on join columns".
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
   },
   {
@@ -2070,6 +2172,10 @@ const documentPresenceTable = table(
     indexes: [
       { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
       { accessor: 'byConnectionId', algorithm: 'btree', columns: ['connectionId'] },
+      // Required by the row-level-security rule: a subscription against a
+      // table whose RLS rule joins on an unindexed column is rejected with
+      // "Subscriptions require indexes on join columns".
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
   },
   {
@@ -2095,6 +2201,10 @@ const documentCommentTable = table(
     indexes: [
       { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
       { accessor: 'byThreadId', algorithm: 'btree', columns: ['threadId'] },
+      // Required by the row-level-security rule: a subscription against a
+      // table whose RLS rule joins on an unindexed column is rejected with
+      // "Subscriptions require indexes on join columns".
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
   },
   {
@@ -2123,6 +2233,10 @@ const documentVersionTable = table(
     public: true,
     indexes: [
       { accessor: 'byDocumentId', algorithm: 'btree', columns: ['documentId'] },
+      // Required by the row-level-security rule: a subscription against a
+      // table whose RLS rule joins on an unindexed column is rejected with
+      // "Subscriptions require indexes on join columns".
+      { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
     ],
   },
   {
@@ -2243,6 +2357,8 @@ const spacetimedb = schema({
   userSecret: userSecretTable,
   orgSecret: orgSecretTable,
   memberPunchCode: memberPunchCodeTable,
+  orgMembershipIndex: orgMembershipIndexTable,
+  chatMembershipIndex: chatMembershipIndexTable,
   deviceOperatorSession: deviceOperatorSessionTable,
   migrationState: migrationStateTable,
   userBriefingPref: userBriefingPrefTable,
@@ -2305,14 +2421,33 @@ export default spacetimedb;
 //   * `IN` is not supported ("Unsupported expression"); only
 //     = < > <= >= != <> combined with AND / OR against literals.
 //
-// THE SERVICE RULE
-// ----------------
-// /merchivaAdmin and the server-side cron/fan-out routes read across every
-// tenant using SPACETIMEDB_SERVICE_TOKEN, which is an ordinary identity and is
-// therefore subject to RLS. Each table gets a second rule granting that
-// identity full read access, following the documented "admin" pattern
-// (`JOIN service_identity s WHERE s.identity = :sender`). Without it the whole
-// admin console goes blank the moment these filters are published.
+// WHY THERE IS NO "SERVICE IDENTITY" RULE
+// --------------------------------------
+// The obvious way to let the server-side service identity read across tenants
+// is the documented admin pattern, a cross join against a table of privileged
+// identities:
+//
+//     SELECT x.* FROM <t> x JOIN service_identity s WHERE s.identity = :sender
+//
+// DO NOT DO THIS. It parses, it publishes, and it even works over the one-shot
+// HTTP /sql endpoint — but a SUBSCRIPTION against any table carrying such a
+// rule is rejected at runtime with
+//
+//     Subscriptions require indexes on join columns
+//
+// because a cross join has no join column to index incrementally. RLS rules
+// are unioned per table, so ONE such rule makes that table unsubscribable for
+// EVERY client. Shipping this took the whole app down: every screen hung on
+// its loading state, because no subscription ever applied.
+//
+// The service identity reads through the HTTP /sql endpoint (lib/merchiva-admin/
+// stdb.ts), which is subject to the same rules, so /merchivaAdmin sees only
+// what these rules allow. Giving it a genuine cross-tenant view needs a
+// mechanism that is not an RLS cross join — the database owner bypasses RLS
+// entirely, so pointing the admin console at an owner token is the cheap fix.
+//
+// Every join below is an equality join on an indexed column on BOTH sides.
+// When adding a rule, add the index first.
 
 /**
  * Tables scoped to "an active membership in the owning organization".
@@ -2356,10 +2491,10 @@ const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
 /**
  * Website-builder / loyalty tables. The features were removed in "slim down to
  * core ops", but the tables, their reducers and their customer PII are still
- * deployed. Until they are dropped for real they are readable by nothing except
- * the service identity — no client rule at all.
+ * deployed. They carry NO rule, so no client can read a single row of them —
+ * the strictest possible state, and correct until they are dropped for real.
  */
-const RLS_SERVICE_ONLY = [
+const RLS_NO_CLIENT_ACCESS = [
   'site_page', 'site_customer', 'site_order', 'site_membership',
   'membership_tier', 'membership_perk', 'perk_claim', 'customer_points',
   'platform_admin',
@@ -2380,15 +2515,10 @@ const RLS_SERVICE_ONLY = [
  * Private (`public: false`) tables need no rule; they are unreadable by any
  * client: platform_admin_secret, user_secret, org_secret, migration_state.
  */
-const RLS_UNFILTERED = ['blog_post', 'service_identity'];
+const RLS_UNFILTERED = ['blog_post', 'service_identity', 'org_membership_index', 'chat_membership_index'];
 void RLS_UNFILTERED;
 
 const rlsRules: Record<string, ReturnType<typeof spacetimedb.clientVisibilityFilter.sql>> = {};
-
-/** Full read access for the server-side service identity. */
-function serviceRule(tableName: string) {
-  return `SELECT x.* FROM ${tableName} x JOIN service_identity s WHERE s.identity = :sender`;
-}
 
 /** ['table', 'column'] for every org-scoped entry, defaulting the column. */
 const orgScopedPairs: Array<[string, string]> = RLS_ORG_SCOPED.map((e) =>
@@ -2398,8 +2528,8 @@ const orgScopedPairs: Array<[string, string]> = RLS_ORG_SCOPED.map((e) =>
 for (const [tbl, col] of orgScopedPairs) {
   rlsRules[`rls_${tbl}_member`] = spacetimedb.clientVisibilityFilter.sql(
     `SELECT x.* FROM ${tbl} x ` +
-    `JOIN org_member m ON x.${col} = m.organizationId ` +
-    `WHERE m.userId = :sender AND m.status = 'active'`
+    `JOIN org_membership_index mi ON x.${col} = mi.organizationId ` +
+    `WHERE mi.userId = :sender`
   );
 }
 for (const [tbl, col] of RLS_SELF_SCOPED) {
@@ -2407,12 +2537,6 @@ for (const [tbl, col] of RLS_SELF_SCOPED) {
     `SELECT * FROM ${tbl} WHERE ${col} = :sender`
   );
 }
-for (const tbl of [...orgScopedPairs.map(([t2]) => t2), ...RLS_SELF_SCOPED.map(([t2]) => t2),
-                   ...RLS_SERVICE_ONLY,
-                   'org_member', 'organization', 'user', 'chat_member', 'chat_message']) {
-  rlsRules[`rls_${tbl}_service`] = spacetimedb.clientVisibilityFilter.sql(serviceRule(tbl));
-}
-
 // ─── Hand-written rules ──────────────────────────────────────────────────────
 
 // org_member: your own memberships, plus everyone in an org where you are an
@@ -2423,9 +2547,9 @@ rlsRules.rls_org_member_self = spacetimedb.clientVisibilityFilter.sql(
   `SELECT * FROM org_member WHERE userId = :sender`
 );
 rlsRules.rls_org_member_colleagues = spacetimedb.clientVisibilityFilter.sql(
-  `SELECT peer.* FROM org_member peer ` +
-  `JOIN org_member me ON peer.organizationId = me.organizationId ` +
-  `WHERE me.userId = :sender AND me.status = 'active'`
+  `SELECT m.* FROM org_member m ` +
+  `JOIN org_membership_index mi ON m.organizationId = mi.organizationId ` +
+  `WHERE mi.userId = :sender`
 );
 
 // organization: orgs you own, plus orgs you are an active member of. Joins go
@@ -2435,36 +2559,37 @@ rlsRules.rls_organization_owner = spacetimedb.clientVisibilityFilter.sql(
 );
 rlsRules.rls_organization_member = spacetimedb.clientVisibilityFilter.sql(
   `SELECT o.* FROM organization o ` +
-  `JOIN org_member m ON o.orgIdText = m.organizationId ` +
-  `WHERE m.userId = :sender AND m.status = 'active'`
+  `JOIN org_membership_index mi ON o.orgIdText = mi.organizationId ` +
+  `WHERE mi.userId = :sender`
 );
 
-// user: yourself, plus colleagues (needed for display names / avatars).
-// `passwordHash` has moved to the private `user_secret` table, so the colleague
-// rule no longer hands out credentials.
+// user: yourself only.
+//
+// A colleague rule would have to relate your identity to theirs THROUGH a
+// membership table — `user JOIN org_member JOIN org_member` — and that is three
+// tables, which a subscription cannot express ("Invalid number of tables in
+// subscription: 3"). The `user` row is only read for a colleague's avatar;
+// names and emails already live on `org_member`, which IS colleague-visible.
+// Colleague avatars therefore fall back to initials until `avatarUrl` is
+// denormalised onto org_member.
 rlsRules.rls_user_self = spacetimedb.clientVisibilityFilter.sql(
   `SELECT * FROM user WHERE identity = :sender`
 );
-rlsRules.rls_user_colleagues = spacetimedb.clientVisibilityFilter.sql(
-  `SELECT u.* FROM user u ` +
-  `JOIN org_member theirs ON u.identity = theirs.userId ` +
-  `JOIN org_member mine ON theirs.organizationId = mine.organizationId ` +
-  `WHERE mine.userId = :sender AND mine.status = 'active'`
-);
+
 
 // chat: membership-scoped rather than org-scoped — you see a conversation's
 // messages only if you are in it. `chat_conversation.id` is a uuid and
 // `chat_message.conversationId` a string, so the join has to go through
 // chat_member, which keys the conversation the same (string) way.
 rlsRules.rls_chat_member_peers = spacetimedb.clientVisibilityFilter.sql(
-  `SELECT peer.* FROM chat_member peer ` +
-  `JOIN chat_member me ON peer.conversationId = me.conversationId ` +
-  `WHERE me.userId = :sender`
+  `SELECT cm.* FROM chat_member cm ` +
+  `JOIN chat_membership_index ci ON cm.conversationId = ci.conversationId ` +
+  `WHERE ci.userId = :sender`
 );
 rlsRules.rls_chat_message_mine = spacetimedb.clientVisibilityFilter.sql(
   `SELECT msg.* FROM chat_message msg ` +
-  `JOIN chat_member me ON msg.conversationId = me.conversationId ` +
-  `WHERE me.userId = :sender`
+  `JOIN chat_membership_index ci ON msg.conversationId = ci.conversationId ` +
+  `WHERE ci.userId = :sender`
 );
 
 export const rowLevelSecurity = spacetimedb.exportGroup(rlsRules);
@@ -2598,6 +2723,7 @@ export const loginWithPassword = spacetimedb.reducer(
     // Migrate org memberships
     for (const m of [...ctx.db.orgMember.byUserId.filter(oldIdentity)]) {
       ctx.db.orgMember.id.update({ ...m, userId: newIdentity });
+      syncOrgMembershipIndex(ctx, { ...m, userId: newIdentity });
     }
 
     // Migrate staff availability
@@ -2613,6 +2739,7 @@ export const loginWithPassword = spacetimedb.reducer(
     // Migrate chat memberships
     for (const cm of [...ctx.db.chatMember.byUserId.filter(oldIdentity)]) {
       ctx.db.chatMember.id.update({ ...cm, userId: newIdentity });
+      syncChatMembershipIndex(ctx, { ...cm, userId: newIdentity });
     }
 
     // Migrate todos
@@ -2726,8 +2853,9 @@ export const createOrg = spacetimedb.reducer(
       website: { view: true, edit: true },
     });
 
+    const ownerMemberId = ctx.newUuidV4();
     ctx.db.orgMember.insert({
-      id: ctx.newUuidV4(),
+      id: ownerMemberId,
       organizationId: orgId.toString(),
       userId: ctx.sender,
       role: 'owner',
@@ -2739,6 +2867,9 @@ export const createOrg = spacetimedb.reducer(
       punchInCode: undefined,
       hourlyRate: undefined,
       hourlyRateCents: undefined,
+    });
+    syncOrgMembershipIndex(ctx, {
+      id: ownerMemberId, organizationId: orgId.toString(), userId: ctx.sender, status: 'active',
     });
 
     // Initialize default settings for the org — seed businessName from org name
@@ -2968,8 +3099,9 @@ export const acceptInvitation = spacetimedb.reducer(
       throw new SenderError('Invitation expired');
     }
 
+    const joinedMemberId = ctx.newUuidV4();
     ctx.db.orgMember.insert({
-      id: ctx.newUuidV4(),
+      id: joinedMemberId,
       organizationId: invite.organizationId,
       userId: ctx.sender,
       role: invite.role,
@@ -2981,6 +3113,9 @@ export const acceptInvitation = spacetimedb.reducer(
       punchInCode: undefined,
       hourlyRate: undefined,
       hourlyRateCents: undefined,
+    });
+    syncOrgMembershipIndex(ctx, {
+      id: joinedMemberId, organizationId: invite.organizationId, userId: ctx.sender, status: 'active',
     });
 
     // Mark invitation as accepted (delete + reinsert)
@@ -3048,6 +3183,7 @@ export const setMemberStatus = spacetimedb.reducer(
 
     ctx.db.orgMember.delete(target);
     ctx.db.orgMember.insert({ ...target, status });
+    syncOrgMembershipIndex(ctx, { ...target, status });
   }
 );
 
@@ -3059,6 +3195,7 @@ export const leaveOrg = spacetimedb.reducer(
       .find(m => m.organizationId === organizationId);
     if (!member) throw new SenderError('Not a member');
     if (member.role === 'owner') throw new SenderError('Owner cannot leave; transfer ownership first');
+    dropOrgMembershipIndex(ctx, member.id.toString());
     ctx.db.orgMember.delete(member);
   }
 );
@@ -4771,11 +4908,16 @@ export const createConversation = spacetimedb.reducer(
     const allHex = Array.from(new Set([senderHex, ...requested]));
 
     for (const hex of allHex) {
+      const cmId = ctx.newUuidV4();
+      const identity = new Identity(hex);
       ctx.db.chatMember.insert({
-        id: ctx.newUuidV4(),
+        id: cmId,
         conversationId: convId.toString(),
-        userId: new Identity(hex),
+        userId: identity,
         joinedAt: ctx.timestamp,
+      });
+      syncChatMembershipIndex(ctx, {
+        id: cmId, conversationId: convId.toString(), userId: identity,
       });
     }
   }
@@ -5555,12 +5697,15 @@ export const addMembersToConversation = spacetimedb.reducer(
       const already = [...ctx.db.chatMember.byUserId.filter(new Identity(uid))]
         .some((m) => m.conversationId === conversationId);
       if (already) continue;
+      const cmId = ctx.newUuidV4();
+      const identity = new Identity(uid);
       ctx.db.chatMember.insert({
-        id: ctx.newUuidV4(),
+        id: cmId,
         conversationId,
-        userId: new Identity(uid),
+        userId: identity,
         joinedAt: ctx.timestamp,
       });
+      syncChatMembershipIndex(ctx, { id: cmId, conversationId, userId: identity });
     }
   }
 );
@@ -9218,6 +9363,26 @@ export const migrateSecurityV1 = spacetimedb.reducer(
       bookings++;
     }
 
+    // ── 2a. membership indexes ───────────────────────────────────────────────
+    // Derived tables that every org/chat RLS rule joins. Rebuilt from scratch
+    // so a re-run also repairs drift.
+    let memberIdx = 0, chatIdx = 0;
+    for (const row of [...ctx.db.orgMembershipIndex.iter()]) ctx.db.orgMembershipIndex.delete(row);
+    for (const m of ctx.db.orgMember.iter()) {
+      if (m.status !== 'active') continue;
+      ctx.db.orgMembershipIndex.insert({
+        memberId: m.id.toString(), organizationId: m.organizationId, userId: m.userId,
+      });
+      memberIdx++;
+    }
+    for (const row of [...ctx.db.chatMembershipIndex.iter()]) ctx.db.chatMembershipIndex.delete(row);
+    for (const cm of ctx.db.chatMember.iter()) {
+      ctx.db.chatMembershipIndex.insert({
+        chatMemberId: cm.id.toString(), conversationId: cm.conversationId, userId: cm.userId,
+      });
+      chatIdx++;
+    }
+
     // ── 2b. role_task.orgId ──────────────────────────────────────────────────
     let roleTasks = 0;
     for (const rt of [...ctx.db.roleTask.iter()]) {
@@ -9295,6 +9460,7 @@ export const migrateSecurityV1 = spacetimedb.reducer(
     }
 
     const note = `orgs=${orgs} bookings=${bookings} roleTasks=${roleTasks} `
+      + `memberIdx=${memberIdx} chatIdx=${chatIdx} `
       + `passwords=${secrets} posTokens=${posTokens} pins=${pins} punchEvents=${punches}`;
     const prev = ctx.db.migrationState.name.find('security_v1');
     if (prev) ctx.db.migrationState.name.update({ ...prev, appliedAt: ctx.timestamp, note });

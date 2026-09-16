@@ -242,6 +242,7 @@ import AiUsageQuotaRow from "./ai_usage_quota_table";
 import BlogPostRow from "./blog_post_table";
 import ChatConversationRow from "./chat_conversation_table";
 import ChatMemberRow from "./chat_member_table";
+import ChatMembershipIndexRow from "./chat_membership_index_table";
 import ChatMessageRow from "./chat_message_table";
 import CouponRow from "./coupon_table";
 import CustomerPointsRow from "./customer_points_table";
@@ -267,6 +268,7 @@ import MembershipTierRow from "./membership_tier_table";
 import NotificationRow from "./notification_table";
 import OrgInvitationRow from "./org_invitation_table";
 import OrgMemberRow from "./org_member_table";
+import OrgMembershipIndexRow from "./org_membership_index_table";
 import OrganizationRow from "./organization_table";
 import PaymentRow from "./payment_table";
 import PerkClaimRow from "./perk_claim_table";
@@ -278,6 +280,7 @@ import QueueEntryRow from "./queue_entry_table";
 import RoleTaskRow from "./role_task_table";
 import RoleTaskAssignmentRow from "./role_task_assignment_table";
 import SalesRecordRow from "./sales_record_table";
+import ServiceIdentityRow from "./service_identity_table";
 import SettingsRow from "./settings_table";
 import ShiftRow from "./shift_table";
 import ShiftPresetRow from "./shift_preset_table";
@@ -417,6 +420,23 @@ const tablesSchema = __schema({
       { name: 'chat_member_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMemberRow),
+  chatMembershipIndex: __table({
+    name: 'chat_membership_index',
+    indexes: [
+      { accessor: 'chatMemberId', name: 'chat_membership_index_chat_member_id_idx_btree', algorithm: 'btree', columns: [
+        'chatMemberId',
+      ] },
+      { accessor: 'byConversationId', name: 'chat_membership_index_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'byUserId', name: 'chat_membership_index_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_membership_index_chat_member_id_key', constraint: 'unique', columns: ['chatMemberId'] },
+    ],
+  }, ChatMembershipIndexRow),
   chatMessage: __table({
     name: 'chat_message',
     indexes: [
@@ -567,6 +587,9 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'document_comment_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
+      { accessor: 'byOrganizationId', name: 'document_comment_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
       { accessor: 'byThreadId', name: 'document_comment_thread_id_idx_btree', algorithm: 'btree', columns: [
         'threadId',
       ] },
@@ -586,6 +609,9 @@ const tablesSchema = __schema({
       ] },
       { accessor: 'id', name: 'document_presence_id_idx_btree', algorithm: 'btree', columns: [
         'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_presence_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
       ] },
     ],
     constraints: [
@@ -632,6 +658,9 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'document_update_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
+      { accessor: 'byOrganizationId', name: 'document_update_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
     ],
     constraints: [
       { name: 'document_update_id_key', constraint: 'unique', columns: ['id'] },
@@ -645,6 +674,9 @@ const tablesSchema = __schema({
       ] },
       { accessor: 'id', name: 'document_version_id_idx_btree', algorithm: 'btree', columns: [
         'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_version_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
       ] },
     ],
     constraints: [
@@ -812,6 +844,23 @@ const tablesSchema = __schema({
       { name: 'org_member_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, OrgMemberRow),
+  orgMembershipIndex: __table({
+    name: 'org_membership_index',
+    indexes: [
+      { accessor: 'memberId', name: 'org_membership_index_member_id_idx_btree', algorithm: 'btree', columns: [
+        'memberId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'org_membership_index_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byUserId', name: 'org_membership_index_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'org_membership_index_member_id_key', constraint: 'unique', columns: ['memberId'] },
+    ],
+  }, OrgMembershipIndexRow),
   organization: __table({
     name: 'organization',
     indexes: [
@@ -999,6 +1048,17 @@ const tablesSchema = __schema({
       { name: 'sales_record_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SalesRecordRow),
+  serviceIdentity: __table({
+    name: 'service_identity',
+    indexes: [
+      { accessor: 'identity', name: 'service_identity_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'service_identity_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, ServiceIdentityRow),
   settings: __table({
     name: 'settings',
     indexes: [
