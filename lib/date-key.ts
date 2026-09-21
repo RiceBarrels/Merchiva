@@ -30,6 +30,18 @@ export function dateKeyOffset(offsetDays: number, from: Date = new Date()): stri
   return dateKey(d);
 }
 
+/**
+ * Local midnight on the Monday of `d`'s week. The schedule, attendance, payroll
+ * and pay screens all key their week by this, and each had written its own.
+ */
+export function mondayOf(d: Date): Date {
+  const out = new Date(d);
+  const day = out.getDay();
+  out.setDate(out.getDate() + (day === 0 ? -6 : 1 - day));
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
 /** Parse a `YYYY-MM-DD` key into local midnight. Invalid input → Invalid Date. */
 export function dateFromKey(key: string): Date {
   return new Date(`${key}T00:00:00`);

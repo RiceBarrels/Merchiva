@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { StatGrid, StatTile } from "@/components/ui/stat-tile";
 import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
+import { dateKey, mondayOf } from "@/lib/date-key";
+import { intlLocaleTag } from "@/lib/i18n/dates";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -73,18 +75,6 @@ interface MemberWeek {
 }
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
-
-function mondayOf(d: Date): Date {
-  const day = d.getDay();
-  const out = new Date(d);
-  out.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
-
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function punchTime(e: PunchEventRow): Date {
   if (e.at && typeof e.at.toDate === "function") return e.at.toDate();
@@ -395,7 +385,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
   const [rawUsers] = useUsers() as [unknown[], boolean];
   const [rawShifts] = useShifts() as [unknown[], boolean];
 
-  const todayIso = isoDate(new Date());
+  const todayIso = dateKey(new Date());
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date()));
   const [selDate, setSelDate] = useState<string>(todayIso);
   const [editing, setEditing] = useState<{ memberId: string; date: string } | null>(null);
@@ -408,9 +398,9 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
     }),
     [weekStart],
   );
-  const weekIsos = useMemo(() => week.map(isoDate), [week]);
+  const weekIsos = useMemo(() => week.map((d) => dateKey(d)), [week]);
 
-  const bcp47 = locale === "zh-cn" ? "zh-CN" : locale === "zh-tw" ? "zh-TW" : locale === "zh-hk" ? "zh-HK" : locale;
+  const bcp47 = intlLocaleTag(locale);
   const weekdayShort = (d: Date) => d.toLocaleDateString(bcp47, { weekday: "short" });
   const weekdayLabel = (iso: string) =>
     new Date(iso + "T00:00:00").toLocaleDateString(bcp47, { weekday: "long", month: "short", day: "numeric" });
@@ -461,13 +451,13 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
   // ── Per member × day cells ──
   const memberWeeks = useMemo<MemberWeek[]>(() => {
     const now = new Date();
-    const nowIso = isoDate(now);
+    const nowIso = dateKey(now);
     return members.map((member) => {
       const events = punches
         .filter((e) => e.memberId === member.id)
         .sort((a, b) => punchTime(a).getTime() - punchTime(b).getTime());
       const cells = weekIsos.map<DayCell>((date) => {
-        const dayEvents = events.filter((e) => isoDate(punchTime(e)) === date);
+        const dayEvents = events.filter((e) => dateKey(punchTime(e)) === date);
         const openInEvent = dayEvents.find((e) => e.action === "in" && !e.closed) ?? null;
         const inEvent = openInEvent ?? dayEvents.find((e) => e.action === "in") ?? null;
         const outEvent = inEvent
@@ -550,7 +540,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
     setSelDate((prev) => {
       const d = new Date(prev + "T00:00:00");
       d.setDate(d.getDate() + delta * 7);
-      return isoDate(d);
+      return dateKey(d);
     });
   };
   const jumpToday = () => {
@@ -616,7 +606,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
         <div className="border-b border-border bg-muted/30">
           <div className="grid grid-cols-7 px-2.5 py-2 gap-0.5">
             {week.map((d) => {
-              const iso = isoDate(d);
+              const iso = dateKey(d);
               const active = iso === selDate;
               const dayIsToday = iso === todayIso;
               const idx = weekIsos.indexOf(iso);
@@ -720,7 +710,7 @@ export function AttendanceWeek({ orgId }: { orgId: string }) {
                 {t("staffing.attendance.records")}
               </Eyebrow>
               {week.map((d) => {
-                const iso = isoDate(d);
+                const iso = dateKey(d);
                 const dayIsToday = iso === todayIso;
                 return (
                   <div key={iso} className={cn("px-2 py-2 text-center border-l border-border/60", dayIsToday && "bg-foreground/[0.04]")}>

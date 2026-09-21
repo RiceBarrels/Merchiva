@@ -13,10 +13,7 @@ import type { StaffRole } from "@/lib/types";
 import { RoleIconComp, taskCompletionsForDate } from "@/components/personnel/role-dialogs";
 import { TaskRow, parseNotifyChats, type TaskRowTask } from "@/components/personnel/task-row";
 import { TaskCompleteDialog } from "@/components/task-complete-dialog";
-
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+import { dateKey } from "@/lib/date-key";
 
 /**
  * All-tasks completion overview shown at the top of the Roles & tasks views
@@ -33,14 +30,14 @@ export function RoleTasksOverview({ orgId, roles, className }: {
   const [rawAssignments] = useRoleTaskAssignments() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
 
-  const todayStr = isoDate(new Date());
+  const todayStr = dateKey(new Date());
   const [statusDate, setStatusDate] = useState(todayStr);
   const shiftStatusDate = (delta: number) => {
     hapticLight();
     setStatusDate((prev) => {
       const d = new Date(prev + "T00:00:00");
       d.setDate(d.getDate() + delta);
-      const next = isoDate(d);
+      const next = dateKey(d);
       return next > todayStr ? prev : next;
     });
   };

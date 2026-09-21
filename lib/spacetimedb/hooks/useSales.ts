@@ -14,23 +14,8 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
 import type { SalesRecord } from "@/lib/types";
 import { dateKey, todayKey } from "@/lib/date-key";
+import { timestampToMs } from "@/lib/spacetimedb/timestamp";
 
-// SpacetimeDB timestamps come through as { microsSinceUnixEpoch: bigint } most
-// of the time, but `.toDate()` is also available, and some callers pre-serialize
-// to a string. Handle all three so we don't silently drop rows.
-function timestampToMs(v: unknown): number {
-  if (v == null) return NaN;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") return new Date(v).getTime();
-  if (typeof v === "object") {
-    const obj = v as { microsSinceUnixEpoch?: bigint | number; toDate?: () => Date };
-    if (typeof obj.toDate === "function") return obj.toDate().getTime();
-    const micros = obj.microsSinceUnixEpoch;
-    if (typeof micros === "bigint") return Number(micros / 1000n);
-    if (typeof micros === "number") return micros / 1000;
-  }
-  return NaN;
-}
 
 export function useSales() {
   const { organizationId } = usePermissions();

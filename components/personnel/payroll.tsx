@@ -28,6 +28,8 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 import { Num } from "@/components/ui/num";
 import { StatGrid, StatTile } from "@/components/ui/stat-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { mondayOf } from "@/lib/date-key";
+import { intlLocaleTag } from "@/lib/i18n/dates";
 import {
   Select,
   SelectContent,
@@ -64,14 +66,6 @@ interface PayRow {
 }
 
 // ─── Period helpers ──────────────────────────────────────────────────────────
-
-function mondayOf(d: Date): Date {
-  const day = d.getDay();
-  const out = new Date(d);
-  out.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
 
 /** Local-time YYYY-MM-DD key. */
 function isoDay(d: Date): string {
@@ -294,7 +288,7 @@ export function PayrollPanel({ orgId, myMemberId }: { orgId: string; myMemberId:
   const [toKey, setToKey] = useState<string>(() => defaultKey("week", new Date()));
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const bcp47 = locale === "zh-cn" ? "zh-CN" : locale === "zh-tw" ? "zh-TW" : locale === "zh-hk" ? "zh-HK" : locale;
+  const bcp47 = intlLocaleTag(locale);
 
   const changeUnit = (u: PeriodUnit) => {
     hapticLight();

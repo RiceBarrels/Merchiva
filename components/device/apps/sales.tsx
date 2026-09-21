@@ -14,6 +14,7 @@ import { useT } from "@/lib/i18n/context";
 import type { LiteAppProps } from "./types";
 import { LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection, LiteStat } from "./lite";
 import { dateKey } from "@/lib/date-key";
+import { timestampToMs } from "@/lib/spacetimedb/timestamp";
 
 type Range = "today" | "yesterday" | "week";
 
@@ -30,19 +31,6 @@ interface PaymentRow {
 // Same timestamp handling as useSales: SpacetimeDB timestamps arrive as
 // { microsSinceUnixEpoch: bigint }, sometimes with .toDate(), sometimes as a
 // string.
-function timestampToMs(v: unknown): number {
-  if (v == null) return NaN;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") return new Date(v).getTime();
-  if (typeof v === "object") {
-    const obj = v as { microsSinceUnixEpoch?: bigint | number; toDate?: () => Date };
-    if (typeof obj.toDate === "function") return obj.toDate().getTime();
-    const micros = obj.microsSinceUnixEpoch;
-    if (typeof micros === "bigint") return Number(micros / 1000n);
-    if (typeof micros === "number") return micros / 1000;
-  }
-  return NaN;
-}
 
 /** Local calendar day, matching the `date` keys useSales produces. */
 function isoDay(ms: number): string {

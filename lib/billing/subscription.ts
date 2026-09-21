@@ -1,3 +1,5 @@
+import { timestampToMsOrNull } from "@/lib/spacetimedb/timestamp";
+
 // Subscription access logic — single source of truth for "can this org use
 // Merchiva right now?". Used by the auth gate in `app/manager/layout.tsx` and the
 // `/manager/subscribe` paywall page.
@@ -45,22 +47,6 @@ export interface SubscriptionAccess {
   trialEndsAt: Date | null;
 }
 
-function timestampToMs(ts: TimestampLike): number | null {
-  if (!ts) return null;
-  if (ts instanceof Date) return ts.getTime();
-  const micros = (ts as { microsSinceUnixEpoch?: bigint }).microsSinceUnixEpoch;
-  if (typeof micros === "bigint") return Number(micros / BigInt(1000));
-  const toDate = (ts as { toDate?: () => Date }).toDate;
-  if (typeof toDate === "function") {
-    try {
-      return toDate.call(ts).getTime();
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
 /**
  * Evaluate whether an org currently has access. `nowMs` is injected so callers
  * control the clock (e.g. `Date.now()`).
@@ -72,7 +58,7 @@ export function evaluateSubscription(
   const status = org?.subscriptionStatus ?? null;
   const isSubscribed = !!(status && ACTIVE_STATUSES.has(status));
 
-  const createdMs = timestampToMs(org?.createdAt);
+  const createdMs = timestampToMsOrNull(org?.createdAt);
   const trialEndMs = createdMs != null ? createdMs + TRIAL_DAYS * DAY_MS : null;
   const trialEndsAt = trialEndMs != null ? new Date(trialEndMs) : null;
   const inTrialWindow = trialEndMs != null && nowMs < trialEndMs;

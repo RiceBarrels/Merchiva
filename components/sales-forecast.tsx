@@ -38,15 +38,9 @@ import { Spinner } from "@/components/ui/loaders/geometric";
 import { useT } from "@/lib/i18n/context";
 import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { dateKey } from "@/lib/date-key";
+import { timestampToMs } from "@/lib/spacetimedb/timestamp";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function toISO(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function weatherIcon(condition: string) {
   switch (condition) {
@@ -94,19 +88,6 @@ function formatMultiplier(m: number): string {
 // SpacetimeDB timestamps arrive as { microsSinceUnixEpoch: bigint } objects;
 // String(...) on those yields "[object Object]" which Date can't parse, so
 // every payment would silently get dropped. Normalize to epoch ms here.
-function timestampToMs(v: unknown): number {
-  if (v == null) return NaN;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") return new Date(v).getTime();
-  if (typeof v === "object") {
-    const obj = v as { microsSinceUnixEpoch?: bigint | number; toDate?: () => Date };
-    if (typeof obj.toDate === "function") return obj.toDate().getTime();
-    const micros = obj.microsSinceUnixEpoch;
-    if (typeof micros === "bigint") return Number(micros / 1000n);
-    if (typeof micros === "number") return micros / 1000;
-  }
-  return NaN;
-}
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -259,8 +240,8 @@ export function SalesForecast() {
     if (salesHistory.length < 7) return null;
 
     const today = new Date();
-    const start = toISO(today);
-    const end = toISO(new Date(today.getTime() + 6 * 86_400_000));
+    const start = dateKey(today);
+    const end = dateKey(new Date(today.getTime() + 6 * 86_400_000));
     const currentYear = today.getFullYear();
     const holidays = getUSHolidays(currentYear);
 

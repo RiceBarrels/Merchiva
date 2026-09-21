@@ -48,6 +48,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { StatusBadge, STATUS_TONE_TEXT, type StatusTone } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { mondayOf } from "@/lib/date-key";
 import {
   Select,
   SelectContent,
@@ -105,15 +106,6 @@ interface ShiftPresetRow {
 }
 
 // ─── Date helpers ───────────────────────────────────────────────────────────
-
-function mondayOf(d: Date): Date {
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const out = new Date(d);
-  out.setDate(d.getDate() + diff);
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
 
 function isoDate(d: Date): string {
   const y = d.getFullYear();

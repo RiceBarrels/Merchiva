@@ -17,6 +17,7 @@ import { useI18n } from "@/lib/i18n/context";
 import { LOCALE_BCP47 } from "@/lib/i18n/config";
 import { LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection, LiteStat } from "./lite";
 import type { LiteAppProps } from "./types";
+import { mondayOf } from "@/lib/date-key";
 
 interface MemberRaw {
   id: { toString(): string };
@@ -25,14 +26,6 @@ interface MemberRaw {
 }
 
 const RECENT_SHIFTS = 8;
-
-function mondayOf(d: Date): Date {
-  const day = d.getDay();
-  const out = new Date(d);
-  out.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
 
 function fill(template: string, vars: Record<string, string | number>): string {
   return Object.entries(vars).reduce((acc, [k, v]) => acc.replace(`{${k}}`, String(v)), template);
