@@ -2701,7 +2701,9 @@
       "undone": "已撤銷",
       "confirmExecute": "確認執行",
       "cancel": "取消",
-      "undo": "撤銷"
+      "undo": "撤銷",
+      "noItems": "沒有明細",
+      "unknownSupplier": "供應商"
     },
     "categories": {
       "scheduling": "排班",
@@ -2841,7 +2843,9 @@
       "robots": "Robots",
       "customDomain": "自定義域名",
       "published": "已發佈",
-      "plugins": "插件"
+      "plugins": "插件",
+      "subtotal": "小計",
+      "tax": "稅項"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "清空記錄",
@@ -4678,6 +4682,17 @@
         "titleRequired": "請先寫一句話説明。",
         "uploadFailed": "照片添加失敗。",
         "failed": "提交失敗，請重試。"
+      },
+      "notifications": {
+        "markAllRead": "全部標為已讀",
+        "list": "通知",
+        "unreadCount": "{n} 則未讀",
+        "empty": "暫無新消息",
+        "emptyHint": "排更與申請提醒會顯示在這裡。",
+        "details": "通知詳情",
+        "close": "關閉",
+        "allRead": "已全部標為已讀",
+        "markFailed": "更新失敗"
       }
     },
     "catalogDesc": {
@@ -5807,5 +5822,10 @@
     "deleteFailed": "刪除失敗，請重試。",
     "unknownReporter": "某位同事",
     "unknownVersion": "未知"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "更次類型"
+    }
   }
 }

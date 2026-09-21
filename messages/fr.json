@@ -2701,7 +2701,9 @@
       "undone": "Annulé",
       "confirmExecute": "Confirmer",
       "cancel": "Annuler",
-      "undo": "Annuler"
+      "undo": "Annuler",
+      "noItems": "Aucune ligne",
+      "unknownSupplier": "Fournisseur"
     },
     "categories": {
       "scheduling": "Planification",
@@ -2841,7 +2843,9 @@
       "robots": "Robots",
       "customDomain": "Domaine personnalisé",
       "published": "Publié",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "subtotal": "Sous-total",
+      "tax": "Taxe"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Effacer l'historique",
@@ -4678,6 +4682,17 @@
         "titleRequired": "Écrivez d'abord un résumé court.",
         "uploadFailed": "Impossible d'ajouter la photo.",
         "failed": "Envoi impossible. Réessayez."
+      },
+      "notifications": {
+        "markAllRead": "Tout marquer comme lu",
+        "list": "Notifications",
+        "unreadCount": "{n} non lues",
+        "empty": "Rien de nouveau",
+        "emptyHint": "Les alertes de service et de demandes apparaissent ici.",
+        "details": "Notification",
+        "close": "Fermer",
+        "allRead": "Tout marqué comme lu",
+        "markFailed": "Échec de la mise à jour"
       }
     },
     "catalogDesc": {
@@ -5807,5 +5822,10 @@
     "deleteFailed": "Suppression impossible. Réessayez.",
     "unknownReporter": "Quelqu'un",
     "unknownVersion": "inconnue"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "Type de service"
+    }
   }
 }

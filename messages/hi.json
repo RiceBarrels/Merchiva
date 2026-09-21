@@ -2701,7 +2701,9 @@
       "undone": "पूर्ववत किया",
       "confirmExecute": "पुष्टि करें",
       "cancel": "रद्द करें",
-      "undo": "पूर्ववत"
+      "undo": "पूर्ववत",
+      "noItems": "कोई लाइन आइटम नहीं",
+      "unknownSupplier": "आपूर्तिकर्ता"
     },
     "categories": {
       "scheduling": "शेड्यूलिंग",
@@ -2841,7 +2843,9 @@
       "robots": "Robots",
       "customDomain": "कस्टम डोमेन",
       "published": "प्रकाशित",
-      "plugins": "प्लगइन्स"
+      "plugins": "प्लगइन्स",
+      "subtotal": "उप-योग",
+      "tax": "कर"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "इतिहास साफ़ करें",
@@ -4678,6 +4682,17 @@
         "titleRequired": "पहले छोटा सारांश लिखें।",
         "uploadFailed": "फ़ोटो नहीं जुड़ी।",
         "failed": "भेज नहीं सके। फिर कोशिश करें।"
+      },
+      "notifications": {
+        "markAllRead": "सभी पढ़े हुए चिह्नित करें",
+        "list": "सूचनाएँ",
+        "unreadCount": "{n} अपठित",
+        "empty": "कुछ नया नहीं",
+        "emptyHint": "शिफ़्ट और अनुरोध की सूचनाएँ यहाँ दिखेंगी।",
+        "details": "सूचना",
+        "close": "बंद करें",
+        "allRead": "सभी पढ़े हुए चिह्नित",
+        "markFailed": "अपडेट नहीं हो सका"
       }
     },
     "catalogDesc": {
@@ -5807,5 +5822,10 @@
     "deleteFailed": "हटाया नहीं जा सका। फिर कोशिश करें।",
     "unknownReporter": "कोई साथी",
     "unknownVersion": "अज्ञात"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "शिफ़्ट का प्रकार"
+    }
   }
 }

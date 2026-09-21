@@ -929,7 +929,7 @@ function SupplierOrderPreview({ action, supplierNameById }: {
   const supplierName =
     (action.supplierName as string | undefined) ||
     supplierNameById?.get(supplierId) ||
-    (supplierId ? supplierId : t("merchiva.ui.unknownSupplier") || "Supplier");
+    (supplierId ? supplierId : t("merchiva.ui.unknownSupplier"));
   const items = Array.isArray(action.items)
     ? (action.items as Array<Record<string, unknown>>)
     : [];
@@ -979,20 +979,20 @@ function SupplierOrderPreview({ action, supplierNameById }: {
         </div>
       ) : (
         <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground italic">
-          {t("merchiva.ui.noItems") || "No line items"}
+          {t("merchiva.ui.noItems")}
         </div>
       )}
       {(subtotal != null || tax != null || total != null) && (
         <div className="flex flex-col gap-0.5 px-2.5 py-1.5 border-t border-border">
           {subtotal != null && (
             <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>{t("merchiva.fields.subtotal").startsWith("merchiva.") ? "Subtotal" : t("merchiva.fields.subtotal")}</span>
+              <span>{t("merchiva.fields.subtotal")}</span>
               <span>{money(subtotal)}</span>
             </div>
           )}
           {tax != null && (
             <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>{t("merchiva.fields.tax").startsWith("merchiva.") ? "Tax" : t("merchiva.fields.tax")}</span>
+              <span>{t("merchiva.fields.tax")}</span>
               <span>{money(tax)}</span>
             </div>
           )}

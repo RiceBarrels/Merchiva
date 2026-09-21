@@ -2701,7 +2701,9 @@
       "undone": "已撤销",
       "confirmExecute": "确认执行",
       "cancel": "取消",
-      "undo": "撤销"
+      "undo": "撤销",
+      "noItems": "没有明细",
+      "unknownSupplier": "供应商"
     },
     "categories": {
       "scheduling": "排班",
@@ -2841,7 +2843,9 @@
       "robots": "Robots",
       "customDomain": "自定义域名",
       "published": "已发布",
-      "plugins": "插件"
+      "plugins": "插件",
+      "subtotal": "小计",
+      "tax": "税费"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "清空记录",
@@ -4678,6 +4682,17 @@
         "titleRequired": "请先写一句话说明。",
         "uploadFailed": "照片添加失败。",
         "failed": "提交失败，请重试。"
+      },
+      "notifications": {
+        "markAllRead": "全部标为已读",
+        "list": "通知",
+        "unreadCount": "{n} 条未读",
+        "empty": "暂无新消息",
+        "emptyHint": "排班与申请提醒会显示在这里。",
+        "details": "通知详情",
+        "close": "关闭",
+        "allRead": "已全部标为已读",
+        "markFailed": "更新失败"
       }
     },
     "catalogDesc": {
@@ -5807,5 +5822,10 @@
     "deleteFailed": "删除失败，请重试。",
     "unknownReporter": "某位同事",
     "unknownVersion": "未知"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "班次类型"
+    }
   }
 }

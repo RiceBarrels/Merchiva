@@ -2701,7 +2701,9 @@
       "undone": "Deshecho",
       "confirmExecute": "Confirmar",
       "cancel": "Cancelar",
-      "undo": "Deshacer"
+      "undo": "Deshacer",
+      "noItems": "Sin líneas",
+      "unknownSupplier": "Proveedor"
     },
     "categories": {
       "scheduling": "Planificación",
@@ -2841,7 +2843,9 @@
       "robots": "Robots",
       "customDomain": "Dominio personalizado",
       "published": "Publicado",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "subtotal": "Subtotal",
+      "tax": "Impuesto"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Borrar historial",
@@ -4678,6 +4682,17 @@
         "titleRequired": "Escribe primero un resumen corto.",
         "uploadFailed": "No se pudo añadir la foto.",
         "failed": "No se pudo enviar. Inténtalo de nuevo."
+      },
+      "notifications": {
+        "markAllRead": "Marcar todo como leído",
+        "list": "Notificaciones",
+        "unreadCount": "{n} sin leer",
+        "empty": "Nada nuevo",
+        "emptyHint": "Aquí aparecen los avisos de turnos y solicitudes.",
+        "details": "Notificación",
+        "close": "Cerrar",
+        "allRead": "Todo marcado como leído",
+        "markFailed": "No se pudo actualizar"
       }
     },
     "catalogDesc": {
@@ -5807,5 +5822,10 @@
     "deleteFailed": "No se pudo eliminar. Inténtalo de nuevo.",
     "unknownReporter": "Alguien",
     "unknownVersion": "desconocida"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "Tipo de turno"
+    }
   }
 }

@@ -2701,7 +2701,9 @@
       "undone": "تم التراجع",
       "confirmExecute": "تأكيد",
       "cancel": "إلغاء",
-      "undo": "تراجع"
+      "undo": "تراجع",
+      "noItems": "لا توجد بنود",
+      "unknownSupplier": "المورد"
     },
     "categories": {
       "scheduling": "الجدولة",
@@ -2841,7 +2843,9 @@
       "robots": "Robots",
       "customDomain": "نطاق مخصص",
       "published": "منشور",
-      "plugins": "الإضافات"
+      "plugins": "الإضافات",
+      "subtotal": "المجموع الفرعي",
+      "tax": "الضريبة"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "مسح السجل",
@@ -4678,6 +4682,17 @@
         "titleRequired": "اكتب ملخصًا قصيرًا أولًا.",
         "uploadFailed": "تعذّرت إضافة الصورة.",
         "failed": "تعذّر الإرسال. حاول مرة أخرى."
+      },
+      "notifications": {
+        "markAllRead": "تعليم الكل كمقروء",
+        "list": "الإشعارات",
+        "unreadCount": "{n} غير مقروء",
+        "empty": "لا جديد",
+        "emptyHint": "تظهر هنا تنبيهات الورديات والطلبات.",
+        "details": "الإشعار",
+        "close": "إغلاق",
+        "allRead": "تم تعليم الكل كمقروء",
+        "markFailed": "تعذّر التحديث"
       }
     },
     "catalogDesc": {
@@ -5807,5 +5822,10 @@
     "deleteFailed": "تعذّر الحذف. حاول مرة أخرى.",
     "unknownReporter": "أحد الزملاء",
     "unknownVersion": "غير معروف"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "نوع الوردية"
+    }
   }
 }

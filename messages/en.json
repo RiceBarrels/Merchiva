@@ -2701,7 +2701,9 @@
       "undone": "Undone",
       "confirmExecute": "Confirm",
       "cancel": "Cancel",
-      "undo": "Undo"
+      "undo": "Undo",
+      "noItems": "No line items",
+      "unknownSupplier": "Supplier"
     },
     "categories": {
       "scheduling": "Scheduling",
@@ -2841,7 +2843,9 @@
       "robots": "Robots",
       "customDomain": "Custom domain",
       "published": "Published",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "subtotal": "Subtotal",
+      "tax": "Tax"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Clear history",
@@ -4678,6 +4682,17 @@
         "titleRequired": "Write a short summary first.",
         "uploadFailed": "Could not add the photo.",
         "failed": "Could not send. Try again."
+      },
+      "notifications": {
+        "markAllRead": "Mark all read",
+        "list": "Notifications",
+        "unreadCount": "{n} unread",
+        "empty": "Nothing new",
+        "emptyHint": "Shift and request alerts show up here.",
+        "details": "Notification",
+        "close": "Close",
+        "allRead": "All marked read",
+        "markFailed": "Couldn't update"
       }
     },
     "catalogDesc": {
@@ -5807,5 +5822,10 @@
     "deleteFailed": "Could not delete. Try again.",
     "unknownReporter": "Someone",
     "unknownVersion": "unknown"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "Shift type"
+    }
   }
 }
