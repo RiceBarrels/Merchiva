@@ -338,6 +338,9 @@ const tablesSchema = __schema({
       { accessor: 'bySessionId', name: 'ai_job_session_id_idx_btree', algorithm: 'btree', columns: [
         'sessionId',
       ] },
+      { accessor: 'byUserId', name: 'ai_job_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
     ],
     constraints: [
       { name: 'ai_job_id_key', constraint: 'unique', columns: ['id'] },

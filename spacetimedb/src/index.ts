@@ -1486,6 +1486,9 @@ const aiJobTable = table(
     indexes: [
       { accessor: 'byOrganizationId', algorithm: 'btree', columns: ['organizationId'] },
       { accessor: 'bySessionId', algorithm: 'btree', columns: ['sessionId'] },
+      // Scoping column for the self-scoped RLS rule, indexed like every other
+      // self-scoped table's.
+      { accessor: 'byUserId', algorithm: 'btree', columns: ['userId'] },
     ],
   },
   {
@@ -2514,7 +2517,9 @@ export default spacetimedb;
  * scopes on the `orgId` mirror instead. `bun run check:rls` enforces this.
  */
 const RLS_ORG_SCOPED: Array<string | [table: string, column: string]> = [
-  'ai_chat_session', 'ai_job', 'ai_usage', 'ai_usage_quota',
+  // NOTE: ai_chat_session and ai_job are SELF-scoped below — they hold one
+  // member's private conversation with Mr. Merchiva, not org data.
+  'ai_usage', 'ai_usage_quota',
   'bug_report', 'chat_conversation', 'coupon', 'daily_briefing', 'design',
   'device_login_request', 'document', 'document_access', 'document_comment',
   'document_presence', 'document_snapshot', 'document_star', 'document_update',
@@ -2534,6 +2539,11 @@ const RLS_ORG_SCOPED: Array<string | [table: string, column: string]> = [
  * private notification, a personal todo list, a punch-in PIN.
  */
 const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
+  // A member's private chat with Mr. Merchiva, and the background jobs that
+  // carry its prompts and answers. These were org-scoped, so every colleague
+  // could read the full text of everyone else's assistant conversations.
+  ['ai_chat_session', 'userId'],
+  ['ai_job', 'userId'],
   ['notification', 'targetId'],
   ['push_subscription', 'targetId'],
   ['todo', 'userId'],
@@ -5755,8 +5765,25 @@ export const addMembersToConversation = spacetimedb.reducer(
       .some(m => m.conversationId === conversationId);
     if (!callerMembership) unauthorized('Not a conversation member');
 
+    // Everyone added has to be an active member of the conversation's own
+    // organization. `userIds` is a caller-supplied list of identity hexes and
+    // was inserted unchecked, so an outsider — including someone from another
+    // tenant — could be dropped into a store's team chat and would then see
+    // every message in it (chat RLS is membership-scoped).
+    const conversation = [...ctx.db.chatConversation.iter()]
+      .find(c => c.id.toString() === conversationId);
+    if (!conversation) throw new SenderError('Conversation not found');
+    const orgMemberIdentities = new Set(
+      [...ctx.db.orgMember.byOrganizationId.filter(conversation.organizationId)]
+        .filter(m => m.status === 'active')
+        .map(m => m.userId.toString()),
+    );
+
     const ids: string[] = JSON.parse(userIds);
     for (const uid of ids) {
+      if (!orgMemberIdentities.has(new Identity(uid).toString())) {
+        throw new SenderError('Can only add members of this organization');
+      }
       // Skip duplicates — the chat_member table doesn't enforce uniqueness on
       // (conversationId, userId), so re-adding a member would silently bloat
       // the table. Cheap pre-check keeps it idempotent.
