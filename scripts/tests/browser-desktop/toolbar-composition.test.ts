@@ -69,11 +69,29 @@ describe("toolbar composition", () => {
     expect(appMenu).toContain("browserDesktop.menu.appearance");
   });
 
-  test("the toggle carries a shortcut-aware tooltip and the sidebar's aria-controls", () => {
+  test("the toolbar toggle collapses the rail, the same state the in-sidebar control writes", () => {
     const toggle = source("sidebar", "sidebar-toggle.tsx");
+    // Both controls read `collapsed` from useSidebarState and write it through
+    // toggleSidebarCollapsed, so clicking either keeps the other in step.
+    expect(toggle).toContain("const { hidden, collapsed } = useSidebarState();");
+    expect(toggle).toContain("toggleSidebarCollapsed()");
+    // Same icon pair as the control at the foot of the sidebar.
+    expect(toggle).toContain("PanelLeftClose");
+    expect(toggle).toContain("PanelLeftOpen");
+    // Hiding stays on the shortcut — but while the sidebar IS hidden this button
+    // is the only pointer way back, so it shows it again.
+    expect(toggle).toContain("hidden ? setSidebarHidden(false) : toggleSidebarCollapsed()");
     expect(toggle).toContain('useShortcutLabel(TOGGLE_SIDEBAR_COMMAND)');
     expect(toggle).toContain("aria-controls={hidden ? undefined : SIDEBAR_ELEMENT_ID}");
-    expect(toggle).toContain("aria-expanded={!hidden}");
+    expect(toggle).toContain("aria-expanded={!railed}");
+  });
+
+  test("the in-sidebar control writes the same collapsed state", () => {
+    const sidebar = source("sidebar", "sidebar.tsx");
+    expect(sidebar).toContain("<CollapseControl collapsed={collapsed} onToggle={onToggleCollapse} />");
+    expect(source("desktop-browser-chrome.tsx")).toContain(
+      "onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}",
+    );
   });
 });
 
