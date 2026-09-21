@@ -32,7 +32,11 @@ function useShakeDetection(onShake: () => void) {
   const shakeCount = useRef(0);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onShakeRef = useRef(onShake);
-  onShakeRef.current = onShake;
+  // Assigning a ref during render is not safe under concurrent rendering —
+  // React may render this component without ever committing it.
+  useEffect(() => {
+    onShakeRef.current = onShake;
+  }, [onShake]);
 
   useEffect(() => {
     function handleMotion(e: DeviceMotionEvent) {

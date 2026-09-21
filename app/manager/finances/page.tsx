@@ -69,6 +69,7 @@ import { STATUS_TONE_TEXT } from "@/components/ui/status-badge";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
+import { useNow } from "@/lib/use-now";
 import { usePermissions } from "@/lib/context/permissions";
 import { useExpenses, usePayments, useSalesRecords, usePurchaseOrders, useOrgMembers, usePunchEvents } from "@/lib/spacetimedb/hooks";
 import { computeMemberPayroll, grossPayCents, toPayrollEvents } from "@/lib/payroll";
@@ -977,6 +978,10 @@ function PayrollTab() {
   const [rawPunches] = usePunchEvents() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [dateRange, setDateRange] = useState<"this_week" | "last_week" | "this_month">("this_week");
+  // Still-clocked-in punches are capped at "now", so the clock has to tick for
+  // the running total to move — and reading it during render would be impure.
+  const now = useNow(60_000);
+  const nowMs = now.getTime();
 
   // Date range calculation
   const { start, end } = useMemo(() => {
@@ -1013,7 +1018,6 @@ function PayrollTab() {
   // hourly rate set fall back to the default so totals stay estimable.
   const payrollData = useMemo(() => {
     if (!organizationId) return [];
-    const now = Date.now();
     const events = toPayrollEvents(rawPunches as never[], organizationId);
     const byMember = new Map<string, typeof events>();
     for (const e of events) {
@@ -1026,7 +1030,7 @@ function PayrollTab() {
       .filter((m) => m.organizationId === organizationId && m.status === "active")
       .map((m) => {
         const id = m.id?.toString?.() ?? String(m.id);
-        const pay = computeMemberPayroll(byMember.get(id) ?? [], start.getTime(), end.getTime(), now);
+        const pay = computeMemberPayroll(byMember.get(id) ?? [], start.getTime(), end.getTime(), nowMs);
         // Read the rate from the exact `hourlyRateCents` column when the row
         // has been migrated, falling back to the legacy f64 otherwise. Pay is
         // computed and accumulated in whole cents; see grossPayCents.
@@ -1045,7 +1049,7 @@ function PayrollTab() {
       .filter((r) => r.hours > 0)
       .sort((a, b) => b.hours - a.hours);
     /* eslint-enable @typescript-eslint/no-explicit-any */
-  }, [rawPunches, rawMembers, organizationId, start, end]);
+  }, [rawPunches, rawMembers, organizationId, start, end, nowMs]);
 
   // Summed in integer cents, converted once — the float version drifted by a
   // cent per employee on a large roster.
