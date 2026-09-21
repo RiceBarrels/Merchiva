@@ -23,7 +23,7 @@ import type { Permissions } from "@/lib/types";
 
 type Section = keyof Permissions;
 
-const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings"];
+const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs"];
 
 /** Same access-context stand-in as scripts/tests/browser-shell/access.test.ts. */
 function ctx(

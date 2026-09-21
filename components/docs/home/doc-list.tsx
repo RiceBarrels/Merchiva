@@ -101,12 +101,14 @@ function DocListRow({
   scope,
   sort,
   now,
+  compact,
   onAction,
 }: {
   item: DocListItem;
   scope: DocScope;
   sort: DocSort;
   now: number;
+  compact: boolean;
   onAction(item: DocListItem, action: DocItemAction): void;
 }) {
   const { t, locale } = useI18n();
@@ -138,22 +140,24 @@ function DocListRow({
           >
             {title}
           </Link>
-          {item.isShared ? (
+          {item.isShared && !compact ? (
             <StatusBadge tone="neutral" size="xs" className="hidden sm:inline-flex">
               {t("docs.home.shared")}
             </StatusBadge>
           ) : (
-            <span className="sr-only">{t("docs.home.restricted")}</span>
+            <span className="sr-only">{item.isShared ? t("docs.home.shared") : t("docs.home.restricted")}</span>
           )}
         </div>
       </TableCell>
-      <TableCell className="relative hidden py-1.5 md:table-cell">
-        <RowCellLink href={href} />
-        <span className="flex max-w-48 min-w-0 items-center gap-2">
-          <Avatar size="xs" name={item.ownerName ?? ownerLabel} />
-          <span className="truncate text-[12.5px] text-foreground">{ownerLabel}</span>
-        </span>
-      </TableCell>
+      {!compact && (
+        <TableCell className="relative hidden py-1.5 md:table-cell">
+          <RowCellLink href={href} />
+          <span className="flex max-w-48 min-w-0 items-center gap-2">
+            <Avatar size="xs" name={item.ownerName ?? ownerLabel} />
+            <span className="truncate text-[12.5px] text-foreground">{ownerLabel}</span>
+          </span>
+        </TableCell>
+      )}
       <TableCell className="relative py-1.5 font-mono text-[12px] text-muted-foreground tabular-nums">
         {/* The overlay sits on top of <time>, so it carries the full date tooltip. */}
         <RowCellLink href={href} title={formatDocDateTime(date, locale)} />
@@ -164,7 +168,7 @@ function DocListRow({
       <TableCell className="relative w-0 py-1 ps-0 pe-1.5">
         <RowCellLink href={href} />
         <div className="relative z-10 flex items-center justify-end gap-0.5">
-          {scope !== "trash" && (
+          {scope !== "trash" && !compact && (
             <Button
               type="button"
               variant="ghost"
@@ -192,17 +196,19 @@ export interface DocListProps {
   now: number;
   onSort(sort: DocSort): void;
   onAction(item: DocListItem, action: DocItemAction): void;
+  /** Phone / device panel: name + date only, no column header, no sorting by it. */
+  compact?: boolean;
 }
 
 /** Table view: Name / Owner / date column (by sort) / star + menu. Clicking a header changes the sort. */
-export function DocList({ items, scope, sort, now, onSort, onAction }: DocListProps) {
+export function DocList({ items, scope, sort, now, onSort, onAction, compact = false }: DocListProps) {
   return (
     <div className={FRAME_CLASS}>
       <Table>
-        <DocListHeader scope={scope} sort={sort} onSort={onSort} />
+        {!compact && <DocListHeader scope={scope} sort={sort} onSort={onSort} />}
         <TableBody>
           {items.map((item) => (
-            <DocListRow key={item.doc.id} item={item} scope={scope} sort={sort} now={now} onAction={onAction} />
+            <DocListRow key={item.doc.id} item={item} scope={scope} sort={sort} now={now} compact={compact} onAction={onAction} />
           ))}
         </TableBody>
       </Table>
@@ -212,11 +218,21 @@ export function DocList({ items, scope, sort, now, onSort, onAction }: DocListPr
 
 const SKELETON_WIDTHS = ["62%", "48%", "70%", "55%", "40%", "66%", "52%", "58%"];
 
-export function DocListSkeleton({ scope, sort, rows = 8 }: { scope: DocScope; sort: DocSort; rows?: number }) {
+export function DocListSkeleton({
+  scope,
+  sort,
+  rows = 8,
+  compact = false,
+}: {
+  scope: DocScope;
+  sort: DocSort;
+  rows?: number;
+  compact?: boolean;
+}) {
   return (
     <div aria-hidden className={FRAME_CLASS}>
       <Table>
-        <DocListHeader scope={scope} sort={sort} />
+        {!compact && <DocListHeader scope={scope} sort={sort} />}
         <TableBody>
           {Array.from({ length: rows }, (_, index) => (
             <TableRow key={index} className="hover:bg-transparent">
@@ -226,9 +242,11 @@ export function DocListSkeleton({ scope, sort, rows = 8 }: { scope: DocScope; so
                   <SkeletonText width={SKELETON_WIDTHS[index % SKELETON_WIDTHS.length]} />
                 </div>
               </TableCell>
-              <TableCell className="hidden py-2.5 md:table-cell">
-                <SkeletonText width="6rem" />
-              </TableCell>
+              {!compact && (
+                <TableCell className="hidden py-2.5 md:table-cell">
+                  <SkeletonText width="6rem" />
+                </TableCell>
+              )}
               <TableCell className="py-2.5">
                 <SkeletonText width="4rem" />
               </TableCell>

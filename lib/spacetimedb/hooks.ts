@@ -169,6 +169,18 @@ export function usePunchEvents() {
 }
 /* eslint-enable */
 
+// ── Bug reports ─────────────────────────────────────────────────────────────
+// Reports about Merchiva itself, filed from any of the three surfaces. Guarded
+// like the training tables above: a browser holding an older bundle, or a
+// deployment behind the current module, gets EMPTY_TABLE_RESULT rather than a
+// crash on an undefined table.
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/rules-of-hooks */
+export function useBugReports() {
+  const tbl = (tables as any).bugReport;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+/* eslint-enable */
+
 // ── Docs ────────────────────────────────────────────────────────────────────
 // New document* tables. Until `spacetime generate` runs `tables.document` is
 // undefined → EMPTY_TABLE_RESULT (same pattern as training above). Always scoped

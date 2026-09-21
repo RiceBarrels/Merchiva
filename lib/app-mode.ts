@@ -12,9 +12,10 @@ import { getStoreMachineMode } from "@/lib/store-machine-mode";
  *              store-machine mode from lib/store-machine-mode
  *
  * Homes: admin → /manager/new-tab (the back-office home page), personal →
- * /personal, store → /store. Store/personal devices that jump into /manager
- * ("Switch to manager mode") set the session-scoped manager override first so
- * the manager shell knows to offer a "Back to store device / personal" link.
+ * /personal, store → /store. A device leaves its surface by leaving the mode
+ * (the "Leave" / "Log out" sheet), which returns it to the chooser; the manager
+ * shell offers "Back to store device / personal" whenever the stored mode says
+ * this device is one.
  */
 export type AppMode = "admin" | "personal" | "store";
 
@@ -31,36 +32,6 @@ export const APP_MODE_HOME: Record<AppMode, string> = {
   personal: "/personal",
   store: "/store",
 };
-
-/**
- * Session flag set by /store and /personal before navigating a manager into
- * /manager. Never persisted across tabs/restarts — the device's app_mode is
- * untouched, so closing the tab drops back to the device surface.
- */
-export const MANAGER_OVERRIDE_KEY = "merchiva_manager_override";
-
-export function hasManagerOverride(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return sessionStorage.getItem(MANAGER_OVERRIDE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function setManagerOverride(on: boolean): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (on) sessionStorage.setItem(MANAGER_OVERRIDE_KEY, "1");
-    else sessionStorage.removeItem(MANAGER_OVERRIDE_KEY);
-  } catch {
-    // sessionStorage unavailable — ignore.
-  }
-}
-
-export function clearManagerOverride(): void {
-  setManagerOverride(false);
-}
 
 /** Nav hrefs a personal-mode user sees. Everything else is hidden. */
 export const PERSONAL_MODE_HREFS = new Set<string>([

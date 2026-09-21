@@ -18,7 +18,7 @@ import {
 } from "@/lib/spacetimedb/actions";
 import { getConnection } from "@/lib/spacetimedb/client";
 import { isOnline } from "@/lib/offline";
-import { defaultPermissions } from "@/lib/db/team";
+import { defaultPermissions, ownerPermissions } from "@/lib/db/team";
 import { useT } from "@/lib/i18n/context";
 import { usePermissions } from "@/lib/context/permissions";
 import type { Permissions } from "@/lib/types";
@@ -84,7 +84,7 @@ interface MemberRowLike {
   email: string;
   permissions: string;
   status: string;
-  punchInCode?: string | null;
+  hasPunchCode?: boolean;
   joinedAt?: unknown;
 }
 
@@ -186,8 +186,15 @@ function parseMaybeJSON(raw: unknown): unknown {
   try { return JSON.parse(raw); } catch { return raw; }
 }
 
-function parsePermissions(raw: unknown): Permissions {
-  const base = defaultPermissions();
+/**
+ * Merge a member's stored permissions JSON onto the base its role implies.
+ * Owners get `ownerPermissions()` as the base — same as app/manager/layout.tsx
+ * — so sections added after the row was written (training_grading, merchiva)
+ * read as granted instead of falling back to the staff default. Without this
+ * the inspector shows an owner missing permissions that `can()` grants them.
+ */
+function parsePermissions(raw: unknown, role?: unknown): Permissions {
+  const base = normKey(role) === "owner" ? ownerPermissions() : defaultPermissions();
   const parsed = parseMaybeJSON(raw);
   if (parsed && typeof parsed === "object") {
     return { ...base, ...(parsed as Partial<Permissions>) } as Permissions;
@@ -681,9 +688,9 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
         groupId: pos.groupId,
         x: pos.x,
         y: pos.y,
-        perms: permsToFlat(parsePermissions(m.permissions)),
+        perms: permsToFlat(parsePermissions(m.permissions, rawRole)),
         rawPermissions: m.permissions,
-        punchInCode: m.punchInCode ?? null,
+        hasPunchCode: m.hasPunchCode === true,
         isMe: !!myUserId && (userId === myUserId || userId === myUserKey || String(m.userId) === myUserId),
       };
     });
@@ -708,9 +715,9 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
         groupId: pos.groupId,
         x: pos.x,
         y: pos.y,
-        perms: permsToFlat(parsePermissions(i.permissions)),
+        perms: permsToFlat(parsePermissions(i.permissions, rawRole)),
         rawPermissions: i.permissions,
-        punchInCode: null,
+        hasPunchCode: false,
         isMe: false,
       });
     });
@@ -914,7 +921,7 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
       toast.warning(t("personnel.team.org.graph.ownerNotAssignable"));
       return;
     }
-    const stored = parsePermissions(base.permissions);
+    const stored = parsePermissions(base.permissions, base.role);
     const permissions = JSON.stringify(patch.perms ? mergeCatalogPerms(stored, patch.perms) : stored);
     sendMemberFields(id, { role, permissions }).catch((err: unknown) => {
       toast.error(t("personnel.team.toastUpdateFailed"), errorDescription(err));
@@ -1144,7 +1151,7 @@ export function useOrgGraph(orgId: string): UseOrgGraphResult {
       const base = currentMemberFields(m);
       return sendMemberFields(idOf(m.id), {
         role: nextRole,
-        permissions: base.permissions.trim() ? base.permissions : JSON.stringify(parsePermissions(base.permissions)),
+        permissions: base.permissions.trim() ? base.permissions : JSON.stringify(parsePermissions(base.permissions, base.role)),
       });
     }));
     const ok = results.filter((r) => r.status === "fulfilled").length;

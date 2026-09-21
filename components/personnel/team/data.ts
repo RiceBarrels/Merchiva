@@ -195,7 +195,9 @@ export interface PersonNode {
   y: number;
   perms: string[];        // flat permission ids derived from member.permissions JSON
   rawPermissions: unknown;
-  punchInCode: string | null;
+  /** Whether a punch-in code exists (`org_member.hasPunchCode`). The digits
+   *  themselves are readable only by their owner — see punch-code.tsx. */
+  hasPunchCode: boolean;
   isMe: boolean;
 }
 

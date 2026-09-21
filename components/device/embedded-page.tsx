@@ -86,6 +86,8 @@ export function EmbeddedPage({ appId, route, children, onNavigate, actor, member
     ) : null);
   const isPersonnel = !Lite && !!app && app.route.startsWith("/manager/personnel");
 
+  // Manager pages are full of /manager links that must not leave the device;
+  // a lite app draws its own UI and handles whatever links it renders itself.
   const onClickCapture = (e: MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement | null;
     const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
@@ -120,7 +122,7 @@ export function EmbeddedPage({ appId, route, children, onNavigate, actor, member
   return (
     <div
       data-embedded-app={appId}
-      onClickCapture={onClickCapture}
+      onClickCapture={Lite ? undefined : onClickCapture}
       className={cn(
         "h-full overflow-y-auto bg-background text-foreground [&_[data-slot=page-header]]:hidden",
         className,

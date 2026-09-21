@@ -22,6 +22,8 @@ import {
   EmbeddedPage,
   IdleLock,
   MessageList,
+  MiniAppShell,
+  MiniAppSurface,
   PagesTrack,
   TalkBar,
   fmtDurationHMS,
@@ -35,7 +37,6 @@ import {
   type DeviceApp,
 } from "@/components/device";
 import { useMe } from "./use-me";
-import { AppPanel } from "./app-panel";
 import { LeaveDrawer } from "./leave-drawer";
 import { PunchPanel } from "./punch-panel";
 import { DirectoryPanel } from "./directory-panel";
@@ -93,12 +94,6 @@ export function PersonalDeviceScreen() {
   // The phone always boots onto the lock screen; the first swipe-to-unlock is
   // what triggers the punch-in check below.
   const [locked, setLocked] = useState(true);
-  // Lazy initialiser is safe: the manager layout only renders this screen
-  // client-side once auth has loaded, so there is no SSR pass to mismatch.
-  const [managerMode] = useState(() => {
-    try { return sessionStorage.getItem("merchiva_manager_override") === "1"; } catch { return false; }
-  });
-
   // "Punch in now?" after every unlock while off shift (no snooze).
   const punchAsk = usePunchAsk({ ready: me.ready && !!me.myMember && shifts.ready, myCode: me.myCode, onShift: !!myShift });
 
@@ -153,15 +148,9 @@ export function PersonalDeviceScreen() {
       activeIndex={chat.activeIndex}
       onSelect={selectChannel}
       right={
-        managerMode && me.isManager ? (
-          <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-primary px-2 text-[12px] font-medium text-primary-foreground">
-            {t("personalDevice.managerBadge")} · {shortName(me.myName)}
-          </span>
-        ) : (
-          <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-secondary px-2 text-[12px] font-medium">
-            {shortName(me.myName)}
-          </span>
-        )
+        <span className="inline-flex h-5 items-center whitespace-nowrap rounded bg-secondary px-2 text-[12px] font-medium">
+          {shortName(me.myName)}
+        </span>
       }
       className="shrink-0"
     />
@@ -185,7 +174,7 @@ export function PersonalDeviceScreen() {
     );
 
   const appPanel = (
-    <AppPanel open={openApp !== null} title={appTitle} onClose={() => setOpenApp(null)}>
+    <MiniAppShell open={openApp !== null} title={appTitle} onClose={() => setOpenApp(null)}>
       {openApp === "punch-in" && (
         <PunchPanel
           organizationId={me.organizationId}
@@ -209,7 +198,7 @@ export function PersonalDeviceScreen() {
           className="h-full"
         />
       )}
-      {(openApp === "requests" || openApp === "docs") && !CatalogComponent && (
+      {openApp === "requests" && !CatalogComponent && (
         <EmptyState
           icon={FileText}
           title={t("personalDevice.comingSoonTitle")}
@@ -217,7 +206,7 @@ export function PersonalDeviceScreen() {
           className="h-full"
         />
       )}
-    </AppPanel>
+    </MiniAppShell>
   );
 
   const talkBar = (
@@ -238,96 +227,93 @@ export function PersonalDeviceScreen() {
   );
 
   return (
-    <div className="h-[100dvh] w-full bg-muted/40 text-foreground">
-      <div
-        className={cn(
-          "relative mx-auto flex h-full w-full select-none flex-col overflow-hidden bg-background",
-          phone && "max-w-[480px] sm:border-x sm:border-border",
-        )}
-        style={{ paddingTop: safeArea.top }}
-      >
-        {/* ── Main (blurs while dimming / locked) ─────────────────────── */}
+    <MiniAppSurface>
+      <div className="h-full w-full bg-muted/40 text-foreground">
         <div
           className={cn(
-            "flex min-h-0 flex-1 flex-col transition-[filter,opacity,transform] duration-700",
-            dimming && "blur-[12px] opacity-60",
-            locked && "scale-[.9] blur-[8px] opacity-60",
+            "relative mx-auto flex h-full w-full select-none flex-col overflow-hidden bg-background",
+            phone && "max-w-[480px] sm:border-x sm:border-border",
           )}
+          style={{ paddingTop: safeArea.top }}
         >
-          {phone ? (
-            <>
-              {channelHeader}
-              <div className="relative min-h-0 flex-1">
-                <PagesTrack
-                  page={page}
-                  onPageChange={(p) => { hapticLight(); setPage(p); }}
-                  className="h-full"
-                  pages={[
-                    messagesPage,
-                    <AppsGrid key="apps" apps={apps} onOpen={(id) => setOpenApp(id)} columns={4} size="md" className="h-full" />,
-                  ]}
-                />
-                {appPanel}
-              </div>
-              {talkBar}
-            </>
-          ) : (
-            <div className="grid min-h-0 flex-1 grid-cols-[400px_1fr]">
-              <div className="relative flex min-h-0 flex-col overflow-hidden border-r border-border">
+          {/* ── Main (blurs while dimming / locked) ─────────────────────── */}
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col transition-[filter,opacity,transform] duration-700",
+              dimming && "blur-[12px] opacity-60",
+              locked && "scale-[.9] blur-[8px] opacity-60",
+            )}
+          >
+            {phone ? (
+              <>
                 {channelHeader}
-                <div className="relative min-h-0 flex-1">{messagesPage}</div>
+                <div className="relative min-h-0 flex-1">
+                  <PagesTrack
+                    page={page}
+                    onPageChange={(p) => { hapticLight(); setPage(p); }}
+                    className="h-full"
+                    pages={[
+                      messagesPage,
+                      <AppsGrid key="apps" apps={apps} onOpen={(id) => setOpenApp(id)} columns={4} size="md" className="h-full" />,
+                    ]}
+                  />
+                  {appPanel}
+                </div>
                 {talkBar}
+              </>
+            ) : (
+              <div className="grid min-h-0 flex-1 grid-cols-[400px_1fr]">
+                <div className="relative flex min-h-0 flex-col overflow-hidden border-r border-border">
+                  {channelHeader}
+                  <div className="relative min-h-0 flex-1">{messagesPage}</div>
+                  {talkBar}
+                </div>
+                <div className="relative min-h-0 overflow-hidden">
+                  <AppsGrid apps={apps} onOpen={(id) => setOpenApp(id)} columns={6} size="lg" className="absolute inset-0" />
+                  {appPanel}
+                </div>
               </div>
-              <div className="relative min-h-0 overflow-hidden">
-                <AppsGrid apps={apps} onOpen={(id) => setOpenApp(id)} columns={6} size="lg" className="absolute inset-0" />
-                {appPanel}
-              </div>
-            </div>
-          )}
-          {safeArea.bottom > 0 && <div style={{ height: safeArea.bottom }} className="shrink-0 bg-background" />}
+            )}
+            {safeArea.bottom > 0 && <div style={{ height: safeArea.bottom }} className="shrink-0 bg-background" />}
+          </div>
+
+          <LeaveDrawer open={leaveOpen} onOpenChange={setLeaveOpen} onLock={lock} />
+
+          <PersonalPunchPrompt
+            open={punchAsk.ask && !locked}
+            organizationId={me.organizationId}
+            myCode={me.myCode}
+            onDone={punchAsk.resolve}
+            onSkip={punchAsk.resolve}
+          />
+
+          <IdleLock
+            active={locked}
+            onUnlock={unlock}
+            channelName={chat.activeChannel?.name}
+            showStatusStrip
+            card={
+              <ClockCard
+                title={myShift ? `${t("personalDevice.idle.onShift")} · ${channelShort}` : t("personalDevice.idle.offShift")}
+                badge={
+                  myShift ? (
+                    <StatusBadge tone={myShift.onBreak ? "warning" : "success"}>
+                      {myShift.onBreak ? t("personalDevice.idle.onBreak") : t("personalDevice.idle.active")}
+                    </StatusBadge>
+                  ) : undefined
+                }
+                value={<span className="font-mono tabular-nums">{shiftElapsed}</span>}
+                footLeft={me.myName}
+                footRight={
+                  todayShift ? (
+                    <span className="font-mono tabular-nums">{todayShift.startTime} – {todayShift.endTime}</span>
+                  ) : undefined
+                }
+              />
+            }
+          />
         </div>
-
-        <LeaveDrawer
-          open={leaveOpen}
-          onOpenChange={setLeaveOpen}
-          isManager={me.isManager}
-          onLock={lock}
-        />
-
-        <PersonalPunchPrompt
-          open={punchAsk.ask && !locked}
-          organizationId={me.organizationId}
-          myCode={me.myCode}
-          onDone={punchAsk.resolve}
-          onSkip={punchAsk.resolve}
-        />
-
-        <IdleLock
-          active={locked}
-          onUnlock={unlock}
-          channelName={chat.activeChannel?.name}
-          showStatusStrip
-          card={
-            <ClockCard
-              title={myShift ? `${t("personalDevice.idle.onShift")} · ${channelShort}` : t("personalDevice.idle.offShift")}
-              badge={
-                myShift ? (
-                  <StatusBadge tone={myShift.onBreak ? "warning" : "success"}>
-                    {myShift.onBreak ? t("personalDevice.idle.onBreak") : t("personalDevice.idle.active")}
-                  </StatusBadge>
-                ) : undefined
-              }
-              value={<span className="font-mono tabular-nums">{shiftElapsed}</span>}
-              footLeft={me.myName}
-              footRight={
-                todayShift ? (
-                  <span className="font-mono tabular-nums">{todayShift.startTime} – {todayShift.endTime}</span>
-                ) : undefined
-              }
-            />
-          }
-        />
       </div>
-    </div>
+    </MiniAppSurface>
   );
 }

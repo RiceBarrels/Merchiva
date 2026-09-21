@@ -16,7 +16,6 @@ export interface StoreMember {
   displayName: string;
   role: string;
   status: string;
-  punchInCode: string | null;
   /** Parsed org_member.permissions merged onto the role default (same rule
    *  as the manager layout) — used to gate apps by the OPERATOR, not by the
    *  account the tablet happens to be signed in with. */
@@ -30,7 +29,6 @@ interface RawMemberRow {
   displayName?: string;
   role?: string;
   status: string;
-  punchInCode?: string | null;
   permissions?: string;
 }
 
@@ -58,7 +56,6 @@ export function useOrgMembers(organizationId: string | null): { members: StoreMe
         displayName: r.displayName?.trim() || "",
         role: r.role ?? "staff",
         status: r.status,
-        punchInCode: typeof r.punchInCode === "string" && r.punchInCode.length > 0 ? r.punchInCode : null,
         permissions: parsePermissions(r.role ?? "staff", r.permissions),
       }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
@@ -70,12 +67,9 @@ export function isManagerRole(role: string): boolean {
   return role === "owner" || role === "manager";
 }
 
-/** Member whose punch-in code equals `pin`, or null. */
-export function findMemberByPin(members: StoreMember[], pin: string): StoreMember | null {
-  return members.find((m) => m.punchInCode === pin) ?? null;
-}
-
-/** Owner/manager whose punch-in code equals `pin`, or null. */
-export function findManagerByPin(members: StoreMember[], pin: string): StoreMember | null {
-  return members.find((m) => isManagerRole(m.role) && m.punchInCode === pin) ?? null;
-}
+// There is deliberately no `findMemberByPin` here any more. Punch-in codes live
+// in `member_punch_code`, which RLS scopes to `userId = :sender`, so this
+// device cannot read a colleague's code — and `org_member.punchInCode`, which
+// these helpers used to read, is drained on every write. Matching a PIN is done
+// by the `resolveDeviceOperator` (see use-pin-operator.ts) and
+// `verifyManagerPin` reducers, inside the database.

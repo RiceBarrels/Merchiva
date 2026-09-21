@@ -29,6 +29,9 @@ export interface DocsHomeToolbarProps {
   counts: { starred: number; trash: number };
   /** Id of the results region (for the search field's aria-controls). */
   resultsId?: string;
+  /** Phone / device panel: just the Recent / Starred / Trash switch — the search
+   *  box sits above the list there, and owner / sort / layout stay on defaults. */
+  compact?: boolean;
 }
 
 export function DocsHomeToolbar({
@@ -44,6 +47,7 @@ export function DocsHomeToolbar({
   onQuery,
   counts,
   resultsId,
+  compact = false,
 }: DocsHomeToolbarProps) {
   const t = useT();
   const ownerItems = useMemo(
@@ -52,29 +56,35 @@ export function DocsHomeToolbar({
   );
   const sortItems = useMemo(() => DOC_SORTS.map((value) => ({ value, label: t(`docs.home.sort.${value}`) })), [t]);
 
+  const scopes = (
+    <SegmentedControl<DocScope>
+      size="sm"
+      aria-label={t("docs.home.scope.label")}
+      value={scope}
+      onChange={onScope}
+      options={[
+        { value: "recent", label: t("docs.home.scope.recent"), icon: Clock },
+        {
+          value: "starred",
+          label: t("docs.home.scope.starred"),
+          icon: Star,
+          count: counts.starred > 0 ? counts.starred : undefined,
+        },
+        {
+          value: "trash",
+          label: t("docs.home.scope.trash"),
+          icon: Trash2,
+          count: counts.trash > 0 ? counts.trash : undefined,
+        },
+      ]}
+    />
+  );
+
+  if (compact) return scopes;
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <SegmentedControl<DocScope>
-        size="sm"
-        aria-label={t("docs.home.scope.label")}
-        value={scope}
-        onChange={onScope}
-        options={[
-          { value: "recent", label: t("docs.home.scope.recent"), icon: Clock },
-          {
-            value: "starred",
-            label: t("docs.home.scope.starred"),
-            icon: Star,
-            count: counts.starred > 0 ? counts.starred : undefined,
-          },
-          {
-            value: "trash",
-            label: t("docs.home.scope.trash"),
-            icon: Trash2,
-            count: counts.trash > 0 ? counts.trash : undefined,
-          },
-        ]}
-      />
+      {scopes}
       <div className="ms-auto flex flex-wrap items-center gap-2">
         <DocsSearchInput value={query} onChange={onQuery} controls={resultsId} className="hidden w-64 lg:block" />
         <Select

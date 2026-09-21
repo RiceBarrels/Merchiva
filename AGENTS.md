@@ -228,9 +228,9 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 | personal | `/personal` | Employee phone surface |
 | store | `/store` | Shared store tablet surface |
 
-`/store` and `/personal` render bare (no MobileShell) through the manager layout for auth + providers. When a store/personal device opens `/manager` it sets the session flag `merchiva_manager_override` so the account menu shows "Back to store device / personal".
+`/store` and `/personal` render bare (no MobileShell) through the manager layout for auth + providers. Neither surface has a shortcut into `/manager`: a device gets there by leaving its mode ("Leave" / "Log out" sheet → the chooser). The account menu still shows "Back to store device / personal" whenever the stored mode says this device is one.
 
-**Device apps are lite versions.** `/store` and `/personal` are built for low-literacy staff — far simpler than `/manager`. Never embed a manager page into a device surface.
+**Device apps are lite versions.** `/store` and `/personal` are built for low-literacy staff — far simpler than `/manager`. Never embed a manager page into a device surface. The one exception is Docs, which renders the manager Docs screens in their phone layout inside the panel (`components/device/apps/docs.tsx`): writing and reading a document is the same job on every surface.
 
 ---
 
@@ -258,7 +258,7 @@ Pages are grouped with `PageTabs`. All hrefs use the `/manager/` prefix:
 
 ### Rules
 
-- **The device versions are lite, not ports.** The `component` field in the catalog exists for link interception and kiosk pages flagged `keepManagerPage` — it is not how a feature reaches `/store` or `/personal`. Never route a device tile to a manager page.
+- **The device versions are lite, not ports.** The `component` field in the catalog exists for link interception and kiosk pages flagged `keepManagerPage` — it is not how a feature reaches `/store` or `/personal`. Never route a device tile to a manager page. Docs is the standing exception (see App modes above); it still goes through `lite`, as a panel host around the manager screens.
 - **No `lite` component means the app never appears on the device grids.** Shipping the manager page alone is an unfinished feature, not a milestone.
 - **Surfaces are declared, visibility is gated.** Put `surfaces: ["store", "personal"]` in the catalog entry and let `permissionKey` / `managerOnly` decide who sees the tile. Don't hide a feature by omitting a surface.
 - **If a surface genuinely doesn't fit, ask before skipping it.** There are real exceptions — `pay` is `surfaces: ["personal"]`, `punch-in` happens at store log-in instead of as a tile — but that is the user's call, not yours. Say which surface you want to skip and why, and wait for an answer.

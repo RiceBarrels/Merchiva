@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { clearManagerOverride, useAppMode } from "@/lib/app-mode";
+import { useAppMode } from "@/lib/app-mode";
 import {
   getRouteAccess,
   useAccessContext,
@@ -217,10 +217,7 @@ export function AppMenu() {
         </DropdownMenuItem>
         {deviceMode ? (
           <DropdownMenuItem
-            onClick={() => {
-              clearManagerOverride();
-              router.push(deviceMode === "store" ? "/store" : "/personal");
-            }}
+            onClick={() => router.push(deviceMode === "store" ? "/store" : "/personal")}
           >
             <Undo2 />
             {deviceMode === "store" ? t("chooseMode.backToStore") : t("chooseMode.backToPersonal")}

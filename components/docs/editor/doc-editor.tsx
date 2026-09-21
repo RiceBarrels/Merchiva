@@ -78,6 +78,8 @@ export interface DocEditorProps {
   threadParam: string | null;
   /** `?version=` version to preview. */
   versionParam: string | null;
+  /** Force the mobile layout — a device panel is narrow even on a wide tablet. */
+  mobile?: boolean;
 }
 
 const EXCERPT_IDLE_MS = 5000;
@@ -93,7 +95,7 @@ export default function DocEditor(props: DocEditorProps) {
   const memberId = useCurrentMemberId();
   const [members] = useOrgMembers();
   const { user: authUser } = useAuth();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile() || props.mobile === true;
 
   const memberNames = useMemo(() => {
     const names = new Map<string, string>();

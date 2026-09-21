@@ -19,6 +19,8 @@ export type { DeviceDrawerOption } from "./device-drawer";
 export { APP_CATALOG, catalogApp, catalogAppForRoute, useCatalogApps, useDeviceBuiltins } from "./app-catalog";
 export type { CatalogApp } from "./app-catalog";
 export { EmbeddedPage } from "./embedded-page";
+export { MiniAppSurface, MiniAppShell } from "./mini-app-shell";
+export type { MiniAppShellProps } from "./mini-app-shell";
 export { PunchInPrompt } from "./punch-in-prompt";
 export type { PunchInPromptLabels } from "./punch-in-prompt";
 export { PagesTrack } from "./pages-track";

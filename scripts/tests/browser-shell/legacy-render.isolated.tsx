@@ -11,7 +11,7 @@ let navMode: "sidebar" | "bottombar" = "sidebar";
 let search = "";
 
 const ROUTER = { push: () => {}, replace: () => {}, back: () => {}, forward: () => {}, refresh: () => {}, prefetch: () => {} };
-const APPS = ["sales", "products", "tasks", "training", "pay", "bookings"];
+const APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs"];
 const DOCS = [
   {
     id: "1f0e4c52-8d1a-4b6e-9c3f-2a7b5d9e0c11",

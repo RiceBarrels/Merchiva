@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
+import { usePunchCode } from "@/lib/spacetimedb/hooks/usePunchCode";
 
 export interface MemberRow {
   id: { toString(): string };
@@ -12,7 +13,6 @@ export interface MemberRow {
   role: string;
   status: string;
   displayName: string;
-  punchInCode?: string;
 }
 
 export function identityHex(id: { toHexString?: () => string; toString(): string }): string {
@@ -25,6 +25,9 @@ export function useMe() {
   const { organizationId: orgIdOrNull, role, currentOrg } = usePermissions();
   const organizationId = orgIdOrNull ?? "";
   const [memberRows, membersReady] = useTable(tables.orgMember);
+  // `org_member.punchInCode` is drained — the live code is the caller's own row
+  // in `member_punch_code` (see usePunchCode).
+  const { code: myCode } = usePunchCode();
   const meUserId = stdb?.identity ? identityHex(stdb.identity) : null;
 
   const members = memberRows as unknown as MemberRow[];
@@ -45,9 +48,6 @@ export function useMe() {
     () => members.filter((m) => m.organizationId === organizationId && m.status === "active"),
     [members, organizationId],
   );
-
-  const myCode =
-    typeof myMember?.punchInCode === "string" && myMember.punchInCode.length > 0 ? myMember.punchInCode : null;
 
   return {
     organizationId,

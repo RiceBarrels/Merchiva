@@ -14,6 +14,7 @@ import { PresenceAvatars } from "@/components/docs/editor/presence-avatars";
 import { SaveStatus } from "@/components/docs/editor/save-status";
 import { Button } from "@/components/ui/button";
 import { useShellInfo, useTabActions } from "@/lib/browser-shell";
+import { useDocsOpenOverride } from "@/components/docs/docs-open-context";
 import { DOCS_HOME_HREF } from "@/lib/docs/hrefs";
 import { useT } from "@/lib/i18n/context";
 
@@ -22,6 +23,7 @@ export function MobileDocHeader() {
   const router = useRouter();
   const shell = useShellInfo();
   const tabActions = useTabActions();
+  const openDocs = useDocsOpenOverride();
   const { doc, ui, dispatch, actions, canEditNow, editor, threads, access } = useDocEditor();
   const editing = ui.mobileMode === "editing";
   const state = useEditorState({
@@ -41,7 +43,10 @@ export function MobileDocHeader() {
   const title = doc.title || t("docs.untitled");
 
   const back = () => {
-    if (shell) tabActions.goBack({ closeToOpener: true });
+    // On a device surface the panel owns the screen; everywhere else this is
+    // the shell's back (or a plain navigation outside it).
+    if (openDocs) openDocs(DOCS_HOME_HREF, "current");
+    else if (shell) tabActions.goBack({ closeToOpener: true });
     else router.push(DOCS_HOME_HREF);
   };
 

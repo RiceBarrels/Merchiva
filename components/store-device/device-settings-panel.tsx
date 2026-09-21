@@ -11,15 +11,13 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useDeviceName } from "@/lib/store-machine-mode";
 import { AUTOLOCK_OPTIONS, useAutolockSeconds, type AutolockSeconds } from "@/lib/store-device-lock";
-import type { StoreMember } from "./use-org-members";
 import { ExitStoreDrawer } from "./exit-store-drawer";
 
 export interface DeviceSettingsPanelProps {
-  members: StoreMember[];
   className?: string;
 }
 
-export function DeviceSettingsPanel({ members, className }: DeviceSettingsPanelProps) {
+export function DeviceSettingsPanel({ className }: DeviceSettingsPanelProps) {
   const t = useT();
   const [deviceName, setDeviceName] = useDeviceName();
   const [draftName, setDraftName] = useState(deviceName);
@@ -66,7 +64,7 @@ export function DeviceSettingsPanel({ members, className }: DeviceSettingsPanelP
         </Button>
         <p className="text-[11px] text-muted-foreground mt-2">{t("storeDevice.leaveStoreModeHint")}</p>
       </div>
-      <ExitStoreDrawer open={leaveOpen} onOpenChange={setLeaveOpen} members={members} />
+      <ExitStoreDrawer open={leaveOpen} onOpenChange={setLeaveOpen} />
     </div>
   );
 }

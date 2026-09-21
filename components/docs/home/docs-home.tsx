@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/lib/auth/context";
-import { useTabActions } from "@/lib/browser-shell";
+import { useDocsOpenUrl } from "@/components/docs/docs-open-context";
 import { usePermissions } from "@/lib/context/permissions";
 import { createDocumentFromTemplate } from "@/lib/docs/create";
 import { documentHref } from "@/lib/docs/hrefs";
@@ -29,6 +29,8 @@ import { useLastOpenedMap } from "@/lib/docs/recent";
 import type { DocTemplateId } from "@/lib/docs/templates";
 import { useI18n, useT } from "@/lib/i18n/context";
 import { useOrgMembers } from "@/lib/spacetimedb/hooks";
+import { useIsMobile } from "@/lib/use-is-mobile";
+import { cn } from "@/lib/utils";
 import { useCurrentMemberId, useDocuments } from "@/lib/spacetimedb/hooks/useDocs";
 import { DocGrid, DocGridSkeleton } from "./doc-grid";
 import { DocList, DocListSkeleton } from "./doc-list";
@@ -39,6 +41,7 @@ import {
   groupDocItems,
   sortDocItems,
   type DocsEmptyKind,
+  type DocView,
 } from "./doc-list-model";
 import { DocsHomeToolbar } from "./docs-home-toolbar";
 import { DocsSearchInput } from "./docs-search-input";
@@ -106,10 +109,23 @@ function DocsEmpty({
   }
 }
 
-export function DocsHome() {
+export interface DocsHomeProps {
+  /** Force the simplified layout: one "New document" button, the scope switch
+   *  and a plain list. A device panel passes it because it stays narrow even on
+   *  a wide store tablet; a phone-width window gets it on its own. */
+  compact?: boolean;
+}
+
+export function DocsHome({ compact = false }: DocsHomeProps = {}) {
   const { t, locale } = useI18n();
-  const home = useDocsHomeState();
-  const { scope, owner, sort, query, view } = home;
+  // A device panel has no URL of its own; its filters stay in React (see the hook).
+  const home = useDocsHomeState({ url: !compact });
+  const { scope, owner, sort, query } = home;
+  // A phone, or a panel on a device surface that is narrow whatever the window
+  // says: one creation button, the scope switch, and a plain list.
+  const isMobile = useIsMobile();
+  const simple = compact || isMobile;
+  const view: DocView = simple ? "list" : home.view;
   const { docs, trashed, starredIds, grants, accessFor, isReady, backendStatus } = useDocuments();
   const memberId = useCurrentMemberId();
   const [memberRows] = useOrgMembers();
@@ -117,7 +133,7 @@ export function DocsHome() {
   const { user } = useAuth();
   const openedMap = useLastOpenedMap();
   const now = useMinuteClock();
-  const { openUrl } = useTabActions();
+  const openUrl = useDocsOpenUrl();
   const actions = useDocItemActions();
   const resultsId = useId();
 
@@ -285,7 +301,7 @@ export function DocsHome() {
         <PageHeader title={t("docs.title")} right={headerActions} />
 
         {!notPublished && (
-          <div className="border-b border-border px-4 py-2 lg:hidden">
+          <div className={cn("border-b border-border px-4 py-2", !simple && "lg:hidden")}>
             <DocsSearchInput value={query} onChange={home.setQuery} controls={resultsId} inputClassName="h-9" />
           </div>
         )}
@@ -304,6 +320,7 @@ export function DocsHome() {
               pendingId={pendingTemplate}
               disabled={!canCreate}
               onPick={(id) => void create(id)}
+              compact={simple}
             />
             <section aria-label={t("docs.home.documents")} className="mx-auto w-full max-w-[1100px] space-y-3 px-4 py-4">
               <DocsHomeToolbar
@@ -319,6 +336,7 @@ export function DocsHome() {
                 onQuery={home.setQuery}
                 counts={counts}
                 resultsId={resultsId}
+                compact={simple}
               />
               {scope === "trash" && <Callout tone="neutral">{t("docs.home.trashNotice")}</Callout>}
               <div id={resultsId} aria-busy={loading || undefined}>
@@ -327,7 +345,7 @@ export function DocsHome() {
                     <span role="status" className="sr-only">
                       {t("docs.home.loading")}
                     </span>
-                    {view === "grid" ? <DocGridSkeleton /> : <DocListSkeleton scope={scope} sort={sort} />}
+                    {view === "grid" ? <DocGridSkeleton /> : <DocListSkeleton scope={scope} sort={sort} compact={simple} />}
                   </>
                 ) : visibleItems.length === 0 ? (
                   <DocsEmpty
@@ -353,6 +371,7 @@ export function DocsHome() {
                     now={now}
                     onSort={home.setSort}
                     onAction={actions.run}
+                    compact={simple}
                   />
                 )}
               </div>

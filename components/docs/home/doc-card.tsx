@@ -25,26 +25,24 @@ export interface DocCardProps {
   onAction(item: DocListItem, action: DocItemAction): void;
 }
 
-const EMPTY_EXCERPT_LINES = [88, 96, 72, 90, 64, 82];
-
-/** Excerpt on an always-light "paper" sheet, drawn at 12px and scaled to half so browser minimum font sizes don't break it. */
-function DocPaperPreview({ excerpt }: { excerpt: string }) {
+/**
+ * The document itself on an always-light "paper" sheet: its title, then the
+ * first words of its text. Drawn at double size and scaled to half so browser
+ * minimum font sizes don't break it. An empty document gets an empty sheet —
+ * a preview never shows text the document doesn't have.
+ */
+function DocPaperPreview({ title, excerpt }: { title: string; excerpt: string }) {
   const text = excerpt.trim();
-  if (!text) {
-    return (
-      <span className="flex flex-col gap-1.5 pt-1">
-        {EMPTY_EXCERPT_LINES.map((width, index) => (
-          <span key={index} className="block h-1 rounded-[1px] bg-neutral-200" style={{ width: `${width}%` }} />
-        ))}
-      </span>
-    );
-  }
   return (
-    <span
-      dir="auto"
-      className="block w-[200%] origin-top-left scale-50 text-[12px] leading-[1.45] text-neutral-600 [overflow-wrap:anywhere] rtl:origin-top-right"
-    >
-      {text}
+    <span className="block w-[200%] origin-top-left scale-50 rtl:origin-top-right">
+      <span dir="auto" className="block truncate text-[15px] leading-[1.3] font-semibold text-neutral-700">
+        {title}
+      </span>
+      {text && (
+        <span dir="auto" className="mt-1.5 block text-[12px] leading-[1.45] text-neutral-500 [overflow-wrap:anywhere]">
+          {text}
+        </span>
+      )}
     </span>
   );
 }
@@ -71,7 +69,7 @@ export function DocCard({ item, scope, sort, now, onAction }: DocCardProps) {
     >
       <div aria-hidden className="aspect-[8.5/11] max-h-44 w-full border-b border-border bg-muted/50 p-3">
         <div className="h-full overflow-hidden border border-neutral-200 bg-white px-2 py-1.5">
-          <DocPaperPreview excerpt={doc.excerpt} />
+          <DocPaperPreview title={title} excerpt={doc.excerpt} />
         </div>
       </div>
       <div className="flex items-start gap-2 p-2.5">

@@ -6,7 +6,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useTabActions } from "@/lib/browser-shell";
+import { useDocsOpenUrl } from "@/components/docs/docs-open-context";
 import { DOC_ERROR_I18N_KEYS, docErrorCode } from "@/lib/docs/errors";
 import { documentHref } from "@/lib/docs/hrefs";
 import { useT } from "@/lib/i18n/context";
@@ -51,7 +51,7 @@ export interface DocItemActions {
 
 export function useDocItemActions(): DocItemActions {
   const t = useT();
-  const { openUrl } = useTabActions();
+  const openUrl = useDocsOpenUrl();
   const [rename, setRename] = useState<DocDialogTarget>(CLOSED);
   const [remove, setRemove] = useState<DocDialogTarget>(CLOSED);
   const [share, setShare] = useState<DocDialogTarget>(CLOSED);

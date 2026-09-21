@@ -85,6 +85,10 @@ const BOOTSTRAP_SUBSCRIPTIONS = [
   "SELECT * FROM organization",
   "SELECT * FROM org_member",
   "SELECT * FROM member_punch_code",
+  // The answer `resolveDeviceOperator` writes for THIS device. RLS scopes it to
+  // `identity = :sender`; without this subscription the row never streams back
+  // and every PIN unlock hangs on "verifying".
+  "SELECT * FROM device_operator_session",
   "SELECT * FROM notification",
   "SELECT * FROM push_subscription",
   "SELECT * FROM todo",
@@ -153,6 +157,19 @@ function orgSubscriptions(orgId: string): string[] {
     `SELECT * FROM site WHERE ${org}`,
     `SELECT * FROM site_booking WHERE ${org}`,
   ];
+}
+
+/**
+ * Bug reports, subscribed on their own rather than inside `orgSubscriptions`.
+ *
+ * `bug_report` is the newest table, and one query against a table the deployed
+ * module does not have yet fails the WHOLE batch it is in — which would cost
+ * every other screen its data until the module is republished. On its own, a
+ * module that predates the bug tracker loses only the bug tracker.
+ */
+function bugSubscriptions(orgId: string): string[] {
+  if (!isUuid(orgId)) return [];
+  return [`SELECT * FROM bug_report WHERE organization_id = '${orgId}'`];
 }
 
 interface SpacetimeProviderProps {
@@ -340,6 +357,18 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
             conn.subscriptionBuilder().subscribe(orgSubscriptions(bootOrgId));
           } catch (err) {
             console.warn("[SpacetimeDB] Org subscription failed:", err);
+          }
+        }
+        if (bootOrgId) {
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() =>
+                console.warn("[SpacetimeDB] bug_report subscription failed — is the module published?"),
+              )
+              .subscribe(bugSubscriptions(bootOrgId));
+          } catch (err) {
+            console.warn("[SpacetimeDB] Bug report subscription failed:", err);
           }
         }
       })
