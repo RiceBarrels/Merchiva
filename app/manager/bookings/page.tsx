@@ -45,6 +45,7 @@ import { updateBookingStatus } from "@/lib/spacetimedb/actions";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { todayKey } from "@/lib/date-key";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ interface QueueEntry {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayKey();
 }
 
 function formatTime(time: string): string {

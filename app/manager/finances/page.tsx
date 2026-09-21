@@ -78,6 +78,7 @@ import { addExpense, updateExpense, deleteExpense } from "@/lib/spacetimedb/acti
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
+import { dateKey, todayKey } from "@/lib/date-key";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -157,7 +158,7 @@ const emptyForm: ExpenseForm = {
   category: "Other",
   description: "",
   amount: "",
-  date: new Date().toISOString().slice(0, 10),
+  date: todayKey(),
   recurring: false,
   recurringPeriod: "Monthly",
   receiptUrl: "",
@@ -433,7 +434,7 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
       category: expense.category ?? "Other",
       description: expense.description ?? "",
       amount: String(expense.amount ?? ""),
-      date: expense.date ?? new Date().toISOString().slice(0, 10),
+      date: expense.date ?? todayKey(),
       recurring: expense.recurring ?? false,
       recurringPeriod: expense.recurringPeriod ?? "Monthly",
       receiptUrl: expense.receiptUrl ?? "",
@@ -809,7 +810,7 @@ function CashFlowTab({
     for (let i = 0; i <= 30; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = dateKey(d);
       const dayOfMonth = d.getDate();
       const dayOfWeek = d.getDay();
 

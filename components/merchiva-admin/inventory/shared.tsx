@@ -3,6 +3,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { adminCall } from "@/lib/merchiva-admin/client";
 import { btnGhostCls, inputCls } from "@/components/merchiva-admin/ui";
+import { todayKey } from "@/lib/date-key";
 
 /** Serialises reducer calls behind a busy flag and captures the reducer's message. */
 export function useReducerAction() {
@@ -128,7 +129,7 @@ export function num(v: string, fallback = 0): number {
 }
 
 export function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayKey();
 }
 
 export function money(v: number): string {

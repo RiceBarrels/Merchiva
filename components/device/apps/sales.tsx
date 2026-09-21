@@ -13,6 +13,7 @@ import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
 import type { LiteAppProps } from "./types";
 import { LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection, LiteStat } from "./lite";
+import { dateKey } from "@/lib/date-key";
 
 type Range = "today" | "yesterday" | "week";
 
@@ -43,9 +44,9 @@ function timestampToMs(v: unknown): number {
   return NaN;
 }
 
-/** UTC calendar day, matching the `date` keys useSales produces. */
+/** Local calendar day, matching the `date` keys useSales produces. */
 function isoDay(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
+  return dateKey(new Date(ms));
 }
 
 /** Inclusive [from, to] ISO-day window for a range. */

@@ -42,6 +42,7 @@ import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import type { InventoryItem } from "@/lib/types";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { dateKey } from "@/lib/date-key";
 
 // ─── Date Range Helpers ─────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ type DateRange = "this_month" | "last_month" | "last_90";
 
 function getDateBounds(range: DateRange): { start: string; end: string; label: string } {
   const now = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = (d: Date) => dateKey(d);
 
   if (range === "this_month") {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);

@@ -230,7 +230,7 @@ function KpiStrip() {
   const { items: invItems, isReady: invReady } = useInventory(organizationId);
   const { shifts: allShifts, loading: staffLoading } = useStaffing(organizationId, null, false);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
   const todayRevenue = useMemo(() => {
@@ -1435,6 +1435,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
 
 import type { QAItem, RoleAddCmd, TaskAddCmd } from "@/lib/merchiva/skills/types";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { todayKey } from "@/lib/date-key";
 
 function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
   const t = useT();
@@ -2741,7 +2742,7 @@ function MerchivaChatInner({
   );
 
   // Build store context for AI
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const storeContext = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     // Opening hours + upcoming holidays — surfaced so the auto-scheduler can
@@ -4245,7 +4246,7 @@ function TodayScheduleCard() {
   const { organizationId } = usePermissions();
   const { shifts: allShifts } = useStaffing(organizationId, null, false);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
   const shifts = useMemo(() => {
@@ -4546,7 +4547,7 @@ function MobileKpiRow() {
   const { history: salesHistory, hourly: salesHourly, isReady: salesReady } = useSales();
   const { items: invItems, isReady: invReady } = useInventory(organizationId);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
 
   const todayRevenue = useMemo(() => {
     if (!salesReady) return null;

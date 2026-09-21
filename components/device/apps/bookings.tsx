@@ -33,6 +33,7 @@ import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { DeviceDrawer } from "@/components/device/device-drawer";
 import { LiteButton, LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection } from "./lite";
 import type { LiteAppProps } from "./types";
+import { dateKeyOffset } from "@/lib/date-key";
 
 // ─── Row shapes (cast from generated rows) ─────────────────────────────────
 
@@ -58,14 +59,7 @@ interface SiteRow {
 type Day = "today" | "tomorrow";
 
 /** Local calendar date as YYYY-MM-DD (the store's own day, not UTC). */
-function localDateStr(offsetDays: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+const localDateStr = (offsetDays: number): string => dateKeyOffset(offsetDays);
 
 /** "HH:MM" → locale time ("2:30 PM", "14:30"). Falls back to the raw string. */
 function formatTime(time: string, locale: string): string {

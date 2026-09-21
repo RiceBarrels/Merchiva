@@ -70,6 +70,7 @@ import { SectionNav } from "@/components/section-nav";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { INVENTORY_CONTENT_UNITS, formatInventoryContentAmount } from "@/lib/inventory-units";
 import { useUploadThing } from "@/lib/uploadthing";
+import { todayKey } from "@/lib/date-key";
 
 type StatusCfg = { label: string; icon: React.ElementType; color: string };
 type StockAdjustMode = "add" | "remove" | "set";
@@ -295,7 +296,7 @@ export default function InventoryPage() {
     try {
       await updateInventoryItem(stockItem.id, {
         currentStock: nextStock,
-        lastRestocked: stockMode === "add" ? new Date().toISOString().slice(0, 10) : stockItem.lastRestocked,
+        lastRestocked: stockMode === "add" ? todayKey() : stockItem.lastRestocked,
         batchExpirationDate: stockBatchExpiresOn.trim() || null,
         stockNote: note,
         evidenceUrls: stockPhotos.length > 0 ? JSON.stringify(stockPhotos) : undefined,
@@ -391,7 +392,7 @@ export default function InventoryPage() {
           unit: form.unit ?? "units",
           costPerUnit: form.costPerUnit ?? 0,
           supplier: form.supplier ?? "",
-          lastRestocked: new Date().toISOString().split("T")[0],
+          lastRestocked: todayKey(),
           minOrderQty: form.minOrderQty ?? null,
           unitsPerCase: form.unitsPerCase ?? null,
           description: form.description?.trim() ? form.description.trim() : null,

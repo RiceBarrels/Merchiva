@@ -3,14 +3,16 @@
 import { PageHeader } from "@/components/page-header";
 import { DesktopMerchivaDashboard, MobileMerchivaDashboard } from "@/components/merchiva-chat-dashboard";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/dates";
+import { useNow } from "@/lib/use-now";
 
 export default function DashboardPage() {
   const t = useT();
-  const subtitle = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  const formatDate = useDateFormat();
+  // Reading the clock during render is impure, and the subtitle has to roll
+  // over at midnight on a screen that stays open all day.
+  const today = useNow(60_000);
+  const subtitle = formatDate(today, { weekday: "long", month: "long", day: "numeric" });
 
   return (
     <>

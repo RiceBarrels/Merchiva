@@ -43,6 +43,7 @@ import { DirectoryPanel } from "./directory-panel";
 import { SettingsPanel } from "./settings-panel";
 import { PersonalPunchPrompt } from "./punch-prompt";
 import { usePunchAsk } from "./use-punch-ask";
+import { dateKey } from "@/lib/date-key";
 
 interface ShiftRow {
   organizationId: string;
@@ -54,11 +55,6 @@ interface ShiftRow {
 
 const IDLE_MS = 30_000;
 const DIM_MS = 22_000;
-
-function localDateKey(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
 
 export function PersonalDeviceScreen() {
   const t = useT();
@@ -78,7 +74,7 @@ export function PersonalDeviceScreen() {
   const [shiftRows] = useTable(tables.shift);
   const todayShift = useMemo(() => {
     if (!me.myMemberId) return null;
-    const today = localDateKey(new Date());
+    const today = dateKey(new Date());
     return (
       (shiftRows as unknown as ShiftRow[]).find(
         (s) => s.organizationId === me.organizationId && s.memberId === me.myMemberId && s.date === today,

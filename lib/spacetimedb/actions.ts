@@ -286,7 +286,7 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
     unit: requiredInventoryText(value("unit"), "unit"),
     costPerUnit: finiteInventoryNumber(value("costPerUnit"), "costPerUnit"),
     supplier: String(value("supplier") ?? ""),
-    lastRestocked: String(value("lastRestocked") ?? new Date().toISOString().slice(0, 10)),
+    lastRestocked: String(value("lastRestocked") ?? todayKey()),
     lossRate: finiteInventoryNumber(value("lossRate"), "lossRate"),
     minOrderQty: minOrderQty == null ? null : finiteInventoryNumber(minOrderQty, "minOrderQty"),
     unitsPerCase: unitsPerCase == null ? null : finiteInventoryNumber(unitsPerCase, "unitsPerCase"),
@@ -395,7 +395,7 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
     unit: String(data.unit ?? usage?.unit ?? "units").trim() || "units",
     costPerUnit: finiteInventoryNumber(data.cost ?? data.costPerUnit ?? 0, "costPerUnit"),
     supplier: String(data.supplier ?? ""),
-    lastRestocked: String(data.lastRestocked ?? new Date().toISOString().slice(0, 10)),
+    lastRestocked: String(data.lastRestocked ?? todayKey()),
     minOrderQty: null,
     unitsPerCase: null,
     description: data.description == null ? null : String(data.description),
@@ -2015,6 +2015,7 @@ export async function consumeDeviceLogin(requestId: string): Promise<void> {
 // imports are hoisted, so their position has no runtime effect.
 import { newDocumentId } from "@/lib/docs/ids";
 import type { DocGrantRole, DocPageSetup, DocVersionKind, DocVisibility } from "@/lib/docs/types";
+import { todayKey } from "@/lib/date-key";
 
 function docsReducer(name: string): (args: Record<string, unknown>) => Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -25,6 +25,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/dates";
 
 // ─── Sample data ────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ function StarRating({ rating }: { rating: number }) {
 
 export default function ReviewsPage() {
   const t = useT();
+  const formatDate = useDateFormat();
   const [placesId, setPlacesId] = useState("");
 
   return (
@@ -149,11 +151,7 @@ export default function ReviewsPage() {
                           size="xs"
                           muted
                           className="block"
-                          value={new Date(review.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          value={formatDate(review.date, { month: "short", day: "numeric", year: "numeric" })}
                         />
                       </div>
                     </div>

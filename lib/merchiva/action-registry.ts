@@ -38,6 +38,7 @@ import {
   recordSupplierOrder,
 } from "@/lib/spacetimedb/actions";
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
+import { todayKey } from "@/lib/date-key";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -657,7 +658,7 @@ register({
       unit: String(p.unit ?? "pcs"),
       costPerUnit: Number(p.costPerUnit ?? p.cost ?? 0),
       supplier: String(p.supplier ?? ""),
-      lastRestocked: new Date().toISOString().slice(0, 10),
+      lastRestocked: todayKey(),
       description: p.description ? String(p.description) : null,
       minOrderQty: p.minOrderQty == null ? null : finiteNumber(p.minOrderQty),
       unitsPerCase: p.unitsPerCase == null ? null : finiteNumber(p.unitsPerCase),
@@ -685,7 +686,7 @@ register({
       itemName: String(p.itemName ?? p.name ?? ""),
       type: String(p.type ?? "adjustment"),
       quantity: Number(p.quantity ?? 0),
-      date: new Date().toISOString().slice(0, 10),
+      date: todayKey(),
       notes: String(p.notes ?? p.reason ?? "Via Mr. Merchiva"),
     });
   },

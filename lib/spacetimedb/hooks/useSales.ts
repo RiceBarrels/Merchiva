@@ -13,6 +13,7 @@ import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
 import type { SalesRecord } from "@/lib/types";
+import { dateKey, todayKey } from "@/lib/date-key";
 
 // SpacetimeDB timestamps come through as { microsSinceUnixEpoch: bigint } most
 // of the time, but `.toDate()` is also available, and some callers pre-serialize
@@ -52,7 +53,9 @@ export function useSales() {
       }));
   }, [rawRecords, organizationId]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // The store's own calendar day, not UTC — `sales_record.date` and the
+  // hourly bucket below are both local.
+  const today = todayKey();
 
   // POS payments → synthetic SalesRecord rows. Daily aggregate per date, plus
   // an hourly aggregate for today so the hourly chart matches what the till
@@ -67,7 +70,7 @@ export function useSales() {
       if (r.status === "refunded") continue;
       const ts = timestampToMs(r.createdAt);
       if (!Number.isFinite(ts)) continue;
-      const date = new Date(ts).toISOString().slice(0, 10);
+      const date = dateKey(new Date(ts));
       const net = Number(r.amount ?? 0) - Number(r.refundAmount ?? 0);
       if (net <= 0) continue;
       byDate.set(date, (byDate.get(date) ?? 0) + net);
@@ -94,7 +97,7 @@ export function useSales() {
       const ts = timestampToMs(r.createdAt);
       if (!Number.isFinite(ts)) continue;
       const d = new Date(ts);
-      if (d.toISOString().slice(0, 10) !== today) continue;
+      if (dateKey(d) !== today) continue;
       const net = Number(r.amount ?? 0) - Number(r.refundAmount ?? 0);
       if (net <= 0) continue;
       const hour = d.getHours();

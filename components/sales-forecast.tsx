@@ -36,6 +36,8 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/currency";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/dates";
+import { dateKey } from "@/lib/date-key";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -110,6 +112,7 @@ function timestampToMs(v: unknown): number {
 
 export function SalesForecast() {
   const t = useT();
+  const formatDate = useDateFormat();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const [rawSales] = useSalesRecords();
@@ -150,7 +153,7 @@ export function SalesForecast() {
       if (r.status === "refunded") continue;
       const ts = timestampToMs(r.createdAt);
       if (!Number.isFinite(ts)) continue;
-      const date = new Date(ts).toISOString().slice(0, 10);
+      const date = dateKey(new Date(ts));
       const amount = Number(r.amount ?? 0);
       const refund = Number(r.refundAmount ?? 0);
       const net = amount - refund;
@@ -409,10 +412,7 @@ export function SalesForecast() {
                 {weatherIcon(day.factors.weatherLabel)}
               </div>
               <p className="text-xs text-muted-foreground mb-1">
-                {new Date(day.date + "T12:00:00").toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+                {formatDate(day.date + "T12:00:00", { month: "short", day: "numeric" })}
               </p>
 
               {/* Predicted revenue */}

@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { LiteButton, LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection, LiteStat } from "./lite";
 import { useUploadThing } from "@/lib/uploadthing";
 import type { LiteAppProps } from "./types";
+import { dateKey } from "@/lib/date-key";
 
 // ─── Row shapes (subset of the generated tables) ─────────────────────────────
 
@@ -85,12 +86,6 @@ interface LiteTask {
 
 type Who = "me" | "everyone";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
-function localDateStr(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function tsToDate(v: any): Date {
   if (!v) return new Date(0);
@@ -131,7 +126,7 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
   const [roleRows, rolesReady] = useTable(tables.staffRole);
   const [memberRows, membersReady] = useTable(tables.orgMember);
 
-  const todayStr = localDateStr(new Date());
+  const todayStr = dateKey(new Date());
 
   // Today's task list for the store, with day-scoped completion — the same
   // rule the manager's task views use. `scheduled` maps roleId → members on
@@ -151,7 +146,7 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
     const doneToday = new Map<string, "completed" | "skipped">();
     for (const a of orgAssignments) {
       if (a.status !== "completed" && a.status !== "skipped") continue;
-      if (localDateStr(tsToDate(a.completedAt ?? a.dueAt)) !== todayStr) continue;
+      if (dateKey(tsToDate(a.completedAt ?? a.dueAt)) !== todayStr) continue;
       if (a.status === "completed" || !doneToday.has(a.taskId)) doneToday.set(a.taskId, a.status);
     }
 
@@ -190,7 +185,7 @@ export function TasksLite({ organizationId, member, isManager }: LiteAppProps) {
     const dayTasks = roleTasks.map((task) => toLite(task, null)).sort(byTime);
     // Explicit pending assignments due today for this member.
     const myAssigned = orgAssignments
-      .filter((a) => a.memberId === member.id && a.status === "pending" && localDateStr(tsToDate(a.dueAt)) === todayStr)
+      .filter((a) => a.memberId === member.id && a.status === "pending" && dateKey(tsToDate(a.dueAt)) === todayStr)
       .map((a) => { const task = taskById.get(a.taskId); return task ? toLite(task, a.id.toString()) : null; })
       .filter((x): x is LiteTask => !!x);
     return { dayTasks, myAssigned, scheduled, myRoleIds };

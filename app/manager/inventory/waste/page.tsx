@@ -51,6 +51,7 @@ import { SectionNav } from "@/components/section-nav";
 import { toast } from "sonner";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { dateKeyOffset, todayKey } from "@/lib/date-key";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,13 +86,11 @@ type DateFilter = "today" | "week" | "month" | "all";
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayKey();
 }
 
 function startOfWeek(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 6);
-  return d.toISOString().slice(0, 10);
+  return dateKeyOffset(-6);
 }
 
 function startOfMonth(): string {

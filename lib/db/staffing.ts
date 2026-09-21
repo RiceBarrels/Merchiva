@@ -2,6 +2,7 @@ import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { Shift, ShiftType, StaffRole, OrgMember, RoleTask } from "@/lib/types";
+import { dateKeyOffset, todayKey } from "@/lib/date-key";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -110,10 +111,8 @@ export async function getTeamForScheduling(
 export async function getShifts(weeksAhead = 2): Promise<Shift[]> {
   const c = getConnection();
   if (!c) return [];
-  const today = new Date().toISOString().split("T")[0];
-  const future = new Date();
-  future.setDate(future.getDate() + weeksAhead * 7);
-  const futureStr = future.toISOString().split("T")[0];
+  const today = todayKey();
+  const futureStr = dateKeyOffset(weeksAhead * 7);
   const orgId = getActiveOrgId();
   const rows = (c as any).db.shift.iter();
   return Array.from(rows)

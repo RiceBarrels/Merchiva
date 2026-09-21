@@ -114,8 +114,9 @@ function formatTime(t: string): string {
   return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
 }
 
+// Shifts are stored as the store's own calendar day, so this must be local.
 function isoDate(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return dateKey(d);
 }
 
 function getWeekDates(base: Date): Date[] {
@@ -202,10 +203,6 @@ function formatClockDate(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function localDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function dateTimeFromInput(date: string, time: string): Date {
   return new Date(`${date}T${time}:00`);
 }
@@ -260,7 +257,7 @@ function AttendanceManagerPanel({
   if (!canManage) return null;
 
   const recordedCount = rows.filter((row) => row.inEvent).length;
-  const canQuickPunch = date === localDateKey(new Date());
+  const canQuickPunch = date === dateKey(new Date());
   const setDraft = (memberId: string, field: "startTime" | "endTime", value: string) => {
     setDrafts((prev) => ({
       ...prev,
@@ -1036,6 +1033,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 import React from "react";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { dateKey } from "@/lib/date-key";
 
 export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
@@ -1269,7 +1267,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       const memberEvents = orgPunchEvents
         .filter((event) => event.memberId === member.id)
         .sort((a, b) => punchEventTime(a).getTime() - punchEventTime(b).getTime());
-      const dayEvents = memberEvents.filter((event) => localDateKey(punchEventTime(event)) === selectedDay);
+      const dayEvents = memberEvents.filter((event) => dateKey(punchEventTime(event)) === selectedDay);
       const openIn = dayEvents.find((event) => event.action === "in" && !event.closed) ?? null;
       const openBreak = memberEvents.find((event) => event.action === "break-start" && !event.closed) ?? null;
       const inEvent = openIn ?? dayEvents.find((event) => event.action === "in") ?? null;

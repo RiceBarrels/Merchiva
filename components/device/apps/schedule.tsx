@@ -16,6 +16,7 @@ import { hapticLight } from "@/lib/haptics";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { LiteChoice, LiteEmpty, LiteLoading, LiteRow, LiteScreen, LiteSection, LiteStat } from "./lite";
 import type { LiteAppProps } from "./types";
+import { dateKey } from "@/lib/date-key";
 
 interface ShiftRow {
   id: { toString(): string };
@@ -41,11 +42,6 @@ interface Shift {
 type Who = "me" | "everyone";
 
 const pad = (n: number) => String(n).padStart(2, "0");
-
-/** Local "YYYY-MM-DD" (shift.date is stored as a local calendar day). */
-function localDateStr(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 function addDays(d: Date, n: number): Date {
   const out = new Date(d);
@@ -112,9 +108,9 @@ export function ScheduleLite({ organizationId, member, isManager }: LiteAppProps
   const [dayIdx, setDayIdx] = useState<number | null>(null);
   const [shiftRows, shiftsReady] = useTable(tables.shift);
 
-  const todayStr = localDateStr(new Date());
+  const todayStr = dateKey(new Date());
   const week = useMemo(() => weekDates(addDays(new Date(), weekOffset * 7)), [weekOffset]);
-  const weekKeys = useMemo(() => week.map(localDateStr), [week]);
+  const weekKeys = useMemo(() => week.map(dateKey), [week]);
 
   const orgShifts = useMemo<Shift[]>(() => {
     const rows = shiftRows as unknown as ShiftRow[];

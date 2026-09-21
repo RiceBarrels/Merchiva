@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { adminSql, sqlString } from "@/lib/merchiva-admin/client";
+import { dateKey, dateKeyOffset, todayKey } from "@/lib/date-key";
 
 // ─── Row types ───────────────────────────────────────────────────────────────
 
@@ -148,17 +149,15 @@ export function shortId(id: string): string {
 }
 
 export function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayKey();
 }
 
 export function isoDaysAgo(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
+  return dateKeyOffset(-days);
 }
 
 export function msToIso(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
+  return dateKey(new Date(ms));
 }
 
 // ─── Mutation hook ───────────────────────────────────────────────────────────
