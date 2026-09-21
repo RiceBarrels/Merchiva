@@ -5,6 +5,7 @@
  * or will be migrated to hooks in a follow-up. This file only covers writes.
  */
 
+import { Uuid } from "spacetimedb";
 import { getConnection, getActiveOrgId } from "./client";
 import { getDictionary, lookup } from "@/lib/i18n/dictionaries";
 import { LOCALE_COOKIE, isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
@@ -68,6 +69,31 @@ function requiredText(value: unknown, field: string): string {
   const text = String(value ?? "").trim();
   if (!text) throw new Error(`${field} cannot be blank`);
   return text;
+}
+
+/**
+ * Parse a row id string into the `Uuid` the SDK needs.
+ *
+ * Two reducer arguments are declared `t.uuid()` — `send_message.replyToId` and
+ * `consume_device_login.id` — and the SDK's uuid serializer does bigint bit
+ * math on the value, so handing it a plain string throws
+ * `TypeError: Invalid mix of BigInt and other type in bitwise 'and' operation`
+ * before a single byte reaches the server. Both call sites were passing the
+ * string form, so every chat REPLY failed to send and no approved QR device
+ * login was ever marked consumed.
+ *
+ * Returns undefined for an absent or unparseable id, so an optional argument
+ * degrades to "not set" rather than taking the whole call down.
+ */
+function toUuidArg(value: unknown): Uuid | undefined {
+  if (value == null || value === "") return undefined;
+  if (value instanceof Uuid) return value;
+  try {
+    return Uuid.parse(String(value));
+  } catch {
+    console.warn("[SpacetimeDB] not a uuid, dropping:", value);
+    return undefined;
+  }
 }
 
 function jsonArrayString(value: unknown): string {
@@ -985,7 +1011,7 @@ export async function sendMessage(
   await offlineAware("sendMessage", {
     conversationId,
     content,
-    replyToId: replyToId ?? undefined,
+    replyToId: toUuidArg(replyToId),
     attachmentUrl: attachment?.url ?? undefined,
     attachmentType: attachment?.type ?? undefined,
     attachmentName: attachment?.name ?? undefined,
@@ -2072,7 +2098,9 @@ export async function approveDeviceLogin(nonce: string, intent: DeviceLoginInten
 /** Store device: mark an approved request as consumed after logging the
  *  operator in so it can't be replayed. */
 export async function consumeDeviceLogin(requestId: string): Promise<void> {
-  return conn().reducers.consumeDeviceLogin({ id: requestId });
+  const id = toUuidArg(requestId);
+  if (!id) throw new Error(`consumeDeviceLogin: "${requestId}" is not a uuid`);
+  return conn().reducers.consumeDeviceLogin({ id });
 }
 
 // ─── Docs ────────────────────────────────────────────────────────────────────

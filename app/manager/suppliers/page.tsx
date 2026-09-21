@@ -79,7 +79,8 @@ import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { SectionNav } from "@/components/section-nav";
 import { Spinner } from "@/components/ui/loaders/geometric";
-import { centsOf, sumCents, toMajor } from "@/lib/money";
+import { applyRateCents, centsOf, multiplyCents, sumCents, toCents, toMajor } from "@/lib/money";
+import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -277,9 +278,8 @@ function useSupplierMessages(organizationId: string | null): { messages: Supplie
 }
 
 // Thin wrappers over the real reducer actions. They normalize the form payload
-// to exactly the fields each reducer declares (extra keys like `rating` on add
-// or `status` on PO are NOT reducer args) and keep the success toasts the
-// handlers rely on.
+// to exactly the fields each reducer declares (extra keys like `status` on PO
+// are NOT reducer args) and keep the success toasts the handlers rely on.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function addSupplier(data: any, successMessage: string): Promise<void> {
   await stdbAddSupplier({
@@ -291,6 +291,7 @@ async function addSupplier(data: any, successMessage: string): Promise<void> {
     paymentTerms: data.paymentTerms ?? null,
     notes: data.notes ?? null,
     language: normalizeSupplierLanguage(data.language),
+    rating: data.rating == null ? null : Number(data.rating),
   });
   toast.success(successMessage);
 }
@@ -424,6 +425,7 @@ export default function SuppliersPage() {
   const { organizationId, can } = usePermissions();
   const t = useT();
   const { format } = useCurrency();
+  const { settings } = useSettings();
   const canEdit = can("inventory", "edit");
 
   // Data
@@ -608,12 +610,18 @@ export default function SuppliersPage() {
     }));
   };
 
-  const poSubtotal = poForm.items.reduce(
-    (sum, item) => sum + item.quantity * item.unitCost,
-    0
+  // The org's configured rate, not a hardcoded 10%. These numbers are written
+  // to the purchase_order row and quoted in the email the supplier receives,
+  // so a store on 0% or 8.25% was sending — and storing — the wrong total.
+  const poTaxRate = (settings?.paymentTaxRate ?? 0) / 100;
+  const poSubtotalCents = poForm.items.reduce(
+    (sum, item) => sum + multiplyCents(toCents(item.unitCost), item.quantity),
+    0,
   );
-  const poTax = poSubtotal * 0.1; // Default 10% tax, can be from settings
-  const poTotal = poSubtotal + poTax;
+  const poTaxCents = applyRateCents(poSubtotalCents, poTaxRate);
+  const poSubtotal = toMajor(poSubtotalCents);
+  const poTax = toMajor(poTaxCents);
+  const poTotal = toMajor(poSubtotalCents + poTaxCents);
 
   const handleCreatePO = async () => {
     if (!poForm.supplierId) {

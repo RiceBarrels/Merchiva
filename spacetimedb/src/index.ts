@@ -6294,10 +6294,15 @@ export const addSupplier = spacetimedb.reducer(
     paymentTerms: t.option(t.string()),
     notes: t.option(t.string()),
     language: t.option(t.string()),
+    // The Add Supplier dialog has an editable star control and the create path
+    // used to throw its value away, storing 5 for everyone. `updateSupplier`
+    // always took a rating; only create did not.
+    rating: t.option(t.number()),
   },
   (ctx, args) => {
     const member = findActiveMember(ctx, args.organizationId);
     if (member.role === 'staff') unauthorized('Manager or owner required');
+    const rating = args.rating ?? 5;
     ctx.db.supplier.insert({
       id: ctx.newUuidV4(),
       organizationId: args.organizationId,
@@ -6308,7 +6313,7 @@ export const addSupplier = spacetimedb.reducer(
       address: args.address,
       paymentTerms: args.paymentTerms,
       notes: args.notes,
-      rating: 5,
+      rating: rating >= 0 && rating <= 5 ? rating : 5,
       createdAt: ctx.timestamp,
       language: args.language ?? 'en',
     });
