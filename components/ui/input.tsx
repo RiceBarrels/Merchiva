@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Calendar, Clock, X, 
 import { Drawer, DrawerContent, DrawerTitle, DrawerDescription } from "@/components/ui/drawer"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { useI18n, useT } from "@/lib/i18n/context"
+import { intlLocaleTag } from "@/lib/i18n/dates"
 import { cn } from "@/lib/utils"
 
 const INPUT_CLASS =
@@ -114,24 +116,43 @@ function getFirstDayOfWeek(y: number, m: number) { return new Date(y, m, 1).getD
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 function sameDay(a: Date, b: Date) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate() }
 
-function formatDateDisplay(value: string): string {
+function formatDateDisplay(value: string, locale: string): string {
   if (!value) return ""
   const [y, m, d] = value.split("-").map(Number)
   if (!y || !m || !d) return value
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  return new Date(y, m - 1, d).toLocaleDateString(intlLocaleTag(locale), { month: "short", day: "numeric", year: "numeric" })
 }
 
-function formatTimeDisplay(value: string): string {
+function formatTimeDisplay(value: string, locale: string): string {
   if (!value) return ""
   const [h, m] = value.split(":").map(Number)
   if (h == null || m == null) return value
-  const ampm = h >= 12 ? "PM" : "AM"
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-  return `${h12}:${pad2(m)} ${ampm}`
+  // `hour12` is left to the locale: en shows "7:05 AM", fr/zh show 24h.
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString(intlLocaleTag(locale), { hour: "numeric", minute: "2-digit" })
 }
 
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"]
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+/** Narrow weekday initials starting Sunday, in the active locale. */
+function weekdayInitials(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(intlLocaleTag(locale), { weekday: "narrow" })
+  // 2023-01-01 was a Sunday.
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)))
+}
+
+/** Full month names in the active locale. */
+function monthNames(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(intlLocaleTag(locale), { month: "long" })
+  return Array.from({ length: 12 }, (_, i) => fmt.format(new Date(2023, i, 1)))
+}
+
+/** The locale's AM / PM words, for the 12-hour scroll wheel. */
+function dayPeriodLabels(locale: string): { am: string; pm: string } {
+  const fmt = new Intl.DateTimeFormat(intlLocaleTag(locale), { hour: "numeric", hour12: true })
+  const read = (h: number) => {
+    const part = fmt.formatToParts(new Date(2000, 0, 1, h)).find((x) => x.type === "dayPeriod")
+    return part?.value ?? (h < 12 ? "AM" : "PM")
+  }
+  return { am: read(9), pm: read(21) }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DATE PICKER
@@ -140,6 +161,8 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 function DateInput({
   className, value, defaultValue, onChange, placeholder, disabled, name, ...rest
 }: Omit<React.ComponentProps<"input">, "type">) {
+  const t = useT()
+  const { locale } = useI18n()
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
   const controlled = value !== undefined
@@ -167,8 +190,8 @@ function DateInput({
         open={open}
         onOpenChange={setOpen}
         isMobile={isMobile}
-        title="Pick date"
-        description="Select a date"
+        title={t("components.datePicker.title")}
+        description={t("components.datePicker.description")}
         trigger={
           <Button
             variant="outline"
@@ -177,7 +200,7 @@ function DateInput({
           >
             <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="flex-1 truncate text-left text-sm">
-              {current ? formatDateDisplay(current) : (placeholder as string) || "Select date"}
+              {current ? formatDateDisplay(current, locale) : (placeholder as string) || t("components.datePicker.placeholder")}
             </span>
           </Button>
         }
@@ -192,6 +215,11 @@ function DateInput({
 function DatePickerContent({ current, today, onSelect, onClose }: {
   current: string; today: string; onSelect: (iso: string) => void; onClose: () => void
 }) {
+  const t = useT()
+  const { locale } = useI18n()
+  const weekdays = useMemo(() => weekdayInitials(locale), [locale])
+  const months = useMemo(() => monthNames(locale), [locale])
+
   const parsed = useMemo(() => {
     if (!current) return new Date()
     const [y, m, d] = current.split("-").map(Number)
@@ -232,7 +260,7 @@ function DatePickerContent({ current, today, onSelect, onClose }: {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm font-semibold">Pick date</span>
+          <span className="text-sm font-semibold">{t("components.datePicker.title")}</span>
         </div>
         <Button variant="ghost" size="icon-xs" onClick={onClose}>
           <X className="h-3.5 w-3.5" />
@@ -245,7 +273,7 @@ function DatePickerContent({ current, today, onSelect, onClose }: {
           <ChevronLeft className="h-3.5 w-3.5" />
         </Button>
         <div className="flex items-baseline gap-1.5">
-          <span className="text-sm font-semibold">{MONTHS[viewMonth]}</span>
+          <span className="text-sm font-semibold">{months[viewMonth]}</span>
           <span className="font-mono text-xs text-muted-foreground tabular-nums">{viewYear}</span>
         </div>
         <Button variant="outline" size="icon-xs" onClick={nextMonth}>
@@ -257,7 +285,7 @@ function DatePickerContent({ current, today, onSelect, onClose }: {
       <div className="border border-border rounded-lg overflow-hidden">
         {/* DOW header */}
         <div className="grid grid-cols-7 bg-muted border-b border-border">
-          {WEEKDAYS.map((d, i) => (
+          {weekdays.map((d, i) => (
             <div key={i} className="py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{d}</div>
           ))}
         </div>
@@ -292,10 +320,10 @@ function DatePickerContent({ current, today, onSelect, onClose }: {
       {current && (
         <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Selected</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("components.datePicker.selected")}</div>
             <div className="font-mono text-[13px] tabular-nums font-medium mt-0.5">{current}</div>
           </div>
-          <Button size="sm" onClick={() => onSelect(current)}>Done</Button>
+          <Button size="sm" onClick={() => onSelect(current)}>{t("common.done")}</Button>
         </div>
       )}
     </div>
@@ -309,6 +337,8 @@ function DatePickerContent({ current, today, onSelect, onClose }: {
 function TimeInput({
   className, value, defaultValue, onChange, placeholder, disabled, name, ...rest
 }: Omit<React.ComponentProps<"input">, "type">) {
+  const t = useT()
+  const { locale } = useI18n()
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
   const controlled = value !== undefined
@@ -331,8 +361,8 @@ function TimeInput({
         open={open}
         onOpenChange={setOpen}
         isMobile={isMobile}
-        title="Pick time"
-        description="Select a time"
+        title={t("components.timePicker.title")}
+        description={t("components.timePicker.description")}
         trigger={
           <Button
             variant="outline"
@@ -341,7 +371,7 @@ function TimeInput({
           >
             <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="flex-1 truncate text-left text-sm">
-              {current ? formatTimeDisplay(current) : (placeholder as string) || "Select time"}
+              {current ? formatTimeDisplay(current, locale) : (placeholder as string) || t("components.timePicker.placeholder")}
             </span>
           </Button>
         }
@@ -356,6 +386,10 @@ function TimeInput({
 function TimePickerContent({ current, onSelect, onClose }: {
   current: string; onSelect: (iso: string) => void; onClose: () => void
 }) {
+  const t = useT()
+  const { locale } = useI18n()
+  const periods = useMemo(() => dayPeriodLabels(locale), [locale])
+
   const [h, m] = useMemo(() => {
     if (!current) return [7, 0]
     const parts = current.split(":").map(Number)
@@ -374,6 +408,7 @@ function TimePickerContent({ current, onSelect, onClose }: {
   const HOURS = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), [])
   const MINUTES = useMemo(() => Array.from({ length: 12 }, (_, i) => i * 5), [])
   const AMPM: ("AM" | "PM")[] = useMemo(() => ["AM", "PM"], [])
+  const periodLabel = (v: "AM" | "PM") => (v === "AM" ? periods.am : periods.pm)
 
   return (
     <div className="p-3 min-w-xs">
@@ -381,7 +416,7 @@ function TimePickerContent({ current, onSelect, onClose }: {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-sm font-semibold">Pick time</span>
+          <span className="text-sm font-semibold">{t("components.timePicker.title")}</span>
         </div>
         <Button variant="ghost" size="icon-xs" onClick={onClose}>
           <X className="h-3.5 w-3.5" />
@@ -396,18 +431,18 @@ function TimePickerContent({ current, onSelect, onClose }: {
           <div className="w-px bg-border shrink-0" />
           <ScrollWheel items={MINUTES} value={min} onChange={setMin} format={(v) => pad2(v)} circular />
           <div className="w-px bg-border shrink-0" />
-          <ScrollWheel items={AMPM} value={ap} onChange={(v) => setAp(v as "AM" | "PM")} format={(v) => String(v)} />
+          <ScrollWheel items={AMPM} value={ap} onChange={(v) => setAp(v as "AM" | "PM")} format={(v) => periodLabel(v as "AM" | "PM")} />
         </div>
       </div>
 
       {/* Common times */}
       <div className="mt-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Common</div>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("components.timePicker.common")}</div>
         <div className="grid grid-cols-3 gap-1.5">
           {([
-            { l: "Open", t: "07:00", icon: Sunrise },
-            { l: "Lunch", t: "12:00", icon: Sun },
-            { l: "Close", t: "21:00", icon: Moon },
+            { l: t("components.timePicker.open"), t: "07:00", icon: Sunrise },
+            { l: t("components.timePicker.lunch"), t: "12:00", icon: Sun },
+            { l: t("components.timePicker.close"), t: "21:00", icon: Moon },
           ]).map((c) => {
             const Icon = c.icon
             return (
@@ -431,15 +466,15 @@ function TimePickerContent({ current, onSelect, onClose }: {
       {/* Summary footer */}
       <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Selected</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t("components.datePicker.selected")}</div>
           <div className="font-mono text-[13px] tabular-nums font-medium mt-0.5">
-            {pad2(h12)}:{pad2(min)} {ap}
+            {pad2(h12)}:{pad2(min)} {periodLabel(ap)}
             <span className="text-muted-foreground ml-1.5">· {pad2(to24(h12, ap))}:{pad2(min)}</span>
           </div>
         </div>
         <Button size="sm" onClick={() => {
           onSelect(`${pad2(to24(h12, ap))}:${pad2(min)}`)
-        }}>Set</Button>
+        }}>{t("components.timePicker.set")}</Button>
       </div>
     </div>
   )

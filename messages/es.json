@@ -25,7 +25,8 @@
     "collapse": "Contraer",
     "expand": "Expandir",
     "previous": "Anterior",
-    "next": "Siguiente"
+    "next": "Siguiente",
+    "done": "Listo"
   },
   "nav": {
     "dailyManagement": "Gestión diaria",
@@ -247,6 +248,22 @@
       "signInBtn": "Iniciar sesión",
       "noAccount": "¿No tienes cuenta?",
       "signUp": "Regístrate"
+    },
+    "datePicker": {
+      "title": "Elegir fecha",
+      "description": "Selecciona una fecha",
+      "placeholder": "Selecciona fecha",
+      "selected": "Seleccionado"
+    },
+    "timePicker": {
+      "title": "Elegir hora",
+      "description": "Selecciona una hora",
+      "placeholder": "Selecciona hora",
+      "common": "Frecuentes",
+      "open": "Apertura",
+      "lunch": "Almuerzo",
+      "close": "Cierre",
+      "set": "Establecer"
     }
   },
   "status": {

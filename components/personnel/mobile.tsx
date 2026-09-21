@@ -39,6 +39,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -121,10 +122,9 @@ function isoDate(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
-function shortDate(iso: string): string {
+function shortDate(iso: string, formatDate: (d: Date | number | string, o: Intl.DateTimeFormatOptions) => string): string {
   if (!iso) return "";
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDate(iso + "T00:00:00", { month: "short", day: "numeric" });
 }
 
 function formatTimeShort(t: string): string {
@@ -266,6 +266,7 @@ export function MobileSchedule({
   onOpenRequests: () => void;
 }) {
   const t = useT();
+  const formatDate = useDateFormat();
   const [rawShifts] = useShifts() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [rawUsers] = useUsers() as [unknown[], boolean];
@@ -476,7 +477,7 @@ export function MobileSchedule({
   };
 
   const selDay = new Date(selDate + "T00:00:00");
-  const weekLabel = `${week[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${week[6].toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const weekLabel = `${formatDate(week[0], { month: "short", day: "numeric" })} – ${formatDate(week[6], { month: "short", day: "numeric" })}`;
 
   const selectedShiftName = selectedShift
     ? members.find((m) => m.id === selectedShift.memberId)?.displayName ?? selectedShift.staffName ?? "—"
@@ -815,7 +816,7 @@ export function MobileSchedule({
                       {assigned?.displayName ?? shift.staffName}
                     </div>
                     <div className="font-mono tabular-nums text-[11px] text-muted-foreground">
-                      {shortDate(shift.date)} · {formatTimeShort(shift.startTime)}–{formatTimeShort(shift.endTime)}
+                      {shortDate(shift.date, formatDate)} · {formatTimeShort(shift.startTime)}–{formatTimeShort(shift.endTime)}
                     </div>
                     <div className="text-[10.5px] text-muted-foreground truncate">
                       Requested by {requester?.displayName ?? "team member"}
@@ -1025,7 +1026,7 @@ export function MobileSchedule({
                   {selectedShiftName}
                 </DynamicUIElementTitle>
                 <DynamicUIElementDescription>
-                  {shortDate(selectedShift.date)} · {formatTimeLong(selectedShift.startTime)}–{formatTimeLong(selectedShift.endTime)}
+                  {shortDate(selectedShift.date, formatDate)} · {formatTimeLong(selectedShift.startTime)}–{formatTimeLong(selectedShift.endTime)}
                 </DynamicUIElementDescription>
               </DynamicUIElementHeader>
 
@@ -1641,6 +1642,7 @@ export function MobileRequestsSheet({
   orgId: string;
 }) {
   const tt = useT();
+  const formatDate = useDateFormat();
   const [rawTimeOff] = useTimeOffRequests() as [unknown[], boolean];
   const [rawTrades] = useShiftTrades() as [unknown[], boolean];
   const [rawShifts] = useShifts() as [unknown[], boolean];
@@ -1829,8 +1831,8 @@ export function MobileRequestsSheet({
                           {r.staffName}
                         </div>
                         <div className="text-[11px] text-muted-foreground mt-0.5">
-                          {shortDate(r.startDate)}
-                          {r.endDate !== r.startDate && ` – ${shortDate(r.endDate)}`}
+                          {shortDate(r.startDate, formatDate)}
+                          {r.endDate !== r.startDate && ` – ${shortDate(r.endDate, formatDate)}`}
                           {!r.fullDays && r.startTime && r.endTime && (
                             <>
                               {" · "}
@@ -1895,7 +1897,7 @@ export function MobileRequestsSheet({
                       </Badge>
                       {shift && (
                         <span className="font-mono tabular-nums text-[11px] text-muted-foreground">
-                          {shortDate(shift.date)} · {formatTimeShort(shift.startTime)}–
+                          {shortDate(shift.date, formatDate)} · {formatTimeShort(shift.startTime)}–
                           {formatTimeShort(shift.endTime)}
                         </span>
                       )}

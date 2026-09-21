@@ -25,7 +25,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
 import { useT } from "@/lib/i18n/context";
-import { useDateFormat } from "@/lib/i18n/dates";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 
 // ─── Sample data ────────────────────────────────────────────────────────────
 

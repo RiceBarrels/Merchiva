@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/currency";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { useT } from "@/lib/i18n/context";
-import { useDateFormat } from "@/lib/i18n/dates";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { dateKey } from "@/lib/date-key";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

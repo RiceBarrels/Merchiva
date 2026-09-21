@@ -25,7 +25,8 @@
     "collapse": "收起",
     "expand": "展开",
     "previous": "上一个",
-    "next": "下一个"
+    "next": "下一个",
+    "done": "完成"
   },
   "nav": {
     "dailyManagement": "日常管理",
@@ -247,6 +248,22 @@
       "signInBtn": "登录",
       "noAccount": "还没有账号？",
       "signUp": "注册"
+    },
+    "datePicker": {
+      "title": "选择日期",
+      "description": "请选择一个日期",
+      "placeholder": "选择日期",
+      "selected": "已选择"
+    },
+    "timePicker": {
+      "title": "选择时间",
+      "description": "请选择一个时间",
+      "placeholder": "选择时间",
+      "common": "常用",
+      "open": "开店",
+      "lunch": "午市",
+      "close": "打烊",
+      "set": "设定"
     }
   },
   "status": {

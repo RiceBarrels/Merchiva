@@ -70,6 +70,7 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
 import { useNow } from "@/lib/use-now";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { usePermissions } from "@/lib/context/permissions";
 import { useExpenses, usePayments, useSalesRecords, usePurchaseOrders, useOrgMembers, usePunchEvents } from "@/lib/spacetimedb/hooks";
 import { computeMemberPayroll, grossPayCents, toPayrollEvents } from "@/lib/payroll";
@@ -137,8 +138,8 @@ function isInRange(dateStr: string, start: Date, end: Date): boolean {
   return d >= start && d <= end;
 }
 
-function getMonthLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+function getMonthLabel(date: Date, formatDate: (d: Date, o: Intl.DateTimeFormatOptions) => string): string {
+  return formatDate(date, { month: "short", year: "2-digit" });
 }
 
 // ─── Expense Form Interface ──────────────────────────────────────────────────
@@ -260,6 +261,7 @@ function OverviewTab({
 }) {
   const t = useT();
   const { format, symbol } = useCurrency();
+  const formatDate = useDateFormat();
   const [dateRange, setDateRange] = useState<DateRange>("this_month");
   const { start, end } = getDateRange(dateRange);
 
@@ -309,10 +311,10 @@ function OverviewTab({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .reduce((s: number, e: any) => s + (e.amount ?? 0), 0);
 
-      months.push({ label: getMonthLabel(d), revenue: mRevenue, expenses: mExpenses });
+      months.push({ label: getMonthLabel(d, formatDate), revenue: mRevenue, expenses: mExpenses });
     }
     return months;
-  }, [payments, expenses]);
+  }, [payments, expenses, formatDate]);
 
   return (
     <div className="space-y-4">
@@ -769,6 +771,7 @@ function CashFlowTab({
 }) {
   const t = useT();
   const { format, symbol } = useCurrency();
+  const formatDate = useDateFormat();
 
   // Current balance: total all-time revenue - total all-time expenses
   const totalRevenue = useMemo(
@@ -840,12 +843,12 @@ function CashFlowTab({
       });
 
       data.push({
-        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: formatDate(d, { month: "short", day: "numeric" }),
         balance: Math.round(balance * 100) / 100,
       });
     }
     return data;
-  }, [currentBalance, avgDailyRevenue, recurringExpenses]);
+  }, [currentBalance, avgDailyRevenue, recurringExpenses, formatDate]);
 
   // Upcoming expenses (next 7 days)
   const upcomingExpenses = useMemo(() => {
@@ -875,14 +878,14 @@ function CashFlowTab({
           upcoming.push({
             name: exp.description || exp.category,
             amount: exp.amount ?? 0,
-            dueDate: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+            dueDate: formatDate(d, { weekday: "short", month: "short", day: "numeric" }),
           });
         }
       }
     });
 
     return upcoming;
-  }, [recurringExpenses]);
+  }, [recurringExpenses, formatDate]);
 
   return (
     <div className="space-y-4">
@@ -983,6 +986,7 @@ function PayrollTab() {
   // the running total to move — and reading it during render would be impure.
   const now = useNow(60_000);
   const nowMs = now.getTime();
+  const formatDate = useDateFormat();
 
   // Date range calculation
   const { start, end } = useMemo(() => {

@@ -25,7 +25,8 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "done": "Done"
   },
   "nav": {
     "dailyManagement": "Daily Management",
@@ -247,6 +248,22 @@
       "signInBtn": "Sign in",
       "noAccount": "Don't have an account?",
       "signUp": "Sign up"
+    },
+    "datePicker": {
+      "title": "Pick date",
+      "description": "Select a date",
+      "placeholder": "Select date",
+      "selected": "Selected"
+    },
+    "timePicker": {
+      "title": "Pick time",
+      "description": "Select a time",
+      "placeholder": "Select time",
+      "common": "Common",
+      "open": "Open",
+      "lunch": "Lunch",
+      "close": "Close",
+      "set": "Set"
     }
   },
   "status": {

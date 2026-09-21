@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatDate as formatDateIn } from "@/lib/i18n/dates";
 import Link from "next/link";
 import Image from "next/image";
 import { SiteShell } from "@/components/landing/site-shell";
@@ -33,14 +34,10 @@ export async function generateMetadata({
 
 export const dynamic = "force-dynamic";
 
-function formatDate(unixMs: number | null, fallback: number): string {
+function formatDate(unixMs: number | null, fallback: number, locale: string): string {
   const ms = unixMs ?? fallback;
   if (!ms) return "";
-  return new Date(ms).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDateIn(ms, locale, { year: "numeric", month: "short", day: "numeric" });
 }
 
 export default async function BlogsPage({
@@ -95,7 +92,7 @@ export default async function BlogsPage({
                   )}
                   <div className="min-w-0">
                     <div className="font-mono text-[11px] uppercase tracking-wider text-stone-500">
-                      {formatDate(p.publishedAt, p.createdAt)}
+                      {formatDate(p.publishedAt, p.createdAt, locale)}
                       {p.authorName ? ` · ${p.authorName}` : ""}
                     </div>
                     <h2 className="mt-2 font-sans text-[22px] font-semibold tracking-tight text-stone-950 leading-tight">

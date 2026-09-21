@@ -25,7 +25,8 @@
     "collapse": "संक्षिप्त करें",
     "expand": "विस्तृत करें",
     "previous": "पिछला",
-    "next": "अगला"
+    "next": "अगला",
+    "done": "पूर्ण"
   },
   "nav": {
     "dailyManagement": "दैनिक प्रबंधन",
@@ -247,6 +248,22 @@
       "signInBtn": "साइन इन करें",
       "noAccount": "कोई खाता नहीं?",
       "signUp": "साइन अप करें"
+    },
+    "datePicker": {
+      "title": "तारीख़ चुनें",
+      "description": "एक तारीख़ चुनें",
+      "placeholder": "तारीख़ चुनें",
+      "selected": "चयनित"
+    },
+    "timePicker": {
+      "title": "समय चुनें",
+      "description": "एक समय चुनें",
+      "placeholder": "समय चुनें",
+      "common": "सामान्य",
+      "open": "खुलना",
+      "lunch": "दोपहर का भोजन",
+      "close": "बंद होना",
+      "set": "सेट करें"
     }
   },
   "status": {

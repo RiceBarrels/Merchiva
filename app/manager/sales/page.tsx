@@ -40,7 +40,7 @@ import { PageHeader } from "@/components/page-header";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
-import { useDateFormat } from "@/lib/i18n/dates";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { SalesForecast } from "@/components/sales-forecast";
 import { ItemForecast } from "@/components/item-forecast";
 import { PageTabs } from "@/components/page-tabs";

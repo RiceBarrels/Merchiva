@@ -34,6 +34,8 @@ import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
+import { useCurrency } from "@/lib/currency";
 import { usePermissions } from "@/lib/context/permissions";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useStaffing } from "@/lib/spacetimedb/hooks/useStaffing";
@@ -48,31 +50,27 @@ import { dateKey } from "@/lib/date-key";
 
 type DateRange = "this_month" | "last_month" | "last_90";
 
-function getDateBounds(range: DateRange): { start: string; end: string; label: string } {
+function getDateBounds(
+  range: DateRange,
+  formatDate: (d: Date, o: Intl.DateTimeFormatOptions) => string,
+  t: (key: string) => string,
+): { start: string; end: string; label: string } {
   const now = new Date();
-  const fmt = (d: Date) => dateKey(d);
+  const monthLabel: Intl.DateTimeFormatOptions = { month: "long", year: "numeric" };
 
   if (range === "this_month") {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return {
-      start: fmt(start),
-      end: fmt(now),
-      label: now.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-    };
+    return { start: dateKey(start), end: dateKey(now), label: formatDate(now, monthLabel) };
   }
   if (range === "last_month") {
     const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const end = new Date(now.getFullYear(), now.getMonth(), 0);
-    return {
-      start: fmt(start),
-      end: fmt(end),
-      label: start.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-    };
+    return { start: dateKey(start), end: dateKey(end), label: formatDate(start, monthLabel) };
   }
   // last_90
   const start = new Date(now);
   start.setDate(start.getDate() - 90);
-  return { start: fmt(start), end: fmt(now), label: "Last 90 Days" };
+  return { start: dateKey(start), end: dateKey(now), label: t("reports.last90Days") };
 }
 
 function inRange(dateStr: string, start: string, end: string): boolean {
@@ -90,12 +88,6 @@ function shiftHours(startTime: string, endTime: string): number {
 }
 
 // ─── Currency / Percent Formatters ──────────────────────────────────────────
-
-const fmtCurrency = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
-const fmtCurrency2 = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
@@ -176,6 +168,11 @@ function DateRangeSelect({
 export default function ReportsPage() {
   const { organizationId, role } = usePermissions();
   const t = useT();
+  const formatDate = useDateFormat();
+  // Amounts follow the organization's configured currency, not a hardcoded USD.
+  const { format } = useCurrency();
+  const fmtCurrency = (n: number) => format(n, { decimals: 0 });
+  const fmtCurrency2 = (n: number) => format(n, { decimals: 2 });
 
   // ── Data hooks ────────────────────────────────────────────────────────────
   const { history: salesHistory, isReady: salesReady } = useSales();
@@ -194,7 +191,7 @@ export default function ReportsPage() {
   const [staffRange, setStaffRange] = useState<DateRange>("this_month");
 
   // ── Sales filtered data ───────────────────────────────────────────────────
-  const salesBounds = useMemo(() => getDateBounds(salesRange), [salesRange]);
+  const salesBounds = useMemo(() => getDateBounds(salesRange, formatDate, t), [salesRange, formatDate, t]);
   const filteredSales = useMemo(
     () => salesHistory.filter((r) => inRange(r.date, salesBounds.start, salesBounds.end)),
     [salesHistory, salesBounds]
@@ -223,7 +220,7 @@ export default function ReportsPage() {
   }, [filteredSales]);
 
   // ── Staff filtered data ───────────────────────────────────────────────────
-  const staffBounds = useMemo(() => getDateBounds(staffRange), [staffRange]);
+  const staffBounds = useMemo(() => getDateBounds(staffRange, formatDate, t), [staffRange, formatDate, t]);
   const filteredShifts = useMemo(
     () => shifts.filter((s) => inRange(s.date, staffBounds.start, staffBounds.end)),
     [shifts, staffBounds]

@@ -1,24 +1,29 @@
-"use client";
-
 // Locale-aware date and time formatting.
 //
 // `new Date().toLocaleDateString("en-US", …)` renders an English date for every
 // user, whatever locale they picked — the app ships in 8. These helpers format
-// against the active locale instead, and cache the Intl formatters because
+// against a given locale instead, and cache the Intl formatters because
 // constructing one per render is the expensive part.
 //
+// No "use client": the marketing pages are server components and call
+// `formatDate` directly. The React hook lives in ./use-date-format.
+//
 // Machine-readable output (CSV columns, file names, the `YYYY-MM-DD` keys the
-// schema stores) deliberately does NOT go through here: that format must stay
-// stable across locales.
+// schema stores — see lib/date-key.ts) deliberately does NOT go through here:
+// that format must stay stable across locales.
 
-import { useCallback } from "react";
 import { LOCALE_BCP47, isLocale } from "@/lib/i18n/config";
-import { useI18n } from "@/lib/i18n/context";
 
 /** App locale ("zh-cn") → BCP-47 tag ("zh-CN"); other tags pass through. */
 export function intlLocaleTag(locale: string): string {
   return isLocale(locale) ? LOCALE_BCP47[locale] : locale;
 }
+
+/** A `formatDate` bound to one locale — what `useDateFormat()` returns. */
+export type DateFormatter = (
+  date: Date | number | string,
+  options: Intl.DateTimeFormatOptions,
+) => string;
 
 const cache = new Map<string, Intl.DateTimeFormat>();
 
@@ -47,18 +52,4 @@ export function formatDate(
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return "";
   return formatter(locale, options).format(d);
-}
-
-/**
- * `formatDate` bound to the active locale.
- *
- * The returned function is stable for a given locale, so it is safe in a
- * dependency array.
- */
-export function useDateFormat(): (date: Date | number | string, options: Intl.DateTimeFormatOptions) => string {
-  const { locale } = useI18n();
-  return useCallback(
-    (date: Date | number | string, options: Intl.DateTimeFormatOptions) => formatDate(date, locale, options),
-    [locale],
-  );
 }

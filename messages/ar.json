@@ -25,7 +25,8 @@
     "collapse": "طيّ",
     "expand": "توسيع",
     "previous": "السابق",
-    "next": "التالي"
+    "next": "التالي",
+    "done": "تم"
   },
   "nav": {
     "dailyManagement": "الإدارة اليومية",
@@ -247,6 +248,22 @@
       "signInBtn": "تسجيل الدخول",
       "noAccount": "ليس لديك حساب؟",
       "signUp": "إنشاء حساب"
+    },
+    "datePicker": {
+      "title": "اختر التاريخ",
+      "description": "حدّد تاريخًا",
+      "placeholder": "حدّد التاريخ",
+      "selected": "المحدد"
+    },
+    "timePicker": {
+      "title": "اختر الوقت",
+      "description": "حدّد وقتًا",
+      "placeholder": "حدّد الوقت",
+      "common": "شائع",
+      "open": "الفتح",
+      "lunch": "الغداء",
+      "close": "الإغلاق",
+      "set": "تعيين"
     }
   },
   "status": {

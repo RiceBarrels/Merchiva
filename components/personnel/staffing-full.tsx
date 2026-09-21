@@ -54,6 +54,8 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
+import { type DateFormatter } from "@/lib/i18n/dates";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 
 // Role constants + icon helper now live in the shared role-dialogs module so
 // the mobile personnel pages can reuse them.
@@ -132,9 +134,8 @@ function getWeekDates(base: Date): Date[] {
   });
 }
 
-function formatDateShort(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function formatDateShort(iso: string, formatDate: DateFormatter): string {
+  return formatDate(iso + "T00:00:00", { month: "short", day: "numeric" });
 }
 
 
@@ -432,6 +433,7 @@ interface StaffingDesktopProps {
 
 function StaffingDesktop(props: StaffingDesktopProps) {
   const t = useT();
+  const formatDate = useDateFormat();
   const {
     canEdit, isStaff, currentOrg, team, shifts, roles,
     weekStart, setWeekStart, weekDates, weekShifts,
@@ -479,7 +481,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   const prevWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
 
-  const monthYearD = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthYearD = formatDate(weekDates[0], { month: "long", year: "numeric" });
   const isTodayD = (d: Date) => isoDate(d) === todayStr;
   const allMembers = team.filter((m) => m.status === "active");
 
@@ -544,7 +546,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   }`}
                 >
                   <div className="text-[10.5px] font-semibold uppercase tracking-wide">
-                    {d.toLocaleDateString("en-US", { weekday: "short" })}
+                    {formatDate(d, { weekday: "short" })}
                   </div>
                   <div className={`text-[15px] font-bold ${today ? "text-background" : "text-foreground"}`}>
                     {d.getDate()}
@@ -1038,6 +1040,7 @@ import { dateKey } from "@/lib/date-key";
 export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
   const t = useT();
+  const formatDate = useDateFormat();
 
   const [presetDialog, setPresetDialog] = useState(false);
   const [editingPreset, setEditingPreset] = useState<ShiftPreset | null>(null);
@@ -1940,7 +1943,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
 
   const todayStr = isoDate(new Date());
   const isToday  = (d: Date) => isoDate(d) === todayStr;
-  const monthYear = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthYear = formatDate(weekDates[0], { month: "long", year: "numeric" });
 
   // ─── Load today's role tasks (cache-first, then fresh) ────────────────────
   useEffect(() => {
@@ -2115,14 +2118,14 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       const weekDays = weeks[wi];
       if (wi > 0) doc.addPage();
 
-      const wStart = weekDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      const wEnd = weekDays[weekDays.length - 1].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const wStart = formatDate(weekDays[0], { month: "short", day: "numeric" });
+      const wEnd = formatDate(weekDays[weekDays.length - 1], { month: "short", day: "numeric", year: "numeric" });
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text(`${currentOrg?.name ?? "Schedule"} — ${wStart} - ${wEnd}`, 20, 30);
 
       const dayHeaders = weekDays.map((d) =>
-        `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
+        `${formatDate(d, { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
       );
       const weekShiftRange = rangeShifts.filter((s) => {
         const sd = isoDate(weekDays[0]), ed = isoDate(weekDays[weekDays.length - 1]);
@@ -2213,7 +2216,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const handleDownloadCSV = (startStr: string, endStr: string) => {
     const { dates, rangeShifts } = getExportData(startStr, endStr);
     const dayHeaders = dates.map((d) =>
-      `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
+      `${formatDate(d, { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
     );
     const staffNames = [...new Set(rangeShifts.map((s) => s.staffName))].sort();
 
@@ -2261,8 +2264,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     wrapper.style.cssText = "background:#fff;padding:20px;font-family:system-ui,sans-serif;font-size:12px;width:max-content;";
 
     for (const weekDays of weeks) {
-      const wStart = weekDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      const wEnd = weekDays[weekDays.length - 1].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const wStart = formatDate(weekDays[0], { month: "short", day: "numeric" });
+      const wEnd = formatDate(weekDays[weekDays.length - 1], { month: "short", day: "numeric", year: "numeric" });
       const weekShiftRange = rangeShifts.filter((s) => s.date >= isoDate(weekDays[0]) && s.date <= isoDate(weekDays[weekDays.length - 1]));
       const staffNames = [...new Set(weekShiftRange.map((s) => s.staffName))].sort();
 
@@ -2275,7 +2278,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       table.style.cssText = "border-collapse:collapse;width:100%;margin-bottom:8px;";
       const thead = document.createElement("thead");
       const hr = document.createElement("tr");
-      ["Name", ...weekDays.map((d) => `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`)].forEach((h) => {
+      ["Name", ...weekDays.map((d) => `${formatDate(d, { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`)].forEach((h) => {
         const th = document.createElement("th");
         th.textContent = h;
         th.style.cssText = "border:1px solid #d6d3d1;padding:6px 8px;background:#f5f5f4;font-size:11px;text-align:center;";
@@ -2787,11 +2790,11 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   })();
 
   // Week of label for schedule tab
-  const weekOfLabel = weekDates[0].toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const weekOfLabel = formatDate(weekDates[0], { month: "short", day: "numeric" });
 
   // Selected day display for schedule tab
   const selectedDayDate = new Date(selectedDay + "T00:00:00");
-  const selectedDayLabel = selectedDayDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  const selectedDayLabel = formatDate(selectedDayDate, { weekday: "long", month: "short", day: "numeric" });
   const selectedDayHours = (() => {
     const hrs = selectedDayShifts.reduce((acc, s) => {
       const [sh, sm] = s.startTime.split(":").map(Number);
@@ -3085,7 +3088,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         <span className={`text-[10px] font-semibold uppercase tracking-wide ${
                           isSelected ? "text-muted-foreground" : "text-muted-foreground"
                         }`}>
-                          {d.toLocaleDateString("en-US", { weekday: "short" })}
+                          {formatDate(d, { weekday: "short" })}
                         </span>
                         <span className={`text-[17px] font-mono tabular-nums font-semibold leading-snug ${
                           isSelected ? "text-background" : "text-foreground"
@@ -3281,7 +3284,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                       <div key={req.id} className="px-4 py-3">
                         <p className="text-[13px] font-medium text-foreground">{getMemberName(req.userId)}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
+                          {formatDateShort(req.startDate, formatDate)} &ndash; {formatDateShort(req.endDate, formatDate)}
                         </p>
                         <div className="flex gap-2 mt-2">
                           <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}>
@@ -3303,7 +3306,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                           </p>
                           {shift && (
                             <p className="text-[11px] text-muted-foreground mt-0.5">
-                              {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                              {formatDateShort(shift.date, formatDate)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                             </p>
                           )}
                           <div className="flex gap-2 mt-2">
@@ -3993,9 +3996,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               <div className="bg-muted border border-border p-3">
                 <Eyebrow className="mb-1">{t("staffing.tradeDialog.yourShift")}</Eyebrow>
                 <p className="text-sm font-semibold text-foreground">
-                  {new Date(tradeDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
-                    weekday: "short", month: "short", day: "numeric",
-                  })}
+                  {formatDate(tradeDialog.shift.date + "T00:00:00", { weekday: "short", month: "short", day: "numeric" })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {formatTime(tradeDialog.shift.startTime)} – {formatTime(tradeDialog.shift.endTime)}
@@ -4086,7 +4087,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground leading-tight">{c.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {formatDateShort(s.date)} &middot; {formatTime(s.startTime)}–{formatTime(s.endTime)}
+                              {formatDateShort(s.date, formatDate)} &middot; {formatTime(s.startTime)}–{formatTime(s.endTime)}
                             </p>
                           </div>
                           <span className="h-2 w-2 rounded-full shrink-0 bg-foreground" />
@@ -4125,9 +4126,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               <div className="bg-muted border border-border p-3">
                 <Eyebrow className="mb-1">{t("staffing.coverDialog.yourShift")}</Eyebrow>
                 <p className="text-sm font-semibold text-foreground">
-                  {new Date(coverDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
-                    weekday: "short", month: "short", day: "numeric",
-                  })}
+                  {formatDate(coverDialog.shift.date + "T00:00:00", { weekday: "short", month: "short", day: "numeric" })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {formatTime(coverDialog.shift.startTime)} – {formatTime(coverDialog.shift.endTime)}
@@ -4533,9 +4532,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       {/* ─── Shift Details DynamicUIElement ─────────────────────────────── */}
       {shiftDetailShift && (() => {
         const s = shiftDetailShift;
-        const dateLabel = new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
-          weekday: "short", month: "short", day: "numeric",
-        });
+        const dateLabel = formatDate(s.date + "T00:00:00", { weekday: "short", month: "short", day: "numeric" });
         const matchedRoles = (s.staffRoles ?? [])
           .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
           .filter(Boolean) as StaffRole[];
@@ -4682,7 +4679,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             canEdit={canEdit}
             getMemberName={getMemberName}
             formatTime={formatTime}
-            formatDateShort={formatDateShort}
+            formatDateShort={(iso: string) => formatDateShort(iso, formatDate)}
             onAcceptTrade={handleStaffAcceptTrade}
             onDenyTrade={(id) => handleTradeStatusUpdate(id, "denied")}
             onManagerApproveTrade={handleManagerApproveTrade}
