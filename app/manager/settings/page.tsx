@@ -649,6 +649,9 @@ export default function SettingsPage() {
 
   const handleSavePaymentSettings = async () => {
     if (!userId) return;
+    // Same reasoning as the currency row: the reducer only checks
+    // `settings.view`, which every staff member has.
+    if (!isAdmin) return;
     setSavingPayment(true);
     try {
       await persistPaymentSettings({ taxRate: parseFloat(paymentTaxRate) || 0 });
@@ -661,6 +664,7 @@ export default function SettingsPage() {
   };
 
   const handleSelectCurrency = async (code: string) => {
+    if (!isAdmin) return;
     setSavingCurrency(code);
     setPaymentCurrency(code);
     try {
@@ -1922,11 +1926,17 @@ export default function SettingsPage() {
               meta={`${t("settings.taxPrefix")} ${paymentTaxRate}% · ${paymentCurrency}`}
               right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{paymentTaxRate}%</span>}
             />
+            {/* Owners and managers only. The org's currency re-denominates
+                every price, total and report for everyone, and the
+                updateSettings reducer only checks `settings.view`, which
+                defaultPermissions() grants to every staff member — so an
+                unguarded tap here was a one-click org-wide change by a
+                cashier. Read-only for everyone else. */}
             <SRow
               icon={<Coins className="h-4 w-4 text-foreground" />}
               title={t("settings.currency")}
               meta={t(getCurrencyInfo(paymentCurrency).labelKey)}
-              onClick={() => setCurrencyDialog(true)}
+              onClick={isAdmin ? () => setCurrencyDialog(true) : undefined}
               right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{getCurrencyInfo(paymentCurrency).symbol} {paymentCurrency}</span>}
             />
           </div>

@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
 import { useDateFormat } from "@/lib/i18n/use-date-format";
+import { isOnShiftAt } from "@/lib/shift-time";
+import { useNow } from "@/lib/use-now";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -259,6 +261,7 @@ export function MobileSchedule({
 }) {
   const t = useT();
   const formatDate = useDateFormat();
+  const nowClock = useNow(60_000);
   const [rawShifts] = useShifts() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [rawUsers] = useUsers() as [unknown[], boolean];
@@ -436,18 +439,13 @@ export function MobileSchedule({
 
 
   // "On now" — based on actual current clock time.
-  const nowMin = useMemo(() => {
-    const n = new Date();
-    return n.getHours() * 60 + n.getMinutes();
-  }, []);
+  // A useMemo with an empty dependency array froze this at mount, so a tablet
+  // left open all day still showed the morning crew as "on now" at 15:00.
+  const nowMin = nowClock.getHours() * 60 + nowClock.getMinutes();
   const todayIso = isoDate(new Date());
   const isToday = selDate === todayIso;
   const onShiftNow = isToday
-    ? dayShifts.filter((s) => {
-        const [sh, sm] = s.startTime.split(":").map(Number);
-        const [eh, em] = s.endTime.split(":").map(Number);
-        return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
-      })
+    ? dayShifts.filter((s) => isOnShiftAt(s.startTime, s.endTime, nowMin))
     : [];
 
   const pending = useMemo(() => {
@@ -734,9 +732,7 @@ export function MobileSchedule({
           const isOnNow =
             isToday &&
             (() => {
-              const [sh, sm] = s.startTime.split(":").map(Number);
-              const [eh, em] = s.endTime.split(":").map(Number);
-              return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
+              return isOnShiftAt(s.startTime, s.endTime, nowMin);
             })();
           return (
             <button

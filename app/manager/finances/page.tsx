@@ -800,8 +800,12 @@ function CashFlowTab({
   const avgDailyRevenue = useMemo(() => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // `s.hour == null`, not `!s.hour`: hour 0 is the midnight TRADING HOUR,
+    // not a daily aggregate. Treating it as one inflated the row count and
+    // skewed avgDailyRevenue, which the whole 30-day cash-flow projection is
+    // built on.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recent = salesRecords.filter((s: any) => new Date(s.date) >= thirtyDaysAgo && !s.hour);
+    const recent = salesRecords.filter((s: any) => new Date(s.date) >= thirtyDaysAgo && s.hour == null);
     if (recent.length === 0) return 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return recent.reduce((s: number, r: any) => s + (r.actual ?? 0), 0) / recent.length;

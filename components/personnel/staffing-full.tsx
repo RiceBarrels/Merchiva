@@ -56,6 +56,8 @@ import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
 import { type DateFormatter } from "@/lib/i18n/dates";
 import { useDateFormat } from "@/lib/i18n/use-date-format";
+import { isOnShiftAt, shiftDurationHours } from "@/lib/shift-time";
+import { useNow } from "@/lib/use-now";
 
 // Role constants + icon helper now live in the shared role-dialogs module so
 // the mobile personnel pages can reuse them.
@@ -434,6 +436,8 @@ interface StaffingDesktopProps {
 function StaffingDesktop(props: StaffingDesktopProps) {
   const t = useT();
   const formatDate = useDateFormat();
+  // "On now" has to keep up on a tablet left open all day.
+  const nowClock = useNow(60_000);
   const {
     canEdit, isStaff, currentOrg, team, shifts, roles,
     weekStart, setWeekStart, weekDates, weekShifts,
@@ -485,12 +489,8 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   const isTodayD = (d: Date) => isoDate(d) === todayStr;
   const allMembers = team.filter((m) => m.status === "active");
 
-  // Compute shift hours helper
-  const shiftHours = (s: Shift) => {
-    const [sh, sm] = s.startTime.split(":").map(Number);
-    const [eh, em] = s.endTime.split(":").map(Number);
-    return Math.max(0, eh + em / 60 - (sh + sm / 60));
-  };
+  // Compute shift hours helper. Wraps past midnight — see lib/shift-time.ts.
+  const shiftHours = (s: Shift) => shiftDurationHours(s.startTime, s.endTime);
 
   // ─── Schedule Tab (staff x week grid) ─────────────────────
   function ScheduleGrid() {
@@ -1041,6 +1041,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
   const t = useT();
   const formatDate = useDateFormat();
+  // "On now" has to keep up on a tablet left open all day.
+  const nowClock = useNow(60_000);
 
   const [presetDialog, setPresetDialog] = useState(false);
   const [editingPreset, setEditingPreset] = useState<ShiftPreset | null>(null);
@@ -2687,9 +2689,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const todayAllShifts = weekShifts.filter((s) => s.date === selectedDay);
   const todayScheduledHours = (() => {
     const hrs = todayAllShifts.reduce((acc, s) => {
-      const [sh, sm] = s.startTime.split(":").map(Number);
-      const [eh, em] = s.endTime.split(":").map(Number);
-      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+      return acc + shiftDurationHours(s.startTime, s.endTime);
     }, 0);
     return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
   })();
@@ -2718,9 +2718,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   };
 
   const getShiftHeightPercent = (startTime: string, endTime: string) => {
-    const [sh, sm] = startTime.split(":").map(Number);
-    const [eh, em] = endTime.split(":").map(Number);
-    const duration = (eh + em / 60) - (sh + sm / 60);
+    const duration = shiftDurationHours(startTime, endTime);
     return Math.max(2, (duration / TIMELINE_HOURS_COUNT) * 100);
   };
 
@@ -2767,9 +2765,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   // ─── Mobile computed helpers ─────────────────────────────────────────────
   // On-shift now: shifts that overlap with current time
   const nowOnShift = (() => {
-    const now = new Date();
-    const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    return todayAllShifts.filter((s) => s.startTime <= nowTime && s.endTime > nowTime);
+    // String comparison could never match an overnight shift (22:00 > 01:00).
+    const nowMinutes = nowClock.getHours() * 60 + nowClock.getMinutes();
+    return todayAllShifts.filter((s) => isOnShiftAt(s.startTime, s.endTime, nowMinutes));
   })();
 
   // Upcoming shifts today (haven't started yet)
@@ -2791,9 +2789,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   // Week hours
   const weekTotalHours = (() => {
     const hrs = weekShifts.reduce((acc, s) => {
-      const [sh, sm] = s.startTime.split(":").map(Number);
-      const [eh, em] = s.endTime.split(":").map(Number);
-      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+      return acc + shiftDurationHours(s.startTime, s.endTime);
     }, 0);
     return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
   })();
@@ -2806,9 +2802,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const selectedDayLabel = formatDate(selectedDayDate, { weekday: "long", month: "short", day: "numeric" });
   const selectedDayHours = (() => {
     const hrs = selectedDayShifts.reduce((acc, s) => {
-      const [sh, sm] = s.startTime.split(":").map(Number);
-      const [eh, em] = s.endTime.split(":").map(Number);
-      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+      return acc + shiftDurationHours(s.startTime, s.endTime);
     }, 0);
     return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
   })();
@@ -3593,9 +3587,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                   />
                   <span className="text-xs text-muted-foreground shrink-0">
                     ({(() => {
-                      const [sh, sm] = shiftForm.startTime.split(":").map(Number);
-                      const [eh, em] = shiftForm.endTime.split(":").map(Number);
-                      const h = Math.max(0, eh + em / 60 - (sh + sm / 60));
+                      const h = shiftDurationHours(shiftForm.startTime, shiftForm.endTime);
                       return h % 1 === 0 ? `${h}hr` : `${h.toFixed(1)}hr`;
                     })()})
                   </span>
