@@ -25,7 +25,8 @@
     "collapse": "संक्षिप्त करें",
     "expand": "विस्तृत करें",
     "previous": "पिछला",
-    "next": "अगला"
+    "next": "अगला",
+    "done": "पूर्ण"
   },
   "nav": {
     "dailyManagement": "दैनिक प्रबंधन",
@@ -61,7 +62,9 @@
     },
     "usage": "AI उपयोग",
     "apps": "डिवाइस ऐप",
-    "docs": "दस्तावेज़"
+    "docs": "दस्तावेज़",
+    "bugs": "गड़बड़ियाँ",
+    "notifications": "सूचनाएँ"
   },
   "login": {
     "title": "Merchiva में साइन इन करें",
@@ -246,6 +249,28 @@
       "signInBtn": "साइन इन करें",
       "noAccount": "कोई खाता नहीं?",
       "signUp": "साइन अप करें"
+    },
+    "datePicker": {
+      "title": "तारीख़ चुनें",
+      "description": "एक तारीख़ चुनें",
+      "placeholder": "तारीख़ चुनें",
+      "selected": "चयनित"
+    },
+    "timePicker": {
+      "title": "समय चुनें",
+      "description": "एक समय चुनें",
+      "placeholder": "समय चुनें",
+      "common": "सामान्य",
+      "open": "खुलना",
+      "lunch": "दोपहर का भोजन",
+      "close": "बंद होना",
+      "set": "सेट करें"
+    },
+    "combobox": {
+      "noResults": "कोई परिणाम नहीं"
+    },
+    "pinPad": {
+      "backspace": "बैकस्पेस"
     }
   },
   "status": {
@@ -335,7 +360,9 @@
       "submit": "उत्पाद जोड़ें",
       "translationsLabel": "अनुवाद",
       "translationsExpand": "अनुवाद जोड़ें",
-      "translationsCollapse": "अनुवाद छुपाएं"
+      "translationsCollapse": "अनुवाद छुपाएं",
+      "descriptionLabel": "विवरण",
+      "descriptionPlaceholder": "उत्पाद का संक्षिप्त विवरण..."
     },
     "toasts": {
       "nameRequired": "नाम आवश्यक है",
@@ -372,6 +399,14 @@
         "noDescription": "कोई विवरण उपलब्ध नहीं है।",
         "addToCart": "कार्ट में जोड़ें"
       }
+    },
+    "inventoryUsage": {
+      "title": "प्रति बिक्री खपत इन्वेंट्री",
+      "description": "तय करें कि एक यूनिट बिकने पर यह उत्पाद कितना स्टॉक इस्तेमाल करता है।",
+      "add": "आइटम जोड़ें",
+      "empty": "अभी तक कोई इन्वेंट्री खपत तय नहीं की गई है।",
+      "noInventory": "पहले इन्वेंट्री आइटम जोड़ें।",
+      "unitFallback": "इकाई"
     }
   },
   "staffing": {
@@ -693,8 +728,23 @@
       "coverSent": "कवर अनुरोध भेजा गया",
       "failedCover": "कवर अनुरोध भेजने में विफल",
       "failedAvailability": "उपलब्धता सहेजने में विफल",
-      "failedTimeOff": "छुट्टी अनुरोध भेजने में विफल"
-    }
+      "failedTimeOff": "छुट्टी अनुरोध भेजने में विफल",
+      "shiftAddedToCoverPool": "शिफ़्ट कवर पूल में जोड़ी गई",
+      "noActiveMember": "कोई सक्रिय टीम सदस्य नहीं मिला",
+      "coverAcceptedPending": "कवर अनुरोध स्वीकार किया गया — मैनेजर की मंज़ूरी बाकी है",
+      "shiftPersonUpdated": "शिफ़्ट का व्यक्ति अपडेट किया गया",
+      "tradeAcceptedPending": "अदला-बदली स्वीकार — मैनेजर की मंज़ूरी बाकी",
+      "tradeDenied": "अदला-बदली अस्वीकृत",
+      "failedUpdateTrade": "अदला-बदली अपडेट करने में विफल",
+      "failedAcceptTrade": "अदला-बदली स्वीकार करने में विफल"
+    },
+    "coverPool": {
+      "title": "कवर पूल",
+      "kicker": "खुले कवर अनुरोध, जिन्हें टीम का कोई भी सदस्य स्वीकार कर सकता है। स्वीकार करने के बाद भी मैनेजर की मंज़ूरी ज़रूरी है।",
+      "empty": "कोई खुला कवर अनुरोध नहीं है।"
+    },
+    "everyoneWorkingThatDay": "उस दिन काम करने वाले सभी लोग",
+    "changePeople": "लोग बदलें"
   },
   "personnel": {
     "tabs": {
@@ -969,6 +1019,22 @@
           "alreadyMember": "यह व्यक्ति पहले से टीम में है।",
           "alreadyInvited": "इस ईमेल के लिए पहले से एक आमंत्रण लंबित है।"
         }
+      },
+      "punch": {
+        "label": "पंच-इन कोड",
+        "set": "सेट है",
+        "notSet": "सेट नहीं",
+        "set_action": "कोड सेट करें",
+        "change": "बदलें",
+        "clear": "कोड हटाएँ",
+        "placeholder": "4 अंक",
+        "saved": "कोड सेव हुआ",
+        "saveFailed": "सेव नहीं हुआ। फिर कोशिश करें।",
+        "cleared": "कोड हटा दिया",
+        "clearFailed": "हटाया नहीं जा सका। फिर कोशिश करें।",
+        "mustBeFour": "कोड ठीक 4 अंकों का होना चाहिए।",
+        "hintSelf": "इसी से आप पंच-इन करते हैं और स्टोर डिवाइस खुलता है।",
+        "hintOther": "आप कोड सेट कर सकते हैं पर देख नहीं सकते — वही अंक स्टोर डिवाइस खोलते हैं।"
       }
     },
     "dialog": {
@@ -1157,6 +1223,9 @@
     "supplierInboxTaken": "यह सप्लायर इनबॉक्स उपसर्ग पहले से उपयोग में है।",
     "supplierInboxInvalid": "3-32 छोटे अक्षर, संख्याएं या हाइफ़न उपयोग करें।",
     "copied": "कॉपी किया गया",
+    "squareConnectedShort": "Square कनेक्ट",
+    "cloverConnectedShort": "Clover कनेक्ट",
+    "connectPOS": "POS कनेक्ट करें",
     "connectedIntegrationsCount": "{count} जुड़े हुए",
     "connectPOSAndSchedule": "POS और शेड्यूल सॉफ़्टवेयर कनेक्ट करें",
     "posSystems": "POS सिस्टम",
@@ -1180,9 +1249,6 @@
     "scheduleErrSaveFailed": "शेड्यूल कनेक्शन सहेजा नहीं जा सका।",
     "scheduleErrDefault": "शेड्यूल सॉफ़्टवेयर कनेक्ट नहीं हो सका।",
     "comingSoon": "जल्द आ रहा है",
-    "squareConnectedShort": "Square कनेक्ट",
-    "cloverConnectedShort": "Clover कनेक्ट",
-    "connectPOS": "POS कनेक्ट करें",
     "desktopNotifications": "डेस्कटॉप सूचनाएँ",
     "desktopEnabled": "इस डिवाइस पर सक्षम",
     "desktopDisabled": "ऐप बंद होने पर भी अलर्ट पाएँ",
@@ -1468,7 +1534,11 @@
     "storeImageSaved": "स्टोर छवि अपडेट हुई",
     "storeImageFailed": "स्टोर छवि अपडेट नहीं हो सकी",
     "storeImageRemove": "हटाएं",
-    "storeImageUpload": "छवि अपलोड करें"
+    "storeImageUpload": "छवि अपलोड करें",
+    "teamOnTeamPage": "सदस्य, भूमिकाएँ और पंच-इन कोड",
+    "punchCodeOnTeamPage": "टीम पेज पर सेट करें",
+    "createStoreHint": "अपनी अलग इन्वेंट्री और पूर्वानुमान वाला नया स्टोर बनाता है।",
+    "toastSettingsNotLoaded": "सेटिंग्स अभी लोड हो रही हैं — कुछ देर बाद फिर कोशिश करें"
   },
   "lock": {
     "title": "डिवाइस लॉक",
@@ -1616,7 +1686,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "चैनल खोजें",
     "muteMessages": "Mute messages",
-    "pinChat": "चैनल पिन करें"
+    "pinChat": "चैनल पिन करें",
+    "reactionsUnsupported": "रिएक्शन अभी उपलब्ध नहीं हैं"
   },
   "dashboard": {
     "greeting": {
@@ -1755,6 +1826,7 @@
       "retailPrice": "Retail मूल्य",
       "expirationBatches": "समाप्ति बैच",
       "costPerUnit": "प्रति इकाई लागत",
+      "unitContent": "इकाई विनिर्देश",
       "lossRate": "हानि दर",
       "status": "स्थिति",
       "supplier": "आपूर्तिकर्ता",
@@ -1801,6 +1873,7 @@
         "retail": "Retail"
       },
       "name": "आइटम का नाम *",
+      "description": "विवरण",
       "category": "श्रेणी",
       "currentStock": "वर्तमान स्टॉक",
       "minStock": "न्यूनतम स्टॉक",
@@ -1810,6 +1883,7 @@
       "supplier": "आपूर्तिकर्ता",
       "lossRate": "हानि दर (%)",
       "namePlaceholder": "जैसे अरेबिका कॉफ़ी बीन्स",
+      "descriptionPlaceholder": "आइटम कैसे पैक, स्टोर या इस्तेमाल किया जाता है...",
       "categoryPlaceholder": "जैसे पेय पदार्थ",
       "unitPlaceholder": "किग्रा, लीटर, इकाइयाँ…",
       "supplierPlaceholder": "आपूर्तिकर्ता का नाम",
@@ -1817,6 +1891,15 @@
       "minOrderQtyPlaceholder": "उदा. 24",
       "unitsPerCase": "प्रति केस इकाइयाँ",
       "unitsPerCasePlaceholder": "उदा. 12",
+      "unitContentAmount": "प्रति इकाई वज़न / मात्रा",
+      "unitContentAmountPlaceholder": "जैसे 946",
+      "unitContentUnit": "इकाई",
+      "contentPreview": "इन्वेंट्री गणना",
+      "contentPreviewEmpty": "उत्पाद इन्वेंट्री सही तरीके से खपत करें, इसके लिए वज़न या मात्रा जोड़ें।",
+      "contentPreviewValue": "1 {unit} = {amount}",
+      "caseContentPreview": "{count} प्रति केस = {amount}",
+      "back": "वापस",
+      "next": "अगला",
       "cancel": "रद्द करें",
       "save": "परिवर्तन सहेजें",
       "saving": "सहेज रहा है…",
@@ -2620,7 +2703,9 @@
       "undone": "पूर्ववत किया",
       "confirmExecute": "पुष्टि करें",
       "cancel": "रद्द करें",
-      "undo": "पूर्ववत"
+      "undo": "पूर्ववत",
+      "noItems": "कोई लाइन आइटम नहीं",
+      "unknownSupplier": "आपूर्तिकर्ता"
     },
     "categories": {
       "scheduling": "शेड्यूलिंग",
@@ -2760,7 +2845,9 @@
       "robots": "Robots",
       "customDomain": "कस्टम डोमेन",
       "published": "प्रकाशित",
-      "plugins": "प्लगइन्स"
+      "plugins": "प्लगइन्स",
+      "subtotal": "उप-योग",
+      "tax": "कर"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "इतिहास साफ़ करें",
@@ -3157,64 +3244,6 @@
     "invalidNumber": "मान्य संख्या दर्ज करें",
     "quotaSaved": "कोटा सहेजा गया",
     "quotaFailed": "कोटा सहेजने में विफल"
-  },
-  "multiStore": {
-    "subBadge": "उप",
-    "parentLabel": "मूल स्टोर",
-    "parentNone": "कोई नहीं (स्वतंत्र स्टोर बनाएँ)",
-    "parentHelpRoot": "अपने स्वयं के इन्वेंट्री और पूर्वानुमान वाला एक स्वतंत्र स्टोर बनाता है।",
-    "parentHelpSub": "उप-स्टोर मूल स्टोर के साथ स्टाफ, उत्पाद, चैनल, डिज़ाइन और साइट साझा करते हैं। इन्वेंट्री और पूर्वानुमान अलग रहते हैं।",
-    "drawerAddHint": "नया स्टोर बनाएँ या उप-स्टोर के रूप में जोड़ें",
-    "products": {
-      "filterShowingAll": "सभी स्टोर",
-      "filterShowingCurrent": "केवल यह स्टोर",
-      "soldAtLabel": "बिक्री होती है",
-      "allStores": "इस समूह के सभी स्टोर",
-      "allStoresHint": "डिफ़ॉल्ट — हर जगह बिक्री",
-      "thisStore": "वर्तमान",
-      "soldAtHelp": "किसी स्टोर का चयन हटाएँ ताकि वहाँ उत्पाद छिप जाए। इन्वेंट्री प्रत्येक स्टोर में अलग रहती है।",
-      "tableHead": "बिक्री होती है",
-      "cellAll": "सभी",
-      "cellNone": "कोई नहीं",
-      "cellCount": "{count} स्टोर",
-      "savedToast": "उत्पाद की दृश्यता अद्यतन की गई",
-      "saveFailedToast": "दृश्यता अद्यतन विफल",
-      "dialogTitle": "यह उत्पाद कहाँ बेचा जाता है?"
-    },
-    "settings": {
-      "cardTitle": "बहु-स्टोर",
-      "cardMetaSolo": "स्वतंत्र स्टोर",
-      "cardMetaParent": "{count} उप-स्टोर का मूल",
-      "cardMetaSub": "{parent} का उप-स्टोर",
-      "title": "बहु-स्टोर प्रबंधन",
-      "description": "स्टाफ, उत्पाद, चैनल, डिज़ाइन और साइट साझा करने के लिए स्टोर को मूल के तहत समूहीकृत करें।",
-      "currentRole": "यह स्टोर",
-      "roleSolo": "स्वतंत्र — मूल/उप समूह में नहीं।",
-      "roleParent": "{count} उप-स्टोर का मूल।",
-      "roleSub": "{parent} का उप-स्टोर।",
-      "groupHeader": "साझा समूह में स्टोर",
-      "groupEmpty": "कोई संबंधित स्टोर नहीं।",
-      "parentBadge": "मूल",
-      "thisStore": "वर्तमान",
-      "policyHeader": "साझाकरण नीति",
-      "policySharedTitle": "स्टोरों के बीच साझा",
-      "policySharedList": "स्टाफ, उत्पाद, चैनल, डिज़ाइन, वेबसाइट",
-      "policyIsolatedTitle": "प्रत्येक स्टोर के लिए अलग",
-      "policyIsolatedList": "इन्वेंट्री, बिक्री पूर्वानुमान",
-      "detachHeader": "मूल से अलग करें",
-      "detachHelp": "इस उप-स्टोर को फिर से स्वतंत्र स्टोर बनाएँ। साझा संसाधन मूल के पास रहते हैं — केवल इस स्टोर का डेटा बना रहता है।",
-      "detachButton": "अलग करें",
-      "detachConfirm": "इस स्टोर को इसके मूल से अलग करें? साझा स्टाफ, उत्पाद और साइट यहाँ दिखाई नहीं देंगे।",
-      "detachSuccess": "मूल से अलग किया गया",
-      "detachFailed": "अलग करना विफल",
-      "attachHeader": "मूल स्टोर से जोड़ें",
-      "attachHelp": "इस स्टोर को आपके स्वामित्व वाले किसी अन्य स्टोर का उप-स्टोर बनाएँ। जोड़ने के बाद यह स्टाफ, उत्पाद, चैनल, डिज़ाइन और साइट साझा करेगा।",
-      "attachPlaceholder": "मूल स्टोर चुनें",
-      "attachButton": "जोड़ें",
-      "attachConfirm": "इस स्टोर को उप-स्टोर के रूप में जोड़ें?",
-      "attachSuccess": "उप-स्टोर के रूप में जोड़ा गया",
-      "attachFailed": "जोड़ना विफल"
-    }
   },
   "landing": {
     "nav": {
@@ -3882,7 +3911,13 @@
     "toastCreatePOFailed": "खरीद ऑर्डर बनाने में विफल",
     "toastUpdateStatusFailed": "स्थिति अपडेट करने में विफल",
     "title": "आपूर्तिकर्ता",
-    "subtitle": "आपूर्तिकर्ता संपर्क और खरीद आदेश"
+    "subtitle": "आपूर्तिकर्ता संपर्क और खरीद आदेश",
+    "contactNamePlaceholder": "संपर्क का नाम",
+    "toastSupplierAdded": "आपूर्तिकर्ता जोड़ा गया",
+    "toastSupplierUpdated": "आपूर्तिकर्ता अपडेट किया गया",
+    "toastSupplierDeleted": "आपूर्तिकर्ता हटाया गया",
+    "toastPOCreated": "खरीद आदेश बनाया गया",
+    "toastStatusUpdated": "स्थिति अपडेट की गई"
   },
   "apiSettings": {
     "toast": {
@@ -3898,7 +3933,8 @@
     "pageSubtitle": "API कुंजियों और webhook एकीकरण को प्रबंधित करें",
     "tabs": {
       "apiKeys": "API कुंजियाँ",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mcp": "MCP सर्वर"
     },
     "apiKey": {
       "title": "API कुंजी",
@@ -3949,6 +3985,25 @@
     "empty": {
       "title": "कोई webhook कॉन्फ़िगर नहीं किया गया",
       "description": "स्टोर इवेंट्स के बारे में रीयल-टाइम सूचनाएं प्राप्त करने के लिए ऊपर एक webhook एंडपॉइंट जोड़ें।"
+    },
+    "mcp": {
+      "addTitle": "MCP सर्वर कनेक्ट करें",
+      "addDescription": "चैट के दौरान Mr. Merchiva को बाहरी Model Context Protocol सर्वर के टूल इस्तेमाल करने दें।",
+      "label": "लेबल",
+      "url": "सर्वर URL",
+      "token": "Bearer टोकन",
+      "tokenPlaceholder": "वैकल्पिक टोकन",
+      "securityNote": "MCP टोकन इसी ब्राउज़र में सहेजे जाते हैं और केवल चैट अनुरोधों के साथ भेजे जाते हैं। MCP_ALLOW_LOCALHOST=true सेट न होने पर सर्वर localhost और निजी-नेटवर्क URL ब्लॉक करता है।",
+      "addSubmit": "MCP सर्वर जोड़ें",
+      "configuredTitle": "कनेक्टेड MCP सर्वर",
+      "configuredDescription": "सक्षम सर्वर तब Mr. Merchiva से जुड़ते हैं जब आप चैट संदेश भेजते हैं।",
+      "emptyTitle": "कोई MCP सर्वर कनेक्ट नहीं है",
+      "emptyDescription": "सहायक को बाहरी टूल देने के लिए एक HTTPS MCP एंडपॉइंट कनेक्ट करें।",
+      "toolsFound": "{count} टूल मिले",
+      "toastAdded": "MCP सर्वर जोड़ा गया",
+      "toastRemoved": "MCP सर्वर हटाया गया",
+      "toastConnected": "MCP कनेक्ट हुआ: {count} टूल मिले",
+      "toastFailed": "MCP कनेक्शन विफल"
     }
   },
   "punchIn": {
@@ -4426,7 +4481,10 @@
       "sales": "बिक्री",
       "bookings": "बुकिंग",
       "channel": "चैट",
-      "settings-org": "स्टोर सेटिंग"
+      "docs": "दस्तावेज़",
+      "settings-org": "स्टोर सेटिंग",
+      "bugs": "गड़बड़ी रिपोर्ट",
+      "notifications": "सूचनाएँ"
     },
     "notAvailableHere": "इस डिवाइस पर उपलब्ध नहीं",
     "lite": {
@@ -4603,6 +4661,40 @@
         "requestFailed": "भेज नहीं सका। फिर से कोशिश करें।",
         "completed": "पूरे हुए दिन",
         "dayShort": "दिन {day}"
+      },
+      "bugs": {
+        "report": "दिक्कत बताएँ",
+        "reportHint": "ऐप में कुछ गड़बड़ है? टीम को बताएँ।",
+        "myOpen": "मेरी खुली रिपोर्ट",
+        "mine": "मेरी",
+        "everyone": "सबकी",
+        "myReports": "मेरी रिपोर्ट",
+        "openReports": "खुली रिपोर्ट",
+        "teamAllClear": "कुछ बाकी नहीं",
+        "none": "अभी कोई रिपोर्ट नहीं",
+        "noneHint": "ऐप में गड़बड़ हो तो ऊपर का बटन दबाएँ।",
+        "what": "क्या गलत हुआ?",
+        "whatPlaceholder": "छोटा सारांश",
+        "details": "क्या हुआ?",
+        "detailsPlaceholder": "आपने क्या किया और क्या गड़बड़ हुई।",
+        "severity": "कितनी बड़ी दिक्कत है?",
+        "photo": "फ़ोटो जोड़ें",
+        "retake": "फ़ोटो बदलें",
+        "send": "भेजें",
+        "titleRequired": "पहले छोटा सारांश लिखें।",
+        "uploadFailed": "फ़ोटो नहीं जुड़ी।",
+        "failed": "भेज नहीं सके। फिर कोशिश करें।"
+      },
+      "notifications": {
+        "markAllRead": "सभी पढ़े हुए चिह्नित करें",
+        "list": "सूचनाएँ",
+        "unreadCount": "{n} अपठित",
+        "empty": "कुछ नया नहीं",
+        "emptyHint": "शिफ़्ट और अनुरोध की सूचनाएँ यहाँ दिखेंगी।",
+        "details": "सूचना",
+        "close": "बंद करें",
+        "allRead": "सभी पढ़े हुए चिह्नित",
+        "markFailed": "अपडेट नहीं हो सका"
       }
     },
     "catalogDesc": {
@@ -4620,7 +4712,9 @@
       "inventory": "स्टॉक गिनें, कम सामान चिह्नित करें, बर्बादी दर्ज करें।",
       "products": "उत्पाद और दाम देखें।",
       "sales": "आज की बिक्री एक नज़र में।",
-      "bookings": "आज और कल की बुकिंग।"
+      "bookings": "आज और कल की बुकिंग।",
+      "bugs": "ऐप में आई दिक्कत बताएँ और उसका हाल देखें।",
+      "notifications": "आपकी शिफ्ट, शेड्यूल और अनुरोध सूचनाएँ, सबसे नई पहले।"
     },
     "appStore": {
       "hint": "चुनें कि यह स्टोर कौन-से फ़ीचर इस्तेमाल करे। जोड़ा गया ऐप मैनेजर बैक-ऑफ़िस, स्टोर टैबलेट और स्टाफ़ फ़ोन पर दिखता है; ज़रूरी ऐप हमेशा चालू रहते हैं।",
@@ -4658,11 +4752,7 @@
     "channel": "चैनल",
     "logOut": "लॉग आउट",
     "logOutSub": "अगले व्यक्ति के लिए डिवाइस खाली करें",
-    "switchToManager": "मैनेजर मोड में जाएँ",
     "requiresManagerPin": "मैनेजर PIN ज़रूरी है",
-    "managerMode": "मैनेजर मोड",
-    "managerPinPrompt": "इस डिवाइस को मैनेजर मोड में बदलने के लिए अपना मैनेजर PIN डालें।",
-    "managerModeOn": "मैनेजर मोड चालू",
     "loggedIn": "लॉग इन हो गया",
     "loggedOut": "लॉग आउट हो गया",
     "loggedOutIdle": "लॉग आउट · कोई गतिविधि नहीं",
@@ -4708,7 +4798,6 @@
     "logOutKeepSub": "पंच इन रहें · अगले व्यक्ति के लिए डिवाइस खाली करें"
   },
   "personalDevice": {
-    "managerBadge": "मैनेजर",
     "leaveBtn": "बाहर जाएँ",
     "channelBtn": "चैनल",
     "noChannelsTitle": "अभी कोई चैनल नहीं",
@@ -4738,8 +4827,6 @@
       "endBreakSub": "अपनी शिफ़्ट फिर शुरू करें",
       "storeLogin": "स्टोर डिवाइस पर लॉग इन करें",
       "storeLoginSub": "स्टोर डिवाइस पर QR स्कैन करें",
-      "managerMode": "मैनेजर मोड में जाएँ",
-      "managerModeSub": "मैनेजर बैक ऑफ़िस खोलें",
       "exitMode": "व्यक्तिगत मोड से बाहर निकलें",
       "exitModeSub": "मोड चयन पर वापस जाएँ",
       "leaveWork": "काम से निकलें",
@@ -5483,6 +5570,29 @@
       "reload": "फिर से लोड करें",
       "home": "होम"
     },
+    "contextMenu": {
+      "label": "संदर्भ मेनू",
+      "openInNewTab": "नए टैब में खोलें",
+      "openInBackgroundTab": "बैकग्राउंड टैब में खोलें",
+      "openInBrowser": "ब्राउज़र में खोलें",
+      "copyLink": "लिंक कॉपी करें",
+      "bookmarkLink": "लिंक बुकमार्क करें",
+      "openImage": "छवि नए टैब में खोलें",
+      "copyImageLink": "छवि का पता कॉपी करें",
+      "copy": "कॉपी करें",
+      "cut": "काटें",
+      "paste": "चिपकाएँ",
+      "selectAll": "सभी चुनें",
+      "searchFor": "“{text}” खोजें",
+      "bookmarkPage": "इस पेज को बुकमार्क करें",
+      "removeBookmark": "बुकमार्क हटाएँ",
+      "bookmarkRemoved": "बुकमार्क हटाया गया",
+      "copyPageLink": "पेज का लिंक कॉपी करें",
+      "copied": "कॉपी हो गया",
+      "copyFailed": "क्लिपबोर्ड पर कॉपी नहीं हो सका",
+      "pasteDenied": "यहाँ चिपकाने के लिए क्लिपबोर्ड की अनुमति दें",
+      "openFailed": "यह लिंक नहीं खुल सका"
+    },
     "newTabPage": {
       "searchPlaceholder": "पेज, दस्तावेज़ और टैब खोजें",
       "apps": "ऐप्स",
@@ -5655,6 +5765,69 @@
       "inventorySub": "स्टॉक स्तर और पुनःपूर्ति",
       "suppliersSub": "विक्रेता और खरीद आदेश",
       "wasteSub": "दैनिक अपशिष्ट और निपटान"
+    }
+  },
+  "bugs": {
+    "title": "गड़बड़ी ट्रैकर",
+    "openCount": "{n} बाकी",
+    "allClear": "कुछ बाकी नहीं",
+    "report": "गड़बड़ी बताएँ",
+    "reportDesc": "बताएँ क्या गलत हुआ। पेज, बिल्ड और डिवाइस अपने आप जुड़ जाते हैं।",
+    "search": "रिपोर्ट खोजें",
+    "filterAll": "सभी",
+    "status": {
+      "open": "खुली",
+      "in_progress": "चल रही है",
+      "fixed": "ठीक हुई",
+      "wont_fix": "ठीक नहीं होगी"
+    },
+    "severity": {
+      "low": "छोटी",
+      "normal": "सामान्य",
+      "high": "गंभीर",
+      "blocker": "काम रुक गया"
+    },
+    "surface": {
+      "manager": "मैनेजर",
+      "store": "स्टोर डिवाइस",
+      "personal": "फ़ोन"
+    },
+    "empty": "कोई रिपोर्ट नहीं",
+    "emptyDesc": "टीम का कोई भी गड़बड़ी बता सकता है — यहाँ से, स्टोर टैबलेट से या अपने फ़ोन से।",
+    "emptyFiltered": "कुछ नहीं मिला",
+    "emptyFilteredDesc": "कोई और फ़िल्टर या खोज आज़माएँ।",
+    "formTitle": "क्या गलत हुआ?",
+    "formTitlePlaceholder": "छोटा सारांश",
+    "formBody": "क्या हुआ?",
+    "formBodyPlaceholder": "आपने क्या किया, क्या होना चाहिए था, और क्या हुआ।",
+    "formSeverity": "कितनी बड़ी दिक्कत है?",
+    "formScreenshot": "स्क्रीनशॉट",
+    "formScreenshotAdd": "स्क्रीनशॉट जोड़ें",
+    "submit": "रिपोर्ट भेजें",
+    "sending": "भेजा जा रहा है…",
+    "sent": "रिपोर्ट भेज दी",
+    "sendFailed": "भेज नहीं सके। फिर कोशिश करें।",
+    "uploadFailed": "स्क्रीनशॉट अपलोड नहीं हुआ।",
+    "titleRequired": "पहले छोटा सारांश लिखें।",
+    "contextHint": "पेज, बिल्ड और डिवाइस अपने आप जुड़ जाते हैं।",
+    "contextPage": "पेज",
+    "contextBuild": "बिल्ड",
+    "contextDevice": "डिवाइस",
+    "detailStatus": "स्थिति",
+    "detailSeverity": "गंभीरता",
+    "resolution": "समाधान",
+    "resolutionPlaceholder": "क्या किया गया, या क्यों ठीक नहीं होगी।",
+    "resolvedBy": "{name} ने बंद की",
+    "triageHint": "स्थिति सिर्फ़ मालिक और मैनेजर बदल सकते हैं।",
+    "saved": "रिपोर्ट अपडेट हुई",
+    "saveFailed": "सेव नहीं हुआ। फिर कोशिश करें।",
+    "deleteFailed": "हटाया नहीं जा सका। फिर कोशिश करें।",
+    "unknownReporter": "कोई साथी",
+    "unknownVersion": "अज्ञात"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "शिफ़्ट का प्रकार"
     }
   }
 }

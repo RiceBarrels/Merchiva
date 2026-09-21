@@ -5,12 +5,14 @@
  * or will be migrated to hooks in a follow-up. This file only covers writes.
  */
 
+import { Uuid } from "spacetimedb";
 import { getConnection, getActiveOrgId } from "./client";
 import { getDictionary, lookup } from "@/lib/i18n/dictionaries";
 import { LOCALE_COOKIE, isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
 import { isOnline, mutationQueue } from "@/lib/offline";
 import { parseDeviceApps } from "@/lib/device-apps";
 import type { RoleTask, ShiftPreset } from "@/lib/types";
+import { bugDateStr, type BugContext, type BugSeverity, type BugStatus } from "@/lib/bugs";
 import { Timestamp } from "spacetimedb";
 
 function currentLocale() {
@@ -67,6 +69,31 @@ function requiredText(value: unknown, field: string): string {
   const text = String(value ?? "").trim();
   if (!text) throw new Error(`${field} cannot be blank`);
   return text;
+}
+
+/**
+ * Parse a row id string into the `Uuid` the SDK needs.
+ *
+ * Two reducer arguments are declared `t.uuid()` — `send_message.replyToId` and
+ * `consume_device_login.id` — and the SDK's uuid serializer does bigint bit
+ * math on the value, so handing it a plain string throws
+ * `TypeError: Invalid mix of BigInt and other type in bitwise 'and' operation`
+ * before a single byte reaches the server. Both call sites were passing the
+ * string form, so every chat REPLY failed to send and no approved QR device
+ * login was ever marked consumed.
+ *
+ * Returns undefined for an absent or unparseable id, so an optional argument
+ * degrades to "not set" rather than taking the whole call down.
+ */
+function toUuidArg(value: unknown): Uuid | undefined {
+  if (value == null || value === "") return undefined;
+  if (value instanceof Uuid) return value;
+  try {
+    return Uuid.parse(String(value));
+  } catch {
+    console.warn("[SpacetimeDB] not a uuid, dropping:", value);
+    return undefined;
+  }
 }
 
 function jsonArrayString(value: unknown): string {
@@ -285,7 +312,7 @@ function buildInventoryUpdatePayload(itemId: string, data: Record<string, any>) 
     unit: requiredInventoryText(value("unit"), "unit"),
     costPerUnit: finiteInventoryNumber(value("costPerUnit"), "costPerUnit"),
     supplier: String(value("supplier") ?? ""),
-    lastRestocked: String(value("lastRestocked") ?? new Date().toISOString().slice(0, 10)),
+    lastRestocked: String(value("lastRestocked") ?? todayKey()),
     lossRate: finiteInventoryNumber(value("lossRate"), "lossRate"),
     minOrderQty: minOrderQty == null ? null : finiteInventoryNumber(minOrderQty, "minOrderQty"),
     unitsPerCase: unitsPerCase == null ? null : finiteInventoryNumber(unitsPerCase, "unitsPerCase"),
@@ -371,7 +398,13 @@ export async function addInventoryTransaction(data: any): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addProduct(data: any, _userId?: string): Promise<void> {
   const usage = firstInventoryUsageLine(data.inventoryUsage);
-  const inventoryItemId = String(data.inventoryItemId ?? usage?.inventoryItemId ?? "");
+  // ONLY an explicit `inventoryItemId` may redirect this into an update. It
+  // used to fall back to the first inventory-usage line, and the usage editor
+  // seeds that line with inventoryItems[0] the moment the user clicks "Add
+  // item" — so typing "Latte" and adding a usage line did not create Latte, it
+  // flipped "Whole Milk" to retailEnabled at Latte's price, under a toast
+  // saying the product had been added.
+  const inventoryItemId = String(data.inventoryItemId ?? "");
   const retailPatch = {
     retailEnabled: true,
     retailPrice: finiteNumber(data.price ?? 0, "retail price"),
@@ -394,7 +427,7 @@ export async function addProduct(data: any, _userId?: string): Promise<void> {
     unit: String(data.unit ?? usage?.unit ?? "units").trim() || "units",
     costPerUnit: finiteInventoryNumber(data.cost ?? data.costPerUnit ?? 0, "costPerUnit"),
     supplier: String(data.supplier ?? ""),
-    lastRestocked: String(data.lastRestocked ?? new Date().toISOString().slice(0, 10)),
+    lastRestocked: String(data.lastRestocked ?? todayKey()),
     minOrderQty: null,
     unitsPerCase: null,
     description: data.description == null ? null : String(data.description),
@@ -433,7 +466,24 @@ export async function deleteProduct(productId: string): Promise<void> {
 // ─── Staffing: Shifts ─────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * `updateShift` / `addShift` REPLACE the whole row: the reducer writes
+ * `date: args.date`, `startTime: args.startTime` and so on verbatim, and the
+ * SDK serialises a missing `t.string()` argument as the empty string. So a
+ * partial patch — `updateShift(id, { memberId })` — does not leave the other
+ * columns alone, it blanks them, silently and unrecoverably. Two call sites
+ * did exactly that. Fail loudly instead.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildShiftPayload(data: Record<string, any>): Record<string, any> {
+  for (const required of ["date", "shiftType", "startTime", "endTime"] as const) {
+    if (typeof data[required] !== "string" || data[required] === "") {
+      throw new Error(
+        `Shift payload is missing "${required}". updateShift/addShift replace the ` +
+        `whole row — spread the existing shift before patching it.`,
+      );
+    }
+  }
   const roleNames = Array.isArray(data.staffRoles)
     ? data.staffRoles.filter((role) => typeof role === "string")
     : [];
@@ -706,7 +756,24 @@ export async function deleteShiftPreset(id: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function upsertAvailability(data: any): Promise<void> {
-  return conn().reducers.upsertAvailability({ organizationId: orgId(), ...data });
+  // `days` and `dayTimes` are JSON STRING columns. Both call sites passed the
+  // live boolean[] / object[] straight through, and the SDK's writeString
+  // coerces rather than rejects — so the row stored
+  // "false,true,true,…" and "[object Object],[object Object],…", which the
+  // reader's JSON.parse then threw on, falling back to Mon–Fri 09:00–17:00.
+  // Somebody who marked themselves available only at weekends read back as
+  // available only on weekdays.
+  //
+  // The update key is `existingId`, not `id`: passing `id` meant the reducer
+  // never found the row and every save inserted another one.
+  const { id, existingId, userId: _userId, days, dayTimes, ...rest } = data ?? {};
+  return conn().reducers.upsertAvailability({
+    organizationId: orgId(),
+    ...rest,
+    existingId: existingId ?? id ?? undefined,
+    days: jsonArrayString(days),
+    dayTimes: jsonArrayString(dayTimes),
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -729,12 +796,25 @@ export async function updateTradeStatus(tradeId: string, status: string, _orgIdP
   return conn().reducers.updateShiftTradeStatus({ organizationId: orgId(), tradeId, status });
 }
 
-export async function acceptShiftTrade(tradeId: string, acceptorId: string, acceptorShiftId?: string | null): Promise<void> {
-  return conn().reducers.acceptShiftTrade({ organizationId: orgId(), tradeId, acceptorId, acceptorShiftId: acceptorShiftId ?? null });
+/**
+ * Accept a shift trade as the covering member.
+ *
+ * There is no `acceptShiftTrade` reducer — `updateShiftTradeStatus` is the one
+ * entry point, and it works out from the caller's role whether this is a staff
+ * acceptance or a manager approval. Calling the non-existent name threw
+ * "conn().reducers.acceptShiftTrade is not a function" at runtime.
+ */
+export async function acceptShiftTrade(tradeId: string): Promise<void> {
+  return conn().reducers.updateShiftTradeStatus({ organizationId: orgId(), tradeId, status: "accepted" });
 }
 
-export async function managerApproveShiftTrade(tradeId: string, managerId: string, approved: boolean): Promise<void> {
-  return conn().reducers.managerApproveShiftTrade({ organizationId: orgId(), tradeId, managerId, approved });
+/** Approve or deny a shift trade as a manager. See `acceptShiftTrade`. */
+export async function managerApproveShiftTrade(tradeId: string, approved: boolean): Promise<void> {
+  return conn().reducers.updateShiftTradeStatus({
+    organizationId: orgId(),
+    tradeId,
+    status: approved ? "accepted" : "denied",
+  });
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
@@ -931,7 +1011,7 @@ export async function sendMessage(
   await offlineAware("sendMessage", {
     conversationId,
     content,
-    replyToId: replyToId ?? undefined,
+    replyToId: toUuidArg(replyToId),
     attachmentUrl: attachment?.url ?? undefined,
     attachmentType: attachment?.type ?? undefined,
     attachmentName: attachment?.name ?? undefined,
@@ -1025,16 +1105,31 @@ export async function setConversationMerchiva(conversationId: string, enabled: b
   return conn().reducers.setConversationMerchiva({ conversationId, enabled });
 }
 
-export async function addReaction(_messageId: string, _emoji: string): Promise<void> {
-  console.warn("[SpacetimeDB] addReaction not yet implemented");
+/**
+ * Emoji reactions have no table and no reducer in the module yet.
+ *
+ * These used to resolve successfully, so the chat UI applied its optimistic
+ * update, told the user the reaction was saved, and lost it on the next
+ * reload. Rejecting lets the caller roll the optimistic update back and say so.
+ */
+export async function addReaction(_messageId: string, _emoji: string): Promise<never> {
+  throw new Error("Reactions are not supported yet");
 }
 
-export async function removeReaction(_messageId: string, _emoji: string): Promise<void> {
-  console.warn("[SpacetimeDB] removeReaction not yet implemented");
+export async function removeReaction(_messageId: string, _emoji: string): Promise<never> {
+  throw new Error("Reactions are not supported yet");
 }
 
-export async function deleteMessage(messageId: string): Promise<void> {
-  return conn().reducers.deleteMessage({ conversationId: "", messageId });
+/**
+ * Delete one of your own messages.
+ *
+ * `conversationId` is required: the reducer proves membership with
+ * `chatMember.byUserId(sender).some(m => m.conversationId === conversationId)`,
+ * so the empty string this used to send matched nothing and every delete was
+ * rejected with "Not a conversation member".
+ */
+export async function deleteMessage(conversationId: string, messageId: string): Promise<void> {
+  return conn().reducers.deleteMessage({ conversationId, messageId });
 }
 
 // ─── Membership ───────────────────────────────────────────────────────────────
@@ -1160,11 +1255,8 @@ export async function redeemPoints(data: any): Promise<void> {
 
 // ─── Team / Org ───────────────────────────────────────────────────────────────
 
-export async function createOrg(name: string, parentOrgId?: string | null): Promise<void> {
-  return conn().reducers.createOrg({
-    name,
-    parentOrgId: parentOrgId && parentOrgId.length > 0 ? parentOrgId : undefined,
-  });
+export async function createOrg(name: string): Promise<void> {
+  return conn().reducers.createOrg({ name });
 }
 
 /**
@@ -1178,20 +1270,6 @@ export async function updateOrgLogo(
   return conn().reducers.updateOrgLogo({
     organizationId,
     logoUrl: logoUrl && logoUrl.length > 0 ? logoUrl : undefined,
-  });
-}
-
-/**
- * Attach this org as a sub-store of `parentOrgId`, or detach it (pass null /
- * undefined / "") to make it a root org again. Owner-only on the server side.
- */
-export async function updateOrgParent(
-  organizationId: string,
-  parentOrgId: string | null,
-): Promise<void> {
-  return conn().reducers.updateOrgParent({
-    organizationId,
-    parentOrgId: parentOrgId && parentOrgId.length > 0 ? parentOrgId : undefined,
   });
 }
 
@@ -1265,6 +1343,55 @@ export async function toggleTodo(id: string, completed: boolean): Promise<void> 
 }
 export async function deleteTodo(id: string): Promise<void> {
   return conn().reducers.deleteTodo({ todoId: id });
+}
+
+// ─── Bug reports ─────────────────────────────────────────────────────────────
+
+/**
+ * File a bug report about Merchiva. Open to every active member — the person
+ * who hits a bug is usually the one without permissions — so there is no
+ * permission check here or in the reducer. The context (surface, route, build,
+ * user agent) is captured by the caller via `captureBugContext()`.
+ */
+export async function reportBug(input: {
+  title: string;
+  body: string;
+  severity: BugSeverity;
+  context: BugContext;
+  screenshotUrl?: string | null;
+}): Promise<void> {
+  return conn().reducers.reportBug({
+    organizationId: orgId(),
+    title: input.title,
+    body: input.body,
+    severity: input.severity,
+    surface: input.context.surface,
+    route: input.context.route,
+    appVersion: input.context.appVersion,
+    userAgent: input.context.userAgent,
+    screenshotUrl: input.screenshotUrl ?? "",
+    date: bugDateStr(),
+  });
+}
+
+/** Triage a report: status, severity and the note explaining the outcome.
+ *  Owner / manager only (enforced by the reducer). */
+export async function updateBugReport(
+  bugId: string,
+  input: { status: BugStatus; severity: BugSeverity; resolutionNote?: string },
+): Promise<void> {
+  return conn().reducers.updateBugReport({
+    organizationId: orgId(),
+    bugId,
+    status: input.status,
+    severity: input.severity,
+    resolutionNote: input.resolutionNote ?? "",
+  });
+}
+
+/** Delete a report. The reporter may remove their own; managers, any. */
+export async function deleteBugReport(bugId: string): Promise<void> {
+  return conn().reducers.deleteBugReport({ organizationId: orgId(), bugId });
 }
 
 // ─── Punch Clock ─────────────────────────────────────────────────────────────
@@ -1562,8 +1689,9 @@ export async function deleteCoupon(couponId: string): Promise<void> {
   return conn().reducers.deleteCoupon({ organizationId: orgId(), couponId });
 }
 
-export async function redeemCoupon(couponId: string): Promise<void> {
-  return conn().reducers.redeemCoupon({ organizationId: orgId(), couponId });
+/** Redeem by coupon CODE — the reducer looks the row up by `code`, not by id. */
+export async function redeemCoupon(code: string): Promise<void> {
+  return conn().reducers.redeemCoupon({ organizationId: orgId(), code });
 }
 
 // ─── Queue ──────────────────────────────────────────────────────────────────
@@ -1784,12 +1912,22 @@ export async function updateOrgSubscription(data: {
       ? new Timestamp(BigInt(Math.trunc(data.currentPeriodEndUnix)) * 1_000_000n)
       : undefined;
 
+  // The reducer reads a missing option as "leave unchanged" and an empty
+  // string as "clear" — so mapping a null straight to undefined meant the sync
+  // path could only ever UPGRADE the cached state. A subscription deleted on
+  // the Stripe side came back as `subscriptionStatus: null`, was sent as
+  // undefined, and the stale "active" stayed on the org row, keeping the app
+  // unlocked for free. The customer id is deliberately not cleared this way:
+  // losing it would break every later lookup.
+  const clearable = (value: string | null | undefined): string | undefined =>
+    value == null ? "" : value;
+
   return reducer({
     organizationId: data.organizationId ?? orgId(),
     stripeCustomerId: data.stripeCustomerId ?? undefined,
-    subscriptionStatus: data.subscriptionStatus ?? undefined,
-    subscriptionPriceId: data.subscriptionPriceId ?? undefined,
-    subscriptionInterval: data.subscriptionInterval ?? undefined,
+    subscriptionStatus: clearable(data.subscriptionStatus),
+    subscriptionPriceId: clearable(data.subscriptionPriceId),
+    subscriptionInterval: clearable(data.subscriptionInterval),
     currentPeriodEnd: periodEnd,
   });
 }
@@ -1970,7 +2108,9 @@ export async function approveDeviceLogin(nonce: string, intent: DeviceLoginInten
 /** Store device: mark an approved request as consumed after logging the
  *  operator in so it can't be replayed. */
 export async function consumeDeviceLogin(requestId: string): Promise<void> {
-  return conn().reducers.consumeDeviceLogin({ id: requestId });
+  const id = toUuidArg(requestId);
+  if (!id) throw new Error(`consumeDeviceLogin: "${requestId}" is not a uuid`);
+  return conn().reducers.consumeDeviceLogin({ id });
 }
 
 // ─── Docs ────────────────────────────────────────────────────────────────────
@@ -1982,6 +2122,7 @@ export async function consumeDeviceLogin(requestId: string): Promise<void> {
 // imports are hoisted, so their position has no runtime effect.
 import { newDocumentId } from "@/lib/docs/ids";
 import type { DocGrantRole, DocPageSetup, DocVersionKind, DocVisibility } from "@/lib/docs/types";
+import { todayKey } from "@/lib/date-key";
 
 function docsReducer(name: string): (args: Record<string, unknown>) => Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2256,7 +2397,7 @@ export async function verifyManagerPin(code: string): Promise<void> {
 
 /**
  * One-shot backfill for the row-level-security rollout: mirrors the org uuid
- * into `orgIdText`/`rootOrgId`, stamps `site_booking.organizationId`, and moves
+ * into `orgIdText`, stamps `site_booking.organizationId`, and moves
  * password hashes, POS tokens and punch PINs into tables clients cannot read.
  * Idempotent. Owner/service only.
  */

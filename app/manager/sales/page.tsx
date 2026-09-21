@@ -40,6 +40,7 @@ import { PageHeader } from "@/components/page-header";
 import { useSales } from "@/lib/spacetimedb/hooks/useSales";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { SalesForecast } from "@/components/sales-forecast";
 import { ItemForecast } from "@/components/item-forecast";
 import { PageTabs } from "@/components/page-tabs";
@@ -55,12 +56,10 @@ export default function SalesPage() {
   const { history, hourly, refreshing } = useSales();
   const t = useT();
   const { format } = useCurrency();
+  const formatDate = useDateFormat();
 
   const histChartData = history.map((s) => ({
-    date: new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    }),
+    date: formatDate(s.date + "T00:00:00", { month: "short", day: "numeric" }),
     actual: s.actual,
     predicted: s.predicted,
   }));

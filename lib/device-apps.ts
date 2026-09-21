@@ -14,6 +14,8 @@ export const REQUIRED_DEVICE_APPS = [
   "merchiva",
   "inventory",
   "settings",
+  "bugs",
+  "notifications",
   // Manager-only shell pieces that are never "apps" to download.
   "dashboard",
   "personnel",
@@ -79,11 +81,9 @@ export const MANAGER_ROUTE_APPS: Record<string, string> = {
   "/manager/personnel/roles": "tasks",
   "/manager/personnel/training": "training",
   "/manager/personnel/pay": "pay",
+  "/manager/docs": "docs",
   "/manager/bookings": "bookings",
-  "/manager/membership": "bookings",
   "/manager/reviews": "bookings",
-  "/manager/pos": "pos",
-  "/manager/display": "display",
 };
 
 /** App id owning a manager route, or null when the route is always on. */

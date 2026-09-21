@@ -3,12 +3,13 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ManagerShell } from "@/components/browser-shell/manager-shell";
+import { ShellContextMenu } from "@/components/browser-shell/shared/shell-context-menu";
 import { MerchivaQuickDialog } from "@/components/merchiva-quick-dialog";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { ShakeBugReport } from "@/components/shake-bug-report";
 import { PushNotificationPrompt } from "@/components/push-notification-prompt";
 import { TauriNotificationBridge } from "@/components/tauri-notification-bridge";
-import { DevicePermissionGate } from "@/components/device-permission-gate";
+import { DevicePermissionPrompt } from "@/components/device-permission-prompt";
 import { PermissionsProvider } from "@/lib/context/permissions";
 import { useSpacetimeStatus, SpacetimeProvider } from "@/lib/spacetimedb/provider";
 import { OfflineModeProvider, useOfflineMode } from "@/lib/offline-mode";
@@ -202,8 +203,8 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
   // /choose embeds its own store list, so it must render even when no store
   // is selected yet — open the first membership provisionally instead of
   // showing the full-screen picker. /store and /personal deliberately do NOT
-  // get this treatment: they need a definite org, so a multi-store user still
-  // sees the full-screen picker there first.
+  // get this treatment: they need a definite org, so a user with several
+  // stores still sees the full-screen picker there first.
   const isChoosePath = usePathname() === "/choose";
 
   const identity = stdb?.identity;
@@ -249,7 +250,6 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         return {
           id: m.organizationId.toString(),
           name: org?.name ?? "Unknown",
-          parentOrgId: org?.parentOrgId ?? null,
           logoUrl: org?.logoUrl ?? null,
         };
       });
@@ -269,34 +269,14 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
       return {
         id: m.organizationId.toString(),
         name: org?.name ?? "Unknown",
-        parentOrgId: org?.parentOrgId ?? null,
         logoUrl: org?.logoUrl ?? null,
       };
     });
-    // Pull in any orgs we DON'T have membership in but that are part of the
-    // current org's parent/child tree — needed so the share-group lookup
-    // resolves a parent even when the user is only a member of a sub-store.
-    const currentOrgRow = organizations.find((o) => o.id.toString() === orgId.toString());
-    const rootIdString = (currentOrgRow?.parentOrgId as string | undefined) ?? orgId.toString();
-    const treeRows = organizations.filter(
-      (o) => o.id.toString() === rootIdString || (o.parentOrgId as string | undefined) === rootIdString,
-    );
-    for (const o of treeRows) {
-      const idStr = o.id.toString();
-      if (!orgs.some((existing) => existing.id === idStr)) {
-        orgs.push({
-          id: idStr,
-          name: o.name,
-          parentOrgId: (o.parentOrgId as string | undefined) ?? null,
-          logoUrl: (o.logoUrl as string | undefined) ?? null,
-        });
-      }
-    }
 
+    const currentOrgRow = organizations.find((o) => o.id.toString() === orgId.toString());
     const currentOrg: OrgSummary = {
       id: orgId.toString(),
       name: currentOrgRow?.name ?? "Unknown",
-      parentOrgId: (currentOrgRow?.parentOrgId as string | undefined) ?? null,
       logoUrl: (currentOrgRow?.logoUrl as string | undefined) ?? null,
     };
 
@@ -474,8 +454,9 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     if (!effectiveAuth) return null;
     if (!orgsReady) return null;
     if (subscriptionCheckAt === null) return null;
-    const rootOrgId = effectiveAuth.currentOrg.parentOrgId ?? effectiveAuth.organizationId;
-    const orgRow = organizations.find((o) => o.id.toString() === rootOrgId);
+    const orgRow = organizations.find(
+      (o) => o.id.toString() === effectiveAuth.organizationId,
+    );
     if (!orgRow) return null; // can't determine — fail open
     return !evaluateSubscription(orgRow, subscriptionCheckAt).allowed;
   }, [effectiveAuth, orgsReady, organizations, subscriptionCheckAt]);
@@ -550,10 +531,10 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
     );
   } else if (effectiveAuth) {
     setActiveOrgId(effectiveAuth.organizationId);
-    // DevicePermissionGate sits at the door of every app surface — /choose,
-    // /manager, /personal and /store all come through here — and holds the
-    // user on a full-screen explainer until notifications, microphone, camera
-    // and location are granted (see components/device-permission-gate.tsx).
+    // DevicePermissionPrompt covers every app surface — /choose, /manager,
+    // /personal and /store all come through here. It blocks nothing: it asks
+    // for notifications, microphone, camera and location once per app load and
+    // renders the app either way (see components/device-permission-prompt.tsx).
     realContent = (
       <PermissionsProvider
         role={effectiveAuth.role}
@@ -563,25 +544,26 @@ function AuthLoader({ children }: { children: React.ReactNode }) {
         currentOrg={effectiveAuth.currentOrg}
         onPickOrg={setPickedOrgId}
       >
-        <DevicePermissionGate>
+        <DevicePermissionPrompt>
           {needsName ? (
             <NamePrompt memberId={effectiveAuth.memberId} onComplete={() => window.location.reload()} />
           ) : isSetupPath ? (
             <>
               {children}
-              {/* Device surfaces get no shell, but once the gate has granted
-                  notifications they should still register for push. */}
+              {/* Device surfaces get no shell, but once notifications are
+                  granted they should still register for push. */}
               <PushNotificationPrompt />
             </>
           ) : (
             <>
               <ManagerShell>{children}</ManagerShell>
+              <ShellContextMenu />
               <MerchivaQuickDialog />
               <PushNotificationPrompt />
               <TauriNotificationBridge />
             </>
           )}
-        </DevicePermissionGate>
+        </DevicePermissionPrompt>
       </PermissionsProvider>
     );
   }

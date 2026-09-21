@@ -23,4 +23,5 @@ export default __t.row({
   punchInCode: __t.option(__t.string()).name("punch_in_code"),
   hourlyRate: __t.option(__t.f64()).name("hourly_rate"),
   hourlyRateCents: __t.option(__t.i64()).name("hourly_rate_cents"),
+  hasPunchCode: __t.bool().name("has_punch_code"),
 });

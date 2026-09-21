@@ -175,7 +175,6 @@ export function UserDetail({
                           </div>
                           <div className="font-mono text-[10.5px] text-stone-400">
                             {m.organizationId}
-                            {org?.parentOrgId ? " · sub-store" : ""}
                           </div>
                         </td>
                         <td className="px-2.5 py-1.5">

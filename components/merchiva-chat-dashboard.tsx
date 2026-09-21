@@ -87,6 +87,17 @@ type AiJobRow = {
   organizationId?: string;
   sessionId?: string;
   status?: string;
+  /**
+   * Set by the `consumeAiJob` reducer once this client has finalized the job.
+   *
+   * The field existed and was written but never read here, and the two
+   * de-dupe refs below are created fresh on every mount — so a finished job
+   * whose row outlived the 60-second delete timeout (close the tab and it
+   * never fires) was re-finalized on the next load. Its actions were rebuilt
+   * as `pending`, putting an Approve button back on an order that had already
+   * been placed, and an auto-run action could re-fire unattended.
+   */
+  consumed?: boolean;
   prompt?: string;
   partialText?: string;
   resultText?: string;
@@ -230,7 +241,7 @@ function KpiStrip() {
   const { items: invItems, isReady: invReady } = useInventory(organizationId);
   const { shifts: allShifts, loading: staffLoading } = useStaffing(organizationId, null, false);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
   const todayRevenue = useMemo(() => {
@@ -929,7 +940,7 @@ function SupplierOrderPreview({ action, supplierNameById }: {
   const supplierName =
     (action.supplierName as string | undefined) ||
     supplierNameById?.get(supplierId) ||
-    (supplierId ? supplierId : t("merchiva.ui.unknownSupplier") || "Supplier");
+    (supplierId ? supplierId : t("merchiva.ui.unknownSupplier"));
   const items = Array.isArray(action.items)
     ? (action.items as Array<Record<string, unknown>>)
     : [];
@@ -979,20 +990,20 @@ function SupplierOrderPreview({ action, supplierNameById }: {
         </div>
       ) : (
         <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground italic">
-          {t("merchiva.ui.noItems") || "No line items"}
+          {t("merchiva.ui.noItems")}
         </div>
       )}
       {(subtotal != null || tax != null || total != null) && (
         <div className="flex flex-col gap-0.5 px-2.5 py-1.5 border-t border-border">
           {subtotal != null && (
             <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>{t("merchiva.fields.subtotal").startsWith("merchiva.") ? "Subtotal" : t("merchiva.fields.subtotal")}</span>
+              <span>{t("merchiva.fields.subtotal")}</span>
               <span>{money(subtotal)}</span>
             </div>
           )}
           {tax != null && (
             <div className="flex justify-between text-[11px] text-muted-foreground font-mono">
-              <span>{t("merchiva.fields.tax").startsWith("merchiva.") ? "Tax" : t("merchiva.fields.tax")}</span>
+              <span>{t("merchiva.fields.tax")}</span>
               <span>{money(tax)}</span>
             </div>
           )}
@@ -1435,6 +1446,7 @@ function QAForm({ items, onSubmit }: { items: QAItem[]; onSubmit: (summary: stri
 
 import type { QAItem, RoleAddCmd, TaskAddCmd } from "@/lib/merchiva/skills/types";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { todayKey } from "@/lib/date-key";
 
 function RolesListCard({ roles }: { roles: Array<{ id: string; name: string; color: string; icon: string; description: string }> }) {
   const t = useT();
@@ -2741,7 +2753,7 @@ function MerchivaChatInner({
   );
 
   // Build store context for AI
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const storeContext = useMemo(() => {
     const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     // Opening hours + upcoming holidays — surfaced so the auto-scheduler can
@@ -3005,6 +3017,8 @@ function MerchivaChatInner({
     if (myJobs.length === 0) return;
 
     for (const job of myJobs) {
+      // Already finalized by some earlier session — the durable marker.
+      if (job.consumed === true) continue;
       const jobId = rowIdString(job.id);
       const msgId = `job-${jobId}`;
       const isDone = job.status === "done" || job.status === "failed";
@@ -4245,7 +4259,7 @@ function TodayScheduleCard() {
   const { organizationId } = usePermissions();
   const { shifts: allShifts } = useStaffing(organizationId, null, false);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
   const shifts = useMemo(() => {
@@ -4546,7 +4560,7 @@ function MobileKpiRow() {
   const { history: salesHistory, hourly: salesHourly, isReady: salesReady } = useSales();
   const { items: invItems, isReady: invReady } = useInventory(organizationId);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
 
   const todayRevenue = useMemo(() => {
     if (!salesReady) return null;

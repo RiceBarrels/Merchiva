@@ -13,6 +13,11 @@
 // query-sync.ts has the reconciliation rules.
 //
 // Grid/list and the collapsed template row are per-viewer localStorage prefs.
+//
+// A device panel (/store, /personal) renders the same screen without a URL of its
+// own — writing there would rewrite the device's address and make the back button
+// undo a filter — so it passes `url: false` and the same state lives in React for
+// as long as the panel is open.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -67,27 +72,44 @@ export interface DocsHomeState {
   toggleTemplates(): void;
 }
 
-export function useDocsHomeState(): DocsHomeState {
+export interface DocsHomeStateOptions {
+  /** Keep scope / owner / sort / search in the URL. False for a device panel,
+   *  which has no URL of its own (see the note at the top). */
+  url?: boolean;
+}
+
+export function useDocsHomeState({ url = true }: DocsHomeStateOptions = {}): DocsHomeState {
   const searchParams = useSearchParams();
-  const params = parseDocsHomeParams(searchParams);
+  const [panelParams, setPanelParams] = useState<DocsHomeParams>(() => parseDocsHomeParams(new URLSearchParams()));
+  const params = url ? parseDocsHomeParams(searchParams) : panelParams;
   const { scope, owner, sort, q: urlQuery } = params;
   const urlKey = docsHomeKey(params);
 
   const [storedSync, setSync] = useState<DocsQuerySync>(() => initialDocsQuerySync(params));
-  const sync = reconcileDocsQuery(storedSync, params);
+  // Off the URL nothing else can change the params, so there is no echo to tell apart.
+  const sync = url ? reconcileDocsQuery(storedSync, params) : storedSync;
   if (sync !== storedSync) setSync(sync);
   const draft = sync.draft;
 
-  /** Writes `patch` into the live URL and marks the result as our own echo. */
-  const commit = useCallback((patch: Partial<DocsHomeParams>, mode: WriteMode) => {
-    if (typeof window === "undefined") return;
-    const plan = planDocsHomeWrite(window.location.search, patch);
-    if (!plan) return;
-    setSync((prev) => ({ ...prev, echoKey: plan.key }));
-    writeHistory(plan, mode);
-  }, []);
+  /** Writes `patch` into the live URL (or the panel's own state) and marks the result as our own echo. */
+  const commit = useCallback(
+    (patch: Partial<DocsHomeParams>, mode: WriteMode) => {
+      if (!url) {
+        setPanelParams((prev) => ({ ...prev, ...patch }));
+        return;
+      }
+      if (typeof window === "undefined") return;
+      const plan = planDocsHomeWrite(window.location.search, patch);
+      if (!plan) return;
+      setSync((prev) => ({ ...prev, echoKey: plan.key }));
+      writeHistory(plan, mode);
+    },
+    [url],
+  );
 
   useEffect(() => {
+    // The panel's search box is the source of truth; nothing to debounce into.
+    if (!url) return;
     if (draft === urlQuery) return;
     const timer = window.setTimeout(() => {
       const plan = planDebouncedQueryWrite({
@@ -101,7 +123,7 @@ export function useDocsHomeState(): DocsHomeState {
       writeHistory(plan, "replace");
     }, QUERY_WRITE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [draft, urlQuery, urlKey]);
+  }, [url, draft, urlQuery, urlKey]);
 
   const isMobile = useIsMobile();
   const [storedView, setStoredView] = useLocalPref(VIEW_PREF_KEY);

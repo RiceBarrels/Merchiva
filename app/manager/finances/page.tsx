@@ -69,6 +69,8 @@ import { STATUS_TONE_TEXT } from "@/components/ui/status-badge";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
 import { PageTabs } from "@/components/page-tabs";
+import { useNow } from "@/lib/use-now";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
 import { usePermissions } from "@/lib/context/permissions";
 import { useExpenses, usePayments, useSalesRecords, usePurchaseOrders, useOrgMembers, usePunchEvents } from "@/lib/spacetimedb/hooks";
 import { computeMemberPayroll, grossPayCents, toPayrollEvents } from "@/lib/payroll";
@@ -77,6 +79,7 @@ import { addExpense, updateExpense, deleteExpense } from "@/lib/spacetimedb/acti
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
+import { dateFromKey, dateKey, todayKey } from "@/lib/date-key";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -130,13 +133,23 @@ function getDateRange(range: DateRange): { start: Date; end: Date } {
   }
 }
 
+/**
+ * `start`/`end` come from `getDateRange`, which builds them from LOCAL
+ * components. A bare "YYYY-MM-DD" is parsed by spec as UTC midnight, so west
+ * of UTC every month's first day fell before its own month's start — rent
+ * dated 2026-09-01 was missing from September and counted twice in August,
+ * in the totals, the chart, the table and the exports.
+ *
+ * A full ISO datetime (payment.createdAt) carries its own offset and is left
+ * to the platform parser.
+ */
 function isInRange(dateStr: string, start: Date, end: Date): boolean {
-  const d = new Date(dateStr);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateFromKey(dateStr) : new Date(dateStr);
   return d >= start && d <= end;
 }
 
-function getMonthLabel(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+function getMonthLabel(date: Date, formatDate: (d: Date, o: Intl.DateTimeFormatOptions) => string): string {
+  return formatDate(date, { month: "short", year: "2-digit" });
 }
 
 // ─── Expense Form Interface ──────────────────────────────────────────────────
@@ -156,7 +169,7 @@ const emptyForm: ExpenseForm = {
   category: "Other",
   description: "",
   amount: "",
-  date: new Date().toISOString().slice(0, 10),
+  date: todayKey(),
   recurring: false,
   recurringPeriod: "Monthly",
   receiptUrl: "",
@@ -258,6 +271,7 @@ function OverviewTab({
 }) {
   const t = useT();
   const { format, symbol } = useCurrency();
+  const formatDate = useDateFormat();
   const [dateRange, setDateRange] = useState<DateRange>("this_month");
   const { start, end } = getDateRange(dateRange);
 
@@ -307,10 +321,10 @@ function OverviewTab({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .reduce((s: number, e: any) => s + (e.amount ?? 0), 0);
 
-      months.push({ label: getMonthLabel(d), revenue: mRevenue, expenses: mExpenses });
+      months.push({ label: getMonthLabel(d, formatDate), revenue: mRevenue, expenses: mExpenses });
     }
     return months;
-  }, [payments, expenses]);
+  }, [payments, expenses, formatDate]);
 
   return (
     <div className="space-y-4">
@@ -432,7 +446,7 @@ function ExpensesTab({ expenses }: { expenses: any[] }) {
       category: expense.category ?? "Other",
       description: expense.description ?? "",
       amount: String(expense.amount ?? ""),
-      date: expense.date ?? new Date().toISOString().slice(0, 10),
+      date: expense.date ?? todayKey(),
       recurring: expense.recurring ?? false,
       recurringPeriod: expense.recurringPeriod ?? "Monthly",
       receiptUrl: expense.receiptUrl ?? "",
@@ -767,6 +781,7 @@ function CashFlowTab({
 }) {
   const t = useT();
   const { format, symbol } = useCurrency();
+  const formatDate = useDateFormat();
 
   // Current balance: total all-time revenue - total all-time expenses
   const totalRevenue = useMemo(
@@ -785,8 +800,12 @@ function CashFlowTab({
   const avgDailyRevenue = useMemo(() => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // `s.hour == null`, not `!s.hour`: hour 0 is the midnight TRADING HOUR,
+    // not a daily aggregate. Treating it as one inflated the row count and
+    // skewed avgDailyRevenue, which the whole 30-day cash-flow projection is
+    // built on.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recent = salesRecords.filter((s: any) => new Date(s.date) >= thirtyDaysAgo && !s.hour);
+    const recent = salesRecords.filter((s: any) => new Date(s.date) >= thirtyDaysAgo && s.hour == null);
     if (recent.length === 0) return 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return recent.reduce((s: number, r: any) => s + (r.actual ?? 0), 0) / recent.length;
@@ -808,7 +827,7 @@ function CashFlowTab({
     for (let i = 0; i <= 30; i++) {
       const d = new Date(today);
       d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = dateKey(d);
       const dayOfMonth = d.getDate();
       const dayOfWeek = d.getDay();
 
@@ -838,12 +857,12 @@ function CashFlowTab({
       });
 
       data.push({
-        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: formatDate(d, { month: "short", day: "numeric" }),
         balance: Math.round(balance * 100) / 100,
       });
     }
     return data;
-  }, [currentBalance, avgDailyRevenue, recurringExpenses]);
+  }, [currentBalance, avgDailyRevenue, recurringExpenses, formatDate]);
 
   // Upcoming expenses (next 7 days)
   const upcomingExpenses = useMemo(() => {
@@ -873,14 +892,14 @@ function CashFlowTab({
           upcoming.push({
             name: exp.description || exp.category,
             amount: exp.amount ?? 0,
-            dueDate: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+            dueDate: formatDate(d, { weekday: "short", month: "short", day: "numeric" }),
           });
         }
       }
     });
 
     return upcoming;
-  }, [recurringExpenses]);
+  }, [recurringExpenses, formatDate]);
 
   return (
     <div className="space-y-4">
@@ -977,6 +996,11 @@ function PayrollTab() {
   const [rawPunches] = usePunchEvents() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [dateRange, setDateRange] = useState<"this_week" | "last_week" | "this_month">("this_week");
+  // Still-clocked-in punches are capped at "now", so the clock has to tick for
+  // the running total to move — and reading it during render would be impure.
+  const now = useNow(60_000);
+  const nowMs = now.getTime();
+  const formatDate = useDateFormat();
 
   // Date range calculation
   const { start, end } = useMemo(() => {
@@ -1013,7 +1037,6 @@ function PayrollTab() {
   // hourly rate set fall back to the default so totals stay estimable.
   const payrollData = useMemo(() => {
     if (!organizationId) return [];
-    const now = Date.now();
     const events = toPayrollEvents(rawPunches as never[], organizationId);
     const byMember = new Map<string, typeof events>();
     for (const e of events) {
@@ -1026,7 +1049,7 @@ function PayrollTab() {
       .filter((m) => m.organizationId === organizationId && m.status === "active")
       .map((m) => {
         const id = m.id?.toString?.() ?? String(m.id);
-        const pay = computeMemberPayroll(byMember.get(id) ?? [], start.getTime(), end.getTime(), now);
+        const pay = computeMemberPayroll(byMember.get(id) ?? [], start.getTime(), end.getTime(), nowMs);
         // Read the rate from the exact `hourlyRateCents` column when the row
         // has been migrated, falling back to the legacy f64 otherwise. Pay is
         // computed and accumulated in whole cents; see grossPayCents.
@@ -1045,7 +1068,7 @@ function PayrollTab() {
       .filter((r) => r.hours > 0)
       .sort((a, b) => b.hours - a.hours);
     /* eslint-enable @typescript-eslint/no-explicit-any */
-  }, [rawPunches, rawMembers, organizationId, start, end]);
+  }, [rawPunches, rawMembers, organizationId, start, end, nowMs]);
 
   // Summed in integer cents, converted once — the float version drifted by a
   // cent per employee on a large roster.

@@ -4,12 +4,11 @@
 // minute clock so "Today" groups and time stamps roll over without a reload.
 
 import { useSyncExternalStore } from "react";
-import { LOCALE_BCP47, isLocale } from "@/lib/i18n/config";
 
-/** App locale ("zh-cn") → BCP-47 tag ("zh-CN"); other tags pass through. */
-export function intlLocaleTag(locale: string): string {
-  return isLocale(locale) ? LOCALE_BCP47[locale] : locale;
-}
+// Shared with the rest of the app; re-exported because the docs modules
+// already import it from here.
+export { intlLocaleTag } from "@/lib/i18n/dates";
+import { intlLocaleTag } from "@/lib/i18n/dates";
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 

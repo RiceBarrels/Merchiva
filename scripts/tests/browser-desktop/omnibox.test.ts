@@ -166,7 +166,7 @@ describe("buildOmniboxGroups", () => {
         tabs: range(10).map((i) => ({ tabId: `t${i}`, title: `Item ${i}`, url: `/manager/inventory?t=${i}`, icon: Icon })),
         pages: range(10).map((i) => page(`/manager/p${i}`, `Item page ${i}`)),
         docs: range(10).map((i) => doc(`d${i}`, `Item doc ${i}`, old)),
-        stores: range(10).map((i) => ({ id: `o${i}`, name: `Item store ${i}`, parentOrgId: null, logoUrl: null })),
+        stores: range(10).map((i) => ({ id: `o${i}`, name: `Item store ${i}`, logoUrl: null })),
         actions: [{ id: "settings", title: "Item settings", icon: Plus, keywords: [] }],
       }),
       TEXT,
@@ -191,12 +191,12 @@ describe("buildOmniboxGroups", () => {
     expect(groups[0].items[0]).toMatchObject({ kind: "doc", id: "doc:new" });
   });
 
-  test("stores carry the sub-store flag", () => {
+  test("stores match by name", () => {
     const groups = buildOmniboxGroups(
       "north",
-      sources({ stores: [{ id: "o1", name: "North Street", parentOrgId: "root", logoUrl: null }] }),
+      sources({ stores: [{ id: "o1", name: "North Street", logoUrl: null }] }),
       TEXT,
     );
-    expect(groups[0].items[0]).toMatchObject({ kind: "store", orgId: "o1", isSub: true });
+    expect(groups[0].items[0]).toMatchObject({ kind: "store", orgId: "o1", title: "North Street" });
   });
 });

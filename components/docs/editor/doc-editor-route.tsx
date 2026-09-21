@@ -38,11 +38,19 @@ function readParam(params: URLSearchParams, key: string): string | null {
   return value && value.trim() ? value.trim() : null;
 }
 
-export function DocEditorRoute() {
+export interface DocEditorRouteProps {
+  /** Device surfaces (/store, /personal) render the editor inside a panel and
+   *  pass the document directly; the /manager route reads it from `?id=`. */
+  documentId?: string;
+  /** Force the mobile layout (see `DocEditorProps.mobile`). */
+  mobile?: boolean;
+}
+
+export function DocEditorRoute({ documentId, mobile }: DocEditorRouteProps = {}) {
   const t = useT();
   const router = useRouter();
   const search = useSearchParams();
-  const rawId = search.get("id");
+  const rawId = documentId ?? search.get("id");
   const id = rawId && isDocumentId(rawId) ? rawId.toLowerCase() : null;
   const threadParam = readParam(search, "comment");
   const versionParam = readParam(search, "version");
@@ -57,8 +65,9 @@ export function DocEditorRoute() {
   useShellChrome({ mobileChrome: "docked" });
 
   useEffect(() => {
-    if (!id) router.replace(DOCS_HOME_HREF);
-  }, [id, router]);
+    // Only the /manager route can be on a bad URL; a panel passes the id in.
+    if (!id && documentId === undefined) router.replace(DOCS_HOME_HREF);
+  }, [id, documentId, router]);
 
   const [expiredFor, setExpiredFor] = useState<string | null>(null);
   const waitingKey = notFound && id ? id : null;
@@ -137,6 +146,7 @@ export function DocEditorRoute() {
       initialNew={isNew}
       threadParam={threadParam}
       versionParam={versionParam}
+      mobile={mobile}
     />
   );
 }

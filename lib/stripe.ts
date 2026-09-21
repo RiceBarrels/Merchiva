@@ -80,7 +80,11 @@ export async function fetchSubscriptionSnapshot(
     stripeCustomerId,
     subscriptionStatus: sub.status,
     subscriptionPriceId: typeof price === "string" ? price : (price?.id ?? null),
-    subscriptionInterval: interval === "month" || interval === "year" ? interval : null,
+    // Narrowed by returning the literals rather than the narrowed variable:
+    // Stripe types `interval` as `"month" | "year" | (string & {})`, and TS
+    // will not narrow that branded union down to the bare literal union.
+    subscriptionInterval:
+      interval === "month" ? "month" : interval === "year" ? "year" : null,
     currentPeriodEnd: periodEndUnix,
   };
 }

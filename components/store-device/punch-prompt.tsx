@@ -7,16 +7,18 @@ import type { StoreMember } from "./use-org-members";
 export interface PunchPromptProps {
   /** Member who just logged in and is not punched in; null hides the prompt. */
   member: StoreMember | null;
+  /** PIN they logged in with — `recordPunch` validates it server-side. */
+  code: string | null;
   onDone: () => void;
 }
 
 /** Asked right after a store-device log-in when the operator isn't punched in. */
-export function PunchPrompt({ member, onDone }: PunchPromptProps) {
+export function PunchPrompt({ member, code, onDone }: PunchPromptProps) {
   const t = useT();
   return (
     <PunchInPrompt
       open={!!member}
-      code={member?.punchInCode}
+      code={code}
       name={member?.displayName}
       onDone={onDone}
       labels={{

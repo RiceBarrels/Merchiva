@@ -170,3 +170,33 @@ describe("formatCents", () => {
     expect(formatCents(1999, "not-a-currency", "en-US")).toBe("19.99");
   });
 });
+
+/*
+ * MoneyRow used to be `Record<string, unknown>`, which no declared interface
+ * satisfies — so the helpers could not be called with any of the app's mapped
+ * row types and went almost unused. These rows are typed interfaces on purpose.
+ */
+describe("typed rows", () => {
+  interface WasteRow {
+    id: string;
+    totalCost: number;
+    totalCostCents: number;
+  }
+
+  const rows: WasteRow[] = [
+    { id: "a", totalCost: 0.1, totalCostCents: 10 },
+    { id: "b", totalCost: 0.2, totalCostCents: 20 },
+    { id: "c", totalCost: 0.3, totalCostCents: 30 },
+  ];
+
+  test("centsOf and sumCents accept an interface, not just an index-signature type", () => {
+    expect(centsOf(rows[0], "totalCost")).toBe(10);
+    expect(sumCents(rows, "totalCost")).toBe(60);
+  });
+
+  test("summing in cents avoids the float drift the same sum has", () => {
+    const asFloat = rows.reduce((s, r) => s + r.totalCost, 0);
+    expect(asFloat).not.toBe(0.6);           // 0.1 + 0.2 + 0.3 === 0.6000000000000001
+    expect(toMajor(sumCents(rows, "totalCost"))).toBe(0.6);
+  });
+});

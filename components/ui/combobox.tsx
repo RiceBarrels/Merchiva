@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check, Search } from "lucide-react";
+import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 
 export interface ComboboxOption {
@@ -30,6 +31,7 @@ export function Combobox({
   className,
   allowCustom = false,
 }: ComboboxProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -133,7 +135,7 @@ export function Combobox({
               </li>
             )}
             {filtered.length === 0 && !showCustomRow ? (
-              <li className="px-3 py-2 text-xs text-muted-foreground">No results</li>
+              <li className="px-3 py-2 text-xs text-muted-foreground">{t("components.combobox.noResults")}</li>
             ) : (
               filtered.map((o) => (
                 <li key={o.value}>

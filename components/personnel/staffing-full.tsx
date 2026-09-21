@@ -54,6 +54,10 @@ import { tables } from "@/lib/spacetimedb/generated";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n/context";
+import { type DateFormatter } from "@/lib/i18n/dates";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
+import { isOnShiftAt, shiftDurationHours } from "@/lib/shift-time";
+import { useNow } from "@/lib/use-now";
 
 // Role constants + icon helper now live in the shared role-dialogs module so
 // the mobile personnel pages can reuse them.
@@ -114,8 +118,9 @@ function formatTime(t: string): string {
   return `${hour}:${m.toString().padStart(2, "0")} ${period}`;
 }
 
+// Shifts are stored as the store's own calendar day, so this must be local.
 function isoDate(d: Date): string {
-  return d.toISOString().split("T")[0];
+  return dateKey(d);
 }
 
 function getWeekDates(base: Date): Date[] {
@@ -131,9 +136,8 @@ function getWeekDates(base: Date): Date[] {
   });
 }
 
-function formatDateShort(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+function formatDateShort(iso: string, formatDate: DateFormatter): string {
+  return formatDate(iso + "T00:00:00", { month: "short", day: "numeric" });
 }
 
 
@@ -202,10 +206,6 @@ function formatClockDate(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function localDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function dateTimeFromInput(date: string, time: string): Date {
   return new Date(`${date}T${time}:00`);
 }
@@ -249,18 +249,28 @@ function AttendanceManagerPanel({
   const [drafts, setDrafts] = useState<Record<string, { startTime: string; endTime: string }>>({});
   const rowSyncKey = rows.map((row) => `${row.member.id}:${row.startTime}:${row.endTime}`).join("|");
 
+  // `rowSyncKey` exists so the drafts re-seed only when the punch TIMES change.
+  // Listing `rows` as well defeated it: `rows` is a useMemo over the whole
+  // punch-event stream, so any colleague tapping "break start" on the shared
+  // tablet gave it a new identity and this effect overwrote the manager's
+  // half-typed correction with the server values. The sibling editor in
+  // components/personnel/attendance.tsx already keys on the derived value only.
   useEffect(() => {
     const next: Record<string, { startTime: string; endTime: string }> = {};
     rows.forEach((row) => {
       next[row.member.id] = { startTime: row.startTime, endTime: row.endTime };
     });
     setDrafts(next);
-  }, [rowSyncKey, rows]);
+    // `rows` is deliberately NOT a dependency. The render that produces a new
+    // rowSyncKey produces the matching `rows`, so the closure is current —
+    // whereas listing `rows` re-runs on every unrelated punch event too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowSyncKey]);
 
   if (!canManage) return null;
 
   const recordedCount = rows.filter((row) => row.inEvent).length;
-  const canQuickPunch = date === localDateKey(new Date());
+  const canQuickPunch = date === dateKey(new Date());
   const setDraft = (memberId: string, field: "startTime" | "endTime", value: string) => {
     setDrafts((prev) => ({
       ...prev,
@@ -435,6 +445,9 @@ interface StaffingDesktopProps {
 
 function StaffingDesktop(props: StaffingDesktopProps) {
   const t = useT();
+  const formatDate = useDateFormat();
+  // "On now" has to keep up on a tablet left open all day.
+  const nowClock = useNow(60_000);
   const {
     canEdit, isStaff, currentOrg, team, shifts, roles,
     weekStart, setWeekStart, weekDates, weekShifts,
@@ -482,16 +495,12 @@ function StaffingDesktop(props: StaffingDesktopProps) {
   const prevWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   const nextWeekD = () => setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; });
 
-  const monthYearD = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthYearD = formatDate(weekDates[0], { month: "long", year: "numeric" });
   const isTodayD = (d: Date) => isoDate(d) === todayStr;
   const allMembers = team.filter((m) => m.status === "active");
 
-  // Compute shift hours helper
-  const shiftHours = (s: Shift) => {
-    const [sh, sm] = s.startTime.split(":").map(Number);
-    const [eh, em] = s.endTime.split(":").map(Number);
-    return Math.max(0, eh + em / 60 - (sh + sm / 60));
-  };
+  // Compute shift hours helper. Wraps past midnight — see lib/shift-time.ts.
+  const shiftHours = (s: Shift) => shiftDurationHours(s.startTime, s.endTime);
 
   // ─── Schedule Tab (staff x week grid) ─────────────────────
   function ScheduleGrid() {
@@ -547,7 +556,7 @@ function StaffingDesktop(props: StaffingDesktopProps) {
                   }`}
                 >
                   <div className="text-[10.5px] font-semibold uppercase tracking-wide">
-                    {d.toLocaleDateString("en-US", { weekday: "short" })}
+                    {formatDate(d, { weekday: "short" })}
                   </div>
                   <div className={`text-[15px] font-bold ${today ? "text-background" : "text-foreground"}`}>
                     {d.getDate()}
@@ -1036,10 +1045,14 @@ function StaffingDesktop(props: StaffingDesktopProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 import React from "react";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { dateKey } from "@/lib/date-key";
 
 export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const { organizationId, isOwner, can, currentOrg, role } = usePermissions();
   const t = useT();
+  const formatDate = useDateFormat();
+  // "On now" has to keep up on a tablet left open all day.
+  const nowClock = useNow(60_000);
 
   const [presetDialog, setPresetDialog] = useState(false);
   const [editingPreset, setEditingPreset] = useState<ShiftPreset | null>(null);
@@ -1194,18 +1207,27 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     setMyMemberId(team.find((m) => m.userId === userId)?.id ?? null);
   }, [team, userId]);
 
-  // Auto-fix shifts with missing memberId by matching staffName to team
+  // Auto-fix shifts with a missing memberId by matching staffName to the team.
+  //
+  // This used to send `updateShift(s.id, { memberId })`, and updateShift
+  // replaces the whole row — so the "repair" blanked date, shiftType,
+  // startTime, endTime and staffRoles on every legacy shift, unprompted, as
+  // soon as a manager opened the page, with `.catch(() => {})` hiding it.
   useEffect(() => {
+    if (!canEdit) return;                       // staff devices must not issue org-wide writes
     if (team.length === 0 || shifts.length === 0) return;
     const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const orphaned = shifts.filter((s) => !s.memberId || !validUuid.test(s.memberId));
     for (const s of orphaned) {
-      const match = team.find((m) => m.displayName === s.staffName);
-      if (match) {
-        updateShift(s.id, { memberId: match.id }).catch(() => {});
-      }
+      const matches = team.filter((m) => m.displayName === s.staffName);
+      // Two people can share a display name; guessing would assign the shift
+      // to whichever one came first.
+      if (matches.length !== 1) continue;
+      updateShift(s.id, { ...s, memberId: matches[0].id }).catch((err: unknown) =>
+        console.error("[staffing] could not link shift", s.id, "to a member:", err),
+      );
     }
-  }, [team, shifts]);
+  }, [team, shifts, canEdit]);
 
   // Handle table drag-select via non-passive touchmove
   useEffect(() => {
@@ -1269,7 +1291,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       const memberEvents = orgPunchEvents
         .filter((event) => event.memberId === member.id)
         .sort((a, b) => punchEventTime(a).getTime() - punchEventTime(b).getTime());
-      const dayEvents = memberEvents.filter((event) => localDateKey(punchEventTime(event)) === selectedDay);
+      const dayEvents = memberEvents.filter((event) => dateKey(punchEventTime(event)) === selectedDay);
       const openIn = dayEvents.find((event) => event.action === "in" && !event.closed) ?? null;
       const openBreak = memberEvents.find((event) => event.action === "break-start" && !event.closed) ?? null;
       const inEvent = openIn ?? dayEvents.find((event) => event.action === "in") ?? null;
@@ -1909,14 +1931,14 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       await updateTradeStatus(id, status, userId ?? undefined);
       hapticSuccess();
       if (status === "accepted") {
-        toast.success("Trade accepted — awaiting manager approval");
+        toast.success(t("staffing.toasts.tradeAcceptedPending"));
         setOrgShiftTrades((prev) => prev.map((t) => t.id === id ? { ...t, status: "accepted" as const, acceptedById: myMemberId, targetId: myMemberId } : t));
       } else {
-        toast.success("Trade denied");
+        toast.success(t("staffing.toasts.tradeDenied"));
         setOrgShiftTrades((prev) => prev.filter((t) => t.id !== id));
       }
     } catch {
-      toast.error("Failed to update trade");
+      toast.error(t("staffing.toasts.failedUpdateTrade"));
     }
   };
 
@@ -1925,9 +1947,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     try {
       await updateTradeStatus(tradeId, "accepted");
       hapticSuccess();
-      toast.success("Trade accepted — awaiting manager approval");
+      toast.success(t("staffing.toasts.tradeAcceptedPending"));
       setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, status: "accepted" as const, acceptedById: myMemberId, targetId: myMemberId } : t));
-    } catch { toast.error("Failed to accept trade"); }
+    } catch { toast.error(t("staffing.toasts.failedAcceptTrade")); }
   };
 
   const handleManagerApproveTrade = async (tradeId: string, approved: boolean) => {
@@ -1937,12 +1959,12 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       hapticSuccess();
       toast.success(approved ? "Trade approved" : "Trade denied");
       setOrgShiftTrades((prev) => prev.map((t) => t.id === tradeId ? { ...t, managerApproved: approved, managerId: userId, status: approved ? "accepted" as const : "denied" as const } : t));
-    } catch { toast.error("Failed to update trade"); }
+    } catch { toast.error(t("staffing.toasts.failedUpdateTrade")); }
   };
 
   const todayStr = isoDate(new Date());
   const isToday  = (d: Date) => isoDate(d) === todayStr;
-  const monthYear = weekDates[0].toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthYear = formatDate(weekDates[0], { month: "long", year: "numeric" });
 
   // ─── Load today's role tasks (cache-first, then fresh) ────────────────────
   useEffect(() => {
@@ -2117,14 +2139,14 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       const weekDays = weeks[wi];
       if (wi > 0) doc.addPage();
 
-      const wStart = weekDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      const wEnd = weekDays[weekDays.length - 1].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const wStart = formatDate(weekDays[0], { month: "short", day: "numeric" });
+      const wEnd = formatDate(weekDays[weekDays.length - 1], { month: "short", day: "numeric", year: "numeric" });
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
       doc.text(`${currentOrg?.name ?? "Schedule"} — ${wStart} - ${wEnd}`, 20, 30);
 
       const dayHeaders = weekDays.map((d) =>
-        `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
+        `${formatDate(d, { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
       );
       const weekShiftRange = rangeShifts.filter((s) => {
         const sd = isoDate(weekDays[0]), ed = isoDate(weekDays[weekDays.length - 1]);
@@ -2215,7 +2237,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const handleDownloadCSV = (startStr: string, endStr: string) => {
     const { dates, rangeShifts } = getExportData(startStr, endStr);
     const dayHeaders = dates.map((d) =>
-      `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
+      `${formatDate(d, { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`
     );
     const staffNames = [...new Set(rangeShifts.map((s) => s.staffName))].sort();
 
@@ -2263,8 +2285,8 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     wrapper.style.cssText = "background:#fff;padding:20px;font-family:system-ui,sans-serif;font-size:12px;width:max-content;";
 
     for (const weekDays of weeks) {
-      const wStart = weekDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      const wEnd = weekDays[weekDays.length - 1].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      const wStart = formatDate(weekDays[0], { month: "short", day: "numeric" });
+      const wEnd = formatDate(weekDays[weekDays.length - 1], { month: "short", day: "numeric", year: "numeric" });
       const weekShiftRange = rangeShifts.filter((s) => s.date >= isoDate(weekDays[0]) && s.date <= isoDate(weekDays[weekDays.length - 1]));
       const staffNames = [...new Set(weekShiftRange.map((s) => s.staffName))].sort();
 
@@ -2277,7 +2299,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       table.style.cssText = "border-collapse:collapse;width:100%;margin-bottom:8px;";
       const thead = document.createElement("thead");
       const hr = document.createElement("tr");
-      ["Name", ...weekDays.map((d) => `${d.toLocaleDateString("en-US", { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`)].forEach((h) => {
+      ["Name", ...weekDays.map((d) => `${formatDate(d, { weekday: "short" })} ${d.getMonth() + 1}/${d.getDate()}`)].forEach((h) => {
         const th = document.createElement("th");
         th.textContent = h;
         th.style.cssText = "border:1px solid #d6d3d1;padding:6px 8px;background:#f5f5f4;font-size:11px;text-align:center;";
@@ -2677,9 +2699,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   const todayAllShifts = weekShifts.filter((s) => s.date === selectedDay);
   const todayScheduledHours = (() => {
     const hrs = todayAllShifts.reduce((acc, s) => {
-      const [sh, sm] = s.startTime.split(":").map(Number);
-      const [eh, em] = s.endTime.split(":").map(Number);
-      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+      return acc + shiftDurationHours(s.startTime, s.endTime);
     }, 0);
     return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
   })();
@@ -2708,9 +2728,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   };
 
   const getShiftHeightPercent = (startTime: string, endTime: string) => {
-    const [sh, sm] = startTime.split(":").map(Number);
-    const [eh, em] = endTime.split(":").map(Number);
-    const duration = (eh + em / 60) - (sh + sm / 60);
+    const duration = shiftDurationHours(startTime, endTime);
     return Math.max(2, (duration / TIMELINE_HOURS_COUNT) * 100);
   };
 
@@ -2757,9 +2775,9 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   // ─── Mobile computed helpers ─────────────────────────────────────────────
   // On-shift now: shifts that overlap with current time
   const nowOnShift = (() => {
-    const now = new Date();
-    const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    return todayAllShifts.filter((s) => s.startTime <= nowTime && s.endTime > nowTime);
+    // String comparison could never match an overnight shift (22:00 > 01:00).
+    const nowMinutes = nowClock.getHours() * 60 + nowClock.getMinutes();
+    return todayAllShifts.filter((s) => isOnShiftAt(s.startTime, s.endTime, nowMinutes));
   })();
 
   // Upcoming shifts today (haven't started yet)
@@ -2781,24 +2799,20 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
   // Week hours
   const weekTotalHours = (() => {
     const hrs = weekShifts.reduce((acc, s) => {
-      const [sh, sm] = s.startTime.split(":").map(Number);
-      const [eh, em] = s.endTime.split(":").map(Number);
-      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+      return acc + shiftDurationHours(s.startTime, s.endTime);
     }, 0);
     return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
   })();
 
   // Week of label for schedule tab
-  const weekOfLabel = weekDates[0].toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const weekOfLabel = formatDate(weekDates[0], { month: "short", day: "numeric" });
 
   // Selected day display for schedule tab
   const selectedDayDate = new Date(selectedDay + "T00:00:00");
-  const selectedDayLabel = selectedDayDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+  const selectedDayLabel = formatDate(selectedDayDate, { weekday: "long", month: "short", day: "numeric" });
   const selectedDayHours = (() => {
     const hrs = selectedDayShifts.reduce((acc, s) => {
-      const [sh, sm] = s.startTime.split(":").map(Number);
-      const [eh, em] = s.endTime.split(":").map(Number);
-      return acc + Math.max(0, eh + em / 60 - (sh + sm / 60));
+      return acc + shiftDurationHours(s.startTime, s.endTime);
     }, 0);
     return hrs % 1 === 0 ? `${hrs}` : hrs.toFixed(1);
   })();
@@ -3087,7 +3101,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                         <span className={`text-[10px] font-semibold uppercase tracking-wide ${
                           isSelected ? "text-muted-foreground" : "text-muted-foreground"
                         }`}>
-                          {d.toLocaleDateString("en-US", { weekday: "short" })}
+                          {formatDate(d, { weekday: "short" })}
                         </span>
                         <span className={`text-[17px] font-mono tabular-nums font-semibold leading-snug ${
                           isSelected ? "text-background" : "text-foreground"
@@ -3283,7 +3297,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                       <div key={req.id} className="px-4 py-3">
                         <p className="text-[13px] font-medium text-foreground">{getMemberName(req.userId)}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {formatDateShort(req.startDate)} &ndash; {formatDateShort(req.endDate)}
+                          {formatDateShort(req.startDate, formatDate)} &ndash; {formatDateShort(req.endDate, formatDate)}
                         </p>
                         <div className="flex gap-2 mt-2">
                           <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTimeOffStatusUpdate(req.id, "approved")}>
@@ -3305,7 +3319,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                           </p>
                           {shift && (
                             <p className="text-[11px] text-muted-foreground mt-0.5">
-                              {formatDateShort(shift.date)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
+                              {formatDateShort(shift.date, formatDate)} &middot; {formatTime(shift.startTime)}&ndash;{formatTime(shift.endTime)}
                             </p>
                           )}
                           <div className="flex gap-2 mt-2">
@@ -3583,9 +3597,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                   />
                   <span className="text-xs text-muted-foreground shrink-0">
                     ({(() => {
-                      const [sh, sm] = shiftForm.startTime.split(":").map(Number);
-                      const [eh, em] = shiftForm.endTime.split(":").map(Number);
-                      const h = Math.max(0, eh + em / 60 - (sh + sm / 60));
+                      const h = shiftDurationHours(shiftForm.startTime, shiftForm.endTime);
                       return h % 1 === 0 ? `${h}hr` : `${h.toFixed(1)}hr`;
                     })()})
                   </span>
@@ -3995,9 +4007,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               <div className="bg-muted border border-border p-3">
                 <Eyebrow className="mb-1">{t("staffing.tradeDialog.yourShift")}</Eyebrow>
                 <p className="text-sm font-semibold text-foreground">
-                  {new Date(tradeDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
-                    weekday: "short", month: "short", day: "numeric",
-                  })}
+                  {formatDate(tradeDialog.shift.date + "T00:00:00", { weekday: "short", month: "short", day: "numeric" })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {formatTime(tradeDialog.shift.startTime)} – {formatTime(tradeDialog.shift.endTime)}
@@ -4088,7 +4098,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground leading-tight">{c.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {formatDateShort(s.date)} &middot; {formatTime(s.startTime)}–{formatTime(s.endTime)}
+                              {formatDateShort(s.date, formatDate)} &middot; {formatTime(s.startTime)}–{formatTime(s.endTime)}
                             </p>
                           </div>
                           <span className="h-2 w-2 rounded-full shrink-0 bg-foreground" />
@@ -4127,9 +4137,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
               <div className="bg-muted border border-border p-3">
                 <Eyebrow className="mb-1">{t("staffing.coverDialog.yourShift")}</Eyebrow>
                 <p className="text-sm font-semibold text-foreground">
-                  {new Date(coverDialog.shift.date + "T00:00:00").toLocaleDateString("en-US", {
-                    weekday: "short", month: "short", day: "numeric",
-                  })}
+                  {formatDate(coverDialog.shift.date + "T00:00:00", { weekday: "short", month: "short", day: "numeric" })}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {formatTime(coverDialog.shift.startTime)} – {formatTime(coverDialog.shift.endTime)}
@@ -4535,9 +4543,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
       {/* ─── Shift Details DynamicUIElement ─────────────────────────────── */}
       {shiftDetailShift && (() => {
         const s = shiftDetailShift;
-        const dateLabel = new Date(s.date + "T00:00:00").toLocaleDateString("en-US", {
-          weekday: "short", month: "short", day: "numeric",
-        });
+        const dateLabel = formatDate(s.date + "T00:00:00", { weekday: "short", month: "short", day: "numeric" });
         const matchedRoles = (s.staffRoles ?? [])
           .map((rn) => roles.find((r) => r.name.toLowerCase() === rn.toLowerCase()))
           .filter(Boolean) as StaffRole[];
@@ -4684,7 +4690,7 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
             canEdit={canEdit}
             getMemberName={getMemberName}
             formatTime={formatTime}
-            formatDateShort={formatDateShort}
+            formatDateShort={(iso: string) => formatDateShort(iso, formatDate)}
             onAcceptTrade={handleStaffAcceptTrade}
             onDenyTrade={(id) => handleTradeStatusUpdate(id, "denied")}
             onManagerApproveTrade={handleManagerApproveTrade}

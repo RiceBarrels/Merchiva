@@ -50,7 +50,7 @@ export function LanguageSwitcher({
     <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
       <SelectTrigger
         size="sm"
-        aria-label="Language"
+        aria-label={t("common.language")}
         className={cn(
           "w-full gap-2 rounded border border-border bg-transparent px-2.5 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-0",
           className,

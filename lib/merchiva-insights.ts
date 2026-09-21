@@ -1,4 +1,5 @@
 import type { InventoryItem, Shift, SalesRecord } from "@/lib/types";
+import { dateKeyOffset, todayKey } from "@/lib/date-key";
 
 export interface MerchivaInsight {
   id: string;
@@ -20,7 +21,7 @@ export function generateInsights(
   salesHourly: SalesRecord[],
 ): MerchivaInsight[] {
   const insights: MerchivaInsight[] = [];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayKey();
 
   // ── Inventory insights ────────────────────────────────────────────────────
 
@@ -72,9 +73,7 @@ export function generateInsights(
   // ── Staffing insights ─────────────────────────────────────────────────────
 
   const next7Days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d.toISOString().slice(0, 10);
+    return dateKeyOffset(i);
   });
 
   const shiftsByDay = next7Days.map((date) => ({

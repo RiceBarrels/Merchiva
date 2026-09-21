@@ -16,7 +16,6 @@ import {
   MapPin,
   Camera,
   Check,
-  ChevronRight,
   ChevronDown,
   Clock,
   Users,
@@ -24,28 +23,20 @@ import {
   UserPlus,
   CreditCard,
   KeyRound,
-  Phone,
   ArrowLeft,
   Building2,
   Calendar,
-  PanelLeft,
-  PanelTop,
   AlignHorizontalDistributeCenter,
   LogOut,
   Shield,
   Bell,
-  Package,
   Search,
   FileText,
-  HelpCircle,
-  Moon,
-  Languages,
   Download,
   Activity,
   Info,
   SettingsIcon,
   UserCog,
-  Fingerprint,
   Sparkles,
   Plus,
   Coins,
@@ -54,23 +45,18 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { StoreModeIcon } from "@/components/device/app-icons";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { IconTile } from "@/components/ui/icon-tile";
 import { OptionRow } from "@/components/ui/option-row";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { StatusBadge, type StatusTone } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import {
   upsertSettings,
   disconnectSquare,
   disconnectClover,
-  setPunchInCode,
   updateOpeningHours,
   createOrg,
   setScheduleIntegration,
@@ -78,7 +64,6 @@ import {
   setSupplierInboundPrefix,
   updateDisplayName,
   updateProfile,
-  updateOrgLogo,
 } from "@/lib/spacetimedb/actions";
 import { StoreLogo } from "@/components/store-picker";
 import { CURRENCIES, getCurrencyInfo } from "@/lib/currency";
@@ -87,9 +72,6 @@ import { useTable, useSpacetimeDB } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { getSettings, type UserSettings } from "@/lib/db/settings";
 import { useAssistantConfig, useSettings } from "@/lib/spacetimedb/hooks/useSettings";
-import { usePushNotifications } from "@/lib/spacetimedb/hooks/usePushNotifications";
-import { tauriNotificationsPref, requestTauriNotificationPermission } from "@/lib/spacetimedb/hooks/useTauriNotifications";
-import { useIsNativeShell } from "@/lib/native-shell";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DynamicUIElement, DynamicUIElementContent, DynamicUIElementHeader, DynamicUIElementTitle, DynamicUIElementDescription,
@@ -102,31 +84,29 @@ import {
 } from "@/components/ui/select";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
+import { SBadge, SCategoryHeader, SGroupHeader, SRow, SToggleRow } from "@/components/settings/rows";
+import { AboutPanel } from "@/components/settings/panels/about";
+import { DataPanel } from "@/components/settings/panels/data";
+import { NotificationsPanel } from "@/components/settings/panels/notifications";
+import { PreferencesPanel } from "@/components/settings/panels/preferences";
+import { StoreProfilePanel } from "@/components/settings/panels/store-profile";
+import { SecurityPanel } from "@/components/settings/panels/security";
 import { UsageSection } from "@/components/settings/usage-section";
 import { getCached, setCache, clearCache } from "@/lib/cache";
 import { getMyAvailability, getTimeOffRequests } from "@/lib/db/availability";
-import { upsertAvailability, createTimeOffRequest, updateMember, removeMember, cancelInvitation, inviteToOrg } from "@/lib/spacetimedb/actions";
-import { getTeamMembers, getInvitations } from "@/lib/db/team";
-import type { OrgMember, OrgInvitation, OrgRole, Permissions } from "@/lib/types";
-import { defaultPermissions } from "@/lib/db/team";
-import {
-  EditMemberDialog,
-  type EditMemberInput,
-} from "@/components/personnel/team-dialogs";
+import { upsertAvailability, createTimeOffRequest } from "@/lib/spacetimedb/actions";
 import { usePermissions } from "@/lib/context/permissions";
+import { usePunchCode } from "@/lib/spacetimedb/hooks/usePunchCode";
 import { hapticSuccess, hapticMedium } from "@/lib/haptics";
 import { useAuth } from "@/lib/auth/context";
 import { useStoreMachineMode, useDeviceName, getOrCreateDeviceId } from "@/lib/store-machine-mode";
 import { useAutolockSeconds, AUTOLOCK_OPTIONS, type AutolockSeconds } from "@/lib/store-device-lock";
 import { registerStoreDevice, removeStoreDevice, updateStoreDevice, verifyManagerPin } from "@/lib/spacetimedb/actions";
-import { useNavMode, type NavMode } from "@/lib/nav-mode";
-import { useShellInfo } from "@/lib/browser-shell/shell-context";
-import { useBookmarksBarVisible } from "@/components/browser-shell/desktop/bookmarks-bar-state";
 import { uploadFiles } from "@/lib/uploadthing";
 import { toast } from "sonner";
 import { useT, useI18n } from "@/lib/i18n/context";
-import { LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n/config";
-import { useThemeMode, type ThemeMode } from "@/lib/theme";
+import { LOCALE_LABELS } from "@/lib/i18n/config";
+import { useThemeMode } from "@/lib/theme";
 import type { AutonomyMode } from "@/lib/merchiva/autonomy";
 import { LocationManager } from "@/components/location-manager";
 import { useLocations } from "@/lib/spacetimedb/hooks";
@@ -161,20 +141,18 @@ interface StoreDeviceRow {
 
 export default function SettingsPage() {
   const t = useT();
-  const { locale, setLocale } = useI18n();
+  const { locale } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { role, organizationId, can, organizations, currentOrg, switchOrg, shareGroupOrgs: msShareGroupOrgs, isSubStore: msIsSubStore } = usePermissions();
+  const { role, organizationId, organizations, currentOrg, switchOrg } = usePermissions();
   const { signOut, user: authUser, accounts, switchAccount } = useAuth();
   const isAdmin = role === "owner" || role === "manager";
-  const canEditTeam = can("team", "edit");
   // Settings data via SpacetimeDB migration hook
   const { settings, setSettings, loading } = useSettings();
   const { config: assistantConfig, save: saveAssistantConfig } = useAssistantConfig();
   // Fallback: the organization's own name, for orgs whose settings.businessName was never set
   const [orgRows] = useTable(tables.organization);
   const orgName = (orgRows || []).find((o) => o.id.toString() === organizationId)?.name ?? "";
-  const storeLogoUrl = (orgRows || []).find((o) => o.id.toString() === organizationId)?.logoUrl ?? null;
   const [userId, setUserId]     = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string>("");
 
@@ -190,7 +168,6 @@ export default function SettingsPage() {
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [uploadingStoreLogo, setUploadingStoreLogo] = useState(false);
   const [profileDisplayName, setProfileDisplayName] = useState("");
   const [personalName, setPersonalName] = useState("");
   const [personalBirthday, setPersonalBirthday] = useState("");
@@ -203,13 +180,11 @@ export default function SettingsPage() {
   // Inline "Add store" form inside the switcher drawer.
   const [drawerCreating, setDrawerCreating] = useState(false);
   const [drawerStoreName, setDrawerStoreName] = useState("");
-  const [drawerParentId, setDrawerParentId] = useState<string | null>(null);
   const [drawerCreateLoading, setDrawerCreateLoading] = useState(false);
   const [drawerCreateError, setDrawerCreateError] = useState<string | null>(null);
   const closeSwitcherCreate = () => {
     setDrawerCreating(false);
     setDrawerStoreName("");
-    setDrawerParentId(null);
     setDrawerCreateError(null);
   };
   const handleDrawerCreateStore = async (e: React.FormEvent) => {
@@ -219,7 +194,7 @@ export default function SettingsPage() {
     setDrawerCreateLoading(true);
     setDrawerCreateError(null);
     try {
-      await createOrg(name, drawerParentId);
+      await createOrg(name);
       hapticSuccess();
       // Stay closed until the org list refreshes — reload picks up new
       // membership and re-scopes SpacetimeDB subscriptions cleanly.
@@ -276,18 +251,6 @@ export default function SettingsPage() {
   });
   const [savingTimeOff, setSavingTimeOff] = useState(false);
 
-  // Team dialog
-  const [teamDialog, setTeamDialog] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<OrgMember[]>([]);
-  const [teamInvitations, setTeamInvitations] = useState<OrgInvitation[]>([]);
-  const [teamLoading, setTeamLoading] = useState(false);
-  const [inviteDialog, setInviteDialog] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [invitePhone, setInvitePhone] = useState("");
-  const [inviteRole, setInviteRole] = useState<"staff" | "manager">("staff");
-  const [invitePerms, setInvitePerms] = useState<Permissions>(defaultPermissions());
-  const [inviting, setInviting] = useState(false);
-
   // Square sync
   const [squareSyncing, setSquareSyncing] = useState(false);
   const [squareSyncResult, setSquareSyncResult] = useState<string | null>(null);
@@ -315,10 +278,7 @@ export default function SettingsPage() {
   const [savingCurrency, setSavingCurrency] = useState<string | null>(null);
 
   // Navigation mode (sidebar or bottom bar — mobile only)
-  const [navMode, setNavMode] = useNavMode();
   // Inside the browser shell the navigation-mode row is replaced by the bookmarks bar toggle (desktop).
-  const shellInfo = useShellInfo();
-  const [barVisible, setBarVisible] = useBookmarksBarVisible();
 
   // Store machine mode (per-device: restricts app to POS / Inventory / Punch-in)
   const [storeMachine, setStoreMachine] = useStoreMachineMode();
@@ -372,50 +332,17 @@ export default function SettingsPage() {
   const [manageDeviceTarget, setManageDeviceTarget] = useState<StoreDeviceRow | null>(null);
   const [manageDeviceNameInput, setManageDeviceNameInput] = useState("");
 
-  // Punch-in code reset dialog (managers/team.edit resetting another member's code)
-  const [resetCodeMember, setResetCodeMember] = useState<OrgMember | null>(null);
-  const [resetCodeInput, setResetCodeInput] = useState("");
-  const [resettingCode, setResettingCode] = useState(false);
-  const [editingMember, setEditingMember] = useState<EditMemberInput | null>(null);
-
-  const [langDialogOpen, setLangDialogOpen] = useState(false);
   const [locationsDialog, setLocationsDialog] = useState(false);
   const [locationRows] = useLocations();
 
-  // My own punch-in code dialog
-  const [myCodeDialog, setMyCodeDialog] = useState(false);
-  const [myCodeInput, setMyCodeInput] = useState("");
-  const [savingMyCode, setSavingMyCode] = useState(false);
   const stdb = useSpacetimeDB();
   const identityString = stdb?.identity?.toString() ?? null;
   const [memberRows] = useTable(tables.orgMember);
   const [userRows] = useTable(tables.user);
-  const myMember = (memberRows as unknown as Array<{
-    id: { toString(): string };
-    userId: { toString(): string };
-    organizationId: string;
-    status: string;
-  }>).find(
-    (m) =>
-      identityString &&
-      m.userId.toString() === identityString &&
-      m.organizationId === organizationId &&
-      m.status === "active",
-  );
-  // Punch-in codes live in `member_punch_code`, whose RLS rule is
-  // `userId = :sender`, so this subscription only ever contains the current
-  // user's own code. Showing a colleague's is no longer possible — and that is
-  // the point: the same 4 digits unlock the store tablet.
-  const [punchCodeRows] = useTable(tables.memberPunchCode);
-  const myCode = useMemo(() => {
-    const mine = (punchCodeRows ?? []).find(
-      (c) =>
-        identityString &&
-        c.userId.toString() === identityString &&
-        c.organizationId === organizationId,
-    );
-    return typeof mine?.code === "string" && mine.code.length > 0 ? mine.code : null;
-  }, [punchCodeRows, identityString, organizationId]);
+  // Whether THIS user has a punch-in code. Setting one moved to the team page,
+  // where a manager can also give a colleague theirs; here it only gates
+  // store-machine mode, which needs a PIN to unlock the device again.
+  const { code: myCode } = usePunchCode();
 
   useEffect(() => {
     if (!identityString) return;
@@ -520,9 +447,10 @@ export default function SettingsPage() {
     const dialogMap: Record<string, () => void> = {
       "Availability": () => setAvailDialog(true),
       "Time Off": () => setTimeOffDialog(true),
-      "Team": () => setTeamDialog(true),
-      "Invite": () => setInviteDialog(true),
-      "Punch-in code": () => { setMyCodeInput(""); setMyCodeDialog(true); },
+      // Team, invitations and punch-in codes are all on the team page now.
+      "Team": () => router.push("/manager/personnel/team"),
+      "Invite": () => router.push("/manager/personnel/team"),
+      "Punch-in code": () => router.push("/manager/personnel/team"),
     };
 
     // Clear URL first
@@ -598,6 +526,22 @@ export default function SettingsPage() {
       };
       toast.error(messages[err!] ?? t("settings.scheduleErrDefault"));
     }
+
+    // Strip the OAuth-return params. They used to stay in the URL, so the
+    // toast fired and /api/square/oauth/locations was re-fetched on every
+    // re-render of this effect, and again on any Back navigation to the same
+    // entry — the ?dialogs= effect above already does this correctly.
+    const RETURN_PARAMS = [
+      "connected", "error", "pickLocation",
+      "clover_connected", "clover_error",
+      "schedule_connected", "schedule_error",
+    ];
+    if (typeof window !== "undefined" && RETURN_PARAMS.some((k) => searchParams.get(k) != null)) {
+      const url = new URL(window.location.href);
+      for (const key of RETURN_PARAMS) url.searchParams.delete(key);
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const fetchLocations = async () => {
@@ -687,25 +631,43 @@ export default function SettingsPage() {
     );
   };
 
-  // Persist payment-related settings (tax rate + currency) through the
-  // updateSettings reducer. All reducer-required fields are passed so the
-  // delete+insert in the reducer never clobbers existing values.
+  /**
+   * Persist payment-related settings (tax rate + currency).
+   *
+   * `updateSettings` is a delete+insert, so whatever is sent BECOMES the row.
+   * This used to build the payload out of the form's local state — which is
+   * only filled in by the sync effect once the settings row has streamed in.
+   * Change the currency before that (a deep link to /manager/settings on a
+   * slow connection is enough) and the org's business name was cleared, its
+   * timezone reset to America/Los_Angeles and its tax rate to 0%, under a
+   * "saved" toast.
+   *
+   * Now: refuse to write until the row is known, and build the payload from
+   * that row, overriding only the field being changed.
+   */
   const persistPaymentSettings = async (next: { taxRate?: number; currency?: string }) => {
     if (!userId) return;
+    if (loading || !settings) {
+      toast.error(t("settings.toastSettingsNotLoaded"));
+      return;
+    }
     await upsertSettings(userId, {
-      businessName: businessName || undefined,
-      businessType: settings?.businessType || undefined,
-      timezone,
-      paymentTaxRate: next.taxRate ?? (parseFloat(paymentTaxRate) || 0),
-      paymentCurrency: next.currency ?? paymentCurrency ?? "USD",
-      locationLatitude: locationLatitude || undefined,
-      locationLongitude: locationLongitude || undefined,
-      googlePlacesId: googlePlacesId || undefined,
+      businessName: settings.businessName || undefined,
+      businessType: settings.businessType || undefined,
+      timezone: settings.timezone,
+      paymentTaxRate: next.taxRate ?? settings.paymentTaxRate ?? 0,
+      paymentCurrency: next.currency ?? settings.paymentCurrency ?? "USD",
+      locationLatitude: settings.locationLatitude || undefined,
+      locationLongitude: settings.locationLongitude || undefined,
+      googlePlacesId: settings.googlePlacesId || undefined,
     });
   };
 
   const handleSavePaymentSettings = async () => {
     if (!userId) return;
+    // Same reasoning as the currency row: the reducer only checks
+    // `settings.view`, which every staff member has.
+    if (!isAdmin) return;
     setSavingPayment(true);
     try {
       await persistPaymentSettings({ taxRate: parseFloat(paymentTaxRate) || 0 });
@@ -718,6 +680,7 @@ export default function SettingsPage() {
   };
 
   const handleSelectCurrency = async (code: string) => {
+    if (!isAdmin) return;
     setSavingCurrency(code);
     setPaymentCurrency(code);
     try {
@@ -786,48 +749,6 @@ export default function SettingsPage() {
       toast.error(t("settings.avatarUploadFailed"));
     } finally {
       setUploadingAvatar(false);
-    }
-  };
-
-  const handleStoreLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !organizationId) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error(t("components.imageUpload.unsupportedType"));
-      return;
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error(t("components.imageUpload.fileTooLarge"));
-      return;
-    }
-
-    setUploadingStoreLogo(true);
-    try {
-      const [res] = await uploadFiles("avatar", { files: [file] });
-      await updateOrgLogo(organizationId, res.ufsUrl);
-      hapticSuccess();
-      toast.success(t("settings.storeImageSaved"));
-    } catch (err) {
-      console.error("Store image upload failed:", err);
-      toast.error(t("settings.storeImageFailed"));
-    } finally {
-      setUploadingStoreLogo(false);
-    }
-  };
-
-  const handleStoreLogoRemove = async () => {
-    if (!organizationId) return;
-    setUploadingStoreLogo(true);
-    try {
-      await updateOrgLogo(organizationId, null);
-      hapticSuccess();
-      toast.success(t("settings.storeImageSaved"));
-    } catch (err) {
-      console.error("Store image remove failed:", err);
-      toast.error(t("settings.storeImageFailed"));
-    } finally {
-      setUploadingStoreLogo(false);
     }
   };
 
@@ -1000,96 +921,6 @@ export default function SettingsPage() {
     t("availability.daySat"),
   ];
 
-  const loadTeam = async () => {
-    if (!organizationId) return;
-    setTeamLoading(true);
-    try {
-      const [mems, invs] = await Promise.all([
-        getTeamMembers(organizationId),
-        getInvitations(organizationId),
-      ]);
-      setTeamMembers(mems);
-      setTeamInvitations(invs);
-    } catch (err) {
-      console.error("Load team failed:", err);
-    } finally {
-      setTeamLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (teamDialog) loadTeam();
-  }, [teamDialog]);
-
-  const handleInvite = async () => {
-    const email = inviteEmail.trim();
-    if (!email) return;
-    if (!organizationId) return;
-    setInviting(true);
-    try {
-      await inviteToOrg({
-        email,
-        role: inviteRole,
-        permissions: JSON.stringify(invitePerms),
-      });
-
-      // Find the freshly-created invitation token and send the email.
-      // Retry briefly in case the SpacetimeDB subscription hasn't caught up yet.
-      let token: string | null = null;
-      for (let attempt = 0; attempt < 10 && !token; attempt++) {
-        await new Promise((r) => setTimeout(r, 150));
-        const fresh = await getInvitations(organizationId);
-        const matches = fresh.filter(
-          (inv) => inv.email.toLowerCase() === email.toLowerCase() && !inv.acceptedAt,
-        );
-        // Prefer the latest-expiring match (later expiresAt = more recently created)
-        const match = matches.sort(
-          (a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime(),
-        )[0];
-        if (match) token = match.token;
-      }
-
-      if (token) {
-        try {
-          const res = await fetch("/api/team/send-invite-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              to: email,
-              token,
-              orgName: businessName || "your team",
-              inviterEmail: userEmail || "a teammate",
-              role: inviteRole,
-              phone: invitePhone.trim() || undefined,
-            }),
-          });
-          if (!res.ok) {
-            const { error } = await res.json().catch(() => ({ error: "email error" }));
-            toast.warning(`${t("settings.toastInviteEmailFailedPrefix")} ${error}`);
-          } else {
-            toast.success(t("settings.toastInvitationSent"));
-          }
-        } catch (emailErr) {
-          console.error("Invite email failed:", emailErr);
-          toast.warning(t("settings.toastInviteEmailFailed"));
-        }
-      } else {
-        toast.warning(t("settings.toastInviteNoToken"));
-      }
-
-      setInviteDialog(false);
-      setInviteEmail("");
-      setInvitePhone("");
-      setInviteRole("staff");
-      setInvitePerms(defaultPermissions());
-      loadTeam();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("settings.toastFailedSendInvitation"));
-    } finally {
-      setInviting(false);
-    }
-  };
-
   const handleSaveHours = async () => {
     if (!organizationId) return;
     setSavingHours(true);
@@ -1130,6 +961,9 @@ export default function SettingsPage() {
     try {
       const days = availForm.dayTimes.map((dt) => dt.enabled);
       const allFullDay = availForm.dayTimes.every((dt) => dt.fullDay || !dt.enabled);
+      // NOTE: this editor never loads the member's existing availability row
+      // (getMyAvailability is imported here and never called), so it always
+      // inserts a new one. The staffing page's editor does pass the id.
       await upsertAvailability({
         userId, organizationId: organizationId!,
         type: availForm.type,
@@ -1172,18 +1006,8 @@ export default function SettingsPage() {
     }
   };
 
-  // ─── Notification toggle states (local-only, mobile only) ──────────
-  const [shiftReminders, setShiftReminders] = useState(true);
-  const [lowStockAlerts, setLowStockAlerts] = useState(true);
-  const [weeklySummary, setWeeklySummary] = useState(false);
-  const push = usePushNotifications();
-  const isTauri = useIsNativeShell();
-  const [tauriPushEnabled, setTauriPushEnabled] = useState(false);
-  useEffect(() => {
-    if (isTauri) setTauriPushEnabled(tauriNotificationsPref.isEnabled());
-  }, [isTauri]);
-  const [themeMode, applyThemeMode] = useThemeMode();
-  type SubPanel = "workspace" | "personal" | "team" | "integrations" | "ai" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "multistore" | null;
+  const [themeMode] = useThemeMode();
+  type SubPanel = "workspace" | "personal" | "integrations" | "ai" | "notifications" | "preferences" | "device" | "data" | "about" | "security" | "usage" | "storeprofile" | null;
   const [subPanel, setSubPanel] = useState<SubPanel>(null);
   const assistantPermissionMode = !assistantConfig.enabled
     ? "off"
@@ -1219,11 +1043,6 @@ export default function SettingsPage() {
   };
 
   // ─── Multi-store state ──────────────────────────────────────────────────
-  const rootOrg = msShareGroupOrgs.find((o) => !o.parentOrgId) ?? null;
-  const subStores = msShareGroupOrgs.filter((o) => !!o.parentOrgId);
-  const eligibleParentsForAttach = (orgRows ?? []).filter((o) => !o.parentOrgId && o.id.toString() !== organizationId);
-  const [msAttachingTo, setMsAttachingTo] = useState<string>("");
-  const [msSaving, setMsSaving] = useState(false);
 
   // Shared dialog rendering used by the main mobile-first layout
   function renderDialogs() {
@@ -1468,271 +1287,6 @@ export default function SettingsPage() {
           </DynamicUIElementContent>
         </DynamicUIElement>
 
-        {/* ─── Team DynamicUIElement ──────────────────────────────────── */}
-        <DynamicUIElement open={teamDialog} onOpenChange={setTeamDialog}>
-          <DynamicUIElementContent noPadding>
-            <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("settings.teamDialogMobileTitle")}>{t("settings.teamDialogTitle")}</DynamicUIElementTitle>
-              <DynamicUIElementDescription className="hidden">{t("settings.teamDialogDesc")}</DynamicUIElementDescription>
-            </DynamicUIElementHeader>
-            <div className="flex flex-col h-full">
-              {teamLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Spinner size={24} className="text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto">
-                  {/* Active members */}
-                  <div className="bg-muted/40 px-4 py-2">
-                    <Eyebrow>
-                      {t("settings.activeLabel")} · {teamMembers.filter((m) => m.status === "active").length}
-                    </Eyebrow>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {teamMembers.filter((m) => m.status === "active").map((m) => (
-                      <div key={m.id} className="flex items-center gap-3 px-4 py-3">
-                        <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
-                          {(m.displayName || "?")[0].toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {m.displayName || m.email}
-                            {m.userId === userId && <span className="text-xs text-muted-foreground ml-1">{t("settings.youParenthetical")}</span>}
-                          </p>
-                          {m.email && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
-                        </div>
-                        <Badge variant={m.role === "owner" ? "default" : "secondary"} className="text-[10px] capitalize shrink-0">
-                          {m.role}
-                        </Badge>
-                        {canEditTeam && m.userId !== userId && (
-                          <Button
-                            variant="link"
-                            size="xs"
-                            className="shrink-0 px-0 text-muted-foreground"
-                            onClick={() => { setResetCodeMember(m); setResetCodeInput(""); }}
-                          >
-                            {t("settings.resetCode")}
-                          </Button>
-                        )}
-                        {canEditTeam && m.role !== "owner" && m.userId !== userId && (
-                          <Button
-                            variant="link"
-                            size="xs"
-                            className="shrink-0 px-0 text-muted-foreground"
-                            onClick={() => {
-                              // Raw role: custom staff-role names must survive a save.
-                              const role = String(m.role || "staff");
-                              const perms: Permissions = { ...defaultPermissions(), ...(m.permissions ?? {}) } as Permissions;
-                              setEditingMember({
-                                id: m.id,
-                                displayName: m.displayName || m.email || "",
-                                email: m.email || "",
-                                role,
-                                perms,
-                              });
-                            }}
-                          >
-                            {t("settings.edit")}
-                          </Button>
-                        )}
-                        {m.role !== "owner" && m.userId !== userId && (
-                          <Button
-                            variant="link"
-                            size="xs"
-                            className="shrink-0 px-0 text-destructive"
-                            onClick={async () => {
-                              await removeMember(m.id);
-                              setTeamMembers((prev) => prev.filter((x) => x.id !== m.id));
-                            }}
-                          >
-                            {t("settings.remove")}
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Pending invitations */}
-                  {teamInvitations.length > 0 && (
-                    <>
-                      <div className="bg-muted/40 px-4 py-2">
-                        <Eyebrow>
-                          {t("settings.pending")} · {teamInvitations.length}
-                        </Eyebrow>
-                      </div>
-                      <div className="divide-y divide-border">
-                        {teamInvitations.map((inv) => (
-                          <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
-                            <div className="relative h-9 w-9 rounded-full bg-muted flex items-center justify-center text-sm text-muted-foreground shrink-0">
-                              @
-                              <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-amber-500 border-2 border-background flex items-center justify-center">
-                                <Clock className="h-2 w-2 text-white" strokeWidth={3} />
-                              </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{inv.email}</p>
-                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <StatusBadge tone="warning" size="xs" className="gap-1">
-                                  <Clock className="h-2.5 w-2.5" />
-                                  {t("settings.pendingAcceptance")}
-                                </StatusBadge>
-                                <span className="text-[11px] text-muted-foreground">
-                                  {t("settings.expiresOn")} {new Date(inv.expiresAt).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                            <Badge variant="secondary" className="text-[10px] capitalize shrink-0">{inv.role}</Badge>
-                            <Button
-                              variant="link"
-                              size="xs"
-                              className="shrink-0 px-0 text-foreground"
-                              onClick={async () => {
-                                try {
-                                  const res = await fetch("/api/team/send-invite-email", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      to: inv.email,
-                                      token: inv.token,
-                                      orgName: businessName || "your team",
-                                      inviterEmail: userEmail || "a teammate",
-                                      role: inv.role,
-                                    }),
-                                  });
-                                  if (res.ok) {
-                                    hapticSuccess();
-                                    toast.success(t("settings.toastInvitationSent"));
-                                  } else {
-                                    toast.error(t("settings.toastInviteEmailFailedPrefix"));
-                                  }
-                                } catch {
-                                  toast.error(t("settings.toastInviteEmailFailedPrefix"));
-                                }
-                              }}
-                            >
-                              {t("settings.resend")}
-                            </Button>
-                            <Button
-                              variant="link"
-                              size="xs"
-                              className="shrink-0 px-0 text-destructive"
-                              onClick={async () => {
-                                await cancelInvitation(inv.id);
-                                setTeamInvitations((prev) => prev.filter((x) => x.id !== inv.id));
-                              }}
-                            >
-                              {t("settings.cancel")}
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Invite button */}
-                  <div className="p-4">
-                    <Button
-                      onClick={() => setInviteDialog(true)}
-                      variant="outline"
-                      className="w-full gap-2"
-                    >
-                      <UserPlus className="h-4 w-4" /> {t("settings.inviteMember")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </DynamicUIElementContent>
-        </DynamicUIElement>
-
-        {/* ─── Invite Member DynamicUIElement ─────────────────────────── */}
-        <DynamicUIElement open={inviteDialog} onOpenChange={setInviteDialog}>
-          <DynamicUIElementContent>
-            <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("settings.inviteDialogMobileTitle")}>{t("settings.inviteDialogTitle")}</DynamicUIElementTitle>
-              <DynamicUIElementDescription>{t("settings.inviteDialogDesc")}</DynamicUIElementDescription>
-            </DynamicUIElementHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>{t("settings.email")}</Label>
-                <Input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder={t("settings.colleagueEmailPlaceholder")}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("settings.phoneOptional")}</Label>
-                <div className="relative">
-                  <Phone className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <Input
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={invitePhone}
-                    onChange={(e) => setInvitePhone(e.target.value)}
-                    placeholder={t("settings.phonePlaceholder")}
-                    className="pl-9"
-                  />
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">
-                  {t("settings.phoneInviteHint")}
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("settings.role")}</Label>
-                <SegmentedControl
-                  fullWidth
-                  aria-label={t("settings.role")}
-                  value={inviteRole}
-                  onChange={setInviteRole}
-                  options={(["staff", "manager"] as const).map((r) => ({ value: r, label: <span className="capitalize">{t(r === "staff" ? "settings.roleStaff" : "settings.roleManager")}</span> }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("settings.permissions")}</Label>
-                <div className="space-y-0.5">
-                  {([
-                    { key: "dashboard" as const, label: t("settings.permDashboard"), actions: ["view"] as const },
-                    { key: "inventory" as const, label: t("settings.permInventory"), actions: ["view", "edit"] as const },
-                    { key: "sales" as const, label: t("settings.permSales"), actions: ["view"] as const },
-                    { key: "staffing" as const, label: t("settings.permStaffing"), actions: ["view", "edit"] as const },
-                    { key: "products" as const, label: t("settings.permProducts"), actions: ["view", "edit"] as const },
-                    { key: "settings" as const, label: t("settings.permSettings"), actions: ["view"] as const },
-                    { key: "team" as const, label: t("settings.permTeam"), actions: ["view", "invite", "edit"] as const },
-                    { key: "training_grading" as const, label: t("settings.permTrainingGrading"), actions: ["view", "edit"] as const },
-                    { key: "merchiva" as const, label: t("settings.permMerchiva"), actions: ["view"] as const },
-                  ]).map(({ key, label, actions }) => (
-                    <div key={key} className="flex items-center gap-3 px-1 py-1.5 rounded hover:bg-muted/50">
-                      <span className="text-sm flex-1">{label}</span>
-                      {actions.map((action) => (
-                        <Label key={action} className="cursor-pointer gap-1 text-xs font-normal capitalize text-muted-foreground">
-                          <Checkbox
-                            checked={invitePerms[key]?.[action] === true}
-                            onCheckedChange={() => {
-                              const sec: { view: boolean; edit?: boolean; invite?: boolean } = { ...invitePerms[key] };
-                              sec[action] = !sec[action];
-                              if (action === "view" && !sec.view) { sec.edit = false; sec.invite = false; }
-                              if ((action === "edit" || action === "invite") && sec[action]) sec.view = true;
-                              setInvitePerms({ ...invitePerms, [key]: sec });
-                            }}
-                            className="size-3.5"
-                          />
-                          {t(action === "view" ? "settings.actionView" : action === "edit" ? "settings.actionEdit" : "settings.actionInvite")}
-                        </Label>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="w-full">
-                {inviting ? <Spinner size={16} /> : t("settings.sendInvitation")}
-              </Button>
-            </div>
-          </DynamicUIElementContent>
-        </DynamicUIElement>
-
         {/* ─── Device Name DynamicUIElement ──────────────────────────────── */}
         <DynamicUIElement open={deviceNameDialog} onOpenChange={setDeviceNameDialog}>
           <DynamicUIElementContent>
@@ -1867,164 +1421,6 @@ export default function SettingsPage() {
           </DynamicUIElementContent>
         </DynamicUIElement>
 
-        {/* ─── My Punch-in Code DynamicUIElement ─────────────────────────── */}
-        <DynamicUIElement open={myCodeDialog} onOpenChange={setMyCodeDialog}>
-          <DynamicUIElementContent>
-            <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("settings.punchInCodeMobileTitle")}>
-                {myCode ? t("settings.changePunchCode") : t("settings.setPunchCode")}
-              </DynamicUIElementTitle>
-              <DynamicUIElementDescription>
-                {myCode
-                  ? t("settings.updatePunchCodeDesc")
-                  : t("settings.setPunchCodeDesc")}
-              </DynamicUIElementDescription>
-            </DynamicUIElementHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>{t("settings.newCode")}</Label>
-                <Input
-                  value={myCodeInput}
-                  onChange={(e) => setMyCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  inputMode="numeric"
-                  placeholder={t("settings.fourDigitsPlaceholder")}
-                  className="h-11 font-mono text-base tracking-[0.3em]"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={async () => {
-                    if (!myMember) { toast.error(t("settings.toastNotMemberOfStore")); return; }
-                    if (!/^[0-9]{4}$/.test(myCodeInput)) { toast.error(t("settings.toastCodeMustBe4")); return; }
-                    setSavingMyCode(true);
-                    try {
-                      await setPunchInCode(myMember.id.toString(), myCodeInput);
-                      hapticSuccess();
-                      toast.success(t("settings.toastCodeSaved"));
-                      setMyCodeDialog(false);
-                      setMyCodeInput("");
-                    } catch (err) {
-                      toast.error(err instanceof Error ? err.message : t("settings.toastFailedSaveCode"));
-                    } finally {
-                      setSavingMyCode(false);
-                    }
-                  }}
-                  disabled={savingMyCode || myCodeInput.length < 4}
-                  className="flex-1"
-                >
-                  {savingMyCode ? <Spinner size={16} /> : t("settings.save")}
-                </Button>
-                {myCode && (
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      if (!myMember) return;
-                      setSavingMyCode(true);
-                      try {
-                        await setPunchInCode(myMember.id.toString(), null);
-                        toast.success(t("settings.toastCodeCleared"));
-                        setMyCodeDialog(false);
-                        setMyCodeInput("");
-                      } catch (err) {
-                        toast.error(err instanceof Error ? err.message : t("settings.toastFailedClearCode"));
-                      } finally {
-                        setSavingMyCode(false);
-                      }
-                    }}
-                    disabled={savingMyCode}
-                  >
-                    {t("settings.clear")}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </DynamicUIElementContent>
-        </DynamicUIElement>
-
-        {/* ─── Edit Member (role + permissions) ──────────────────────────── */}
-        <EditMemberDialog
-          member={editingMember}
-          onClose={() => {
-            setEditingMember(null);
-            // refresh team list so updated role/permissions are visible
-            loadTeam();
-          }}
-        />
-
-        {/* ─── Reset Punch-in Code DynamicUIElement ──────────────────────── */}
-        <DynamicUIElement open={!!resetCodeMember} onOpenChange={(o) => { if (!o) setResetCodeMember(null); }}>
-          <DynamicUIElementContent>
-            <DynamicUIElementHeader>
-              <DynamicUIElementTitle mobileTitle={t("settings.resetCodeMobileTitle")}>{t("settings.resetPunchCodeTitle")}</DynamicUIElementTitle>
-              <DynamicUIElementDescription>
-                {resetCodeMember?.displayName || resetCodeMember?.email
-                  ? <>{t("settings.setNewCodeFor")} <span className="font-medium">{resetCodeMember.displayName || resetCodeMember.email}</span>{t("settings.setNewCodePeriod")}</>
-                  : t("settings.setNewCode")}
-              </DynamicUIElementDescription>
-            </DynamicUIElementHeader>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>{t("settings.newCodeFourDigitsLabel")}</Label>
-                <Input
-                  value={resetCodeInput}
-                  onChange={(e) => setResetCodeInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  inputMode="numeric"
-                  placeholder={t("settings.codeDigitsExample")}
-                  className="h-11 font-mono text-base tracking-[0.3em]"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={async () => {
-                    if (!resetCodeMember) return;
-                    if (!/^[0-9]{4}$/.test(resetCodeInput)) {
-                      toast.error(t("settings.toastCodeMustBe4"));
-                      return;
-                    }
-                    setResettingCode(true);
-                    try {
-                      await setPunchInCode(resetCodeMember.id, resetCodeInput);
-                      toast.success(t("settings.toastCodeReset"));
-                      setResetCodeMember(null);
-                      setResetCodeInput("");
-                    } catch (err) {
-                      toast.error(err instanceof Error ? err.message : t("settings.toastFailedResetCode"));
-                    } finally {
-                      setResettingCode(false);
-                    }
-                  }}
-                  disabled={resettingCode || resetCodeInput.length < 4}
-                  className="flex-1"
-                >
-                  {resettingCode ? <Spinner size={16} /> : t("settings.save")}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (!resetCodeMember) return;
-                    setResettingCode(true);
-                    try {
-                      await setPunchInCode(resetCodeMember.id, null);
-                      toast.success(t("settings.toastCodeCleared"));
-                      setResetCodeMember(null);
-                      setResetCodeInput("");
-                    } catch (err) {
-                      toast.error(err instanceof Error ? err.message : t("settings.toastFailedClearCode"));
-                    } finally {
-                      setResettingCode(false);
-                    }
-                  }}
-                  disabled={resettingCode}
-                >
-                  {t("settings.clear")}
-                </Button>
-              </div>
-            </div>
-          </DynamicUIElementContent>
-        </DynamicUIElement>
-
         {/* ─── Locations DynamicUIElement ───────────────────────── */}
         <DynamicUIElement open={locationsDialog} onOpenChange={setLocationsDialog}>
           <DynamicUIElementContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -2061,116 +1457,6 @@ export default function SettingsPage() {
     (settings?.squareConnected ? 1 : 0) +
     (settings?.cloverConnected ? 1 : 0) +
     (scheduleConnected ? 1 : 0);
-
-  // ─── Helper: SRow ──────────────────────────────────────────────
-  const SRow = ({
-    icon,
-    title,
-    meta,
-    right,
-    onClick,
-    isFirst,
-    card,
-  }: {
-    icon: React.ReactNode;
-    title: string;
-    meta?: string;
-    right?: React.ReactNode;
-    onClick?: () => void;
-    isFirst?: boolean;
-    isCard?: boolean;
-    card?: boolean;
-  }) => {
-    const Wrapper = onClick ? "button" : "div";
-    // Mobile: list rows separated by border-t. lg + card: each row is a standalone bordered card.
-    const baseBorder = `${isFirst ? "" : "border-t border-border"} ${card ? " lg:pt-6 lg:flex-col lg:items-start lg:border lg:border-border lg:rounded" : ""}`;
-    const interactive = onClick ? "transition-colors active:bg-muted/40 lg:hover:bg-muted/40" : "";
-    return (
-      <Wrapper
-        onClick={onClick}
-        className={`flex items-center gap-3 px-[18px] py-3.5 w-full text-left ${card && " lg:pt-6 lg:flex-col lg:items-start"} ${baseBorder} ${interactive}`}
-      >
-        <IconTile>{icon}</IconTile>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground">{title}</p>
-          {meta && <p className="text-xs text-muted-foreground mt-0.5 truncate">{meta}</p>}
-        </div>
-        <div className={cn("flex justify-end items-end gap-2 shrink-0",card && "lg:w-full")}>
-          {right}
-          {onClick && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-        </div>
-      </Wrapper>
-    );
-  };
-
-  // ─── Helper: SToggleRow ────────────────────────────────────────
-  const SToggleRow = ({
-    icon,
-    title,
-    meta,
-    checked,
-    onChange,
-    isFirst,
-    disabled,
-  }: {
-    icon: React.ReactNode;
-    title: string;
-    meta?: string;
-    checked: boolean;
-    onChange: () => void;
-    isFirst?: boolean;
-    disabled?: boolean;
-  }) => (
-    <div className={`flex items-center gap-3 px-[18px] py-3.5 w-full ${isFirst ? "" : "border-t border-border"} ${disabled ? "opacity-60" : ""}`}>
-      <IconTile>{icon}</IconTile>
-      <div className="flex-1">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        {meta && <p className="text-xs text-muted-foreground mt-0.5">{meta}</p>}
-      </div>
-      <Switch
-        checked={checked}
-        disabled={disabled}
-        aria-label={`Toggle ${title}`}
-        onCheckedChange={() => {
-          if (disabled) return;
-          hapticSuccess();
-          onChange();
-        }}
-      />
-    </div>
-  );
-
-  // ─── Helper: SGroup header ─────────────────────────────────────
-  const SGroupHeader = ({ label }: { label: string }) => (
-    <div className="px-[18px] pt-5 pb-1.5 border-b border-border">
-      <Eyebrow>{label}</Eyebrow>
-    </div>
-  );
-
-  const SCategoryHeader = ({ children }: { children: React.ReactNode }) => (
-    <div className="px-[18px] pt-5 pb-1.5 lg:col-span-2 xl:col-span-3 lg:px-0 lg:pt-3 lg:pb-0">
-      <Eyebrow>{children}</Eyebrow>
-    </div>
-  );
-
-  // ─── Helper: Badge ─────────────────────────────────────────────
-  const SBadge = ({
-    children,
-    tone = "default",
-  }: {
-    children: React.ReactNode;
-    tone?: "default" | "outline" | "ok" | "warn";
-  }) => {
-    const statusTone: StatusTone = tone === "ok" ? "success" : tone === "warn" ? "warning" : "neutral";
-    return (
-      <StatusBadge
-        tone={statusTone}
-        className={cn("px-1.5 text-[11px]", tone === "default" && "text-foreground", tone === "outline" && "bg-background text-foreground")}
-      >
-        {children}
-      </StatusBadge>
-    );
-  };
 
   return (
     <>
@@ -2248,10 +1534,7 @@ export default function SettingsPage() {
                     <StoreLogo name={org.name} logoUrl={org.logoUrl} className="h-9 w-9" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{org.name}</p>
-                      {org.parentOrgId && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{t("multiStore.subBadge")}</p>
-                      )}
-                      {isCurrent && !org.parentOrgId && (
+                      {isCurrent && (
                         <p className="text-xs text-muted-foreground mt-0.5">{t("settings.currentStore")}</p>
                       )}
                     </div>
@@ -2275,9 +1558,7 @@ export default function SettingsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">{t("nav.createNewStore")}</p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {organizations.some((o) => !o.parentOrgId)
-                        ? t("multiStore.drawerAddHint")
-                        : t("multiStore.parentHelpRoot")}
+                      {t("settings.createStoreHint")}
                     </p>
                   </div>
                 </button>
@@ -2293,32 +1574,6 @@ export default function SettingsPage() {
                     placeholder={t("nav.storeName")}
                     className="h-9 text-sm"
                   />
-                  {organizations.some((o) => !o.parentOrgId) && (
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">
-                        {t("multiStore.parentLabel")}
-                      </Label>
-                      <Select
-                        value={drawerParentId ?? "__none__"}
-                        onValueChange={(v) => setDrawerParentId(v && v !== "__none__" ? v : null)}
-                      >
-                        <SelectTrigger className="h-9 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">{t("multiStore.parentNone")}</SelectItem>
-                          {organizations
-                            .filter((o) => !o.parentOrgId)
-                            .map((p) => (
-                              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        {drawerParentId ? t("multiStore.parentHelpSub") : t("multiStore.parentHelpRoot")}
-                      </p>
-                    </div>
-                  )}
                   {drawerCreateError && (
                     <p className="text-xs text-destructive">{drawerCreateError}</p>
                   )}
@@ -2450,8 +1705,8 @@ export default function SettingsPage() {
           <SRow
             icon={<Users className="h-4 w-4 text-foreground" />}
             title={t("settings.groupTeamAccess")}
-            meta={`${activeStaffCount} ${t("settings.membersSuffix")}`}
-            onClick={() => setSubPanel("team")}
+            meta={t("settings.teamOnTeamPage")}
+            onClick={() => router.push("/manager/personnel/team")}
             right={<SBadge>{String(activeStaffCount)}</SBadge>}
             card
           />
@@ -2474,16 +1729,9 @@ export default function SettingsPage() {
         {isAdmin && (
           <SRow
             icon={<Building2 className="h-4 w-4 text-foreground" />}
-            title={t("multiStore.settings.cardTitle")}
-            meta={
-              msIsSubStore
-                ? t("multiStore.settings.cardMetaSub").replace("{parent}", rootOrg?.name ?? "")
-                : subStores.length > 0
-                  ? t("multiStore.settings.cardMetaParent").replace("{count}", String(subStores.length))
-                  : t("multiStore.settings.cardMetaSolo")
-            }
-            onClick={() => setSubPanel("multistore")}
-            right={subStores.length > 0 ? <SBadge>{String(subStores.length)}</SBadge> : undefined}
+            title={t("settings.storeImage")}
+            meta={t("settings.storeImageHint")}
+            onClick={() => setSubPanel("storeprofile")}
             card
           />
         )}
@@ -2628,6 +1876,22 @@ export default function SettingsPage() {
               {savingPersonal ? <Spinner size={14} /> : t("settings.savePersonal")}
             </Button>
           </div>
+          <div>
+            <SRow
+              icon={<Clock className="h-4 w-4 text-foreground" />}
+              title={t("settings.scheduleRules")}
+              meta={t("settings.availabilityAndTimeOff")}
+              onClick={() => setAvailDialog(true)}
+              isFirst
+            />
+            <SRow
+              icon={<KeyRound className="h-4 w-4 text-foreground" />}
+              title={t("settings.punchInCode")}
+              meta={myCode ? t("settings.codeSet") : t("settings.punchCodeOnTeamPage")}
+              onClick={() => router.push("/manager/personnel/team")}
+              right={myCode ? <SBadge tone="ok">{t("settings.setBadge")}</SBadge> : undefined}
+            />
+          </div>
         </DynamicUIElementContent>
       </DynamicUIElement>
 
@@ -2678,11 +1942,17 @@ export default function SettingsPage() {
               meta={`${t("settings.taxPrefix")} ${paymentTaxRate}% · ${paymentCurrency}`}
               right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{paymentTaxRate}%</span>}
             />
+            {/* Owners and managers only. The org's currency re-denominates
+                every price, total and report for everyone, and the
+                updateSettings reducer only checks `settings.view`, which
+                defaultPermissions() grants to every staff member — so an
+                unguarded tap here was a one-click org-wide change by a
+                cashier. Read-only for everyone else. */}
             <SRow
               icon={<Coins className="h-4 w-4 text-foreground" />}
               title={t("settings.currency")}
               meta={t(getCurrencyInfo(paymentCurrency).labelKey)}
-              onClick={() => setCurrencyDialog(true)}
+              onClick={isAdmin ? () => setCurrencyDialog(true) : undefined}
               right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{getCurrencyInfo(paymentCurrency).symbol} {paymentCurrency}</span>}
             />
           </div>
@@ -2690,37 +1960,6 @@ export default function SettingsPage() {
       </DynamicUIElement>
 
       {/* ─── Team & Access Sub-Panel ─────────────────────────── */}
-      <DynamicUIElement open={subPanel === "team"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("settings.groupTeamAccess")}>{t("settings.groupTeamAccess")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">{t("settings.groupTeamAccess")}</DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div>
-            <SRow
-              icon={<Users className="h-4 w-4 text-foreground" />}
-              title={t("settings.members")}
-              meta={t("settings.manageTeam")}
-              onClick={() => setTeamDialog(true)}
-              right={<SBadge>{String(activeStaffCount)}</SBadge>}
-              isFirst
-            />
-            <SRow
-              icon={<Shield className="h-4 w-4 text-foreground" />}
-              title={t("settings.rolesPermissions")}
-              meta={t("settings.configureAccess")}
-              onClick={() => setTeamDialog(true)}
-            />
-            <SRow
-              icon={<Clock className="h-4 w-4 text-foreground" />}
-              title={t("settings.scheduleRules")}
-              meta={t("settings.availabilityAndTimeOff")}
-              onClick={() => setAvailDialog(true)}
-            />
-          </div>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
-
       {/* ─── Integrations Sub-Panel ─────────────────────────── */}
       <DynamicUIElement open={subPanel === "integrations"} onOpenChange={(open) => !open && setSubPanel(null)}>
         <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
@@ -2963,74 +2202,7 @@ export default function SettingsPage() {
         </DynamicUIElementContent>
       </DynamicUIElement>
 
-      <DynamicUIElement open={subPanel === "notifications"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("settings.groupNotifications")}>{t("settings.groupNotifications")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">{t("settings.groupNotifications")}</DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div>
-            <SToggleRow
-              icon={<Bell className="h-4 w-4 text-foreground" />}
-              title={t("settings.desktopNotifications")}
-              meta={
-                isTauri
-                  ? (tauriPushEnabled
-                      ? (t("settings.desktopEnabled"))
-                      : (t("settings.desktopDisabled")))
-                  : !push.supported
-                  ? (t("settings.desktopUnsupported"))
-                  : push.permission === "denied"
-                  ? (t("settings.desktopBlocked"))
-                  : push.isSubscribed
-                  ? (t("settings.desktopEnabled"))
-                  : (t("settings.desktopDisabled"))
-              }
-              checked={isTauri ? tauriPushEnabled : push.isSubscribed}
-              onChange={() => {
-                if (isTauri) {
-                  const next = !tauriPushEnabled;
-                  if (next) {
-                    void requestTauriNotificationPermission().then((ok) => {
-                      tauriNotificationsPref.setEnabled(ok);
-                      setTauriPushEnabled(ok);
-                    });
-                  } else {
-                    tauriNotificationsPref.setEnabled(false);
-                    setTauriPushEnabled(false);
-                  }
-                  return;
-                }
-                if (push.busy) return;
-                if (push.isSubscribed) push.disable().catch(() => {});
-                else push.enable().catch(() => {});
-              }}
-              isFirst
-            />
-            <SToggleRow
-              icon={<Clock className="h-4 w-4 text-foreground" />}
-              title={t("settings.shiftReminders")}
-              meta={t("settings.beforeShift")}
-              checked={shiftReminders}
-              onChange={() => setShiftReminders(!shiftReminders)}
-            />
-            <SToggleRow
-              icon={<Package className="h-4 w-4 text-foreground" />}
-              title={t("settings.lowStockAlerts")}
-              meta={t("settings.belowThreshold")}
-              checked={lowStockAlerts}
-              onChange={() => setLowStockAlerts(!lowStockAlerts)}
-            />
-            <SToggleRow
-              icon={<Bell className="h-4 w-4 text-foreground" />}
-              title={t("settings.weeklySummary")}
-              meta={t("settings.performanceDigest")}
-              checked={weeklySummary}
-              onChange={() => setWeeklySummary(!weeklySummary)}
-            />
-          </div>
-          </DynamicUIElementContent>
-      </DynamicUIElement>
+      <NotificationsPanel open={subPanel === "notifications"} onOpenChange={(open) => !open && setSubPanel(null)} />
 
       {/* ─── AI Usage Sub-Panel ──────────────────────────────── */}
       <DynamicUIElement open={subPanel === "usage"} onOpenChange={(open) => !open && setSubPanel(null)}>
@@ -3044,106 +2216,7 @@ export default function SettingsPage() {
       </DynamicUIElement>
 
       {/* ─── Preferences Sub-Panel ───────────────────────────── */}
-      <DynamicUIElement open={subPanel === "preferences"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("settings.groupPreferences")}>{t("settings.groupPreferences")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">{t("settings.groupPreferences")}</DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div>
-            {shellInfo?.layout === "desktop" && (
-              <SRow
-                icon={<PanelTop className="h-4 w-4 text-foreground" />}
-                title={t("browserDesktop.bookmarks.showBar")}
-                right={
-                  <Switch
-                    size="sm"
-                    aria-label={t("browserDesktop.bookmarks.showBar")}
-                    checked={barVisible}
-                    onCheckedChange={(v) => { hapticSuccess(); setBarVisible(v); }}
-                  />
-                }
-                isFirst
-              />
-            )}
-            {!shellInfo && (
-              <SRow
-                icon={<PanelLeft className="h-4 w-4 text-foreground" />}
-                title={t("settings.navigationMode")}
-                meta={navMode === "sidebar" ? t("settings.sidebar") : t("settings.bottomBar")}
-                right={
-                  <SegmentedControl
-                    size="sm"
-                    className="shrink-0"
-                    aria-label={t("settings.navigationMode")}
-                    value={navMode}
-                    onChange={(mode) => { hapticSuccess(); setNavMode(mode); }}
-                    options={[
-                      { value: "sidebar" as NavMode, label: t("settings.side") },
-                      { value: "bottombar" as NavMode, label: t("settings.tab") },
-                    ]}
-                  />
-                }
-                isFirst
-              />
-            )}
-            <SRow
-              isFirst={shellInfo?.layout === "mobile"}
-              icon={<Moon className="h-4 w-4 text-foreground" />}
-              title={t("settings.darkMode")}
-              meta={
-                themeMode === "system" ? (t("settings.themeSystem"))
-                : themeMode === "light" ? (t("settings.themeLight"))
-                : (t("settings.themeDark"))
-              }
-              right={
-                <SegmentedControl
-                  size="sm"
-                  className="shrink-0"
-                  aria-label={t("settings.darkMode")}
-                  value={themeMode}
-                  onChange={(mode) => { hapticSuccess(); applyThemeMode(mode); }}
-                  options={[
-                    { value: "system" as ThemeMode, label: t("settings.themeSystem") },
-                    { value: "light" as ThemeMode, label: t("settings.themeLight") },
-                    { value: "dark" as ThemeMode, label: t("settings.themeDark") },
-                  ]}
-                />
-              }
-            />
-            <SRow
-              icon={<Languages className="h-4 w-4 text-foreground" />}
-              title={t("settings.language")}
-              meta={LOCALE_LABELS[locale]}
-              onClick={() => setLangDialogOpen(true)}
-            />
-            <DynamicUIElement open={langDialogOpen} onOpenChange={setLangDialogOpen}>
-              <DynamicUIElementContent className="max-w-sm">
-                <DynamicUIElementHeader>
-                  <DynamicUIElementTitle>{t("settings.language")}</DynamicUIElementTitle>
-                </DynamicUIElementHeader>
-                <div className="space-y-1 py-2">
-                  {LOCALES.map((loc) => (
-                    <OptionRow
-                      key={loc}
-                      selected={locale === loc}
-                      onSelect={() => { setLocale(loc); setLangDialogOpen(false); }}
-                      className="py-2.5"
-                      title={LOCALE_LABELS[loc]}
-                      meta={<span className="text-xs font-mono text-muted-foreground">{loc}</span>}
-                    />
-                  ))}
-                </div>
-              </DynamicUIElementContent>
-            </DynamicUIElement>
-            <SRow
-              icon={<Calendar className="h-4 w-4 text-foreground" />}
-              title={t("settings.weekStartsOn")}
-              meta={t("settings.monday")}
-            />
-          </div>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
+      <PreferencesPanel open={subPanel === "preferences"} onOpenChange={(open) => !open && setSubPanel(null)} />
 
       {/* ─── Device Sub-Panel ────────────────────────────────── */}
       <DynamicUIElement open={subPanel === "device"} onOpenChange={(open) => !open && setSubPanel(null)}>
@@ -3169,8 +2242,7 @@ export default function SettingsPage() {
                 // unlock screen only accepts a member's PIN. Ask for it first.
                 if (!myCode) {
                   toast.info(t("settings.storeMachineNeedsPin"));
-                  setMyCodeInput("");
-                  setMyCodeDialog(true);
+                  router.push("/manager/personnel/team");
                   return;
                 }
                 if (!deviceName) {
@@ -3189,13 +2261,6 @@ export default function SettingsPage() {
               meta={deviceName || t("settings.notSet")}
               onClick={() => { setDeviceNameInput(deviceName); setDeviceNameDialog(true); }}
               right={deviceName ? <span className="text-xs text-muted-foreground font-mono truncate max-w-[100px]">{deviceName}</span> : undefined}
-            />
-            <SRow
-              icon={<KeyRound className="h-4 w-4 text-foreground" />}
-              title={t("settings.punchInCode")}
-              meta={myCode ? t("settings.codeSet") : t("settings.setFourDigit")}
-              onClick={() => { setMyCodeInput(""); setMyCodeDialog(true); }}
-              right={myCode ? <SBadge tone="ok">{t("settings.setBadge")}</SBadge> : undefined}
             />
             {storeMachine && (
               <SRow
@@ -3231,315 +2296,16 @@ export default function SettingsPage() {
       </DynamicUIElement>
 
       {/* ─── Data Sub-Panel ──────────────────────────────────── */}
-      <DynamicUIElement open={subPanel === "data"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("settings.groupData")}>{t("settings.groupData")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">{t("settings.groupData")}</DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div>
-            <SRow
-              icon={<Download className="h-4 w-4 text-foreground" />}
-              title={t("settings.exportData")}
-              meta={t("settings.downloadCSV")}
-              isFirst
-            />
-            <SRow
-              icon={<Activity className="h-4 w-4 text-foreground" />}
-              title={t("settings.activityLog")}
-              meta={t("settings.recentActivity")}
-            />
-          </div>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
+      <DataPanel open={subPanel === "data"} onOpenChange={(open) => !open && setSubPanel(null)} />
 
       {/* ─── About Sub-Panel ─────────────────────────────────── */}
-      <DynamicUIElement open={subPanel === "about"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("settings.groupAbout")}>{t("settings.groupAbout")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">{t("settings.groupAbout")}</DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div>
-            <SRow
-              icon={<Info className="h-4 w-4 text-foreground" />}
-              title={t("settings.aboutAppName")}
-              right={<span className="text-xs text-muted-foreground font-mono tabular-nums">{t("settings.appVersion")}</span>}
-              isFirst
-            />
-            <SRow
-              icon={<FileText className="h-4 w-4 text-foreground" />}
-              title={t("settings.terms")}
-            />
-            <SRow
-              icon={<Shield className="h-4 w-4 text-foreground" />}
-              title={t("settings.privacy")}
-            />
-            <SRow
-              icon={<HelpCircle className="h-4 w-4 text-foreground" />}
-              title={t("settings.helpSupport")}
-            />
-          </div>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
+      <AboutPanel open={subPanel === "about"} onOpenChange={(open) => !open && setSubPanel(null)} />
 
       {/* ─── Multi-Store Sub-Panel ───────────────────────────── */}
-      <DynamicUIElement open={subPanel === "multistore"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md lg:max-w-2xl" noPadding>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("multiStore.settings.title")}>
-              {t("multiStore.settings.title")}
-            </DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">
-              {t("multiStore.settings.description")}
-            </DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div className="px-[18px] py-4 space-y-5">
-            {/* Current store role within the tree */}
-            <div className="rounded-lg border border-border bg-muted/40 p-3">
-              <Eyebrow className="mb-1">{t("multiStore.settings.currentRole")}</Eyebrow>
-              <p className="text-sm font-medium">
-                {msIsSubStore
-                  ? t("multiStore.settings.roleSub").replace("{parent}", rootOrg?.name ?? "")
-                  : subStores.length > 0
-                    ? t("multiStore.settings.roleParent").replace("{count}", String(subStores.length))
-                    : t("multiStore.settings.roleSolo")}
-              </p>
-            </div>
-
-            {/* Store image */}
-            <div className="space-y-2">
-              <Eyebrow>{t("settings.storeImage")}</Eyebrow>
-              <div className="rounded-lg border border-border bg-card p-3 flex items-center gap-3">
-                <StoreLogo name={currentOrg?.name ?? ""} logoUrl={storeLogoUrl} className="h-14 w-14 text-lg" />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <p className="text-xs text-muted-foreground">
-                    {t("settings.storeImageHint")}
-                  </p>
-                  {role === "owner" && (
-                    <div className="flex items-center gap-1.5">
-                      <label className="flex cursor-pointer items-center gap-1.5 rounded border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors">
-                        {uploadingStoreLogo ? <Spinner size={12} /> : null}
-                        {t("settings.storeImageUpload")}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          disabled={uploadingStoreLogo}
-                          onChange={handleStoreLogoUpload}
-                        />
-                      </label>
-                      {storeLogoUrl && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="xs"
-                          className="text-muted-foreground"
-                          disabled={uploadingStoreLogo}
-                          onClick={handleStoreLogoRemove}
-                        >
-                          {t("settings.storeImageRemove")}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Share group list */}
-            <div className="space-y-2">
-              <Eyebrow>{t("multiStore.settings.groupHeader")}</Eyebrow>
-              <div className="rounded-lg border border-border divide-y divide-border bg-card">
-                {msShareGroupOrgs.length === 0 && (
-                  <p className="px-3 py-2 text-sm text-muted-foreground">
-                    {t("multiStore.settings.groupEmpty")}
-                  </p>
-                )}
-                {msShareGroupOrgs.map((o) => {
-                  const isCurrent = o.id === organizationId;
-                  return (
-                    <button
-                      key={o.id}
-                      onClick={() => !isCurrent && switchOrg(o.id)}
-                      disabled={isCurrent}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
-                    >
-                      {o.parentOrgId && <span className="text-muted-foreground/70">↳</span>}
-                      <StoreLogo name={o.name} logoUrl={o.logoUrl} className="h-7 w-7 text-[10px]" />
-                      <span className="flex-1 truncate text-sm font-medium">{o.name}</span>
-                      {!o.parentOrgId && (
-                        <StatusBadge tone="neutral" size="xs">{t("multiStore.settings.parentBadge")}</StatusBadge>
-                      )}
-                      {o.parentOrgId && (
-                        <StatusBadge tone="neutral" size="xs">{t("multiStore.subBadge")}</StatusBadge>
-                      )}
-                      {isCurrent && (
-                        <StatusBadge tone="neutral" size="xs" className="border-foreground/30 bg-background text-foreground">{t("multiStore.settings.thisStore")}</StatusBadge>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Sharing policy summary — fixed, descriptive */}
-            <div className="space-y-2">
-              <Eyebrow>{t("multiStore.settings.policyHeader")}</Eyebrow>
-              <div className="rounded-lg border border-border bg-card divide-y divide-border text-sm">
-                <div className="px-3 py-2 flex items-start gap-2">
-                  <Check className="h-3.5 w-3.5 mt-1 text-emerald-600 shrink-0" />
-                  <div>
-                    <p className="font-medium">{t("multiStore.settings.policySharedTitle")}</p>
-                    <p className="text-xs text-muted-foreground">{t("multiStore.settings.policySharedList")}</p>
-                  </div>
-                </div>
-                <div className="px-3 py-2 flex items-start gap-2">
-                  <Unlink className="h-3.5 w-3.5 mt-1 text-amber-600 shrink-0" />
-                  <div>
-                    <p className="font-medium">{t("multiStore.settings.policyIsolatedTitle")}</p>
-                    <p className="text-xs text-muted-foreground">{t("multiStore.settings.policyIsolatedList")}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Detach (sub-store only, owner only) */}
-            {msIsSubStore && role === "owner" && (
-              <div className="space-y-2">
-                <Eyebrow>{t("multiStore.settings.detachHeader")}</Eyebrow>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {t("multiStore.settings.detachHelp")}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={msSaving || !organizationId}
-                  onClick={async () => {
-                    if (!organizationId) return;
-                    if (!confirm(t("multiStore.settings.detachConfirm"))) return;
-                    setMsSaving(true);
-                    try {
-                      const { updateOrgParent } = await import("@/lib/spacetimedb/actions");
-                      await updateOrgParent(organizationId, null);
-                      hapticSuccess();
-                      toast.success(t("multiStore.settings.detachSuccess"));
-                      window.location.reload();
-                    } catch (err) {
-                      console.error(err);
-                      toast.error(err instanceof Error ? err.message : t("multiStore.settings.detachFailed"));
-                    } finally {
-                      setMsSaving(false);
-                    }
-                  }}
-                >
-                  {msSaving ? <Spinner size={14} /> : t("multiStore.settings.detachButton")}
-                </Button>
-              </div>
-            )}
-
-            {/* Attach (root org with no children, owner only) */}
-            {!msIsSubStore && subStores.length === 0 && role === "owner" && eligibleParentsForAttach.length > 0 && (
-              <div className="space-y-2">
-                <Eyebrow>{t("multiStore.settings.attachHeader")}</Eyebrow>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {t("multiStore.settings.attachHelp")}
-                </p>
-                <div className="flex gap-2">
-                  <Select value={msAttachingTo} onValueChange={(v) => setMsAttachingTo(v ?? "")}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder={t("multiStore.settings.attachPlaceholder")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eligibleParentsForAttach.map((o) => (
-                        <SelectItem key={o.id.toString()} value={o.id.toString()}>{o.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    disabled={msSaving || !msAttachingTo || !organizationId}
-                    onClick={async () => {
-                      if (!organizationId || !msAttachingTo) return;
-                      if (!confirm(t("multiStore.settings.attachConfirm"))) return;
-                      setMsSaving(true);
-                      try {
-                        const { updateOrgParent } = await import("@/lib/spacetimedb/actions");
-                        await updateOrgParent(organizationId, msAttachingTo);
-                        hapticSuccess();
-                        toast.success(t("multiStore.settings.attachSuccess"));
-                        window.location.reload();
-                      } catch (err) {
-                        console.error(err);
-                        toast.error(err instanceof Error ? err.message : t("multiStore.settings.attachFailed"));
-                      } finally {
-                        setMsSaving(false);
-                      }
-                    }}
-                  >
-                    {msSaving ? <Spinner size={14} /> : t("multiStore.settings.attachButton")}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
+      <StoreProfilePanel open={subPanel === "storeprofile"} onOpenChange={(open) => !open && setSubPanel(null)} />
 
       {/* ─── Security Sub-Panel ──────────────────────────────── */}
-      <DynamicUIElement open={subPanel === "security"} onOpenChange={(open) => !open && setSubPanel(null)}>
-        <DynamicUIElementContent className="max-w-md lg:max-w-xl" noPadding>
-          <DynamicUIElementHeader>
-            <DynamicUIElementTitle mobileTitle={t("settings.groupSecurity")}>{t("settings.groupSecurity")}</DynamicUIElementTitle>
-            <DynamicUIElementDescription className="hidden">{t("settings.groupSecurity")}</DynamicUIElementDescription>
-          </DynamicUIElementHeader>
-          <div>
-            <SRow
-              icon={<Fingerprint className="h-4 w-4 text-foreground" />}
-              title={t("settings.passkeysTitle")}
-              meta={t("settings.passkeysMeta")}
-              isFirst
-              onClick={async () => {
-                try {
-                  const res = await fetch("/api/auth/oauth", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      provider: "passkey",
-                      redirectTo: "/manager/settings",
-                      client: "web",
-                      ...(authUser?.email ? { loginHint: authUser.email } : {}),
-                      screenHint: "sign-in",
-                    }),
-                  });
-                  const data = await res.json();
-                  if (data.url) {
-                    window.location.href = data.url;
-                  } else {
-                    toast.error(data.error ?? t("settings.passkeysError"));
-                  }
-                } catch {
-                  toast.error(t("settings.passkeysError"));
-                }
-              }}
-              right={<ChevronRight className="h-4 w-4 text-muted-foreground" />}
-            />
-            <SRow
-              icon={<Sparkles className="h-4 w-4 text-foreground" />}
-              title={t("settings.magicAuthTitle")}
-              meta={t("settings.magicAuthMeta")}
-            />
-            <SRow
-              icon={<KeyRound className="h-4 w-4 text-foreground" />}
-              title={t("settings.passwordRulesTitle")}
-              meta={t("settings.passwordRulesMeta")}
-            />
-          </div>
-          <p className="px-[18px] pt-3 pb-4 text-[11.5px] leading-relaxed text-muted-foreground">
-            {t("settings.passkeysNote")}
-          </p>
-        </DynamicUIElementContent>
-      </DynamicUIElement>
+      <SecurityPanel open={subPanel === "security"} onOpenChange={(open) => !open && setSubPanel(null)} />
 
       {/* ─── Sign Out Button ────────────────────────────────── */}
       <div className="px-[18px] py-5">

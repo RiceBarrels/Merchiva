@@ -12,8 +12,9 @@
 import { useMemo, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import {
-  BookingsIcon, ChannelIcon, DashboardIcon, DirectoryIcon, InventoryIcon,
-  PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, StoreSettingsIcon, TasksIcon, TrainingIcon, type AppIcon,
+  BookingsIcon, BugIcon, ChannelIcon, DashboardIcon, DirectoryIcon, DocsIcon, InventoryIcon,
+  NotificationsIcon, PayIcon, ProductsIcon, SalesIcon, ScheduleIcon, StoreSettingsIcon, TasksIcon,
+  TrainingIcon, type AppIcon,
 } from "./app-icons";
 import type { Permissions } from "@/lib/types";
 import { usePermissions } from "@/lib/context/permissions";
@@ -139,6 +140,25 @@ export const APP_CATALOG: CatalogApp[] = [
     ] },
   { id: "channel", icon: ChannelIcon, route: "/manager/channel", color: "cyan", permissionKey: "staffing", surfaces: ["store", "personal"],
     component: lazy(() => import("@/app/manager/channel/page")) },
+  // Docs is the one app whose device version is not a lite rewrite: the panel
+  // renders the manager's own Docs screens in their phone layout (see
+  // ./apps/docs). Installing it turns the manager page on too
+  // (lib/device-apps.ts → MANAGER_ROUTE_APPS).
+  { id: "docs", icon: DocsIcon, route: "/manager/docs", color: "amber", permissionKey: "dashboard", surfaces: ["store", "personal"], dockOn: ["store", "personal"],
+    component: lazy(() => import("@/app/manager/docs/page")),
+    lite: lite(() => import("./apps/docs").then((m) => m.DocsLite)) },
+  // Bug tracker: on every device by default (REQUIRED_DEVICE_APPS) and gated by
+  // nothing — reporting a problem with Merchiva must never depend on a
+  // permission or on someone having installed the app first. Triage is on the
+  // manager page, where the controls are owner/manager only.
+  { id: "bugs", icon: BugIcon, route: "/manager/bugs", color: "rose", surfaces: ["store", "personal"],
+    component: lazy(() => import("@/app/manager/bugs/page")),
+    lite: lite(() => import("./apps/bugs").then((m) => m.BugsLite)) },
+  // Notifications · required for the same reason as Bug reports: a member's
+  // own alerts must not depend on a permission or on someone installing them.
+  { id: "notifications", icon: NotificationsIcon, route: "/manager/notifications", color: "amber", surfaces: ["store", "personal"],
+    component: lazy(() => import("@/app/manager/notifications/page")),
+    lite: lite(() => import("./apps/notifications").then((m) => m.NotificationsLite)) },
   // Store settings · Integrations
   { id: "settings-org", icon: StoreSettingsIcon, route: "/manager/settings", color: "slate", permissionKey: "settings", surfaces: ["store", "personal"], managerOnly: true,
     component: lazy(() => import("@/app/manager/settings/page")),

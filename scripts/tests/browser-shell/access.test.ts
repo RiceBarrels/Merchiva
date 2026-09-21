@@ -6,7 +6,7 @@ import type { Permissions } from "@/lib/types";
 
 type Section = keyof Permissions;
 
-const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings"];
+const ALL_APPS = ["sales", "products", "tasks", "training", "pay", "bookings", "docs"];
 
 function ctx(opts: {
   owner?: boolean;
@@ -83,7 +83,7 @@ describe("getRouteAccess", () => {
     expect(getRouteAccess("/manager/dashboard", nobody)).toBe("forbidden");
   });
 
-  test("personnel team needs staffing and team; docs follow dashboard.view", () => {
+  test("personnel team needs staffing and team; docs follow dashboard.view and the Docs app", () => {
     expect(getRouteAccess("/manager/personnel/team", ctx({ view: ["staffing"] }))).toBe("forbidden");
     expect(getRouteAccess("/manager/personnel/team", ctx({ view: ["team"] }))).toBe("forbidden");
     expect(getRouteAccess("/manager/personnel/team", ctx({ view: ["staffing", "team"] }))).toBe("allowed");
@@ -91,7 +91,9 @@ describe("getRouteAccess", () => {
     expect(getRouteAccess("/manager/docs", ctx({ view: ["dashboard"] }))).toBe("allowed");
     expect(getRouteAccess("/manager/docs/edit?id=1", ctx({ view: ["dashboard"] }))).toBe("allowed");
     expect(getRouteAccess("/manager/docs", ctx({ view: ["inventory"] }))).toBe("forbidden");
-    expect(getRouteAccess("/manager/docs/edit?id=1", ctx({ owner: true, apps: [] }))).toBe("allowed");
+    // Docs is an installable app (lib/device-apps.ts): without it the feature is off for everyone.
+    expect(getRouteAccess("/manager/docs", ctx({ owner: true, apps: [] }))).toBe("featureOff");
+    expect(getRouteAccess("/manager/docs/edit?id=1", ctx({ owner: true, apps: [] }))).toBe("featureOff");
   });
 
   test("the native app and personal mode don't change route access", () => {

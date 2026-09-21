@@ -21,7 +21,8 @@ import {
 } from "@/components/docs/home/doc-list-model";
 import { DocsSearchInput } from "@/components/docs/home/docs-search-input";
 import { formatDocDateTime, formatDocStamp, useMinuteClock } from "@/components/docs/home/format";
-import { dispositionFromKeyboard, useTabActions } from "@/lib/browser-shell";
+import { dispositionFromKeyboard } from "@/lib/browser-shell";
+import { useDocsOpenUrl } from "@/components/docs/docs-open-context";
 import { usePermissions } from "@/lib/context/permissions";
 import { DOCS_HOME_HREF, documentHref } from "@/lib/docs/hrefs";
 import { idString } from "@/lib/docs/mappers";
@@ -54,7 +55,7 @@ export function OpenDocumentDialog({ open, onOpenChange }: OpenDocumentDialogPro
   const { organizationId } = usePermissions();
   const openedMap = useLastOpenedMap();
   const now = useMinuteClock();
-  const { openUrl } = useTabActions();
+  const openUrl = useDocsOpenUrl();
 
   const [query, setQuery] = useState("");
   const [wasOpen, setWasOpen] = useState(open);

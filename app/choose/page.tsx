@@ -118,18 +118,17 @@ function ChooseModeInner() {
   const canAdmin = role === "owner" || role === "manager";
 
   // The paywall lives here, not behind the mode cards: if the selected store's
-  // subscription (root org) is out of access the chooser embeds the subscribe
+  // subscription is out of access the chooser embeds the subscribe
   // panel in place of the mode cards; once Stripe reports the plan active the
   // org row updates and the cards come back. Fails open while the org row
   // hasn't streamed in, same as the layout gate.
   const [checkedAt] = useState(() => Date.now());
   const subscriptionBlocked = useMemo(() => {
     if (!organizationId) return false;
-    const rootId = currentOrg?.parentOrgId ?? organizationId;
-    const row = orgRows.find((o) => o.id.toString() === rootId);
+    const row = orgRows.find((o) => o.id.toString() === organizationId);
     if (!row) return false;
     return !evaluateSubscription(row, checkedAt).allowed;
-  }, [orgRows, organizationId, currentOrg, checkedAt]);
+  }, [orgRows, organizationId, checkedAt]);
 
 
 

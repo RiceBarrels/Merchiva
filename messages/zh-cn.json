@@ -25,7 +25,8 @@
     "collapse": "收起",
     "expand": "展开",
     "previous": "上一个",
-    "next": "下一个"
+    "next": "下一个",
+    "done": "完成"
   },
   "nav": {
     "dailyManagement": "日常管理",
@@ -61,7 +62,9 @@
     },
     "usage": "AI 用量",
     "apps": "设备应用",
-    "docs": "文档"
+    "docs": "文档",
+    "bugs": "问题反馈",
+    "notifications": "通知"
   },
   "login": {
     "title": "登录 Merchiva",
@@ -246,6 +249,28 @@
       "signInBtn": "登录",
       "noAccount": "还没有账号？",
       "signUp": "注册"
+    },
+    "datePicker": {
+      "title": "选择日期",
+      "description": "请选择一个日期",
+      "placeholder": "选择日期",
+      "selected": "已选择"
+    },
+    "timePicker": {
+      "title": "选择时间",
+      "description": "请选择一个时间",
+      "placeholder": "选择时间",
+      "common": "常用",
+      "open": "开店",
+      "lunch": "午市",
+      "close": "打烊",
+      "set": "设定"
+    },
+    "combobox": {
+      "noResults": "无结果"
+    },
+    "pinPad": {
+      "backspace": "退格"
     }
   },
   "status": {
@@ -335,7 +360,9 @@
       "submit": "添加商品",
       "translationsLabel": "翻译",
       "translationsExpand": "添加翻译",
-      "translationsCollapse": "隐藏翻译"
+      "translationsCollapse": "隐藏翻译",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "简要的商品描述……"
     },
     "inventoryUsage": {
       "title": "每卖出一份消耗的库存",
@@ -701,8 +728,23 @@
       "coverSent": "代班申请已发送",
       "failedCover": "发送代班申请失败",
       "failedAvailability": "保存可用时间失败",
-      "failedTimeOff": "提交请假申请失败"
-    }
+      "failedTimeOff": "提交请假申请失败",
+      "shiftAddedToCoverPool": "已将班次加入代班池",
+      "noActiveMember": "未找到在职的团队成员",
+      "coverAcceptedPending": "已接受代班请求 —— 等待经理审批",
+      "shiftPersonUpdated": "已更新该班次的人员",
+      "tradeAcceptedPending": "已接受换班 —— 等待经理审批",
+      "tradeDenied": "已拒绝换班",
+      "failedUpdateTrade": "更新换班失败",
+      "failedAcceptTrade": "接受换班失败"
+    },
+    "coverPool": {
+      "title": "代班池",
+      "kicker": "开放的代班请求，团队任何人都可接单。接单后仍需经理审批。",
+      "empty": "暂无开放的代班请求。"
+    },
+    "everyoneWorkingThatDay": "当天所有当班的人",
+    "changePeople": "更换人员"
   },
   "personnel": {
     "tabs": {
@@ -977,6 +1019,22 @@
           "alreadyMember": "此人已经是团队成员。",
           "alreadyInvited": "该邮箱已有待接受的邀请。"
         }
+      },
+      "punch": {
+        "label": "打卡码",
+        "set": "已设置",
+        "notSet": "未设置",
+        "set_action": "设置打卡码",
+        "change": "更改",
+        "clear": "清除打卡码",
+        "placeholder": "4 位数字",
+        "saved": "打卡码已保存",
+        "saveFailed": "保存失败，请重试。",
+        "cleared": "打卡码已清除",
+        "clearFailed": "清除失败，请重试。",
+        "mustBeFour": "打卡码必须是 4 位数字。",
+        "hintSelf": "用来打卡，也用来解锁门店设备。",
+        "hintOther": "你可以设置，但看不到具体数字——同一组数字能解锁门店设备。"
       }
     },
     "dialog": {
@@ -1476,7 +1534,11 @@
     "storeImageSaved": "门店图片已更新",
     "storeImageFailed": "门店图片更新失败",
     "storeImageRemove": "移除",
-    "storeImageUpload": "上传图片"
+    "storeImageUpload": "上传图片",
+    "teamOnTeamPage": "成员、角色与打卡码",
+    "punchCodeOnTeamPage": "在团队页设置",
+    "createStoreHint": "创建一家拥有独立库存与预测的新门店。",
+    "toastSettingsNotLoaded": "设置还在加载中，请稍后再试"
   },
   "lock": {
     "title": "设备已锁定",
@@ -1624,7 +1686,8 @@
     "groupQr": "群二维码",
     "searchMessages": "搜索频道",
     "muteMessages": "消息免打扰",
-    "pinChat": "置顶频道"
+    "pinChat": "置顶频道",
+    "reactionsUnsupported": "表情回应暂未开放"
   },
   "dashboard": {
     "greeting": {
@@ -2640,7 +2703,9 @@
       "undone": "已撤销",
       "confirmExecute": "确认执行",
       "cancel": "取消",
-      "undo": "撤销"
+      "undo": "撤销",
+      "noItems": "没有明细",
+      "unknownSupplier": "供应商"
     },
     "categories": {
       "scheduling": "排班",
@@ -2780,7 +2845,9 @@
       "robots": "Robots",
       "customDomain": "自定义域名",
       "published": "已发布",
-      "plugins": "插件"
+      "plugins": "插件",
+      "subtotal": "小计",
+      "tax": "税费"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "清空记录",
@@ -3177,64 +3244,6 @@
     "invalidNumber": "请输入有效数字",
     "quotaSaved": "配额已保存",
     "quotaFailed": "保存配额失败"
-  },
-  "multiStore": {
-    "subBadge": "子店",
-    "parentLabel": "母店铺",
-    "parentNone": "无（创建为独立店铺）",
-    "parentHelpRoot": "创建一个独立店铺，拥有自己的库存和预测。",
-    "parentHelpSub": "子店铺与母店共享人员、产品、频道、设计和网站。库存和预测保持独立。",
-    "drawerAddHint": "创建新店铺或关联为子店铺",
-    "products": {
-      "filterShowingAll": "全部店铺",
-      "filterShowingCurrent": "仅本店",
-      "soldAtLabel": "售卖店铺",
-      "allStores": "所有关联店铺",
-      "allStoresHint": "默认 — 所有店铺都售卖",
-      "thisStore": "当前",
-      "soldAtHelp": "取消勾选某店铺即可在该店铺隐藏此产品。库存仍按店铺独立管理。",
-      "tableHead": "售卖店铺",
-      "cellAll": "全部",
-      "cellNone": "无",
-      "cellCount": "{count} 家",
-      "savedToast": "已更新此产品的售卖店铺",
-      "saveFailedToast": "更新失败",
-      "dialogTitle": "在哪些店铺售卖？"
-    },
-    "settings": {
-      "cardTitle": "多店铺管理",
-      "cardMetaSolo": "独立店铺",
-      "cardMetaParent": "拥有 {count} 个子店铺",
-      "cardMetaSub": "{parent} 的子店铺",
-      "title": "多店铺管理",
-      "description": "将店铺归入母店共享人员、产品、频道、设计和网站。",
-      "currentRole": "本店铺",
-      "roleSolo": "独立 — 不属于任何母子店铺组。",
-      "roleParent": "拥有 {count} 个子店铺。",
-      "roleSub": "{parent} 的子店铺。",
-      "groupHeader": "共享组内的店铺",
-      "groupEmpty": "无关联店铺。",
-      "parentBadge": "母店",
-      "thisStore": "当前",
-      "policyHeader": "共享策略",
-      "policySharedTitle": "店铺间共享",
-      "policySharedList": "人员、产品、频道、设计、网站",
-      "policyIsolatedTitle": "各店独立",
-      "policyIsolatedList": "库存、销售预测",
-      "detachHeader": "脱离母店",
-      "detachHelp": "将此子店铺变回独立店铺。共享资源仍留在母店 — 此店铺只保留自己的数据。",
-      "detachButton": "脱离",
-      "detachConfirm": "确定将此店铺从母店脱离吗？共享的人员、产品和网站将不再可见。",
-      "detachSuccess": "已脱离母店",
-      "detachFailed": "脱离失败",
-      "attachHeader": "关联为子店铺",
-      "attachHelp": "将此店铺设为你拥有的另一个店铺的子店铺。关联后将共享人员、产品、频道、设计和网站。",
-      "attachPlaceholder": "选择母店铺",
-      "attachButton": "关联",
-      "attachConfirm": "确定将此店铺关联为子店铺吗？",
-      "attachSuccess": "已关联为子店铺",
-      "attachFailed": "关联失败"
-    }
   },
   "landing": {
     "nav": {
@@ -3902,7 +3911,13 @@
     "toastCreatePOFailed": "创建采购订单失败",
     "toastUpdateStatusFailed": "更新状态失败",
     "title": "供应商",
-    "subtitle": "供应商联系方式与采购订单"
+    "subtitle": "供应商联系方式与采购订单",
+    "contactNamePlaceholder": "联系人姓名",
+    "toastSupplierAdded": "已添加供应商",
+    "toastSupplierUpdated": "已更新供应商",
+    "toastSupplierDeleted": "已删除供应商",
+    "toastPOCreated": "已创建采购单",
+    "toastStatusUpdated": "状态已更新"
   },
   "apiSettings": {
     "toast": {
@@ -3918,7 +3933,8 @@
     "pageSubtitle": "管理 API 密钥和 Webhook 集成",
     "tabs": {
       "apiKeys": "API 密钥",
-      "webhooks": "Webhook"
+      "webhooks": "Webhook",
+      "mcp": "MCP 服务器"
     },
     "apiKey": {
       "title": "API 密钥",
@@ -3969,6 +3985,25 @@
     "empty": {
       "title": "尚未配置 Webhook",
       "description": "在上方添加 Webhook 端点，以接收关于店铺事件的实时通知。"
+    },
+    "mcp": {
+      "addTitle": "连接 MCP 服务器",
+      "addDescription": "允许 Mr. Merchiva 在对话中使用外部 Model Context Protocol 服务器的工具。",
+      "label": "名称",
+      "url": "服务器地址",
+      "token": "Bearer 令牌",
+      "tokenPlaceholder": "可选令牌",
+      "securityNote": "MCP 令牌仅保存在本浏览器，并且只随对话请求发送。除非设置 MCP_ALLOW_LOCALHOST=true，服务器会拦截 localhost 与内网地址。",
+      "addSubmit": "添加 MCP 服务器",
+      "configuredTitle": "已连接的 MCP 服务器",
+      "configuredDescription": "发送对话消息时，已启用的服务器会附加给 Mr. Merchiva。",
+      "emptyTitle": "尚未连接 MCP 服务器",
+      "emptyDescription": "连接一个 HTTPS MCP 端点，让助手能够使用外部工具。",
+      "toolsFound": "找到 {count} 个工具",
+      "toastAdded": "已添加 MCP 服务器",
+      "toastRemoved": "已移除 MCP 服务器",
+      "toastConnected": "MCP 已连接：找到 {count} 个工具",
+      "toastFailed": "MCP 连接失败"
     }
   },
   "punchIn": {
@@ -4446,7 +4481,10 @@
       "sales": "销售",
       "bookings": "预约",
       "channel": "聊天",
-      "settings-org": "门店设置"
+      "docs": "文档",
+      "settings-org": "门店设置",
+      "bugs": "问题反馈",
+      "notifications": "通知"
     },
     "notAvailableHere": "此设备不支持该功能",
     "lite": {
@@ -4623,6 +4661,40 @@
         "requestFailed": "发送失败，请再试一次。",
         "completed": "已完成的天数",
         "dayShort": "第 {day} 天"
+      },
+      "bugs": {
+        "report": "反馈问题",
+        "reportHint": "App 有问题？告诉团队。",
+        "myOpen": "我的待处理",
+        "mine": "我的",
+        "everyone": "全部",
+        "myReports": "我的反馈",
+        "openReports": "待处理反馈",
+        "teamAllClear": "暂无待处理",
+        "none": "还没有反馈",
+        "noneHint": "App 出问题时，点上面的按钮。",
+        "what": "出了什么问题？",
+        "whatPlaceholder": "一句话说明",
+        "details": "具体情况",
+        "detailsPlaceholder": "你做了什么、出了什么问题。",
+        "severity": "严重程度",
+        "photo": "添加照片",
+        "retake": "重拍照片",
+        "send": "提交",
+        "titleRequired": "请先写一句话说明。",
+        "uploadFailed": "照片添加失败。",
+        "failed": "提交失败，请重试。"
+      },
+      "notifications": {
+        "markAllRead": "全部标为已读",
+        "list": "通知",
+        "unreadCount": "{n} 条未读",
+        "empty": "暂无新消息",
+        "emptyHint": "排班与申请提醒会显示在这里。",
+        "details": "通知详情",
+        "close": "关闭",
+        "allRead": "已全部标为已读",
+        "markFailed": "更新失败"
       }
     },
     "catalogDesc": {
@@ -4640,7 +4712,9 @@
       "inventory": "盘点库存、标记缺货、记录损耗。",
       "products": "查看产品和价格。",
       "sales": "今日销售一览。",
-      "bookings": "今天和明天的预约。"
+      "bookings": "今天和明天的预约。",
+      "bugs": "反馈 App 的问题，并跟进处理进度。",
+      "notifications": "你的排班、班表与申请提醒，最新的在前。"
     },
     "appStore": {
       "hint": "选择这家店使用哪些功能。添加后的应用会同时出现在后台、门店平板和员工手机上；必备应用始终开启。",
@@ -4678,11 +4752,7 @@
     "channel": "频道",
     "logOut": "退出登录",
     "logOutSub": "释放设备给下一位使用",
-    "switchToManager": "切换到经理模式",
     "requiresManagerPin": "需要经理 PIN",
-    "managerMode": "经理模式",
-    "managerPinPrompt": "输入经理 PIN，将此设备切换到经理模式。",
-    "managerModeOn": "经理模式已开启",
     "loggedIn": "已登录",
     "loggedOut": "已退出",
     "loggedOutIdle": "已退出 · 无活动",
@@ -4728,7 +4798,6 @@
     "logOutKeepSub": "保持打卡状态 · 把设备留给下一个人"
   },
   "personalDevice": {
-    "managerBadge": "经理",
     "leaveBtn": "离开",
     "channelBtn": "频道",
     "noChannelsTitle": "还没有频道",
@@ -4758,8 +4827,6 @@
       "endBreakSub": "继续你的班次",
       "storeLogin": "在门店设备上登录",
       "storeLoginSub": "扫描门店设备上的 QR 码",
-      "managerMode": "切换到经理模式",
-      "managerModeSub": "打开经理后台",
       "exitMode": "退出个人模式",
       "exitModeSub": "返回模式选择页",
       "leaveWork": "下班",
@@ -5503,6 +5570,29 @@
       "reload": "重新加载",
       "home": "主页"
     },
+    "contextMenu": {
+      "label": "右键菜单",
+      "openInNewTab": "在新标签页中打开",
+      "openInBackgroundTab": "在后台标签页中打开",
+      "openInBrowser": "在浏览器中打开",
+      "copyLink": "复制链接",
+      "bookmarkLink": "收藏此链接",
+      "openImage": "在新标签页中打开图片",
+      "copyImageLink": "复制图片地址",
+      "copy": "复制",
+      "cut": "剪切",
+      "paste": "粘贴",
+      "selectAll": "全选",
+      "searchFor": "搜索“{text}”",
+      "bookmarkPage": "收藏此页面",
+      "removeBookmark": "取消收藏",
+      "bookmarkRemoved": "已取消收藏",
+      "copyPageLink": "复制页面链接",
+      "copied": "已复制",
+      "copyFailed": "无法复制到剪贴板",
+      "pasteDenied": "请允许访问剪贴板后再粘贴",
+      "openFailed": "无法打开该链接"
+    },
     "newTabPage": {
       "searchPlaceholder": "搜索页面、文档和标签页",
       "apps": "应用",
@@ -5675,6 +5765,69 @@
       "inventorySub": "库存数量与补货",
       "suppliersSub": "供应商与采购订单",
       "wasteSub": "每日废弃与处置"
+    }
+  },
+  "bugs": {
+    "title": "问题追踪",
+    "openCount": "{n} 个待处理",
+    "allClear": "暂无待处理",
+    "report": "反馈问题",
+    "reportDesc": "说明出了什么问题。页面、版本和设备信息会自动附上。",
+    "search": "搜索反馈",
+    "filterAll": "全部",
+    "status": {
+      "open": "待处理",
+      "in_progress": "处理中",
+      "fixed": "已修复",
+      "wont_fix": "不修复"
+    },
+    "severity": {
+      "low": "轻微",
+      "normal": "一般",
+      "high": "严重",
+      "blocker": "无法使用"
+    },
+    "surface": {
+      "manager": "管理端",
+      "store": "门店设备",
+      "personal": "手机"
+    },
+    "empty": "暂无问题反馈",
+    "emptyDesc": "团队里任何人都可以反馈问题——在这里、门店平板或自己的手机上。",
+    "emptyFiltered": "没有匹配项",
+    "emptyFilteredDesc": "换个筛选条件或关键词试试。",
+    "formTitle": "出了什么问题？",
+    "formTitlePlaceholder": "一句话说明",
+    "formBody": "具体情况",
+    "formBodyPlaceholder": "你做了什么、期望看到什么、实际发生了什么。",
+    "formSeverity": "严重程度",
+    "formScreenshot": "截图",
+    "formScreenshotAdd": "添加截图",
+    "submit": "提交反馈",
+    "sending": "提交中…",
+    "sent": "已提交",
+    "sendFailed": "提交失败，请重试。",
+    "uploadFailed": "截图上传失败。",
+    "titleRequired": "请先写一句话说明。",
+    "contextHint": "页面、版本和设备信息会自动附上。",
+    "contextPage": "页面",
+    "contextBuild": "版本",
+    "contextDevice": "设备",
+    "detailStatus": "状态",
+    "detailSeverity": "严重程度",
+    "resolution": "处理说明",
+    "resolutionPlaceholder": "做了什么处理，或为什么不修复。",
+    "resolvedBy": "由 {name} 关闭",
+    "triageHint": "只有店主和店长可以更改状态。",
+    "saved": "已更新",
+    "saveFailed": "保存失败，请重试。",
+    "deleteFailed": "删除失败，请重试。",
+    "unknownReporter": "某位同事",
+    "unknownVersion": "未知"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "班次类型"
     }
   }
 }

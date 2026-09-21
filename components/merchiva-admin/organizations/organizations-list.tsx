@@ -7,13 +7,12 @@ import { Badge, ErrorBanner, Notice, PageHeader, Panel, btnGhostCls, inputCls } 
 import { useAdminQuery } from "@/components/merchiva-admin/use-admin-query";
 import { subscriptionTone, userLabel, type OrgMemberRow, type OrganizationRow, type UserRow } from "./types";
 
-type SortKey = "name" | "owner" | "members" | "status" | "periodEnd" | "parent" | "created";
+type SortKey = "name" | "owner" | "members" | "status" | "periodEnd" | "created";
 
 interface ListRow {
   org: OrganizationRow;
   ownerLabel: string;
   memberCount: number;
-  parentName: string;
 }
 
 const HEADERS: Array<{ key: SortKey; label: string }> = [
@@ -22,7 +21,6 @@ const HEADERS: Array<{ key: SortKey; label: string }> = [
   { key: "members", label: "Members" },
   { key: "status", label: "Subscription" },
   { key: "periodEnd", label: "Period end" },
-  { key: "parent", label: "Parent org" },
   { key: "created", label: "Created" },
 ];
 
@@ -38,8 +36,6 @@ function sortValue(row: ListRow, key: SortKey): string | number {
       return row.org.subscriptionStatus ?? "";
     case "periodEnd":
       return row.org.currentPeriodEnd ?? 0;
-    case "parent":
-      return row.parentName.toLowerCase();
     case "created":
       return row.org.createdAt;
   }
@@ -56,14 +52,12 @@ export function OrganizationsList() {
 
   const rows = useMemo<ListRow[]>(() => {
     const userById = new Map(users.rows.map((u) => [u.identity.toLowerCase(), u]));
-    const orgById = new Map(orgs.rows.map((o) => [o.id, o]));
     const counts = new Map<string, number>();
     for (const m of members.rows) counts.set(m.organizationId, (counts.get(m.organizationId) ?? 0) + 1);
     return orgs.rows.map((org) => ({
       org,
       ownerLabel: userLabel(userById.get(org.ownerId.toLowerCase()), org.ownerId.slice(0, 12) + "…"),
       memberCount: counts.get(org.id) ?? 0,
-      parentName: org.parentOrgId ? (orgById.get(org.parentOrgId)?.name ?? org.parentOrgId) : "",
     }));
   }, [orgs.rows, users.rows, members.rows]);
 
@@ -75,7 +69,6 @@ export function OrganizationsList() {
             r.org.name.toLowerCase().includes(q) ||
             r.org.id.toLowerCase().includes(q) ||
             r.ownerLabel.toLowerCase().includes(q) ||
-            r.parentName.toLowerCase().includes(q) ||
             (r.org.subscriptionStatus ?? "").toLowerCase().includes(q) ||
             (r.org.stripeCustomerId ?? "").toLowerCase().includes(q),
         )
@@ -161,7 +154,6 @@ export function OrganizationsList() {
                       <Link href={`/merchivaAdmin/organizations/${r.org.id}`} className="font-medium hover:underline">
                         {r.org.name}
                       </Link>
-                      {r.org.parentOrgId && <span className="ml-1.5 font-mono text-[10.5px] uppercase text-stone-400">sub-store</span>}
                     </td>
                     <td className="px-3 py-1.5 text-stone-700">{r.ownerLabel}</td>
                     <td className="px-3 py-1.5 font-mono tabular-nums">{r.memberCount}</td>
@@ -170,15 +162,6 @@ export function OrganizationsList() {
                       {r.org.subscriptionInterval && <span className="ml-1.5 font-mono text-[11px] text-stone-500">{r.org.subscriptionInterval}</span>}
                     </td>
                     <td className="px-3 py-1.5 text-stone-600">{formatTs(r.org.currentPeriodEnd)}</td>
-                    <td className="px-3 py-1.5 text-stone-700">
-                      {r.org.parentOrgId ? (
-                        <Link href={`/merchivaAdmin/organizations/${r.org.parentOrgId}`} className="hover:underline">
-                          {r.parentName}
-                        </Link>
-                      ) : (
-                        <span className="text-stone-300">—</span>
-                      )}
-                    </td>
                     <td className="px-3 py-1.5 text-stone-600">{formatTs(r.org.createdAt)}</td>
                     <td className="px-3 py-1.5 font-mono text-[11px] text-stone-500">{r.org.id}</td>
                   </tr>

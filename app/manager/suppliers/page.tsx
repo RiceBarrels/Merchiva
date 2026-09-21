@@ -79,6 +79,8 @@ import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { SectionNav } from "@/components/section-nav";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { applyRateCents, centsOf, multiplyCents, sumCents, toCents, toMajor } from "@/lib/money";
+import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -138,6 +140,8 @@ interface PurchaseOrder {
   subtotal: number;
   tax: number;
   total: number;
+  /** Exact minor units from the `totalCents` column; see lib/money.ts. */
+  totalCents: number;
   notes: string;
   sentAt: string | null;
   receivedAt: string | null;
@@ -206,6 +210,7 @@ function mapPurchaseOrder(r: any): PurchaseOrder {
     subtotal: Number(r.subtotal ?? 0),
     tax: Number(r.tax ?? 0),
     total: Number(r.total ?? 0),
+    totalCents: centsOf(r, "total"),
     notes: r.notes ?? "",
     sentAt: r.sentAt ? tsToIso(r.sentAt) : null,
     receivedAt: r.receivedAt ? tsToIso(r.receivedAt) : null,
@@ -273,11 +278,10 @@ function useSupplierMessages(organizationId: string | null): { messages: Supplie
 }
 
 // Thin wrappers over the real reducer actions. They normalize the form payload
-// to exactly the fields each reducer declares (extra keys like `rating` on add
-// or `status` on PO are NOT reducer args) and keep the success toasts the
-// handlers rely on.
+// to exactly the fields each reducer declares (extra keys like `status` on PO
+// are NOT reducer args) and keep the success toasts the handlers rely on.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function addSupplier(data: any): Promise<void> {
+async function addSupplier(data: any, successMessage: string): Promise<void> {
   await stdbAddSupplier({
     name: data.name ?? "",
     contactName: data.contactName ?? null,
@@ -287,13 +291,14 @@ async function addSupplier(data: any): Promise<void> {
     paymentTerms: data.paymentTerms ?? null,
     notes: data.notes ?? null,
     language: normalizeSupplierLanguage(data.language),
+    rating: data.rating == null ? null : Number(data.rating),
   });
-  toast.success("Supplier added");
+  toast.success(successMessage);
 }
 
 // updateSupplier requires name + rating, so callers must pass the full record.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateSupplier(id: string, data: any): Promise<void> {
+async function updateSupplier(id: string, data: any, successMessage: string): Promise<void> {
   await stdbUpdateSupplier(id, {
     name: data.name ?? "",
     contactName: data.contactName ?? null,
@@ -305,16 +310,16 @@ async function updateSupplier(id: string, data: any): Promise<void> {
     rating: Number(data.rating ?? 0),
     language: normalizeSupplierLanguage(data.language),
   });
-  toast.success("Supplier updated");
+  toast.success(successMessage);
 }
 
-async function deleteSupplier(id: string): Promise<void> {
+async function deleteSupplier(id: string, successMessage: string): Promise<void> {
   await stdbDeleteSupplier(id);
-  toast.success("Supplier deleted");
+  toast.success(successMessage);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createPurchaseOrder(data: any): Promise<void> {
+async function createPurchaseOrder(data: any, successMessage: string): Promise<void> {
   await stdbCreatePurchaseOrder({
     supplierId: data.supplierId,
     items: data.items, // already a JSON string of POItem[]
@@ -323,12 +328,12 @@ async function createPurchaseOrder(data: any): Promise<void> {
     total: Number(data.total ?? 0),
     notes: data.notes ?? null,
   });
-  toast.success("Purchase order created");
+  toast.success(successMessage);
 }
 
-async function updatePurchaseOrderStatus(id: string, status: POStatus): Promise<void> {
+async function updatePurchaseOrderStatus(id: string, status: POStatus, successMessage: string): Promise<void> {
   await stdbUpdatePurchaseOrderStatus(id, status);
-  toast.success("Status updated");
+  toast.success(successMessage);
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -420,6 +425,7 @@ export default function SuppliersPage() {
   const { organizationId, can } = usePermissions();
   const t = useT();
   const { format } = useCurrency();
+  const { settings } = useSettings();
   const canEdit = can("inventory", "edit");
 
   // Data
@@ -464,9 +470,10 @@ export default function SuppliersPage() {
   const thisMonthTotal = useMemo(() => {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return orders
-      .filter((o) => new Date(o.createdAt) >= startOfMonth)
-      .reduce((sum, o) => sum + o.total, 0);
+    // Added in cents, converted once — see lib/money.ts.
+    return toMajor(
+      sumCents(orders.filter((o) => new Date(o.createdAt) >= startOfMonth), "total"),
+    );
   }, [orders]);
   const supplierById = useMemo(() => new Map(suppliers.map((s) => [s.id, s])), [suppliers]);
   const aiSentEmails = useMemo(
@@ -526,7 +533,7 @@ export default function SuppliersPage() {
     setSaving(true);
     try {
       if (editingSupplier) {
-        await updateSupplier(editingSupplier.id, supplierForm);
+        await updateSupplier(editingSupplier.id, supplierForm, t("suppliers.toastSupplierUpdated"));
       } else {
         await addSupplier({
           name: supplierForm.name ?? "",
@@ -538,7 +545,7 @@ export default function SuppliersPage() {
           notes: supplierForm.notes ?? "",
           rating: supplierForm.rating ?? 3,
           language: supplierForm.language ?? "en",
-        });
+        }, t("suppliers.toastSupplierAdded"));
       }
       setSupplierDialogOpen(false);
     } catch (err) {
@@ -551,7 +558,7 @@ export default function SuppliersPage() {
 
   const handleDeleteSupplier = async (id: string) => {
     try {
-      await deleteSupplier(id);
+      await deleteSupplier(id, t("suppliers.toastSupplierDeleted"));
     } catch (err) {
       console.error("Failed to delete supplier:", err);
       toast.error(t("suppliers.toastDeleteFailed"));
@@ -564,7 +571,7 @@ export default function SuppliersPage() {
     try {
       // updateSupplier requires the full record (name + rating), so merge the
       // new rating onto the existing supplier rather than sending it alone.
-      await updateSupplier(supplierId, { ...current, rating });
+      await updateSupplier(supplierId, { ...current, rating }, t("suppliers.toastSupplierUpdated"));
     } catch (err) {
       console.error("Failed to update rating:", err);
     }
@@ -603,12 +610,18 @@ export default function SuppliersPage() {
     }));
   };
 
-  const poSubtotal = poForm.items.reduce(
-    (sum, item) => sum + item.quantity * item.unitCost,
-    0
+  // The org's configured rate, not a hardcoded 10%. These numbers are written
+  // to the purchase_order row and quoted in the email the supplier receives,
+  // so a store on 0% or 8.25% was sending — and storing — the wrong total.
+  const poTaxRate = (settings?.paymentTaxRate ?? 0) / 100;
+  const poSubtotalCents = poForm.items.reduce(
+    (sum, item) => sum + multiplyCents(toCents(item.unitCost), item.quantity),
+    0,
   );
-  const poTax = poSubtotal * 0.1; // Default 10% tax, can be from settings
-  const poTotal = poSubtotal + poTax;
+  const poTaxCents = applyRateCents(poSubtotalCents, poTaxRate);
+  const poSubtotal = toMajor(poSubtotalCents);
+  const poTax = toMajor(poTaxCents);
+  const poTotal = toMajor(poSubtotalCents + poTaxCents);
 
   const handleCreatePO = async () => {
     if (!poForm.supplierId) {
@@ -629,7 +642,7 @@ export default function SuppliersPage() {
         total: poTotal,
         notes: poForm.notes,
         status: "draft",
-      });
+      }, t("suppliers.toastPOCreated"));
       setPoDialogOpen(false);
     } catch (err) {
       console.error("Failed to create PO:", err);
@@ -641,7 +654,7 @@ export default function SuppliersPage() {
 
   const handleUpdatePOStatus = async (orderId: string, status: POStatus) => {
     try {
-      await updatePurchaseOrderStatus(orderId, status);
+      await updatePurchaseOrderStatus(orderId, status, t("suppliers.toastStatusUpdated"));
     } catch (err) {
       console.error("Failed to update PO status:", err);
       toast.error(t("suppliers.toastUpdateStatusFailed"));
@@ -943,7 +956,7 @@ export default function SuppliersPage() {
                                 {parsedItems.length}
                               </NumCell>
                               <NumCell className="text-xs">
-                                {format(order.total)}
+                                {format(toMajor(order.totalCents))}
                               </NumCell>
                               <TableCell>
                                 <StatusBadge size="xs" tone={PO_STATUS_TONES[order.status]} className="capitalize">
@@ -1140,7 +1153,7 @@ export default function SuppliersPage() {
                     onChange={(e) =>
                       setSupplierForm((f) => ({ ...f, contactName: e.target.value }))
                     }
-                    placeholder="John Doe"
+                    placeholder={t("suppliers.contactNamePlaceholder")}
                     className="h-8 text-sm"
                   />
                 </div>

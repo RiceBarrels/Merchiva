@@ -20,4 +20,5 @@ export default {
   paymentTerms: __t.option(__t.string()),
   notes: __t.option(__t.string()),
   language: __t.option(__t.string()),
+  rating: __t.option(__t.f64()),
 };

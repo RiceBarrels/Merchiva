@@ -8,6 +8,7 @@
 // there so they can mint other admins via the UI, which writes to metadata.
 
 import { workos } from "./workos";
+import { verifiedUserId } from "./verify-token";
 
 export interface AdminCheckResult {
   user: {
@@ -34,29 +35,26 @@ export function isAdminFromEnv(email: string): boolean {
   return envAdminEmails().has(email.toLowerCase());
 }
 
-// Verify a Bearer access token with WorkOS and return whether the user is an
-// admin. Returns `null` if the token is invalid.
+/**
+ * Verify a Bearer access token with WorkOS and return whether the user is a
+ * site admin. Returns `null` if the token is invalid.
+ *
+ * The signature is checked against WorkOS's JWKS before anything in the token
+ * is believed. It previously was not: the payload was base64-decoded and its
+ * `sub` trusted directly, so anyone could hand-write
+ *
+ *     Authorization: Bearer <any header>.<base64 {"sub":"user_01H…"}>.<any sig>
+ *
+ * with a known admin's WorkOS user id and get everything /api/admins/* can do —
+ * arbitrary SQL over the database, promoting themselves in WorkOS metadata,
+ * minting coupons. The user-id round-trip below does catch a deleted user, but
+ * it cannot tell a real token from a forged one, because it only ever sees the
+ * id the caller put in the payload.
+ */
 export async function verifyAdminFromAuthHeader(
   authHeader: string | null,
 ): Promise<AdminCheckResult | null> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-  const token = authHeader.slice("Bearer ".length).trim();
-  if (!token) return null;
-
-  // Decode the JWT to extract user id (WorkOS issues JWTs). We then call the
-  // WorkOS API to get the full user record — this also validates the user
-  // still exists. We avoid signature verification here because the same proxy
-  // already handles refreshing; the user-id round-trip catches revoked tokens.
-  let userId: string | null = null;
-  try {
-    const payload = token.split(".")[1];
-    const decoded = JSON.parse(
-      Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8"),
-    );
-    userId = decoded?.sub ?? null;
-  } catch {
-    return null;
-  }
+  const userId = await verifiedUserId(authHeader);
   if (!userId) return null;
 
   try {

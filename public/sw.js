@@ -43,7 +43,10 @@ self.addEventListener("push", (event) => {
           const watching = clients.some((c) => {
             if (c.visibilityState !== "visible" || !c.focused) return false;
             const path = new URL(c.url).pathname;
-            return path.startsWith("/manager/chat") || path.startsWith("/manager/dashboard");
+            // /manager/chat redirects to /manager/channel (next.config.ts), so
+            // matching the old path meant this never suppressed a notification
+            // for someone already reading the thread.
+            return path.startsWith("/manager/channel") || path.startsWith("/manager/dashboard");
           });
           if (watching) return;
           return self.registration.showNotification(title, options);

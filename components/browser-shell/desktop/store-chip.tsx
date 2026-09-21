@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import {
   CreateStoreForm,
   MenuRow,
-  StoreTreeList,
+  StoreSwitchList,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
 import { StoreLogo } from "@/components/store-picker";
@@ -18,7 +18,7 @@ import { useDesktopChrome, useOverlayBackHandler } from "./chrome-context";
 
 /*
  * Current-store chip at the start of the omnibox (desktop spec §4.6): logo (plus the name at
- * xl), opening the store tree and the create-store form. Switching stores hard-reloads into
+ * xl), opening the store list and the create-store form. Switching stores hard-reloads into
  * the target org's tabs (core prepareOrgSwitch + permissions.switchOrg).
  */
 export function StoreChip() {
@@ -62,8 +62,8 @@ export function StoreChip() {
           <Eyebrow size="xs" className="px-3 pt-2.5 pb-1">
             {t("nav.selectStore")}
           </Eyebrow>
-          <StoreTreeList
-            tree={workspace.tree}
+          <StoreSwitchList
+            stores={workspace.stores}
             currentOrgId={org.id}
             onSelect={(orgId) => {
               workspace.switchOrg(orgId).catch((error: unknown) => console.error("[store-chip] switchOrg failed", error));
@@ -72,11 +72,8 @@ export function StoreChip() {
           <div className="border-t border-border py-1">
             {creating ? (
               <CreateStoreForm
-                eligibleParents={workspace.eligibleParents}
-                onCreate={workspace.createStore}
+                  onCreate={workspace.createStore}
                 onCancel={() => setCreating(false)}
-                // Base UI Select's z-50 popup would render under this z-[100] popover.
-                nativeSelect
               />
             ) : (
               <MenuRow icon={Plus} onClick={() => setCreating(true)}>

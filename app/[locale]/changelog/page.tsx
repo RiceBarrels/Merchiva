@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatDate } from "@/lib/i18n/dates";
 import { SiteShell } from "@/components/landing/site-shell";
 import { buildAlternates } from "@/lib/i18n/alternates";
 import { isLocale, DEFAULT_LOCALE } from "@/lib/i18n/config";
@@ -56,8 +57,6 @@ const TAG_MAP: Record<string, string> = {
   build: "build", ci: "ci", revert: "revert",
 };
 
-const DATE_FMT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-
 function isNoiseLine(line: string) {
   return (
     /^co-authored-by:/i.test(line) ||
@@ -68,7 +67,7 @@ function isNoiseLine(line: string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapCommit(c: any): Entry {
+function mapCommit(c: any, locale: string): Entry {
   const message: string = c?.commit?.message ?? "";
   const [subject, ...rest] = message.split("\n");
   const m = subject.match(/^(\w+)(?:\(([^)]+)\))?(!)?:\s*(.*)$/);
@@ -87,7 +86,9 @@ function mapCommit(c: any): Entry {
 
   return {
     sha: String(c?.sha ?? "").slice(0, 7),
-    date: c?.commit?.author?.date ? DATE_FMT.format(new Date(c.commit.author.date)) : "",
+    date: c?.commit?.author?.date
+      ? formatDate(c.commit.author.date, locale, { month: "short", day: "numeric", year: "numeric" })
+      : "",
     title,
     items,
     tag,
@@ -100,7 +101,7 @@ function parseLastPage(link: string | null): number | null {
   return m ? Number(m[1]) : null;
 }
 
-async function fetchChangelog(): Promise<{ entries: Entry[]; total: number } | null> {
+async function fetchChangelog(locale: string): Promise<{ entries: Entry[]; total: number } | null> {
   const token = process.env.GITHUB_TOKEN;
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
@@ -121,7 +122,7 @@ async function fetchChangelog(): Promise<{ entries: Entry[]; total: number } | n
     const raw: any[] = await listRes.json();
     const entries = raw
       .filter((c) => !String(c?.commit?.message ?? "").startsWith("Merge "))
-      .map(mapCommit);
+      .map((c) => mapCommit(c, locale));
 
     if (entries.length) entries[0].tag = "latest";
 
@@ -138,8 +139,13 @@ function tagStyle(tag: string) {
   return { bg: C.accent, label: tag };
 }
 
-export default async function ChangelogPage() {
-  const data = await fetchChangelog();
+export default async function ChangelogPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const data = await fetchChangelog(locale);
   const entries = data?.entries ?? [];
 
   return (

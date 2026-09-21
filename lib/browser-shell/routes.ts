@@ -3,11 +3,13 @@ import { Plus } from "lucide-react";
 import {
   AppStoreIcon,
   BookingsIcon,
+  BugIcon,
   ChannelIcon,
   DashboardIcon,
   DirectoryIcon,
   DocsIcon,
   InventoryIcon,
+  NotificationsIcon,
   PayIcon,
   ProductsIcon,
   ReportsIcon,
@@ -179,6 +181,17 @@ export const ROUTES: readonly RouteDef[] = [
   {
     prefix: "/manager/usage", titleKey: "nav.usage", icon: ReportsIcon,
     listed: false, keywords: ["ai usage", "usage"],
+  },
+  // Personal, not permission-gated: a member's own alerts and their own bug
+  // reports. Both pages guard nothing beyond `dashboard` (bugs) / nothing at
+  // all (notifications), matching their device tiles.
+  {
+    prefix: "/manager/notifications", titleKey: "nav.notifications", icon: NotificationsIcon,
+    listed: false, keywords: ["notifications", "alerts", "inbox"],
+  },
+  {
+    prefix: "/manager/bugs", titleKey: "nav.bugs", icon: BugIcon, permissionKey: "dashboard",
+    listed: false, keywords: ["bugs", "bug report", "issue", "problem", "feedback"],
   },
   {
     prefix: "/manager/api-settings", titleKey: "nav.api", icon: SettingsIcon, permissionKey: "settings",

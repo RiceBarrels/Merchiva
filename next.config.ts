@@ -1,9 +1,21 @@
+import { readFileSync } from "node:fs";
 import type { NextConfig } from "next";
 
 const isStatic = process.env.NEXT_OUTPUT === "static";
 
+// The running build's version, inlined into the client bundle so a bug report
+// can say which build it came from (lib/bugs.ts → appVersion()). Read from the
+// manifest rather than duplicated here, so bumping package.json is enough.
+const appVersion: string = JSON.parse(
+  readFileSync(`${__dirname}/package.json`, "utf8"),
+).version;
+
 const nextConfig: NextConfig = {
+  // Pin the filesystem root: a stray package-lock.json in $HOME otherwise makes
+  // Turbopack infer the home directory as the workspace root and walk all of it.
+  turbopack: { root: __dirname },
   allowedDevOrigins: ["192.168.1.108", "192.168.1.147"],
+  env: { NEXT_PUBLIC_APP_VERSION: appVersion },
   ...(isStatic
     ? {
         output: "export",

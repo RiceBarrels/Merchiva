@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server";
+import { matchAllowedOrigin, type OriginAllowList } from "@/lib/allowed-origins";
 
-const ALLOWED_ORIGINS = [
-  "https://merchiva.com",
-  "https://www.merchiva.com",
-  "https://project-management-phi-red.vercel.app",
-  "merchiva://",
-  "capacitor://localhost",
-  "ionic://localhost",
-  "http://localhost:5500",
-  "http://localhost:3000",
-];
+// "https://localhost" is the Capacitor Android WebView (androidScheme "https").
+// Matching rules and why a prefix is unsafe: lib/allowed-origins.ts.
+export const API_CORS_ORIGINS: OriginAllowList = {
+  exact: new Set([
+    "https://merchiva.com",
+    "https://www.merchiva.com",
+    "https://project-management-phi-red.vercel.app",
+    "https://localhost",
+    "capacitor://localhost",
+    "ionic://localhost",
+    "http://localhost:5500",
+    "http://localhost:3000",
+  ]),
+  schemes: ["merchiva://"],
+};
 
 function getAllowedOrigin(req: Request): string | null {
-  const origin = req.headers.get("origin");
-  if (!origin) return null;
-  // Capacitor Android WebView; exact match (see proxy.ts).
-  if (origin === "https://localhost") return origin;
-  if (ALLOWED_ORIGINS.some((o) => origin.startsWith(o))) return origin;
-  return null;
+  return matchAllowedOrigin(req.headers.get("origin"), API_CORS_ORIGINS);
 }
 
 export function corsHeaders(req: Request): Record<string, string> {

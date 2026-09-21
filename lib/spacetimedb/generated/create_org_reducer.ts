@@ -12,5 +12,4 @@ import {
 
 export default {
   name: __t.string(),
-  parentOrgId: __t.option(__t.string()),
 };

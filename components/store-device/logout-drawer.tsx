@@ -2,48 +2,42 @@
 
 import { useState } from "react";
 import { LogOut, Coffee, Play, ClockAlert, DoorOpen } from "lucide-react";
-import { AdminModeIcon } from "@/components/device/app-icons";
 import { toast } from "sonner";
-import { APP_MODE_HOME, setManagerOverride } from "@/lib/app-mode";
 import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { recordPunch } from "@/lib/spacetimedb/actions";
-import { DeviceDrawer, PinPad, type DeviceDrawerOption, type OnShiftEntry } from "@/components/device";
-import { findManagerByPin, isManagerRole, type StoreMember } from "./use-org-members";
+import { DeviceDrawer, type DeviceDrawerOption, type OnShiftEntry } from "@/components/device";
+import type { StoreMember } from "./use-org-members";
 import { ExitStoreDrawer } from "./exit-store-drawer";
 
 export interface LogoutDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  members: StoreMember[];
   /** The logged-in operator. */
   operator: StoreMember;
+  /** PIN the operator logged in with, held in memory for this session only —
+   *  `recordPunch` validates it server-side. Null after a QR log-in, which is
+   *  why punching is hidden then. */
+  operatorPin: string | null;
   /** Operator's open shift, or null when not punched in. */
   shift: OnShiftEntry | null;
   onLogout: () => void;
 }
 
-/** Switches the device to the back-office UI after a manager PIN. */
-export function enterManagerMode() {
-  setManagerOverride(true);
-  window.location.href = APP_MODE_HOME.admin;
-}
-
-export function LogoutDrawer({ open, onOpenChange, members, operator, shift, onLogout }: LogoutDrawerProps) {
+export function LogoutDrawer({ open, onOpenChange, operator, operatorPin, shift, onLogout }: LogoutDrawerProps) {
   const t = useT();
-  const [pane, setPane] = useState<"options" | "managerPin" | "exitPin">("options");
-  const managerEligible = members.some((m) => isManagerRole(m.role) && !!m.punchInCode);
+  const [pane, setPane] = useState<"options" | "exitPin">("options");
   const [busy, setBusy] = useState(false);
   // Punches go through the same PIN-based reducer as the terminal; a member
   // who logged in by phone QR without a PIN can't punch from here.
-  const canPunch = !!operator.punchInCode && !!shift;
+  const canPunch = !!operatorPin && !!shift;
 
   const punch = async (action: "break-start" | "break-end" | "out") => {
-    if (!operator.punchInCode || busy) return false;
+    if (!operatorPin || busy) return false;
     setBusy(true);
     try {
-      if (action === "out" && shift?.onBreak) await recordPunch(operator.punchInCode, "break-end");
-      await recordPunch(operator.punchInCode, action);
+      if (action === "out" && shift?.onBreak) await recordPunch(operatorPin, "break-end");
+      await recordPunch(operatorPin, action);
       hapticSuccess();
       return true;
     } catch (err) {
@@ -90,21 +84,11 @@ export function LogoutDrawer({ open, onOpenChange, members, operator, shift, onL
       },
     },
     {
-      id: "manager",
-      icon: AdminModeIcon,
-      label: t("storeDevice.switchToManager"),
-      sub: t("storeDevice.requiresManagerPin"),
-      tone: "primary",
-      hidden: !managerEligible,
-      onSelect: () => setPane("managerPin"),
-    },
-    {
       id: "exit-store",
       icon: DoorOpen,
       label: t("storeDevice.leaveStoreMode"),
       sub: t("storeDevice.requiresManagerPin"),
       tone: "warn",
-      hidden: !managerEligible,
       onSelect: () => setPane("exitPin"),
     },
     {
@@ -120,44 +104,14 @@ export function LogoutDrawer({ open, onOpenChange, members, operator, shift, onL
     },
   ];
 
-  const handleManagerPin = async (pin: string) => {
-    const manager = findManagerByPin(members, pin);
-    if (!manager) {
-      hapticError();
-      return false;
-    }
-    hapticSuccess();
-    toast.success(t("storeDevice.managerModeOn"));
-    handleOpenChange(false);
-    setTimeout(enterManagerMode, 300);
-    return true;
-  };
-
   if (pane === "exitPin") {
     return (
       <ExitStoreDrawer
         open={open}
         onOpenChange={handleOpenChange}
-        members={members}
         cancelLabel={t("storeDevice.back")}
         onCancel={() => setPane("options")}
       />
-    );
-  }
-
-  if (pane === "managerPin") {
-    return (
-      <DeviceDrawer
-        open={open}
-        onOpenChange={handleOpenChange}
-        title={t("storeDevice.managerMode")}
-        cancelLabel={t("storeDevice.back")}
-        onCancel={() => setPane("options")}
-        maxWidth={400}
-      >
-        <p className="text-center text-[13px] text-muted-foreground mb-3 leading-relaxed">{t("storeDevice.managerPinPrompt")}</p>
-        <PinPad onComplete={handleManagerPin} />
-      </DeviceDrawer>
     );
   }
 

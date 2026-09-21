@@ -1,18 +1,17 @@
 "use client";
 
-// Device permissions the app depends on, asked for once at the door of every
-// app surface (/choose, /manager, /personal, /store) by
-// components/device-permission-gate.tsx.
+// Device permissions the app asks for on every app surface (/choose, /manager,
+// /personal, /store) through components/device-permission-prompt.tsx. None of
+// them is required: the app renders whatever the answers are.
 //
 //   notifications — push alerts (inventory, shift trades, team messages)
 //   microphone    — walkie-talkie channels + Mr. Merchiva voice calls
 //   camera        — QR log-in on the store device
 //   location      — store address / weather-aware forecasting
 //
-// Status is persisted per device in localStorage so a device that already
-// granted everything opens straight into the app; the live browser state is
-// re-verified in the background and the gate comes back if anything was
-// revoked. "unsupported" counts as satisfied — there's nothing to ask for.
+// Status is persisted per device in localStorage so the next load knows what
+// is still worth asking for, and the live browser state is re-read each time.
+// "unsupported" counts as satisfied — there's nothing to ask for.
 
 import { isNativeShell } from "@/lib/native-shell";
 
@@ -44,7 +43,7 @@ export function savePermissions(state: DevicePermissionState): void {
     const payload: Saved = { state, updatedAt: Date.now() };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
-    // localStorage unavailable — the gate simply re-checks next time.
+    // localStorage unavailable — the next load simply re-checks.
   }
 }
 
@@ -107,7 +106,7 @@ async function queryOne(kind: DevicePermissionKind, saved: Partial<DevicePermiss
       if (status.state === "denied") return "denied";
       // The browser still says "prompt" for a machine with no such device
       // (e.g. a desktop without a webcam) — a previous ask already found
-      // nothing to grant, so don't drag the user back through the gate.
+      // nothing to grant, so don't open a prompt for it again.
       return saved[kind] === "unsupported" ? "unsupported" : "prompt";
     } catch {
       // Safari throws for camera/microphone — fall through to the saved value.

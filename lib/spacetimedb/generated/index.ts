@@ -91,6 +91,7 @@ import CreateTimeOffRequestReducer from "./create_time_off_request_reducer";
 import CreateUserReducer from "./create_user_reducer";
 import DeleteAiJobReducer from "./delete_ai_job_reducer";
 import DeleteBlogPostReducer from "./delete_blog_post_reducer";
+import DeleteBugReportReducer from "./delete_bug_report_reducer";
 import DeleteComponentReducer from "./delete_component_reducer";
 import DeleteCouponReducer from "./delete_coupon_reducer";
 import DeleteDesignReducer from "./delete_design_reducer";
@@ -136,6 +137,8 @@ import ManagerSetPunchWindowReducer from "./manager_set_punch_window_reducer";
 import MarkAllNotificationsReadReducer from "./mark_all_notifications_read_reducer";
 import MarkNotificationReadReducer from "./mark_notification_read_reducer";
 import MigrateMoneyV1Reducer from "./migrate_money_v_1_reducer";
+import MigrateOwnerPermissionsV1Reducer from "./migrate_owner_permissions_v_1_reducer";
+import MigratePunchCodeFlagsV1Reducer from "./migrate_punch_code_flags_v_1_reducer";
 import MigrateSecurityV1Reducer from "./migrate_security_v_1_reducer";
 import PlatformAdminAddReducer from "./platform_admin_add_reducer";
 import PlatformAdminRemoveReducer from "./platform_admin_remove_reducer";
@@ -158,6 +161,7 @@ import RemoveStoreDeviceReducer from "./remove_store_device_reducer";
 import RenameDocumentReducer from "./rename_document_reducer";
 import RenameDocumentVersionReducer from "./rename_document_version_reducer";
 import ReplyDocumentCommentReducer from "./reply_document_comment_reducer";
+import ReportBugReducer from "./report_bug_reducer";
 import RequestTrainingReviewReducer from "./request_training_review_reducer";
 import ResolveDeviceOperatorReducer from "./resolve_device_operator_reducer";
 import ResolveDocumentCommentReducer from "./resolve_document_comment_reducer";
@@ -195,6 +199,7 @@ import ToggleTodoReducer from "./toggle_todo_reducer";
 import TrashDocumentReducer from "./trash_document_reducer";
 import UpdateBlogPostReducer from "./update_blog_post_reducer";
 import UpdateBookingStatusReducer from "./update_booking_status_reducer";
+import UpdateBugReportReducer from "./update_bug_report_reducer";
 import UpdateCouponReducer from "./update_coupon_reducer";
 import UpdateDesignReducer from "./update_design_reducer";
 import UpdateDisplayNameReducer from "./update_display_name_reducer";
@@ -207,7 +212,6 @@ import UpdateOpeningHoursReducer from "./update_opening_hours_reducer";
 import UpdateOrderStatusReducer from "./update_order_status_reducer";
 import UpdateOrgReducer from "./update_org_reducer";
 import UpdateOrgLogoReducer from "./update_org_logo_reducer";
-import UpdateOrgParentReducer from "./update_org_parent_reducer";
 import UpdateOrgSubscriptionReducer from "./update_org_subscription_reducer";
 import UpdatePageReducer from "./update_page_reducer";
 import UpdatePerkReducer from "./update_perk_reducer";
@@ -240,11 +244,12 @@ import AiJobRow from "./ai_job_table";
 import AiUsageRow from "./ai_usage_table";
 import AiUsageQuotaRow from "./ai_usage_quota_table";
 import BlogPostRow from "./blog_post_table";
+import BugReportRow from "./bug_report_table";
 import ChatConversationRow from "./chat_conversation_table";
 import ChatMemberRow from "./chat_member_table";
+import ChatMembershipIndexRow from "./chat_membership_index_table";
 import ChatMessageRow from "./chat_message_table";
 import CouponRow from "./coupon_table";
-import CustomerPointsRow from "./customer_points_table";
 import DailyBriefingRow from "./daily_briefing_table";
 import DesignRow from "./design_table";
 import DeviceLoginRequestRow from "./device_login_request_table";
@@ -262,15 +267,12 @@ import InventoryItemRow from "./inventory_item_table";
 import InventoryTransactionRow from "./inventory_transaction_table";
 import LocationRow from "./location_table";
 import MemberPunchCodeRow from "./member_punch_code_table";
-import MembershipPerkRow from "./membership_perk_table";
-import MembershipTierRow from "./membership_tier_table";
 import NotificationRow from "./notification_table";
 import OrgInvitationRow from "./org_invitation_table";
 import OrgMemberRow from "./org_member_table";
+import OrgMembershipIndexRow from "./org_membership_index_table";
 import OrganizationRow from "./organization_table";
 import PaymentRow from "./payment_table";
-import PerkClaimRow from "./perk_claim_table";
-import PlatformAdminRow from "./platform_admin_table";
 import PunchEventRow from "./punch_event_table";
 import PurchaseOrderRow from "./purchase_order_table";
 import PushSubscriptionRow from "./push_subscription_table";
@@ -278,6 +280,7 @@ import QueueEntryRow from "./queue_entry_table";
 import RoleTaskRow from "./role_task_table";
 import RoleTaskAssignmentRow from "./role_task_assignment_table";
 import SalesRecordRow from "./sales_record_table";
+import ServiceIdentityRow from "./service_identity_table";
 import SettingsRow from "./settings_table";
 import ShiftRow from "./shift_table";
 import ShiftPresetRow from "./shift_preset_table";
@@ -285,10 +288,6 @@ import ShiftTradeRow from "./shift_trade_table";
 import SiteRow from "./site_table";
 import SiteBookingRow from "./site_booking_table";
 import SiteComponentRow from "./site_component_table";
-import SiteCustomerRow from "./site_customer_table";
-import SiteMembershipRow from "./site_membership_table";
-import SiteOrderRow from "./site_order_table";
-import SitePageRow from "./site_page_table";
 import StaffAvailabilityRow from "./staff_availability_table";
 import StaffMemberRow from "./staff_member_table";
 import StaffRoleRow from "./staff_role_table";
@@ -339,6 +338,9 @@ const tablesSchema = __schema({
       { accessor: 'bySessionId', name: 'ai_job_session_id_idx_btree', algorithm: 'btree', columns: [
         'sessionId',
       ] },
+      { accessor: 'byUserId', name: 'ai_job_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
     ],
     constraints: [
       { name: 'ai_job_id_key', constraint: 'unique', columns: ['id'] },
@@ -386,6 +388,23 @@ const tablesSchema = __schema({
       { name: 'blog_post_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, BlogPostRow),
+  bugReport: __table({
+    name: 'bug_report',
+    indexes: [
+      { accessor: 'id', name: 'bug_report_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'bug_report_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byReporterId', name: 'bug_report_reporter_id_idx_btree', algorithm: 'btree', columns: [
+        'reporterId',
+      ] },
+    ],
+    constraints: [
+      { name: 'bug_report_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, BugReportRow),
   chatConversation: __table({
     name: 'chat_conversation',
     indexes: [
@@ -417,6 +436,23 @@ const tablesSchema = __schema({
       { name: 'chat_member_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, ChatMemberRow),
+  chatMembershipIndex: __table({
+    name: 'chat_membership_index',
+    indexes: [
+      { accessor: 'chatMemberId', name: 'chat_membership_index_chat_member_id_idx_btree', algorithm: 'btree', columns: [
+        'chatMemberId',
+      ] },
+      { accessor: 'byConversationId', name: 'chat_membership_index_conversation_id_idx_btree', algorithm: 'btree', columns: [
+        'conversationId',
+      ] },
+      { accessor: 'byUserId', name: 'chat_membership_index_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'chat_membership_index_chat_member_id_key', constraint: 'unique', columns: ['chatMemberId'] },
+    ],
+  }, ChatMembershipIndexRow),
   chatMessage: __table({
     name: 'chat_message',
     indexes: [
@@ -448,23 +484,6 @@ const tablesSchema = __schema({
       { name: 'coupon_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, CouponRow),
-  customerPoints: __table({
-    name: 'customer_points',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'customer_points_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'customer_points_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'customer_points_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'customer_points_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, CustomerPointsRow),
   dailyBriefing: __table({
     name: 'daily_briefing',
     indexes: [
@@ -567,6 +586,9 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'document_comment_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
+      { accessor: 'byOrganizationId', name: 'document_comment_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
       { accessor: 'byThreadId', name: 'document_comment_thread_id_idx_btree', algorithm: 'btree', columns: [
         'threadId',
       ] },
@@ -586,6 +608,9 @@ const tablesSchema = __schema({
       ] },
       { accessor: 'id', name: 'document_presence_id_idx_btree', algorithm: 'btree', columns: [
         'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_presence_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
       ] },
     ],
     constraints: [
@@ -632,6 +657,9 @@ const tablesSchema = __schema({
       { accessor: 'id', name: 'document_update_id_idx_btree', algorithm: 'btree', columns: [
         'id',
       ] },
+      { accessor: 'byOrganizationId', name: 'document_update_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
     ],
     constraints: [
       { name: 'document_update_id_key', constraint: 'unique', columns: ['id'] },
@@ -645,6 +673,9 @@ const tablesSchema = __schema({
       ] },
       { accessor: 'id', name: 'document_version_id_idx_btree', algorithm: 'btree', columns: [
         'id',
+      ] },
+      { accessor: 'byOrganizationId', name: 'document_version_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
       ] },
     ],
     constraints: [
@@ -730,34 +761,6 @@ const tablesSchema = __schema({
       { name: 'member_punch_code_member_id_key', constraint: 'unique', columns: ['memberId'] },
     ],
   }, MemberPunchCodeRow),
-  membershipPerk: __table({
-    name: 'membership_perk',
-    indexes: [
-      { accessor: 'id', name: 'membership_perk_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byTierId', name: 'membership_perk_tier_id_idx_btree', algorithm: 'btree', columns: [
-        'tierId',
-      ] },
-    ],
-    constraints: [
-      { name: 'membership_perk_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MembershipPerkRow),
-  membershipTier: __table({
-    name: 'membership_tier',
-    indexes: [
-      { accessor: 'id', name: 'membership_tier_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'membership_tier_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'membership_tier_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MembershipTierRow),
   notification: __table({
     name: 'notification',
     indexes: [
@@ -812,6 +815,23 @@ const tablesSchema = __schema({
       { name: 'org_member_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, OrgMemberRow),
+  orgMembershipIndex: __table({
+    name: 'org_membership_index',
+    indexes: [
+      { accessor: 'memberId', name: 'org_membership_index_member_id_idx_btree', algorithm: 'btree', columns: [
+        'memberId',
+      ] },
+      { accessor: 'byOrganizationId', name: 'org_membership_index_organization_id_idx_btree', algorithm: 'btree', columns: [
+        'organizationId',
+      ] },
+      { accessor: 'byUserId', name: 'org_membership_index_user_id_idx_btree', algorithm: 'btree', columns: [
+        'userId',
+      ] },
+    ],
+    constraints: [
+      { name: 'org_membership_index_member_id_key', constraint: 'unique', columns: ['memberId'] },
+    ],
+  }, OrgMembershipIndexRow),
   organization: __table({
     name: 'organization',
     indexes: [
@@ -849,34 +869,6 @@ const tablesSchema = __schema({
       { name: 'payment_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PaymentRow),
-  perkClaim: __table({
-    name: 'perk_claim',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'perk_claim_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'perk_claim_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byPerkId', name: 'perk_claim_perk_id_idx_btree', algorithm: 'btree', columns: [
-        'perkId',
-      ] },
-    ],
-    constraints: [
-      { name: 'perk_claim_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, PerkClaimRow),
-  platformAdmin: __table({
-    name: 'platform_admin',
-    indexes: [
-      { accessor: 'username', name: 'platform_admin_username_idx_btree', algorithm: 'btree', columns: [
-        'username',
-      ] },
-    ],
-    constraints: [
-      { name: 'platform_admin_username_key', constraint: 'unique', columns: ['username'] },
-    ],
-  }, PlatformAdminRow),
   punchEvent: __table({
     name: 'punch_event',
     indexes: [
@@ -999,6 +991,17 @@ const tablesSchema = __schema({
       { name: 'sales_record_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SalesRecordRow),
+  serviceIdentity: __table({
+    name: 'service_identity',
+    indexes: [
+      { accessor: 'identity', name: 'service_identity_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+    ],
+    constraints: [
+      { name: 'service_identity_identity_key', constraint: 'unique', columns: ['identity'] },
+    ],
+  }, ServiceIdentityRow),
   settings: __table({
     name: 'settings',
     indexes: [
@@ -1124,71 +1127,6 @@ const tablesSchema = __schema({
       { name: 'site_component_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SiteComponentRow),
-  siteCustomer: __table({
-    name: 'site_customer',
-    indexes: [
-      { accessor: 'byEmail', name: 'site_customer_email_idx_btree', algorithm: 'btree', columns: [
-        'email',
-      ] },
-      { accessor: 'id', name: 'site_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_customer_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_customer_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SiteCustomerRow),
-  siteMembership: __table({
-    name: 'site_membership',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'site_membership_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'site_membership_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_membership_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_membership_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SiteMembershipRow),
-  siteOrder: __table({
-    name: 'site_order',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'site_order_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'site_order_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_order_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_order_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SiteOrderRow),
-  sitePage: __table({
-    name: 'site_page',
-    indexes: [
-      { accessor: 'id', name: 'site_page_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_page_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_page_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SitePageRow),
   staffAvailability: __table({
     name: 'staff_availability',
     indexes: [
@@ -1510,6 +1448,7 @@ const reducersSchema = __reducers(
   __reducerSchema("create_user", CreateUserReducer),
   __reducerSchema("delete_ai_job", DeleteAiJobReducer),
   __reducerSchema("delete_blog_post", DeleteBlogPostReducer),
+  __reducerSchema("delete_bug_report", DeleteBugReportReducer),
   __reducerSchema("delete_component", DeleteComponentReducer),
   __reducerSchema("delete_coupon", DeleteCouponReducer),
   __reducerSchema("delete_design", DeleteDesignReducer),
@@ -1555,6 +1494,8 @@ const reducersSchema = __reducers(
   __reducerSchema("mark_all_notifications_read", MarkAllNotificationsReadReducer),
   __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
   __reducerSchema("migrate_money_v_1", MigrateMoneyV1Reducer),
+  __reducerSchema("migrate_owner_permissions_v_1", MigrateOwnerPermissionsV1Reducer),
+  __reducerSchema("migrate_punch_code_flags_v_1", MigratePunchCodeFlagsV1Reducer),
   __reducerSchema("migrate_security_v_1", MigrateSecurityV1Reducer),
   __reducerSchema("platform_admin_add", PlatformAdminAddReducer),
   __reducerSchema("platform_admin_remove", PlatformAdminRemoveReducer),
@@ -1577,6 +1518,7 @@ const reducersSchema = __reducers(
   __reducerSchema("rename_document", RenameDocumentReducer),
   __reducerSchema("rename_document_version", RenameDocumentVersionReducer),
   __reducerSchema("reply_document_comment", ReplyDocumentCommentReducer),
+  __reducerSchema("report_bug", ReportBugReducer),
   __reducerSchema("request_training_review", RequestTrainingReviewReducer),
   __reducerSchema("resolve_device_operator", ResolveDeviceOperatorReducer),
   __reducerSchema("resolve_document_comment", ResolveDocumentCommentReducer),
@@ -1614,6 +1556,7 @@ const reducersSchema = __reducers(
   __reducerSchema("trash_document", TrashDocumentReducer),
   __reducerSchema("update_blog_post", UpdateBlogPostReducer),
   __reducerSchema("update_booking_status", UpdateBookingStatusReducer),
+  __reducerSchema("update_bug_report", UpdateBugReportReducer),
   __reducerSchema("update_coupon", UpdateCouponReducer),
   __reducerSchema("update_design", UpdateDesignReducer),
   __reducerSchema("update_display_name", UpdateDisplayNameReducer),
@@ -1626,7 +1569,6 @@ const reducersSchema = __reducers(
   __reducerSchema("update_order_status", UpdateOrderStatusReducer),
   __reducerSchema("update_org", UpdateOrgReducer),
   __reducerSchema("update_org_logo", UpdateOrgLogoReducer),
-  __reducerSchema("update_org_parent", UpdateOrgParentReducer),
   __reducerSchema("update_org_subscription", UpdateOrgSubscriptionReducer),
   __reducerSchema("update_page", UpdatePageReducer),
   __reducerSchema("update_perk", UpdatePerkReducer),

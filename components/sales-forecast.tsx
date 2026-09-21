@@ -36,15 +36,11 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/currency";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
+import { dateKey } from "@/lib/date-key";
+import { timestampToMs } from "@/lib/spacetimedb/timestamp";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function toISO(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function weatherIcon(condition: string) {
   switch (condition) {
@@ -92,24 +88,12 @@ function formatMultiplier(m: number): string {
 // SpacetimeDB timestamps arrive as { microsSinceUnixEpoch: bigint } objects;
 // String(...) on those yields "[object Object]" which Date can't parse, so
 // every payment would silently get dropped. Normalize to epoch ms here.
-function timestampToMs(v: unknown): number {
-  if (v == null) return NaN;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") return new Date(v).getTime();
-  if (typeof v === "object") {
-    const obj = v as { microsSinceUnixEpoch?: bigint | number; toDate?: () => Date };
-    if (typeof obj.toDate === "function") return obj.toDate().getTime();
-    const micros = obj.microsSinceUnixEpoch;
-    if (typeof micros === "bigint") return Number(micros / 1000n);
-    if (typeof micros === "number") return micros / 1000;
-  }
-  return NaN;
-}
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function SalesForecast() {
   const t = useT();
+  const formatDate = useDateFormat();
   const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const [rawSales] = useSalesRecords();
@@ -150,7 +134,7 @@ export function SalesForecast() {
       if (r.status === "refunded") continue;
       const ts = timestampToMs(r.createdAt);
       if (!Number.isFinite(ts)) continue;
-      const date = new Date(ts).toISOString().slice(0, 10);
+      const date = dateKey(new Date(ts));
       const amount = Number(r.amount ?? 0);
       const refund = Number(r.refundAmount ?? 0);
       const net = amount - refund;
@@ -256,8 +240,8 @@ export function SalesForecast() {
     if (salesHistory.length < 7) return null;
 
     const today = new Date();
-    const start = toISO(today);
-    const end = toISO(new Date(today.getTime() + 6 * 86_400_000));
+    const start = dateKey(today);
+    const end = dateKey(new Date(today.getTime() + 6 * 86_400_000));
     const currentYear = today.getFullYear();
     const holidays = getUSHolidays(currentYear);
 
@@ -409,10 +393,7 @@ export function SalesForecast() {
                 {weatherIcon(day.factors.weatherLabel)}
               </div>
               <p className="text-xs text-muted-foreground mb-1">
-                {new Date(day.date + "T12:00:00").toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+                {formatDate(day.date + "T12:00:00", { month: "short", day: "numeric" })}
               </p>
 
               {/* Predicted revenue */}

@@ -22,7 +22,7 @@ function ctx(opts: { owner?: boolean; view?: readonly (keyof Permissions)[] } = 
   return {
     isOwner: opts.owner === true,
     can: (section) => opts.owner === true || view.has(section),
-    installedApps: new Set(["sales", "products", "tasks", "training", "pay", "bookings"]),
+    installedApps: new Set(["sales", "products", "tasks", "training", "pay", "bookings", "docs"]),
     appsReady: true,
     appMode: "admin",
     personalMode: false,

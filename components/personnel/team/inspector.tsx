@@ -59,6 +59,7 @@ import {
   type PersonNode,
 } from "./data";
 import type { RoleRow } from "./use-org-graph";
+import { PunchCodeField } from "./punch-code";
 
 type NodePatch = Partial<PersonNode> & Partial<GroupNode> & { role?: string; perms?: string[] };
 
@@ -695,6 +696,14 @@ function InspectorPanel({
                 className="font-mono h-8 text-[12.5px] bg-muted/30 focus-visible:ring-0"
               />
             </div>
+
+            <PunchCodeField
+              memberId={person.id}
+              isMe={person.isMe}
+              hasCode={person.hasPunchCode}
+              canEdit={canEditMembers}
+              disabled={isInvite}
+            />
 
             {canEditMembers && !locked && (
               <Button

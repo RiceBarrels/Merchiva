@@ -25,7 +25,8 @@
     "collapse": "Réduire",
     "expand": "Développer",
     "previous": "Précédent",
-    "next": "Suivant"
+    "next": "Suivant",
+    "done": "Terminé"
   },
   "nav": {
     "dailyManagement": "Gestion quotidienne",
@@ -61,7 +62,9 @@
     },
     "usage": "Utilisation IA",
     "apps": "Apps appareil",
-    "docs": "Documents"
+    "docs": "Documents",
+    "bugs": "Bugs",
+    "notifications": "Notifications"
   },
   "login": {
     "title": "Connexion à Merchiva",
@@ -246,6 +249,28 @@
       "signInBtn": "Se connecter",
       "noAccount": "Pas de compte ?",
       "signUp": "S'inscrire"
+    },
+    "datePicker": {
+      "title": "Choisir une date",
+      "description": "Sélectionnez une date",
+      "placeholder": "Sélectionner une date",
+      "selected": "Sélectionné"
+    },
+    "timePicker": {
+      "title": "Choisir une heure",
+      "description": "Sélectionnez une heure",
+      "placeholder": "Sélectionner une heure",
+      "common": "Courants",
+      "open": "Ouverture",
+      "lunch": "Déjeuner",
+      "close": "Fermeture",
+      "set": "Définir"
+    },
+    "combobox": {
+      "noResults": "Aucun résultat"
+    },
+    "pinPad": {
+      "backspace": "Retour arrière"
     }
   },
   "status": {
@@ -335,7 +360,9 @@
       "submit": "Ajouter le produit",
       "translationsLabel": "Traductions",
       "translationsExpand": "Ajouter des traductions",
-      "translationsCollapse": "Masquer les traductions"
+      "translationsCollapse": "Masquer les traductions",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Brève description du produit..."
     },
     "toasts": {
       "nameRequired": "Le nom est requis",
@@ -372,6 +399,14 @@
         "noDescription": "Aucune description disponible.",
         "addToCart": "Ajouter au panier"
       }
+    },
+    "inventoryUsage": {
+      "title": "Stock consommé par vente",
+      "description": "Définissez la quantité de stock consommée par ce produit à la vente d'une unité.",
+      "add": "Ajouter un article",
+      "empty": "Aucune consommation de stock définie pour l'instant.",
+      "noInventory": "Ajoutez d'abord des articles d'inventaire.",
+      "unitFallback": "unité"
     }
   },
   "staffing": {
@@ -693,8 +728,23 @@
       "coverSent": "Demande de remplacement envoyée",
       "failedCover": "Échec de l'envoi de la demande de remplacement",
       "failedAvailability": "Échec de l'enregistrement de la disponibilité",
-      "failedTimeOff": "Échec de la soumission de la demande de congé"
-    }
+      "failedTimeOff": "Échec de la soumission de la demande de congé",
+      "shiftAddedToCoverPool": "Service ajouté aux remplacements ouverts",
+      "noActiveMember": "Aucun membre actif de l'équipe trouvé",
+      "coverAcceptedPending": "Demande de remplacement acceptée — en attente de l'approbation du responsable",
+      "shiftPersonUpdated": "Personne affectée au service mise à jour",
+      "tradeAcceptedPending": "Échange accepté — en attente de l'approbation du responsable",
+      "tradeDenied": "Échange refusé",
+      "failedUpdateTrade": "Échec de la mise à jour de l'échange",
+      "failedAcceptTrade": "Échec de l'acceptation de l'échange"
+    },
+    "coverPool": {
+      "title": "Remplacements ouverts",
+      "kicker": "Demandes de remplacement ouvertes à toute l'équipe. L'approbation du responsable reste requise après acceptation.",
+      "empty": "Aucune demande de remplacement ouverte."
+    },
+    "everyoneWorkingThatDay": "Tous ceux qui travaillent ce jour-là",
+    "changePeople": "Changer de personnes"
   },
   "personnel": {
     "tabs": {
@@ -969,6 +1019,22 @@
           "alreadyMember": "Cette personne fait déjà partie de l'équipe.",
           "alreadyInvited": "Une invitation est déjà en attente pour cet e-mail."
         }
+      },
+      "punch": {
+        "label": "Code de pointage",
+        "set": "Défini",
+        "notSet": "Non défini",
+        "set_action": "Définir le code",
+        "change": "Modifier",
+        "clear": "Effacer le code",
+        "placeholder": "4 chiffres",
+        "saved": "Code enregistré",
+        "saveFailed": "Enregistrement impossible. Réessayez.",
+        "cleared": "Code effacé",
+        "clearFailed": "Suppression impossible. Réessayez.",
+        "mustBeFour": "Le code doit faire exactement 4 chiffres.",
+        "hintSelf": "Sert à pointer et à déverrouiller la tablette du magasin.",
+        "hintOther": "Vous pouvez définir un code sans jamais le voir — ces mêmes chiffres déverrouillent la tablette du magasin."
       }
     },
     "dialog": {
@@ -1157,6 +1223,9 @@
     "supplierInboxTaken": "Ce préfixe de boîte fournisseurs est déjà utilisé.",
     "supplierInboxInvalid": "Utilisez 3 à 32 lettres minuscules, chiffres ou traits d’union.",
     "copied": "Copié",
+    "squareConnectedShort": "Square connecté",
+    "cloverConnectedShort": "Clover connecté",
+    "connectPOS": "Connecter la caisse",
     "connectedIntegrationsCount": "{count} connectées",
     "connectPOSAndSchedule": "Connecter le POS et le logiciel de planning",
     "posSystems": "Systèmes POS",
@@ -1180,9 +1249,6 @@
     "scheduleErrSaveFailed": "Impossible d’enregistrer la connexion au planning.",
     "scheduleErrDefault": "Impossible de connecter le logiciel de planning.",
     "comingSoon": "Bientôt disponible",
-    "squareConnectedShort": "Square connecté",
-    "cloverConnectedShort": "Clover connecté",
-    "connectPOS": "Connecter la caisse",
     "desktopNotifications": "Notifications de bureau",
     "desktopEnabled": "Activé sur cet appareil",
     "desktopDisabled": "Alertes push lorsque l'application est fermée",
@@ -1468,7 +1534,11 @@
     "storeImageSaved": "Image de la boutique mise à jour",
     "storeImageFailed": "Impossible de mettre à jour l'image de la boutique",
     "storeImageRemove": "Supprimer",
-    "storeImageUpload": "Téléverser une image"
+    "storeImageUpload": "Téléverser une image",
+    "teamOnTeamPage": "Membres, rôles et codes de pointage",
+    "punchCodeOnTeamPage": "À définir sur la page de l'équipe",
+    "createStoreHint": "Crée un nouveau magasin avec son propre inventaire et ses prévisions.",
+    "toastSettingsNotLoaded": "Les paramètres sont encore en cours de chargement — réessayez dans un instant"
   },
   "lock": {
     "title": "Appareil verrouillé",
@@ -1616,7 +1686,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "Rechercher dans le canal",
     "muteMessages": "Mute messages",
-    "pinChat": "Épingler le canal"
+    "pinChat": "Épingler le canal",
+    "reactionsUnsupported": "Les réactions ne sont pas encore disponibles"
   },
   "dashboard": {
     "greeting": {
@@ -1755,6 +1826,7 @@
       "retailPrice": "Prix retail",
       "expirationBatches": "Lots d'expiration",
       "costPerUnit": "Coût/Unité",
+      "unitContent": "Spécification d'unité",
       "lossRate": "Taux de perte",
       "status": "Statut",
       "supplier": "Fournisseur",
@@ -1801,6 +1873,7 @@
         "retail": "Retail"
       },
       "name": "Nom de l'article *",
+      "description": "Description",
       "category": "Catégorie",
       "currentStock": "Stock actuel",
       "minStock": "Stock min",
@@ -1810,6 +1883,7 @@
       "supplier": "Fournisseur",
       "lossRate": "Taux de perte (%)",
       "namePlaceholder": "ex. Grains de café Arabica",
+      "descriptionPlaceholder": "Comment l'article est conditionné, stocké ou utilisé...",
       "categoryPlaceholder": "ex. Boissons",
       "unitPlaceholder": "kg, litres, unités…",
       "supplierPlaceholder": "Nom du fournisseur",
@@ -1817,6 +1891,15 @@
       "minOrderQtyPlaceholder": "ex. 24",
       "unitsPerCase": "Unités par carton",
       "unitsPerCasePlaceholder": "ex. 12",
+      "unitContentAmount": "Poids / volume par unité",
+      "unitContentAmountPlaceholder": "ex. 946",
+      "unitContentUnit": "Unité",
+      "contentPreview": "Calcul d'inventaire",
+      "contentPreviewEmpty": "Ajoutez un poids ou un volume pour que les produits consomment le stock avec précision.",
+      "contentPreviewValue": "1 {unit} = {amount}",
+      "caseContentPreview": "{count} par caisse = {amount}",
+      "back": "Retour",
+      "next": "Suivant",
       "cancel": "Annuler",
       "save": "Enregistrer les modifications",
       "saving": "Enregistrement…",
@@ -2620,7 +2703,9 @@
       "undone": "Annulé",
       "confirmExecute": "Confirmer",
       "cancel": "Annuler",
-      "undo": "Annuler"
+      "undo": "Annuler",
+      "noItems": "Aucune ligne",
+      "unknownSupplier": "Fournisseur"
     },
     "categories": {
       "scheduling": "Planification",
@@ -2760,7 +2845,9 @@
       "robots": "Robots",
       "customDomain": "Domaine personnalisé",
       "published": "Publié",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "subtotal": "Sous-total",
+      "tax": "Taxe"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Effacer l'historique",
@@ -3157,64 +3244,6 @@
     "invalidNumber": "Saisissez un nombre valide",
     "quotaSaved": "Quota enregistré",
     "quotaFailed": "Échec de l'enregistrement du quota"
-  },
-  "multiStore": {
-    "subBadge": "Sous",
-    "parentLabel": "Magasin parent",
-    "parentNone": "Aucun (créer comme magasin indépendant)",
-    "parentHelpRoot": "Crée un magasin indépendant avec son propre inventaire et ses prévisions.",
-    "parentHelpSub": "Les sous-magasins partagent personnel, produits, canaux, design et sites avec le parent. L'inventaire et les prévisions restent séparés.",
-    "drawerAddHint": "Créer un magasin ou rattacher comme sous-magasin",
-    "products": {
-      "filterShowingAll": "Tous les magasins",
-      "filterShowingCurrent": "Ce magasin uniquement",
-      "soldAtLabel": "Vendu dans",
-      "allStores": "Tous les magasins du groupe",
-      "allStoresHint": "Par défaut — vendu partout",
-      "thisStore": "actuel",
-      "soldAtHelp": "Décochez un magasin pour y masquer ce produit. L'inventaire reste géré par magasin.",
-      "tableHead": "Vendu dans",
-      "cellAll": "Tous",
-      "cellNone": "Aucun",
-      "cellCount": "{count} magasins",
-      "savedToast": "Visibilité du produit mise à jour",
-      "saveFailedToast": "Échec de la mise à jour de la visibilité",
-      "dialogTitle": "Où ce produit est-il vendu ?"
-    },
-    "settings": {
-      "cardTitle": "Multi-magasins",
-      "cardMetaSolo": "Magasin indépendant",
-      "cardMetaParent": "Parent de {count} sous-magasin(s)",
-      "cardMetaSub": "Sous-magasin de {parent}",
-      "title": "Gestion multi-magasins",
-      "description": "Regroupez les magasins sous un parent pour partager personnel, produits, canaux, design et sites.",
-      "currentRole": "Ce magasin",
-      "roleSolo": "Indépendant — pas dans un groupe parent/sous-magasin.",
-      "roleParent": "Parent de {count} sous-magasin(s).",
-      "roleSub": "Sous-magasin de {parent}.",
-      "groupHeader": "Magasins du groupe partagé",
-      "groupEmpty": "Aucun magasin lié.",
-      "parentBadge": "Parent",
-      "thisStore": "Actuel",
-      "policyHeader": "Politique de partage",
-      "policySharedTitle": "Partagé entre les magasins",
-      "policySharedList": "Personnel, produits, canaux, design, sites web",
-      "policyIsolatedTitle": "Par magasin",
-      "policyIsolatedList": "Inventaire, prévisions de ventes",
-      "detachHeader": "Détacher du parent",
-      "detachHelp": "Redonne à ce sous-magasin son statut de magasin indépendant. Les ressources partagées restent chez le parent — seules les données propres restent.",
-      "detachButton": "Détacher",
-      "detachConfirm": "Détacher ce magasin de son parent ? Le personnel, les produits et les sites partagés ne seront plus visibles ici.",
-      "detachSuccess": "Détaché du parent",
-      "detachFailed": "Échec du détachement",
-      "attachHeader": "Rattacher à un magasin parent",
-      "attachHelp": "Faites de ce magasin un sous-magasin d'un autre dont vous êtes propriétaire. Après rattachement, il partagera personnel, produits, canaux, design et sites.",
-      "attachPlaceholder": "Choisir un magasin parent",
-      "attachButton": "Rattacher",
-      "attachConfirm": "Rattacher ce magasin comme sous-magasin ?",
-      "attachSuccess": "Rattaché comme sous-magasin",
-      "attachFailed": "Échec du rattachement"
-    }
   },
   "landing": {
     "nav": {
@@ -3882,7 +3911,13 @@
     "toastCreatePOFailed": "Échec de la création du bon de commande",
     "toastUpdateStatusFailed": "Échec de la mise à jour du statut",
     "title": "Fournisseurs",
-    "subtitle": "Contacts fournisseurs et bons de commande"
+    "subtitle": "Contacts fournisseurs et bons de commande",
+    "contactNamePlaceholder": "Nom du contact",
+    "toastSupplierAdded": "Fournisseur ajouté",
+    "toastSupplierUpdated": "Fournisseur mis à jour",
+    "toastSupplierDeleted": "Fournisseur supprimé",
+    "toastPOCreated": "Bon de commande créé",
+    "toastStatusUpdated": "Statut mis à jour"
   },
   "apiSettings": {
     "toast": {
@@ -3898,7 +3933,8 @@
     "pageSubtitle": "Gérer les clés API et les intégrations de webhooks",
     "tabs": {
       "apiKeys": "Clés API",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mcp": "Serveurs MCP"
     },
     "apiKey": {
       "title": "Clé API",
@@ -3949,6 +3985,25 @@
     "empty": {
       "title": "Aucun webhook configuré",
       "description": "Ajoutez un point de terminaison de webhook ci-dessus pour recevoir des notifications en temps réel sur les événements de la boutique."
+    },
+    "mcp": {
+      "addTitle": "Connecter un serveur MCP",
+      "addDescription": "Autorisez Mr. Merchiva à utiliser les outils d'un serveur Model Context Protocol externe pendant la discussion.",
+      "label": "Libellé",
+      "url": "URL du serveur",
+      "token": "Jeton Bearer",
+      "tokenPlaceholder": "Jeton facultatif",
+      "securityNote": "Les jetons MCP sont stockés dans ce navigateur et envoyés uniquement avec les requêtes de discussion. Le serveur bloque localhost et les URL de réseau privé sauf si MCP_ALLOW_LOCALHOST=true est défini.",
+      "addSubmit": "Ajouter le serveur MCP",
+      "configuredTitle": "Serveurs MCP connectés",
+      "configuredDescription": "Les serveurs activés sont joints à Mr. Merchiva lorsque vous envoyez un message.",
+      "emptyTitle": "Aucun serveur MCP connecté",
+      "emptyDescription": "Connectez un point de terminaison MCP HTTPS pour donner à l'assistant l'accès à des outils externes.",
+      "toolsFound": "{count} outils trouvés",
+      "toastAdded": "Serveur MCP ajouté",
+      "toastRemoved": "Serveur MCP supprimé",
+      "toastConnected": "MCP connecté : {count} outils trouvés",
+      "toastFailed": "Échec de la connexion MCP"
     }
   },
   "punchIn": {
@@ -4426,7 +4481,10 @@
       "sales": "Ventes",
       "bookings": "Réservations",
       "channel": "Chat",
-      "settings-org": "Réglages boutique"
+      "docs": "Documents",
+      "settings-org": "Réglages boutique",
+      "bugs": "Signalements",
+      "notifications": "Notifications"
     },
     "notAvailableHere": "Indisponible sur cet appareil",
     "lite": {
@@ -4603,6 +4661,40 @@
         "requestFailed": "Envoi impossible. Réessaie.",
         "completed": "Jours terminés",
         "dayShort": "Jour {day}"
+      },
+      "bugs": {
+        "report": "Signaler un problème",
+        "reportHint": "Un souci avec l'app ? Prévenez l'équipe.",
+        "myOpen": "Mes signalements ouverts",
+        "mine": "Les miens",
+        "everyone": "Tous",
+        "myReports": "Mes signalements",
+        "openReports": "Signalements ouverts",
+        "teamAllClear": "Rien en attente",
+        "none": "Aucun signalement",
+        "noneHint": "Touchez le bouton ci-dessus quand l'app pose problème.",
+        "what": "Qu'est-ce qui n'a pas marché ?",
+        "whatPlaceholder": "Résumé court",
+        "details": "Que s'est-il passé ?",
+        "detailsPlaceholder": "Ce que vous avez fait et ce qui a échoué.",
+        "severity": "C'est grave ?",
+        "photo": "Ajouter une photo",
+        "retake": "Changer la photo",
+        "send": "Envoyer",
+        "titleRequired": "Écrivez d'abord un résumé court.",
+        "uploadFailed": "Impossible d'ajouter la photo.",
+        "failed": "Envoi impossible. Réessayez."
+      },
+      "notifications": {
+        "markAllRead": "Tout marquer comme lu",
+        "list": "Notifications",
+        "unreadCount": "{n} non lues",
+        "empty": "Rien de nouveau",
+        "emptyHint": "Les alertes de service et de demandes apparaissent ici.",
+        "details": "Notification",
+        "close": "Fermer",
+        "allRead": "Tout marqué comme lu",
+        "markFailed": "Échec de la mise à jour"
       }
     },
     "catalogDesc": {
@@ -4620,7 +4712,9 @@
       "inventory": "Comptez le stock, signalez les manques, notez les pertes.",
       "products": "Consultez produits et prix.",
       "sales": "Les ventes du jour en un coup d'œil.",
-      "bookings": "Réservations d'aujourd'hui et de demain."
+      "bookings": "Réservations d'aujourd'hui et de demain.",
+      "bugs": "Signalez un problème dans l'app et suivez son traitement.",
+      "notifications": "Vos alertes de service, de planning et de demandes, les plus récentes d'abord."
     },
     "appStore": {
       "hint": "Choisissez les fonctions utilisées par ce magasin. Une app installée apparaît dans le back-office, sur la tablette du magasin et sur les téléphones de l'équipe ; les apps obligatoires sont toujours actives.",
@@ -4658,11 +4752,7 @@
     "channel": "Canal",
     "logOut": "Se déconnecter",
     "logOutSub": "Libérer l'appareil pour la personne suivante",
-    "switchToManager": "Passer en mode responsable",
     "requiresManagerPin": "PIN responsable requis",
-    "managerMode": "Mode responsable",
-    "managerPinPrompt": "Saisissez votre PIN responsable pour passer cet appareil en mode responsable.",
-    "managerModeOn": "Mode responsable activé",
     "loggedIn": "Connecté",
     "loggedOut": "Déconnecté",
     "loggedOutIdle": "Déconnecté · aucune activité",
@@ -4708,7 +4798,6 @@
     "logOutKeepSub": "Rester pointé · libère l’appareil pour la personne suivante"
   },
   "personalDevice": {
-    "managerBadge": "Responsable",
     "leaveBtn": "Quitter",
     "channelBtn": "Canal",
     "noChannelsTitle": "Aucun canal pour l'instant",
@@ -4738,8 +4827,6 @@
       "endBreakSub": "Reprendre votre service",
       "storeLogin": "Se connecter sur un appareil du magasin",
       "storeLoginSub": "Scannez le QR d'un appareil du magasin",
-      "managerMode": "Passer en mode responsable",
-      "managerModeSub": "Ouvrir l'espace de gestion",
       "exitMode": "Quitter le mode personnel",
       "exitModeSub": "Revenir au sélecteur de mode",
       "leaveWork": "Quitter le travail",
@@ -5483,6 +5570,29 @@
       "reload": "Actualiser",
       "home": "Accueil"
     },
+    "contextMenu": {
+      "label": "Menu contextuel",
+      "openInNewTab": "Ouvrir dans un nouvel onglet",
+      "openInBackgroundTab": "Ouvrir dans un onglet en arrière-plan",
+      "openInBrowser": "Ouvrir dans le navigateur",
+      "copyLink": "Copier le lien",
+      "bookmarkLink": "Ajouter le lien aux favoris",
+      "openImage": "Ouvrir l’image dans un nouvel onglet",
+      "copyImageLink": "Copier l’adresse de l’image",
+      "copy": "Copier",
+      "cut": "Couper",
+      "paste": "Coller",
+      "selectAll": "Tout sélectionner",
+      "searchFor": "Rechercher « {text} »",
+      "bookmarkPage": "Ajouter cette page aux favoris",
+      "removeBookmark": "Retirer des favoris",
+      "bookmarkRemoved": "Favori supprimé",
+      "copyPageLink": "Copier le lien de la page",
+      "copied": "Copié",
+      "copyFailed": "Impossible de copier dans le presse-papiers",
+      "pasteDenied": "Autorisez l’accès au presse-papiers pour coller ici",
+      "openFailed": "Impossible d’ouvrir ce lien"
+    },
     "newTabPage": {
       "searchPlaceholder": "Rechercher des pages, des documents et des onglets",
       "apps": "Applications",
@@ -5655,6 +5765,69 @@
       "inventorySub": "Niveaux de stock et réapprovisionnement",
       "suppliersSub": "Fournisseurs et bons de commande",
       "wasteSub": "Pertes et mises au rebut du jour"
+    }
+  },
+  "bugs": {
+    "title": "Suivi des bugs",
+    "openCount": "{n} en cours",
+    "allClear": "Rien en attente",
+    "report": "Signaler un bug",
+    "reportDesc": "Dites ce qui n'a pas marché. La page, la version et l'appareil sont joints automatiquement.",
+    "search": "Rechercher un signalement",
+    "filterAll": "Tous",
+    "status": {
+      "open": "Ouvert",
+      "in_progress": "En cours",
+      "fixed": "Corrigé",
+      "wont_fix": "Non corrigé"
+    },
+    "severity": {
+      "low": "Mineur",
+      "normal": "Normal",
+      "high": "Grave",
+      "blocker": "Bloquant"
+    },
+    "surface": {
+      "manager": "Gestion",
+      "store": "Tablette du magasin",
+      "personal": "Téléphone"
+    },
+    "empty": "Aucun signalement",
+    "emptyDesc": "Toute l'équipe peut signaler un bug — d'ici, de la tablette ou de son téléphone.",
+    "emptyFiltered": "Aucun résultat",
+    "emptyFilteredDesc": "Essayez un autre filtre ou une autre recherche.",
+    "formTitle": "Qu'est-ce qui n'a pas marché ?",
+    "formTitlePlaceholder": "Résumé court",
+    "formBody": "Que s'est-il passé ?",
+    "formBodyPlaceholder": "Ce que vous avez fait, ce que vous attendiez, ce qui s'est passé.",
+    "formSeverity": "C'est grave ?",
+    "formScreenshot": "Capture d'écran",
+    "formScreenshotAdd": "Ajouter une capture",
+    "submit": "Envoyer",
+    "sending": "Envoi…",
+    "sent": "Signalement envoyé",
+    "sendFailed": "Envoi impossible. Réessayez.",
+    "uploadFailed": "Impossible d'envoyer la capture.",
+    "titleRequired": "Écrivez d'abord un résumé court.",
+    "contextHint": "La page, la version et l'appareil sont joints automatiquement.",
+    "contextPage": "Page",
+    "contextBuild": "Version",
+    "contextDevice": "Appareil",
+    "detailStatus": "Statut",
+    "detailSeverity": "Gravité",
+    "resolution": "Résolution",
+    "resolutionPlaceholder": "Ce qui a été fait, ou pourquoi ce ne sera pas corrigé.",
+    "resolvedBy": "Clôturé par {name}",
+    "triageHint": "Seuls les propriétaires et responsables changent le statut.",
+    "saved": "Signalement mis à jour",
+    "saveFailed": "Enregistrement impossible. Réessayez.",
+    "deleteFailed": "Suppression impossible. Réessayez.",
+    "unknownReporter": "Quelqu'un",
+    "unknownVersion": "inconnue"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "Type de service"
     }
   }
 }

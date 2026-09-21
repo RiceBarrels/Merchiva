@@ -12,7 +12,7 @@ import { getOrCreateDeviceId, getStoreMachineMode, setStoreMachineMode, useDevic
 import { useAutolockSeconds, useCurrentOperator, setCurrentOperator } from "@/lib/store-device-lock";
 import { useIsMobile } from "@/lib/use-is-mobile";
 import { Spinner } from "@/components/ui/loaders/geometric";
-import { useNow, fmtStatusClock, useIdleTimer, useOnShift, IdleLock } from "@/components/device";
+import { useNow, fmtStatusClock, useIdleTimer, useOnShift, IdleLock, MiniAppSurface } from "@/components/device";
 import { useOrgMembers, type StoreMember } from "./use-org-members";
 import { LoginPane } from "./login-pane";
 import { RosterPages, StoreClockCard, useClosingTime } from "./roster-pages";
@@ -49,6 +49,11 @@ export function StoreDeviceScreen() {
   // operator isn't already on shift. Skipped for members without a PIN.
   const [punchCheckPending, setPunchCheckPending] = useState(false);
   const [punchPromptMember, setPunchPromptMember] = useState<StoreMember | null>(null);
+  // The PIN the operator typed to log in. Punching goes through `recordPunch`,
+  // which takes the code and validates it server-side, and the device can no
+  // longer read anyone's code from a table — so it holds this one in memory for
+  // the session. Never persisted: a shared tablet must not keep a PIN on disk.
+  const [operatorPin, setOperatorPin] = useState<string | null>(null);
 
   // The legacy store-machine flag restricted the manager shell; this surface
   // manages its own operator/lock, so clear it. Register the device best-effort.
@@ -78,12 +83,14 @@ export function StoreDeviceScreen() {
   useEffect(() => {
     if (!punchCheckPending || !operatorMember || !onShift.ready) return;
     setPunchCheckPending(false);
-    if (!operatorShift && operatorMember.punchInCode) setPunchPromptMember(operatorMember);
-  }, [punchCheckPending, operatorMember, onShift.ready, operatorShift]);
+    // Only a PIN log-in can punch; a QR log-in never carries one.
+    if (!operatorShift && operatorPin) setPunchPromptMember(operatorMember);
+  }, [punchCheckPending, operatorMember, onShift.ready, operatorShift, operatorPin]);
 
   const handleLogin = useCallback(
-    (member: StoreMember) => {
+    (member: StoreMember, pin: string | null) => {
       setCurrentOperator({ memberId: member.id, name: member.displayName });
+      setOperatorPin(pin);
       setLoginAt(Date.now());
       setIdleLocked(false);
       setPunchCheckPending(true);
@@ -96,6 +103,7 @@ export function StoreDeviceScreen() {
   const handleLogout = useCallback(
     (reason?: "idle") => {
       setCurrentOperator(null);
+      setOperatorPin(null);
       setPunchCheckPending(false);
       setPunchPromptMember(null);
       toast(reason === "idle" ? t("storeDevice.loggedOutIdle") : t("storeDevice.loggedOut"));
@@ -134,84 +142,89 @@ export function StoreDeviceScreen() {
   const orgName = currentOrg.name;
 
   return (
-    <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground select-none">
-      {/* Status strip */}
-      <div className="h-10 shrink-0 flex items-center justify-between px-6 border-b border-border text-[13px] font-semibold">
-        <span className="font-mono tabular-nums">{fmtStatusClock(now)}</span>
-        <span className="text-muted-foreground font-medium">Merchiva · {orgName}</span>
-        <span className="font-mono text-[11px] font-medium text-muted-foreground truncate max-w-[30%]">{deviceName || t("storeDevice.thisDevice")}</span>
-      </div>
-
-      <div className="relative flex-1 min-h-0">
-        <AnimatePresence mode="wait" initial={false}>
-          {loggedIn && operatorMember ? (
-            <motion.div
-              key="in"
-              className="absolute inset-0 flex flex-col min-h-0"
-              initial={{ opacity: 0, y: 80, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -60, scale: 0.94 }}
-              transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
-            >
-              <LoggedInScreen
-                organizationId={organizationId}
-                operator={operatorMember}
-                shift={operatorShift}
-                loginAt={loginAt}
-                members={members}
-                forMember={onShift.forMember}
-                onLogout={() => handleLogout()}
-                onRecordingChange={setRecording}
-                phone={phone}
-                className="min-h-0 flex-1"
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="out"
-              className={cn(
-                "absolute inset-0 min-h-0",
-                phone ? "flex flex-col overflow-y-auto overscroll-contain" : "grid grid-cols-[400px_1fr]",
-              )}
-              initial={{ opacity: 0, y: 40, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -60, scale: 0.94 }}
-              transition={{ duration: 0.5, ease: [0.7, 0, 0.3, 1] }}
-            >
-              <LoginPane
-                organizationId={organizationId}
-                deviceId={deviceId}
-                deviceName={deviceName}
-                members={members}
-                active={!idleLocked}
-                onLogin={handleLogin}
-                compact={phone}
-                className={phone ? "shrink-0 border-b" : "min-h-0"}
-              />
-              <RosterPages orgName={orgName} entries={onShift.entries} closingTime={closingTime} className={phone ? "h-[440px] shrink-0" : "min-h-0"} />
-            </motion.div>
+    <MiniAppSurface
+      // The log-out warning has to stay visible over an open app: an abandoned
+      // shared tablet must still show it is about to log out.
+      overlay={
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[60]",
+            loggedIn ? "bg-white" : "bg-black",
+            dimming ? "opacity-100 transition-opacity duration-[8000ms] ease-linear" : "opacity-0 transition-opacity duration-150",
           )}
-        </AnimatePresence>
-      </div>
+        />
+      }
+    >
+      <div className="relative flex h-full w-full flex-col overflow-hidden bg-background text-foreground select-none">
+        {/* Status strip */}
+        <div className="h-10 shrink-0 flex items-center justify-between px-6 border-b border-border text-[13px] font-semibold">
+          <span className="font-mono tabular-nums">{fmtStatusClock(now)}</span>
+          <span className="text-muted-foreground font-medium">Merchiva · {orgName}</span>
+          <span className="font-mono text-[11px] font-medium text-muted-foreground truncate max-w-[30%]">{deviceName || t("storeDevice.thisDevice")}</span>
+        </div>
 
-      {/* Dimmer: fades to white (logged in → about to log out) or black
-          (logged out → about to lock) over the last 8 s before idle. */}
-      <div
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-0 z-[19]",
-          loggedIn ? "bg-white" : "bg-black",
-          dimming ? "opacity-100 transition-opacity duration-[8000ms] ease-linear" : "opacity-0 transition-opacity duration-150",
-        )}
-      />
+        <div className="relative flex-1 min-h-0">
+          <AnimatePresence mode="wait" initial={false}>
+            {loggedIn && operatorMember ? (
+              <motion.div
+                key="in"
+                className="absolute inset-0 flex flex-col min-h-0"
+                initial={{ opacity: 0, y: 80, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -60, scale: 0.94 }}
+                transition={{ duration: 0.6, ease: [0.2, 0.7, 0.2, 1] }}
+              >
+                <LoggedInScreen
+                  organizationId={organizationId}
+                  operator={operatorMember}
+                  operatorPin={operatorPin}
+                  shift={operatorShift}
+                  loginAt={loginAt}
+                  members={members}
+                  forMember={onShift.forMember}
+                  onLogout={() => handleLogout()}
+                  onRecordingChange={setRecording}
+                  phone={phone}
+                  className="min-h-0 flex-1"
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="out"
+                className={cn(
+                  "absolute inset-0 min-h-0",
+                  phone ? "flex flex-col overflow-y-auto overscroll-contain" : "grid grid-cols-[400px_1fr]",
+                )}
+                initial={{ opacity: 0, y: 40, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -60, scale: 0.94 }}
+                transition={{ duration: 0.5, ease: [0.7, 0, 0.3, 1] }}
+              >
+                <LoginPane
+                  organizationId={organizationId}
+                  deviceId={deviceId}
+                  deviceName={deviceName}
+                  members={members}
+                  active={!idleLocked}
+                  onLogin={handleLogin}
+                  compact={phone}
+                  className={phone ? "shrink-0 border-b" : "min-h-0"}
+                />
+                <RosterPages orgName={orgName} entries={onShift.entries} closingTime={closingTime} className={phone ? "h-[440px] shrink-0" : "min-h-0"} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      <PunchPrompt member={punchPromptMember} onDone={() => setPunchPromptMember(null)} />
+        <PunchPrompt member={punchPromptMember} code={operatorPin} onDone={() => setPunchPromptMember(null)} />
 
-      <IdleLock
-        active={idleLocked}
-        onUnlock={unlock}
-        card={<StoreClockCard orgName={orgName} count={onShift.entries.length} closingTime={closingTime} className="w-full" />}
-      />
-    </div>
+        <IdleLock
+          active={idleLocked}
+          onUnlock={unlock}
+          card={<StoreClockCard orgName={orgName} count={onShift.entries.length} closingTime={closingTime} className="w-full" />}
+        />
+        </div>
+    </MiniAppSurface>
   );
 }

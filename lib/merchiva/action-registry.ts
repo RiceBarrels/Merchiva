@@ -38,6 +38,7 @@ import {
   recordSupplierOrder,
 } from "@/lib/spacetimedb/actions";
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
+import { todayKey } from "@/lib/date-key";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -153,13 +154,37 @@ register({
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
-    const data: Record<string, unknown> = {};
+    // updateShift replaces the whole row, so a patch has to start from the
+    // existing one — sending only the changed fields blanked date, shiftType,
+    // startTime, endTime and staffRoles.
+    const conn = getConnection();
+    const shiftId = String(p.shiftId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const current = conn ? [...(conn.db as any).shift.iter()].find((r: any) => String(r.id) === shiftId) : null;
+    if (!current) throw new Error(`Shift ${shiftId} not found`);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = current as any;
+    const data: Record<string, unknown> = {
+      memberId: row.memberId ?? null,
+      staffName: String(row.staffName ?? ""),
+      staffRole: row.staffRole ?? null,
+      staffRoles: (() => {
+        try { return JSON.parse(String(row.staffRoles ?? "[]")); }
+        catch { return []; }
+      })(),
+      date: String(row.date ?? ""),
+      shiftType: String(row.shiftType ?? ""),
+      startTime: String(row.startTime ?? ""),
+      endTime: String(row.endTime ?? ""),
+      predictedDemand: String(row.predictedDemand ?? "medium"),
+    };
     if (p.date) data.date = String(p.date);
     if (p.startTime) data.startTime = String(p.startTime);
     if (p.endTime) data.endTime = String(p.endTime);
     if (p.shiftType) data.shiftType = String(p.shiftType);
-    if (p.staffRoles) data.staffRoles = JSON.stringify(p.staffRoles);
-    await updateShift(String(p.shiftId), data);
+    if (p.staffRoles) data.staffRoles = p.staffRoles;
+    await updateShift(shiftId, data);
   },
   toastMessage: (p) => `Shift ${p.shiftId} updated`,
 });
@@ -207,7 +232,7 @@ register({
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
-    await managerApproveShiftTrade(String(p.tradeId), "", Boolean(p.approved));
+    await managerApproveShiftTrade(String(p.tradeId), Boolean(p.approved));
   },
   toastMessage: (p) => `Shift trade ${p.approved ? "approved" : "rejected"}`,
 });
@@ -657,7 +682,7 @@ register({
       unit: String(p.unit ?? "pcs"),
       costPerUnit: Number(p.costPerUnit ?? p.cost ?? 0),
       supplier: String(p.supplier ?? ""),
-      lastRestocked: new Date().toISOString().slice(0, 10),
+      lastRestocked: todayKey(),
       description: p.description ? String(p.description) : null,
       minOrderQty: p.minOrderQty == null ? null : finiteNumber(p.minOrderQty),
       unitsPerCase: p.unitsPerCase == null ? null : finiteNumber(p.unitsPerCase),
@@ -685,7 +710,7 @@ register({
       itemName: String(p.itemName ?? p.name ?? ""),
       type: String(p.type ?? "adjustment"),
       quantity: Number(p.quantity ?? 0),
-      date: new Date().toISOString().slice(0, 10),
+      date: todayKey(),
       notes: String(p.notes ?? p.reason ?? "Via Mr. Merchiva"),
     });
   },

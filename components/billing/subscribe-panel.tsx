@@ -9,7 +9,6 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { IconTile } from "@/components/ui/icon-tile";
 import { Num } from "@/components/ui/num";
 import { OptionRow } from "@/components/ui/option-row";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Spinner } from "@/components/ui/loaders/geometric";
 import { StoreLogo, StorePlanBadge, StoreList } from "@/components/store-picker";
 import { useOrganizations, useOrgMembers } from "@/lib/spacetimedb/hooks";
@@ -48,7 +47,7 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
   const router = useRouter();
   const sp = useSearchParams();
   const { organizationId, currentOrg, isOwner, organizations, switchOrg } = usePermissions();
-  const { user, signOut } = useAuth();
+  const { user, signOut, getToken } = useAuth();
   const [rawOrgs] = useOrganizations() as [unknown[], boolean];
   const stdb = useSpacetimeDB();
   const [orgMembers] = useOrgMembers();
@@ -58,15 +57,15 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
   const [checkedAt] = useState(() => Date.now());
 
   // Subscription lives on the root (top-level) org. Sub-stores inherit it.
-  const rootOrgId = currentOrg?.parentOrgId ?? organizationId;
+  const billingOrgId = organizationId;
 
   const org = useMemo<OrgRow | null>(() => {
-    if (!rootOrgId) return null;
+    if (!billingOrgId) return null;
     for (const r of rawOrgs as OrgRow[]) {
-      if (r.id.toString() === rootOrgId) return r;
+      if (r.id.toString() === billingOrgId) return r;
     }
     return null;
-  }, [rawOrgs, rootOrgId]);
+  }, [rawOrgs, billingOrgId]);
 
   const customerId = org?.stripeCustomerId ?? null;
   const access = useMemo(() => evaluateSubscription(org, checkedAt), [org, checkedAt]);
@@ -100,14 +99,17 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
   // Refresh subscription state from Stripe (used after returning from checkout).
   const sync = useCallback(
     async ({ sessionId, custId }: { sessionId?: string; custId?: string | null } = {}) => {
-      if (!rootOrgId) return;
+      if (!billingOrgId) return;
       const params = new URLSearchParams();
       if (sessionId) params.set("sessionId", sessionId);
       if (custId) params.set("stripeCustomerId", custId);
       if (!params.toString()) return;
       setSyncing(true);
       try {
-        const res = await fetch(`/api/billing/sync?${params.toString()}`);
+        const token = await getToken();
+        const res = await fetch(`/api/billing/sync?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!res.ok) {
           console.error("[subscribe] sync failed:", res.status, await res.text());
           return;
@@ -120,7 +122,7 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
           currentPeriodEnd: number | null;
         };
         await updateOrgSubscription({
-          organizationId: rootOrgId,
+          organizationId: billingOrgId,
           stripeCustomerId: snap.stripeCustomerId,
           subscriptionStatus: snap.subscriptionStatus,
           subscriptionPriceId: snap.subscriptionPriceId,
@@ -133,7 +135,7 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
         setSyncing(false);
       }
     },
-    [rootOrgId],
+    [billingOrgId, getToken],
   );
 
   // Returning from Stripe checkout — sync, then strip the status params.
@@ -160,14 +162,14 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
 
   const handleSubscribe = useCallback(
     async (cycle: "monthly" | "yearly") => {
-      if (!rootOrgId) return;
+      if (!billingOrgId) return;
       setBusy(cycle);
       try {
         const res = await fetch("/api/billing/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            orgId: rootOrgId,
+            orgId: billingOrgId,
             interval: cycle === "yearly" ? "year" : "month",
             stripeCustomerId: customerId ?? undefined,
             customerEmail: user?.email,
@@ -187,7 +189,7 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
         setBusy(null);
       }
     },
-    [rootOrgId, customerId, user?.email, returnPath, t],
+    [billingOrgId, customerId, user?.email, returnPath, t],
   );
 
   const trialLine = access.inTrial
@@ -217,11 +219,8 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
           <div className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left">
             <StoreLogo name={currentOrg?.name ?? ""} logoUrl={currentOrg?.logoUrl} />
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{currentOrg?.name}</span>
-            {currentOrg?.parentOrgId && (
-              <StatusBadge tone="neutral" size="xs">{t("multiStore.subBadge")}</StatusBadge>
-            )}
             <StorePlanBadge
-              store={{ id: organizationId ?? "", parentOrgId: currentOrg?.parentOrgId }}
+              store={{ id: organizationId ?? "" }}
               className="shrink-0"
             />
           </div>

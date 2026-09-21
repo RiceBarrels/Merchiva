@@ -26,10 +26,16 @@ export function AuthRedirect() {
   useEffect(() => {
     if (justLoggedOut !== false) return;
     if (!isLoaded || !isSignedIn) return;
-    getToken().then((token) => {
-      if (token) localStorage.setItem("stdb_token", token);
-      router.replace("/choose");
-    });
+    getToken()
+      .then((token) => {
+        if (token) {
+          try { localStorage.setItem("stdb_token", token); } catch { /* storage unavailable */ }
+        }
+        router.replace("/choose");
+      })
+      // Without this the visitor sits on the marketing page with no redirect
+      // and no error, and the rejection goes unhandled.
+      .catch((err: unknown) => console.error("[auth-redirect] token read failed", err));
   }, [justLoggedOut, isLoaded, isSignedIn, router, getToken]);
 
   return null;

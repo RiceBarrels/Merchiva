@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { matchAllowedOrigin } from "@/lib/allowed-origins";
+import { API_CORS_ORIGINS } from "@/lib/api-cors";
 import { stripe, proPriceEnvNames, resolveProPriceId } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -42,10 +44,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // The Origin header is fully controlled by a non-browser caller, and the
+    // path allowlist above buys nothing if the HOST is attacker-chosen: they
+    // could obtain a genuine checkout.stripe.com link that redirects the payer
+    // to their own site afterwards, carrying the session id. Trust the header
+    // only when it is one of ours; otherwise use the deployment's own origin.
+    const claimedOrigin = req.headers.get("origin");
     const origin =
-      req.headers.get("origin") ||
-      req.nextUrl.origin ||
+      matchAllowedOrigin(claimedOrigin, API_CORS_ORIGINS) ||
       process.env.NEXT_PUBLIC_APP_URL ||
+      req.nextUrl.origin ||
       "";
 
     const session = await stripe().checkout.sessions.create({

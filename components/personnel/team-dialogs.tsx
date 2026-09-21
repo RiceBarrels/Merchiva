@@ -21,6 +21,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { timestampToMsOrNull } from "@/lib/spacetimedb/timestamp";
 import {
   DynamicUIElement,
   DynamicUIElementContent,
@@ -104,18 +105,6 @@ interface InvitationRowLike {
   expiresAt?: unknown;
 }
 
-function timestampToMs(value: unknown): number | null {
-  if (value == null) return null;
-  const ts = value as { toDate?: () => Date; microsSinceUnixEpoch?: unknown };
-  if (typeof ts.toDate === "function") {
-    const ms = ts.toDate().getTime();
-    return Number.isFinite(ms) ? ms : null;
-  }
-  if (typeof ts.microsSinceUnixEpoch === "bigint") return Number(ts.microsSinceUnixEpoch / BigInt(1000));
-  const ms = new Date(String(value)).getTime();
-  return Number.isFinite(ms) ? ms : null;
-}
-
 /** Why an email can't be invited to this org right now, or null. */
 function inviteConflict(
   orgId: string,
@@ -133,7 +122,7 @@ function inviteConflict(
   const pending = invitations.some((i) => {
     if (i.organizationId !== orgId || i.acceptedAt != null) return false;
     if ((i.email ?? "").trim().toLowerCase() !== wanted) return false;
-    const expires = timestampToMs(i.expiresAt);
+    const expires = timestampToMsOrNull(i.expiresAt);
     return expires == null || expires > now;
   });
   return pending ? "invited" : null;

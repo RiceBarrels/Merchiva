@@ -36,15 +36,9 @@ import { useSettings } from "@/lib/spacetimedb/hooks/useSettings";
 import { useT } from "@/lib/i18n/context";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { dateKey } from "@/lib/date-key";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function toISO(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 interface DayPredictions {
   date: string;
@@ -96,7 +90,7 @@ export function ItemForecast() {
       } else if (typeof ca === "number") ts = ca;
       else if (typeof ca === "string") ts = new Date(ca).getTime();
       if (!Number.isFinite(ts)) continue;
-      const date = new Date(ts).toISOString().slice(0, 10);
+      const date = dateKey(new Date(ts));
       try {
         const items = JSON.parse(String(p.items ?? "[]")) as Array<{
           name: string;

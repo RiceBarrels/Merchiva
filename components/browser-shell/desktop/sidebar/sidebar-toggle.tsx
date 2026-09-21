@@ -1,16 +1,28 @@
 "use client";
 
-import { PanelLeft } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useShortcutLabel, type ShellCommand } from "@/lib/browser-shell";
 import { useT } from "@/lib/i18n/context";
 import { TOOLBAR_BUTTON_CLASS } from "../chrome-classes";
-import { SIDEBAR_ELEMENT_ID, SIDEBAR_TOGGLE_ID, toggleSidebarHidden, useSidebarState } from "./sidebar-state";
+import {
+  SIDEBAR_ELEMENT_ID,
+  SIDEBAR_TOGGLE_ID,
+  setSidebarHidden,
+  toggleSidebarCollapsed,
+  toggleSidebarHidden,
+  useSidebarState,
+} from "./sidebar-state";
 
 /*
- * Sidebar toggle, the first control in the toolbar row. It shows and hides the whole sidebar;
- * collapsing it to the icon rail stays inside the sidebar (and on the drag handle).
+ * Sidebar toggle, the first control in the toolbar row. It collapses the sidebar to the icon rail
+ * and back — the same action, the same state and the same icons as the control at the foot of the
+ * sidebar, so the two always agree.
+ *
+ * The one exception is when the sidebar is hidden outright: there is nothing to collapse then, and
+ * this is the only pointer affordance that brings it back, so in that state it shows the sidebar.
+ * Hiding stays on the shortcut.
  *
  * The shortcut lives in core's table (lib/browser-shell/shortcuts.ts): Alt+S (⌥S on macOS) in
  * every environment — Tauri, a plain web tab and an installed PWA. The natural Mod combos are
@@ -35,9 +47,16 @@ export function toggleSidebarWithFocus(): void {
 
 export function SidebarToggle() {
   const t = useT();
-  const { hidden } = useSidebarState();
+  const { hidden, collapsed } = useSidebarState();
   const shortcut = useShortcutLabel(TOGGLE_SIDEBAR_COMMAND);
-  const label = t(hidden ? "browserDesktop.sidebar.show" : "browserDesktop.sidebar.hide");
+  const railed = hidden || collapsed;
+  const label = hidden
+    ? t("browserDesktop.sidebar.show")
+    : t(collapsed ? "components.sidebar.expand" : "components.sidebar.collapse");
+  // The shortcut hides and shows the whole sidebar, so it is only this button's shortcut while
+  // the sidebar is hidden — the one state where the two do the same thing.
+  const tooltip = hidden && shortcut ? `${label} (${shortcut})` : label;
+  const Icon = railed ? PanelLeftOpen : PanelLeftClose;
 
   return (
     <Tooltip>
@@ -48,16 +67,16 @@ export function SidebarToggle() {
             variant="ghost"
             size="icon-sm"
             aria-label={label}
-            aria-expanded={!hidden}
+            aria-expanded={!railed}
             aria-controls={hidden ? undefined : SIDEBAR_ELEMENT_ID}
             className={TOOLBAR_BUTTON_CLASS}
-            onClick={() => toggleSidebarWithFocus()}
+            onClick={() => (hidden ? setSidebarHidden(false) : toggleSidebarCollapsed())}
           />
         }
       >
-        <PanelLeft className="h-4 w-4 rtl:-scale-x-100" />
+        <Icon className="h-4 w-4 rtl:-scale-x-100" />
       </TooltipTrigger>
-      <TooltipContent side="bottom">{shortcut ? `${label} (${shortcut})` : label}</TooltipContent>
+      <TooltipContent side="bottom">{tooltip}</TooltipContent>
     </Tooltip>
   );
 }

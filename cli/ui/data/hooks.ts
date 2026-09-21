@@ -157,28 +157,3 @@ export function useStaff(): [Staff[], boolean] {
   }, [rows, orgId]);
   return [staff, ready];
 }
-
-export interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  totalSpent: number;
-}
-
-export function useCustomers(): [Customer[], boolean] {
-  const { orgId } = useOrg();
-  const [rows, ready] = useTable(tables.siteCustomer as any);
-  const customers = useMemo<Customer[]>(() => {
-    if (!orgId) return [];
-    return (rows as any[])
-      .filter((r) => r.organizationId === orgId)
-      .map((r) => ({
-        id: String(r.id),
-        name: r.name ?? r.displayName ?? r.email ?? "—",
-        email: r.email ?? "",
-        totalSpent: Number(r.totalSpent ?? r.lifetimeValue ?? 0),
-      }))
-      .sort((a, b) => b.totalSpent - a.totalSpent);
-  }, [rows, orgId]);
-  return [customers, ready];
-}

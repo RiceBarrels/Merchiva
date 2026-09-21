@@ -2,6 +2,7 @@ import { uuid } from "@/lib/utils";
 // @ts-nocheck
 import { getConnection, getActiveOrgId } from "@/lib/spacetimedb/client";
 import type { StaffAvailability, DayTime, TimeOffRequest, ShiftTrade } from "@/lib/types";
+import { dateKeyOffset, todayKey } from "@/lib/date-key";
 
 const DEFAULT_DAY_TIME: DayTime = { enabled: false, fullDay: true, startTime: "09:00", endTime: "17:00" };
 export function defaultDayTimes(): DayTime[] {
@@ -253,10 +254,8 @@ export async function getCoworkersWithShifts(
   const c = getConnection();
   if (!c) return [];
 
-  const today = new Date().toISOString().split("T")[0];
-  const future = new Date();
-  future.setDate(future.getDate() + 28);
-  const futureStr = future.toISOString().split("T")[0];
+  const today = todayKey();
+  const futureStr = dateKeyOffset(28);
 
   // Get active org members
   const members = Array.from((c as any).db.orgMember.iter())

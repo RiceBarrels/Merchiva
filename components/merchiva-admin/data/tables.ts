@@ -382,6 +382,7 @@ export const TABLES: TableDef[] = [
       { name: "subscriptionPriceId", sql: "subscription_price_id", type: "string", optional: true },
       { name: "subscriptionInterval", sql: "subscription_interval", type: "string", optional: true },
       { name: "currentPeriodEnd", sql: "current_period_end", type: "timestamp", optional: true },
+      // Retired with the sub-store feature; the column still exists in the DB.
       { name: "parentOrgId", sql: "parent_org_id", type: "string", optional: true },
       { name: "logoUrl", sql: "logo_url", type: "string", optional: true },
     ],

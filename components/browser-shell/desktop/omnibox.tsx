@@ -513,7 +513,7 @@ function omniboxSecondary(item: OmniboxItem, t: (key: string) => string): string
     case "doc":
       return t("nav.docs");
     case "store":
-      return item.isSub ? t("multiStore.subBadge") : undefined;
+      return undefined;
     default:
       return undefined;
   }

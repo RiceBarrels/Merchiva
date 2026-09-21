@@ -13,6 +13,9 @@ import { AppsPane } from "./apps-pane";
 export interface LoggedInScreenProps {
   organizationId: string;
   operator: StoreMember;
+  /** PIN the operator logged in with (null after a QR log-in) — punching from
+   *  the log-out drawer needs it. Memory only, never persisted. */
+  operatorPin: string | null;
   /** Operator's open shift (null when not punched in). */
   shift: OnShiftEntry | null;
   loginAt: number;
@@ -28,7 +31,7 @@ export interface LoggedInScreenProps {
 }
 
 /** Logged-in store device: the operator's walkie-talkie + the apps home. */
-export function LoggedInScreen({ organizationId, operator, shift, loginAt, members, forMember, onLogout, onRecordingChange, phone, className }: LoggedInScreenProps) {
+export function LoggedInScreen({ organizationId, operator, operatorPin, shift, loginAt, members, forMember, onLogout, onRecordingChange, phone, className }: LoggedInScreenProps) {
   const t = useT();
   const { locale } = useI18n();
   const now = useNow(15_000);
@@ -69,7 +72,7 @@ export function LoggedInScreen({ organizationId, operator, shift, loginAt, membe
   );
 
   const drawer = (
-    <LogoutDrawer open={drawerOpen} onOpenChange={setDrawerOpen} members={members} operator={operator} shift={shift} onLogout={onLogout} />
+    <LogoutDrawer open={drawerOpen} onOpenChange={setDrawerOpen} operator={operator} operatorPin={operatorPin} shift={shift} onLogout={onLogout} />
   );
 
   if (phone) {
@@ -82,7 +85,7 @@ export function LoggedInScreen({ organizationId, operator, shift, loginAt, membe
           className="min-h-0 flex-1"
           pages={[
             <MessageList key="messages" messages={channels.messages} className="h-full overflow-y-auto" />,
-            <AppsPane key="apps" members={members} operator={operator} forMember={forMember} phone className="h-full" />,
+            <AppsPane key="apps" members={members} operator={operator} operatorPin={operatorPin} forMember={forMember} phone className="h-full" />,
           ]}
         />
         {talkBar}
@@ -98,7 +101,7 @@ export function LoggedInScreen({ organizationId, operator, shift, loginAt, membe
         <MessageList messages={channels.messages} className="min-h-0 flex-1 overflow-y-auto" />
         {talkBar}
       </div>
-      <AppsPane members={members} operator={operator} forMember={forMember} className="min-h-0" />
+      <AppsPane members={members} operator={operator} operatorPin={operatorPin} forMember={forMember} className="min-h-0" />
       {drawer}
     </div>
   );

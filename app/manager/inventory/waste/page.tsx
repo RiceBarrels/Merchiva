@@ -44,6 +44,7 @@ import { PageHeader } from "@/components/page-header";
 import { usePermissions } from "@/lib/context/permissions";
 import { useWasteLogs, useInventoryItems } from "@/lib/spacetimedb/hooks";
 import { addWasteLog, deleteWasteLog } from "@/lib/spacetimedb/actions";
+import { centsOf, sumCents, toMajor } from "@/lib/money";
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
@@ -51,6 +52,7 @@ import { SectionNav } from "@/components/section-nav";
 import { toast } from "sonner";
 import { hapticSuccess, hapticWarning } from "@/lib/haptics";
 import { Spinner } from "@/components/ui/loaders/geometric";
+import { dateKeyOffset, todayKey } from "@/lib/date-key";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,6 +68,8 @@ interface WasteLogEntry {
   reason: WasteReason;
   costPerUnit: number;
   totalCost: number;
+  /** Exact minor units from the `totalCostCents` column; see lib/money.ts. */
+  totalCostCents: number;
   date: string;
   notes: string | null;
   createdBy: string | null;
@@ -85,13 +89,11 @@ type DateFilter = "today" | "week" | "month" | "all";
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayKey();
 }
 
 function startOfWeek(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 6);
-  return d.toISOString().slice(0, 10);
+  return dateKeyOffset(-6);
 }
 
 function startOfMonth(): string {
@@ -99,11 +101,22 @@ function startOfMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-const REASON_BADGE: Record<WasteReason, { label: string; tone: StatusTone }> = {
-  expired: { label: "Expired", tone: "danger" },
-  damaged: { label: "Damaged", tone: "warning" },
-  overproduction: { label: "Overproduction", tone: "warning" },
-  other: { label: "Other", tone: "neutral" },
+// Tone only — the label is resolved through useT() at render. It used to be
+// a hardcoded English string here, so the add-entry dropdown showed the
+// translated reasons while every row and breakdown card below it said
+// "Expired" / "Damaged" in English.
+const REASON_TONES: Record<WasteReason, StatusTone> = {
+  expired: "danger",
+  damaged: "warning",
+  overproduction: "warning",
+  other: "neutral",
+};
+
+const REASON_LABEL_KEYS: Record<WasteReason, string> = {
+  expired: "wasteLog.reasonExpired",
+  damaged: "wasteLog.reasonDamaged",
+  overproduction: "wasteLog.reasonOverproduction",
+  other: "wasteLog.reasonOther",
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -134,6 +147,7 @@ function WasteLogPage() {
         reason: r.reason as WasteReason,
         costPerUnit: r.costPerUnit,
         totalCost: r.totalCost,
+        totalCostCents: centsOf(r, "totalCost"),
         date: r.date,
         notes: r.notes ?? null,
         createdBy: r.createdBy ?? null,
@@ -212,19 +226,21 @@ function WasteLogPage() {
 
   // ── Summary cards ──────────────────────────────────────────────────────────
 
+  // Added in cents and converted once — a float sum over a few hundred entries
+  // drifts by a cent, and these numbers are the page's headline figures.
   const todayCost = useMemo(() => {
     const today = todayStr();
-    return logs.filter((l) => l.date === today).reduce((sum, l) => sum + l.totalCost, 0);
+    return toMajor(sumCents(logs.filter((l) => l.date === today), "totalCost"));
   }, [logs]);
 
   const weekCost = useMemo(() => {
     const start = startOfWeek();
-    return logs.filter((l) => l.date >= start).reduce((sum, l) => sum + l.totalCost, 0);
+    return toMajor(sumCents(logs.filter((l) => l.date >= start), "totalCost"));
   }, [logs]);
 
   const monthCost = useMemo(() => {
     const start = startOfMonth();
-    return logs.filter((l) => l.date >= start).reduce((sum, l) => sum + l.totalCost, 0);
+    return toMajor(sumCents(logs.filter((l) => l.date >= start), "totalCost"));
   }, [logs]);
 
   const mostWastedItem = useMemo(() => {
@@ -252,19 +268,21 @@ function WasteLogPage() {
   const reasonBreakdown = useMemo(() => {
     const start = startOfMonth();
     const monthLogs = logs.filter((l) => l.date >= start);
-    const breakdown: Record<WasteReason, { count: number; cost: number }> = {
-      expired: { count: 0, cost: 0 },
-      damaged: { count: 0, cost: 0 },
-      overproduction: { count: 0, cost: 0 },
-      other: { count: 0, cost: 0 },
+    // `cents` accumulates; `cost` is the once-converted value the cards render.
+    const breakdown: Record<WasteReason, { count: number; cents: number; cost: number }> = {
+      expired: { count: 0, cents: 0, cost: 0 },
+      damaged: { count: 0, cents: 0, cost: 0 },
+      overproduction: { count: 0, cents: 0, cost: 0 },
+      other: { count: 0, cents: 0, cost: 0 },
     };
     for (const l of monthLogs) {
       const r = breakdown[l.reason];
       if (r) {
         r.count += 1;
-        r.cost += l.totalCost;
+        r.cents += l.totalCostCents;
       }
     }
+    for (const r of Object.values(breakdown)) r.cost = toMajor(r.cents);
     return breakdown;
   }, [logs]);
 
@@ -358,7 +376,7 @@ function WasteLogPage() {
       l.unit,
       l.reason,
       l.costPerUnit.toFixed(2),
-      l.totalCost.toFixed(2),
+      toMajor(l.totalCostCents).toFixed(2),
       l.notes ?? "",
       l.createdBy ?? "",
     ]);
@@ -374,7 +392,7 @@ function WasteLogPage() {
       l.unit,
       l.reason,
       format(l.costPerUnit),
-      format(l.totalCost),
+      format(toMajor(l.totalCostCents)),
     ]);
     downloadPDF("Waste Log Report", headers, rows, {
       subtitle: `Filter: ${dateFilter}`,
@@ -499,7 +517,7 @@ function WasteLogPage() {
                   </TableRow>
                 ) : (
                   filteredLogs.map((log) => {
-                    const badge = REASON_BADGE[log.reason] ?? REASON_BADGE.other;
+                    const reasonKey: WasteReason = log.reason in REASON_TONES ? log.reason : "other";
                     return (
                       <TableRow key={log.id}>
                         <TableCell className="text-xs font-mono tabular-nums whitespace-nowrap">{log.date}</TableCell>
@@ -507,11 +525,11 @@ function WasteLogPage() {
                         <NumCell className="text-sm">{log.quantity}</NumCell>
                         <TableCell className="text-xs text-muted-foreground">{log.unit}</TableCell>
                         <TableCell>
-                          <StatusBadge size="xs" tone={badge.tone}>
-                            {badge.label}
+                          <StatusBadge size="xs" tone={REASON_TONES[reasonKey]}>
+                            {t(REASON_LABEL_KEYS[reasonKey])}
                           </StatusBadge>
                         </TableCell>
-                        <NumCell className="text-sm">{format(log.totalCost)}</NumCell>
+                        <NumCell className="text-sm">{format(toMajor(log.totalCostCents))}</NumCell>
                         <TableCell className="text-xs text-muted-foreground hidden lg:table-cell max-w-[200px] truncate">
                           {log.notes ?? "--"}
                         </TableCell>
@@ -541,7 +559,7 @@ function WasteLogPage() {
           </div>
           {filteredLogs.length > 0 && (
             <div className="border-t px-4 py-2 text-xs text-muted-foreground font-mono tabular-nums">
-              {filteredLogs.length} {t("wasteLog.entries")} &middot; {t("wasteLog.totalCostLabel")} {format(filteredLogs.reduce((s, l) => s + l.totalCost, 0))}
+              {filteredLogs.length} {t("wasteLog.entries")} &middot; {t("wasteLog.totalCostLabel")} {format(toMajor(sumCents(filteredLogs, "totalCost")))}
             </div>
           )}
         </Card>
@@ -553,13 +571,12 @@ function WasteLogPage() {
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {(Object.keys(REASON_BADGE) as WasteReason[]).map((reason) => {
-                const badge = REASON_BADGE[reason];
+              {(Object.keys(REASON_TONES) as WasteReason[]).map((reason) => {
                 const data = reasonBreakdown[reason];
                 return (
                   <div key={reason} className="flex items-center gap-3 p-2.5 rounded-lg border">
-                    <StatusBadge size="xs" tone={badge.tone}>
-                      {badge.label}
+                    <StatusBadge size="xs" tone={REASON_TONES[reason]}>
+                      {t(REASON_LABEL_KEYS[reason])}
                     </StatusBadge>
                     <div className="min-w-0 flex-1">
                       <p><Money value={data.cost} className="font-semibold" /></p>

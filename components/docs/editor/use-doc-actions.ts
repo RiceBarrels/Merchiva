@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import type * as Y from "yjs";
 
 import type { TabActions } from "@/lib/browser-shell";
+import type { DocsOpenUrl } from "@/components/docs/docs-open-context";
 import { createDocumentFromTemplate } from "@/lib/docs/create";
 import { exportDocument, printDocument, type ExportContext, type ExportFormat } from "@/lib/docs/export";
 import { startImageUpload } from "@/lib/docs/extensions/image-upload-plugin";
@@ -143,6 +144,16 @@ export interface DocActionDeps {
   ydoc: Y.Doc | null;
   isMobile: boolean;
   tabActions: TabActions;
+  /**
+   * How this surface opens another Docs URL.
+   *
+   * The device panel renders these same screens with no browser shell bound,
+   * so `tabActions` falls back to the router and every navigation throws
+   * /store or /personal into /manager with no way back. Everything that opens
+   * or replaces a Docs screen goes through here instead — the manager back
+   * office passes the shell's openUrl, the device panel swaps its own screen.
+   */
+  openDocsUrl: DocsOpenUrl;
   storeName: string | null;
   authorName: string | null;
   findVersion(versionId: string): DocVersion | undefined;
@@ -193,6 +204,7 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
     ydoc,
     isMobile,
     tabActions,
+    openDocsUrl,
     storeName,
     authorName,
     findVersion,
@@ -215,7 +227,7 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
       pageSetup,
       headerFooter: readHeaderFooterContent(ydoc, pageSetup),
     });
-    const openNewDocument = (id: string) => tabActions.openUrl(documentHref(id, { isNew: true }), "new-foreground");
+    const openNewDocument = (id: string) => openDocsUrl(documentHref(id, { isNew: true }), "new-foreground");
     const activateThread = (threadId: string | null) => {
       dispatch({ type: "activateThread", threadId });
       if (!threadId) return;
@@ -397,7 +409,7 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
             title: fmt(t("docs.copy.title"), { title: doc.title || t("docs.untitled") }),
           });
           toast.success(t("docs.copy.toast"), {
-            action: { label: t("docs.menu.open"), onClick: () => tabActions.openUrl(documentHref(id), "new-foreground") },
+            action: { label: t("docs.menu.open"), onClick: () => openDocsUrl(documentHref(id), "new-foreground") },
           });
         } catch (err) {
           reportDocError(err, t);
@@ -477,7 +489,11 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
               },
             },
           });
-          tabActions.navigateActive(DOCS_HOME_HREF);
+          // `openDocsUrl(..., "current")`, not navigateActive: inside a device
+          // panel there is no bound shell, so navigateActive falls back to the
+          // router and throws /store or /personal into /manager with no way
+          // back to the device surface.
+          openDocsUrl(DOCS_HOME_HREF, "current");
         } catch (err) {
           reportDocError(err, t);
         }
@@ -499,7 +515,7 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
           reportDocError(err, t);
         }
       },
-      openImported: (documentId) => tabActions.openUrl(documentHref(documentId, { isNew: true }), "new-foreground"),
+      openImported: (documentId) => openDocsUrl(documentHref(documentId, { isNew: true }), "new-foreground"),
 
       toggleOutline: () => {
         if (isMobile) dispatch({ type: "openMobilePage", page: "outline" });
@@ -584,6 +600,7 @@ export function useDocActions(deps: DocActionDeps): DocEditorActions {
     ydoc,
     isMobile,
     tabActions,
+    openDocsUrl,
     storeName,
     authorName,
     findVersion,

@@ -18,6 +18,7 @@ import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@/components/ui/drawer";
 import { Popover, PopoverContent } from "@/components/ui/popover";
+import { toast } from "sonner";
 import { usePermissions } from "@/lib/context/permissions";
 import { getCached, setCache } from "@/lib/cache";
 import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage, createConversation, setConversationMerchiva } from "@/lib/spacetimedb/actions";
@@ -91,8 +92,7 @@ export default function ChatPage() {
   const t = useT();
   const { locale } = useI18n();
   const { getToken } = useAuth();
-  const { organizationId, role, currentOrg, isOwner, shareGroupOrgIds } = usePermissions();
-  const groupKey = shareGroupOrgIds.join("|");
+  const { organizationId, role, currentOrg, isOwner } = usePermissions();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [team, setTeam] = useState<OrgMember[]>([]);
   const [activeConv, setActiveConv] = useState<ChatConversation | null>(null);
@@ -169,9 +169,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!organizationId) return;
-    // Chat conversations + teammates are shared across the share group, so
-    // load both from every org in the parent/child tree.
-    const ids = shareGroupOrgIds.length ? shareGroupOrgIds : [organizationId];
+    const ids = [organizationId];
     // Cache is per-user — on store devices a different operator must NOT see
     // the previous operator's conversations from cache.
     const cacheKey = `conversations_${ids.join("|")}_${userId ?? "anon"}`;
@@ -206,8 +204,7 @@ export default function ChatPage() {
         setAvatars(avMap);
       })
       .catch((err) => console.error("Chat load failed:", err));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organizationId, groupKey, userId]);
+  }, [organizationId, userId]);
 
   // Subscribe to the chat_message table. The hook fires a re-render whenever
   // a row is inserted/updated/deleted in the local cache — covers our own
@@ -426,23 +423,30 @@ export default function ChatPage() {
 
   const handleReact = async (messageId: string, emoji: string) => {
     const existing = reactions[messageId]?.find((r) => r.userId === userId && r.emoji === emoji);
-    if (existing) {
-      await removeReaction(messageId, emoji);
-      setReactions((prev) => ({
-        ...prev,
-        [messageId]: (prev[messageId] ?? []).filter((r) => r.id !== existing.id),
-      }));
-    } else {
-      await addReaction(messageId, emoji);
-      setReactions((prev) => ({
-        ...prev,
-        [messageId]: [...(prev[messageId] ?? []), { id: uuid(), messageId, userId: userId!, emoji }],
-      }));
+    try {
+      if (existing) {
+        await removeReaction(messageId, emoji);
+        setReactions((prev) => ({
+          ...prev,
+          [messageId]: (prev[messageId] ?? []).filter((r) => r.id !== existing.id),
+        }));
+      } else {
+        await addReaction(messageId, emoji);
+        setReactions((prev) => ({
+          ...prev,
+          [messageId]: [...(prev[messageId] ?? []), { id: uuid(), messageId, userId: userId!, emoji }],
+        }));
+      }
+    } catch {
+      // There is no reactions table in the module yet. Say so, rather than
+      // applying an optimistic update the next reload silently discards.
+      toast.error(t("chat.reactionsUnsupported"));
     }
   };
 
   const handleDeleteMsg = async (messageId: string) => {
-    await deleteMessage(messageId);
+    if (!activeConv) return;
+    await deleteMessage(activeConv.id, messageId);
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
   };
 

@@ -40,7 +40,7 @@ export type TileColor =
 
 export interface DeviceApp {
   /** Catalog id (see components/device/app-catalog.tsx) or one of the
-   *  built-in surface apps: "punch-in" | "requests" | "docs" | "directory" | "settings". */
+   *  built-in surface apps: "punch-in" | "requests" | "directory" | "settings". */
   id: string;
   label: string;
   /** Tile icon (custom glyph from app-icons.tsx or any component taking

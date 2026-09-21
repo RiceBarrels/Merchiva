@@ -85,6 +85,10 @@ const BOOTSTRAP_SUBSCRIPTIONS = [
   "SELECT * FROM organization",
   "SELECT * FROM org_member",
   "SELECT * FROM member_punch_code",
+  // The answer `resolveDeviceOperator` writes for THIS device. RLS scopes it to
+  // `identity = :sender`; without this subscription the row never streams back
+  // and every PIN unlock hangs on "verifying".
+  "SELECT * FROM device_operator_session",
   "SELECT * FROM notification",
   "SELECT * FROM push_subscription",
   "SELECT * FROM todo",
@@ -108,7 +112,12 @@ function orgSubscriptions(orgId: string): string[] {
     `SELECT * FROM inventory_item WHERE ${org}`,
     `SELECT * FROM staff_member WHERE ${org}`,
     `SELECT * FROM staff_role WHERE ${org}`,
-    `SELECT * FROM role_task WHERE ${org}`,
+    // NOT `${org}`: `role_task.organization_id` is `t.option(t.string())`, and
+    // an option column cannot be compared in SQL at all. The server rejects the
+    // query, and one rejected query fails the WHOLE batch — see the note on
+    // `bugSubscriptions` below. Scope on the `org_id` mirror, which is what the
+    // table's RLS rule joins on too (spacetimedb/src/index.ts, RLS_ORG_SCOPED).
+    `SELECT * FROM role_task WHERE org_id = '${orgId}'`,
     `SELECT * FROM shift WHERE ${org}`,
     `SELECT * FROM shift_preset WHERE ${org}`,
     `SELECT * FROM shift_trade WHERE ${org}`,
@@ -153,6 +162,19 @@ function orgSubscriptions(orgId: string): string[] {
     `SELECT * FROM site WHERE ${org}`,
     `SELECT * FROM site_booking WHERE ${org}`,
   ];
+}
+
+/**
+ * Bug reports, subscribed on their own rather than inside `orgSubscriptions`.
+ *
+ * `bug_report` is the newest table, and one query against a table the deployed
+ * module does not have yet fails the WHOLE batch it is in — which would cost
+ * every other screen its data until the module is republished. On its own, a
+ * module that predates the bug tracker loses only the bug tracker.
+ */
+function bugSubscriptions(orgId: string): string[] {
+  if (!isUuid(orgId)) return [];
+  return [`SELECT * FROM bug_report WHERE organization_id = '${orgId}'`];
 }
 
 interface SpacetimeProviderProps {
@@ -337,9 +359,32 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         const bootOrgId = activeOrgId();
         if (bootOrgId) {
           try {
-            conn.subscriptionBuilder().subscribe(orgSubscriptions(bootOrgId));
+            conn
+              .subscriptionBuilder()
+              // A malformed query is rejected asynchronously by the server, so
+              // the try/catch below never sees it. Without this handler the
+              // whole batch can fail and every screen sits empty in silence —
+              // which is exactly what an option column in a WHERE used to do.
+              .onError(() =>
+                console.error(
+                  "[SpacetimeDB] org subscription batch was rejected — every org-scoped table is empty",
+                ),
+              )
+              .subscribe(orgSubscriptions(bootOrgId));
           } catch (err) {
             console.warn("[SpacetimeDB] Org subscription failed:", err);
+          }
+        }
+        if (bootOrgId) {
+          try {
+            conn
+              .subscriptionBuilder()
+              .onError(() =>
+                console.warn("[SpacetimeDB] bug_report subscription failed — is the module published?"),
+              )
+              .subscribe(bugSubscriptions(bootOrgId));
+          } catch (err) {
+            console.warn("[SpacetimeDB] Bug report subscription failed:", err);
           }
         }
       })

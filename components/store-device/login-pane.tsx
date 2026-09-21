@@ -11,7 +11,8 @@ import { uuid, cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n/context";
 import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
 import { QrCodeView, PinPad, fmtMMSS, useNow } from "@/components/device";
-import { findMemberByPin, isManagerRole, type StoreMember } from "./use-org-members";
+import { isManagerRole, type StoreMember } from "./use-org-members";
+import { usePinOperator } from "./use-pin-operator";
 import { ExitStoreDrawer } from "./exit-store-drawer";
 
 const QR_TTL_SECONDS = 60;
@@ -88,7 +89,9 @@ export interface LoginPaneProps {
   members: StoreMember[];
   /** Pause QR issuing while the pane is hidden (idle lock). */
   active: boolean;
-  onLogin: (member: StoreMember) => void;
+  /** `pin` is the code they typed, or null after a QR log-in — the device keeps
+   *  it in memory so the operator can punch, and never persists it. */
+  onLogin: (member: StoreMember, pin: string | null) => void;
   /** Phone: smaller QR, tighter padding, medium PIN keys. */
   compact?: boolean;
   className?: string;
@@ -98,7 +101,7 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
   const t = useT();
   const [pinMode, setPinMode] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
-  const canExit = members.some((m) => isManagerRole(m.role) && !!m.punchInCode);
+  const resolveOperator = usePinOperator(organizationId);
   const { value, secondsLeft, refreshing, refresh, approved } = useDeviceLoginQr(organizationId, deviceId, active && !pinMode);
 
   // QR approved from a phone → show the check, consume the request, log in.
@@ -113,23 +116,26 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
     handledRef.current = approved.requestId;
     consumeDeviceLogin(approved.requestId).catch(console.error);
     hapticSuccess();
-    const id = setTimeout(() => onLogin(approvedMember), 900);
+    const id = setTimeout(() => onLogin(approvedMember, null), 900);
     return () => clearTimeout(id);
   }, [approved, approvedMember, onLogin]);
 
+  // The tablet cannot match a PIN itself — `member_punch_code` is RLS'd to the
+  // signed-in account — so the database answers who it belongs to.
   const handlePin = useCallback(
     async (pin: string) => {
-      const member = findMemberByPin(members, pin);
+      const resolved = await resolveOperator(pin);
+      const member = resolved ? members.find((m) => m.id === resolved.memberId) ?? null : null;
       if (!member) {
         hapticError();
         return false;
       }
       hapticSuccess();
       setPinMode(false);
-      onLogin(member);
+      onLogin(member, pin);
       return true;
     },
-    [members, onLogin],
+    [members, onLogin, resolveOperator],
   );
 
   const handleSos = useCallback(() => {
@@ -207,21 +213,21 @@ export function LoginPane({ organizationId, deviceId, deviceName, members, activ
             <i className="not-italic h-10 w-10 rounded-full bg-destructive/10 grid place-items-center text-[10px] font-bold tracking-wider">SOS</i>
             {t("storeDevice.emergency")}
           </button>
-          {canExit && (
-            <button
-              type="button"
-              onClick={() => { hapticLight(); setExitOpen(true); }}
-              className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              title={t("storeDevice.leaveStoreModeHint")}
-            >
-              <DoorOpen className="h-4 w-4" />
-              {t("storeDevice.leaveStoreMode")}
-            </button>
-          )}
+          {/* Always offered: whether the PIN belongs to a manager is decided by
+              the `verifyManagerPin` reducer, not by anything this device can read. */}
+          <button
+            type="button"
+            onClick={() => { hapticLight(); setExitOpen(true); }}
+            className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            title={t("storeDevice.leaveStoreModeHint")}
+          >
+            <DoorOpen className="h-4 w-4" />
+            {t("storeDevice.leaveStoreMode")}
+          </button>
         </div>
       )}
 
-      <ExitStoreDrawer open={exitOpen} onOpenChange={setExitOpen} members={members} />
+      <ExitStoreDrawer open={exitOpen} onOpenChange={setExitOpen} />
     </div>
   );
 }

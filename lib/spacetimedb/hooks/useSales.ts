@@ -12,24 +12,11 @@ import { useMemo } from "react";
 import { useTable } from "spacetimedb/react";
 import { tables } from "@/lib/spacetimedb/generated";
 import { usePermissions } from "@/lib/context/permissions";
+import { centsOf, toCents, toMajor } from "@/lib/money";
 import type { SalesRecord } from "@/lib/types";
+import { dateKey, todayKey } from "@/lib/date-key";
+import { timestampToMs } from "@/lib/spacetimedb/timestamp";
 
-// SpacetimeDB timestamps come through as { microsSinceUnixEpoch: bigint } most
-// of the time, but `.toDate()` is also available, and some callers pre-serialize
-// to a string. Handle all three so we don't silently drop rows.
-function timestampToMs(v: unknown): number {
-  if (v == null) return NaN;
-  if (typeof v === "number") return v;
-  if (typeof v === "string") return new Date(v).getTime();
-  if (typeof v === "object") {
-    const obj = v as { microsSinceUnixEpoch?: bigint | number; toDate?: () => Date };
-    if (typeof obj.toDate === "function") return obj.toDate().getTime();
-    const micros = obj.microsSinceUnixEpoch;
-    if (typeof micros === "bigint") return Number(micros / 1000n);
-    if (typeof micros === "number") return micros / 1000;
-  }
-  return NaN;
-}
 
 export function useSales() {
   const { organizationId } = usePermissions();
@@ -52,7 +39,9 @@ export function useSales() {
       }));
   }, [rawRecords, organizationId]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // The store's own calendar day, not UTC — `sales_record.date` and the
+  // hourly bucket below are both local.
+  const today = todayKey();
 
   // POS payments → synthetic SalesRecord rows. Daily aggregate per date, plus
   // an hourly aggregate for today so the hourly chart matches what the till
@@ -67,15 +56,16 @@ export function useSales() {
       if (r.status === "refunded") continue;
       const ts = timestampToMs(r.createdAt);
       if (!Number.isFinite(ts)) continue;
-      const date = new Date(ts).toISOString().slice(0, 10);
-      const net = Number(r.amount ?? 0) - Number(r.refundAmount ?? 0);
-      if (net <= 0) continue;
-      byDate.set(date, (byDate.get(date) ?? 0) + net);
+      const date = dateKey(new Date(ts));
+      // Exact: the payment table carries amountCents / refundAmountCents.
+      const netCents = centsOf(r, "amount") - centsOf(r, "refundAmount");
+      if (netCents <= 0) continue;
+      byDate.set(date, (byDate.get(date) ?? 0) + netCents);
     }
-    return Array.from(byDate, ([date, actual]) => ({
+    return Array.from(byDate, ([date, actualCents]) => ({
       date,
       hour: undefined,
-      actual,
+      actual: toMajor(actualCents),
       predicted: 0,
       weather: "",
       footTraffic: 0,
@@ -94,16 +84,16 @@ export function useSales() {
       const ts = timestampToMs(r.createdAt);
       if (!Number.isFinite(ts)) continue;
       const d = new Date(ts);
-      if (d.toISOString().slice(0, 10) !== today) continue;
-      const net = Number(r.amount ?? 0) - Number(r.refundAmount ?? 0);
-      if (net <= 0) continue;
+      if (dateKey(d) !== today) continue;
+      const netCents = centsOf(r, "amount") - centsOf(r, "refundAmount");
+      if (netCents <= 0) continue;
       const hour = d.getHours();
-      byHour.set(hour, (byHour.get(hour) ?? 0) + net);
+      byHour.set(hour, (byHour.get(hour) ?? 0) + netCents);
     }
-    return Array.from(byHour, ([hour, actual]) => ({
+    return Array.from(byHour, ([hour, actualCents]) => ({
       date: today,
       hour,
-      actual,
+      actual: toMajor(actualCents),
       predicted: 0,
       weather: "",
       footTraffic: 0,
@@ -120,7 +110,9 @@ export function useSales() {
     for (const r of posDaily) {
       const existing = byDate.get(r.date);
       if (existing) {
-        existing.actual += r.actual;
+        // Add in cents so merging a sales_record day with POS takings for the
+        // same day cannot drift.
+        existing.actual = toMajor(toCents(existing.actual) + toCents(r.actual));
       } else {
         byDate.set(r.date, { ...r });
       }
@@ -139,7 +131,7 @@ export function useSales() {
       const h = r.hour as number;
       const existing = byHour.get(h);
       if (existing) {
-        existing.actual += r.actual;
+        existing.actual = toMajor(toCents(existing.actual) + toCents(r.actual));
       } else {
         byHour.set(h, { ...r });
       }

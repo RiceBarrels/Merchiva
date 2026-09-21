@@ -19,7 +19,6 @@ export interface AppsGridProps {
 export const DEFAULT_DEVICE_APPS: DeviceApp[] = [
   { id: "punch-in", label: "Punch In", color: "ink", dock: true },
   { id: "requests", label: "Requests", color: "blue", dock: true },
-  { id: "docs", label: "Docs", color: "amber", dock: true },
   { id: "directory", label: "Directory", color: "teal" },
   { id: "settings", label: "Settings", color: "slate" },
 ];

@@ -45,6 +45,7 @@ import {
   LiteStat,
 } from "./lite";
 import type { LiteAppProps } from "./types";
+import { todayKey } from "@/lib/date-key";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ function fmt(n: number): string {
 }
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayKey();
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────

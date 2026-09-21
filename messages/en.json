@@ -25,7 +25,8 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "done": "Done"
   },
   "nav": {
     "dailyManagement": "Daily Management",
@@ -61,7 +62,9 @@
     },
     "usage": "AI Usage",
     "apps": "Device apps",
-    "docs": "Docs"
+    "docs": "Docs",
+    "bugs": "Bugs",
+    "notifications": "Notifications"
   },
   "login": {
     "title": "Sign in to Merchiva",
@@ -246,6 +249,28 @@
       "signInBtn": "Sign in",
       "noAccount": "Don't have an account?",
       "signUp": "Sign up"
+    },
+    "datePicker": {
+      "title": "Pick date",
+      "description": "Select a date",
+      "placeholder": "Select date",
+      "selected": "Selected"
+    },
+    "timePicker": {
+      "title": "Pick time",
+      "description": "Select a time",
+      "placeholder": "Select time",
+      "common": "Common",
+      "open": "Open",
+      "lunch": "Lunch",
+      "close": "Close",
+      "set": "Set"
+    },
+    "combobox": {
+      "noResults": "No results"
+    },
+    "pinPad": {
+      "backspace": "Backspace"
     }
   },
   "status": {
@@ -335,7 +360,9 @@
       "submit": "Add Product",
       "translationsLabel": "Translations",
       "translationsExpand": "Add Translations",
-      "translationsCollapse": "Hide Translations"
+      "translationsCollapse": "Hide Translations",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Brief product description..."
     },
     "inventoryUsage": {
       "title": "Inventory consumed per sale",
@@ -701,8 +728,23 @@
       "coverSent": "Cover request sent",
       "failedCover": "Failed to send cover request",
       "failedAvailability": "Failed to save availability",
-      "failedTimeOff": "Failed to submit time-off request"
-    }
+      "failedTimeOff": "Failed to submit time-off request",
+      "shiftAddedToCoverPool": "Shift added to the cover pool",
+      "noActiveMember": "No active team member found",
+      "coverAcceptedPending": "Cover request accepted — waiting for manager approval",
+      "shiftPersonUpdated": "Shift person updated",
+      "tradeAcceptedPending": "Trade accepted — awaiting manager approval",
+      "tradeDenied": "Trade denied",
+      "failedUpdateTrade": "Failed to update trade",
+      "failedAcceptTrade": "Failed to accept trade"
+    },
+    "coverPool": {
+      "title": "Cover pool",
+      "kicker": "Open cover requests that anyone on the team can accept. Manager approval is still required after acceptance.",
+      "empty": "No open cover requests."
+    },
+    "everyoneWorkingThatDay": "Everyone working that day",
+    "changePeople": "Change people"
   },
   "personnel": {
     "tabs": {
@@ -977,6 +1019,22 @@
           "alreadyMember": "This person is already on the team.",
           "alreadyInvited": "An invitation to this email is already pending."
         }
+      },
+      "punch": {
+        "label": "Punch-in code",
+        "set": "Set",
+        "notSet": "Not set",
+        "set_action": "Set code",
+        "change": "Change",
+        "clear": "Clear code",
+        "placeholder": "4 digits",
+        "saved": "Punch-in code saved",
+        "saveFailed": "Could not save the code. Try again.",
+        "cleared": "Punch-in code cleared",
+        "clearFailed": "Could not clear the code. Try again.",
+        "mustBeFour": "The code must be exactly 4 digits.",
+        "hintSelf": "Punches you in, and unlocks the store device.",
+        "hintOther": "You can set a code but never see it — the same digits unlock the store device."
       }
     },
     "dialog": {
@@ -1476,7 +1534,11 @@
     "storeImageSaved": "Store image updated",
     "storeImageFailed": "Couldn't update the store image",
     "storeImageRemove": "Remove",
-    "storeImageUpload": "Upload image"
+    "storeImageUpload": "Upload image",
+    "teamOnTeamPage": "Members, roles and punch-in codes",
+    "punchCodeOnTeamPage": "Set it on the team page",
+    "createStoreHint": "Creates a new store with its own inventory and forecasts.",
+    "toastSettingsNotLoaded": "Settings are still loading — try again in a moment"
   },
   "lock": {
     "title": "Device Locked",
@@ -1624,7 +1686,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "Search channel",
     "muteMessages": "Mute messages",
-    "pinChat": "Pin channel"
+    "pinChat": "Pin channel",
+    "reactionsUnsupported": "Reactions aren't available yet"
   },
   "dashboard": {
     "greeting": {
@@ -2640,7 +2703,9 @@
       "undone": "Undone",
       "confirmExecute": "Confirm",
       "cancel": "Cancel",
-      "undo": "Undo"
+      "undo": "Undo",
+      "noItems": "No line items",
+      "unknownSupplier": "Supplier"
     },
     "categories": {
       "scheduling": "Scheduling",
@@ -2780,7 +2845,9 @@
       "robots": "Robots",
       "customDomain": "Custom domain",
       "published": "Published",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "subtotal": "Subtotal",
+      "tax": "Tax"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Clear history",
@@ -3177,64 +3244,6 @@
     "invalidNumber": "Enter a valid number",
     "quotaSaved": "Quota saved",
     "quotaFailed": "Failed to save quota"
-  },
-  "multiStore": {
-    "subBadge": "Sub",
-    "parentLabel": "Parent store",
-    "parentNone": "None (create as root store)",
-    "parentHelpRoot": "Creates a new independent store with its own inventory and forecasts.",
-    "parentHelpSub": "Sub-stores share staff, products, channels, design, and sites with the parent. Inventory and forecasts stay separate.",
-    "drawerAddHint": "Create a new store or attach as a sub-store",
-    "products": {
-      "filterShowingAll": "All stores",
-      "filterShowingCurrent": "This store only",
-      "soldAtLabel": "Sold at",
-      "allStores": "All stores in this group",
-      "allStoresHint": "Default — sold everywhere",
-      "thisStore": "current",
-      "soldAtHelp": "Untick a store to hide this product from that storefront. Inventory stays per-store regardless.",
-      "tableHead": "Sold at",
-      "cellAll": "All",
-      "cellNone": "None",
-      "cellCount": "{count} stores",
-      "savedToast": "Updated where this product is sold",
-      "saveFailedToast": "Failed to update visibility",
-      "dialogTitle": "Where is this product sold?"
-    },
-    "settings": {
-      "cardTitle": "Multi-store",
-      "cardMetaSolo": "Standalone store",
-      "cardMetaParent": "Parent of {count} sub-store(s)",
-      "cardMetaSub": "Sub-store of {parent}",
-      "title": "Multi-store management",
-      "description": "Group stores under a parent to share staff, products, channels, design, and sites.",
-      "currentRole": "This store",
-      "roleSolo": "Standalone — not part of a parent/child group.",
-      "roleParent": "Parent of {count} sub-store(s).",
-      "roleSub": "Sub-store of {parent}.",
-      "groupHeader": "Stores in this share group",
-      "groupEmpty": "No related stores.",
-      "parentBadge": "Parent",
-      "thisStore": "Current",
-      "policyHeader": "Sharing policy",
-      "policySharedTitle": "Shared between stores",
-      "policySharedList": "Staff, products, channels, design, websites",
-      "policyIsolatedTitle": "Kept per store",
-      "policyIsolatedList": "Inventory, sales forecasts",
-      "detachHeader": "Detach from parent",
-      "detachHelp": "Turn this sub-store back into an independent store. Shared resources stay with the parent — only this store's own data remains.",
-      "detachButton": "Detach",
-      "detachConfirm": "Detach this store from its parent? Shared staff, products, and sites will no longer be visible here.",
-      "detachSuccess": "Detached from parent",
-      "detachFailed": "Failed to detach",
-      "attachHeader": "Attach to a parent store",
-      "attachHelp": "Make this store a sub-store of one you own. After attaching, this store will share staff, products, channels, design, and sites with the parent.",
-      "attachPlaceholder": "Select parent store",
-      "attachButton": "Attach",
-      "attachConfirm": "Attach this store as a sub-store?",
-      "attachSuccess": "Attached as sub-store",
-      "attachFailed": "Failed to attach"
-    }
   },
   "landing": {
     "nav": {
@@ -3902,7 +3911,13 @@
     "toastCreatePOFailed": "Failed to create purchase order",
     "toastUpdateStatusFailed": "Failed to update status",
     "title": "Suppliers",
-    "subtitle": "Vendor contacts and purchase orders"
+    "subtitle": "Vendor contacts and purchase orders",
+    "contactNamePlaceholder": "Contact name",
+    "toastSupplierAdded": "Supplier added",
+    "toastSupplierUpdated": "Supplier updated",
+    "toastSupplierDeleted": "Supplier deleted",
+    "toastPOCreated": "Purchase order created",
+    "toastStatusUpdated": "Status updated"
   },
   "apiSettings": {
     "toast": {
@@ -4466,7 +4481,10 @@
       "sales": "Sales",
       "bookings": "Bookings",
       "channel": "Chat",
-      "settings-org": "Store settings"
+      "docs": "Docs",
+      "settings-org": "Store settings",
+      "bugs": "Bug reports",
+      "notifications": "Notifications"
     },
     "notAvailableHere": "Not available on this device",
     "lite": {
@@ -4643,6 +4661,40 @@
         "requestFailed": "Could not send. Try again.",
         "completed": "Finished days",
         "dayShort": "Day {day}"
+      },
+      "bugs": {
+        "report": "Report a problem",
+        "reportHint": "Something wrong with the app? Tell the team.",
+        "myOpen": "My open reports",
+        "mine": "Mine",
+        "everyone": "Everyone",
+        "myReports": "My reports",
+        "openReports": "Open reports",
+        "teamAllClear": "Nothing open",
+        "none": "No reports yet",
+        "noneHint": "Tap the button above when something in the app goes wrong.",
+        "what": "What went wrong?",
+        "whatPlaceholder": "Short summary",
+        "details": "What happened?",
+        "detailsPlaceholder": "What you did and what went wrong.",
+        "severity": "How bad is it?",
+        "photo": "Add a photo",
+        "retake": "Replace photo",
+        "send": "Send",
+        "titleRequired": "Write a short summary first.",
+        "uploadFailed": "Could not add the photo.",
+        "failed": "Could not send. Try again."
+      },
+      "notifications": {
+        "markAllRead": "Mark all read",
+        "list": "Notifications",
+        "unreadCount": "{n} unread",
+        "empty": "Nothing new",
+        "emptyHint": "Shift and request alerts show up here.",
+        "details": "Notification",
+        "close": "Close",
+        "allRead": "All marked read",
+        "markFailed": "Couldn't update"
       }
     },
     "catalogDesc": {
@@ -4660,7 +4712,9 @@
       "inventory": "Count stock, mark low items, log waste.",
       "products": "Look up products and prices.",
       "sales": "Today's sales at a glance.",
-      "bookings": "Today's and tomorrow's reservations."
+      "bookings": "Today's and tomorrow's reservations.",
+      "bugs": "Report a problem with the app and follow what happens to it.",
+      "notifications": "Your shift, schedule and request alerts, newest first."
     },
     "appStore": {
       "hint": "Pick which features this store uses. An installed app shows up in the manager back office, on the store tablet and on staff phones; required apps are always on.",
@@ -4698,11 +4752,7 @@
     "channel": "Channel",
     "logOut": "Log out",
     "logOutSub": "Free the device for the next person",
-    "switchToManager": "Switch to manager mode",
     "requiresManagerPin": "Requires manager PIN",
-    "managerMode": "Manager mode",
-    "managerPinPrompt": "Enter your manager PIN to switch this device to manager mode.",
-    "managerModeOn": "Manager mode on",
     "loggedIn": "Logged in",
     "loggedOut": "Logged out",
     "loggedOutIdle": "Logged out · no activity",
@@ -4748,7 +4798,6 @@
     "logOutKeepSub": "Stay punched in · free the device for the next person"
   },
   "personalDevice": {
-    "managerBadge": "Manager",
     "leaveBtn": "Leave",
     "channelBtn": "Channel",
     "noChannelsTitle": "No channels yet",
@@ -4778,8 +4827,6 @@
       "endBreakSub": "Resume your shift",
       "storeLogin": "Log in on store device",
       "storeLoginSub": "Scan the QR on a store device",
-      "managerMode": "Switch to manager mode",
-      "managerModeSub": "Open the manager back office",
       "exitMode": "Exit personal mode",
       "exitModeSub": "Return to the mode chooser",
       "leaveWork": "Leave work",
@@ -5523,6 +5570,29 @@
       "reload": "Reload",
       "home": "Home"
     },
+    "contextMenu": {
+      "label": "Context menu",
+      "openInNewTab": "Open in new tab",
+      "openInBackgroundTab": "Open in background tab",
+      "openInBrowser": "Open in browser",
+      "copyLink": "Copy link",
+      "bookmarkLink": "Bookmark link",
+      "openImage": "Open image in new tab",
+      "copyImageLink": "Copy image address",
+      "copy": "Copy",
+      "cut": "Cut",
+      "paste": "Paste",
+      "selectAll": "Select all",
+      "searchFor": "Search for “{text}”",
+      "bookmarkPage": "Bookmark this page",
+      "removeBookmark": "Remove bookmark",
+      "bookmarkRemoved": "Bookmark removed",
+      "copyPageLink": "Copy page link",
+      "copied": "Copied",
+      "copyFailed": "Couldn’t copy to the clipboard",
+      "pasteDenied": "Allow clipboard access to paste here",
+      "openFailed": "Couldn’t open that link"
+    },
     "newTabPage": {
       "searchPlaceholder": "Search pages, documents and tabs",
       "apps": "Apps",
@@ -5695,6 +5765,69 @@
       "inventorySub": "Stock levels and restocking",
       "suppliersSub": "Vendors and purchase orders",
       "wasteSub": "Daily waste and disposal"
+    }
+  },
+  "bugs": {
+    "title": "Bug tracker",
+    "openCount": "{n} open",
+    "allClear": "Nothing open",
+    "report": "Report a bug",
+    "reportDesc": "Tell us what went wrong. The page, build and device are attached automatically.",
+    "search": "Search reports",
+    "filterAll": "All",
+    "status": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "fixed": "Fixed",
+      "wont_fix": "Won't fix"
+    },
+    "severity": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "blocker": "Blocker"
+    },
+    "surface": {
+      "manager": "Manager",
+      "store": "Store device",
+      "personal": "Phone"
+    },
+    "empty": "No bug reports",
+    "emptyDesc": "Anyone on the team can report a bug — from here, the store tablet or their phone.",
+    "emptyFiltered": "Nothing matches",
+    "emptyFilteredDesc": "Try another filter or search.",
+    "formTitle": "What went wrong?",
+    "formTitlePlaceholder": "Short summary",
+    "formBody": "What happened?",
+    "formBodyPlaceholder": "What you did, what you expected, what happened instead.",
+    "formSeverity": "How bad is it?",
+    "formScreenshot": "Screenshot",
+    "formScreenshotAdd": "Add a screenshot",
+    "submit": "Send report",
+    "sending": "Sending…",
+    "sent": "Report sent",
+    "sendFailed": "Could not send the report. Try again.",
+    "uploadFailed": "Could not upload the screenshot.",
+    "titleRequired": "Write a short summary first.",
+    "contextHint": "The page, build and device are attached automatically.",
+    "contextPage": "Page",
+    "contextBuild": "Build",
+    "contextDevice": "Device",
+    "detailStatus": "Status",
+    "detailSeverity": "Severity",
+    "resolution": "Resolution",
+    "resolutionPlaceholder": "What was done, or why it won't be fixed.",
+    "resolvedBy": "Closed by {name}",
+    "triageHint": "Owners and managers change a report's status.",
+    "saved": "Report updated",
+    "saveFailed": "Could not save. Try again.",
+    "deleteFailed": "Could not delete. Try again.",
+    "unknownReporter": "Someone",
+    "unknownVersion": "unknown"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "Shift type"
     }
   }
 }

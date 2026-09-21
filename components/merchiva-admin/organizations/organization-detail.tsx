@@ -74,7 +74,7 @@ export function OrganizationDetail({ orgId }: { orgId: string }) {
         </button>
       </div>
       {/* key = row snapshot so forms reset to fresh values after each reload */}
-      <OrgHeader key={`h:${orgKey}`} org={org} allOrgs={orgs.rows} owner={owner} memberCount={members.rows.length} onChanged={reloadOrg} />
+      <OrgHeader key={`h:${orgKey}`} org={org} owner={owner} memberCount={members.rows.length} onChanged={reloadOrg} />
       <SubscriptionForm key={`s:${orgKey}`} org={org} onChanged={reloadOrg} />
       <MembersTable orgId={orgId} members={members.rows} loading={members.loading} error={members.error} onChanged={reloadMembers} />
       <InvitationsTable orgId={orgId} invitations={invitations.rows} loading={invitations.loading} error={invitations.error} onChanged={reloadInvitations} />

@@ -41,6 +41,7 @@ import { NumCell } from "@/components/ui/num";
 import { STATUS_TONE_TEXT } from "@/components/ui/status-badge";
 import { PermissionGuard } from "@/components/permission-guard";
 import { PageHeader } from "@/components/page-header";
+import { useCurrency } from "@/lib/currency";
 import { usePermissions } from "@/lib/context/permissions";
 import { useProducts } from "@/lib/spacetimedb/hooks/useProducts";
 import { updateProduct } from "@/lib/spacetimedb/actions";
@@ -119,6 +120,9 @@ function PriceOverviewTab({
   setSearch: (s: string) => void;
 }) {
   const t = useT();
+  // Amounts follow the org's configured currency. Every figure on this page
+  // used to be printed with a literal "$".
+  const { format } = useCurrency();
   const { can } = usePermissions();
   const canEdit = can("products", "edit");
 
@@ -297,10 +301,10 @@ function PriceOverviewTab({
                           </div>
                         </TableCell>
                         <NumCell className="text-sm">
-                          ${product.price.toFixed(2)}
+                          {format(product.price)}
                         </NumCell>
                         <NumCell className="text-sm text-muted-foreground">
-                          ${product.cost.toFixed(2)}
+                          {format(product.cost)}
                         </NumCell>
                         <NumCell
                           className={`text-sm ${
@@ -317,7 +321,7 @@ function PriceOverviewTab({
                           {product.unitsSoldThisMonth}
                         </NumCell>
                         <NumCell className="text-sm">
-                          ${product.revenue.toFixed(0)}
+                          {format(product.revenue, { decimals: 0 })}
                         </NumCell>
                         <TableCell className="text-center">
                           {trendIcon(product.trend)}
@@ -341,7 +345,7 @@ function PriceOverviewTab({
                                     : STATUS_TONE_TEXT.danger
                                 }`}
                               >
-                                ${suggestion.suggestedPrice.toFixed(2)}
+                                {format(suggestion.suggestedPrice)}
                               </span>
                               <span
                                 className={`font-mono text-[10px] tabular-nums ${
@@ -406,8 +410,8 @@ function PriceOverviewTab({
                 <>
                   {t("pricing.confirm.body")
                     .replace("{name}", confirmDialog.product.name)
-                    .replace("{oldPrice}", `$${confirmDialog.product.price.toFixed(2)}`)
-                    .replace("{newPrice}", `$${confirmDialog.newPrice.toFixed(2)}`)}
+                    .replace("{oldPrice}", format(confirmDialog.product.price))
+                    .replace("{newPrice}", format(confirmDialog.newPrice))}
                 </>
               )}
             </AlertDialogDescription>
@@ -458,6 +462,7 @@ function PriceOverviewTab({
 
 function HappyHourTab({ products }: { products: Product[] }) {
   const t = useT();
+  const { format } = useCurrency();
   const { organizationId } = usePermissions();
   const storageKey = `happy_hour_${organizationId}`;
 
@@ -665,11 +670,11 @@ function HappyHourTab({ products }: { products: Product[] }) {
                       <span className="truncate flex-1 mr-3">{product.name}</span>
                       <div className="flex items-center gap-2 shrink-0 font-mono text-xs tabular-nums">
                         <span className="line-through text-muted-foreground">
-                          ${product.price.toFixed(2)}
+                          {format(product.price)}
                         </span>
                         <ArrowDownRight className="h-3 w-3 text-destructive" />
                         <span className="text-destructive font-medium">
-                          ${discounted.toFixed(2)}
+                          {format(discounted)}
                         </span>
                       </div>
                     </div>

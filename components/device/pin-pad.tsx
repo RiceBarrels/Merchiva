@@ -7,6 +7,7 @@ import { Delete } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { hapticError, hapticLight, hapticSuccess } from "@/lib/haptics";
+import { useT } from "@/lib/i18n/context";
 
 export interface PinPadProps {
   length?: number;                       // default 4
@@ -28,6 +29,7 @@ function makeKeys(shuffle: boolean): number[] {
 }
 
 export function PinPad({ length = 4, onComplete, size = "md", shuffle = true, className }: PinPadProps) {
+  const t = useT();
   const [pin, setPin] = useState("");
   const [keys, setKeys] = useState<number[]>(() => makeKeys(false));
   const [error, setError] = useState(false);
@@ -114,7 +116,7 @@ export function PinPad({ length = 4, onComplete, size = "md", shuffle = true, cl
         <button type="button" className={keyCls} onClick={() => push(keys[9])} disabled={busy}>
           {keys[9]}
         </button>
-        <button type="button" className={cn(keyCls, "text-muted-foreground")} onClick={back} disabled={busy} aria-label="Backspace">
+        <button type="button" className={cn(keyCls, "text-muted-foreground")} onClick={back} disabled={busy} aria-label={t("components.pinPad.backspace")}>
           <Delete className="h-5 w-5" />
         </button>
       </div>

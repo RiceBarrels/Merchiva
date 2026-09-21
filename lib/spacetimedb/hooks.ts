@@ -63,20 +63,14 @@ export function useChatConversations() { return useTable(tables.chatConversation
 export function useChatMembers()       { return useTable(tables.chatMember); }
 export function useChatMessages()      { return useTable(tables.chatMessage); }
 
-// ── Sites / Builder ──────────────────────────────────────────────────────────
+// ── Sites ────────────────────────────────────────────────────────────────────
+// Bookings is the only surviving site_* surface. The website-builder and
+// loyalty tables are `public: false` now (they hold customer PII and had no
+// RLS rule), so they are not in the client bindings at all, and the hooks that
+// wrapped them had no callers left.
 export function useSites()           { return useTable(tables.site); }
-export function useSitePages()       { return useTable(tables.sitePage); }
 export function useSiteComponents()  { return useTable(tables.siteComponent); }
-export function useSiteCustomers()   { return useTable(tables.siteCustomer); }
-export function useSiteOrders()      { return useTable(tables.siteOrder); }
 export function useSiteBookings()    { return useTable(tables.siteBooking); }
-export function useSiteMemberships() { return useTable(tables.siteMembership); }
-
-// ── Membership / Loyalty ─────────────────────────────────────────────────────
-export function useMembershipTiers()  { return useTable(tables.membershipTier); }
-export function useMembershipPerks()  { return useTable(tables.membershipPerk); }
-export function usePerkClaims()       { return useTable(tables.perkClaim); }
-export function useCustomerPoints()   { return useTable(tables.customerPoints); }
 
 // ── Todos ────────────────────────────────────────────────────────────────────
 export function useTodos() { return useTable(tables.todo); }
@@ -165,6 +159,18 @@ export function useDailyBriefings() {
 export function usePunchEvents() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tbl = (tables as any).punchEvent;
+  return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
+}
+/* eslint-enable */
+
+// ── Bug reports ─────────────────────────────────────────────────────────────
+// Reports about Merchiva itself, filed from any of the three surfaces. Guarded
+// like the training tables above: a browser holding an older bundle, or a
+// deployment behind the current module, gets EMPTY_TABLE_RESULT rather than a
+// crash on an undefined table.
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/rules-of-hooks */
+export function useBugReports() {
+  const tbl = (tables as any).bugReport;
   return tbl ? useTable(tbl) : (EMPTY_TABLE_RESULT as unknown as [unknown[], boolean]);
 }
 /* eslint-enable */

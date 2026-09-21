@@ -141,7 +141,6 @@ export default async function RootLayout({
         </div>
         <Analytics />
       </body>
-      <Analytics />
     </html>
   );
 }

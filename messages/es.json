@@ -25,7 +25,8 @@
     "collapse": "Contraer",
     "expand": "Expandir",
     "previous": "Anterior",
-    "next": "Siguiente"
+    "next": "Siguiente",
+    "done": "Listo"
   },
   "nav": {
     "dailyManagement": "Gestión diaria",
@@ -61,7 +62,9 @@
     },
     "usage": "Uso de IA",
     "apps": "Apps de dispositivo",
-    "docs": "Documentos"
+    "docs": "Documentos",
+    "bugs": "Errores",
+    "notifications": "Notificaciones"
   },
   "login": {
     "title": "Inicia sesión en Merchiva",
@@ -246,6 +249,28 @@
       "signInBtn": "Iniciar sesión",
       "noAccount": "¿No tienes cuenta?",
       "signUp": "Regístrate"
+    },
+    "datePicker": {
+      "title": "Elegir fecha",
+      "description": "Selecciona una fecha",
+      "placeholder": "Selecciona fecha",
+      "selected": "Seleccionado"
+    },
+    "timePicker": {
+      "title": "Elegir hora",
+      "description": "Selecciona una hora",
+      "placeholder": "Selecciona hora",
+      "common": "Frecuentes",
+      "open": "Apertura",
+      "lunch": "Almuerzo",
+      "close": "Cierre",
+      "set": "Establecer"
+    },
+    "combobox": {
+      "noResults": "Sin resultados"
+    },
+    "pinPad": {
+      "backspace": "Retroceso"
     }
   },
   "status": {
@@ -335,7 +360,9 @@
       "submit": "Añadir producto",
       "translationsLabel": "Traducciones",
       "translationsExpand": "Agregar traducciones",
-      "translationsCollapse": "Ocultar traducciones"
+      "translationsCollapse": "Ocultar traducciones",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Breve descripción del producto..."
     },
     "toasts": {
       "nameRequired": "El nombre es obligatorio",
@@ -372,6 +399,14 @@
         "noDescription": "Sin descripción disponible.",
         "addToCart": "Añadir al carrito"
       }
+    },
+    "inventoryUsage": {
+      "title": "Inventario consumido por venta",
+      "description": "Define cuánto stock consume este producto al vender una unidad.",
+      "add": "Añadir artículo",
+      "empty": "Aún no se ha definido ningún consumo de inventario.",
+      "noInventory": "Añade primero artículos de inventario.",
+      "unitFallback": "unidad"
     }
   },
   "staffing": {
@@ -693,8 +728,23 @@
       "coverSent": "Solicitud de cobertura enviada",
       "failedCover": "No se pudo enviar la solicitud de cobertura",
       "failedAvailability": "No se pudo guardar la disponibilidad",
-      "failedTimeOff": "No se pudo enviar la solicitud de tiempo libre"
-    }
+      "failedTimeOff": "No se pudo enviar la solicitud de tiempo libre",
+      "shiftAddedToCoverPool": "Turno añadido a los turnos por cubrir",
+      "noActiveMember": "No se encontró ningún miembro activo del equipo",
+      "coverAcceptedPending": "Solicitud de cobertura aceptada: falta la aprobación del responsable",
+      "shiftPersonUpdated": "Persona del turno actualizada",
+      "tradeAcceptedPending": "Cambio aceptado: pendiente de aprobación del responsable",
+      "tradeDenied": "Cambio rechazado",
+      "failedUpdateTrade": "No se pudo actualizar el cambio",
+      "failedAcceptTrade": "No se pudo aceptar el cambio"
+    },
+    "coverPool": {
+      "title": "Turnos por cubrir",
+      "kicker": "Solicitudes de cobertura abiertas que cualquiera del equipo puede aceptar. Tras aceptar sigue haciendo falta la aprobación del responsable.",
+      "empty": "No hay solicitudes de cobertura abiertas."
+    },
+    "everyoneWorkingThatDay": "Todos los que trabajan ese día",
+    "changePeople": "Cambiar personas"
   },
   "personnel": {
     "tabs": {
@@ -969,6 +1019,22 @@
           "alreadyMember": "Esta persona ya forma parte del equipo.",
           "alreadyInvited": "Ya hay una invitación pendiente para este correo."
         }
+      },
+      "punch": {
+        "label": "Código de fichaje",
+        "set": "Definido",
+        "notSet": "Sin definir",
+        "set_action": "Definir código",
+        "change": "Cambiar",
+        "clear": "Borrar código",
+        "placeholder": "4 dígitos",
+        "saved": "Código guardado",
+        "saveFailed": "No se pudo guardar el código. Inténtalo de nuevo.",
+        "cleared": "Código borrado",
+        "clearFailed": "No se pudo borrar el código. Inténtalo de nuevo.",
+        "mustBeFour": "El código debe tener exactamente 4 dígitos.",
+        "hintSelf": "Te ficha y desbloquea el dispositivo de la tienda.",
+        "hintOther": "Puedes definir un código pero nunca verlo: esos mismos dígitos desbloquean el dispositivo de la tienda."
       }
     },
     "dialog": {
@@ -1157,6 +1223,9 @@
     "supplierInboxTaken": "Ese prefijo de bandeja de proveedores ya está en uso.",
     "supplierInboxInvalid": "Usa 3-32 letras minúsculas, números o guiones.",
     "copied": "Copiado",
+    "squareConnectedShort": "Square conectado",
+    "cloverConnectedShort": "Clover conectado",
+    "connectPOS": "Conectar TPV",
     "connectedIntegrationsCount": "{count} conectadas",
     "connectPOSAndSchedule": "Conectar TPV y software de horarios",
     "posSystems": "Sistemas TPV",
@@ -1180,9 +1249,6 @@
     "scheduleErrSaveFailed": "No se pudo guardar la conexión de horarios.",
     "scheduleErrDefault": "No se pudo conectar el software de horarios.",
     "comingSoon": "Próximamente",
-    "squareConnectedShort": "Square conectado",
-    "cloverConnectedShort": "Clover conectado",
-    "connectPOS": "Conectar TPV",
     "desktopNotifications": "Notificaciones de escritorio",
     "desktopEnabled": "Activadas en este dispositivo",
     "desktopDisabled": "Recibe avisos cuando la app esté cerrada",
@@ -1468,7 +1534,11 @@
     "storeImageSaved": "Imagen de la tienda actualizada",
     "storeImageFailed": "No se pudo actualizar la imagen de la tienda",
     "storeImageRemove": "Quitar",
-    "storeImageUpload": "Subir imagen"
+    "storeImageUpload": "Subir imagen",
+    "teamOnTeamPage": "Miembros, roles y códigos de fichaje",
+    "punchCodeOnTeamPage": "Defínelo en la página del equipo",
+    "createStoreHint": "Crea una tienda nueva con su propio inventario y previsiones.",
+    "toastSettingsNotLoaded": "Los ajustes aún se están cargando: inténtalo de nuevo en un momento"
   },
   "lock": {
     "title": "Dispositivo bloqueado",
@@ -1616,7 +1686,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "Buscar en el canal",
     "muteMessages": "Mute messages",
-    "pinChat": "Fijar canal"
+    "pinChat": "Fijar canal",
+    "reactionsUnsupported": "Las reacciones aún no están disponibles"
   },
   "dashboard": {
     "greeting": {
@@ -1755,6 +1826,7 @@
       "retailPrice": "Precio retail",
       "expirationBatches": "Lotes de caducidad",
       "costPerUnit": "Coste/Unidad",
+      "unitContent": "Especificación de unidad",
       "lossRate": "Tasa de pérdida",
       "status": "Estado",
       "supplier": "Proveedor",
@@ -1801,6 +1873,7 @@
         "retail": "Retail"
       },
       "name": "Nombre del artículo *",
+      "description": "Descripción",
       "category": "Categoría",
       "currentStock": "Stock actual",
       "minStock": "Stock mínimo",
@@ -1810,6 +1883,7 @@
       "supplier": "Proveedor",
       "lossRate": "Tasa de pérdida (%)",
       "namePlaceholder": "p. ej. Granos de café Arábica",
+      "descriptionPlaceholder": "Cómo se empaqueta, almacena o usa el artículo...",
       "categoryPlaceholder": "p. ej. Bebidas",
       "unitPlaceholder": "kg, litros, unidades…",
       "supplierPlaceholder": "Nombre del proveedor",
@@ -1817,6 +1891,15 @@
       "minOrderQtyPlaceholder": "p. ej. 24",
       "unitsPerCase": "Unidades por caja",
       "unitsPerCasePlaceholder": "p. ej. 12",
+      "unitContentAmount": "Peso / volumen por unidad",
+      "unitContentAmountPlaceholder": "p. ej. 946",
+      "unitContentUnit": "Unidad",
+      "contentPreview": "Cálculo de inventario",
+      "contentPreviewEmpty": "Añade un peso o volumen para que los productos consuman inventario con precisión.",
+      "contentPreviewValue": "1 {unit} = {amount}",
+      "caseContentPreview": "{count} por caja = {amount}",
+      "back": "Atrás",
+      "next": "Siguiente",
       "cancel": "Cancelar",
       "save": "Guardar cambios",
       "saving": "Guardando…",
@@ -2620,7 +2703,9 @@
       "undone": "Deshecho",
       "confirmExecute": "Confirmar",
       "cancel": "Cancelar",
-      "undo": "Deshacer"
+      "undo": "Deshacer",
+      "noItems": "Sin líneas",
+      "unknownSupplier": "Proveedor"
     },
     "categories": {
       "scheduling": "Planificación",
@@ -2760,7 +2845,9 @@
       "robots": "Robots",
       "customDomain": "Dominio personalizado",
       "published": "Publicado",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "subtotal": "Subtotal",
+      "tax": "Impuesto"
     },
     "brand": "Mr. Merchiva",
     "clearHistory": "Borrar historial",
@@ -3157,64 +3244,6 @@
     "invalidNumber": "Introduce un número válido",
     "quotaSaved": "Cuota guardada",
     "quotaFailed": "Error al guardar la cuota"
-  },
-  "multiStore": {
-    "subBadge": "Sub",
-    "parentLabel": "Tienda principal",
-    "parentNone": "Ninguna (crear como tienda independiente)",
-    "parentHelpRoot": "Crea una tienda independiente con su propio inventario y previsiones.",
-    "parentHelpSub": "Las subtiendas comparten personal, productos, canales, diseño y sitios con la tienda principal. El inventario y las previsiones son independientes.",
-    "drawerAddHint": "Crea una tienda nueva o vincúlala como subtienda",
-    "products": {
-      "filterShowingAll": "Todas las tiendas",
-      "filterShowingCurrent": "Solo esta tienda",
-      "soldAtLabel": "Se vende en",
-      "allStores": "Todas las tiendas del grupo",
-      "allStoresHint": "Por defecto — disponible en todas",
-      "thisStore": "actual",
-      "soldAtHelp": "Desmarca una tienda para ocultar este producto en ese escaparate. El inventario sigue siendo por tienda.",
-      "tableHead": "Se vende en",
-      "cellAll": "Todas",
-      "cellNone": "Ninguna",
-      "cellCount": "{count} tiendas",
-      "savedToast": "Visibilidad del producto actualizada",
-      "saveFailedToast": "Error al actualizar la visibilidad",
-      "dialogTitle": "¿Dónde se vende este producto?"
-    },
-    "settings": {
-      "cardTitle": "Multi-tienda",
-      "cardMetaSolo": "Tienda independiente",
-      "cardMetaParent": "Tienda principal de {count} subtienda(s)",
-      "cardMetaSub": "Subtienda de {parent}",
-      "title": "Gestión multi-tienda",
-      "description": "Agrupa tiendas bajo una principal para compartir personal, productos, canales, diseño y sitios.",
-      "currentRole": "Esta tienda",
-      "roleSolo": "Independiente — no forma parte de un grupo principal/sub.",
-      "roleParent": "Tienda principal de {count} subtienda(s).",
-      "roleSub": "Subtienda de {parent}.",
-      "groupHeader": "Tiendas del grupo compartido",
-      "groupEmpty": "Sin tiendas relacionadas.",
-      "parentBadge": "Principal",
-      "thisStore": "Actual",
-      "policyHeader": "Política de uso compartido",
-      "policySharedTitle": "Compartido entre tiendas",
-      "policySharedList": "Personal, productos, canales, diseño, sitios web",
-      "policyIsolatedTitle": "Por tienda",
-      "policyIsolatedList": "Inventario, previsiones de ventas",
-      "detachHeader": "Desvincular de la principal",
-      "detachHelp": "Convierte esta subtienda en una tienda independiente. Los recursos compartidos permanecen en la principal — solo se conservan los datos propios de esta tienda.",
-      "detachButton": "Desvincular",
-      "detachConfirm": "¿Desvincular esta tienda de su principal? El personal, productos y sitios compartidos dejarán de estar visibles aquí.",
-      "detachSuccess": "Desvinculada de la principal",
-      "detachFailed": "Error al desvincular",
-      "attachHeader": "Vincular a una tienda principal",
-      "attachHelp": "Convierte esta tienda en subtienda de otra que poseas. Tras vincular, compartirá personal, productos, canales, diseño y sitios.",
-      "attachPlaceholder": "Selecciona tienda principal",
-      "attachButton": "Vincular",
-      "attachConfirm": "¿Vincular esta tienda como subtienda?",
-      "attachSuccess": "Vinculada como subtienda",
-      "attachFailed": "Error al vincular"
-    }
   },
   "landing": {
     "nav": {
@@ -3882,7 +3911,13 @@
     "toastCreatePOFailed": "No se pudo crear la orden de compra",
     "toastUpdateStatusFailed": "No se pudo actualizar el estado",
     "title": "Proveedores",
-    "subtitle": "Contactos de proveedores y órdenes de compra"
+    "subtitle": "Contactos de proveedores y órdenes de compra",
+    "contactNamePlaceholder": "Nombre del contacto",
+    "toastSupplierAdded": "Proveedor añadido",
+    "toastSupplierUpdated": "Proveedor actualizado",
+    "toastSupplierDeleted": "Proveedor eliminado",
+    "toastPOCreated": "Orden de compra creada",
+    "toastStatusUpdated": "Estado actualizado"
   },
   "apiSettings": {
     "toast": {
@@ -3898,7 +3933,8 @@
     "pageSubtitle": "Gestiona claves API e integraciones de webhooks",
     "tabs": {
       "apiKeys": "Claves API",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "mcp": "Servidores MCP"
     },
     "apiKey": {
       "title": "Clave API",
@@ -3949,6 +3985,25 @@
     "empty": {
       "title": "No hay webhooks configurados",
       "description": "Añade un endpoint de webhook arriba para recibir notificaciones en tiempo real sobre los eventos de la tienda."
+    },
+    "mcp": {
+      "addTitle": "Conectar servidor MCP",
+      "addDescription": "Permite que Mr. Merchiva use herramientas de un servidor Model Context Protocol externo durante el chat.",
+      "label": "Etiqueta",
+      "url": "URL del servidor",
+      "token": "Token Bearer",
+      "tokenPlaceholder": "Token opcional",
+      "securityNote": "Los tokens MCP se guardan en este navegador y solo se envían con las solicitudes de chat. El servidor bloquea localhost y las URL de red privada salvo que se defina MCP_ALLOW_LOCALHOST=true.",
+      "addSubmit": "Añadir servidor MCP",
+      "configuredTitle": "Servidores MCP conectados",
+      "configuredDescription": "Los servidores habilitados se adjuntan a Mr. Merchiva cuando envías un mensaje de chat.",
+      "emptyTitle": "No hay servidores MCP conectados",
+      "emptyDescription": "Conecta un endpoint MCP HTTPS para dar al asistente acceso a herramientas externas.",
+      "toolsFound": "{count} herramientas encontradas",
+      "toastAdded": "Servidor MCP añadido",
+      "toastRemoved": "Servidor MCP eliminado",
+      "toastConnected": "MCP conectado: {count} herramientas encontradas",
+      "toastFailed": "Error al conectar con MCP"
     }
   },
   "punchIn": {
@@ -4426,7 +4481,10 @@
       "sales": "Ventas",
       "bookings": "Reservas",
       "channel": "Chat",
-      "settings-org": "Ajustes de tienda"
+      "docs": "Documentos",
+      "settings-org": "Ajustes de tienda",
+      "bugs": "Reportar errores",
+      "notifications": "Notificaciones"
     },
     "notAvailableHere": "No disponible en este dispositivo",
     "lite": {
@@ -4603,6 +4661,40 @@
         "requestFailed": "No se pudo enviar. Inténtalo otra vez.",
         "completed": "Días terminados",
         "dayShort": "Día {day}"
+      },
+      "bugs": {
+        "report": "Reportar un problema",
+        "reportHint": "¿Algo falla en la app? Avisa al equipo.",
+        "myOpen": "Mis reportes abiertos",
+        "mine": "Míos",
+        "everyone": "Todos",
+        "myReports": "Mis reportes",
+        "openReports": "Reportes abiertos",
+        "teamAllClear": "Nada pendiente",
+        "none": "Aún sin reportes",
+        "noneHint": "Toca el botón de arriba cuando algo falle en la app.",
+        "what": "¿Qué salió mal?",
+        "whatPlaceholder": "Resumen corto",
+        "details": "¿Qué pasó?",
+        "detailsPlaceholder": "Qué hiciste y qué falló.",
+        "severity": "¿Qué tan grave es?",
+        "photo": "Añadir foto",
+        "retake": "Cambiar foto",
+        "send": "Enviar",
+        "titleRequired": "Escribe primero un resumen corto.",
+        "uploadFailed": "No se pudo añadir la foto.",
+        "failed": "No se pudo enviar. Inténtalo de nuevo."
+      },
+      "notifications": {
+        "markAllRead": "Marcar todo como leído",
+        "list": "Notificaciones",
+        "unreadCount": "{n} sin leer",
+        "empty": "Nada nuevo",
+        "emptyHint": "Aquí aparecen los avisos de turnos y solicitudes.",
+        "details": "Notificación",
+        "close": "Cerrar",
+        "allRead": "Todo marcado como leído",
+        "markFailed": "No se pudo actualizar"
       }
     },
     "catalogDesc": {
@@ -4620,7 +4712,9 @@
       "inventory": "Cuenta existencias, marca faltantes y registra mermas.",
       "products": "Consulta productos y precios.",
       "sales": "Las ventas de hoy de un vistazo.",
-      "bookings": "Reservas de hoy y de mañana."
+      "bookings": "Reservas de hoy y de mañana.",
+      "bugs": "Informa de un problema con la app y sigue su avance.",
+      "notifications": "Tus avisos de turno, horario y solicitudes, del más reciente al más antiguo."
     },
     "appStore": {
       "hint": "Elige qué funciones usa esta tienda. Una app instalada aparece en el panel de gestión, en la tablet de la tienda y en los móviles del personal; las apps obligatorias están siempre activas.",
@@ -4658,11 +4752,7 @@
     "channel": "Canal",
     "logOut": "Cerrar sesión",
     "logOutSub": "Libera el dispositivo para la siguiente persona",
-    "switchToManager": "Cambiar a modo gerente",
     "requiresManagerPin": "Requiere PIN de gerente",
-    "managerMode": "Modo gerente",
-    "managerPinPrompt": "Introduce tu PIN de gerente para pasar este dispositivo a modo gerente.",
-    "managerModeOn": "Modo gerente activado",
     "loggedIn": "Sesión iniciada",
     "loggedOut": "Sesión cerrada",
     "loggedOutIdle": "Sesión cerrada · sin actividad",
@@ -4708,7 +4798,6 @@
     "logOutKeepSub": "Sigue fichado · libera el dispositivo para la siguiente persona"
   },
   "personalDevice": {
-    "managerBadge": "Gerente",
     "leaveBtn": "Salir",
     "channelBtn": "Canal",
     "noChannelsTitle": "Aún no hay canales",
@@ -4738,8 +4827,6 @@
       "endBreakSub": "Reanuda tu turno",
       "storeLogin": "Iniciar sesión en un dispositivo de tienda",
       "storeLoginSub": "Escanea el QR de un dispositivo de tienda",
-      "managerMode": "Cambiar a modo gerente",
-      "managerModeSub": "Abrir el panel de gestión",
       "exitMode": "Salir del modo personal",
       "exitModeSub": "Volver al selector de modo",
       "leaveWork": "Salir del trabajo",
@@ -5483,6 +5570,29 @@
       "reload": "Volver a cargar",
       "home": "Inicio"
     },
+    "contextMenu": {
+      "label": "Menú contextual",
+      "openInNewTab": "Abrir en una pestaña nueva",
+      "openInBackgroundTab": "Abrir en una pestaña en segundo plano",
+      "openInBrowser": "Abrir en el navegador",
+      "copyLink": "Copiar enlace",
+      "bookmarkLink": "Añadir el enlace a marcadores",
+      "openImage": "Abrir la imagen en una pestaña nueva",
+      "copyImageLink": "Copiar la dirección de la imagen",
+      "copy": "Copiar",
+      "cut": "Cortar",
+      "paste": "Pegar",
+      "selectAll": "Seleccionar todo",
+      "searchFor": "Buscar «{text}»",
+      "bookmarkPage": "Añadir esta página a marcadores",
+      "removeBookmark": "Quitar de marcadores",
+      "bookmarkRemoved": "Marcador eliminado",
+      "copyPageLink": "Copiar el enlace de la página",
+      "copied": "Copiado",
+      "copyFailed": "No se pudo copiar al portapapeles",
+      "pasteDenied": "Permite el acceso al portapapeles para pegar aquí",
+      "openFailed": "No se pudo abrir ese enlace"
+    },
     "newTabPage": {
       "searchPlaceholder": "Buscar páginas, documentos y pestañas",
       "apps": "Aplicaciones",
@@ -5655,6 +5765,69 @@
       "inventorySub": "Niveles de stock y reposición",
       "suppliersSub": "Proveedores y órdenes de compra",
       "wasteSub": "Desperdicio y desecho diario"
+    }
+  },
+  "bugs": {
+    "title": "Seguimiento de errores",
+    "openCount": "{n} sin resolver",
+    "allClear": "Nada pendiente",
+    "report": "Reportar un error",
+    "reportDesc": "Cuenta qué salió mal. La página, la versión y el dispositivo se adjuntan solos.",
+    "search": "Buscar reportes",
+    "filterAll": "Todos",
+    "status": {
+      "open": "Abierto",
+      "in_progress": "En curso",
+      "fixed": "Resuelto",
+      "wont_fix": "No se corregirá"
+    },
+    "severity": {
+      "low": "Leve",
+      "normal": "Normal",
+      "high": "Grave",
+      "blocker": "Bloquea"
+    },
+    "surface": {
+      "manager": "Gestión",
+      "store": "Tableta de tienda",
+      "personal": "Teléfono"
+    },
+    "empty": "Sin reportes",
+    "emptyDesc": "Cualquiera del equipo puede reportar un error: desde aquí, la tableta o su teléfono.",
+    "emptyFiltered": "Sin coincidencias",
+    "emptyFilteredDesc": "Prueba con otro filtro o búsqueda.",
+    "formTitle": "¿Qué salió mal?",
+    "formTitlePlaceholder": "Resumen corto",
+    "formBody": "¿Qué pasó?",
+    "formBodyPlaceholder": "Qué hiciste, qué esperabas y qué pasó en su lugar.",
+    "formSeverity": "¿Qué tan grave es?",
+    "formScreenshot": "Captura",
+    "formScreenshotAdd": "Añadir captura",
+    "submit": "Enviar reporte",
+    "sending": "Enviando…",
+    "sent": "Reporte enviado",
+    "sendFailed": "No se pudo enviar. Inténtalo de nuevo.",
+    "uploadFailed": "No se pudo subir la captura.",
+    "titleRequired": "Escribe primero un resumen corto.",
+    "contextHint": "La página, la versión y el dispositivo se adjuntan solos.",
+    "contextPage": "Página",
+    "contextBuild": "Versión",
+    "contextDevice": "Dispositivo",
+    "detailStatus": "Estado",
+    "detailSeverity": "Gravedad",
+    "resolution": "Resolución",
+    "resolutionPlaceholder": "Qué se hizo, o por qué no se corregirá.",
+    "resolvedBy": "Cerrado por {name}",
+    "triageHint": "Solo los dueños y encargados cambian el estado.",
+    "saved": "Reporte actualizado",
+    "saveFailed": "No se pudo guardar. Inténtalo de nuevo.",
+    "deleteFailed": "No se pudo eliminar. Inténtalo de nuevo.",
+    "unknownReporter": "Alguien",
+    "unknownVersion": "desconocida"
+  },
+  "storeAi": {
+    "fields": {
+      "shiftType": "Tipo de turno"
     }
   }
 }

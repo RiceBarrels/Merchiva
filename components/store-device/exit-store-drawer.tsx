@@ -6,7 +6,7 @@ import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { clearAppMode } from "@/lib/app-mode";
 import { setCurrentOperator } from "@/lib/store-device-lock";
 import { DeviceDrawer, PinPad } from "@/components/device";
-import { findManagerByPin, type StoreMember } from "./use-org-members";
+import { verifyManagerPin } from "@/lib/spacetimedb/actions";
 
 /**
  * Drops this device out of store mode: forgets the app mode + operator and
@@ -21,17 +21,19 @@ export function leaveStoreMode() {
 export interface ExitStoreDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  members: StoreMember[];
   cancelLabel?: string;
   onCancel?: () => void;
 }
 
-/** Manager-PIN gate in front of `leaveStoreMode()`. */
-export function ExitStoreDrawer({ open, onOpenChange, members, cancelLabel, onCancel }: ExitStoreDrawerProps) {
+/** Manager-PIN gate in front of `leaveStoreMode()`. The PIN is checked by the
+ *  `verifyManagerPin` reducer — the tablet cannot read anyone's code. */
+export function ExitStoreDrawer({ open, onOpenChange, cancelLabel, onCancel }: ExitStoreDrawerProps) {
   const t = useT();
 
   const handlePin = async (pin: string) => {
-    if (!findManagerByPin(members, pin)) {
+    try {
+      await verifyManagerPin(pin);
+    } catch {
       hapticError();
       return false;
     }

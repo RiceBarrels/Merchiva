@@ -398,6 +398,40 @@ export function ReportsIcon({ className }: P) {
   );
 }
 
+/** Ladybird on a white report card: red shell, dark head, amber dots. */
+export function BugIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={WHITE} stroke={LIGHT} strokeWidth="1" />
+      <path d="M8.2 7.6l-1.9-1.8M15.8 7.6l1.9-1.8" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M5.4 11.5H7M5.4 15.2H7M17 11.5h1.6M17 15.2h1.6" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M12 6.4a5 5 0 0 1 5 5v2.2a5 5 0 0 1-10 0v-2.2a5 5 0 0 1 5-5z" fill={RED} />
+      <path d="M12 6.4a5 5 0 0 0-5 5v2.2a5 5 0 0 0 5 5z" fill={INK} opacity=".12" />
+      <path d="M7 10.6h10" stroke={WHITE} strokeWidth="1" opacity=".5" />
+      <rect x="11.3" y="6.4" width="1.4" height="12.4" rx=".7" fill={INK} />
+      <ellipse cx="12" cy="6.6" rx="2.6" ry="2.2" fill={INK} />
+      <circle cx="9.4" cy="12.4" r="1.05" fill={AMBER} />
+      <circle cx="14.6" cy="12.4" r="1.05" fill={AMBER} />
+      <circle cx="9.7" cy="15.9" r=".85" fill={AMBER} />
+      <circle cx="14.3" cy="15.9" r=".85" fill={AMBER} />
+    </Svg>
+  );
+}
+
+/** Bell on a white card: amber body, dark clapper, red unread dot. */
+export function NotificationsIcon({ className }: P) {
+  return (
+    <Svg className={className}>
+      <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="3" fill={WHITE} stroke={LIGHT} strokeWidth="1" />
+      <path d="M12 5.2a4.8 4.8 0 0 0-4.8 4.8v3.1l-1 1.9a.6.6 0 0 0 .54.88h10.52a.6.6 0 0 0 .54-.88l-1-1.9V10A4.8 4.8 0 0 0 12 5.2z" fill={AMBER} />
+      <path d="M12 5.2A4.8 4.8 0 0 0 7.2 10v3.1l-1 1.9a.6.6 0 0 0 .54.88H12z" fill={INK} opacity=".1" />
+      <rect x="11.3" y="3.4" width="1.4" height="2.2" rx=".7" fill={INK} />
+      <path d="M10.2 17.4a1.9 1.9 0 0 0 3.6 0" fill="none" stroke={INK} strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="16.8" cy="7.2" r="2.4" fill={RED} stroke={WHITE} strokeWidth="1" />
+    </Svg>
+  );
+}
+
 /** Icon for a grid app id (built-ins + catalog ids); undefined when unknown. */
 export const APP_ICONS: Record<string, AppIcon> = {
   "punch-in": PunchInIcon,
@@ -420,4 +454,6 @@ export const APP_ICONS: Record<string, AppIcon> = {
   bookings: BookingsIcon,
   channel: ChannelIcon,
   "settings-org": StoreSettingsIcon,
+  bugs: BugIcon,
+  notifications: NotificationsIcon,
 };

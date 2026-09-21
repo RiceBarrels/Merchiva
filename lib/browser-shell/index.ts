@@ -12,6 +12,8 @@ export { useShellInfo, useShellLayoutQuery, useShellChrome, useShellChromeState,
          useShellCommand, useShellBackHandler, runShellBackHandlers, useRegisterPageActions, usePageActions } from "./shell-context";
 export { useMountedBrowserShell, BROWSER_SHELL_EVENT } from "./shell-dom";
 export { getShortcutBindings, formatShortcut, useShortcutLabel } from "./shortcuts";
+export { registerContextMenuTarget, useContextMenuTarget } from "./context-menu";
+export type { ShellContextHit, ShellContextLink, ShellContextMenuItem } from "./context-menu";
 export { useBookmarks } from "./bookmarks";
 export { useBrowsingHistory } from "./browsing-history";
 export { useTabContentHost } from "./scroll";

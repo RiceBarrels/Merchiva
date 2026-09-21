@@ -39,6 +39,9 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useT } from "@/lib/i18n/context";
+import { useDateFormat } from "@/lib/i18n/use-date-format";
+import { isOnShiftAt } from "@/lib/shift-time";
+import { useNow } from "@/lib/use-now";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -47,6 +50,7 @@ import { Eyebrow } from "@/components/ui/eyebrow";
 import { StatusBadge, STATUS_TONE_TEXT, type StatusTone } from "@/components/ui/status-badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { mondayOf } from "@/lib/date-key";
 import {
   Select,
   SelectContent,
@@ -105,15 +109,6 @@ interface ShiftPresetRow {
 
 // ─── Date helpers ───────────────────────────────────────────────────────────
 
-function mondayOf(d: Date): Date {
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const out = new Date(d);
-  out.setDate(d.getDate() + diff);
-  out.setHours(0, 0, 0, 0);
-  return out;
-}
-
 function isoDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -121,10 +116,9 @@ function isoDate(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
-function shortDate(iso: string): string {
+function shortDate(iso: string, formatDate: (d: Date | number | string, o: Intl.DateTimeFormatOptions) => string): string {
   if (!iso) return "";
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDate(iso + "T00:00:00", { month: "short", day: "numeric" });
 }
 
 function formatTimeShort(t: string): string {
@@ -266,6 +260,8 @@ export function MobileSchedule({
   onOpenRequests: () => void;
 }) {
   const t = useT();
+  const formatDate = useDateFormat();
+  const nowClock = useNow(60_000);
   const [rawShifts] = useShifts() as [unknown[], boolean];
   const [rawMembers] = useOrgMembers() as [unknown[], boolean];
   const [rawUsers] = useUsers() as [unknown[], boolean];
@@ -443,18 +439,13 @@ export function MobileSchedule({
 
 
   // "On now" — based on actual current clock time.
-  const nowMin = useMemo(() => {
-    const n = new Date();
-    return n.getHours() * 60 + n.getMinutes();
-  }, []);
+  // A useMemo with an empty dependency array froze this at mount, so a tablet
+  // left open all day still showed the morning crew as "on now" at 15:00.
+  const nowMin = nowClock.getHours() * 60 + nowClock.getMinutes();
   const todayIso = isoDate(new Date());
   const isToday = selDate === todayIso;
   const onShiftNow = isToday
-    ? dayShifts.filter((s) => {
-        const [sh, sm] = s.startTime.split(":").map(Number);
-        const [eh, em] = s.endTime.split(":").map(Number);
-        return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
-      })
+    ? dayShifts.filter((s) => isOnShiftAt(s.startTime, s.endTime, nowMin))
     : [];
 
   const pending = useMemo(() => {
@@ -476,7 +467,7 @@ export function MobileSchedule({
   };
 
   const selDay = new Date(selDate + "T00:00:00");
-  const weekLabel = `${week[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${week[6].toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  const weekLabel = `${formatDate(week[0], { month: "short", day: "numeric" })} – ${formatDate(week[6], { month: "short", day: "numeric" })}`;
 
   const selectedShiftName = selectedShift
     ? members.find((m) => m.id === selectedShift.memberId)?.displayName ?? selectedShift.staffName ?? "—"
@@ -501,7 +492,7 @@ export function MobileSchedule({
         type: "cover",
         comments: "",
       });
-      toast.success("Shift added to the cover pool");
+      toast.success(t("staffing.toasts.shiftAddedToCoverPool"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not request cover");
     } finally {
@@ -511,13 +502,13 @@ export function MobileSchedule({
 
   async function acceptCoverPoolTrade(tradeId: string) {
     if (!myMemberId) {
-      toast.error("No active team member found");
+      toast.error(t("staffing.toasts.noActiveMember"));
       return;
     }
     setPoolBusyId(tradeId);
     try {
       await updateTradeStatus(tradeId, "accepted");
-      toast.success("Cover request accepted — waiting for manager approval");
+      toast.success(t("staffing.toasts.coverAcceptedPending"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not accept cover request");
     } finally {
@@ -529,11 +520,15 @@ export function MobileSchedule({
     if (!selectedShift) return;
     setChangeBusyId(member.id);
     try {
+      // Spread the row first: updateShift replaces every column, so a patch
+      // with only these two fields blanks date, shiftType, startTime, endTime
+      // and staffRoles.
       await updateShift(selectedShift.id, {
+        ...selectedShift,
         memberId: member.id,
         staffName: member.displayName,
       });
-      toast.success("Shift person updated");
+      toast.success(t("staffing.toasts.shiftPersonUpdated"));
       setShowPeoplePicker(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not update shift person");
@@ -737,9 +732,7 @@ export function MobileSchedule({
           const isOnNow =
             isToday &&
             (() => {
-              const [sh, sm] = s.startTime.split(":").map(Number);
-              const [eh, em] = s.endTime.split(":").map(Number);
-              return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
+              return isOnShiftAt(s.startTime, s.endTime, nowMin);
             })();
           return (
             <button
@@ -794,10 +787,10 @@ export function MobileSchedule({
           );
         })
       )}
-      <Section title="Cover pool" count={coverPool.length} kicker="Open cover requests that anyone on the team can accept. Manager approval is still required after acceptance.">
+      <Section title={t("staffing.coverPool.title")} count={coverPool.length} kicker={t("staffing.coverPool.kicker")}>
         {coverPool.length === 0 ? (
           <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-            No open cover requests.
+            {t("staffing.coverPool.empty")}
           </div>
         ) : (
           coverPool.map((request) => {
@@ -815,7 +808,7 @@ export function MobileSchedule({
                       {assigned?.displayName ?? shift.staffName}
                     </div>
                     <div className="font-mono tabular-nums text-[11px] text-muted-foreground">
-                      {shortDate(shift.date)} · {formatTimeShort(shift.startTime)}–{formatTimeShort(shift.endTime)}
+                      {shortDate(shift.date, formatDate)} · {formatTimeShort(shift.startTime)}–{formatTimeShort(shift.endTime)}
                     </div>
                     <div className="text-[10.5px] text-muted-foreground truncate">
                       Requested by {requester?.displayName ?? "team member"}
@@ -1025,7 +1018,7 @@ export function MobileSchedule({
                   {selectedShiftName}
                 </DynamicUIElementTitle>
                 <DynamicUIElementDescription>
-                  {shortDate(selectedShift.date)} · {formatTimeLong(selectedShift.startTime)}–{formatTimeLong(selectedShift.endTime)}
+                  {shortDate(selectedShift.date, formatDate)} · {formatTimeLong(selectedShift.startTime)}–{formatTimeLong(selectedShift.endTime)}
                 </DynamicUIElementDescription>
               </DynamicUIElementHeader>
 
@@ -1047,7 +1040,7 @@ export function MobileSchedule({
 
                 <div>
                   <Eyebrow as="div" className="mb-3">
-                    Everyone working that day
+                    {t("staffing.everyoneWorkingThatDay")}
                   </Eyebrow>
                   <div className="relative pl-4 space-y-0">
                     <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
@@ -1090,7 +1083,7 @@ export function MobileSchedule({
                     onClick={() => setShowPeoplePicker((v) => !v)}
                     className="w-full h-9 text-[12.5px]"
                   >
-                    Change people
+                    {t("staffing.changePeople")}
                   </Button>
                   {showPeoplePicker && (
                     <div className="mt-2 rounded-lg border border-border overflow-hidden">
@@ -1641,6 +1634,7 @@ export function MobileRequestsSheet({
   orgId: string;
 }) {
   const tt = useT();
+  const formatDate = useDateFormat();
   const [rawTimeOff] = useTimeOffRequests() as [unknown[], boolean];
   const [rawTrades] = useShiftTrades() as [unknown[], boolean];
   const [rawShifts] = useShifts() as [unknown[], boolean];
@@ -1829,8 +1823,8 @@ export function MobileRequestsSheet({
                           {r.staffName}
                         </div>
                         <div className="text-[11px] text-muted-foreground mt-0.5">
-                          {shortDate(r.startDate)}
-                          {r.endDate !== r.startDate && ` – ${shortDate(r.endDate)}`}
+                          {shortDate(r.startDate, formatDate)}
+                          {r.endDate !== r.startDate && ` – ${shortDate(r.endDate, formatDate)}`}
                           {!r.fullDays && r.startTime && r.endTime && (
                             <>
                               {" · "}
@@ -1895,7 +1889,7 @@ export function MobileRequestsSheet({
                       </Badge>
                       {shift && (
                         <span className="font-mono tabular-nums text-[11px] text-muted-foreground">
-                          {shortDate(shift.date)} · {formatTimeShort(shift.startTime)}–
+                          {shortDate(shift.date, formatDate)} · {formatTimeShort(shift.startTime)}–
                           {formatTimeShort(shift.endTime)}
                         </span>
                       )}

@@ -6,7 +6,7 @@ import {
   AccountList,
   BackToDeviceLink,
   CreateStoreForm,
-  StoreTreeList,
+  StoreSwitchList,
   SwitchModeLink,
   useWorkspaceActions,
 } from "@/components/browser-shell/shared/workspace-menu";
@@ -130,8 +130,8 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
       )}
 
       <SheetSection label={t("browserMobile.store")}>
-        <StoreTreeList
-          tree={workspace.tree}
+        <StoreSwitchList
+          stores={workspace.stores}
           currentOrgId={currentOrg?.id ?? null}
           onSelect={(orgId) => {
             workspace.switchOrg(orgId).catch(() => undefined);
@@ -139,10 +139,8 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
         />
         {creating ? (
           <CreateStoreForm
-            eligibleParents={workspace.eligibleParents}
             onCreate={workspace.createStore}
             onCancel={() => setCreating(false)}
-            nativeSelect
           />
         ) : (
           <SheetRow icon={Plus} onClick={() => setCreating(true)}>
@@ -222,7 +220,20 @@ export function PageMenuSheet({ open, onOpenChange, pageUrl, pageTitle, isNewTab
           onNavigate={(href) => {
             const target = canonicalizeUrl(href);
             if (!target?.tabbable) {
-              window.location.href = href;
+              // Only http(s). A notification's `link` is attacker-controlled —
+              // createNotification is a client-callable reducer that validates
+              // only the SENDER's membership — and canonicalizeUrl returns null
+              // for any foreign scheme, so this branch used to run
+              // `javascript:…` on the app origin. The desktop twin
+              // (desktop/notifications-button.tsx) already guards it.
+              let parsed: URL;
+              try {
+                parsed = new URL(href, window.location.href);
+              } catch {
+                return;
+              }
+              if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
+              window.location.assign(parsed.href);
               return;
             }
             setNested(null);
