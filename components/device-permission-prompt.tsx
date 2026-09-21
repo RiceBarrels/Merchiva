@@ -60,6 +60,12 @@ export function DevicePermissionPrompt({ children }: { children: React.ReactNode
     // Firefox and Safari only open a permission dialog from a user gesture, so
     // the automatic pass is backed by one more on the first interaction.
     const onGesture = () => {
+      // Do NOT unhook until the attempt actually starts. `ask()` returns
+      // immediately while the automatic pass still holds `busy`, and the
+      // fallback used to consume itself on that no-op — so a tap in the first
+      // few hundred ms (the normal first tap on a kiosk PIN pad) left Safari
+      // and Firefox with no gesture-backed attempt at all.
+      if (busy.current) return;
       window.removeEventListener("pointerdown", onGesture);
       window.removeEventListener("keydown", onGesture);
       void ask();

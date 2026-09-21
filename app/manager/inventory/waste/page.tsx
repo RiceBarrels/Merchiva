@@ -101,11 +101,22 @@ function startOfMonth(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-const REASON_BADGE: Record<WasteReason, { label: string; tone: StatusTone }> = {
-  expired: { label: "Expired", tone: "danger" },
-  damaged: { label: "Damaged", tone: "warning" },
-  overproduction: { label: "Overproduction", tone: "warning" },
-  other: { label: "Other", tone: "neutral" },
+// Tone only — the label is resolved through useT() at render. It used to be
+// a hardcoded English string here, so the add-entry dropdown showed the
+// translated reasons while every row and breakdown card below it said
+// "Expired" / "Damaged" in English.
+const REASON_TONES: Record<WasteReason, StatusTone> = {
+  expired: "danger",
+  damaged: "warning",
+  overproduction: "warning",
+  other: "neutral",
+};
+
+const REASON_LABEL_KEYS: Record<WasteReason, string> = {
+  expired: "wasteLog.reasonExpired",
+  damaged: "wasteLog.reasonDamaged",
+  overproduction: "wasteLog.reasonOverproduction",
+  other: "wasteLog.reasonOther",
 };
 
 // ── Main Component ───────────────────────────────────────────────────────────
@@ -506,7 +517,7 @@ function WasteLogPage() {
                   </TableRow>
                 ) : (
                   filteredLogs.map((log) => {
-                    const badge = REASON_BADGE[log.reason] ?? REASON_BADGE.other;
+                    const reasonKey: WasteReason = log.reason in REASON_TONES ? log.reason : "other";
                     return (
                       <TableRow key={log.id}>
                         <TableCell className="text-xs font-mono tabular-nums whitespace-nowrap">{log.date}</TableCell>
@@ -514,8 +525,8 @@ function WasteLogPage() {
                         <NumCell className="text-sm">{log.quantity}</NumCell>
                         <TableCell className="text-xs text-muted-foreground">{log.unit}</TableCell>
                         <TableCell>
-                          <StatusBadge size="xs" tone={badge.tone}>
-                            {badge.label}
+                          <StatusBadge size="xs" tone={REASON_TONES[reasonKey]}>
+                            {t(REASON_LABEL_KEYS[reasonKey])}
                           </StatusBadge>
                         </TableCell>
                         <NumCell className="text-sm">{format(toMajor(log.totalCostCents))}</NumCell>
@@ -560,13 +571,12 @@ function WasteLogPage() {
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {(Object.keys(REASON_BADGE) as WasteReason[]).map((reason) => {
-                const badge = REASON_BADGE[reason];
+              {(Object.keys(REASON_TONES) as WasteReason[]).map((reason) => {
                 const data = reasonBreakdown[reason];
                 return (
                   <div key={reason} className="flex items-center gap-3 p-2.5 rounded-lg border">
-                    <StatusBadge size="xs" tone={badge.tone}>
-                      {badge.label}
+                    <StatusBadge size="xs" tone={REASON_TONES[reason]}>
+                      {t(REASON_LABEL_KEYS[reason])}
                     </StatusBadge>
                     <div className="min-w-0 flex-1">
                       <p><Money value={data.cost} className="font-semibold" /></p>

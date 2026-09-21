@@ -32,7 +32,13 @@ export function DirectoryPanel({ members, forMember, className }: DirectoryPanel
             </div>
             <div className="min-w-0">
               <b className="block text-sm font-semibold truncate">{m.displayName || t("storeDevice.unnamed")}</b>
-              <span className="block text-xs text-muted-foreground mt-0.5 capitalize">{m.role}</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                {m.role === "owner"
+                  ? t("device.roleOwner")
+                  : m.role === "manager"
+                    ? t("device.roleManager")
+                    : t("device.roleStaff")}
+              </span>
             </div>
             <div className="text-right">
               <StatusBadge tone={tone} dot>{label}</StatusBadge>

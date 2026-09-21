@@ -526,6 +526,22 @@ export default function SettingsPage() {
       };
       toast.error(messages[err!] ?? t("settings.scheduleErrDefault"));
     }
+
+    // Strip the OAuth-return params. They used to stay in the URL, so the
+    // toast fired and /api/square/oauth/locations was re-fetched on every
+    // re-render of this effect, and again on any Back navigation to the same
+    // entry — the ?dialogs= effect above already does this correctly.
+    const RETURN_PARAMS = [
+      "connected", "error", "pickLocation",
+      "clover_connected", "clover_error",
+      "schedule_connected", "schedule_error",
+    ];
+    if (typeof window !== "undefined" && RETURN_PARAMS.some((k) => searchParams.get(k) != null)) {
+      const url = new URL(window.location.href);
+      for (const key of RETURN_PARAMS) url.searchParams.delete(key);
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const fetchLocations = async () => {
