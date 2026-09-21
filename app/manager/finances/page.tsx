@@ -79,7 +79,7 @@ import { addExpense, updateExpense, deleteExpense } from "@/lib/spacetimedb/acti
 import { downloadCSV, downloadPDF } from "@/lib/export";
 import { useCurrency } from "@/lib/currency";
 import { useT } from "@/lib/i18n/context";
-import { dateKey, todayKey } from "@/lib/date-key";
+import { dateFromKey, dateKey, todayKey } from "@/lib/date-key";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -133,8 +133,18 @@ function getDateRange(range: DateRange): { start: Date; end: Date } {
   }
 }
 
+/**
+ * `start`/`end` come from `getDateRange`, which builds them from LOCAL
+ * components. A bare "YYYY-MM-DD" is parsed by spec as UTC midnight, so west
+ * of UTC every month's first day fell before its own month's start — rent
+ * dated 2026-09-01 was missing from September and counted twice in August,
+ * in the totals, the chart, the table and the exports.
+ *
+ * A full ISO datetime (payment.createdAt) carries its own offset and is left
+ * to the platform parser.
+ */
 function isInRange(dateStr: string, start: Date, end: Date): boolean {
-  const d = new Date(dateStr);
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateFromKey(dateStr) : new Date(dateStr);
   return d >= start && d <= end;
 }
 

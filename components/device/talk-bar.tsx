@@ -49,6 +49,8 @@ export function TalkBar({
   const ptt = usePushToTalk();
   const [hot, setHot] = useState<Hot>(null);
   const [sending, setSending] = useState(false);
+  /** True between pointerdown and pointerup, regardless of render timing. */
+  const pressed = useRef(false);
   const activePointer = useRef<number | null>(null);
   const LeftIcon = leftAction.icon;
   const rec = ptt.recording;
@@ -70,7 +72,18 @@ export function TalkBar({
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     setHot(null);
     hapticMedium();
+    // A ref, not `rec`: ptt.start() awaits getUserMedia, which takes hundreds
+    // of ms and blocks on the permission prompt the first time. A pointerup in
+    // that window used to hit `finish()` while `rec` was still false, so it
+    // returned and the recorder was left running with no release pending —
+    // the scrim stayed up, the shared tablet stopped auto-logging-out, and the
+    // next tap sent the whole accidental recording to the channel.
+    pressed.current = true;
     await ptt.start();
+    if (!pressed.current) {
+      // Released before the mic opened — throw the recording away.
+      await ptt.stop("delete");
+    }
   };
 
   const onMicMove = (e: React.PointerEvent<HTMLButtonElement>) => {
@@ -85,6 +98,9 @@ export function TalkBar({
   };
 
   const finish = useCallback(async () => {
+    pressed.current = false;
+    // `rec` can still be false here when the release beat getUserMedia;
+    // onMicDown sees `pressed` cleared and discards the recording itself.
     if (!rec) return;
     const mode: PttResult["mode"] = hot === "delete" ? "delete" : hot === "original" ? "original" : "summary";
     setHot(null);

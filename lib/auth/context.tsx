@@ -256,14 +256,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data.accessToken;
     };
 
+    // Fall through to an unlocked refresh ONLY when the lock is unavailable —
+    // never when `run` itself threw. navigator.locks.request rejects with
+    // whatever the callback rejects with, so the old bare catch re-ran the
+    // whole refresh with a refresh token the server had already rotated and
+    // invalidated. The second attempt got a 401 and signed the user out
+    // mid-session: exactly the double-refresh the lock exists to prevent.
+    const hasLocks = typeof navigator !== "undefined" && !!navigator.locks?.request;
+    if (!hasLocks) return run();
+
+    let started = false;
     try {
-      if (typeof navigator !== "undefined" && navigator.locks?.request) {
-        return await navigator.locks.request("merchiva-token-refresh", run);
-      }
-    } catch {
-      // Web Locks unavailable/failed — fall through to an unlocked refresh.
+      return await navigator.locks.request("merchiva-token-refresh", () => {
+        started = true;
+        return run();
+      });
+    } catch (err) {
+      if (started) throw err;   // the refresh ran and failed — do not retry it
+      console.warn("[auth] token-refresh lock unavailable, refreshing unlocked:", err);
+      return run();
     }
-    return run();
   }, []);
 
   const getToken = useCallback(async (): Promise<string | null> => {
