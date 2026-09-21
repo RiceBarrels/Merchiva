@@ -9,23 +9,31 @@ import {
 
 // ─── CORS (for /api/*) ──────────────────────────────────────────────────────
 
-const ALLOWED_ORIGINS = [
+// Exact match, never a prefix. These responses carry
+// `Access-Control-Allow-Credentials: true`, and `startsWith` would also accept
+// https://project-management-phi-red.vercel.app.attacker.com — a domain anyone
+// can register — as well as http://localhost:30000 for http://localhost:3000
+// and https://localhost.attacker.com for https://localhost.
+//
+// "https://localhost" is the Capacitor Android WebView (androidScheme "https").
+const ALLOWED_ORIGINS = new Set([
   "https://project-management-phi-red.vercel.app",
-  "merchiva://",
+  "https://localhost",
   "capacitor://localhost",
   "ionic://localhost",
   "http://localhost:5500",
   "http://localhost:3000",
-];
+]);
 
-// Capacitor Android WebView (androidScheme "https"). Exact match only: a prefix match would also accept
-// https://localhost.attacker.com, and credentials are allowed.
-const EXACT_ALLOWED_ORIGINS = ["https://localhost"];
+// Custom app schemes. A page in a browser cannot forge an Origin in a scheme
+// it does not own, so matching the scheme itself is safe here — unlike an
+// https:// prefix, where the rest of the string is attacker-chosen.
+const ALLOWED_ORIGIN_SCHEMES = ["merchiva://"];
 
-function getAllowedOrigin(origin: string | null): string | null {
+export function getAllowedOrigin(origin: string | null): string | null {
   if (!origin) return null;
-  if (EXACT_ALLOWED_ORIGINS.includes(origin)) return origin;
-  if (ALLOWED_ORIGINS.some((o) => origin.startsWith(o))) return origin;
+  if (ALLOWED_ORIGINS.has(origin)) return origin;
+  if (ALLOWED_ORIGIN_SCHEMES.some((scheme) => origin.startsWith(scheme))) return origin;
   return null;
 }
 
