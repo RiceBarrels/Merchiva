@@ -730,12 +730,25 @@ export async function updateTradeStatus(tradeId: string, status: string, _orgIdP
   return conn().reducers.updateShiftTradeStatus({ organizationId: orgId(), tradeId, status });
 }
 
-export async function acceptShiftTrade(tradeId: string, acceptorId: string, acceptorShiftId?: string | null): Promise<void> {
-  return conn().reducers.acceptShiftTrade({ organizationId: orgId(), tradeId, acceptorId, acceptorShiftId: acceptorShiftId ?? null });
+/**
+ * Accept a shift trade as the covering member.
+ *
+ * There is no `acceptShiftTrade` reducer — `updateShiftTradeStatus` is the one
+ * entry point, and it works out from the caller's role whether this is a staff
+ * acceptance or a manager approval. Calling the non-existent name threw
+ * "conn().reducers.acceptShiftTrade is not a function" at runtime.
+ */
+export async function acceptShiftTrade(tradeId: string): Promise<void> {
+  return conn().reducers.updateShiftTradeStatus({ organizationId: orgId(), tradeId, status: "accepted" });
 }
 
-export async function managerApproveShiftTrade(tradeId: string, managerId: string, approved: boolean): Promise<void> {
-  return conn().reducers.managerApproveShiftTrade({ organizationId: orgId(), tradeId, managerId, approved });
+/** Approve or deny a shift trade as a manager. See `acceptShiftTrade`. */
+export async function managerApproveShiftTrade(tradeId: string, approved: boolean): Promise<void> {
+  return conn().reducers.updateShiftTradeStatus({
+    organizationId: orgId(),
+    tradeId,
+    status: approved ? "accepted" : "denied",
+  });
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
@@ -1026,16 +1039,31 @@ export async function setConversationMerchiva(conversationId: string, enabled: b
   return conn().reducers.setConversationMerchiva({ conversationId, enabled });
 }
 
-export async function addReaction(_messageId: string, _emoji: string): Promise<void> {
-  console.warn("[SpacetimeDB] addReaction not yet implemented");
+/**
+ * Emoji reactions have no table and no reducer in the module yet.
+ *
+ * These used to resolve successfully, so the chat UI applied its optimistic
+ * update, told the user the reaction was saved, and lost it on the next
+ * reload. Rejecting lets the caller roll the optimistic update back and say so.
+ */
+export async function addReaction(_messageId: string, _emoji: string): Promise<never> {
+  throw new Error("Reactions are not supported yet");
 }
 
-export async function removeReaction(_messageId: string, _emoji: string): Promise<void> {
-  console.warn("[SpacetimeDB] removeReaction not yet implemented");
+export async function removeReaction(_messageId: string, _emoji: string): Promise<never> {
+  throw new Error("Reactions are not supported yet");
 }
 
-export async function deleteMessage(messageId: string): Promise<void> {
-  return conn().reducers.deleteMessage({ conversationId: "", messageId });
+/**
+ * Delete one of your own messages.
+ *
+ * `conversationId` is required: the reducer proves membership with
+ * `chatMember.byUserId(sender).some(m => m.conversationId === conversationId)`,
+ * so the empty string this used to send matched nothing and every delete was
+ * rejected with "Not a conversation member".
+ */
+export async function deleteMessage(conversationId: string, messageId: string): Promise<void> {
+  return conn().reducers.deleteMessage({ conversationId, messageId });
 }
 
 // ─── Membership ───────────────────────────────────────────────────────────────
@@ -1595,8 +1623,9 @@ export async function deleteCoupon(couponId: string): Promise<void> {
   return conn().reducers.deleteCoupon({ organizationId: orgId(), couponId });
 }
 
-export async function redeemCoupon(couponId: string): Promise<void> {
-  return conn().reducers.redeemCoupon({ organizationId: orgId(), couponId });
+/** Redeem by coupon CODE — the reducer looks the row up by `code`, not by id. */
+export async function redeemCoupon(code: string): Promise<void> {
+  return conn().reducers.redeemCoupon({ organizationId: orgId(), code });
 }
 
 // ─── Queue ──────────────────────────────────────────────────────────────────

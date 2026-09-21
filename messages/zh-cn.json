@@ -1685,7 +1685,8 @@
     "groupQr": "群二维码",
     "searchMessages": "搜索频道",
     "muteMessages": "消息免打扰",
-    "pinChat": "置顶频道"
+    "pinChat": "置顶频道",
+    "reactionsUnsupported": "表情回应暂未开放"
   },
   "dashboard": {
     "greeting": {

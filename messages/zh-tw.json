@@ -1685,7 +1685,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "搜尋頻道",
     "muteMessages": "Mute messages",
-    "pinChat": "釘選頻道"
+    "pinChat": "釘選頻道",
+    "reactionsUnsupported": "表情回應尚未開放"
   },
   "dashboard": {
     "greeting": {

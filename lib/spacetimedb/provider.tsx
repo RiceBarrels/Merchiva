@@ -112,7 +112,12 @@ function orgSubscriptions(orgId: string): string[] {
     `SELECT * FROM inventory_item WHERE ${org}`,
     `SELECT * FROM staff_member WHERE ${org}`,
     `SELECT * FROM staff_role WHERE ${org}`,
-    `SELECT * FROM role_task WHERE ${org}`,
+    // NOT `${org}`: `role_task.organization_id` is `t.option(t.string())`, and
+    // an option column cannot be compared in SQL at all. The server rejects the
+    // query, and one rejected query fails the WHOLE batch — see the note on
+    // `bugSubscriptions` below. Scope on the `org_id` mirror, which is what the
+    // table's RLS rule joins on too (spacetimedb/src/index.ts, RLS_ORG_SCOPED).
+    `SELECT * FROM role_task WHERE org_id = '${orgId}'`,
     `SELECT * FROM shift WHERE ${org}`,
     `SELECT * FROM shift_preset WHERE ${org}`,
     `SELECT * FROM shift_trade WHERE ${org}`,
@@ -354,7 +359,18 @@ export function SpacetimeProvider({ children }: SpacetimeProviderProps) {
         const bootOrgId = activeOrgId();
         if (bootOrgId) {
           try {
-            conn.subscriptionBuilder().subscribe(orgSubscriptions(bootOrgId));
+            conn
+              .subscriptionBuilder()
+              // A malformed query is rejected asynchronously by the server, so
+              // the try/catch below never sees it. Without this handler the
+              // whole batch can fail and every screen sits empty in silence —
+              // which is exactly what an option column in a WHERE used to do.
+              .onError(() =>
+                console.error(
+                  "[SpacetimeDB] org subscription batch was rejected — every org-scoped table is empty",
+                ),
+              )
+              .subscribe(orgSubscriptions(bootOrgId));
           } catch (err) {
             console.warn("[SpacetimeDB] Org subscription failed:", err);
           }

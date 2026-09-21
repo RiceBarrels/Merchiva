@@ -1685,7 +1685,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "البحث في القناة",
     "muteMessages": "Mute messages",
-    "pinChat": "تثبيت القناة"
+    "pinChat": "تثبيت القناة",
+    "reactionsUnsupported": "التفاعلات غير متاحة بعد"
   },
   "dashboard": {
     "greeting": {

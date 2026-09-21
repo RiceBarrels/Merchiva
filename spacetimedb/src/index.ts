@@ -949,7 +949,7 @@ const siteTable = table(
 const sitePageTable = table(
   {
     name: 'site_page',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
     ],
@@ -994,7 +994,7 @@ const siteComponentTable = table(
 const siteCustomerTable = table(
   {
     name: 'site_customer',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byEmail', algorithm: 'btree', columns: ['email'] },
@@ -1015,7 +1015,7 @@ const siteCustomerTable = table(
 const membershipTierTable = table(
   {
     name: 'membership_tier',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
     ],
@@ -1040,7 +1040,7 @@ const membershipTierTable = table(
 const membershipPerkTable = table(
   {
     name: 'membership_perk',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'byTierId', algorithm: 'btree', columns: ['tierId'] },
     ],
@@ -1070,7 +1070,7 @@ const membershipPerkTable = table(
 const perkClaimTable = table(
   {
     name: 'perk_claim',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'byPerkId', algorithm: 'btree', columns: ['perkId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -1092,7 +1092,7 @@ const perkClaimTable = table(
 const customerPointsTable = table(
   {
     name: 'customer_points',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -1113,7 +1113,7 @@ const customerPointsTable = table(
 const siteMembershipTable = table(
   {
     name: 'site_membership',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -1134,7 +1134,7 @@ const siteMembershipTable = table(
 const siteOrderTable = table(
   {
     name: 'site_order',
-    public: true,
+    public: false,
     indexes: [
       { accessor: 'bySiteId', algorithm: 'btree', columns: ['siteId'] },
       { accessor: 'byCustomerId', algorithm: 'btree', columns: ['customerId'] },
@@ -1990,7 +1990,7 @@ const serviceIdentityTable = table(
 const platformAdminTable = table(
   {
     name: 'platform_admin',
-    public: true,
+    public: false,
   },
   {
     username: t.string().primaryKey(),
@@ -2545,8 +2545,21 @@ const RLS_SELF_SCOPED: Array<[table: string, column: string]> = [
 /**
  * Website-builder / loyalty tables. The features were removed in "slim down to
  * core ops", but the tables, their reducers and their customer PII are still
- * deployed. They carry NO rule, so no client can read a single row of them —
- * the strictest possible state, and correct until they are dropped for real.
+ * deployed.
+ *
+ * These are `public: false`. The comment here used to claim that carrying NO
+ * rule was "the strictest possible state" — the exact opposite of what this
+ * file says 100 lines above, and of how SpacetimeDB works: a PUBLIC table with
+ * no rule is readable by anyone, including over the unauthenticated HTTP /sql
+ * endpoint. `site_customer` (email, name, phone) and `site_order`
+ * (customerName, customerEmail, items, total) were world-readable that way.
+ *
+ * They cannot be scoped by a rule instead: they key off `siteId`, `site.id` is
+ * a uuid, and the dialect cannot join uuid to string. Private is the fix, and
+ * it is also what the note on private tables below already prescribes.
+ *
+ * This list now exists only so `bun run check:rls` can assert they STAY
+ * private — it is not, and never was, a substitute for a rule.
  */
 const RLS_NO_CLIENT_ACCESS = [
   'site_page', 'site_customer', 'site_order', 'site_membership',
@@ -2710,6 +2723,18 @@ export const createUser = spacetimedb.reducer(
     displayName: t.option(t.string()),
   },
   (ctx, { email, passwordHash, displayName }) => {
+    // One identity per email. Without this, any caller could claim a
+    // colleague's (or an admin's) address on their own row, and every
+    // `byEmail` lookup — setUserAdmin, invitation matching — could resolve to
+    // the impostor instead of the real account.
+    const normalized = email.trim().toLowerCase();
+    if (normalized) {
+      for (const other of ctx.db.user.byEmail.filter(email)) {
+        if (other.identity.toString() !== ctx.sender.toString()) {
+          throw new SenderError('That email is already registered to another account');
+        }
+      }
+    }
     if (passwordHash) writePasswordHash(ctx, ctx.sender, passwordHash);
     const existing = ctx.db.user.identity.find(ctx.sender);
     if (existing) {
@@ -3051,8 +3076,12 @@ export const inviteToOrg = spacetimedb.reducer(
     const member = findActiveMember(ctx, organizationId);
     if (member.role === 'staff') unauthorized('Manager or owner required');
 
-    // Only owner can invite managers
-    if (role === 'manager' && member.role !== 'owner') unauthorized('Owner only can invite managers');
+    // Only an owner can invite a manager — or another owner. The owner case
+    // was missing, so any manager could invite a new member as 'owner' and
+    // then act through them: a one-step escalation to full control of the org.
+    if ((role === 'manager' || role === 'owner') && member.role !== 'owner') {
+      unauthorized('Owner only can invite managers or owners');
+    }
 
     // One live seat per email: no invite for existing members, no duplicate
     // pending invitations (each would show up as another pending person).
@@ -4807,7 +4836,9 @@ export const updateShiftTradeStatus = spacetimedb.reducer(
       ...trade,
       status,
       acceptedById: isStaffAccepting ? member.id.toString() : trade.acceptedById,
-      managerApproved: isApprover,
+      // Never downgrade an approval that already happened: this used to write
+      // `isApprover`, so the next staff-side update silently revoked it.
+      managerApproved: isApprover || trade.managerApproved,
       managerId: isApprover ? member.id.toString() : trade.managerId,
     });
   }
@@ -7895,7 +7926,13 @@ export const claimFirstAdmin = spacetimedb.reducer(
 
     const me = ctx.db.user.identity.find(ctx.sender);
     if (!me) unauthorized('No user record');
-    if (me.email !== email) unauthorized('Email mismatch');
+    // `me.email` is whatever the caller last passed to `createUser`, so this
+    // comparison only proves the caller is consistent with itself. At minimum
+    // refuse the empty-string case, where a user row created without an email
+    // matched `claimFirstAdmin('')` and took the platform.
+    const claimed = email.trim().toLowerCase();
+    if (!claimed) throw new SenderError('Email is required');
+    if (String(me.email).trim().toLowerCase() !== claimed) unauthorized('Email mismatch');
 
     ctx.db.user.identity.update({ ...me, isAdmin: true });
   }
@@ -7906,9 +7943,12 @@ export const setUserAdmin = spacetimedb.reducer(
   { targetEmail: t.string(), isAdmin: t.bool() },
   (ctx, { targetEmail, isAdmin }) => {
     requireAdmin(ctx);
-    const target = [...ctx.db.user.byEmail.filter(targetEmail)][0];
-    if (!target) throw new SenderError('User not found');
-    ctx.db.user.identity.update({ ...target, isAdmin });
+    const matches = [...ctx.db.user.byEmail.filter(targetEmail)];
+    if (matches.length === 0) throw new SenderError('User not found');
+    // Refuse to guess which row is the real one. createUser now keeps emails
+    // unique, but rows created before that can still collide.
+    if (matches.length > 1) throw new SenderError('That email matches more than one account');
+    ctx.db.user.identity.update({ ...matches[0], isAdmin });
   }
 );
 

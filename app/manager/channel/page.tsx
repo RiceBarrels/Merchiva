@@ -18,6 +18,7 @@ import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@/components/ui/drawer";
 import { Popover, PopoverContent } from "@/components/ui/popover";
+import { toast } from "sonner";
 import { usePermissions } from "@/lib/context/permissions";
 import { getCached, setCache } from "@/lib/cache";
 import { sendMessage, addMembersToConversation, addReaction, removeReaction, deleteMessage, createConversation, setConversationMerchiva } from "@/lib/spacetimedb/actions";
@@ -422,23 +423,30 @@ export default function ChatPage() {
 
   const handleReact = async (messageId: string, emoji: string) => {
     const existing = reactions[messageId]?.find((r) => r.userId === userId && r.emoji === emoji);
-    if (existing) {
-      await removeReaction(messageId, emoji);
-      setReactions((prev) => ({
-        ...prev,
-        [messageId]: (prev[messageId] ?? []).filter((r) => r.id !== existing.id),
-      }));
-    } else {
-      await addReaction(messageId, emoji);
-      setReactions((prev) => ({
-        ...prev,
-        [messageId]: [...(prev[messageId] ?? []), { id: uuid(), messageId, userId: userId!, emoji }],
-      }));
+    try {
+      if (existing) {
+        await removeReaction(messageId, emoji);
+        setReactions((prev) => ({
+          ...prev,
+          [messageId]: (prev[messageId] ?? []).filter((r) => r.id !== existing.id),
+        }));
+      } else {
+        await addReaction(messageId, emoji);
+        setReactions((prev) => ({
+          ...prev,
+          [messageId]: [...(prev[messageId] ?? []), { id: uuid(), messageId, userId: userId!, emoji }],
+        }));
+      }
+    } catch {
+      // There is no reactions table in the module yet. Say so, rather than
+      // applying an optimistic update the next reload silently discards.
+      toast.error(t("chat.reactionsUnsupported"));
     }
   };
 
   const handleDeleteMsg = async (messageId: string) => {
-    await deleteMessage(messageId);
+    if (!activeConv) return;
+    await deleteMessage(activeConv.id, messageId);
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
   };
 

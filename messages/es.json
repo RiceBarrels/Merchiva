@@ -1685,7 +1685,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "Buscar en el canal",
     "muteMessages": "Mute messages",
-    "pinChat": "Fijar canal"
+    "pinChat": "Fijar canal",
+    "reactionsUnsupported": "Las reacciones aún no están disponibles"
   },
   "dashboard": {
     "greeting": {

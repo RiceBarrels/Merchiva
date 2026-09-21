@@ -1685,7 +1685,8 @@
     "groupQr": "Group QR code",
     "searchMessages": "चैनल खोजें",
     "muteMessages": "Mute messages",
-    "pinChat": "चैनल पिन करें"
+    "pinChat": "चैनल पिन करें",
+    "reactionsUnsupported": "रिएक्शन अभी उपलब्ध नहीं हैं"
   },
   "dashboard": {
     "greeting": {

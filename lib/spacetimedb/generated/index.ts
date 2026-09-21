@@ -250,7 +250,6 @@ import ChatMemberRow from "./chat_member_table";
 import ChatMembershipIndexRow from "./chat_membership_index_table";
 import ChatMessageRow from "./chat_message_table";
 import CouponRow from "./coupon_table";
-import CustomerPointsRow from "./customer_points_table";
 import DailyBriefingRow from "./daily_briefing_table";
 import DesignRow from "./design_table";
 import DeviceLoginRequestRow from "./device_login_request_table";
@@ -268,16 +267,12 @@ import InventoryItemRow from "./inventory_item_table";
 import InventoryTransactionRow from "./inventory_transaction_table";
 import LocationRow from "./location_table";
 import MemberPunchCodeRow from "./member_punch_code_table";
-import MembershipPerkRow from "./membership_perk_table";
-import MembershipTierRow from "./membership_tier_table";
 import NotificationRow from "./notification_table";
 import OrgInvitationRow from "./org_invitation_table";
 import OrgMemberRow from "./org_member_table";
 import OrgMembershipIndexRow from "./org_membership_index_table";
 import OrganizationRow from "./organization_table";
 import PaymentRow from "./payment_table";
-import PerkClaimRow from "./perk_claim_table";
-import PlatformAdminRow from "./platform_admin_table";
 import PunchEventRow from "./punch_event_table";
 import PurchaseOrderRow from "./purchase_order_table";
 import PushSubscriptionRow from "./push_subscription_table";
@@ -293,10 +288,6 @@ import ShiftTradeRow from "./shift_trade_table";
 import SiteRow from "./site_table";
 import SiteBookingRow from "./site_booking_table";
 import SiteComponentRow from "./site_component_table";
-import SiteCustomerRow from "./site_customer_table";
-import SiteMembershipRow from "./site_membership_table";
-import SiteOrderRow from "./site_order_table";
-import SitePageRow from "./site_page_table";
 import StaffAvailabilityRow from "./staff_availability_table";
 import StaffMemberRow from "./staff_member_table";
 import StaffRoleRow from "./staff_role_table";
@@ -490,23 +481,6 @@ const tablesSchema = __schema({
       { name: 'coupon_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, CouponRow),
-  customerPoints: __table({
-    name: 'customer_points',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'customer_points_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'customer_points_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'customer_points_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'customer_points_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, CustomerPointsRow),
   dailyBriefing: __table({
     name: 'daily_briefing',
     indexes: [
@@ -784,34 +758,6 @@ const tablesSchema = __schema({
       { name: 'member_punch_code_member_id_key', constraint: 'unique', columns: ['memberId'] },
     ],
   }, MemberPunchCodeRow),
-  membershipPerk: __table({
-    name: 'membership_perk',
-    indexes: [
-      { accessor: 'id', name: 'membership_perk_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byTierId', name: 'membership_perk_tier_id_idx_btree', algorithm: 'btree', columns: [
-        'tierId',
-      ] },
-    ],
-    constraints: [
-      { name: 'membership_perk_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MembershipPerkRow),
-  membershipTier: __table({
-    name: 'membership_tier',
-    indexes: [
-      { accessor: 'id', name: 'membership_tier_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'membership_tier_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'membership_tier_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, MembershipTierRow),
   notification: __table({
     name: 'notification',
     indexes: [
@@ -920,34 +866,6 @@ const tablesSchema = __schema({
       { name: 'payment_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PaymentRow),
-  perkClaim: __table({
-    name: 'perk_claim',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'perk_claim_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'perk_claim_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'byPerkId', name: 'perk_claim_perk_id_idx_btree', algorithm: 'btree', columns: [
-        'perkId',
-      ] },
-    ],
-    constraints: [
-      { name: 'perk_claim_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, PerkClaimRow),
-  platformAdmin: __table({
-    name: 'platform_admin',
-    indexes: [
-      { accessor: 'username', name: 'platform_admin_username_idx_btree', algorithm: 'btree', columns: [
-        'username',
-      ] },
-    ],
-    constraints: [
-      { name: 'platform_admin_username_key', constraint: 'unique', columns: ['username'] },
-    ],
-  }, PlatformAdminRow),
   punchEvent: __table({
     name: 'punch_event',
     indexes: [
@@ -1206,71 +1124,6 @@ const tablesSchema = __schema({
       { name: 'site_component_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SiteComponentRow),
-  siteCustomer: __table({
-    name: 'site_customer',
-    indexes: [
-      { accessor: 'byEmail', name: 'site_customer_email_idx_btree', algorithm: 'btree', columns: [
-        'email',
-      ] },
-      { accessor: 'id', name: 'site_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_customer_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_customer_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SiteCustomerRow),
-  siteMembership: __table({
-    name: 'site_membership',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'site_membership_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'site_membership_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_membership_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_membership_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SiteMembershipRow),
-  siteOrder: __table({
-    name: 'site_order',
-    indexes: [
-      { accessor: 'byCustomerId', name: 'site_order_customer_id_idx_btree', algorithm: 'btree', columns: [
-        'customerId',
-      ] },
-      { accessor: 'id', name: 'site_order_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_order_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_order_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SiteOrderRow),
-  sitePage: __table({
-    name: 'site_page',
-    indexes: [
-      { accessor: 'id', name: 'site_page_id_idx_btree', algorithm: 'btree', columns: [
-        'id',
-      ] },
-      { accessor: 'bySiteId', name: 'site_page_site_id_idx_btree', algorithm: 'btree', columns: [
-        'siteId',
-      ] },
-    ],
-    constraints: [
-      { name: 'site_page_id_key', constraint: 'unique', columns: ['id'] },
-    ],
-  }, SitePageRow),
   staffAvailability: __table({
     name: 'staff_availability',
     indexes: [

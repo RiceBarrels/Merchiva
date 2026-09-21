@@ -83,8 +83,20 @@ const handWritten = new Set(
     .map((x) => x[1]),
 );
 
+/**
+ * RLS_NO_CLIENT_ACCESS is NOT a rule.
+ *
+ * Listing a table there and leaving it `public: true` is the world-readable
+ * case this script exists to catch — and it used to be counted as covered, so
+ * nine tables holding customer PII passed the check with no rule at all.
+ * Membership of that list only means anything once the table is private, and a
+ * private table needs no rule anyway. So: count nothing from it, and report any
+ * entry that is still public as an error of its own.
+ */
+const stillPublicNoAccess = [...noClientAccess].filter((t) => publicTables.has(t)).sort();
+
 const covered = new Set([
-  ...orgScoped, ...noClientAccess, ...selfScoped, ...handWritten, ...unfiltered,
+  ...orgScoped, ...selfScoped, ...handWritten, ...unfiltered,
 ]);
 
 /**
@@ -144,6 +156,17 @@ if (uncovered.length) {
     uncovered.map((t) => `  - ${t}`).join("\n") +
     `\n\nAdd each to a list in ${SRC}, or set public: false, or — if it really is` +
     `\nmeant to be world-readable — add it to RLS_UNFILTERED with a reason.`,
+  );
+}
+if (stillPublicNoAccess.length) {
+  failed = true;
+  console.error(
+    `\nWORLD-READABLE: ${stillPublicNoAccess.length} RLS_NO_CLIENT_ACCESS table(s) are ` +
+    `still public:\n` +
+    stillPublicNoAccess.map((t) => `  - ${t}`).join("\n") +
+    `\n\nThat list is not a rule. A public table with no rule is readable by ` +
+    `anyone,\nincluding over the unauthenticated /v1/database/<id>/sql endpoint. ` +
+    `Set\npublic: false on each.`,
   );
 }
 if (unindexed.length) {

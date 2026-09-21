@@ -208,7 +208,7 @@ register({
   requiredPermission: { section: "staffing", action: "edit" },
   riskLevel: "medium",
   execute: async (p) => {
-    await managerApproveShiftTrade(String(p.tradeId), "", Boolean(p.approved));
+    await managerApproveShiftTrade(String(p.tradeId), Boolean(p.approved));
   },
   toastMessage: (p) => `Shift trade ${p.approved ? "approved" : "rejected"}`,
 });
