@@ -3135,6 +3135,22 @@ export const acceptInvitation = spacetimedb.reducer(
       throw new SenderError('Invitation expired');
     }
 
+    // The token alone was enough to join, at whatever role the invite carried.
+    // org_invitation is org-scoped in RLS, token column included, so every
+    // existing member of the org can read a pending manager invitation's token
+    // out of their own subscription cache and redeem it for themselves. Bind
+    // the token to the address it was sent to.
+    const inviteEmail = String(invite.email).trim().toLowerCase();
+    const callerEmail = String(user.email).trim().toLowerCase();
+    if (!inviteEmail || inviteEmail !== callerEmail) {
+      unauthorized('This invitation was sent to a different email address');
+    }
+
+    // Joining twice would create a second membership row for the same person.
+    const already = [...ctx.db.orgMember.byUserId.filter(ctx.sender)]
+      .some(m => m.organizationId === invite.organizationId && m.status !== 'removed');
+    if (already) throw new SenderError('You are already a member of this organization');
+
     const joinedMemberId = ctx.newUuidV4();
     ctx.db.orgMember.insert({
       id: joinedMemberId,
@@ -3163,7 +3179,7 @@ export const acceptInvitation = spacetimedb.reducer(
     notifyOrgMembers(ctx, invite.organizationId, 'team',
       'New team member',
       `${joinName} has joined the team`,
-      '/team', ctx.sender);
+      '/manager/personnel/team', ctx.sender);
   }
 );
 
@@ -4122,7 +4138,7 @@ export const updateInventoryItem = spacetimedb.reducer(
       notifyOrgMembers(ctx, args.organizationId, 'inventory_low',
         `Low stock: ${args.name}`,
         `${args.name} is at ${args.currentStock} ${item.unit} (min: ${args.minStock})`,
-        '/inventory');
+        '/manager/inventory');
     }
   }
 );
@@ -4700,7 +4716,7 @@ export const createTimeOffRequest = spacetimedb.reducer(
         type: 'time_off',
         title: 'Time off request',
         body: `${memberName} requested time off ${args.startDate} – ${args.endDate}`,
-        link: '/staffing',
+        link: '/manager/personnel',
         read: false,
         createdAt: ctx.timestamp,
       });
@@ -4737,7 +4753,7 @@ export const updateTimeOffStatus = spacetimedb.reducer(
       type: 'time_off',
       title: `Time off ${status}`,
       body: `Your time off request (${req.startDate} – ${req.endDate}) has been ${status}`,
-      link: '/staffing',
+      link: '/manager/personnel',
       read: false,
       createdAt: ctx.timestamp,
     });
@@ -4758,13 +4774,21 @@ export const createShiftTrade = spacetimedb.reducer(
     comments: t.string(),
   },
   (ctx, args) => {
-    findActiveMember(ctx, args.organizationId);
+    const caller = findActiveMember(ctx, args.organizationId);
+
+    // A trade is filed in the CALLER's name. `requesterId` used to be taken
+    // from the client unchecked, so anyone could put a colleague's shift up
+    // for cover and broadcast it to the whole org in that colleague's name.
+    const requesterId = caller.id.toString();
+    if (args.requesterId && args.requesterId !== requesterId) {
+      unauthorized('You can only request a trade for your own shift');
+    }
 
     ctx.db.shiftTrade.insert({
       id: ctx.newUuidV4(),
       organizationId: args.organizationId,
       shiftId: args.shiftId,
-      requesterId: args.requesterId,
+      requesterId,
       targetId: args.targetId,
       targetShiftId: args.targetShiftId,
       type: args.type,
@@ -4785,7 +4809,7 @@ export const createShiftTrade = spacetimedb.reducer(
       notifyOrgMembers(ctx, args.organizationId, 'shift_trade',
         `Shift ${args.type} request`,
         `${requesterName} is looking for someone to ${args.type === 'cover' ? 'cover' : 'trade'} their shift`,
-        '/staffing', ctx.sender);
+        '/manager/personnel', ctx.sender);
     } else if (args.targetId) {
       const target = [...ctx.db.orgMember.byOrganizationId.filter(args.organizationId)]
         .find((m: { id: { toString(): string } }) => m.id.toString() === args.targetId);
@@ -4797,7 +4821,7 @@ export const createShiftTrade = spacetimedb.reducer(
           type: 'shift_trade',
           title: `Shift ${args.type} request`,
           body: `${requesterName} wants to ${args.type === 'cover' ? 'have you cover' : 'trade'} a shift with you`,
-          link: '/staffing',
+          link: '/manager/personnel',
           read: false,
           createdAt: ctx.timestamp,
         });
@@ -5917,8 +5941,14 @@ export const updateOrderStatus = spacetimedb.reducer(
   (ctx, { organizationId, orderId, status }) => {
     findActiveMember(ctx, organizationId);
 
+    // site_order keys off siteId, so scope through the org's sites. The plain
+    // whole-table scan let a member of org A name their own organizationId and
+    // another tenant's order id, and mutate it.
+    const orgSiteIds = new Set(
+      [...ctx.db.site.byOrganizationId.filter(organizationId)].map(site => site.id.toString()),
+    );
     const order = [...ctx.db.siteOrder.iter()]
-      .find(o => o.id.toString() === orderId);
+      .find(o => o.id.toString() === orderId && orgSiteIds.has(o.siteId));
     if (!order) throw new SenderError('Order not found');
 
     ctx.db.siteOrder.delete(order);
@@ -5935,7 +5965,10 @@ export const updateBookingStatus = spacetimedb.reducer(
   (ctx, { organizationId, bookingId, status }) => {
     findActiveMember(ctx, organizationId);
 
-    const booking = [...ctx.db.siteBooking.iter()]
+    // Scoped to the org the caller was authorized for. A whole-table scan let a
+    // member of org A pass their own organizationId and another tenant's
+    // booking id, and mutate it.
+    const booking = [...ctx.db.siteBooking.byOrganizationId.filter(organizationId)]
       .find(b => b.id.toString() === bookingId);
     if (!booking) throw new SenderError('Booking not found');
 
@@ -6047,6 +6080,14 @@ export const createNotification = spacetimedb.reducer(
   },
   (ctx, { organizationId, targetIdentity, type, title, body, link }) => {
     findActiveMember(ctx, organizationId);
+    // The target has to belong to the org the caller was authorized for.
+    // `notification` is RLS self-scoped, so an unvalidated identity delivered
+    // the row straight to anyone the caller named — including a user in a
+    // different tenant, as a first-party-looking push with an attacker-chosen
+    // title, body and link.
+    const targetIsMember = [...ctx.db.orgMember.byOrganizationId.filter(organizationId)]
+      .some(m => m.status === 'active' && m.userId.toString() === targetIdentity.toString());
+    if (!targetIsMember) unauthorized('Target is not a member of this organization');
     ctx.db.notification.insert({
       id: ctx.newUuidV4(),
       organizationId,
@@ -6167,7 +6208,7 @@ export const addWasteLog = spacetimedb.reducer(
           notifyOrgMembers(ctx, args.organizationId, 'inventory_low',
             `Low stock: ${item.name}`,
             `${item.name} dropped to ${newStock} ${item.unit} after waste disposal`,
-            '/inventory');
+            '/manager/inventory');
         }
       }
     }
