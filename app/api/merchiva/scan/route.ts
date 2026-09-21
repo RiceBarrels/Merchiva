@@ -18,7 +18,20 @@ const COPY: Record<string, { title: string; body: (n: number, names: string) => 
   hi: { title: "पुनः स्टॉक की आवश्यकता", body: (n, names) => `${n} वस्तुएँ न्यूनतम स्टॉक पर या उससे कम हैं: ${names}। Mr. Merchiva से उन्हें ऑर्डर करने को कहें।` },
 };
 
+/**
+ * Vercel Cron invokes the path with **GET**, not POST (vercel.json → crons).
+ * The scan lived only on POST, so the nightly low-stock run has never fired;
+ * GET returned a description of the job instead of doing it.
+ */
+export async function GET(req: NextRequest) {
+  return runDailyScan(req);
+}
+
 export async function POST(req: NextRequest) {
+  return runDailyScan(req);
+}
+
+async function runDailyScan(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization");
   if (cronSecret && auth !== `Bearer ${cronSecret}`) {
@@ -115,12 +128,4 @@ export async function POST(req: NextRequest) {
   });
 }
 
-export async function GET() {
-  return NextResponse.json({
-    name: "Mr. Merchiva Daily Scan",
-    description:
-      "Scans inventory for low-stock items and notifies each org's managers to restock via Mr. Merchiva.",
-    schedule: "Daily at 3:00 AM",
-    endpoint: "POST /api/merchiva/scan",
-  });
-}
+

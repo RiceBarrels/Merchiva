@@ -372,7 +372,13 @@ export async function addInventoryTransaction(data: any): Promise<void> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function addProduct(data: any, _userId?: string): Promise<void> {
   const usage = firstInventoryUsageLine(data.inventoryUsage);
-  const inventoryItemId = String(data.inventoryItemId ?? usage?.inventoryItemId ?? "");
+  // ONLY an explicit `inventoryItemId` may redirect this into an update. It
+  // used to fall back to the first inventory-usage line, and the usage editor
+  // seeds that line with inventoryItems[0] the moment the user clicks "Add
+  // item" — so typing "Latte" and adding a usage line did not create Latte, it
+  // flipped "Whole Milk" to retailEnabled at Latte's price, under a toast
+  // saying the product had been added.
+  const inventoryItemId = String(data.inventoryItemId ?? "");
   const retailPatch = {
     retailEnabled: true,
     retailPrice: finiteNumber(data.price ?? 0, "retail price"),
@@ -724,7 +730,24 @@ export async function deleteShiftPreset(id: string): Promise<void> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function upsertAvailability(data: any): Promise<void> {
-  return conn().reducers.upsertAvailability({ organizationId: orgId(), ...data });
+  // `days` and `dayTimes` are JSON STRING columns. Both call sites passed the
+  // live boolean[] / object[] straight through, and the SDK's writeString
+  // coerces rather than rejects — so the row stored
+  // "false,true,true,…" and "[object Object],[object Object],…", which the
+  // reader's JSON.parse then threw on, falling back to Mon–Fri 09:00–17:00.
+  // Somebody who marked themselves available only at weekends read back as
+  // available only on weekdays.
+  //
+  // The update key is `existingId`, not `id`: passing `id` meant the reducer
+  // never found the row and every save inserted another one.
+  const { id, existingId, userId: _userId, days, dayTimes, ...rest } = data ?? {};
+  return conn().reducers.upsertAvailability({
+    organizationId: orgId(),
+    ...rest,
+    existingId: existingId ?? id ?? undefined,
+    days: jsonArrayString(days),
+    dayTimes: jsonArrayString(dayTimes),
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -941,6 +941,9 @@ export default function SettingsPage() {
     try {
       const days = availForm.dayTimes.map((dt) => dt.enabled);
       const allFullDay = availForm.dayTimes.every((dt) => dt.fullDay || !dt.enabled);
+      // NOTE: this editor never loads the member's existing availability row
+      // (getMyAvailability is imported here and never called), so it always
+      // inserts a new one. The staffing page's editor does pass the id.
       await upsertAvailability({
         userId, organizationId: organizationId!,
         type: availForm.type,
