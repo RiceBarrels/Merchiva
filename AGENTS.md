@@ -31,7 +31,7 @@ Dependencies are in `package.json`; these are the rules the manifest can't tell 
 
 | Command | When | Bar |
 |:---|:---|:---|
-| `bun test` | After any logic change | 567 tests, ~9s. Must stay green. Zero failures. |
+| `bun test` | After any logic change | 776 tests, ~8s. Must stay green. Zero failures. |
 | `bunx tsc --noEmit` | After any TypeScript change | Must print **nothing**. |
 | `bun run build` | Before any deploy, and after routing/config/server changes | Must pass clean. |
 | `bunx eslint <changed paths>` | After any change | No **new** errors on files you touched. |
@@ -40,7 +40,7 @@ Dependencies are in `package.json`; these are the rules the manifest can't tell 
 
 - **Phantom type errors from stale `.next` artifacts.** If `tsc` reports errors in files like `.next/types/routes.d 2.ts` or `cache-life.d 2.ts`, those are duplicated build artifacts (the trailing `" 2"` is a Finder/iCloud copy), not real errors. Fix: `find .next -name "* 2.*" -delete`, then re-run. Same for `bun run build` reporting a bogus "has no exported member" — `rm -rf .next` and rebuild before believing it.
 - **`bun run lint` is repo-wide and currently reports ~14k problems**, because the ESLint config does not ignore `ios/`, `out/`, `.design-ref/`, or `src-tauri/target/`. Do not treat that number as a regression you caused. Scope lint to what you touched: `bunx eslint app components lib` or specific paths.
-- **Known lint debt**: ~146 errors in `app/ components/ lib/`, mostly `@typescript-eslint/no-explicit-any` inside legacy `lib/db/*`. Do not add to it. Do not "fix" it as a side quest either.
+- **Known lint debt**: ~131 errors in `app/ components/ lib/ spacetimedb/src/`, mostly `@typescript-eslint/no-explicit-any` in what remains of legacy `lib/db/*` and in the module's row handling, plus `react-hooks/set-state-in-effect` in deliberate effect-driven state machines (the device lock screen, the browser-shell input). Do not add to it. Do not "fix" it as a side quest either.
 - **Tests are not typechecked.** `tsconfig.json` excludes `scripts/` and `cli/`, so `tsc` never sees test files. A test can be type-broken and still run.
 
 ### Reporting rules
@@ -111,6 +111,17 @@ Do not delete or gitignore these — they are committed on purpose:
 | `cli/` | Bun + Ink terminal client. |
 | `design-system/` | Design system snapshot — source of truth for visuals. |
 
+**Shared helpers to reach for before writing your own** — each of these replaced
+several hand-rolled copies, and a new copy is a bug waiting to happen:
+
+| Helper | Use it for |
+|:---|:---|
+| `lib/date-key.ts` | The `YYYY-MM-DD` calendar-day key every date column stores. **Never** `toISOString().slice(0, 10)` — that is the UTC day, a different day from the store's for most of the world. |
+| `lib/i18n/dates.ts` + `lib/i18n/use-date-format.ts` | Formatting a date or time for a person. Never a hardcoded `"en-US"` locale. |
+| `lib/use-now.ts` (`useNow`) | A clock a component renders. Reading `Date.now()` during render is impure and never re-renders on its own. |
+| `lib/money.ts` | Reading and summing money. Add in cents, convert once. |
+| `lib/allowed-origins.ts` | Matching a CORS origin. Exact for http(s), scheme-prefix only for custom app schemes. |
+
 ### File size
 
 - **Soft cap 400 lines, hard cap 800** for any new file.
@@ -126,7 +137,7 @@ Do not delete or gitignore these — they are committed on purpose:
 ### Boundaries
 
 1. **No direct DB calls from components.** Reads go through `lib/spacetimedb/hooks.ts` (thin `useTable` wrappers) or a domain hook in `lib/spacetimedb/hooks/` (`useInventory`, `useStaffing`, `useDocs`, …). Writes go through `lib/spacetimedb/actions.ts`.
-2. **`lib/db/*` is legacy Supabase-era code.** Never add a file there, never import it into new code.
+2. **`lib/db/*` is legacy Supabase-era code.** Six modules are left (`team`, `chat`, `staffing`, `availability`, `avatars`, `settings`); the seven with no importers were deleted. Never add a file there, never import it into new code.
 3. Client components declare `"use client"`. Server components have no directive and never import client-only modules.
 4. `WORKOS_API_KEY`, `STRIPE_SECRET_KEY`, and every other secret are server-only. Never reference them in a file that ships to the browser.
 5. Every `useEffect` data fetch needs `.catch()` and `.finally()`. Every list has a loading state and an empty state.
@@ -165,7 +176,7 @@ So an `t.option(...)` column is **permanently unusable** in a subscription `WHER
 
 Two more dialect limits that shape schema design:
 
-- **uuid cannot be joined to string.** Primary keys are `t.uuid()` but references are `t.string()`, so `JOIN organization o ON o.id = x.organizationId` fails. `organization.orgIdText` / `rootOrgId` and `site_booking.organizationId` exist purely as plain-string mirrors to work around this. A uuid *can* be compared to a string literal (`WHERE id = '<uuid>'`); only column-to-column joins fail.
+- **uuid cannot be joined to string.** Primary keys are `t.uuid()` but references are `t.string()`, so `JOIN organization o ON o.id = x.organizationId` fails. `organization.orgIdText` and `site_booking.organizationId` exist purely as plain-string mirrors to work around this. (`organization.rootOrgId` is a retired third mirror, left from the removed sub-store feature.) A uuid *can* be compared to a string literal (`WHERE id = '<uuid>'`); only column-to-column joins fail.
 - **`timestamp` columns cannot be compared to a literal**, so a table whose only date is a timestamp cannot be time-windowed in a subscription. Give it a `t.string()` `YYYY-MM-DD` column, or bound its growth with the `pruneOrgHistory` reducer.
 
 Look rows up by primary key with `findById(ctx.db.foo, idString)` (it parses the string into a `Uuid`), not `[...ctx.db.foo.iter()].find(r => r.id.toString() === id)` — that is a full table scan for a primary-key lookup.
@@ -359,7 +370,7 @@ Approval for one of these is not approval for the next one.
 - **Do the task asked, not the task nearby.** No opportunistic refactors, no reformatting untouched files, no "while I was in there" cleanups. If you spot something, mention it; don't fix it uninvited.
 - **No placeholder implementations.** No mock data, no `TODO: implement`, no function that returns a hardcoded value, presented as finished work. If you can't complete it, say so.
 - **Match the surrounding code** — its comment density, naming, and idiom. New code should be unrecognizable as new.
-- **Don't reintroduce removed features.** POS integrations, website builder, design tools, customers, marketing, and the hourly patrol were all deliberately deleted. Their leftover columns and tables stay in the schema; the features do not come back.
+- **Don't reintroduce removed features.** POS integrations, website builder, design tools, customers, marketing, the hourly patrol, and the parent/sub-store ("multi-store") hierarchy were all deliberately deleted. Their leftover columns and tables stay in the schema; the features do not come back. Every organization is standalone: there is no share group, no `parentOrgId`, and nothing is shared between stores.
 
 ### When something breaks
 
