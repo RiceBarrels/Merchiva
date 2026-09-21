@@ -479,12 +479,12 @@ export default function ProductsPage() {
             </div>
             {/* Description */}
             <div className="space-y-1.5">
-              <Label>Description</Label>
+              <Label>{t("products.dialog.descriptionLabel")}</Label>
               <Textarea
                 rows={3}
                 value={form.description ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Brief product description..."
+                placeholder={t("products.dialog.descriptionPlaceholder")}
                 className="resize-none"
               />
               <p className="text-[11px] text-muted-foreground text-right">{(form.description ?? "").length}/500</p>

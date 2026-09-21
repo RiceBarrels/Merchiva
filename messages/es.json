@@ -264,6 +264,12 @@
       "lunch": "Almuerzo",
       "close": "Cierre",
       "set": "Establecer"
+    },
+    "combobox": {
+      "noResults": "Sin resultados"
+    },
+    "pinPad": {
+      "backspace": "Retroceso"
     }
   },
   "status": {
@@ -353,7 +359,9 @@
       "submit": "Añadir producto",
       "translationsLabel": "Traducciones",
       "translationsExpand": "Agregar traducciones",
-      "translationsCollapse": "Ocultar traducciones"
+      "translationsCollapse": "Ocultar traducciones",
+      "descriptionLabel": "Descripción",
+      "descriptionPlaceholder": "Breve descripción del producto..."
     },
     "toasts": {
       "nameRequired": "El nombre es obligatorio",
@@ -720,7 +728,14 @@
       "failedCover": "No se pudo enviar la solicitud de cobertura",
       "failedAvailability": "No se pudo guardar la disponibilidad",
       "failedTimeOff": "No se pudo enviar la solicitud de tiempo libre"
-    }
+    },
+    "coverPool": {
+      "title": "Turnos por cubrir",
+      "kicker": "Solicitudes de cobertura abiertas que cualquiera del equipo puede aceptar. Tras aceptar sigue haciendo falta la aprobación del responsable.",
+      "empty": "No hay solicitudes de cobertura abiertas."
+    },
+    "everyoneWorkingThatDay": "Todos los que trabajan ese día",
+    "changePeople": "Cambiar personas"
   },
   "personnel": {
     "tabs": {
@@ -3881,7 +3896,8 @@
     "toastCreatePOFailed": "No se pudo crear la orden de compra",
     "toastUpdateStatusFailed": "No se pudo actualizar el estado",
     "title": "Proveedores",
-    "subtitle": "Contactos de proveedores y órdenes de compra"
+    "subtitle": "Contactos de proveedores y órdenes de compra",
+    "contactNamePlaceholder": "Nombre del contacto"
   },
   "apiSettings": {
     "toast": {

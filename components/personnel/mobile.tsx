@@ -795,10 +795,10 @@ export function MobileSchedule({
           );
         })
       )}
-      <Section title="Cover pool" count={coverPool.length} kicker="Open cover requests that anyone on the team can accept. Manager approval is still required after acceptance.">
+      <Section title={t("staffing.coverPool.title")} count={coverPool.length} kicker={t("staffing.coverPool.kicker")}>
         {coverPool.length === 0 ? (
           <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-            No open cover requests.
+            {t("staffing.coverPool.empty")}
           </div>
         ) : (
           coverPool.map((request) => {
@@ -1048,7 +1048,7 @@ export function MobileSchedule({
 
                 <div>
                   <Eyebrow as="div" className="mb-3">
-                    Everyone working that day
+                    {t("staffing.everyoneWorkingThatDay")}
                   </Eyebrow>
                   <div className="relative pl-4 space-y-0">
                     <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
@@ -1091,7 +1091,7 @@ export function MobileSchedule({
                     onClick={() => setShowPeoplePicker((v) => !v)}
                     className="w-full h-9 text-[12.5px]"
                   >
-                    Change people
+                    {t("staffing.changePeople")}
                   </Button>
                   {showPeoplePicker && (
                     <div className="mt-2 rounded-lg border border-border overflow-hidden">

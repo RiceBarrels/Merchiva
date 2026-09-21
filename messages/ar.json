@@ -264,6 +264,12 @@
       "lunch": "الغداء",
       "close": "الإغلاق",
       "set": "تعيين"
+    },
+    "combobox": {
+      "noResults": "لا توجد نتائج"
+    },
+    "pinPad": {
+      "backspace": "مسح"
     }
   },
   "status": {
@@ -353,7 +359,9 @@
       "submit": "إضافة منتج",
       "translationsLabel": "الترجمات",
       "translationsExpand": "إضافة ترجمات",
-      "translationsCollapse": "إخفاء الترجمات"
+      "translationsCollapse": "إخفاء الترجمات",
+      "descriptionLabel": "الوصف",
+      "descriptionPlaceholder": "وصف موجز للمنتج..."
     },
     "toasts": {
       "nameRequired": "الاسم مطلوب",
@@ -720,7 +728,14 @@
       "failedCover": "فشل إرسال طلب التغطية",
       "failedAvailability": "فشل حفظ التوفر",
       "failedTimeOff": "فشل إرسال طلب الإجازة"
-    }
+    },
+    "coverPool": {
+      "title": "طلبات التغطية",
+      "kicker": "طلبات تغطية مفتوحة يمكن لأي زميل قبولها. تبقى موافقة المدير مطلوبة بعد القبول.",
+      "empty": "لا توجد طلبات تغطية مفتوحة."
+    },
+    "everyoneWorkingThatDay": "كل من يعمل في ذلك اليوم",
+    "changePeople": "تغيير الأشخاص"
   },
   "personnel": {
     "tabs": {
@@ -3881,7 +3896,8 @@
     "toastCreatePOFailed": "فشل إنشاء أمر الشراء",
     "toastUpdateStatusFailed": "فشل تحديث الحالة",
     "title": "الموردون",
-    "subtitle": "جهات اتصال المورّدين وأوامر الشراء"
+    "subtitle": "جهات اتصال المورّدين وأوامر الشراء",
+    "contactNamePlaceholder": "اسم جهة الاتصال"
   },
   "apiSettings": {
     "toast": {

@@ -1140,7 +1140,7 @@ export default function SuppliersPage() {
                     onChange={(e) =>
                       setSupplierForm((f) => ({ ...f, contactName: e.target.value }))
                     }
-                    placeholder="John Doe"
+                    placeholder={t("suppliers.contactNamePlaceholder")}
                     className="h-8 text-sm"
                   />
                 </div>

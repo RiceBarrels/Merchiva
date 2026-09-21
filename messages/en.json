@@ -264,6 +264,12 @@
       "lunch": "Lunch",
       "close": "Close",
       "set": "Set"
+    },
+    "combobox": {
+      "noResults": "No results"
+    },
+    "pinPad": {
+      "backspace": "Backspace"
     }
   },
   "status": {
@@ -353,7 +359,9 @@
       "submit": "Add Product",
       "translationsLabel": "Translations",
       "translationsExpand": "Add Translations",
-      "translationsCollapse": "Hide Translations"
+      "translationsCollapse": "Hide Translations",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Brief product description..."
     },
     "inventoryUsage": {
       "title": "Inventory consumed per sale",
@@ -720,7 +728,14 @@
       "failedCover": "Failed to send cover request",
       "failedAvailability": "Failed to save availability",
       "failedTimeOff": "Failed to submit time-off request"
-    }
+    },
+    "coverPool": {
+      "title": "Cover pool",
+      "kicker": "Open cover requests that anyone on the team can accept. Manager approval is still required after acceptance.",
+      "empty": "No open cover requests."
+    },
+    "everyoneWorkingThatDay": "Everyone working that day",
+    "changePeople": "Change people"
   },
   "personnel": {
     "tabs": {
@@ -3881,7 +3896,8 @@
     "toastCreatePOFailed": "Failed to create purchase order",
     "toastUpdateStatusFailed": "Failed to update status",
     "title": "Suppliers",
-    "subtitle": "Vendor contacts and purchase orders"
+    "subtitle": "Vendor contacts and purchase orders",
+    "contactNamePlaceholder": "Contact name"
   },
   "apiSettings": {
     "toast": {

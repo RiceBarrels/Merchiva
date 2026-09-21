@@ -264,6 +264,12 @@
       "lunch": "दोपहर का भोजन",
       "close": "बंद होना",
       "set": "सेट करें"
+    },
+    "combobox": {
+      "noResults": "कोई परिणाम नहीं"
+    },
+    "pinPad": {
+      "backspace": "बैकस्पेस"
     }
   },
   "status": {
@@ -353,7 +359,9 @@
       "submit": "उत्पाद जोड़ें",
       "translationsLabel": "अनुवाद",
       "translationsExpand": "अनुवाद जोड़ें",
-      "translationsCollapse": "अनुवाद छुपाएं"
+      "translationsCollapse": "अनुवाद छुपाएं",
+      "descriptionLabel": "विवरण",
+      "descriptionPlaceholder": "उत्पाद का संक्षिप्त विवरण..."
     },
     "toasts": {
       "nameRequired": "नाम आवश्यक है",
@@ -720,7 +728,14 @@
       "failedCover": "कवर अनुरोध भेजने में विफल",
       "failedAvailability": "उपलब्धता सहेजने में विफल",
       "failedTimeOff": "छुट्टी अनुरोध भेजने में विफल"
-    }
+    },
+    "coverPool": {
+      "title": "कवर पूल",
+      "kicker": "खुले कवर अनुरोध, जिन्हें टीम का कोई भी सदस्य स्वीकार कर सकता है। स्वीकार करने के बाद भी मैनेजर की मंज़ूरी ज़रूरी है।",
+      "empty": "कोई खुला कवर अनुरोध नहीं है।"
+    },
+    "everyoneWorkingThatDay": "उस दिन काम करने वाले सभी लोग",
+    "changePeople": "लोग बदलें"
   },
   "personnel": {
     "tabs": {
@@ -3881,7 +3896,8 @@
     "toastCreatePOFailed": "खरीद ऑर्डर बनाने में विफल",
     "toastUpdateStatusFailed": "स्थिति अपडेट करने में विफल",
     "title": "आपूर्तिकर्ता",
-    "subtitle": "आपूर्तिकर्ता संपर्क और खरीद आदेश"
+    "subtitle": "आपूर्तिकर्ता संपर्क और खरीद आदेश",
+    "contactNamePlaceholder": "संपर्क का नाम"
   },
   "apiSettings": {
     "toast": {

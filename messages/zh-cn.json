@@ -264,6 +264,12 @@
       "lunch": "午市",
       "close": "打烊",
       "set": "设定"
+    },
+    "combobox": {
+      "noResults": "无结果"
+    },
+    "pinPad": {
+      "backspace": "退格"
     }
   },
   "status": {
@@ -353,7 +359,9 @@
       "submit": "添加商品",
       "translationsLabel": "翻译",
       "translationsExpand": "添加翻译",
-      "translationsCollapse": "隐藏翻译"
+      "translationsCollapse": "隐藏翻译",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "简要的商品描述……"
     },
     "inventoryUsage": {
       "title": "每卖出一份消耗的库存",
@@ -720,7 +728,14 @@
       "failedCover": "发送代班申请失败",
       "failedAvailability": "保存可用时间失败",
       "failedTimeOff": "提交请假申请失败"
-    }
+    },
+    "coverPool": {
+      "title": "代班池",
+      "kicker": "开放的代班请求，团队任何人都可接单。接单后仍需经理审批。",
+      "empty": "暂无开放的代班请求。"
+    },
+    "everyoneWorkingThatDay": "当天所有当班的人",
+    "changePeople": "更换人员"
   },
   "personnel": {
     "tabs": {
@@ -3881,7 +3896,8 @@
     "toastCreatePOFailed": "创建采购订单失败",
     "toastUpdateStatusFailed": "更新状态失败",
     "title": "供应商",
-    "subtitle": "供应商联系方式与采购订单"
+    "subtitle": "供应商联系方式与采购订单",
+    "contactNamePlaceholder": "联系人姓名"
   },
   "apiSettings": {
     "toast": {

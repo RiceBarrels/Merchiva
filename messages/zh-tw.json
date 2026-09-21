@@ -264,6 +264,12 @@
       "lunch": "午市",
       "close": "打烊",
       "set": "設定"
+    },
+    "combobox": {
+      "noResults": "沒有結果"
+    },
+    "pinPad": {
+      "backspace": "退格"
     }
   },
   "status": {
@@ -353,7 +359,9 @@
       "submit": "新增商品",
       "translationsLabel": "翻譯",
       "translationsExpand": "新增翻譯",
-      "translationsCollapse": "隱藏翻譯"
+      "translationsCollapse": "隱藏翻譯",
+      "descriptionLabel": "描述",
+      "descriptionPlaceholder": "簡要的商品描述……"
     },
     "toasts": {
       "nameRequired": "請填寫名稱",
@@ -720,7 +728,14 @@
       "failedCover": "傳送代班申請失敗",
       "failedAvailability": "儲存可用時間失敗",
       "failedTimeOff": "提交請假申請失敗"
-    }
+    },
+    "coverPool": {
+      "title": "代班池",
+      "kicker": "開放的代班請求，團隊任何人都可接手。接手後仍需主管審核。",
+      "empty": "目前沒有開放的代班請求。"
+    },
+    "everyoneWorkingThatDay": "當天所有值班的人",
+    "changePeople": "更換人員"
   },
   "personnel": {
     "tabs": {
@@ -3881,7 +3896,8 @@
     "toastCreatePOFailed": "建立採購單失敗",
     "toastUpdateStatusFailed": "更新狀態失敗",
     "title": "供應商",
-    "subtitle": "供應商聯絡方式與採購訂單"
+    "subtitle": "供應商聯絡方式與採購訂單",
+    "contactNamePlaceholder": "聯絡人姓名"
   },
   "apiSettings": {
     "toast": {
