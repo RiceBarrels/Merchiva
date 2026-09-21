@@ -1537,7 +1537,8 @@
     "storeImageUpload": "رفع صورة",
     "teamOnTeamPage": "الأعضاء والأدوار ورموز الحضور",
     "punchCodeOnTeamPage": "يُضبط من صفحة الفريق",
-    "createStoreHint": "ينشئ متجرًا جديدًا بمخزونه وتوقعاته الخاصة."
+    "createStoreHint": "ينشئ متجرًا جديدًا بمخزونه وتوقعاته الخاصة.",
+    "toastSettingsNotLoaded": "لا تزال الإعدادات قيد التحميل — أعد المحاولة بعد قليل"
   },
   "lock": {
     "title": "الجهاز مقفل",

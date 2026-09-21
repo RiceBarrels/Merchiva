@@ -1195,18 +1195,27 @@ export function StaffingFull({ subtabs }: { subtabs?: DesktopTab[] } = {}) {
     setMyMemberId(team.find((m) => m.userId === userId)?.id ?? null);
   }, [team, userId]);
 
-  // Auto-fix shifts with missing memberId by matching staffName to team
+  // Auto-fix shifts with a missing memberId by matching staffName to the team.
+  //
+  // This used to send `updateShift(s.id, { memberId })`, and updateShift
+  // replaces the whole row — so the "repair" blanked date, shiftType,
+  // startTime, endTime and staffRoles on every legacy shift, unprompted, as
+  // soon as a manager opened the page, with `.catch(() => {})` hiding it.
   useEffect(() => {
+    if (!canEdit) return;                       // staff devices must not issue org-wide writes
     if (team.length === 0 || shifts.length === 0) return;
     const validUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const orphaned = shifts.filter((s) => !s.memberId || !validUuid.test(s.memberId));
     for (const s of orphaned) {
-      const match = team.find((m) => m.displayName === s.staffName);
-      if (match) {
-        updateShift(s.id, { memberId: match.id }).catch(() => {});
-      }
+      const matches = team.filter((m) => m.displayName === s.staffName);
+      // Two people can share a display name; guessing would assign the shift
+      // to whichever one came first.
+      if (matches.length !== 1) continue;
+      updateShift(s.id, { ...s, memberId: matches[0].id }).catch((err: unknown) =>
+        console.error("[staffing] could not link shift", s.id, "to a member:", err),
+      );
     }
-  }, [team, shifts]);
+  }, [team, shifts, canEdit]);
 
   // Handle table drag-select via non-passive touchmove
   useEffect(() => {

@@ -1537,7 +1537,8 @@
     "storeImageUpload": "Subir imagen",
     "teamOnTeamPage": "Miembros, roles y códigos de fichaje",
     "punchCodeOnTeamPage": "Defínelo en la página del equipo",
-    "createStoreHint": "Crea una tienda nueva con su propio inventario y previsiones."
+    "createStoreHint": "Crea una tienda nueva con su propio inventario y previsiones.",
+    "toastSettingsNotLoaded": "Los ajustes aún se están cargando: inténtalo de nuevo en un momento"
   },
   "lock": {
     "title": "Dispositivo bloqueado",

@@ -615,20 +615,35 @@ export default function SettingsPage() {
     );
   };
 
-  // Persist payment-related settings (tax rate + currency) through the
-  // updateSettings reducer. All reducer-required fields are passed so the
-  // delete+insert in the reducer never clobbers existing values.
+  /**
+   * Persist payment-related settings (tax rate + currency).
+   *
+   * `updateSettings` is a delete+insert, so whatever is sent BECOMES the row.
+   * This used to build the payload out of the form's local state — which is
+   * only filled in by the sync effect once the settings row has streamed in.
+   * Change the currency before that (a deep link to /manager/settings on a
+   * slow connection is enough) and the org's business name was cleared, its
+   * timezone reset to America/Los_Angeles and its tax rate to 0%, under a
+   * "saved" toast.
+   *
+   * Now: refuse to write until the row is known, and build the payload from
+   * that row, overriding only the field being changed.
+   */
   const persistPaymentSettings = async (next: { taxRate?: number; currency?: string }) => {
     if (!userId) return;
+    if (loading || !settings) {
+      toast.error(t("settings.toastSettingsNotLoaded"));
+      return;
+    }
     await upsertSettings(userId, {
-      businessName: businessName || undefined,
-      businessType: settings?.businessType || undefined,
-      timezone,
-      paymentTaxRate: next.taxRate ?? (parseFloat(paymentTaxRate) || 0),
-      paymentCurrency: next.currency ?? paymentCurrency ?? "USD",
-      locationLatitude: locationLatitude || undefined,
-      locationLongitude: locationLongitude || undefined,
-      googlePlacesId: googlePlacesId || undefined,
+      businessName: settings.businessName || undefined,
+      businessType: settings.businessType || undefined,
+      timezone: settings.timezone,
+      paymentTaxRate: next.taxRate ?? settings.paymentTaxRate ?? 0,
+      paymentCurrency: next.currency ?? settings.paymentCurrency ?? "USD",
+      locationLatitude: settings.locationLatitude || undefined,
+      locationLongitude: settings.locationLongitude || undefined,
+      googlePlacesId: settings.googlePlacesId || undefined,
     });
   };
 

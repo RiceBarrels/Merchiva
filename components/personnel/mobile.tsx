@@ -522,7 +522,11 @@ export function MobileSchedule({
     if (!selectedShift) return;
     setChangeBusyId(member.id);
     try {
+      // Spread the row first: updateShift replaces every column, so a patch
+      // with only these two fields blanks date, shiftType, startTime, endTime
+      // and staffRoles.
       await updateShift(selectedShift.id, {
+        ...selectedShift,
         memberId: member.id,
         staffName: member.displayName,
       });

@@ -1537,7 +1537,8 @@
     "storeImageUpload": "Upload image",
     "teamOnTeamPage": "Members, roles and punch-in codes",
     "punchCodeOnTeamPage": "Set it on the team page",
-    "createStoreHint": "Creates a new store with its own inventory and forecasts."
+    "createStoreHint": "Creates a new store with its own inventory and forecasts.",
+    "toastSettingsNotLoaded": "Settings are still loading — try again in a moment"
   },
   "lock": {
     "title": "Device Locked",

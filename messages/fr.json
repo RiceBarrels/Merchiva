@@ -1537,7 +1537,8 @@
     "storeImageUpload": "Téléverser une image",
     "teamOnTeamPage": "Membres, rôles et codes de pointage",
     "punchCodeOnTeamPage": "À définir sur la page de l'équipe",
-    "createStoreHint": "Crée un nouveau magasin avec son propre inventaire et ses prévisions."
+    "createStoreHint": "Crée un nouveau magasin avec son propre inventaire et ses prévisions.",
+    "toastSettingsNotLoaded": "Les paramètres sont encore en cours de chargement — réessayez dans un instant"
   },
   "lock": {
     "title": "Appareil verrouillé",

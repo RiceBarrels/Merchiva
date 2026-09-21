@@ -150,7 +150,12 @@ export default function InventoryPage() {
   const [form, setForm] = useState<Partial<InventoryItem>>({});
   const [dialogStep, setDialogStep] = useState(0);
   const [stockDialogOpen, setStockDialogOpen] = useState(false);
-  const [stockItem, setStockItem] = useState<InventoryItem | null>(null);
+  // Only the id is held in state: the row itself is re-derived from the live
+  // subscription on every render. Holding the row would freeze `currentStock`
+  // at the moment the sheet opened, and the adjust below turns a relative edit
+  // into an ABSOLUTE write — so a delivery logged on another device in the
+  // meantime was silently overwritten.
+  const [stockItemId, setStockItemId] = useState<string | null>(null);
   const [stockMode, setStockMode] = useState<StockAdjustMode>("add");
   const [stockAmount, setStockAmount] = useState("");
   const [stockBatchExpiresOn, setStockBatchExpiresOn] = useState("");
@@ -249,7 +254,7 @@ export default function InventoryPage() {
   };
 
   const openEdit = (item: InventoryItem) => {
-    setStockItem(item);
+    setStockItemId(item.id);
     setStockMode("add");
     setStockAmount("");
     setStockBatchExpiresOn("");
@@ -257,6 +262,11 @@ export default function InventoryPage() {
     setStockPhotos([]);
     setStockDialogOpen(true);
   };
+
+  const stockItem = useMemo<InventoryItem | null>(
+    () => (stockItemId ? items.find((i) => i.id === stockItemId) ?? null : null),
+    [items, stockItemId],
+  );
 
   const stockDeltaValue = Number(stockAmount);
   const stockPreview =
@@ -304,7 +314,7 @@ export default function InventoryPage() {
       hapticSuccess();
       toast.success(t("inventory.toast.stockUpdated"));
       setStockDialogOpen(false);
-      setStockItem(null);
+      setStockItemId(null);
       setStockAmount("");
       setStockBatchExpiresOn("");
       setStockNote("");
@@ -1048,7 +1058,7 @@ export default function InventoryPage() {
           onOpenChange={(open) => {
             setStockDialogOpen(open);
             if (!open) {
-              setStockItem(null);
+              setStockItemId(null);
               setStockAmount("");
               setStockBatchExpiresOn("");
               setStockNote("");
@@ -1213,6 +1223,10 @@ export default function InventoryPage() {
                       variant="outline"
                       type="button"
                       onClick={() => {
+                        // Close this sheet first: leaving it open over the
+                        // details form meant saving there returned the user to
+                        // a quick-stock sheet still showing pre-edit numbers.
+                        setStockDialogOpen(false);
                         openEditDetails(stockItem);
                       }}
                     >

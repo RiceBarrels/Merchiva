@@ -1537,7 +1537,8 @@
     "storeImageUpload": "上載圖片",
     "teamOnTeamPage": "成員、角色與打卡碼",
     "punchCodeOnTeamPage": "在團隊頁設置",
-    "createStoreHint": "建立一間擁有獨立庫存與預測的新門店。"
+    "createStoreHint": "建立一間擁有獨立庫存與預測的新門店。",
+    "toastSettingsNotLoaded": "設定仍在載入中，請稍後再試"
   },
   "lock": {
     "title": "設備已鎖定",

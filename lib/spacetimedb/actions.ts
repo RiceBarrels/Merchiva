@@ -434,7 +434,24 @@ export async function deleteProduct(productId: string): Promise<void> {
 // ─── Staffing: Shifts ─────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * `updateShift` / `addShift` REPLACE the whole row: the reducer writes
+ * `date: args.date`, `startTime: args.startTime` and so on verbatim, and the
+ * SDK serialises a missing `t.string()` argument as the empty string. So a
+ * partial patch — `updateShift(id, { memberId })` — does not leave the other
+ * columns alone, it blanks them, silently and unrecoverably. Two call sites
+ * did exactly that. Fail loudly instead.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildShiftPayload(data: Record<string, any>): Record<string, any> {
+  for (const required of ["date", "shiftType", "startTime", "endTime"] as const) {
+    if (typeof data[required] !== "string" || data[required] === "") {
+      throw new Error(
+        `Shift payload is missing "${required}". updateShift/addShift replace the ` +
+        `whole row — spread the existing shift before patching it.`,
+      );
+    }
+  }
   const roleNames = Array.isArray(data.staffRoles)
     ? data.staffRoles.filter((role) => typeof role === "string")
     : [];
