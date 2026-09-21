@@ -111,15 +111,30 @@ function DesktopFrame({ children }: { children: ReactNode }) {
 
   // The persisted rail state drives the panel: the in-sidebar control and the shortcut write the
   // state, and a drag below the minimum writes it back through `onResize`.
+  //
+  // Retried on the next frame when the handle is not usable yet. A Panel registers itself with
+  // its group in a layout effect, but the group derives `panelConstraints` — what every method on
+  // the handle reads — in the render that registration schedules. In the commit where the sidebar
+  // goes from hidden to shown, this effect runs in between the two, and `isCollapsed()` throws
+  // "Panel constraints not found for Panel browser-sidebar".
   useEffect(() => {
     if (sidebarHidden) return;
-    const panel = sidebarPanel.current;
-    if (!panel) return;
-    if (sidebarCollapsed) {
-      if (!panel.isCollapsed()) panel.collapse();
-    } else if (panel.isCollapsed()) {
-      panel.expand();
-    }
+    let frame = 0;
+    const sync = () => {
+      const panel = sidebarPanel.current;
+      if (!panel) return;
+      try {
+        if (sidebarCollapsed) {
+          if (!panel.isCollapsed()) panel.collapse();
+        } else if (panel.isCollapsed()) {
+          panel.expand();
+        }
+      } catch {
+        frame = requestAnimationFrame(sync);
+      }
+    };
+    sync();
+    return () => cancelAnimationFrame(frame);
   }, [sidebarHidden, sidebarCollapsed, sidebarPanel]);
 
   const onSidebarResize = useCallback(
