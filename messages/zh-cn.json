@@ -4430,7 +4430,8 @@
       "channel": "聊天",
       "docs": "文档",
       "settings-org": "门店设置",
-      "bugs": "问题反馈"
+      "bugs": "问题反馈",
+      "notifications": "通知"
     },
     "notAvailableHere": "此设备不支持该功能",
     "lite": {
@@ -4648,7 +4649,8 @@
       "products": "查看产品和价格。",
       "sales": "今日销售一览。",
       "bookings": "今天和明天的预约。",
-      "bugs": "反馈 App 的问题，并跟进处理进度。"
+      "bugs": "反馈 App 的问题，并跟进处理进度。",
+      "notifications": "你的排班、班表与申请提醒，最新的在前。"
     },
     "appStore": {
       "hint": "选择这家店使用哪些功能。添加后的应用会同时出现在后台、门店平板和员工手机上；必备应用始终开启。",

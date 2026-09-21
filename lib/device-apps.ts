@@ -15,6 +15,7 @@ export const REQUIRED_DEVICE_APPS = [
   "inventory",
   "settings",
   "bugs",
+  "notifications",
   // Manager-only shell pieces that are never "apps" to download.
   "dashboard",
   "personnel",

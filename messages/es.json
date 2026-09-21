@@ -4430,7 +4430,8 @@
       "channel": "Chat",
       "docs": "Documentos",
       "settings-org": "Ajustes de tienda",
-      "bugs": "Reportar errores"
+      "bugs": "Reportar errores",
+      "notifications": "Notificaciones"
     },
     "notAvailableHere": "No disponible en este dispositivo",
     "lite": {
@@ -4648,7 +4649,8 @@
       "products": "Consulta productos y precios.",
       "sales": "Las ventas de hoy de un vistazo.",
       "bookings": "Reservas de hoy y de mañana.",
-      "bugs": "Informa de un problema con la app y sigue su avance."
+      "bugs": "Informa de un problema con la app y sigue su avance.",
+      "notifications": "Tus avisos de turno, horario y solicitudes, del más reciente al más antiguo."
     },
     "appStore": {
       "hint": "Elige qué funciones usa esta tienda. Una app instalada aparece en el panel de gestión, en la tablet de la tienda y en los móviles del personal; las apps obligatorias están siempre activas.",

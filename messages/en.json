@@ -4430,7 +4430,8 @@
       "channel": "Chat",
       "docs": "Docs",
       "settings-org": "Store settings",
-      "bugs": "Bug reports"
+      "bugs": "Bug reports",
+      "notifications": "Notifications"
     },
     "notAvailableHere": "Not available on this device",
     "lite": {
@@ -4648,7 +4649,8 @@
       "products": "Look up products and prices.",
       "sales": "Today's sales at a glance.",
       "bookings": "Today's and tomorrow's reservations.",
-      "bugs": "Report a problem with the app and follow what happens to it."
+      "bugs": "Report a problem with the app and follow what happens to it.",
+      "notifications": "Your shift, schedule and request alerts, newest first."
     },
     "appStore": {
       "hint": "Pick which features this store uses. An installed app shows up in the manager back office, on the store tablet and on staff phones; required apps are always on.",

@@ -4430,7 +4430,8 @@
       "channel": "Chat",
       "docs": "Documents",
       "settings-org": "Réglages boutique",
-      "bugs": "Signalements"
+      "bugs": "Signalements",
+      "notifications": "Notifications"
     },
     "notAvailableHere": "Indisponible sur cet appareil",
     "lite": {
@@ -4648,7 +4649,8 @@
       "products": "Consultez produits et prix.",
       "sales": "Les ventes du jour en un coup d'œil.",
       "bookings": "Réservations d'aujourd'hui et de demain.",
-      "bugs": "Signalez un problème dans l'app et suivez son traitement."
+      "bugs": "Signalez un problème dans l'app et suivez son traitement.",
+      "notifications": "Vos alertes de service, de planning et de demandes, les plus récentes d'abord."
     },
     "appStore": {
       "hint": "Choisissez les fonctions utilisées par ce magasin. Une app installée apparaît dans le back-office, sur la tablette du magasin et sur les téléphones de l'équipe ; les apps obligatoires sont toujours actives.",
