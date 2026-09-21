@@ -2589,6 +2589,27 @@ const RLS_NO_CLIENT_ACCESS = [
  *                      either: that would be self-referential. Contents are
  *                      identity hashes and labels — not credentials.
  *
+ *   org_membership_index, chat_membership_index
+ *                    — KNOWN GAP, not a decision. Both are `public: true` with
+ *                      no rule, so
+ *                        curl -d "SELECT * FROM org_membership_index" \
+ *                             https://<host>/v1/database/<module>/sql
+ *                      returns the platform's whole membership graph
+ *                      unauthenticated: every organization id, every member
+ *                      identity, who works where, and from the chat index who
+ *                      is in which private conversation.
+ *
+ *                      They cannot simply be filtered: EVERY org-scoped rule
+ *                      above joins org_membership_index, and a rule on a join
+ *                      target changes what those rules can see. A self-scoped
+ *                      rule (`WHERE userId = :sender`) matches what the joins
+ *                      already filter on and is the likely fix, but getting it
+ *                      wrong makes every joined table unsubscribable for every
+ *                      client — the failure mode described at the top of this
+ *                      block, which took the whole app down once. It needs a
+ *                      staging publish to verify, so it is recorded here
+ *                      rather than changed blind.
+ *
  * Private (`public: false`) tables need no rule; they are unreadable by any
  * client: platform_admin_secret, user_secret, org_secret, migration_state.
  */
@@ -3062,13 +3083,18 @@ export const updateOrgSubscription = spacetimedb.reducer(
     const org = [...ctx.db.organization.byOrgIdText.filter(args.organizationId)][0];
     if (!org) throw new SenderError('Organization not found');
 
+    // undefined = leave unchanged, "" = clear. The docblock above promised
+    // this mapping; the code stored the empty string verbatim instead.
+    const applied = (next: string | undefined, current: string | undefined) =>
+      next === undefined ? current : next === '' ? undefined : next;
+
     ctx.db.organization.delete(org);
     ctx.db.organization.insert({
       ...org,
-      stripeCustomerId: args.stripeCustomerId ?? org.stripeCustomerId,
-      subscriptionStatus: args.subscriptionStatus ?? org.subscriptionStatus,
-      subscriptionPriceId: args.subscriptionPriceId ?? org.subscriptionPriceId,
-      subscriptionInterval: args.subscriptionInterval ?? org.subscriptionInterval,
+      stripeCustomerId: applied(args.stripeCustomerId, org.stripeCustomerId),
+      subscriptionStatus: applied(args.subscriptionStatus, org.subscriptionStatus),
+      subscriptionPriceId: applied(args.subscriptionPriceId, org.subscriptionPriceId),
+      subscriptionInterval: applied(args.subscriptionInterval, org.subscriptionInterval),
       currentPeriodEnd: args.currentPeriodEnd ?? org.currentPeriodEnd,
     });
   }

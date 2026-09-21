@@ -1912,12 +1912,22 @@ export async function updateOrgSubscription(data: {
       ? new Timestamp(BigInt(Math.trunc(data.currentPeriodEndUnix)) * 1_000_000n)
       : undefined;
 
+  // The reducer reads a missing option as "leave unchanged" and an empty
+  // string as "clear" — so mapping a null straight to undefined meant the sync
+  // path could only ever UPGRADE the cached state. A subscription deleted on
+  // the Stripe side came back as `subscriptionStatus: null`, was sent as
+  // undefined, and the stale "active" stayed on the org row, keeping the app
+  // unlocked for free. The customer id is deliberately not cleared this way:
+  // losing it would break every later lookup.
+  const clearable = (value: string | null | undefined): string | undefined =>
+    value == null ? "" : value;
+
   return reducer({
     organizationId: data.organizationId ?? orgId(),
     stripeCustomerId: data.stripeCustomerId ?? undefined,
-    subscriptionStatus: data.subscriptionStatus ?? undefined,
-    subscriptionPriceId: data.subscriptionPriceId ?? undefined,
-    subscriptionInterval: data.subscriptionInterval ?? undefined,
+    subscriptionStatus: clearable(data.subscriptionStatus),
+    subscriptionPriceId: clearable(data.subscriptionPriceId),
+    subscriptionInterval: clearable(data.subscriptionInterval),
     currentPeriodEnd: periodEnd,
   });
 }
