@@ -7,8 +7,8 @@
 // The env-var path is the bootstrap mechanism — the first admin lists themself
 // there so they can mint other admins via the UI, which writes to metadata.
 
-import { createRemoteJWKSet, jwtVerify } from "jose";
-import { clientId, workos } from "./workos";
+import { workos } from "./workos";
+import { verifiedUserId } from "./verify-token";
 
 export interface AdminCheckResult {
   user: {
@@ -36,26 +36,6 @@ export function isAdminFromEnv(email: string): boolean {
 }
 
 /**
- * WorkOS's public signing keys, fetched once and cached by `jose`.
- *
- * Built lazily so a missing WORKOS_CLIENT_ID fails the request rather than the
- * module import.
- */
-let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-
-function getJwks(): ReturnType<typeof createRemoteJWKSet> | null {
-  if (jwks) return jwks;
-  if (!clientId) return null;
-  try {
-    jwks = createRemoteJWKSet(new URL(workos.userManagement.getJwksUrl(clientId)));
-    return jwks;
-  } catch (err) {
-    console.error("[admin] could not build the WorkOS JWKS:", err);
-    return null;
-  }
-}
-
-/**
  * Verify a Bearer access token with WorkOS and return whether the user is a
  * site admin. Returns `null` if the token is invalid.
  *
@@ -74,26 +54,7 @@ function getJwks(): ReturnType<typeof createRemoteJWKSet> | null {
 export async function verifyAdminFromAuthHeader(
   authHeader: string | null,
 ): Promise<AdminCheckResult | null> {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-  const token = authHeader.slice("Bearer ".length).trim();
-  if (!token) return null;
-
-  const keys = getJwks();
-  if (!keys) {
-    // No client id configured: fail closed rather than fall back to trusting
-    // an unverified payload.
-    console.error("[admin] WORKOS_CLIENT_ID is not set — refusing to verify admin tokens");
-    return null;
-  }
-
-  let userId: string | null = null;
-  try {
-    const { payload } = await jwtVerify(token, keys);
-    userId = typeof payload.sub === "string" ? payload.sub : null;
-  } catch {
-    // Bad signature, wrong issuer, expired — all the same answer.
-    return null;
-  }
+  const userId = await verifiedUserId(authHeader);
   if (!userId) return null;
 
   try {

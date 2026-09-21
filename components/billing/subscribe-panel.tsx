@@ -47,7 +47,7 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
   const router = useRouter();
   const sp = useSearchParams();
   const { organizationId, currentOrg, isOwner, organizations, switchOrg } = usePermissions();
-  const { user, signOut } = useAuth();
+  const { user, signOut, getToken } = useAuth();
   const [rawOrgs] = useOrganizations() as [unknown[], boolean];
   const stdb = useSpacetimeDB();
   const [orgMembers] = useOrgMembers();
@@ -106,7 +106,10 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
       if (!params.toString()) return;
       setSyncing(true);
       try {
-        const res = await fetch(`/api/billing/sync?${params.toString()}`);
+        const token = await getToken();
+        const res = await fetch(`/api/billing/sync?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!res.ok) {
           console.error("[subscribe] sync failed:", res.status, await res.text());
           return;
@@ -132,7 +135,7 @@ export function SubscribePanel({ returnPath, cleanupPath, embedded = false, clas
         setSyncing(false);
       }
     },
-    [billingOrgId],
+    [billingOrgId, getToken],
   );
 
   // Returning from Stripe checkout — sync, then strip the status params.

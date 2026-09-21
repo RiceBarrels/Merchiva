@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifiedUserId } from "@/lib/auth/verify-token";
 import { stripe, fetchSubscriptionSnapshot } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -19,6 +20,12 @@ export const runtime = "nodejs";
  */
 export async function GET(req: NextRequest) {
   try {
+    // Returned a named customer's subscription state to anyone who asked.
+    // Same caveat as /api/billing/portal: this proves the caller is signed in,
+    // not that the customer is theirs.
+    const userId = await verifiedUserId(req.headers.get("authorization"));
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const sp = req.nextUrl.searchParams;
     const sessionId = sp.get("sessionId");
     let stripeCustomerId = sp.get("stripeCustomerId");

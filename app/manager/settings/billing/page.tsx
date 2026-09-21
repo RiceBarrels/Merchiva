@@ -44,7 +44,7 @@ function BillingInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const { organizationId, isOwner } = usePermissions();
-  const { user } = useAuth();
+  const { user, getToken } = useAuth();
   const [rawOrgs] = useOrganizations() as [unknown[], boolean];
   const [syncing, setSyncing] = useState(false);
   const [busy, setBusy] = useState<null | "monthly" | "yearly" | "portal">(null);
@@ -73,7 +73,10 @@ function BillingInner() {
       if (!params.toString()) return;
       setSyncing(true);
       try {
-        const res = await fetch(`/api/billing/sync?${params.toString()}`);
+        const token = await getToken();
+        const res = await fetch(`/api/billing/sync?${params.toString()}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         if (!res.ok) {
           const errBody = await res.text();
           console.error("[billing] sync failed:", res.status, errBody);
@@ -100,7 +103,7 @@ function BillingInner() {
         setSyncing(false);
       }
     },
-    [organizationId],
+    [organizationId, getToken],
   );
 
   // On mount: if we just returned from checkout (has session_id), sync state.
@@ -160,9 +163,13 @@ function BillingInner() {
     if (!customerId) return;
     setBusy("portal");
     try {
+      const token = await getToken();
       const res = await fetch("/api/billing/portal", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ stripeCustomerId: customerId }),
       });
       if (!res.ok) {
@@ -177,7 +184,7 @@ function BillingInner() {
     } finally {
       setBusy(null);
     }
-  }, [customerId, t]);
+  }, [customerId, t, getToken]);
 
   if (!isOwner) {
     return (
