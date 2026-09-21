@@ -10,9 +10,11 @@ export function ServiceWorkerRegistrar() {
   useEffect(() => {
     if (isCapacitorNative()) return;
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((regs) => {
-        regs.forEach((reg) => reg.unregister());
-      });
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => regs.forEach((reg) => reg.unregister()))
+        // Blocked in some privacy modes; nothing to clean up then.
+        .catch((err: unknown) => console.error("[service-worker] cleanup failed", err));
     }
   }, []);
 

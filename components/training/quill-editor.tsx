@@ -86,7 +86,11 @@ export function QuillEditor({
 
       quillRef.current = editor;
       setReady(true);
-    })();
+    })().catch((err: unknown) => {
+      // A chunk that fails to load (deploy mid-session, flaky network) would
+      // otherwise leave an empty box and an unhandled rejection.
+      console.error("[quill-editor] failed to load the editor", err);
+    });
 
     return () => {
       cancelled = true;

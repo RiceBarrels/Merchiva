@@ -79,11 +79,14 @@ export function I18nProvider({
       return;
     }
     // No cookie — try native device language first, then browser
-    detectNativeLocale().then((native) => {
-      const initial = native ?? detectBrowserLocale();
-      writeCookie(LOCALE_COOKIE, initial);
-      if (initial !== locale) setLocaleState(initial);
-    });
+    detectNativeLocale()
+      .catch(() => null) // Device plugin missing or unavailable — use the browser's.
+      .then((native) => {
+        const initial = native ?? detectBrowserLocale();
+        writeCookie(LOCALE_COOKIE, initial);
+        if (initial !== locale) setLocaleState(initial);
+      })
+      .catch((err: unknown) => console.error("[i18n] locale detection failed", err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -32,11 +32,15 @@ function LoginForm() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn || isAddAccount) return;
     let cancelled = false;
-    void getToken().then((token) => {
-      if (!cancelled && token) {
-        router.replace(next);
-      }
-    });
+    getToken()
+      .then((token) => {
+        if (!cancelled && token) {
+          router.replace(next);
+        }
+      })
+      // A rejected token read leaves the user on the form, which is the same
+      // as no token — but without this it is also an unhandled rejection.
+      .catch((err: unknown) => console.error("[login] token read failed", err));
     return () => {
       cancelled = true;
     };
