@@ -87,6 +87,17 @@ type AiJobRow = {
   organizationId?: string;
   sessionId?: string;
   status?: string;
+  /**
+   * Set by the `consumeAiJob` reducer once this client has finalized the job.
+   *
+   * The field existed and was written but never read here, and the two
+   * de-dupe refs below are created fresh on every mount — so a finished job
+   * whose row outlived the 60-second delete timeout (close the tab and it
+   * never fires) was re-finalized on the next load. Its actions were rebuilt
+   * as `pending`, putting an Approve button back on an order that had already
+   * been placed, and an auto-run action could re-fire unattended.
+   */
+  consumed?: boolean;
   prompt?: string;
   partialText?: string;
   resultText?: string;
@@ -3006,6 +3017,8 @@ function MerchivaChatInner({
     if (myJobs.length === 0) return;
 
     for (const job of myJobs) {
+      // Already finalized by some earlier session — the durable marker.
+      if (job.consumed === true) continue;
       const jobId = rowIdString(job.id);
       const msgId = `job-${jobId}`;
       const isDone = job.status === "done" || job.status === "failed";

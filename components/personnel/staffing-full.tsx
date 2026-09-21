@@ -249,13 +249,23 @@ function AttendanceManagerPanel({
   const [drafts, setDrafts] = useState<Record<string, { startTime: string; endTime: string }>>({});
   const rowSyncKey = rows.map((row) => `${row.member.id}:${row.startTime}:${row.endTime}`).join("|");
 
+  // `rowSyncKey` exists so the drafts re-seed only when the punch TIMES change.
+  // Listing `rows` as well defeated it: `rows` is a useMemo over the whole
+  // punch-event stream, so any colleague tapping "break start" on the shared
+  // tablet gave it a new identity and this effect overwrote the manager's
+  // half-typed correction with the server values. The sibling editor in
+  // components/personnel/attendance.tsx already keys on the derived value only.
   useEffect(() => {
     const next: Record<string, { startTime: string; endTime: string }> = {};
     rows.forEach((row) => {
       next[row.member.id] = { startTime: row.startTime, endTime: row.endTime };
     });
     setDrafts(next);
-  }, [rowSyncKey, rows]);
+    // `rows` is deliberately NOT a dependency. The render that produces a new
+    // rowSyncKey produces the matching `rows`, so the closure is current —
+    // whereas listing `rows` re-runs on every unrelated punch event too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowSyncKey]);
 
   if (!canManage) return null;
 

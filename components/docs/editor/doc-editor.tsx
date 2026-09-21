@@ -67,6 +67,7 @@ import { useDocActions } from "./use-doc-actions";
 import { useDocEditorInstance } from "./use-doc-editor-instance";
 import { useDocSaveState } from "./use-save-state";
 import { MobileDocEditor } from "@/components/docs/mobile/mobile-doc-editor";
+import { useDocsOpenUrl } from "@/components/docs/docs-open-context";
 
 export interface DocEditorProps {
   doc: DocumentMeta;
@@ -199,6 +200,7 @@ function DocEditorSession(props: DocEditorSessionProps) {
   const { locale } = useI18n();
   const coarsePointer = useCoarsePointer();
   const tabActions = useTabActions();
+  const openDocsUrl = useDocsOpenUrl();
   const { currentOrg } = usePermissions();
   const shortcutLabel = useDocShortcutLabels();
   const previewVersionId = versionParam;
@@ -360,9 +362,15 @@ function DocEditorSession(props: DocEditorSessionProps) {
   // Version preview comes from the URL; its panel is forced open on desktop.
   const setPreviewVersion = useCallback(
     (versionId: string | null) => {
-      tabActions.navigateActive(documentHref(doc.id, { version: versionId ?? undefined }), { mode: "replace" });
+      // Through the surface's opener, not navigateActive: on a device panel
+      // there is no bound shell, so navigateActive falls back to the router
+      // and tapping a version row threw the whole tablet out of /store into
+      // /manager — and selectVersion(null) is the only way back, so there was
+      // no return path. This needs no edit right either, so any viewer could
+      // trigger it.
+      openDocsUrl(documentHref(doc.id, { version: versionId ?? undefined }), "current");
     },
-    [tabActions, doc.id],
+    [openDocsUrl, doc.id],
   );
   const [previewEditor, setPreviewEditor] = useState<Editor | null>(null);
   const contentEditor = previewVersionId ? previewEditor : editor;
@@ -416,11 +424,11 @@ function DocEditorSession(props: DocEditorSessionProps) {
         editor.commands.focus("end");
       }
     }
-    tabActions.navigateActive(
+    openDocsUrl(
       documentHref(doc.id, { comment: threadParam ?? undefined, version: versionParam ?? undefined }),
-      { mode: "replace" },
+      "current",
     );
-  }, [initialNew, editor, access.canEdit, isMobile, tabActions, doc.id, threadParam, versionParam]);
+  }, [initialNew, editor, access.canEdit, isMobile, openDocsUrl, doc.id, threadParam, versionParam]);
 
   const saveState = useDocSaveState(collab.status, canEditNow);
   const memberName = useCallback((id: string | null) => (id ? (memberNames.get(id) ?? null) : null), [memberNames]);
@@ -443,6 +451,7 @@ function DocEditorSession(props: DocEditorSessionProps) {
     ydoc,
     isMobile,
     tabActions,
+    openDocsUrl,
     storeName: currentOrg?.name ?? null,
     authorName,
     findVersion,
